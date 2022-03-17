@@ -103,7 +103,6 @@ else:
             if (st.session_state.toc != ""):
                 st.session_state.chapter += st.session_state.toc
 
-      st.caption("Add sections to the campaign.")
         if (st.button('Add sections', help="Add sections.")):
             st.session_state.chapter += Writing.Writing().completeModel(st.session_state.chapter, model)
 
