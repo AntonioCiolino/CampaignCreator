@@ -134,6 +134,7 @@ class Writing:
             toc_base = self.features.get_prompt('Table of Contents')
             p = toc_base.format(campaign)
             toc =  self.write(p, model)
+            toc
             if toc != '':
                 return ''.join(toc_base + " " + toc).replace('{}', '').replace('\n', '\n\n')
         except Exception as oops:
