@@ -96,15 +96,17 @@ else:
         if (st.button('Generate campaign concept', help="Generates a campaign concept.")):
             st.session_state.campaign = concept + Writing.Writing().generate_campaign(concept, model)
             if (st.session_state.campaign != ""):
-                st.session_state.chapter = st.session_state.campaign
+                campaign = st.text_input('Campaign', '', key='campaign')
+                # st.session_state.chapter = st.session_state.campaign
 
         if (st.button('Generate table of contents', help="Generates a table of contents.")):
             st.session_state.toc =  Writing.Writing().generate_toc(st.session_state.campaign, model)
             if (st.session_state.toc != ""):
-                st.session_state.chapter += st.session_state.toc
+                toc = st.text_input('Table of Contents', '', key='toc')
+                # st.session_state.chapter += st.session_state.toc
 
-        if (st.button('Add sections', help="Add sections.")):
-            st.session_state.chapter += Writing.Writing().completeModel(st.session_state.chapter, model)
+        if (st.button('Add sections', help="Add sections to the campaign.")):
+            st.session_state.chapter += Writing.Writing().completeModel(campaign + "\n\n" + toc, model)
 
     #completions vs. tuning.
     # make a section with the buttons near it
@@ -120,8 +122,8 @@ else:
 
 
     # ----------------------------------------------------------------------------------------------------------------------
-    st.text_area(label="Your chapter",
-                 help="The story that you are creating is here. You can add content to it by clicking the buttons above.",
+    st.text_area(label="Your campaign",
+                 help="The camapign that you are creating is here. You can add content to it by clicking the buttons above.",
                  height=500,
                  key="chapter",
                  on_change=update_content, args=(st.session_state.chapter, ))
