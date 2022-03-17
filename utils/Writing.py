@@ -125,7 +125,7 @@ class Writing:
         try:
             p = self.features.get_prompt('Campaign')
             p = p.format(prompt)
-            p
+            st.write(p)
             return self.write(p, model)
         except Exception as oops:
             st.error('ERROR in get_tuned_content function: ' + str(oops))
