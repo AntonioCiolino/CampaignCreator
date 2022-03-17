@@ -98,7 +98,6 @@ else:
             if (st.session_state.campaign != ""):
                 st.success(st.session_state.campaign)
 
-        toc = st.text_input('Table of Contents', '', key='toc')
         if (st.button('Generate table of contents', help="Generates a table of contents.")):
             st.session_state.toc =  Writing.Writing().generate_toc(st.session_state.campaign, model)
             if (st.session_state.toc != ""):
