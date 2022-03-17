@@ -92,4 +92,4 @@ else:
             st.session_state.chapter += Writing.Writing().completeDavinci(st.session_state.chapter)
 
     st.write(st.session_state.chapter)
-    st_quill(key="chapter", test=st.session_state.chapter)
+    st_quill(key="chapter", text=st.session_state.chapter)
