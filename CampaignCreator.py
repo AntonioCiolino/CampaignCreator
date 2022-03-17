@@ -11,8 +11,8 @@ def update_content(args):
 
 
 # Title of the page
-st.title('WordPlay')
-st.caption("An app that helps users come up with new and interesting words for their writing projects.")
+st.title('Campign Creator')
+st.caption("RTy to create campaigns")
 st.caption("DO NOT DEPEND ON THIS TOOL TO KEEP YOUR STORY. It depends on session state, and it can reset at any time.")
 
 if 'random_tables' not in st.session_state:
@@ -31,6 +31,15 @@ if 'models' not in st.session_state:
     st.session_state.models = []
 if 'chapter' not in st.session_state:
     st.session_state.chapter = ""
+
+# campaign session state
+if 'campaign' not in st.session_state:
+    st.session_state.campaign = ""
+#concept text box
+if 'concept' not in st.session_state:
+    st.session_state.concept = ""
+
+
 
 with st.expander("Enter your API Key"):
     st.session_state.api_key = st.text_input('API Key', st.session_state.api_key, type='password')
@@ -91,7 +100,26 @@ else:
             # st.success("Sent to OpenAI: "+ st.session_state.chapter)
             st.session_state.chapter += Writing.Writing().completeDavinci(st.session_state.chapter)
 
-    #not setting the text allow this to work correctly with a submit button.
+    with st.expander("Campaign concept generation:"):
+        st.caption("Generate a campaign concept based on the current chapter.")
+        concept = st.text('Campaign concept', '', help="Enter a campaign concept to generate.", key='concept')
+        if (st.button('Generate campaign concept', help="Generates a campaign concept.")):
+            st.session_state.campaign += Writing.Writing().generate_campaign_concept(concept)
+
+    with st.expander("Table of Contents:"):
+        st.caption("Generate a table of contents based on the current chapter.")
+        if (st.button('Generate table of contents', help="Generates a table of contents.")):
+            st.session_state.toc += Writing.Writing().generate_toc(st.session_state.chapter)
+
+    # later, segment this out. for now, dump all chapter stuff into the box
+    with st.expander("Create the 'chapter', the sections go into the text box"):
+        st.caption("Add sections to the campaign.")
+        if (st.button('Add sections', help="Add sections.")):
+            st.session_state.chapter += Writing.Writing().add_sections()
+
+
+
+    # ----------------------------------------------------------------------------------------------------------------------
     st.text_area(label="Your chapter",
                  help="The story that you are creating is here. You can add content to it by clicking the buttons above.",
                  height=500,
