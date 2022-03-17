@@ -123,7 +123,7 @@ class Writing:
 
     def generate_concept(self, prompt, model):
         try:
-            p = self.features.features.get_prompt('Campaign')
+            p = self.features.get_prompt('Campaign')
             p = p.format(prompt)
             p
             return self.write(p, model)
