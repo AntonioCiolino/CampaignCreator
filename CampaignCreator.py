@@ -96,13 +96,13 @@ else:
         if (st.button('Generate campaign concept', help="Generates a campaign concept.")):
             st.session_state.campaign = concept + Writing.Writing().generate_campaign(concept, model)
             if (st.session_state.campaign != ""):
-                campaign = st.text_input('Campaign', '', key='campaign')
+                campaign = st.text_area('Campaign', '', key='campaign')
                 # st.session_state.chapter = st.session_state.campaign
 
         if (st.button('Generate table of contents', help="Generates a table of contents.")):
             st.session_state.toc =  Writing.Writing().generate_toc(st.session_state.campaign, model)
             if (st.session_state.toc != ""):
-                toc = st.text_input('Table of Contents', '', key='toc')
+                toc = st.text_area('Table of Contents', '', key='toc')
                 # st.session_state.chapter += st.session_state.toc
 
         if (st.button('Add sections', help="Add sections to the campaign.")):
