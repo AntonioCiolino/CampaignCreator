@@ -104,7 +104,7 @@ else:
             st.text_area('Table of Contents', '', key='toc')
 
         if (st.button('Add sections', help="Add sections to the campaign.")):
-            st.session_state.chapter += Writing.Writing().completeModel(st.session_state.campaign + "\n\n" + st.session_state.toc, model)
+            st.session_state.chapter += Writing.Writing().completeModel(st.session_state.campaign + "###\n\n" + st.session_state.toc + "\n\n" +  st.session_state.chapter, model)
 
     #completions vs. tuning.
     # make a section with the buttons near it
