@@ -85,9 +85,7 @@ else:
     #             st.session_state.chapter += Writing.Writing().get_generic_content(prompt)
 
     st.info("""
-    Use the content box to enhance chapter content. Note that this takes the whole chapter; we do not handle highlighting and custom selection. 
-    
-    If a subset is needed, use the Optional Prompt functions, above.
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
     
     """)
 
