@@ -92,7 +92,7 @@ else:
             st.session_state.chapter += Writing.Writing().completeDavinci(st.session_state.chapter)
 
     #not setting the text allow this to work correctly with a submit button.
-    st.st_quill(label="Your chapter",
+    st_quill(label="Your chapter",
                  help="The story that you are creating is here. You can add content to it by clicking the buttons above.",
                  height=500,
                  key="chapter",
