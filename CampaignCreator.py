@@ -95,7 +95,7 @@ else:
         st.caption("Generate a campaign concept based on the current chapter.")
         concept = st.text_input('Campaign concept', '', key='concept')
         if (st.button('Generate campaign concept', help="Generates a campaign concept.")):
-            st.session_state.campaign = concept + Writing.Writing().get_tuned_content(concept, model)
+            st.session_state.campaign = concept + Writing.Writing().generate_concept(concept, model)
 
     with st.expander("Table of Contents:"):
         st.caption("Generate a table of contents based on the current chapter.")

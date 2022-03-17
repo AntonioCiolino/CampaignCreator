@@ -120,3 +120,12 @@ class Writing:
             return models
         except Exception as oops:
             st.error('ERROR in getModels function: ' + str(oops))
+
+    def generate_concept(self, prompt, model):
+        try:
+            p = self.features.features['Campaign']
+            p = p.format(prompt)
+            p
+            return self.write(p, model)
+        except Exception as oops:
+            st.error('ERROR in get_tuned_content function: ' + str(oops))
