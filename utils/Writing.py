@@ -133,6 +133,8 @@ class Writing:
         try:
             p = self.features.get_prompt('Table of Contents')
             p = p.format(campaign)
-            return self.write(p, model)
+            toc =  self.write(p, model)
+            if toc != '':
+                return p + " " + toc
         except Exception as oops:
             st.error('ERROR in generate_toc function: ' + str(oops))
