@@ -123,9 +123,11 @@ class Writing:
 
     def generate_campaign(self, concept, model):
         try:
-            p = self.features.get_prompt('Campaign')
-            p = p.format(concept)
-            return self.write(p, model)
+            idea_base = self.features.get_prompt('Campaign')
+            p = idea_base.format(concept)
+            campaign = self.write(p, model)
+            if campaign != '':
+                return ''.join(idea_base + " " + campaign).replace('{}', '')
         except Exception as oops:
             st.error('ERROR in generate_concept function: ' + str(oops))
 
