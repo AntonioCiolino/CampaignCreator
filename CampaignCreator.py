@@ -98,7 +98,7 @@ else:
 
     # AC: for now decided to totally regenerate the toc every time so we don't have to figure out if it's partial.
     if (st.button('Generate table of contents', help="Generates a table of contents.")):
-        st.session_state.toc =  Writing.Writing().generate_toc(st.session_state.campaign, model)
+        st.session_state.toc = "Table of Contents:\n" +  Writing.Writing().generate_toc(st.session_state.campaign, model)
     if (st.session_state.toc):
         st.text_area('Table of Contents', '', key='toc')
 
