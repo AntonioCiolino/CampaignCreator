@@ -91,5 +91,9 @@ else:
             # st.success("Sent to OpenAI: "+ st.session_state.chapter)
             st.session_state.chapter += Writing.Writing().completeDavinci(st.session_state.chapter)
 
-    st.write(st.session_state.chapter)
-    st_quill(key="chapter", value=st.session_state.chapter)
+    #not setting the text allow this to work correctly with a submit button.
+    st.text_area(label="Your chapter",
+                 help="The story that you are creating is here. You can add content to it by clicking the buttons above.",
+                 height=500,
+                 key="chapter",
+                 on_change=update_content, args=(st.session_state.chapter, ))
