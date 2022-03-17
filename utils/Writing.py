@@ -121,11 +121,18 @@ class Writing:
         except Exception as oops:
             st.error('ERROR in getModels function: ' + str(oops))
 
-    def generate_concept(self, prompt, model):
+    def generate_campaign(self, concept, model):
         try:
             p = self.features.get_prompt('Campaign')
-            p = p.format(prompt)
-            st.write(p)
+            p = p.format(concept)
             return self.write(p, model)
         except Exception as oops:
-            st.error('ERROR in get_tuned_content function: ' + str(oops))
+            st.error('ERROR in generate_concept function: ' + str(oops))
+
+    def generate_toc(self, campaign, model):
+        try:
+            p = self.features.get_prompt('Table of Contents')
+            p = p.format(campaign)
+            return self.write(p, model)
+        except Exception as oops:
+            st.error('ERROR in generate_toc function: ' + str(oops))

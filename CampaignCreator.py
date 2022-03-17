@@ -38,6 +38,9 @@ if 'campaign' not in st.session_state:
 #concept text box
 if 'concept' not in st.session_state:
     st.session_state.concept = ""
+#toc text box
+if 'toc' not in st.session_state:
+    st.session_state.toc = ""
 
 
 
@@ -92,12 +95,12 @@ else:
         st.caption("Generate a campaign concept based on the current chapter.")
         concept = st.text_input('Campaign concept', '', key='concept')
         if (st.button('Generate campaign concept', help="Generates a campaign concept.")):
-            st.session_state.campaign = concept + Writing.Writing().generate_concept(concept, model)
+            st.session_state.campaign = concept + Writing.Writing().generate_campaign(concept, model)
 
-    with st.expander("Table of Contents:"):
         st.caption("Generate a table of contents based on the current chapter.")
+        toc = st.text_input('Table of Contents', '', key='toc')
         if (st.button('Generate table of contents', help="Generates a table of contents.")):
-            st.session_state.toc = Writing.Writing().generate_toc(st.session_state.chapter)
+            st.session_state.toc =  Writing.Writing().generate_toc(st.session_state.campaign)
 
     # later, segment this out. for now, dump all chapter stuff into the box
     with st.expander("Create the 'chapter', the sections go into the text box"):
