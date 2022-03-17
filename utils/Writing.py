@@ -96,6 +96,7 @@ class Writing:
 
     def completeModel(self, prompt, model):
         try:
+            st.write(prompt)
             return self.write(prompt, model)
         except Exception as oops:
             st.error('ERROR in get_generic function: ' + str(oops))
