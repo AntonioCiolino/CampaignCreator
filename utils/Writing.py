@@ -40,6 +40,38 @@ class Writing:
                     st.error("Completion Error: " + str(oops))
                     return "Completion Error: " + str(oops)
 
+    # TODO: make this work later. Force the model for now.
+    def edit(self, instruction, dyn_prompt, model="text-davinci-edit-002", temp=0.73, top_p=1.0, tokens=500, freq_pen=1.73, pres_pen=0.43, stop=["END", "Scene:", "[Scene"]):
+        if (dyn_prompt =='' or instruction == ''):
+            st.error('Error: No prompt or instruction provided')
+            return ''
+        else:
+            with st.spinner('Querying OpenAI using ' + model + '...'):
+                # fine-tuned models requires model parameter, whereas other models require engine parameter
+                model_param = (
+                    {"model": model}
+                    if ":" in model
+                       and model.split(":")[1].startswith("ft")
+                    else {"engine": model}
+                )
+
+                try:
+                    response = openai.Completion.edit(
+                        input=dyn_prompt,
+                        instruction=instruction,
+                        temperature=temp,
+                        max_tokens=tokens,
+                        top_p=top_p,
+                        frequency_penalty=freq_pen,
+                        presence_penalty=pres_pen,
+                        stop=stop,
+                        **model_param)
+                    response = response['choices'][0]['text']
+                    return response
+                except Exception as oops:
+                    st.error("Completion Error: " + str(oops))
+                    return "Completion Error: " + str(oops)
+
     def get_tuned_content(self, prompt, model):
         try:
             p = self.features.get_prompt(st.session_state.feat)
@@ -77,8 +109,13 @@ class Writing:
                 if (row["owned_by"] != "openai" and row["owned_by"] != "system"):
                     models.append(row.id)
 
+
             models.append("text-davinci-001")
             models.append("text-curie-001")
+            # inject insert capability
+            models.append("text-davinci-002")
+            # edit capability
+            models.append("text-davinci-edit-001")
 
             return models
         except Exception as oops:
