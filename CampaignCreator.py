@@ -102,7 +102,7 @@ else:
 
     with st.expander("Campaign concept generation:"):
         st.caption("Generate a campaign concept based on the current chapter.")
-        concept = st.text('Campaign concept', '', help="Enter a campaign concept to generate.", key='concept')
+        concept = st.text_input('Campaign concept', '', key='concept')
         if (st.button('Generate campaign concept', help="Generates a campaign concept.")):
             st.session_state.campaign += Writing.Writing().generate_campaign_concept(concept)
 
