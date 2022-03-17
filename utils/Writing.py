@@ -38,7 +38,7 @@ class Writing:
                     return response
                 except Exception as oops:
                     st.error("Completion Error: " + str(oops))
-                    return "Completion Error: " + str(oops)
+                    # return "Completion Error: " + str(oops)
 
     # TODO: make this work later. Force the model for now.
     def edit(self, instruction, dyn_prompt, model="text-davinci-edit-002", temp=0.73, top_p=1.0, tokens=500, freq_pen=1.73, pres_pen=0.43, stop=["END", "Scene:", "[Scene"]):
