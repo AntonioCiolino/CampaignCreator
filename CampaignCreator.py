@@ -92,7 +92,6 @@ else:
             st.session_state.chapter += Writing.Writing().completeDavinci(st.session_state.chapter)
 
     #not setting the text allow this to work correctly with a submit button.
-    st_quill(key="chapter",
-                 on_change=update_content, args=(st.session_state.chapter, ))
+    st_quill(key="chapter")
 
 #submit_button = st.form_submit_button(label='Submit')
