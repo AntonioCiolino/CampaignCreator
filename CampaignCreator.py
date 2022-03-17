@@ -97,7 +97,7 @@ else:
         st.text_area('Campaign', '', key='campaign')
 
     if (st.button('Generate table of contents', help="Generates a table of contents.")):
-        st.session_state.toc =  Writing.Writing().generate_toc(st.session_state.campaign, model)
+        st.session_state.toc =  Writing.Writing().generate_toc(st.session_state.campaign + "\n" + st.session_state.toc, model)
     if (st.session_state.toc):
         st.text_area('Table of Contents', '', key='toc')
 
