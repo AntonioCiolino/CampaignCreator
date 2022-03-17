@@ -94,7 +94,7 @@ else:
     with st.expander("Campaign concept generation:"):
         concept = st.text_input('Campaign concept', '', key='concept')
         if (st.button('Generate campaign concept', help="Generates a campaign concept.")):
-            st.session_state.campaign = concept + Writing.Writing().generate_campaign(concept, model)
+            st.session_state.campaign = concept + Writing.Writing().generate_campaign(concept, model).replace("\n", "<br />")
         if (st.session_state.campaign):
             st.text_area('Campaign', '', key='campaign')
 
