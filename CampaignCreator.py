@@ -96,12 +96,13 @@ else:
         if (st.button('Generate campaign concept', help="Generates a campaign concept.")):
             st.session_state.campaign = concept + Writing.Writing().generate_campaign(concept, model)
             if (st.session_state.campaign != ""):
-                st.success(st.session_state.campaign)
+                st.session_state.chapter = st.session_state.campaign
 
         if (st.button('Generate table of contents', help="Generates a table of contents.")):
             st.session_state.toc =  Writing.Writing().generate_toc(st.session_state.campaign, model)
             if (st.session_state.toc != ""):
-                st.success(st.session_state.toc)
+                st.session_state.chapter += st.session_state.toc
+
 
     # later, segment this out. for now, dump all chapter stuff into the box
     with st.expander("Create the 'chapter', the sections go into the text box"):
