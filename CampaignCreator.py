@@ -89,20 +89,20 @@ else:
     
     """)
 
-    with st.expander("Campaign concept generation:"):
-        concept = st.text_input('Campaign concept', '', key='concept')
-        if (st.button('Generate campaign concept', help="Generates a campaign concept.")):
-            st.session_state.campaign = concept + Writing.Writing().generate_campaign(concept, model)
-        if (st.session_state.campaign):
-            st.text_area('Campaign', '', key='campaign')
 
-        if (st.button('Generate table of contents', help="Generates a table of contents.")):
-            st.session_state.toc =  Writing.Writing().generate_toc(st.session_state.campaign, model)
-        if (st.session_state.toc):
-            st.text_area('Table of Contents', '', key='toc')
+    concept = st.text_input('Campaign concept', '', key='concept')
+    if (st.button('Generate campaign concept', help="Generates a campaign concept.")):
+        st.session_state.campaign = concept + Writing.Writing().generate_campaign(concept, model)
+    if (st.session_state.campaign):
+        st.text_area('Campaign', '', key='campaign')
 
-        if (st.button('Add sections', help="Add sections to the campaign.")):
-            st.session_state.chapter += Writing.Writing().completeModel(st.session_state.campaign + "###\n\n" + st.session_state.toc + "\n\n" +  st.session_state.chapter, model)
+    if (st.button('Generate table of contents', help="Generates a table of contents.")):
+        st.session_state.toc =  Writing.Writing().generate_toc(st.session_state.campaign, model)
+    if (st.session_state.toc):
+        st.text_area('Table of Contents', '', key='toc')
+
+    if (st.button('Add sections', help="Add sections to the campaign.")):
+        st.session_state.chapter += Writing.Writing().completeModel(st.session_state.campaign + "###\n\n" + st.session_state.toc + "\n\n" +  st.session_state.chapter, model)
 
     #completions vs. tuning.
     # make a section with the buttons near it
