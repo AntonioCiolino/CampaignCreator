@@ -95,13 +95,11 @@ else:
         concept = st.text_input('Campaign concept', '', key='concept')
         if (st.button('Generate campaign concept', help="Generates a campaign concept.")):
             st.session_state.campaign = concept + Writing.Writing().generate_campaign(concept, model)
-
-        if (st.button('Generate table of contents', help="Generates a table of contents.")):
-            st.session_state.toc =  Writing.Writing().generate_toc(st.session_state.campaign, model)
-
         if (st.session_state.campaign):
             st.text_area('Campaign', '', key='campaign')
 
+        if (st.button('Generate table of contents', help="Generates a table of contents.")):
+            st.session_state.toc =  Writing.Writing().generate_toc(st.session_state.campaign, model)
         if (st.session_state.toc):
             st.text_area('Table of Contents', '', key='toc')
 
