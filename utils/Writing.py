@@ -132,9 +132,10 @@ class Writing:
     def generate_toc(self, campaign, model):
         try:
             toc_base = self.features.get_prompt('Table of Contents')
-            p = toc_base.format(campaign)
-            st.write(p)
-            st.write(campaign)
+            if (campaign.contains(toc_base)):
+                p = campaign
+            else:
+                p = toc_base.format(campaign)
             return self.write(p, model)
         except Exception as oops:
             st.error('ERROR in generate_toc function: ' + str(oops))
