@@ -7,7 +7,7 @@ class Features:
     features = []
     def __init__(self, **kwargs):
 
-        with open('../csv/features.csv') as data_file:
+        with open('./csv/features.csv') as data_file:
             data = csv.reader(data_file, delimiter=',')
             for row in data:
                 self.features.append(str(row[0]))

@@ -6,7 +6,7 @@ class Tables:
     random_tables = {}
     def __init__(self, **kwargs):
         tables = {}
-        with open('../csv/tables1e.csv') as data_file:
+        with open('./csv/tables1e.csv') as data_file:
             data = csv.reader(data_file, delimiter='\t')
             for row in data:
                 if (row[0] == 'd100'):
