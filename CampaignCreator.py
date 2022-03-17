@@ -88,9 +88,6 @@ else:
     
     """)
 
-    # override for now
-    st.session_state.feat = st.session_state.features['Campaign']
-
     with st.expander("Campaign concept generation:"):
         st.caption("Generate a campaign concept based on the current chapter.")
         concept = st.text_input('Campaign concept', '', key='concept')
