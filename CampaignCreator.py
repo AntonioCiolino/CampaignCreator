@@ -95,7 +95,7 @@ else:
 
     concept = st.text_input('Idea for your campaign', '', key='concept')
     if (st.button('Generate campaign concept', help="This is the overall purpose of the campaign.")):
-        st.session_state.campaign = Writing.Writing().generate_campaign(st.session_state.concept + " " + st.session_state.campaign, model).replace("\n", '\n')
+        st.session_state.campaign = Writing.Writing().generate_campaign(st.session_state.concept + " " + st.session_state.campaign, model).replace("\n", '\n').replace("\n", "\n\n")
     if (st.session_state.campaign):
         st.text_area('Campaign', '', key='campaign')
 
