@@ -125,7 +125,7 @@ else:
                  key="chapter",
                  on_change=update_content, args=(st.session_state.chapter, ))
 
-    if (st.button("Display campaign", help="Display your campaign to copy for sharing.")):
+    if (st.button("Create Homebrewery content", help="Do some initial formatting for Homebrewery")):
 
         concept_header = st.session_state.concept.split(".")[0]
 
@@ -150,8 +150,8 @@ else:
         outtoc = process_block(outtoc, prefix, suffix) + "}}\n::\n"
 
         st.text_area("Homebrewery Content",
-                     value = "{{note,wide\n##### Campaign Concept: " + concept_header +
-                             camp + "}} \n::\n" +
+                     value = "{{note,wide\n##### Campaign Concept: " + concept_header + "\n" +
+                             camp + "}}\n::\n" +
                              outtoc +
                              "\n\n## Campaign\n\n" + chap.replace("\\n", "\n"))
 
