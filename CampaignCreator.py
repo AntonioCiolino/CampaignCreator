@@ -133,8 +133,9 @@ else:
         sentences = outtoc.split(".")
         processed = []
         for s in sentences:
+            st.write(s)
             for x in range(1 , 9):
-                st.write(s)
+                st.write(str(x) + ". ")
                 if (s.find(str(x) + ". ")!= -1):
                     processed.append(s.replace( str(x)+". ", "- #### {{ " + str(x) + ". ") + " }}{{ }} \n")
             processed.append(s + "\n")
