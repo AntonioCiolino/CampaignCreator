@@ -88,15 +88,15 @@ else:
 
     #completions vs. tuning.
     # make a section with the buttons near it
-    col1, col2 = st.columns(2)
-    with col1:
-        if (st.button('Get selected model content', help="Sends the story to OpenAI for additional model (fine tuned) content.")):
-            # st.success("Sent to OpenAI: "+ st.session_state.chapter)
-            st.session_state.chapter += Writing.Writing().completeModel(st.session_state.chapter, model)
-    with col2:
-        if (st.button('Get Davinci content', help="(Shortcut) Sends the story to OpenAI for additional DaVinci (GPT-3) content.")):
-            # st.success("Sent to OpenAI: "+ st.session_state.chapter)
-            st.session_state.chapter += Writing.Writing().completeDavinci(st.session_state.chapter)
+    # col1, col2 = st.columns(2)
+    # with col1:
+    #     if (st.button('Get selected model content', help="Sends the story to OpenAI for additional model (fine tuned) content.")):
+    #         # st.success("Sent to OpenAI: "+ st.session_state.chapter)
+    #         st.session_state.chapter += Writing.Writing().completeModel(st.session_state.chapter, model)
+    # with col2:
+    #     if (st.button('Get Davinci content', help="(Shortcut) Sends the story to OpenAI for additional DaVinci (GPT-3) content.")):
+    #         # st.success("Sent to OpenAI: "+ st.session_state.chapter)
+    #         st.session_state.chapter += Writing.Writing().completeDavinci(st.session_state.chapter)
 
 
     # ----------------------------------------------------------------------------------------------------------------------
