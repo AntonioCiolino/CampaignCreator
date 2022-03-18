@@ -132,7 +132,6 @@ else:
         sentences = outtoc.split("\n")
         processed = []
         for s in sentences:
-            st.write("processing sentence " + s)
             for x in range(1 , 9):
                 if s.find(str(x) + ". ")!= -1:
                     processed.append(s.replace( str(x)+". ", "- #### {{ " + str(x) + ". ") + " }}{{ }} \n")
