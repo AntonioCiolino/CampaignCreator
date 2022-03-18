@@ -155,3 +155,4 @@ else:
                              outtoc +
                              "\n\n## Campaign\n\n" + chap.replace("\\n", "\n"))
 
+        st.write("https://homebrewery.naturalcrit.com/")
