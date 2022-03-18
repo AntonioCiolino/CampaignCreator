@@ -132,10 +132,10 @@ else:
         # make some slight mods until OpenAI can edit - need to test this more
         camp = st.session_state.campaign.replace("\\n", "\n") + "\n\n"
         camp = camp.replace("Campaign Name:", "### ")\
-                    .replace("Campaign Settings:","\n:\n### Campaign Settings\n") \
-                   .replace("Background story:", "\n:\n### DM Background\n") \
-                   .replace("Summary:", "\n:\n### Summary\n") \
-                   .replace("Background settings:", "\n:\n### DM Background\n")\
+                    .replace("Campaign Settings:","\n:\n#### Campaign Settings\n") \
+                   .replace("Background story:", "\n:\n#### DM Background\n") \
+                   .replace("Summary:", "\n:\n#### Summary\n") \
+                   .replace("Background settings:", "\n:\n#### DM Background\n")\
                     .replace("\\n", "\n") + "\n\n"
 
         chap = st.session_state.chapter.replace("Background:", ":\n###  Background\n")
@@ -182,7 +182,7 @@ else:
 
         st.text_area("Homebrewery Content",
                      value = title_page_style + page_image + page_header.format(concept_header) +
-                        "{{note,wide\n##### Campaign Concept: " + concept_header + "}}:\n" +
+                        "{{note,wide\n##### Campaign Concept: " + concept_header + "\n}}:\n" +
                         "{{wide\n" + camp + "}}\n::\n" +
                         "{{toc,wide\n" + outtoc + "}}\n::\n"
                         "\n\n## Campaign\n\n" + chap.replace("\\n", "\n"))
