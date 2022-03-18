@@ -119,9 +119,9 @@ else:
 
         # make some slight mods until OpenAI can edit
         camp = st.session_state.campaign.replace("Campaign name:", "### ")\
-                    .replace("Campaign settings:",":\n### Campaign Settings\n")\
-                    .replace("Background story:", ":\n### DM Background\n")\
-                    .replace("Background settings:", ":\n### DM Background\n")\
+                    .replace("Campaign settings:","\n:\n### Campaign Settings\n")\
+                    .replace("Background story:", "\n:\n### DM Background\n")\
+                    .replace("Background settings:", "\n:\n### DM Background\n")\
                     .replace("\\n", "\n") + "\n\n"
 
         chap = st.session_state.chapter.replace("Background:", ":\n###  Background\n")
