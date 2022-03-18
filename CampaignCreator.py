@@ -45,7 +45,7 @@ if 'toc' not in st.session_state:
 # attempt to convert to HB format
 if 'converted' not in st.session_state:
     st.session_state.converted = ""
-    
+
 
 with st.expander("Enter your API Key"):
     st.session_state.api_key = st.text_input('API Key', st.session_state.api_key, type='password')
@@ -95,18 +95,18 @@ else:
 
     concept = st.text_input('Idea for your campaign', '', key='concept')
     if (st.button('Generate campaign concept', help="This is the overall purpose of the campaign.")):
-        st.session_state.campaign = Writing.Writing().generate_campaign(st.session_state.concept + " " + st.session_state.campaign, model)
+        st.session_state.campaign = Writing.Writing().generate_campaign(st.session_state.concept + " " + st.session_state.campaign, model).replace("\n", '\n')
     if (st.session_state.campaign):
         st.text_area('Campaign', '', key='campaign')
 
     # AC: for now decided to totally regenerate the toc every time so we don't have to figure out if it's partial.
     if (st.button('Generate table of contents', help="Generates a table of contents.")):
-        st.session_state.toc = "Table of Contents:\n" +  Writing.Writing().generate_toc(st.session_state.campaign, model)
+        st.session_state.toc = "Table of Contents:\n" +  Writing.Writing().generate_toc(st.session_state.campaign, model).replace("\n", '\n')
     if (st.session_state.toc):
         st.text_area('Table of Contents', '', key='toc')
 
     if (st.button('Add sections', help="Add sections to the campaign.")):
-        st.session_state.chapter += Writing.Writing().completeModel(st.session_state.campaign + "###\n\n" + st.session_state.toc + "\n\n" +  st.session_state.chapter, model)
+        st.session_state.chapter += Writing.Writing().completeModel(st.session_state.campaign + "###\n\n" + st.session_state.toc + "\n\n" +  st.session_state.chapter, model).replace("\n", '\n')
 
     #completions vs. tuning.
     # make a section with the buttons near it
@@ -114,11 +114,11 @@ else:
     with col1:
         if (st.button('Get selected model content', help="Sends the story to OpenAI for additional model (fine tuned) content.")):
             # st.success("Sent to OpenAI: "+ st.session_state.chapter)
-            st.session_state.chapter += Writing.Writing().completeModel(st.session_state.chapter, model)
+            st.session_state.chapter += Writing.Writing().completeModel(st.session_state.chapter, model).replace("\n", '\n')
     with col2:
         if (st.button('Get Davinci content', help="(Shortcut) Sends the story to OpenAI for additional DaVinci (GPT-3) content.")):
             # st.success("Sent to OpenAI: "+ st.session_state.chapter)
-            st.session_state.chapter += Writing.Writing().completeDavinci(st.session_state.chapter)
+            st.session_state.chapter += Writing.Writing().completeDavinci(st.session_state.chapter).replace("\n", '\n')
 
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -128,7 +128,7 @@ else:
                  key="chapter",
                  on_change=update_content, args=(st.session_state.chapter, ))
 
-    
+
     if (st.button('Create Homebrewery file', help='Experiment: convert to HB file')):
         prompt="""
         For each example below change to Homebrewery format:
@@ -144,7 +144,7 @@ else:
         +++
         1. Some chapter content
         ### 1. Some Chapter Content
-        """ + "###" + st.session_state.chapter
+        """ + "###" + st.session_state.chapter + "+++\n"
         st.write(prompt)
         st.session_state.converted = Writing.Writing().completeDavinci(prompt)
         st.text_area('Homebrewery', '', key='converted')
