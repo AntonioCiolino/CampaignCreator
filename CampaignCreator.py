@@ -116,5 +116,5 @@ else:
     if (st.button("Display campaign", help="Display your campaign to copy for sharing.")):
         st.text_area("output",
                      '',
-                     st.session_state.campaign.replace("\\n", "\n") + "\n\n" + st.session_state.toc.replace("\\n", "\n") + "\n\n" + st.session_state.chapter.replace("\\n", "\n"))
+                     value = st.session_state.campaign.replace("\\n", "\n") + "\n\n" + st.session_state.toc.replace("\\n", "\n") + "\n\n" + st.session_state.chapter.replace("\\n", "\n"))
 
