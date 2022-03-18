@@ -129,7 +129,7 @@ else:
 
         concept_header = st.session_state.concept.split(".")[0]
 
-        # make some slight mods until OpenAI can edit
+        # make some slight mods until OpenAI can edit - need to test this more
         camp = st.session_state.campaign.replace("Campaign name:", "### ")\
                     .replace("Campaign settings:","\n:\n### Campaign Settings\n")\
                     .replace("Background story:", "\n:\n### DM Background\n")\
@@ -165,6 +165,8 @@ else:
               }}
             \page 
         """
+
+        st.write(page_header.format(concept_header))
 
         st.text_area("Homebrewery Content",
                      value = ''.format(page_header, concept_header) +
