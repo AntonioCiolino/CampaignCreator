@@ -150,8 +150,8 @@ else:
         outtoc = process_block(outtoc, prefix, suffix) + "}}\n::\n"
 
         st.text_area("Homebrewery Content",
-                     value = "{{note,wide\n##### Campaign Concept: " + concept_header + "}}\n::\n" +
-                             camp +
+                     value = "{{note,wide\n##### Campaign Concept: " + concept_header +
+                             camp + "}} \n::\n" +
                              outtoc +
                              "\n\n## Campaign\n\n" + chap.replace("\\n", "\n"))
 
