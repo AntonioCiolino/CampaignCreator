@@ -136,6 +136,7 @@ else:
                     .replace("Background story:", "\n:\n### DM Background\n")\
                     .replace("Background settings:", "\n:\n### DM Background\n")\
                     .replace("\\n", "\n") + "\n\n"
+        camp
 
         chap = st.session_state.chapter.replace("Background:", ":\n###  Background\n")
         prefix = "### {}. "
