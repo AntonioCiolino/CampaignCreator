@@ -95,7 +95,7 @@ else:
 
     concept = st.text_input('Idea for your campaign', '', key='concept')
     if (st.button('Generate campaign concept', help="This is the overall purpose of the campaign.")):
-        st.session_state.campaign = Writing.Writing().generate_campaign(st.session_state.concept + " " + st.session_state.campaign, model)
+        st.session_state.campaign = Writing.Writing().generate_campaign(st.session_state.concept + " " + st.session_state.campaign, model).replace('\n', '  \n')
     if (st.session_state.campaign):
         st.text_area('Campaign', '', key='campaign')
 
@@ -144,7 +144,7 @@ else:
         +++
         1. Some chapter content
         ### 1. Some Chapter Content
-        """ + "+++\n" + st.session_state.campaign + st.session_state.toc + st.session_state.chapter + "+++\n"
+        """ + "+++\n" + st.session_state.campaign + "\n" + st.session_state.toc + "\n\n" + st.session_state.chapter + "+++\n"
         st.write(prompt)
         st.session_state.converted = Writing.Writing().completeDavinci(prompt)
         st.text_area('Homebrewery', '', key='converted')
