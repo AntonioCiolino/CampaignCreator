@@ -132,7 +132,7 @@ else:
         sentences = outtoc.split(".")
         processed = []
         for s in sentences:
-            st.write(s)
+            st.write("processing sentence " + s)
             for x in range(1 , 9):
                 st.write(str(x) + ". ")
                 if (s.find(str(x) + ". ")!= -1):
