@@ -149,10 +149,28 @@ else:
         suffix = " }}{{ 0}}\n"
         outtoc = process_block(outtoc, prefix, suffix) + "}}\n::\n"
 
+        page_header = """
+            {{{{watermark DRAFT}}
+            
+            
+            {{{{margin-top:625px}}
+            
+            #  {}
+            
+            {{{{margin-top:25px}}
+            
+            
+            {{{{wide
+              ##### Add an overall comment here for the camapign.
+              }}
+            \page 
+        """
+
         st.text_area("Homebrewery Content",
-                     value = "{{note,wide\n##### Campaign Concept: " + concept_header + "\n" +
-                             camp + "}}\n::\n" +
-                             outtoc +
-                             "\n\n## Campaign\n\n" + chap.replace("\\n", "\n"))
+                     value = ''.format(page_header, concept_header) +
+                        "{{note,wide\n##### Campaign Concept: " + concept_header + "\n" +
+                         camp + "}}\n::\n" +
+                         outtoc +
+                         "\n\n## Campaign\n\n" + chap.replace("\\n", "\n"))
 
         st.write("Copy the content to your files at https://homebrewery.naturalcrit.com/")
