@@ -184,7 +184,7 @@ else:
                      value = title_page_style + page_image + page_header.format(concept_header) +
                         "{{note,wide\n##### Campaign Concept: " + concept_header + "}}:\n" +
                         "{{wide\n" + camp + "}}\n::\n" +
-                        "{{toc,wide\n" + outtoc + + "}}\n::\n"
+                        "{{toc,wide\n" + outtoc + "}}\n::\n"
                         "\n\n## Campaign\n\n" + chap.replace("\\n", "\n"))
 
         st.write("Copy the content to your files at https://homebrewery.naturalcrit.com/")
