@@ -95,13 +95,13 @@ else:
 
     concept = st.text_input('Idea for your campaign', '', key='concept')
     if (st.button('Generate campaign concept', help="This is the overall purpose of the campaign.")):
-        st.session_state.campaign = Writing.Writing().generate_campaign(st.session_state.concept + " " + st.session_state.campaign, model).replace('\n', '  \n ')
+        st.session_state.campaign = Writing.Writing().generate_campaign(st.session_state.concept + " " + st.session_state.campaign, model).replace('\n', '  \n')
     if (st.session_state.campaign):
         st.text_area('Campaign', '', key='campaign')
 
     # AC: for now decided to totally regenerate the toc every time so we don't have to figure out if it's partial.
     if (st.button('Generate table of contents', help="Generates a table of contents.")):
-        st.session_state.toc = "Table of Contents:\n" +  Writing.Writing().generate_toc(st.session_state.campaign, model)
+        st.session_state.toc = "Table of Contents:\n" +  Writing.Writing().generate_toc(st.session_state.campaign, model).replace('\n', '  \n')
     if (st.session_state.toc):
         st.text_area('Table of Contents', '', key='toc')
 
