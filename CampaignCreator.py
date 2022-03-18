@@ -144,7 +144,7 @@ else:
         +++
         1. Some chapter content
         ### 1. Some Chapter Content
-        """ + "###" + st.session_state.chapter + "+++\n"
+        """ + "+++" + st.session_state.chapter + "+++\n"
         st.write(prompt)
         st.session_state.converted = Writing.Writing().completeDavinci(prompt)
         st.text_area('Homebrewery', '', key='converted')
