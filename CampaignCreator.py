@@ -49,7 +49,7 @@ if 'converted' not in st.session_state:
     st.session_state.converted = ""
 
 
-with st.expander("Enter your API Key"):
+with st.expander("Enter your API Key", expanded= (st.session_state.api_key == '')):
     st.session_state.api_key = st.text_input('API Key', st.session_state.api_key, type='password')
 
 if (st.session_state.api_key == ""):
