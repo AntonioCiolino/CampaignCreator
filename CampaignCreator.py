@@ -80,7 +80,7 @@ else:
         st.session_state.toc = "Table of Contents: " +  Writing.Writing().generate_toc(st.session_state.campaign, model)
         st.write(st.session_state.toc)
     if (st.session_state.toc):
-        st.session_state.toc = st.session_state.toc.replace('\\n', '\r\n')
+        st.session_state.toc = st.session_state.toc.replace('\\n', '\r\n').replace('\n', '\r\n')
         st.write(st.session_state.toc)
         st.text_area('Table of Contents', '', key='toc')
 
