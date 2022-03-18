@@ -145,4 +145,4 @@ else:
         1. Some chapter content
         ### 1. Some Chapter Content
         """ + "###" + st.session_state.chapter)
-        st.text_area(key='converted')
+        st.text_area('Homebrewery', '', key='converted')
