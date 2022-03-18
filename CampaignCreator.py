@@ -15,7 +15,7 @@ def update_content(args):
 # Title of the page
 st.title('Campaign Creator')
 st.caption("Try to create campaigns")
-st.caption("DO NOT DEPEND ON THIS TOOL TO KEEP YOUR STORY. It depends on session state, and it can reset at any time.")
+st.warning("DO NOT DEPEND ON THIS TOOL TO KEEP YOUR STORY. It depends on session state, and it will reset at random times.")
 
 if 'random_tables' not in st.session_state:
     st.session_state.random_tables = {}
@@ -62,13 +62,14 @@ else:
     if (st.session_state.models == []):
         st.session_state.models = Writing.Writing().getModels()
 
-    st.caption("choose which model that OpenAI will use to generate your content. Choose DaVinci, Curie, or your own fine tuned models.")
-    model = st.selectbox("Select a model", st.session_state.models)
-
     st.info("""
-    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-    
+    The Campaign Creator tool is a tool that allows you to create a campaign by selecting ideas, 
+    generating a table of contents, and adding content iteratively to the campaign,
+    using the model to fill in the next block of content.
     """)
+
+    st.caption("Choose which model that OpenAI will use to generate your content. Choose DaVinci, Curie, or your own fine tuned models.")
+    model = st.selectbox("Select a model", st.session_state.models)
 
     concept = st.text_input('Idea for your campaign', '', key='concept')
     if (st.button('Generate campaign concept', help="This is the overall purpose of the campaign.")):
@@ -112,3 +113,5 @@ else:
                  key="chapter",
                  on_change=update_content, args=(st.session_state.chapter, ))
 
+    if (st.button("Display campaign", help="Display your campaign to copy for sharing.")):
+        st.write(st.session_state.campaign + " " + st.session_state.toc + "  " + st.session_state.chapter)
