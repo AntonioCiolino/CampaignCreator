@@ -134,11 +134,10 @@ else:
         for s in sentences:
             st.write("processing sentence " + s)
             for x in range(1 , 9):
-                st.write(str(x) + ". ")
                 if s.find(str(x) + ". ")!= -1:
-                    st.write("found " + str(x) + ". ")
                     processed.append(s.replace( str(x)+". ", "- #### {{ " + str(x) + ". ") + " }}{{ }} \n")
-            processed.append(s + "\n")
+                else:
+                    processed.append(s + "\n")
         outtoc = "".join(processed)
 
         st.text_area("Homebrewery Content",
