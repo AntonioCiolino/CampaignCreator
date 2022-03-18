@@ -129,7 +129,7 @@ else:
         outtoc = st.session_state.toc.replace("Table of Contents:", "{{toc, wide\n# Table of Contents\n- ### {{ " + concept_header + " }}{{ }}\n")
         outtoc = outtoc.replace("\\n", "\n")
 
-        sentences = outtoc.split(".")
+        sentences = outtoc.split("\n")
         processed = []
         for s in sentences:
             st.write("processing sentence " + s)
