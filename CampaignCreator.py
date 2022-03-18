@@ -73,7 +73,7 @@ else:
     if (st.button('Generate campaign concept', help="This is the overall purpose of the campaign.")):
         st.session_state.campaign = Writing.Writing().generate_campaign(st.session_state.concept + " " + st.session_state.campaign, model)
     if (st.session_state.campaign):
-        st.session_state.campaign.replace('\\n', '\r\n').replace('\n', '\r\n')
+        st.session_state.campaign.replace('\\n', '\r\n').replace('\n', '')
         st.text_area('Campaign', '', key='campaign')
 
     # AC: for now decided to totally regenerate the toc every time so we don't have to figure out if it's partial.
