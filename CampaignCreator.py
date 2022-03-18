@@ -127,7 +127,6 @@ else:
         chap = st.session_state.chapter.replace("Background:", ":\n###  Background\n")
 
         outtoc = st.session_state.toc.replace("Table of Contents:", "{{toc, wide\n# Table of Contents\n- ### {{ " + concept_header + " }}{{ }}\n")
-        outtoc = re.sub(r'\n', '\n- ', outtoc)
         outtoc = outtoc.replace("\\n", "\n")
 
         sentences = outtoc.split(".")
