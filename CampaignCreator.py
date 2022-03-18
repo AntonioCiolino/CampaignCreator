@@ -134,12 +134,12 @@ else:
         processed = []
         for s in sentences:
             for x in range(1 , 9):
-                if (s.find(str(x) + ". ")):
+                if (s.find(str(x) + ". ")!= -1):
                     processed += s.replace( str(x)+". ", "- #### {{ " + str(x) + ". ") + " }}{{ }} \n"
             processed += s + "\n"
         outtoc = "".join(processed)
 
-        st.text_area("output",
+        st.text_area("Homebrewery Content",
                      value = "##### Concept: " + concept_header + "\n\n" +
                              camp +
                              outtoc +
