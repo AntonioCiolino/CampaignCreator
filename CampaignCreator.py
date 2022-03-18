@@ -137,20 +137,19 @@ else:
                    .replace("Summary:", "\n:\n### Summary\n") \
                    .replace("Background settings:", "\n:\n### DM Background\n")\
                     .replace("\\n", "\n") + "\n\n"
-        camp
 
         chap = st.session_state.chapter.replace("Background:", ":\n###  Background\n")
         prefix = "### {}. "
         suffix = "\n"
         chap = process_block(chap, prefix, suffix)
 
-        outtoc = st.session_state.toc.replace("Table of Contents:", "{{toc,wide\n# Table of Contents\n- ### {{ " + concept_header + " }}{{ }}\n")
+        outtoc = st.session_state.toc.replace("Table of Contents:", "# Table of Contents\n- ### {{ " + concept_header + " }}{{ }}\n")
         outtoc = outtoc.replace("\\n", "\n")
 
         sentences = outtoc.split("\n")
         prefix = "\t- ####  {{{{  {}. "     #str.format needs to double these up
         suffix = " }}{{ 0}}\n"
-        outtoc = process_block(outtoc, prefix, suffix) + "}}\n::\n"
+        outtoc = process_block(outtoc, prefix, suffix)
 
         title_page_style = """
 <style>
@@ -183,9 +182,9 @@ else:
 
         st.text_area("Homebrewery Content",
                      value = title_page_style + page_image + page_header.format(concept_header) +
-                        "{{note,wide\n##### Campaign Concept: " + concept_header + "\n" +
-                         camp + "}}\n::\n" +
-                         outtoc +
-                         "\n\n## Campaign\n\n" + chap.replace("\\n", "\n"))
+                        "{{note,wide\n##### Campaign Concept: " + concept_header + "}}:\n" +
+                        "{{wide\n" + camp + "}}\n::\n" +
+                        "{{toc,wide\n" + outtoc + + "}}\n::\n"
+                        "\n\n## Campaign\n\n" + chap.replace("\\n", "\n"))
 
         st.write("Copy the content to your files at https://homebrewery.naturalcrit.com/")
