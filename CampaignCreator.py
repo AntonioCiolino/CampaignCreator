@@ -114,9 +114,24 @@ else:
                  on_change=update_content, args=(st.session_state.chapter, ))
 
     if (st.button("Display campaign", help="Display your campaign to copy for sharing.")):
+
+        concept_header = st.session_state.concept.split(".")[0]
+
+        # make some slight mods until OpenAI can edit
+        camp = st.session_state.campaign.replace("Campaign name:", "### ")
+        camp += st.session_state.campaign.replace("Campaign settings:",":\n### Campaign Settings\n")
+        camp += st.session_state.campaign.replace("Background story:", ":\n### DM Background\n")
+        camp += st.session_state.campaign.replace("Background settings:", ":\n### DM Background\n")
+        camp += camp.replace("\\n", "\n") + "\n\n"
+
+        chap = st.session_state.chapter.replace("Background:", ":\n###  Background\n")
+
+        outtoc = st.session_state.toc.replace("Table of Contents:", "# Table of Contents\n### " + concept_header + "\n")
+        outtoc = outtoc.replace("\\n", "\n")
+
         st.text_area("output",
-                     value = "# " + st.session_state.concept +
-                             st.session_state.campaign.replace("\\n", "\n") + "\n\n" +
-                             st.session_state.toc.replace("\\n", "\n") +
-                             "## Campaign\n\n" + st.session_state.chapter.replace("\\n", "\n"))
+                     value = "##### Concept: " + concept_header +
+                             camp +
+                             outtoc +
+                             "\n\n## Campaign\n\n" + chap.replace("\\n", "\n"))
 
