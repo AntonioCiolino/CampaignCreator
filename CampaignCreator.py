@@ -90,8 +90,8 @@ else:
     # make a section with the buttons near it
     #col1, col2 = st.columns(2)
     #with col1:
-        st.slider('Change randomness', help="Modified how close the camapign sticks to writing style. Higher is more random.",
-                      min_value=0, max_value=0, key='randomness')
+    st.slider('Change randomness', help="Modified how close the camapign sticks to writing style. Higher is more random.",
+                  min_value=0, max_value=1, key='randomness')
 
         # st.session_state.chapter += Writing.Writing().completeModel(st.session_state.chapter, model)
     #with col2:
