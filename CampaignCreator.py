@@ -137,7 +137,7 @@ else:
                     .replace("\\n", "\n") + "\n\n"
 
         chap = st.session_state.chapter.replace("Background:", ":\n###  Background\n")
-        prefix = "### "
+        prefix = "### {}"
         suffix = "\n"
         chap = process_block(chap, prefix, suffix)
 
