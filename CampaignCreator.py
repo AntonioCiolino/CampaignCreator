@@ -126,8 +126,15 @@ else:
 
         chap = st.session_state.chapter.replace("Background:", ":\n###  Background\n")
 
-        outtoc = st.session_state.toc.replace("Table of Contents:", "# Table of Contents\n### " + concept_header + "\n")
+        outtoc = st.session_state.toc.replace("Table of Contents:", "{{toc, wide\n# Table of Contents\n- ### {{ " + concept_header + " }}{{ }}\n")
+        outtoc = re.sub(r'\n', '\n- ', outtoc)
         outtoc = outtoc.replace("\\n", "\n")
+
+        sentences = outtoc.split(".")
+        for s in sentences:
+            for x in range(1 , 9):
+                s.replace( str(x)+". ", "- #### {{ " + str(x) + ". ") + " }}{{ }}"
+        outtoc = "".join(sentences)
 
         st.text_area("output",
                      value = "##### Concept: " + concept_header + "\n\n" +
