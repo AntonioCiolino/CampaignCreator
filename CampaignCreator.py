@@ -166,10 +166,8 @@ else:
             \page 
         """
 
-        st.write(page_header.format(concept_header))
-
         st.text_area("Homebrewery Content",
-                     value = ''.format(page_header, concept_header) +
+                     value = page_header.format(concept_header) +
                         "{{note,wide\n##### Campaign Concept: " + concept_header + "\n" +
                          camp + "}}\n::\n" +
                          outtoc +
