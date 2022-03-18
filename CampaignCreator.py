@@ -145,12 +145,12 @@ else:
         outtoc = outtoc.replace("\\n", "\n")
 
         sentences = outtoc.split("\n")
-        prefix = "\t- ####  {{{{  {}. "
+        prefix = "\t- ####  {{{{  {}. "     #str.format needs to double these up
         suffix = " }}{{ 0}}\n"
-        outtoc = process_block(outtoc, prefix, suffix) + "}}\n:::\n"
+        outtoc = process_block(outtoc, prefix, suffix) + "}}\n::\n"
 
         st.text_area("Homebrewery Content",
-                     value = "##### Concept: " + concept_header + "\n\n" +
+                     value = "{{note, wide\n##### Concept: " + concept_header + "}}\n\n" +
                              camp +
                              outtoc +
                              "\n\n## Campaign\n\n" + chap.replace("\\n", "\n"))
