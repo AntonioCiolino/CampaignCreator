@@ -132,12 +132,14 @@ else:
         sentences = outtoc.split("\n")
         processed = []
         for s in sentences:
+            found = False
             for x in range(1 , 9):
                 if s.find(str(x) + ". ")!= -1:
                     processed.append(s.replace( str(x)+". ", "- #### {{ " + str(x) + ". ") + " }}{{ }} \n")
-                else:
-                    processed.append(s + "\n")
-        outtoc = "".join(processed)
+                    found = True
+            if found == False:
+                processed.append(s + "\n")
+        outtoc = "".join(processed) + "}}\n"
 
         st.text_area("Homebrewery Content",
                      value = "##### Concept: " + concept_header + "\n\n" +
