@@ -126,7 +126,7 @@ else:
 
         chap = st.session_state.chapter.replace("Background:", ":\n###  Background\n")
 
-        outtoc = st.session_state.toc.replace("Table of Contents:", "{{toc, wide\n# Table of Contents\n- ### {{ " + concept_header + " }}{{ }}\n")
+        outtoc = st.session_state.toc.replace("Table of Contents:", "{{toc,wide\n# Table of Contents\n- ### {{ " + concept_header + " }}{{ }}\n")
         outtoc = outtoc.replace("\\n", "\n")
 
         sentences = outtoc.split("\n")
@@ -135,7 +135,7 @@ else:
             found = False
             for x in range(1 , 9):
                 if s.find(str(x) + ". ")!= -1:
-                    processed.append(s.replace( str(x)+". ", "- #### {{ " + str(x) + ". ") + " }}{{ }} \n")
+                    processed.append(s.replace( str(x)+". ", "- #### {{ " + str(x) + ". ") + " }}{{ 0}}\n")
                     found = True
             if found == False:
                 processed.append(s + "\n")
