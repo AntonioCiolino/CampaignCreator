@@ -42,7 +42,10 @@ if 'concept' not in st.session_state:
 if 'toc' not in st.session_state:
     st.session_state.toc = ""
 
-
+# attempt to convert to HB format
+if 'converted' not in st.session_state:
+    st.session_state.converted = ""
+    
 
 with st.expander("Enter your API Key"):
     st.session_state.api_key = st.text_input('API Key', st.session_state.api_key, type='password')
@@ -124,3 +127,22 @@ else:
                  height=500,
                  key="chapter",
                  on_change=update_content, args=(st.session_state.chapter, ))
+
+    
+    if (st.button('Create Homebrewery file', help='Experiment: convert to HB file')):
+        st.session_state.converted = Writing.Writing().completeDavinci("""
+        For each example below change to Homebrewery format:
+        +++
+        Table of Contents:
+        # Table of Contents:
+        +++
+        Campaign Name:
+        # Campaign:
+        +++
+        Background:
+        ## Background:
+        +++
+        1. Some chapter content
+        ### 1. Some Chapter Content
+        """ + "###" + st.session_state_chapter)
+        st.text_area(key='converted')
