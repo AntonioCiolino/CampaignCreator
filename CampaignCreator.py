@@ -130,7 +130,7 @@ else:
         outtoc = outtoc.replace("\\n", "\n")
 
         st.text_area("output",
-                     value = "##### Concept: " + concept_header +
+                     value = "##### Concept: " + concept_header + "\n\n" +
                              camp +
                              outtoc +
                              "\n\n## Campaign\n\n" + chap.replace("\\n", "\n"))
