@@ -135,6 +135,7 @@ else:
         for s in sentences:
             for x in range(1 , 9):
                 if (s.find(str(x) + ". ")!= -1):
+                    st.write("found")
                     processed.append(s.replace( str(x)+". ", "- #### {{ " + str(x) + ". ") + " }}{{ }} \n")
             processed.append(s + "\n")
         outtoc = "".join(processed)
