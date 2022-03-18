@@ -135,7 +135,7 @@ else:
             found = False
             for x in range(1 , 9):
                 if s.find(str(x) + ". ")!= -1:
-                    processed.append(s.replace( str(x)+". ", "- #### {{ " + str(x) + ". ") + " }}{{ 0}}\n")
+                    processed.append(s.replace( str(x)+". ", "\t- #### {{ " + str(x) + ". ") + " }}{{ 0}}\n")
                     found = True
             if found == False:
                 processed.append(s + "\n")
