@@ -145,7 +145,7 @@ else:
         outtoc = outtoc.replace("\\n", "\n")
 
         sentences = outtoc.split("\n")
-        prefix = "\t- #### \{\{ {}. "
+        prefix = "\t- ####  {{  {}. "
         suffix = " }}{{ 0}}\n"
         outtoc = process_block(outtoc, prefix, suffix) + "}}\n:::\n"
 
