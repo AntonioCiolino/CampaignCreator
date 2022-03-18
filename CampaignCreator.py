@@ -85,43 +85,23 @@ else:
     if (st.button('Add sections', help="Add sections to the campaign.")):
         st.session_state.chapter += Writing.Writing().completeModel(st.session_state.campaign + "###\n\n" + st.session_state.toc + "\n\n" +  st.session_state.chapter, model)
 
-    #completions vs. tuning.
+    # completions vs. tuning.
     # make a section with the buttons near it
-    # col1, col2 = st.columns(2)
-    # with col1:
-    #     if (st.button('Get selected model content', help="Sends the story to OpenAI for additional model (fine tuned) content.")):
-    #         # st.success("Sent to OpenAI: "+ st.session_state.chapter)
-    #         st.session_state.chapter += Writing.Writing().completeModel(st.session_state.chapter, model)
-    # with col2:
-    #     if (st.button('Get Davinci content', help="(Shortcut) Sends the story to OpenAI for additional DaVinci (GPT-3) content.")):
-    #         # st.success("Sent to OpenAI: "+ st.session_state.chapter)
-    #         st.session_state.chapter += Writing.Writing().completeDavinci(st.session_state.chapter)
+    col1, col2 = st.columns(2)
+    with col1:
+        if (st.button('Get selected model content', help="Sends the story to OpenAI for additional model (fine tuned) content.")):
+            # st.success("Sent to OpenAI: "+ st.session_state.chapter)
+            st.session_state.chapter += Writing.Writing().completeModel(st.session_state.chapter, model)
+    with col2:
+        if (st.button('Get Davinci content', help="(Shortcut) Sends the story to OpenAI for additional DaVinci (GPT-3) content.")):
+            # st.success("Sent to OpenAI: "+ st.session_state.chapter)
+            st.session_state.chapter += Writing.Writing().completeDavinci(st.session_state.chapter)
 
 
     # ----------------------------------------------------------------------------------------------------------------------
     st.text_area(label="Your campaign",
-                 help="The camapign that you are creating is here. You can add content to it by clicking the buttons above.",
+                 help="The campaign that you are creating is here.",
                  height=500,
                  key="chapter",
                  on_change=update_content, args=(st.session_state.chapter, ))
 
-
-    if (st.button('Create Homebrewery file', help='Experiment: convert to HB file')):
-        prompt="""
-        For each example below change to Homebrewery format:
-        +++
-        Table of Contents:
-        # Table of Contents:
-        +++
-        Campaign Name:
-        # Campaign:
-        +++
-        Background:
-        ## Background:
-        +++
-        1. Some chapter content
-        ### 1. Some Chapter Content
-        """ + "+++\n" + st.session_state.campaign + "\n" + st.session_state.toc + "\n\n" + st.session_state.chapter + "+++\n"
-        st.write(prompt)
-        st.session_state.converted = Writing.Writing().completeDavinci(prompt)
-        st.text_area('Homebrewery', '', key='converted')
