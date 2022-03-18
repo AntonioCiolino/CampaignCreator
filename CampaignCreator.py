@@ -5,8 +5,6 @@ import utils.Features as Features
 import utils.Tables as Tables
 import utils.Writing as Writing
 
-import re
-
 # check to see if this is making a difference.
 def update_content(args):
     pass
