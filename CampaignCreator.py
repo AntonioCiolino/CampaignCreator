@@ -130,7 +130,7 @@ else:
 
     
     if (st.button('Create Homebrewery file', help='Experiment: convert to HB file')):
-        st.session_state.converted = Writing.Writing().completeDavinci("""
+        prompt="""
         For each example below change to Homebrewery format:
         +++
         Table of Contents:
@@ -144,5 +144,7 @@ else:
         +++
         1. Some chapter content
         ### 1. Some Chapter Content
-        """ + "###" + st.session_state.chapter)
+        """ + "###" + st.session_state.chapter
+        st.write(prompt)
+        st.session_state.converted = Writing.Writing().completeDavinci(prompt)
         st.text_area('Homebrewery', '', key='converted')
