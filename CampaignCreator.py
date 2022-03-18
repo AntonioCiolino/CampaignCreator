@@ -147,7 +147,7 @@ else:
         sentences = outtoc.split("\n")
         prefix = "\t- #### {{ {}. "
         suffix = " }}{{ 0}}\n"
-        outtoc = process_block(chap, prefix, suffix)
+        outtoc = process_block(outtoc, prefix, suffix)
 
         # processed = []
         # for s in sentences:
