@@ -83,15 +83,20 @@ else:
         st.session_state.toc = st.session_state.toc
         st.text_area('Table of Contents', '', key='toc')
 
+    st.slider('Change randomness', help="Modified how close the camapign sections stick to the subject. Higher is more random.",
+              min_value=0.00, max_value=1.00, key='randomness')
+
     if (st.button('Add sections', help="Add sections to the campaign.")):
-        st.session_state.chapter += Writing.Writing().completeModel(st.session_state.campaign + "###\n\n" + st.session_state.toc + "\n\n" +  st.session_state.chapter, model)
+        st.session_state.chapter += Writing.Writing().completeModel(st.session_state.campaign + "###\n\n" +
+                                                                    st.session_state.toc + "\n\n" +
+                                                                    st.session_state.chapter,
+                                                                    model,
+                                                                    temp=st.session_state.randomness)
 
     # completions vs. tuning.
     # make a section with the buttons near it
     #col1, col2 = st.columns(2)
     #with col1:
-    st.slider('Change randomness', help="Modified how close the camapign sticks to writing style. Higher is more random.",
-                  min_value=0.00, max_value=1.00, key='randomness')
 
         # st.session_state.chapter += Writing.Writing().completeModel(st.session_state.chapter, model)
     #with col2:

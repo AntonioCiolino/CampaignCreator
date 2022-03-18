@@ -10,7 +10,7 @@ class Writing:
     def __init__(self):
         openai.api_key=st.session_state.api_key
 
-    def write(self, dyn_prompt, model, temp=0.73, top_p=1.0, tokens=500, freq_pen=1.73, pres_pen=0.43, stop=["END", "Scene:", "[Scene"]):
+    def write(self, dyn_prompt, model, temp=0.73, top_p=1.0, tokens=500, freq_pen=1.73, pres_pen=0.43, stop=["END"]):
         if (dyn_prompt ==''):
             st.error('Error: No prompt provided')
             return ''
@@ -88,15 +88,15 @@ class Writing:
         except Exception as oops:
             st.error('ERROR in get_generic_content function: ' + str(oops))
 
-    def completeDavinci(self, prompt):
+    def completeDavinci(self, prompt, temp=0.73):
         try:
-            return self.write(prompt, "text-davinci-001")
+            return self.write(prompt, "text-davinci-001", temp=temp)
         except Exception as oops:
             st.error('ERROR in completeDavinci function: ' + str(oops))
 
-    def completeModel(self, prompt, model):
+    def completeModel(self, prompt, model, temp=0.73):
         try:
-            return self.write(prompt, model)
+            return self.write(prompt, model, temp=temp)
         except Exception as oops:
             st.error('ERROR in get_generic function: ' + str(oops))
 
