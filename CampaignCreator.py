@@ -78,19 +78,25 @@ else:
     The Campaign Creator tool is a tool that allows you to create a campaign by selecting ideas, 
     generating a table of contents, and adding content iteratively to the campaign,
     using the model to fill in the next block of content.
+    
+    The content can be exported at the bottom to Homebrewery, and as it is an editor,
+    information can be done in an iterative process to make larger campaigns.
+    
+    Note, GPT-3 will kick out an error and lose your data if the number of PGT-3 token are greater than 2048,
+    usually about 3000 words.  And no, currently I can't calculate that. Copy early and often!
     """)
 
     st.caption("Choose which model that OpenAI will use to generate your content. Choose DaVinci, Curie, or your own fine tuned models.")
     model = st.selectbox("Select a model", st.session_state.models)
 
-    concept = st.text_input('Idea for your campaign', '', key='concept')
+    concept = st.text_input('Idea for your campaign', '', key='concept', help="Enter your idea for the campaign. Add thoughts, character names, etc.")
     if (st.button('Generate campaign concept', help="This is the overall purpose of the campaign.")):
         st.session_state.campaign = Writing.Writing().generate_campaign(st.session_state.concept + " " + st.session_state.campaign, model)
     if (st.session_state.campaign):
         st.text_area('Campaign', '', key='campaign')
 
     # AC: for now decided to totally regenerate the toc every time so we don't have to figure out if it's partial.
-    if (st.button('Generate table of contents', help="Generates a table of contents.")):
+    if (st.button('Generate table of contents', help="Generates a table of contents. You'll have to prettify it yourself before brewig it...")):
         st.session_state.toc = "Table of Contents: " +  Writing.Writing().generate_toc(st.session_state.campaign, model)
     if (st.session_state.toc):
         st.session_state.toc = st.session_state.toc
@@ -105,18 +111,6 @@ else:
                                                                     st.session_state.chapter,
                                                                     model,
                                                                     temp=st.session_state.randomness)
-
-    # completions vs. tuning.
-    # make a section with the buttons near it
-    #col1, col2 = st.columns(2)
-    #with col1:
-
-        # st.session_state.chapter += Writing.Writing().completeModel(st.session_state.chapter, model)
-    #with col2:
-    #     if (st.button('Get Davinci content', help="(Shortcut) Sends the story to OpenAI for additional DaVinci (GPT-3) content.")):
-    #         # st.success("Sent to OpenAI: "+ st.session_state.chapter)
-    #         st.session_state.chapter += Writing.Writing().completeDavinci(st.session_state.chapter)
-
 
     # ----------------------------------------------------------------------------------------------------------------------
     st.text_area(label="Your campaign",
