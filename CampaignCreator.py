@@ -133,7 +133,8 @@ else:
         sentences = outtoc.split(".")
         for s in sentences:
             for x in range(1 , 9):
-                s.replace( str(x)+". ", "- #### {{ " + str(x) + ". ") + " }}{{ }}"
+                if (s.find(str(x) + ". ")):
+                    s.replace( str(x)+". ", "- #### {{ " + str(x) + ". ") + " }}{{ }}"
         outtoc = "".join(sentences)
 
         st.text_area("output",
