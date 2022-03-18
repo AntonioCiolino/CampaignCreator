@@ -125,7 +125,7 @@ class Writing:
         try:
             idea_base = self.features.get_prompt('Campaign')
             p = idea_base.format(concept)
-            return self.write(p, model)
+            return self.write(p, model, temp=0.4)
         except Exception as oops:
             st.error('ERROR in generate_concept function: ' + str(oops))
 
