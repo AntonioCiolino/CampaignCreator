@@ -18,7 +18,7 @@ def process_block(content, prefix, suffix):
         found = False
         for x in range(1 , 9):
             if s.find(str(x) + ". ")!= -1:
-                processed.append(s.replace( str(x)+". ", prefix) + suffix)
+                processed.append(s.replace( str(x)+". ", str.format(prefix, x)) + suffix)
                 found = True
         if found == False:
             processed.append(s + "\n")
