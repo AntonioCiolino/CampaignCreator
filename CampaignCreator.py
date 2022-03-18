@@ -137,8 +137,8 @@ else:
                     .replace("\\n", "\n") + "\n\n"
 
         chap = st.session_state.chapter.replace("Background:", ":\n###  Background\n")
-        prefix = "\t- #### {{ {}. "
-        suffix = " }}{{ 0}}\n"
+        prefix = "### "
+        suffix = "\n"
         chap = process_block(chap, prefix, suffix)
 
         outtoc = st.session_state.toc.replace("Table of Contents:", "{{toc,wide\n# Table of Contents\n- ### {{ " + concept_header + " }}{{ }}\n")
