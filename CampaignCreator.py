@@ -149,6 +149,19 @@ else:
         suffix = " }}{{ 0}}\n"
         outtoc = process_block(outtoc, prefix, suffix) + "}}\n::\n"
 
+        title_page_style = """
+<style>
+  .page#p1{ text-align:center; counter-increment: none; }
+  .page#p1:after{ display:none; }
+  .page:nth-child(2n) .pageNumber { left: inherit !important; right: 2px !important; }
+  .page:nth-child(2n+1) .pageNumber { right: inherit !important; left: 2px !important; }
+  .page:nth-child(2n)::after { transform: scaleX(1); }
+  .page:nth-child(2n+1)::after { transform: scaleX(-1); }
+  .page:nth-child(2n) .footnote { left: inherit; text-align: right; }
+  .page:nth-child(2n+1) .footnote { left: 80px; text-align: left; }
+</style>
+"""
+
         page_header = """
 {{{{watermark DRAFT}}}}    
        
@@ -165,7 +178,8 @@ else:
 """
 
         st.text_area("Homebrewery Content",
-                     value = page_header.format(concept_header) +
+                     value = title_page_style +
+                        page_header.format(concept_header) +
                         "{{note,wide\n##### Campaign Concept: " + concept_header + "\n" +
                          camp + "}}\n::\n" +
                          outtoc +
