@@ -150,20 +150,20 @@ else:
         outtoc = process_block(outtoc, prefix, suffix) + "}}\n::\n"
 
         page_header = """
-            {{{{watermark DRAFT}}
+{{{{watermark DRAFT}}
             
             
-            {{{{margin-top:625px}}
+{{{{margin-top:625px}}
             
-            #  {}
+#  {}
             
-            {{{{margin-top:25px}}
+{{{{margin-top:25px}}
             
             
-            {{{{wide
-              ##### Add an overall comment here for the camapign.
-              }}
-            \page 
+{{{{wide
+##### Add an overall comment here for the camapign.
+}}
+\page 
         """
 
         st.text_area("Homebrewery Content",
