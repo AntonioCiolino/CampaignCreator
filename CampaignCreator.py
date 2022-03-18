@@ -47,8 +47,8 @@ if 'toc' not in st.session_state:
 # attempt to convert to HB format
 if 'converted' not in st.session_state:
     st.session_state.converted = ""
-if  'ranomness' not in st.session_state:
-    st.session_state.ranomness = 0.5
+if  'randomness' not in st.session_state:
+    st.session_state.randomness = 0.5
 
 with st.expander("Enter your API Key", expanded= (st.session_state.api_key == '')):
     st.session_state.api_key = st.text_input('API Key', st.session_state.api_key, type='password')
