@@ -114,4 +114,4 @@ else:
                  on_change=update_content, args=(st.session_state.chapter, ))
 
     if (st.button("Display campaign", help="Display your campaign to copy for sharing.")):
-        st.write(st.session_state.campaign + " " + st.session_state.toc + "  " + st.session_state.chapter)
+        st.write(st.session_state.campaign + "+\n\n" + st.session_state.toc + "+\n\n" + st.session_state.chapter)
