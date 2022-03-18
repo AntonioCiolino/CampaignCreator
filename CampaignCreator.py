@@ -75,7 +75,6 @@ else:
     if (st.session_state.campaign):
         st.session_state.campaign.replace('\\n', '\r\n').replace('\n', '\r\n')
         st.text_area('Campaign', '', key='campaign')
-        st.write(st.session_state.campaign)
 
     # AC: for now decided to totally regenerate the toc every time so we don't have to figure out if it's partial.
     if (st.button('Generate table of contents', help="Generates a table of contents.")):
