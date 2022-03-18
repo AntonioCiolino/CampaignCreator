@@ -131,11 +131,13 @@ else:
         outtoc = outtoc.replace("\\n", "\n")
 
         sentences = outtoc.split(".")
+        processed = []
         for s in sentences:
             for x in range(1 , 9):
                 if (s.find(str(x) + ". ")):
-                    s.replace( str(x)+". ", "- #### {{ " + str(x) + ". ") + " }}{{ }}"
-        outtoc = "".join(sentences)
+                    processed += s.replace( str(x)+". ", "- #### {{ " + str(x) + ". ") + " }}{{ }} \n"
+            processed += s + "\n"
+        outtoc = "".join(processed)
 
         st.text_area("output",
                      value = "##### Concept: " + concept_header + "\n\n" +
