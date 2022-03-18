@@ -11,6 +11,18 @@ import re
 def update_content(args):
     pass
 
+def process_block(content, prefix, suffix):
+    sentences = content.split("\n")
+    processed = []
+    for s in sentences:
+        found = False
+        for x in range(1 , 9):
+            if s.find(str(x) + ". ")!= -1:
+                processed.append(s.replace( str(x)+". ", prefix) + suffix)
+                found = True
+        if found == False:
+            processed.append(s + "\n")
+    return "".join(processed)
 
 # Title of the page
 st.title('Campaign Creator')
@@ -125,21 +137,28 @@ else:
                     .replace("\\n", "\n") + "\n\n"
 
         chap = st.session_state.chapter.replace("Background:", ":\n###  Background\n")
+        prefix = "\t- #### {{ {}. "
+        suffix = " }}{{ 0}}\n"
+        chap = process_block(chap, prefix, suffix)
 
         outtoc = st.session_state.toc.replace("Table of Contents:", "{{toc,wide\n# Table of Contents\n- ### {{ " + concept_header + " }}{{ }}\n")
         outtoc = outtoc.replace("\\n", "\n")
 
         sentences = outtoc.split("\n")
-        processed = []
-        for s in sentences:
-            found = False
-            for x in range(1 , 9):
-                if s.find(str(x) + ". ")!= -1:
-                    processed.append(s.replace( str(x)+". ", "\t- #### {{ " + str(x) + ". ") + " }}{{ 0}}\n")
-                    found = True
-            if found == False:
-                processed.append(s + "\n")
-        outtoc = "".join(processed) + "}}\n"
+        prefix = "\t- #### {{ {}. "
+        suffix = " }}{{ 0}}\n"
+        outtoc = process_block(chap, prefix, suffix)
+
+        # processed = []
+        # for s in sentences:
+        #     found = False
+        #     for x in range(1 , 9):
+        #         if s.find(str(x) + ". ")!= -1:
+        #             processed.append(s.replace( str(x)+". ", "\t- #### {{ " + str(x) + ". ") + " }}{{ 0}}\n")
+        #             found = True
+        #     if found == False:
+        #         processed.append(s + "\n")
+        # outtoc = "".join(processed) + "}}\n"
 
         st.text_area("Homebrewery Content",
                      value = "##### Concept: " + concept_header + "\n\n" +
