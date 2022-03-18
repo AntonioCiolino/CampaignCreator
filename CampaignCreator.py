@@ -73,18 +73,17 @@ else:
     if (st.button('Generate campaign concept', help="This is the overall purpose of the campaign.")):
         st.session_state.campaign = Writing.Writing().generate_campaign(st.session_state.concept + " " + st.session_state.campaign, model)
     if (st.session_state.campaign):
-        st.session_state.campaign.replace('\\n', '\r\n').replace('\n', '')
         st.text_area('Campaign', '', key='campaign')
 
     # AC: for now decided to totally regenerate the toc every time so we don't have to figure out if it's partial.
     if (st.button('Generate table of contents', help="Generates a table of contents.")):
         st.session_state.toc = "Table of Contents: " +  Writing.Writing().generate_toc(st.session_state.campaign, model)
     if (st.session_state.toc):
-        st.session_state.toc = st.session_state.toc.replace('\\n', '\r\n').replace('\n', '\r\n')
+        st.session_state.toc = st.session_state.toc
         st.text_area('Table of Contents', '', key='toc')
 
     if (st.button('Add sections', help="Add sections to the campaign.")):
-        st.session_state.chapter += Writing.Writing().completeModel(st.session_state.campaign + "###\n\n" + st.session_state.toc + "\n\n" +  st.session_state.chapter, model).replace('\\n', '\r\n').replace('\n', '\r\n')
+        st.session_state.chapter += Writing.Writing().completeModel(st.session_state.campaign + "###\n\n" + st.session_state.toc + "\n\n" +  st.session_state.chapter, model)
 
     #completions vs. tuning.
     # make a section with the buttons near it
