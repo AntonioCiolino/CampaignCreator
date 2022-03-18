@@ -47,7 +47,8 @@ if 'toc' not in st.session_state:
 # attempt to convert to HB format
 if 'converted' not in st.session_state:
     st.session_state.converted = ""
-
+if  'ranomness' not in st.session_state:
+    st.session_state.ranomness = 0.5
 
 with st.expander("Enter your API Key", expanded= (st.session_state.api_key == '')):
     st.session_state.api_key = st.text_input('API Key', st.session_state.api_key, type='password')
@@ -87,15 +88,16 @@ else:
 
     # completions vs. tuning.
     # make a section with the buttons near it
-    col1, col2 = st.columns(2)
-    with col1:
-        if (st.button('Get selected model content', help="Sends the story to OpenAI for additional model (fine tuned) content.")):
-            # st.success("Sent to OpenAI: "+ st.session_state.chapter)
-            st.session_state.chapter += Writing.Writing().completeModel(st.session_state.chapter, model)
-    with col2:
-        if (st.button('Get Davinci content', help="(Shortcut) Sends the story to OpenAI for additional DaVinci (GPT-3) content.")):
-            # st.success("Sent to OpenAI: "+ st.session_state.chapter)
-            st.session_state.chapter += Writing.Writing().completeDavinci(st.session_state.chapter)
+    #col1, col2 = st.columns(2)
+    #with col1:
+        st.slider('Change randomness', help="Modified how close the camapign sticks to writing style. Higher is more random.",
+                      min_value=0, max_value=0, value=st.session_state.randomness, key='randomness')
+
+        # st.session_state.chapter += Writing.Writing().completeModel(st.session_state.chapter, model)
+    #with col2:
+    #     if (st.button('Get Davinci content', help="(Shortcut) Sends the story to OpenAI for additional DaVinci (GPT-3) content.")):
+    #         # st.success("Sent to OpenAI: "+ st.session_state.chapter)
+    #         st.session_state.chapter += Writing.Writing().completeDavinci(st.session_state.chapter)
 
 
     # ----------------------------------------------------------------------------------------------------------------------
