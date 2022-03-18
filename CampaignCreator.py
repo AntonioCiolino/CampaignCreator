@@ -103,7 +103,7 @@ else:
     if (st.button('Generate table of contents', help="Generates a table of contents.")):
         st.session_state.toc = "Table of Contents:\n" +  Writing.Writing().generate_toc(st.session_state.campaign, model)
     if (st.session_state.toc):
-        st.session_state.toc = st.session_state.toc.replace('\n', '  ')
+        st.session_state.toc = st.session_state.toc.replace('\n', ' HELLO ')
         st.text_area('Table of Contents', '', key='toc')
 
     if (st.button('Add sections', help="Add sections to the campaign.")):
