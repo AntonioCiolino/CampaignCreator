@@ -72,8 +72,6 @@ if (st.session_state.api_key == ""):
     st.write("You need to enter your API Key to use this app.")
 else:
     st.session_state.features = Features.Features.features
-    st.write(Features.Features().get_prompt('Campaign Names').strip(","))
-
 
     if (st.session_state.models == []):
         st.session_state.models = Writing.Writing().getModels()
