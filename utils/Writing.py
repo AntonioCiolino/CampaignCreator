@@ -143,7 +143,7 @@ class Writing:
             p = title_base.format(campaign)
             titles = self.write(p, model, temp=0.2)
             results = []
-            for title in titles.split('\\n'):
+            for title in titles.replace("Campaign name:", "").split('\\n'):
                 if (title != '') and len(title) > 2:
                     results.append(title.strip())
 
