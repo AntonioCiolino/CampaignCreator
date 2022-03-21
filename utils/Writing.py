@@ -139,8 +139,9 @@ class Writing:
 
     def generate_campaign_titles(self, campaign, model):
         try:
-            title_base = self.features.get_prompt('Campaign Names').strip(",")
+            title_base = self.features.get_prompt('Campaign Names')
             p = title_base.format(campaign)
+            st.info(p)
             titles = self.write(p, model, temp=0.2)
             st.info(titles)
             results = []
