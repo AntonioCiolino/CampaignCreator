@@ -64,7 +64,7 @@ if  'randomness' not in st.session_state:
 if 'campaign_titles' not in st.session_state:
     st.session_state.campaign_titles = []
 else:
-    "it's in session"
+    st.session_state.campaign_titles
 if 'campaign_title' not in st.session_state:
     st.session_state.campaign_title = ""
 
