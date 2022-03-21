@@ -98,6 +98,7 @@ else:
         st.session_state.campaign = Writing.Writing().generate_campaign(st.session_state.concept + " " + st.session_state.campaign, model)
     if (st.session_state.campaign):
         st.text_area('Campaign', '', key='campaign')
+
     if (st.button('Generate potential campaign titles', help="Alternate titles")):
         st.session_state.campaign_titles = Writing.Writing().generate_campaign_titles(st.session_state.concept, model).split("\n")
         campaign_title = st.selectbox('Campaign', st.session_state.campaign_titles, key='campaign_titles')
