@@ -167,7 +167,7 @@ else:
 </style>
 """
         page_image = "![Painting](https://get.pxhere.com/photo/landscape-forest-people-sky-wood-valley-village-painting-trees-art-clouds-mountains-screenshot-huts-rural-area-oil-on-canvas-charles-blomfield-1138873.jpg) {position:absolute,top:0px,right:0px,width:100%}"
-
+        page_stain = "<!-- Full page stain --><img src='https://watercolors.giantsoup.com/phb/phb_top/0010.png' style='position:absolute; top:0px; left:0px; width:816px' />"
         page_header = """
 {{{{watermark DRAFT}}}}    
        
@@ -184,7 +184,7 @@ else:
 """
 
         st.text_area("Homebrewery Content",
-                     value = page_header.format(st.session_state.campaign_title, concept_header) +  title_page_style + page_image +
+                     value = page_header.format(st.session_state.campaign_title, concept_header) +  title_page_style + page_image + page_stain +
                              "{{note,wide\n##### Campaign Concept: " + concept_header + "\n}}\n::\n" +
                         #"{{wide\n" + camp + "}}\n::\n" +
                         "{{toc,wide\n" + outtoc + "}}\n::\n"
