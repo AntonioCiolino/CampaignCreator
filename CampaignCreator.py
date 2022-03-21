@@ -2,7 +2,6 @@ import streamlit as st
 from streamlit_quill import st_quill
 
 import utils.Features as Features
-import utils.Tables as Tables
 import utils.Writing as Writing
 
 # check to see if this is making a difference.
@@ -73,6 +72,8 @@ if (st.session_state.api_key == ""):
     st.write("You need to enter your API Key to use this app.")
 else:
     st.session_state.features = Features.Features.features
+    Features.Features.features.get_prompt('Campaign Names').strip(",")
+
 
     if (st.session_state.models == []):
         st.session_state.models = Writing.Writing().getModels()
