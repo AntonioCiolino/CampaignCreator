@@ -61,10 +61,10 @@ if  'randomness' not in st.session_state:
     st.session_state.randomness = 0.5
 
 #autogenerate a title selection and store what was selected
-# if 'campaign_titles' not in st.session_state:
-#     st.session_state.campaign_titles = []
-# if 'campaign_title' not in st.session_state:
-#     st.session_state.campaign_title = ""
+if 'campaign_titles' not in st.session_state:
+    st.session_state.campaign_titles = []
+if 'campaign_title' not in st.session_state:
+    st.session_state.campaign_title = ""
 
 with st.expander("Enter your API Key", expanded= (st.session_state.api_key == '')):
     st.session_state.api_key = st.text_input('API Key', st.session_state.api_key, type='password')
@@ -101,7 +101,7 @@ else:
 
     if (st.button('Generate potential campaign titles', help="Alternate titles")):
         st.session_state.campaign_titles = Writing.Writing().generate_campaign_titles(st.session_state.concept, model)
-        st.selectbox('Campaign',st.session_state.campaign_titles, key='campaign_titles')
+        st.checkbox('Campaign',st.session_state.campaign_titles, key='campaign_titles')
 
     # AC: for now decided to totally regenerate the toc every time so we don't have to figure out if it's partial.
     if (st.button('Generate table of contents', help="Generates a table of contents. You'll have to prettify it yourself before brewig it...")):
