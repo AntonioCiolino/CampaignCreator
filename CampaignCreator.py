@@ -63,8 +63,6 @@ if  'randomness' not in st.session_state:
 #autogenerate a title selection and store what was selected
 if 'campaign_titles' not in st.session_state:
     st.session_state.campaign_titles = []
-else:
-    st.session_state.campaign_titles
 if 'campaign_title' not in st.session_state:
     st.session_state.campaign_title = ""
 
@@ -75,7 +73,6 @@ if (st.session_state.api_key == ""):
     st.write("You need to enter your API Key to use this app.")
 else:
     st.session_state.features = Features.Features.features
-    st.session_state.random_tables = Tables.Tables().random_tables
 
     if (st.session_state.models == []):
         st.session_state.models = Writing.Writing().getModels()
