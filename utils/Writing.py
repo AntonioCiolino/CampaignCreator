@@ -141,7 +141,7 @@ class Writing:
         try:
             title_base = self.features.get_prompt('Campaign Names')
             p = title_base.format(campaign)
-            titles = self.write(p, model, temp=0.8)
+            titles = self.write(p, model, temp=0.2)
             st.write(p + ":" +  titles)
             return titles
         except Exception as oops:
