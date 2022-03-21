@@ -96,9 +96,10 @@ else:
     concept = st.text_input('Idea for your campaign', '', key='concept', help="Enter your idea for the campaign. Add thoughts, character names, etc.")
     if (st.button('Generate campaign concept', help="This is the overall purpose of the campaign.")):
         st.session_state.campaign = Writing.Writing().generate_campaign(st.session_state.concept + " " + st.session_state.campaign, model)
-        st.session_state.campaign_titles = Writing.Writing().generate_campaign_titles(st.session_state.concept, model).split("\n")
     if (st.session_state.campaign):
         st.text_area('Campaign', '', key='campaign')
+    if (st.button('Generate potential campaign titles', help="Alternate titles")):
+        st.session_state.campaign_titles = Writing.Writing().generate_campaign_titles(st.session_state.concept, model).split("\n")
         campaign_title = st.selectbox('Campaign', st.session_state.campaign_titles, key='campaign_titles')
 
     # AC: for now decided to totally regenerate the toc every time so we don't have to figure out if it's partial.
