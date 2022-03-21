@@ -100,7 +100,8 @@ else:
 
     if (st.button('Generate potential campaign titles', help="Alternate titles")):
         st.session_state.campaign_titles = Writing.Writing().generate_campaign_titles(st.session_state.concept, model)
-    st.session_state.campaign_title = st.selectbox(label="Potential titles",options=st.session_state.campaign_titles)
+    if (st.session_state.campaign_titles):
+        st.session_state.campaign_title = st.selectbox(label="Potential titles",options=st.session_state.campaign_titles)
 
     st.write(st.session_state.campaign_title)
 
