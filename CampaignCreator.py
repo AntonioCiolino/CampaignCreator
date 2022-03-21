@@ -146,7 +146,7 @@ else:
         suffix = "\n"
         chap = process_block(chap, prefix, suffix)
 
-        outtoc = st.session_state.toc.replace("Table of Contents:", "# Table of Contents\n- ### {{ " + concept_header + " }}{{ }}\n")
+        outtoc = st.session_state.toc.replace("Table of Contents:", "# Table of Contents\n- ### {{ " + concept_title + " }}{{ }}\n")
         outtoc = outtoc.replace("\\n", "\n")
 
         sentences = outtoc.split("\n")
