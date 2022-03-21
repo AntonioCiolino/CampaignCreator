@@ -144,7 +144,8 @@ class Writing:
             titles = self.write(p, model, temp=0.2)
             results = []
             for title in titles.split('\\n'):
-                results.append(title)
+                if (title != ''):
+                    results.append(title.strip())
 
             return results
         except Exception as oops:
