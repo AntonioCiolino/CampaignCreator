@@ -60,6 +60,12 @@ if 'converted' not in st.session_state:
 if  'randomness' not in st.session_state:
     st.session_state.randomness = 0.5
 
+#autogenerate a title selection and store what was selected
+if 'campaign_titles' not in st.session_state:
+    st.session_state.campaign_titles = []
+if 'campaign_title' not in st.session_state:
+    st.session_state.campaign_title = ""
+
 with st.expander("Enter your API Key", expanded= (st.session_state.api_key == '')):
     st.session_state.api_key = st.text_input('API Key', st.session_state.api_key, type='password')
 
@@ -90,8 +96,10 @@ else:
     concept = st.text_input('Idea for your campaign', '', key='concept', help="Enter your idea for the campaign. Add thoughts, character names, etc.")
     if (st.button('Generate campaign concept', help="This is the overall purpose of the campaign.")):
         st.session_state.campaign = Writing.Writing().generate_campaign(st.session_state.concept + " " + st.session_state.campaign, model)
+        st.session_state.campaign_titles = Writing.Writing().generate_campaign_titles(st.session_state.concept, model)
     if (st.session_state.campaign):
         st.text_area('Campaign', '', key='campaign')
+        campaign_title = st.selectbox('Campaign', st.session_state.campaign_titles, key='campaign_titles')
 
     # AC: for now decided to totally regenerate the toc every time so we don't have to figure out if it's partial.
     if (st.button('Generate table of contents', help="Generates a table of contents. You'll have to prettify it yourself before brewig it...")):
@@ -166,14 +174,14 @@ else:
 {{{{margin-top:25px}}}}
               
 {{{{wide
-##### Add an overall comment here for the camapign.
+##### {}
 }}}}
 \page
 
 """
 
         st.text_area("Homebrewery Content",
-                     value = title_page_style + page_image + page_header.format(concept_header) +
+                     value = title_page_style + page_image + page_header.format(st.session_state.campaign_title, concept_header) +
                         "{{note,wide\n##### Campaign Concept: " + concept_header + "\n}}\n::\n" +
                         "{{wide\n" + camp + "}}\n::\n" +
                         "{{toc,wide\n" + outtoc + "}}\n::\n"

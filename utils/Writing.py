@@ -136,3 +136,11 @@ class Writing:
             return self.write(p, model, temp=0.13)
         except Exception as oops:
             st.error('ERROR in generate_toc function: ' + str(oops))
+
+    def generate_campaign_titles(self, campaign, model):
+        try:
+            title_base = self.features.get_prompt('Campaign Names')
+            p = title_base.format(campaign)
+            return self.write(p, model, temp=0.8)
+        except Exception as oops:
+            st.error('ERROR in generate_toc function: ' + str(oops))
