@@ -141,7 +141,6 @@ class Writing:
         try:
             title_base = self.features.get_prompt('Campaign Names').strip(",")
             p = title_base.format(campaign)
-            st.info("submitted: " + p )
             titles = self.write(p, model, temp=0.2)
             results = []
             for title in titles.replace("Campaign name:", "").split('\\n'):
