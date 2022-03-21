@@ -100,10 +100,8 @@ else:
         st.text_area('Campaign', '', key='campaign')
 
     if (st.button('Generate potential campaign titles', help="Alternate titles")):
-        st.session_state.campaign_titles = Writing.Writing().generate_campaign_titles(st.session_state.concept, model).split("\\n")
-        for title in st.session_state.campaign_titles:
-            st.write("title: " + title)
-        st.selectbox('Campaign', iter(st.session_state.campaign_titles), key='campaign_titles')
+        st.session_state.campaign_titles = Writing.Writing().generate_campaign_titles(st.session_state.concept, model)
+        st.selectbox('Campaign', st.session_state.campaign_titles, key='campaign_titles')
 
     # AC: for now decided to totally regenerate the toc every time so we don't have to figure out if it's partial.
     if (st.button('Generate table of contents', help="Generates a table of contents. You'll have to prettify it yourself before brewig it...")):

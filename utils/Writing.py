@@ -142,7 +142,10 @@ class Writing:
             title_base = self.features.get_prompt('Campaign Names')
             p = title_base.format(campaign)
             titles = self.write(p, model, temp=0.2)
-            st.write(p + ":" +  titles)
-            return titles
+            results = []
+            for title in titles.split('\\n'):
+                results.append(title)
+
+            return results
         except Exception as oops:
             st.error('ERROR in generate_toc function: ' + str(oops))
