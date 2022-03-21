@@ -134,7 +134,7 @@ else:
         concept_header = st.session_state.concept.split(".")[0]
 
         # make some slight mods until OpenAI can edit - need to test this more
-        camp = st.session_state.campaign.replace("\\n", "\n") + "\n\n"
+        camp = st.session_state.campaign_title.replace("\\n", "\n") + "\n\n"
         camp = camp.replace("Campaign Name:", "### ")\
                     .replace("Campaign Settings:","\n:\n#### Campaign Settings\n") \
                    .replace("Background story:", "\n:\n#### DM Background\n") \
