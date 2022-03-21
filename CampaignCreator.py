@@ -146,7 +146,7 @@ else:
         suffix = "\n"
         chap = process_block(chap, prefix, suffix)
 
-        outtoc = st.session_state.toc.replace("Table of Contents:", "# Table of Contents\n- ### {{ " + concept_title + " }}{{ }}\n")
+        outtoc = st.session_state.toc.replace("Table of Contents:", "# Table of Contents\n- ### {{ " + st.session_state.campaign_title + " }}{{ }}\n")
         outtoc = outtoc.replace("\\n", "\n")
 
         sentences = outtoc.split("\n")
@@ -186,7 +186,7 @@ else:
         st.text_area("Homebrewery Content",
                      value = title_page_style + page_image + page_header.format(st.session_state.campaign_title, concept_header) +
                         "{{note,wide\n##### Campaign Concept: " + concept_header + "\n}}\n::\n" +
-                        "{{wide\n" + camp + "}}\n::\n" +
+                        #"{{wide\n" + camp + "}}\n::\n" +
                         "{{toc,wide\n" + outtoc + "}}\n::\n"
                         "\n\n## Campaign\n\n" + chap.replace("\\n", "\n"))
 
