@@ -63,6 +63,8 @@ if  'randomness' not in st.session_state:
 #autogenerate a title selection and store what was selected
 if 'campaign_titles' not in st.session_state:
     st.session_state.campaign_titles = []
+else:
+    "it's in session"
 if 'campaign_title' not in st.session_state:
     st.session_state.campaign_title = ""
 
