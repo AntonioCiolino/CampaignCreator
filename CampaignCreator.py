@@ -64,7 +64,7 @@ if  'randomness' not in st.session_state:
 if 'campaign_titles' not in st.session_state:
     st.session_state.campaign_titles = []
 if 'campaign_title' not in st.session_state:
-    st.session_state.campaign_title = ""
+    st.session_state.campaign_title = []
 
 with st.expander("Enter your API Key", expanded= (st.session_state.api_key == '')):
     st.session_state.api_key = st.text_input('API Key', st.session_state.api_key, type='password')
