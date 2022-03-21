@@ -142,6 +142,7 @@ class Writing:
             title_base = self.features.get_prompt('Campaign Names').strip(",")
             p = title_base.format(campaign)
             titles = self.write(p, model, temp=0.2)
+            st.info(titles)
             results = []
             for title in titles.replace("Campaign name:", "").split('\n'):
                 if (title != '') and len(title) > 2:
