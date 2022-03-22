@@ -167,7 +167,11 @@ else:
 </style>
 """
         page_image = "![Painting](https://get.pxhere.com/photo/landscape-forest-people-sky-wood-valley-village-painting-trees-art-clouds-mountains-screenshot-huts-rural-area-oil-on-canvas-charles-blomfield-1138873.jpg) {position:absolute,top:0px,right:0px,width:100%}\n"
-        page_stain = "<!-- Full page stain --><img src='https://watercolors.giantsoup.com/phb/phb_top/0010.png' style='position:absolute; top:0px; left:0px; width:816px' />\n"
+        page_stain = """<!-- Full page stains -->
+"<img src='https://watercolors.giantsoup.com/phb/phb_top/0010.png' style='position:absolute; top:-100px; left:0px; width:816px' />\n
+"<img src='https://watercolors.giantsoup.com/phb/phb_top/0002.png' style='position:absolute; top:-0px; left:0px; width:816px' />\n\n\n
+"""
+
         page_header = """
 {{{{watermark DRAFT}}}}    
        
