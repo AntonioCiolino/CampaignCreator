@@ -97,7 +97,7 @@ else:
     if (st.session_state.campaign):
         st.text_area('Campaign', '', key='campaign')
 
-    if (st.button('Generate campaign title', help="Alternate titles")):
+    if (st.button('Generate campaign title', help="Alternate titles, needs work and a fine tuned model edit.")):
         st.session_state.campaign_titles = Writing.Writing().generate_campaign_titles(st.session_state.concept, model)
     if (st.session_state.campaign_titles):
         st.session_state.campaign_title = st.selectbox(label="Campaign title",options=st.session_state.campaign_titles)
@@ -183,7 +183,8 @@ else:
 
         st.text_area("Homebrewery Content",
                      value = page_header.format(st.session_state.campaign_title, concept_header) +  title_page_style + page_image + page_stain +
-                             "\page\n{{note,wide\n##### Campaign Concept: " + concept_header + "\n}}\n::\n" +
+                             "\page\n\{{pageNumber,auto}}\n{{footnote  | " + st.session_state.campaign_title + " }}\n" +
+                             "{{note,wide\n##### Campaign Concept: " + concept_header + "\n}}\n::\n" +
                         #"{{wide\n" + camp + "}}\n::\n" +
                         "{{toc,wide\n" + outtoc + "}}\n::\n"
                         "\n\n## Campaign\n\n" + chap.replace("\\n", "\n"))
