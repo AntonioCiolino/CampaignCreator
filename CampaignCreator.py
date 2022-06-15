@@ -111,7 +111,7 @@ else:
         st.session_state.toc = st.session_state.toc
         st.text_area('Table of Contents', '', key='toc')
 
-    st.slider('Change randomness', help="Modified how close the camapign sections stick to the subject. Higher is more random.",
+    st.slider('Change randomness', help="Modified how close the campaign sections stick to the subject. Higher is more random.",
               min_value=0.00, max_value=1.00, key='randomness')
 
     if (st.button('Add sections', help="Add sections to the campaign.")):

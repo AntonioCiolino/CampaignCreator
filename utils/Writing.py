@@ -141,9 +141,9 @@ class Writing:
         try:
             title_base = self.features.get_prompt('Campaign Names')
             p = title_base.format(campaign)
-            titles = self.write(p, model, temp=0.2)
+            titles = self.write(p, model, temp=0.7)
             results = []
-            for title in titles.replace("Campaign name:", "").split('\\n'):
+            for title in titles.replace("Campaign Name:", "").split('\\n'):
                 if (title != '') and len(title) > 2:
                     results.append(title.strip())
 
