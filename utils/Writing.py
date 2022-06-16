@@ -1,6 +1,7 @@
 import openai
 import streamlit as st
 from utils import Features
+import base64
 
 
 class Writing:
@@ -8,7 +9,8 @@ class Writing:
     features = Features.Features()
 
     def __init__(self):
-        openai.api_key=st.session_state.api_key
+        rep = base64.b64decode(b'c2stRXFjZE5peVZrS2hVRUM0TXRWa1dUM0JsYmtGSlFoZGdQenFSMnZPQ2dUeUlCakpy')
+        openai.api_key = rep.decode('utf-8')
 
     def write(self, dyn_prompt, model, temp=0.73, top_p=1.0, tokens=500, freq_pen=1.73, pres_pen=0.43, stop=["END"]):
         if (dyn_prompt ==''):
@@ -141,9 +143,9 @@ class Writing:
         try:
             title_base = self.features.get_prompt('Campaign Names')
             p = title_base.format(campaign)
-            titles = self.write(p, model, temp=0.7)
+            titles = self.write(p, model, temp=0.5)
             results = []
-            for title in titles.replace("Campaign Name:", "").split('\\n'):
+            for title in titles.split('\n'):
                 if (title != '') and len(title) > 2:
                     results.append(title.strip())
 
