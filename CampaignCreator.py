@@ -70,12 +70,6 @@ if 'campaign_titles' not in st.session_state:
 if 'campaign_title' not in st.session_state:
     st.session_state.campaign_title = ""
 
-with st.expander("Enter your API Key", expanded=(st.session_state.api_key == '')):
-    st.session_state.api_key = st.text_input('API Key', st.session_state.api_key, type='password')
-
-# if st.session_state.api_key == "":
-#     st.write("You need to enter your API Key to use this app.")
-# else:
 st.session_state.features = Features.Features.features
 
 if not st.session_state.models:
