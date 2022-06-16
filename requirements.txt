@@ -3,4 +3,3 @@ pandas
 streamlit
 openai
 streamlit-quill
-base64
