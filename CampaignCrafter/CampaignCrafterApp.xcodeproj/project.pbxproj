@@ -1,0 +1,326 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 54;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A1B2C3D4E5F6123456789AB0 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6123456789AB1 /* AppDelegate.swift */; };
+		A1B2C3D4E5F6123456789AB2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6123456789AB3 /* SceneDelegate.swift */; };
+		A1B2C3D4E5F6123456789AB4 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6123456789AB5 /* ViewController.swift */; };
+		A1B2C3D4E5F6123456789AB6 /* Document.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6123456789AB7 /* Document.swift */; };
+		A1B2C3D4E5F6123456789AB8 /* DocumentListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6123456789AB9 /* DocumentListViewController.swift */; };
+		A1B2C3D4E5F6123456789ABA /* EditorViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6123456789ABB /* EditorViewController.swift */; };
+		A1B2C3D4E5F6123456789ABC /* ExportViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6123456789ABD /* ExportViewController.swift */; };
+		A1B2C3D4E5F6123456789ABE /* GeminiClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6123456789ABF /* GeminiClient.swift */; };
+		A1B2C3D4E5F6123456789AC0 /* GeminiDataStructures.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6123456789AC1 /* GeminiDataStructures.swift */; };
+		A1B2C3D4E5F6123456789AC2 /* ImportedDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6123456789AC3 /* ImportedDocument.swift */; };
+		A1B2C3D4E5F6123456789AC4 /* LLMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6123456789AC5 /* LLMService.swift */; };
+		A1B2C3D4E5F6123456789AC6 /* MarkdownGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6123456789AC7 /* MarkdownGenerator.swift */; };
+		A1B2C3D4E5F6123456789AC8 /* OpenAIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6123456789AC9 /* OpenAIClient.swift */; };
+		A1B2C3D4E5F6123456789ACA /* OpenAIDataStructures.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6123456789ACB /* OpenAIDataStructures.swift */; };
+		A1B2C3D4E5F6123456789ACC /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6123456789ACD /* Theme.swift */; };
+		A1B2C3D4E5F6123456789ACE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6123456789ACF /* Assets.xcassets */; };
+		A1B2C3D4E5F6123456789AD1 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6123456789AD2 /* LaunchScreen.storyboard */; };
+		A1B2C3D4E5F6123456789AD3 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6123456789AD4 /* Main.storyboard */; };
+		A1B2C3D4E5F6123456789AE2 /* tables1e.csv in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6123456789AE0 /* tables1e.csv */; };
+		A1B2C3D4E5F6123456789AE4 /* RandomTableService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6123456789AE3 /* RandomTableService.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		2E0000012C00000000000000 /* CampaignCrafterApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CampaignCrafterApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2E0000022C00000000000000 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A1B2C3D4E5F6123456789AB1 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6123456789AB3 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6123456789AB5 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6123456789AB7 /* Document.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Document.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6123456789AB9 /* DocumentListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentListViewController.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6123456789ABB /* EditorViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorViewController.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6123456789ABD /* ExportViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportViewController.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6123456789ABF /* GeminiClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiClient.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6123456789AC1 /* GeminiDataStructures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiDataStructures.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6123456789AC3 /* ImportedDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportedDocument.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6123456789AC5 /* LLMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMService.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6123456789AC7 /* MarkdownGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownGenerator.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6123456789AC9 /* OpenAIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIClient.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6123456789ACB /* OpenAIDataStructures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIDataStructures.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6123456789ACD /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6123456789ACF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A1B2C3D4E5F6123456789AD0 /* Base.lproj */ = {isa = PBXGroup; children = (A1B2C3D4E5F6123456789AD2, A1B2C3D4E5F6123456789AD4); name = Base.lproj; path = Base.lproj; sourceTree = "<group>"; };
+		A1B2C3D4E5F6123456789AD2 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = LaunchScreen; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		A1B2C3D4E5F6123456789AD4 /* Main.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Main; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		A1B2C3D4E5F6123456789AE0 /* tables1e.csv */ = {isa = PBXFileReference; lastKnownFileType = text.csv; name = tables1e.csv; path = csv/tables1e.csv; sourceTree = "<group>"; };
+		A1B2C3D4E5F6123456789AE3 /* RandomTableService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RandomTableService.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		2E0000002C00000000000000 = {
+			isa = PBXGroup;
+			children = (
+				2E0000032C00000000000000 /* CampaignCrafterApp */,
+				2E0000042C00000000000000 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		2E0000032C00000000000000 /* CampaignCrafterApp */ = {
+			isa = PBXGroup;
+			children = (
+			    A1B2C3D4E5F6123456789AB1 /* AppDelegate.swift */,
+			    A1B2C3D4E5F6123456789AB3 /* SceneDelegate.swift */,
+			    A1B2C3D4E5F6123456789AB5 /* ViewController.swift */,
+			    A1B2C3D4E5F6123456789AB7 /* Document.swift */,
+			    A1B2C3D4E5F6123456789AB9 /* DocumentListViewController.swift */,
+			    A1B2C3D4E5F6123456789ABB /* EditorViewController.swift */,
+			    A1B2C3D4E5F6123456789ABD /* ExportViewController.swift */,
+			    A1B2C3D4E5F6123456789ABF /* GeminiClient.swift */,
+			    A1B2C3D4E5F6123456789AC1 /* GeminiDataStructures.swift */,
+			    A1B2C3D4E5F6123456789AC3 /* ImportedDocument.swift */,
+			    A1B2C3D4E5F6123456789AC5 /* LLMService.swift */,
+			    A1B2C3D4E5F6123456789AC7 /* MarkdownGenerator.swift */,
+			    A1B2C3D4E5F6123456789AC9 /* OpenAIClient.swift */,
+			    A1B2C3D4E5F6123456789ACB /* OpenAIDataStructures.swift */,
+			    A1B2C3D4E5F6123456789ACD /* Theme.swift */,
+			    A1B2C3D4E5F6123456789ACF /* Assets.xcassets */,
+			    A1B2C3D4E5F6123456789AD0 /* Base.lproj */,
+			    2E0000022C00000000000000 /* Info.plist */,
+				A1B2C3D4E5F6123456789AE1 /* csv */,
+				A1B2C3D4E5F6123456789AE3 /* RandomTableService.swift */,
+			);
+			path = CampaignCrafterApp;
+			sourceTree = "<group>";
+		};
+		A1B2C3D4E5F6123456789AE1 /* csv */ = {isa = PBXGroup; children = (A1B2C3D4E5F6123456789AE0 /* tables1e.csv */, ); name = csv; path = csv; sourceTree = "<group>"; };
+		2E0000042C00000000000000 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2E0000012C00000000000000 /* CampaignCrafterApp.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		2E0000052C00000000000000 /* CampaignCrafterApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2E0000082C00000000000000 /* Build configuration list for PBXNativeTarget "CampaignCrafterApp" */;
+			buildPhases = (
+				A1B2C3D4E5F6123456789AD6 /* Sources */,
+				A1B2C3D4E5F6123456789AD7 /* Frameworks */,
+				A1B2C3D4E5F6123456789AD5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CampaignCrafterApp;
+			productName = CampaignCrafterApp;
+			productReference = 2E0000012C00000000000000 /* CampaignCrafterApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		2E0000062C00000000000000 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 1250;
+				LastUpgradeCheck = 1250;
+				ORGANIZATIONNAME = "Example Corp";
+				TargetAttributes = {
+					2E0000052C00000000000000 = {
+						CreatedOnToolsVersion = 12.5;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 2E0000072C00000000000000 /* Build configuration list for PBXProject "CampaignCrafterApp" */;
+			compatibilityVersion = "Xcode 9.3";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 2E0000002C00000000000000;
+			productRefGroup = 2E0000042C00000000000000 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				2E0000052C00000000000000 /* CampaignCrafterApp */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A1B2C3D4E5F6123456789AD5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1B2C3D4E5F6123456789ACE /* Assets.xcassets in Resources */,
+				A1B2C3D4E5F6123456789AD1 /* LaunchScreen.storyboard in Resources */,
+				A1B2C3D4E5F6123456789AD3 /* Main.storyboard in Resources */,
+				A1B2C3D4E5F6123456789AE2 /* tables1e.csv in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A1B2C3D4E5F6123456789AD6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1B2C3D4E5F6123456789AB0 /* AppDelegate.swift in Sources */,
+				A1B2C3D4E5F6123456789AB2 /* SceneDelegate.swift in Sources */,
+				A1B2C3D4E5F6123456789AB4 /* ViewController.swift in Sources */,
+				A1B2C3D4E5F6123456789AB6 /* Document.swift in Sources */,
+				A1B2C3D4E5F6123456789AB8 /* DocumentListViewController.swift in Sources */,
+				A1B2C3D4E5F6123456789ABA /* EditorViewController.swift in Sources */,
+				A1B2C3D4E5F6123456789ABC /* ExportViewController.swift in Sources */,
+				A1B2C3D4E5F6123456789ABE /* GeminiClient.swift in Sources */,
+				A1B2C3D4E5F6123456789AC0 /* GeminiDataStructures.swift in Sources */,
+				A1B2C3D4E5F6123456789AC2 /* ImportedDocument.swift in Sources */,
+				A1B2C3D4E5F6123456789AC4 /* LLMService.swift in Sources */,
+				A1B2C3D4E5F6123456789AC6 /* MarkdownGenerator.swift in Sources */,
+				A1B2C3D4E5F6123456789AC8 /* OpenAIClient.swift in Sources */,
+				A1B2C3D4E5F6123456789ACA /* OpenAIDataStructures.swift in Sources */,
+				A1B2C3D4E5F6123456789ACC /* Theme.swift in Sources */,
+				A1B2C3D4E5F6123456789AE4 /* RandomTableService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXFrameworksBuildPhase section */
+        A1B2C3D4E5F6123456789AD7 /* Frameworks */ = {
+            isa = PBXFrameworksBuildPhase;
+            buildActionMask = 2147483647;
+            files = (
+            );
+            runOnlyForDeploymentPostprocessing = 0;
+        };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		2E0000092C00000000000000 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.campaigncrafter;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = singlefile;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+                ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+                INFOPLIST_FILE = CampaignCrafterApp/Info.plist;
+                LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+
+			};
+			name = Debug;
+		};
+		2E00000A2C00000000000000 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+                PRODUCT_BUNDLE_IDENTIFIER = com.example.campaigncrafter;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+                ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+                INFOPLIST_FILE = CampaignCrafterApp/Info.plist;
+                LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2E0000072C00000000000000 /* Build configuration list for PBXProject "CampaignCrafterApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2E0000092C00000000000000 /* Debug */,
+				2E00000A2C00000000000000 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2E0000082C00000000000000 /* Build configuration list for PBXNativeTarget "CampaignCrafterApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2E0000092C00000000000000 /* Debug */,
+				2E00000A2C00000000000000 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 2E0000062C00000000000000 /* Project object */;
+}

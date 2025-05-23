@@ -2,8 +2,20 @@ import Foundation
 
 // MARK: - Gemini API Request Structures
 
+struct GeminiGenerationConfig: Codable {
+    let temperature: Float?
+    // Consider adding other common parameters if they might be used soon:
+    // let topK: Int?
+    // let topP: Float?
+    // let candidateCount: Int?
+    // let maxOutputTokens: Int?
+}
+
 struct GeminiRequest: Codable {
     let contents: [GeminiRequestContent]
+    let generationConfig: GeminiGenerationConfig? // Add this line
+
+    // The comment below can be removed or updated if custom init is not needed.
     // Add other parameters like generationConfig, safetySettings if needed.
 }
 

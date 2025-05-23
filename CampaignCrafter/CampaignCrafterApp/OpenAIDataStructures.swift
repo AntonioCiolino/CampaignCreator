@@ -74,3 +74,23 @@ struct OpenAIUsage: Codable {
 // if let completionText = response?.choices.first?.message.content {
 //     print(completionText)
 // }
+
+// MARK: - Image Generation Structures
+
+// Request for DALL-E API
+struct OpenAIImageGenerationRequest: Codable {
+    let prompt: String
+    let n: Int? // Number of images to generate, defaults to 1
+    let size: String? // e.g., "256x256", "512x512", "1024x1024"
+    // Add other parameters like 'response_format' (url or b64_json) if needed. Default is 'url'.
+}
+
+// Response from DALL-E API
+struct OpenAIImageGenerationResponse: Codable {
+    struct ImageData: Codable {
+        let url: URL? // URL of the generated image, if response_format is 'url'
+        let b64_json: String? // Base64 encoded JSON, if response_format is 'b64_json'
+    }
+    let created: Int? // Timestamp
+    let data: [ImageData]
+}

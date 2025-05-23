@@ -275,7 +275,7 @@ class DocumentListViewController: UIViewController, UITableViewDataSource, UITab
             var (importedCount, errorCount) = importDocuments(importedDocs)
             
             loadDocuments() // Refresh the list
-            showImportSummary(importedCount: importedCount, errorCount: errorCount, totalAttempted: importedDocs.count)
+            showImportSummary(importedCount: importedCount, errorCount: errorCount, totalAttempted: importedDocs.count, sourceName: url.lastPathComponent)
         } catch {
             print("Error processing JSON file: \(error)")
             showAlert(title: "JSON Import Failed", message: "Could not read or parse the JSON file: \(error.localizedDescription)")
@@ -358,7 +358,7 @@ class DocumentListViewController: UIViewController, UITableViewDataSource, UITab
                  showAlert(title: "Zip Import", message: "No .txt or .json files found in the Zip archive (or ZipFoundation is not available to extract).")
             } else {
                 loadDocuments()
-                showImportSummary(importedCount: totalImportedFromZip, errorCount: totalErrorsInZip, totalAttempted: totalProcessedInZip, fromZip: true)
+                showImportSummary(importedCount: totalImportedFromZip, errorCount: totalErrorsInZip, totalAttempted: totalProcessedInZip, fromZip: true, sourceName: url.lastPathComponent)
             }
 
         } catch {
@@ -389,19 +389,19 @@ class DocumentListViewController: UIViewController, UITableViewDataSource, UITab
         return (importedCount, errorCount)
     }
 
-    private func showImportSummary(importedCount: Int, errorCount: Int, totalAttempted: Int, sourceName: String) {
+    private func showImportSummary(importedCount: Int, errorCount: Int, totalAttempted: Int, fromZip: Bool = false, sourceName: String) {
         var message = "\(importedCount) document(s) imported successfully from \(sourceName)."
         if errorCount > 0 {
             message += "\n\(errorCount) document(s) failed to import."
         }
         
-        if importedCount == 0 && errorCount == 0 {
-            if totalAttempted > 0 {
+        if importedCount == 0 && errorCount == 0 { // Nothing imported, nothing failed
+            if totalAttempted > 0 { // Files were processed but none were new/valid
                  message = "No new documents were imported from \(sourceName). Files might be empty, not of the supported type (.txt), or already exist with the same content if unique naming isn't robust enough for content identity."
-            } else { // totalAttempted == 0
-                 message = "No compatible files (.txt) were found to import from \(sourceName)."
+            } else { // totalAttempted == 0, no compatible files found in the first place
+                 message = "No compatible files (.txt or .json for non-zip) were found to import from \(sourceName)."
             }
-        } else if importedCount == 0 && errorCount > 0 {
+        } else if importedCount == 0 && errorCount > 0 { // All attempts to import resulted in errors
             message = "Failed to import any documents from \(sourceName)."
         }
         showAlert(title: "Import Complete", message: message)
@@ -418,7 +418,7 @@ class DocumentListViewController: UIViewController, UITableViewDataSource, UITab
 
         let resourceKeys: [URLResourceKey] = [.isRegularFileKey, .nameKey, .isDirectoryKey]
         guard let enumerator = fileManager.enumerator(at: directoryURL,
-                                incluyendoPropertiesForKeys: resourceKeys,
+                                includingPropertiesForKeys: resourceKeys,
                                 options: [.skipsHiddenFiles, .skipsPackageDescendants],
                                 errorHandler: { (url, error) -> Bool in
                                     print("Enumerator error at \(url.path): \(error.localizedDescription)")

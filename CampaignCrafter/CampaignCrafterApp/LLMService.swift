@@ -41,4 +41,12 @@ protocol LLMService {
     ///     It returns a `Result` type, which is either a `String` containing the
     ///     generated completion, or an `LLMError` detailing what went wrong.
     func generateCompletion(prompt: String, completionHandler: @escaping (Result<String, LLMError>) -> Void)
+
+    func generateCampaignConcept(userInput: String, completionHandler: @escaping (Result<String, LLMError>) -> Void)
+    func generateTableOfContents(campaignText: String, completionHandler: @escaping (Result<String, LLMError>) -> Void)
+    func generateCampaignTitles(campaignConcept: String, completionHandler: @escaping (Result<[String], LLMError>) -> Void)
+    func continueWritingSection(campaignText: String, tocText: String, currentChapterText: String, temperature: Double, completionHandler: @escaping (Result<String, LLMError>) -> Void)
+
+    // Added for image generation
+    func generateImage(prompt: String, size: String, completionHandler: @escaping (Result<URL, LLMError>) -> Void)
 }
