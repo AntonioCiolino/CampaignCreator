@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Placeholder for future development.
 
-## [0.1.0] - 2024-07-27
+## [0.1.0] - 2024-07-27 CampaignCreator Initial Release
 
 ### Added
 - **Core Text Editing**:
@@ -32,4 +32,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Custom fonts (Georgia for headings/editor, Helvetica Neue for body).
     - Use of SF Symbols for navigation bar icons.
 - **Documentation**:
-    - Initial `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, and `LICENSE` files.
+    - Initial `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, and `LICENSE` files for CampaignCreator.

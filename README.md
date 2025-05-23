@@ -1,8 +1,8 @@
-# NarrateCraft - AI-Assisted Story & World Building iOS App
+# CampaignCreator - AI-Assisted Story & World Building iOS App
 
 ## Description
 
-NarrateCraft is an iOS application designed for creative writers, authors, and world-builders. It serves as a document editor tailored for crafting stories, lore, and detailed world elements. The app integrates with multiple Large Language Models (LLMs) like OpenAI's GPT and Google's Gemini to provide text suggestions and assist in the creative process. Key goals include robust content import/export capabilities, with current support for Homebrewery and planned integration for World Anvil.
+CampaignCreator is an iOS application designed for creative writers, authors, and world-builders. It serves as a document editor tailored for crafting stories, lore, and detailed world elements. The app integrates with multiple Large Language Models (LLMs) like OpenAI's GPT and Google's Gemini to provide text suggestions and assist in the creative process. Key goals include robust content import/export capabilities, with current support for Homebrewery and planned integration for World Anvil.
 
 ## Current Features
 
@@ -42,19 +42,19 @@ Actively under development. Core editing features, dual LLM integration (OpenAI,
     cd <repository_directory> # Replace <repository_directory> with the cloned folder name
     ```
 2.  **Open in Xcode**:
-    *   Navigate to the `TextEditorApp` sub-directory.
-    *   Open the `TextEditorApp.xcworkspace` file in Xcode. (Using `.xcworkspace` is important if the project has dependencies managed by CocoaPods or uses Swift Package Manager in a way that generates a workspace).
+    *   Navigate to the `CampaignCreator` sub-directory (once the root folder is renamed).
+    *   Open the `CampaignCreator.xcworkspace` file in Xcode. (Using `.xcworkspace` is important if the project has dependencies managed by CocoaPods or uses Swift Package Manager in a way that generates a workspace).
     *   Recommended: Xcode 14.0 or later (iOS 14.0 was targeted, so a compatible Xcode version is needed).
 3.  **iOS Target**:
     *   The project currently targets iOS 14.0.
 4.  **API Keys**:
     *   API keys for OpenAI and Google Gemini are required for the LLM suggestion features.
-    *   Create a file named `Secrets.swift` inside the `TextEditorApp/TextEditorApp/` directory.
+    *   Create a file named `Secrets.swift` inside the `CampaignCreator/CampaignCreator/` directory.
     *   This file is gitignored to protect your keys.
     *   Add your API keys to `Secrets.swift` with the following structure:
 
     ```swift
-    // TextEditorApp/TextEditorApp/Secrets.swift
+    // CampaignCreator/CampaignCreator/Secrets.swift
     import Foundation
 
     struct Secrets {
@@ -66,7 +66,7 @@ Actively under development. Core editing features, dual LLM integration (OpenAI,
     *   **ZipFoundation**: This library is conceptually used for Zip archive import functionality. If building the project and this dependency is formally added, it would typically be managed via Swift Package Manager in Xcode:
         *   In Xcode: File > Add Packages...
         *   Enter the repository URL for ZipFoundation (e.g., `https://github.com/weichsel/ZipFoundation.git`).
-        *   Follow the prompts to add the package to the `TextEditorApp` target.
+        *   Follow the prompts to add the package to the `CampaignCreator` target.
 
 ## Future Goals (Briefly)
 

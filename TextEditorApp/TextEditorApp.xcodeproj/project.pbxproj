@@ -16,7 +16,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		27C1E7D02C0F3838005C95D0 /* TextEditorApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TextEditorApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		27C1E7D02C0F3838005C95D0 /* CampaignCreator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CampaignCreator.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		27C1E7D52C0F3838005C95D0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		27C1E7D72C0F3838005C95D0 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
 		27C1E7D92C0F3838005C95D0 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -29,7 +29,7 @@
 		27C1E7CF2C0F3838005C95D0 = {
 			isa = PBXGroup;
 			children = (
-				27C1E7D42C0F3838005C95D0 /* TextEditorApp */,
+				27C1E7D42C0F3838005C95D0 /* CampaignCreator */,
 				27C1E7D12C0F3838005C95D0 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -37,12 +37,12 @@
 		27C1E7D12C0F3838005C95D0 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				27C1E7D02C0F3838005C95D0 /* TextEditorApp.app */,
+				27C1E7D02C0F3838005C95D0 /* CampaignCreator.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		27C1E7D42C0F3838005C95D0 /* TextEditorApp */ = {
+		27C1E7D42C0F3838005C95D0 /* CampaignCreator */ = {
 			isa = PBXGroup;
 			children = (
 				27C1E7D52C0F3838005C95D0 /* AppDelegate.swift */,
@@ -52,15 +52,15 @@
 				27C1E7DD2C0F3838005C95D0 /* LaunchScreen.storyboard */,
 				27C1E7DF2C0F3838005C95D0 /* Info.plist */,
 			);
-			path = TextEditorApp;
+			path = CampaignCreator;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		27C1E7D22C0F3838005C95D0 /* TextEditorApp */ = {
+		27C1E7D22C0F3838005C95D0 /* CampaignCreator */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 27C1E7E32C0F3838005C95D0 /* Build configuration list for PBXNativeTarget "TextEditorApp" */;
+			buildConfigurationList = 27C1E7E32C0F3838005C95D0 /* Build configuration list for PBXNativeTarget "CampaignCreator" */;
 			buildPhases = (
 				27C1E7E12C0F3838005C95D0 /* Sources */,
 				27C1E7E22C0F3838005C95D0 /* Frameworks */,
@@ -70,9 +70,9 @@
 			);
 			dependencies = (
 			);
-			name = TextEditorApp;
-			productName = TextEditorApp;
-			productReference = 27C1E7D02C0F3838005C95D0 /* TextEditorApp.app */;
+			name = CampaignCreator;
+			productName = CampaignCreator;
+			productReference = 27C1E7D02C0F3838005C95D0 /* CampaignCreator.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -84,12 +84,12 @@
 				LastUpgradeCheck = 1250;
 				ORGANIZATIONNAME = "YourOrganizationName"; // Replace with your actual organization name
 				TargetAttributes = {
-					27C1E7D22C0F3838005C95D0 = {
+					27C1E7D22C0F3838005C95D0 /* CampaignCreator */ = {
 						CreatedOnToolsVersion = 12.5;
 					};
 				};
 			};
-			buildConfigurationList = 27C1E7CC2C0F3838005C95D0 /* Build configuration list for PBXProject "TextEditorApp" */;
+			buildConfigurationList = 27C1E7CC2C0F3838005C95D0 /* Build configuration list for PBXProject "CampaignCreator" */;
 			compatibilityVersion = "Xcode 9.3";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -102,7 +102,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				27C1E7D22C0F3838005C95D0 /* TextEditorApp */,
+				27C1E7D22C0F3838005C95D0 /* CampaignCreator */,
 			);
 		};
 /* End PBXProject section */
@@ -268,7 +268,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = TextEditorApp/Info.plist;
+				INFOPLIST_FILE = CampaignCreator/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -278,8 +278,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.example.TextEditorApp"; // Replace with your bundle identifier
-				PRODUCT_NAME = "\";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.example.CampaignCreator"; // Replace with your bundle identifier
+				PRODUCT_NAME = "CampaignCreator";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0; // Adjust as needed
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -294,7 +294,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = TextEditorApp/Info.plist;
+				INFOPLIST_FILE = CampaignCreator/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -304,8 +304,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.example.TextEditorApp"; // Replace with your bundle identifier
-				PRODUCT_NAME = "\";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.example.CampaignCreator"; // Replace with your bundle identifier
+				PRODUCT_NAME = "CampaignCreator";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0; // Adjust as needed
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -315,7 +315,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		27C1E7CC2C0F3838005C95D0 /* Build configuration list for PBXProject "TextEditorApp" */ = {
+		27C1E7CC2C0F3838005C95D0 /* Build configuration list for PBXProject "CampaignCreator" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				27C1E7CD2C0F3838005C95D0 /* Debug */,
@@ -324,7 +324,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		27C1E7E32C0F3838005C95D0 /* Build configuration list for PBXNativeTarget "TextEditorApp" */ = {
+		27C1E7E32C0F3838005C95D0 /* Build configuration list for PBXNativeTarget "CampaignCreator" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				27C1E7E42C0F3838005C95D0 /* Debug */,

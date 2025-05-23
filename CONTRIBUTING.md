@@ -1,6 +1,6 @@
-# Contributing to NarrateCraft
+# Contributing to CampaignCreator
 
-We appreciate your interest in contributing to NarrateCraft! Whether it's reporting a bug, suggesting a feature, or offering code improvements, your help is welcome.
+We appreciate your interest in contributing to CampaignCreator! Whether it's reporting a bug, suggesting a feature, or offering code improvements, your help is welcome.
 
 ## Reporting Bugs
 
@@ -15,7 +15,7 @@ If you encounter a bug, please help us by reporting it:
 
 ## Feature Suggestions
 
-We are always looking for ways to improve NarrateCraft:
+We are always looking for ways to improve CampaignCreator:
 
 1.  **Check Existing Suggestions:** See if your idea has already been suggested or discussed.
 2.  **Open a New Issue:** If not, please open an issue on GitHub to suggest new features or enhancements.
@@ -35,4 +35,4 @@ We welcome contributions in the form of Pull Requests. If you're planning to con
 
 *(More detailed guidelines for pull requests, development setup, and coding standards will be provided as the project grows.)*
 
-Thank you for helping make NarrateCraft better!
+Thank you for helping make CampaignCreator better!

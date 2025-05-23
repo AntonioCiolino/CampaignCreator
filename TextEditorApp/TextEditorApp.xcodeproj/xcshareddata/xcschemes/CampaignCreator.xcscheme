@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "27C1E7D22C0F3838005C95D0"
-               BuildableName = "TextEditorApp.app"
-               BlueprintName = "TextEditorApp"
-               ReferencedContainer = "container:TextEditorApp.xcodeproj">
+               BuildableName = "CampaignCreator.app"
+               BlueprintName = "CampaignCreator"
+               ReferencedContainer = "container:CampaignCreator.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "27C1E7E92C0F3838005C95D0"
-               BuildableName = "TextEditorAppTests.xctest"
-               BlueprintName = "TextEditorAppTests"
-               ReferencedContainer = "container:TextEditorApp.xcodeproj">
+               BuildableName = "CampaignCreatorTests.xctest"
+               BlueprintName = "CampaignCreatorTests"
+               ReferencedContainer = "container:CampaignCreator.xcodeproj">
             </BuildableReference>
          </TestableReference>
          <TestableReference
@@ -43,9 +43,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "27C1E7F42C0F3838005C95D0"
-               BuildableName = "TextEditorAppUITests.xctest"
-               BlueprintName = "TextEditorAppUITests"
-               ReferencedContainer = "container:TextEditorApp.xcodeproj">
+               BuildableName = "CampaignCreatorUITests.xctest"
+               BlueprintName = "CampaignCreatorUITests"
+               ReferencedContainer = "container:CampaignCreator.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -65,9 +65,12 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "27C1E7D22C0F3838005C95D0"
-            BuildableName = "TextEditorApp.app"
-            BlueprintName = "TextEditorApp"
-            ReferencedContainer = "container:TextEditorApp.xcodeproj">
+            BuildableName = "CampaignCreator.app"
+            BlueprintName = "CampaignCreator"
+            ReferencedContainer = "container:CampaignCreator.xcodeproj">
+            BuildableName = "CampaignCreator.app"
+            BlueprintName = "CampaignCreator"
+            ReferencedContainer = "container:CampaignCreator.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
