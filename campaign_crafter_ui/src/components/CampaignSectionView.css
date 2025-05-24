@@ -1,0 +1,172 @@
+/* CampaignSectionView.css */
+.campaign-section-view {
+  background-color: var(--surface-color); 
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 1rem 1.25rem; /* Consistent padding */
+  margin-bottom: 1.5rem; /* Consistent spacing */
+  box-shadow: var(--box-shadow);
+}
+
+.campaign-section-view .section-title {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1.4rem; /* Adjusted size */
+  color: var(--text-color);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
+.campaign-section-view .section-content {
+  font-size: 1rem; /* Base font size */
+  line-height: var(--line-height-base);
+  color: var(--text-color);
+  word-wrap: break-word; /* Prevent overflow */
+}
+
+/* ReactMarkdown specific styles to match theme */
+.campaign-section-view .section-content p {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+.campaign-section-view .section-content h1,
+.campaign-section-view .section-content h2,
+.campaign-section-view .section-content h3,
+.campaign-section-view .section-content h4,
+.campaign-section-view .section-content h5,
+.campaign-section-view .section-content h6 {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600; /* Slightly bolder for markdown headers */
+}
+.campaign-section-view .section-content ul,
+.campaign-section-view .section-content ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem; 
+}
+.campaign-section-view .section-content blockquote {
+  border-left: 4px solid var(--border-color);
+  padding-left: 0.75rem;
+  margin-left: 0;
+  color: var(--text-color-muted);
+  font-style: italic;
+}
+.campaign-section-view .section-content pre {
+  background-color: #2d2d2d; /* Keep dark for code blocks, or use a light theme variable */
+  color: #f8f8f2;
+  padding: 0.75rem;
+  border-radius: var(--border-radius);
+  overflow-x: auto; 
+}
+.campaign-section-view .section-content code:not(pre > code) { /* Inline code */
+  font-family: var(--font-family-monospace);
+  background-color: rgba(0,0,0,0.05); 
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+.campaign-section-view .section-content pre code {
+  background-color: transparent; 
+  padding: 0;
+  font-size: inherit; 
+}
+
+/* Styles for Edit Mode and ReactQuill */
+.campaign-section-view .section-editor {
+  margin-top: 1rem;
+}
+
+/* Quill editor needs specific styling to override defaults if necessary */
+.campaign-section-view .quill-editor .ql-toolbar.ql-snow {
+  border-top-left-radius: var(--border-radius);
+  border-top-right-radius: var(--border-radius);
+  border-bottom: 1px solid var(--border-color); 
+  background-color: #fefefe; /* Slightly off-white for toolbar */
+}
+.campaign-section-view .quill-editor .ql-container.ql-snow {
+  border-bottom-left-radius: var(--border-radius);
+  border-bottom-right-radius: var(--border-radius);
+  min-height: 150px; /* Adjusted min-height */
+  font-size: 1rem; 
+  background-color: var(--surface-color);
+  color: var(--text-color);
+}
+.campaign-section-view .quill-editor .ql-editor {
+  padding: 0.75rem; /* Padding inside the editor area */
+}
+
+
+.campaign-section-view .editor-actions,
+.campaign-section-view .view-actions {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap; /* Allow buttons to wrap on small screens */
+  gap: 0.5rem; 
+  justify-content: flex-end; 
+}
+
+/* Buttons use global styles from App.css, but can be further customized here */
+.campaign-section-view .editor-button {
+  /* Global button styles are applied */
+  padding: 0.4rem 0.8rem; /* Slightly smaller buttons for this context */
+  font-size: 0.9rem;
+}
+
+.campaign-section-view .edit-button {
+  background-color: var(--info-color); 
+  border-color: var(--info-color);
+  color: white;
+}
+.campaign-section-view .edit-button:hover {
+  background-color: #138496; /* Darker info */
+  border-color: #138496;
+}
+
+.campaign-section-view .save-button {
+  background-color: var(--success-color); 
+  border-color: var(--success-color);
+  color: white;
+}
+.campaign-section-view .save-button:hover {
+  background-color: #1e7e34; /* Darker success */
+  border-color: #1e7e34;
+}
+
+.campaign-section-view .cancel-button {
+  background-color: var(--secondary-color); 
+  border-color: var(--secondary-color);
+  color: white;
+}
+.campaign-section-view .cancel-button:hover {
+  background-color: var(--secondary-color-dark);
+  border-color: var(--secondary-color-dark);
+}
+
+.campaign-section-view .editor-button:disabled {
+  /* Uses global disabled styles */
+}
+
+/* Feedback messages in editor actions */
+.editor-feedback {
+  width: 100%; /* Take full width if wrapped */
+  text-align: right;
+  font-size: 0.85em;
+  margin-top: 0.25rem;
+}
+.editor-feedback.error-message { color: var(--danger-color); }
+.editor-feedback.success-message { color: var(--success-color); }
+
+
+/* Responsive Quill Toolbar - basic attempt, might need more specific selectors */
+@media (max-width: 480px) {
+  .campaign-section-view .quill-editor .ql-toolbar.ql-snow {
+    display: flex;
+    flex-wrap: wrap; /* Allow toolbar items to wrap */
+  }
+  .campaign-section-view .quill-editor .ql-formats {
+    margin-right: 5px !important; /* Reduce spacing */
+  }
+  .campaign-section-view .quill-editor .ql-toolbar.ql-snow .ql-picker-label {
+    font-size: 0.85em; /* Smaller font for pickers */
+  }
+}

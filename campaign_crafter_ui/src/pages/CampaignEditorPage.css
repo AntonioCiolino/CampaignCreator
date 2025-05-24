@@ -1,0 +1,296 @@
+/* CampaignEditorPage.css */
+.campaign-editor-page {
+  padding: 1rem; /* Use theme-consistent spacing */
+  /* max-width is already set and fine */
+  margin: 0 auto; 
+  /* Uses global .container via App.tsx's Layout if main content is wrapped */
+}
+
+.campaign-header {
+  margin-bottom: 1.5rem; 
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--border-color); /* Use theme variable */
+}
+
+.editor-section {
+  background-color: var(--surface-color); /* Use theme variable */
+  padding: 1.25rem; /* Consistent padding */
+  border-radius: var(--border-radius); /* Use theme variable */
+  margin-bottom: 1.5rem; /* Consistent spacing */
+  box-shadow: var(--box-shadow); /* Use theme variable */
+}
+
+/* Re-using global .form-label, .form-input, .form-textarea, .form-select, .form-range */
+/* Specifics for Campaign Editor */
+.editor-section .form-input-title {
+  font-size: 1.8rem; /* Adjusted title input size */
+  font-weight: 600; /* Bolder for main title */
+  color: var(--text-color);
+  /* padding and margin are handled by global .form-input */
+}
+
+.editor-section .form-textarea { /* For initial prompt */
+  min-height: 100px; /* Adjusted min-height */
+  line-height: var(--line-height-base); /* Use theme variable */
+}
+
+.read-only-section h2 {
+  font-size: 1.5rem; /* Adjusted size for read-only section headers */
+  color: var(--text-color); 
+  margin-top: 0;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.save-actions {
+  margin-top: 1.5rem; 
+  padding: 1rem 0; /* Less padding as it's not a 'card' */
+  text-align: right; 
+  background-color: transparent; /* No separate background */
+  box-shadow: none; /* No shadow for this action bar */
+}
+
+.save-actions .main-save-button { /* Specific class for main save button */
+  background-color: var(--success-color);
+  border-color: var(--success-color);
+  /* Other button styles inherited from global */
+}
+.save-actions .main-save-button:hover:not(:disabled) {
+  background-color: #1e7e34; /* Darker success */
+  border-color: #1e7e34;
+}
+/* .save-button:disabled uses global styles */
+
+.save-feedback { 
+  display: inline-block;
+  margin-left: 1rem;
+  font-size: 0.9em;
+  font-weight: 500;
+}
+/* success-message and error-message classes already styled globally via App.css */
+
+
+/* LLM Settings Specific Styling */
+.llm-settings-and-actions {
+  /* editor-section styles are already applied */
+  margin-top: 1.5rem;
+}
+.llm-settings-and-actions h3 {
+  font-size: 1.4rem; /* Adjusted size */
+  color: var(--text-color);
+  margin-top: 0;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.llm-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem; 
+  margin-bottom: 1.5rem; 
+}
+.llm-controls .form-group {
+  flex: 1; 
+  min-width: 200px; 
+}
+/* .llm-controls .form-label, .form-select, .form-range use global styles from App.css */
+
+.llm-actions {
+  display: flex;
+  flex-wrap: wrap; 
+  gap: 1rem; 
+  align-items: flex-start; 
+}
+.llm-actions .action-group {
+  display: flex;
+  flex-direction: column; 
+  gap: 0.5rem; 
+  flex: 1; 
+  min-width: 180px; /* Ensure buttons have enough space */
+}
+.llm-actions .llm-button { /* General style for LLM action buttons */
+  background-color: var(--info-color); /* Use theme variable */
+  border-color: var(--info-color);
+  color: white;
+  width: 100%; /* Full width for buttons in action groups */
+}
+.llm-actions .llm-button:hover:not(:disabled) {
+  background-color: #117a8b; /* Darker info */
+  border-color: #117a8b;
+}
+.llm-actions .export-button { /* Specific style for export button */
+  background-color: var(--warning-color);
+  border-color: var(--warning-color);
+  color: var(--text-color); /* Dark text on yellow for better contrast */
+}
+.llm-actions .export-button:hover:not(:disabled) {
+  background-color: #e0a800; /* Darker warning */
+  border-color: #d39e00;
+}
+/* .llm-button:disabled uses global styles */
+.llm-feedback { 
+  font-size: 0.85em;
+  margin-top: 0.25rem;
+}
+
+/* Suggested Titles Section Styling */
+.suggested-titles-section {
+  /* editor-section styles are already applied */
+  margin-top: 1.5rem;
+}
+.suggested-titles-section h3 {
+  font-size: 1.2rem; /* Adjusted size */
+  color: var(--text-color);
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+.titles-list {
+  list-style-type: disc;
+  padding-left: 1.5rem; /* Consistent with other lists */
+  margin-bottom: 1rem;
+}
+.title-item {
+  padding: 0.25rem 0;
+  font-size: 0.95rem;
+  color: var(--text-color-muted);
+  border-bottom: 1px dashed var(--border-color);
+}
+.title-item:last-child { border-bottom: none; }
+
+.dismiss-titles-button {
+  background-color: var(--danger-color);
+  border-color: var(--danger-color);
+  color: white;
+  padding: 0.4rem 0.8rem; /* Smaller button */
+  font-size: 0.85rem;
+}
+.dismiss-titles-button:hover {
+  background-color: #c82333; /* Darker danger */
+  border-color: #bd2130;
+}
+
+/* Add Section Area Styling */
+.add-section-area {
+  /* editor-section styles are already applied */
+  margin-top: 2rem; /* More space before this final section */
+}
+.add-section-area h3 {
+  font-size: 1.4rem; /* Consistent with other section headers */
+  color: var(--text-color);
+  margin-top: 0;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+/* .add-section-form .form-group, .form-label, .form-input, .form-textarea use global styles */
+.add-section-form .add-section-button {
+  background-color: var(--success-color);
+  border-color: var(--success-color);
+  /* width: 100%; /* Make button full width on mobile - handled by global button style or media query below */
+}
+.add-section-form .add-section-button:hover:not(:disabled) {
+  background-color: #1e7e34; /* Darker success */
+  border-color: #1e7e34;
+}
+/* .add-section-button:disabled uses global styles */
+/* .feedback-message, .success-message, .error-message use global styles */
+
+
+/* Content display styles for ReadOnly sections */
+.prompt-content,
+.concept-content,
+.toc-content {
+  font-size: 1rem; /* Base font size */
+  line-height: var(--line-height-base); /* Use theme variable */
+  color: var(--text-color-muted); /* Slightly muted for read-only generated content */
+  word-wrap: break-word; /* Prevent overflow */
+}
+.prompt-content p:last-child,
+.concept-content p:last-child,
+.toc-content p:last-child { margin-bottom: 0; }
+.toc-content ul, .toc-content ol { padding-left: 1.5rem; }
+
+.campaign-sections-list {
+  margin-top: 2rem; /* Consistent spacing */
+}
+.campaign-sections-list h2 {
+  font-size: 1.75rem; /* Consistent with other main headers */
+  color: var(--text-color);
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Global loading/error messages not tied to specific forms */
+.loading-message,
+.error-message:not(.save-feedback):not(.llm-feedback):not(.feedback-message) { 
+  text-align: center;
+  font-size: 1.1em;
+  padding: 1.5rem;
+  background-color: var(--surface-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+}
+/* .error-message is global from App.css */
+
+/* Removing generic .editor-actions as specific action sections are styled */
+/* .editor-actions { ... } */
+/* .editor-actions button { ... } */
+/* .editor-actions button:disabled { ... } */
+/* .editor-actions button:hover:not(:disabled) { ... } */
+
+
+/* Responsive adjustments for CampaignEditorPage */
+@media (max-width: 768px) {
+  .campaign-editor-page {
+    padding: 0.75rem; /* Reduced padding on smaller screens */
+  }
+  .editor-section, 
+  .read-only-section, /* This class is used for concept, toc, sections list */
+  .llm-settings-and-actions,
+  .suggested-titles-section,
+  .add-section-area {
+    padding: 1rem; /* Reduced padding for sections */
+    margin-bottom: 1rem; /* Reduced margin between sections */
+  }
+
+  .editor-section .form-input-title {
+    font-size: 1.5rem; /* Smaller title input */
+  }
+  .read-only-section h2,
+  .llm-settings-and-actions h3,
+  .suggested-titles-section h3,
+  .add-section-area h3,
+  .campaign-sections-list h2 {
+    font-size: 1.3rem; /* Smaller section headers */
+  }
+
+  .llm-controls {
+    flex-direction: column; /* Stack LLM controls */
+    gap: 1rem;
+  }
+  .llm-actions {
+    flex-direction: column; /* Stack LLM action buttons */
+    gap: 0.75rem;
+  }
+  .llm-actions .action-group {
+    min-width: 100%; /* Full width for action groups */
+  }
+
+  .save-actions {
+    text-align: center; /* Center save button on mobile */
+  }
+  .save-actions .main-save-button {
+    width: 100%; /* Full width save button */
+  }
+  .save-feedback {
+    display: block; /* Stack feedback message */
+    text-align: center;
+    margin-left: 0;
+    margin-top: 0.5rem;
+  }
+  .add-section-form .add-section-button {
+    width: 100%; /* Full width add section button */
+  }
+}

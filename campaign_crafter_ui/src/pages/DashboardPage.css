@@ -1,0 +1,91 @@
+/* DashboardPage.css */
+.dashboard-page {
+  /* Using global .container for padding and max-width */
+  display: grid;
+  grid-template-columns: 1fr; /* Single column layout by default */
+  gap: 2rem; /* Consistent gap */
+}
+
+/* Create Campaign Section */
+.create-campaign-section {
+  background-color: var(--surface-color);
+  padding: 1.5rem;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+}
+
+.create-campaign-section h2 {
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+  color: var(--text-color);
+  font-size: 1.5rem; /* Adjusted size */
+}
+
+/* Uses global .form-group, .form-label, .form-input, .form-textarea from App.css */
+
+.create-campaign-form .create-button {
+  background-color: var(--success-color); /* Use theme variable */
+  border-color: var(--success-color);
+  /* padding, font-size, etc., inherited from global button styles */
+  width: 100%; /* Full width button on mobile */
+}
+
+.create-campaign-form .create-button:hover {
+  background-color: #1e7e34; /* Darker green for hover */
+  border-color: #1e7e34;
+}
+
+.create-campaign-form .create-button:disabled {
+  background-color: var(--secondary-color);
+  border-color: var(--secondary-color);
+  opacity: 0.65;
+}
+
+/* Error message styling is global from App.css */
+.error-message.create-error { 
+  margin-bottom: 1rem; 
+}
+
+
+/* Campaign List Section */
+.campaign-list-section h1 {
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+  color: var(--text-color);
+  font-size: 1.75rem; /* Adjusted size */
+}
+
+.campaign-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr; /* Default to one column for mobile */
+  gap: 1rem; /* Gap between cards */
+}
+
+/* Responsive adjustments */
+@media (min-width: 600px) { /* For small tablets and wider */
+  .create-campaign-form .create-button {
+    width: auto; /* Auto width for button on larger screens */
+  }
+
+  .campaign-list {
+    /* 2 columns for campaign cards on small tablets */
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 992px) { /* For larger screens (desktops) */
+  .dashboard-page {
+    /* Optional: two-column layout for dashboard on larger screens */
+    /* grid-template-columns: 400px 1fr; */ /* Example: Create form on left, list on right */
+    /* align-items: start; */ /* Align items to the start of the grid track */
+  }
+
+  .campaign-list {
+    /* 3 columns for campaign cards on large screens, or adjust minmax */
+     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  }
+}
