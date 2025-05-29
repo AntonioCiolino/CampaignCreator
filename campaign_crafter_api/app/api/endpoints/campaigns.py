@@ -57,8 +57,7 @@ async def list_campaigns(
     db: Session = Depends(get_db)
 ):
     campaigns = crud.get_all_campaigns(db=db)
-    if not campaigns:
-        raise HTTPException(status_code=404, detail="No campaigns found")
+    # No HTTPException is raised if campaigns is empty
     return campaigns
 
 @router.get("/{campaign_id}", response_model=models.Campaign)
