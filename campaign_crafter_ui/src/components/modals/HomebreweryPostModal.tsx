@@ -132,9 +132,11 @@ const HomebreweryPostModal: React.FC<HomebreweryPostModalProps> = ({ isOpen, onC
         >
           Open Homebrewery (New Brew)
         </Button>
-        <Button variant="secondary" onClick={onClose} style={{ marginLeft: 'auto' }}> {/* Push close to the right */}
-          Close
-        </Button>
+        <div style={{ marginLeft: 'auto' }}> {/* Push close to the right */}
+          <Button variant="secondary" onClick={onClose}>
+            Close
+          </Button>
+        </div>
       </div>
     );
   };

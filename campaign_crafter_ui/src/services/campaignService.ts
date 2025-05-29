@@ -250,3 +250,9 @@ export const getCampaignSections = async (campaignId: string | number): Promise<
 // Corrected `addCampaignSection` payload to match backend `CampaignSectionCreateInput`.
 // Corrected `getCampaignSections` to expect `{ sections: [...] }` based on backend.
 // The problematic text block below this line has been removed.
+
+export async function getLLMModels() {
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/llm-models`);
+  if (!response.ok) throw new Error('Failed to fetch LLM models');
+  return response.json();
+}

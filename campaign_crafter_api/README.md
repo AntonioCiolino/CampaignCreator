@@ -115,7 +115,8 @@ The API requires certain environment variables for configuration, such as databa
 Once the dependencies are installed and the `.env` file is configured, you can run the FastAPI application using Uvicorn:
 
 ```bash
-uvicorn main:app --reload
+# do not run this ... uvicorn main:app --reload
+python -m uvicorn app.main:app --reload
 ```
 
 *   `main:app`: Refers to the FastAPI application instance named `app` found in the `main.py` file. Adjust if your main file or app instance is named differently.

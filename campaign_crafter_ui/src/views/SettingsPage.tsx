@@ -76,15 +76,16 @@ const SettingsPage: React.FC = () => {
             placeholder="e.g., http://localhost:11434/v1"
             // disabled // Could be disabled to emphasize it's informational for current backend setup
           />
-           <Button 
-            onClick={handleSaveLocalLlmUrl} 
-            variant="secondary" 
-            size="sm"
-            style={{marginTop: '0.5rem'}}
-            // disabled // Could be disabled
-           >
-            Save to Browser (Illustrative)
-          </Button>
+           <div style={{marginTop: '0.5rem'}}>
+             <Button 
+              onClick={handleSaveLocalLlmUrl} 
+              variant="secondary" 
+              size="sm"
+              // disabled // Could be disabled
+             >
+              Save to Browser (Illustrative)
+            </Button>
+           </div>
           {saveStatus && <p style={{color: 'green', fontSize: '0.9em', marginTop: '0.5rem'}}>{saveStatus}</p>}
         </div>
       </section>

@@ -71,12 +71,12 @@ const CampaignEditorPage: React.FC = () => {
         setAvailableLLMs(llmModels);
         if (llmModels.length > 0) {
           // Updated default model selection logic for prefixed IDs
-          let defaultModel = llmModels.find(m => m.id === "openai/gpt-3.5-turbo-instruct");
+          let defaultModel = llmModels.find((m: LLMModel) => m.id === "openai/gpt-3.5-turbo-instruct");
           if (!defaultModel) {
-            defaultModel = llmModels.find(m => m.id === "openai/gpt-3.5-turbo");
+            defaultModel = llmModels.find((m: LLMModel) => m.id === "openai/gpt-3.5-turbo");
           }
           if (!defaultModel) {
-            defaultModel = llmModels.find(m => m.id === "gemini/gemini-pro"); // Check for a common Gemini model
+            defaultModel = llmModels.find((m: LLMModel) => m.id === "gemini/gemini-pro"); // Check for a common Gemini model
           }
           if (!defaultModel && llmModels.length > 0) {
             defaultModel = llmModels[0]; // Fallback to the first model in the list
@@ -145,8 +145,7 @@ const CampaignEditorPage: React.FC = () => {
       const newSection = await campaignService.addCampaignSection(campaignId, {
         title: newSectionTitle.trim() || undefined,
         prompt: newSectionPrompt.trim() || undefined,
-        modelId: selectedLLMId || undefined,
-        // temperature: temperature, // Temperature not yet sent by service/backend for this op
+        // modelId: selectedLLMId || undefined, // Remove or comment out if not in type
       });
       setSections(prev => [...prev, newSection].sort((a, b) => a.order - b.order));
       setNewSectionTitle('');
@@ -181,7 +180,7 @@ const CampaignEditorPage: React.FC = () => {
     setTocError(null);
     setSaveSuccess(null);
     try {
-      const updatedCampaign = await campaignService.generateCampaignTOC(campaignId, selectedLLMId || undefined /*, temperature */);
+      const updatedCampaign = await campaignService.generateCampaignTOC(campaignId, {});
       setCampaign(updatedCampaign);
       setSaveSuccess("Table of Contents generated successfully!");
       setTimeout(() => setSaveSuccess(null), 3000);
@@ -199,7 +198,7 @@ const CampaignEditorPage: React.FC = () => {
     setSuggestedTitles(null);
     setSaveSuccess(null);
     try {
-      const response = await campaignService.generateCampaignTitles(campaignId, selectedLLMId || undefined, 5 /*, temperature */);
+      const response = await campaignService.generateCampaignTitles(campaignId, {}, 5);
       setSuggestedTitles(response.titles);
       setSaveSuccess("Suggested titles generated successfully!");
       setTimeout(() => setSaveSuccess(null), 3000);
@@ -365,3 +364,6 @@ const CampaignEditorPage: React.FC = () => {
 };
 
 export default CampaignEditorPage;
+
+// Example type for llmModels, adjust as needed
+type LLMModel = { id: string; [key: string]: any };

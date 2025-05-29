@@ -333,3 +333,6 @@ async def prepare_campaign_for_homebrewery_posting(
         homebrewery_new_url=homebrewery_new_url,
         filename_suggestion=filename_suggestion
     )
+
+class Config:
+    from_attributes = True

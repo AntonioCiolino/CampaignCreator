@@ -47,6 +47,21 @@ class ModelInfo(BaseModel):
 class ModelListResponse(BaseModel):
     models: List[ModelInfo]
 
+class CampaignSectionBase(BaseModel):
+    title: Optional[str] = None
+    content: str
+    order: int # To maintain section order
+
+class CampaignSectionCreate(CampaignSectionBase):
+    pass
+
+class CampaignSection(CampaignSectionBase):
+    id: int
+    campaign_id: int # foreign key to Campaign
+
+    class Config:
+        orm_mode = True
+
 class CampaignSectionListResponse(BaseModel):
     sections: List[CampaignSection] # Reuses the existing CampaignSection model
 
@@ -60,17 +75,12 @@ class TableNameListResponse(BaseModel):
 class CampaignBase(BaseModel):
     title: str
     initial_user_prompt: Optional[str] = None
-    concept: Optional[str] = None # This will store the LLM-generated campaign overview
+# (Moved above to resolve forward reference issue)
 
-class CampaignCreate(BaseModel): # No longer inherits CampaignBase directly for more control
-    title: str
-    initial_user_prompt: str # Non-optional for creation
-
-class Campaign(CampaignBase): # Inherits title, initial_user_prompt, concept
+class Campaign(CampaignBase):
     id: int
-    owner_id: int # foreign key to User, will be added later
-    toc: Optional[str] = None
-    homebrewery_export: Optional[str] = None # To store pre-generated export
+    owner_id: int
+    sections: List['CampaignSection'] = []
 
     class Config:
         orm_mode = True

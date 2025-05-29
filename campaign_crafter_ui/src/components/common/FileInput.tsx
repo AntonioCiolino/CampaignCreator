@@ -72,7 +72,6 @@ const FileInput: React.FC<FileInputProps> = ({
         aria-hidden="true" // Hide from accessibility tree as we have a button
       />
       <Button
-        id={`${id}-button`}
         onClick={handleButtonClick}
         variant="secondary" // Or make variant a prop
         disabled={disabled}
