@@ -1,0 +1,119 @@
+/* Layout.css */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--background-color); /* Use theme variable */
+}
+
+.app-header {
+  background-color: var(--primary-color); /* Use theme variable */
+  padding: 1rem 0; /* Use container for horizontal padding */
+  color: white;
+  box-shadow: var(--box-shadow);
+  /* display: flex; /* Already there from previous structure */
+  /* justify-content: space-between; /* Already there */
+  /* align-items: center; /* Already there */
+}
+
+/* Container for header content */
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 90%;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 15px; /* Consistent with global .container */
+  padding-right: 15px;
+}
+
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.75rem; /* Adjusted size */
+  font-weight: 500;
+}
+
+.app-title-link {
+  color: white;
+  text-decoration: none;
+}
+.app-title-link:hover {
+  color: white; /* Keep white on hover */
+  text-decoration: none; /* No underline for title */
+}
+
+.app-main-content {
+  flex-grow: 1;
+  padding-top: 20px; /* Space from header */
+  padding-bottom: 20px; /* Space before footer */
+  /* Max-width and centering handled by global .container if used inside pages,
+     or can be applied here if pages don't use .container directly.
+     For now, assume pages will use .container or manage their own width.
+  */
+}
+
+.app-footer {
+  text-align: center;
+  padding: 1rem;
+  background-color: var(--surface-color); /* Use theme variable */
+  color: var(--text-color-muted); /* Use theme variable */
+  border-top: 1px solid var(--border-color); /* Use theme variable */
+  font-size: 0.9em;
+  margin-top: auto; /* Push footer to bottom if content is short */
+}
+
+/* Basic Nav (can be expanded) - Kept for potential future use */
+.app-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+}
+
+.app-nav li {
+  margin-left: 20px;
+}
+
+.app-nav a {
+  color: white;
+  text-decoration: none;
+  font-size: 1em;
+  padding: 0.5rem 0;
+}
+
+.app-nav a:hover,
+.app-nav a.active {
+  /* text-decoration: underline; */
+  border-bottom: 2px solid var(--warning-color); /* Example active/hover style */
+}
+
+
+/* Responsive adjustments for Layout */
+@media (max-width: 768px) {
+  .app-header h1 {
+    font-size: 1.5rem; /* Smaller title on mobile */
+  }
+
+  .header-container {
+    flex-direction: column; /* Stack title and nav if nav exists */
+    gap: 10px;
+  }
+  
+  .app-nav ul {
+    flex-direction: column; /* Stack nav items on mobile */
+    align-items: center;
+    width: 100%;
+  }
+  .app-nav li {
+    margin-left: 0;
+    margin-bottom: 0.5rem; /* Space between stacked nav items */
+  }
+
+  .app-main-content {
+    padding-top: 15px;
+    padding-bottom: 15px;
+  }
+}
