@@ -15,8 +15,13 @@ class Settings(BaseSettings):
     
     # OpenAI DALL-E Image Generation Settings
     OPENAI_DALLE_MODEL_NAME: str = "dall-e-3"
-    OPENAI_DALLE_DEFAULT_IMAGE_SIZE: str = "1024x1024" # Valid sizes for DALL-E 3: 1024x1024, 1792x1024, 1024x1792
-    OPENAI_DALLE_DEFAULT_IMAGE_QUALITY: str = "standard" # Valid qualities for DALL-E 3: "standard", "hd"
+    OPENAI_DALLE_DEFAULT_IMAGE_SIZE: str = "1024x1024"
+    OPENAI_DALLE_DEFAULT_IMAGE_QUALITY: str = "standard"
+
+    # Generic Local LLM Provider (OpenAI-Compatible API)
+    LOCAL_LLM_PROVIDER_NAME: str = "local_llm" # Used as a key in the LLM factory
+    LOCAL_LLM_API_BASE_URL: Optional[str] = None # e.g., "http://localhost:11434/v1" for Ollama's OpenAI compat endpoint
+    LOCAL_LLM_DEFAULT_MODEL_ID: Optional[str] = None # e.g., "mistral:latest" or just "mistral"
 
     # Database URL (example, if you had one)
     # DATABASE_URL: str = "sqlite:///./test.db"
@@ -35,6 +40,6 @@ settings = Settings()
 
 # Optional: For easy debugging of loaded settings
 # print(f"OpenAI Key loaded: {'Yes' if settings.OPENAI_API_KEY != 'YOUR_OPENAI_API_KEY' else 'No (Using default placeholder)'}")
-# print(f"DALL-E Model: {settings.OPENAI_DALLE_MODEL_NAME}")
-# print(f"DALL-E Size: {settings.OPENAI_DALLE_DEFAULT_IMAGE_SIZE}")
-# print(f"DALL-E Quality: {settings.OPENAI_DALLE_DEFAULT_IMAGE_QUALITY}")
+# print(f"Local LLM Base URL: {settings.LOCAL_LLM_API_BASE_URL}")
+# print(f"Local LLM Provider Name: {settings.LOCAL_LLM_PROVIDER_NAME}")
+# print(f"Local LLM Default Model: {settings.LOCAL_LLM_DEFAULT_MODEL_ID}")
