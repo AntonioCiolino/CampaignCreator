@@ -5,19 +5,18 @@
   "dependencies": {
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^13.5.0",
+    "@testing-library/react": "^15.0.7",
+    "@testing-library/user-event": "^14.5.2",
     "@types/jest": "^27.5.2",
     "@types/node": "^16.18.126",
-    "@types/react": "^19.1.5",
-    "@types/react-dom": "^19.1.5",
-    "@types/react-router-dom": "^5.3.3",
+    "@types/react": "^18.2.79",
+    "@types/react-dom": "^18.2.79",
     "axios": "^1.9.0",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "react-markdown": "^10.1.0",
     "react-quill": "^2.0.0",
-    "react-router-dom": "^7.6.0",
+    "react-router-dom": "^6.23.1",
     "react-scripts": "5.0.1",
     "typescript": "^4.9.5",
     "web-vitals": "^2.1.4"
@@ -45,5 +44,19 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "jest": {
+    "transformIgnorePatterns": [
+      "/node_modules/(?!(axios|react-markdown|devlop|unist(-.+)?|remark(-.+)?|rehype(-.+)?|mdast(-.+)?|micromark(-.+)?|vfile(-.+)?|vfile|hast(-.+)?|estree(-.+)?|estree-util(-.+)?|html-url-attributes|bail|ccount|character-entities|decode-named-character-reference|longest-streak|markdown-table|trim-lines|trough|unified|property-information|space-separated-tokens|comma-separated-tokens|web-namespaces|github-slugger|refractor|detab|inline-style-parser|style-to-object|is-plain-obj|zwitch)/)",
+      "\\.pnp\\.[^\\/]+$"
+    ],
+    "moduleNameMapper": {
+      "unist-util-visit-parents/do-not-use-color": "<rootDir>/src/__mocks__/emptyMock.js",
+      "^#minpath$": "<rootDir>/node_modules/vfile/lib/minpath.js",
+      "^#minproc$": "<rootDir>/node_modules/vfile/lib/minproc.js",
+      "^#minurl$": "<rootDir>/node_modules/vfile/lib/minurl.js",
+      "^#mincwd$": "<rootDir>/node_modules/vfile/lib/mincwd.js",
+      "\\.css$": "<rootDir>/src/__mocks__/styleMock.js"
+    }
   }
 }

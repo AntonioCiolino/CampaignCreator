@@ -248,27 +248,5 @@ export const getCampaignSections = async (campaignId: string | number): Promise<
 // Added `model_id_with_prefix_for_concept` to `CampaignCreatePayload`.
 // Standardized `LLMGenerationPayload` for TOC and Titles generation.
 // Corrected `addCampaignSection` payload to match backend `CampaignSectionCreateInput`.
-// Corrected `getCampaignSections` to expect `{ sections: [...] }` based on backend.`campaignService.ts` has been updated with the new `PrepareHomebreweryPostResponse` interface and the `prepareCampaignForHomebrewery` function. Some other minor corrections and alignments with backend models were also noted and conceptually applied.
-
-Now, for **Phase 2: Create/Modify UI Component for Homebrewery Posting**.
-
-I will create a new modal component for this: `HomebreweryPostModal.tsx`.
-
-**Plan for `HomebreweryPostModal.tsx`:**
-    a. Create `campaign_crafter_ui/src/components/modals/HomebreweryPostModal.tsx` (assuming a `modals` subfolder for organization).
-    b. Implement the component:
-        i. Props: `isOpen: boolean`, `onClose: () => void`, `campaignId: string | null`.
-        ii. State: `markdownContent: string`, `homebreweryNewUrl: string`, `filenameSuggestion: string`, `notes: string | null`, `isLoading: boolean`, `error: string | null`, `copySuccess: string`.
-        iii. `useEffect` to call `prepareCampaignForHomebrewery` when `isOpen` becomes true and `campaignId` is set. It should reset when closed or `campaignId` changes.
-        iv. Render a modal structure (basic HTML/CSS for now, actual modal libraries like React-Modal or Material-UI would be used in a full app).
-        v. Inside the modal:
-            *   Display loading/error states.
-            *   If data is loaded:
-                *   Display `filenameSuggestion`.
-                *   Display `notes` from the API response.
-                *   A read-only `textarea` for `markdownContent`.
-                *   "Copy Markdown" button.
-                *   A link/button "Open Homebrewery" using `homebreweryNewUrl`.
-                *   Instructions for the user.
-        vi. Implement `handleCopyMarkdown` function using `navigator.clipboard.writeText()` and set `copySuccess` message.
-    c. Create the file.
+// Corrected `getCampaignSections` to expect `{ sections: [...] }` based on backend.
+// The problematic text block below this line has been removed.
