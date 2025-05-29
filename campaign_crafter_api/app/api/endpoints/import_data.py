@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.services.import_service import ImportService, DEFAULT_OWNER_ID
-from app.models.import_models import ImportSummaryResponse, ImportErrorDetail
+from app.external_models.import_models import ImportSummaryResponse, ImportErrorDetail
 
 router = APIRouter()
 

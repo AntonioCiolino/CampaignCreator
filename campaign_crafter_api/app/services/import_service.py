@@ -10,9 +10,9 @@ from fastapi import HTTPException
 from app import crud
 # Ensure correct import for ORM models if they are in a specific module like app.orm_models
 # from app import orm_models 
-from app.db.base_class import Base as OrmBase # Or wherever your ORM models are based / can be accessed
-from app.models.campaign_models import CampaignCreate # Actual Pydantic model for creation
-from app.models.import_models import ImportSummaryResponse, SectionStructure, CampaignStructure, ImportErrorDetail
+from app.db import Base as OrmBase # Or wherever your ORM models are based / can be accessed
+from app.models import CampaignBase  # Actual Pydantic model for creation
+from app.external_models.import_models import ImportSummaryResponse, SectionStructure, CampaignStructure, ImportErrorDetail
 
 # Placeholder for owner_id until auth is integrated
 DEFAULT_OWNER_ID = 1 

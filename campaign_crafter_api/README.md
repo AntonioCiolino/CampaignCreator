@@ -81,6 +81,11 @@ pip install -r requirements.txt
 ```
 *(Note: If a `poetry.lock` and `pyproject.toml` are present and you prefer Poetry, you can use `poetry install` instead, after installing Poetry itself.)*
 
+We also may need to isntall:
+```bash
+pip install python-multipart
+```
+
 ### 4. Configure Environment Variables
 
 The API requires certain environment variables for configuration, such as database connection strings and LLM API keys.

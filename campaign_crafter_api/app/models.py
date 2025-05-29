@@ -114,3 +114,6 @@ class User(UserBase):
 
     class Config:
         orm_mode = True
+
+class LLMTextGenerationResponse(BaseModel):
+    text: str  # Placeholder field; add more fields as needed

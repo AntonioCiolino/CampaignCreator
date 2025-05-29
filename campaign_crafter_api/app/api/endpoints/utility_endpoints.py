@@ -17,7 +17,7 @@ random_table_service = RandomTableService()
 async def list_random_table_names():
     try:
         table_names = random_table_service.get_available_table_names()
-        return models.TableNameListResponse(table_names=table_names)
+        return external_models.TableNameListResponse(table_names=table_names)
     except Exception as e:
         # Catch-all for unexpected errors during service operation (e.g., if CSV was malformed beyond _load_tables handling)
         print(f"Error listing random table names: {e}")

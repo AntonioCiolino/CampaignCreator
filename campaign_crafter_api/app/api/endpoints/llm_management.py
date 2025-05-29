@@ -86,7 +86,7 @@ async def list_llm_models():
     return pydantic_models.ModelListResponse(models=final_model_list)
 
 @router.post("/generate-text", response_model=pydantic_models.LLMTextGenerationResponse, tags=["LLM Management"])
-async def generate_text_endpoint(request: pydantic_models.LLMTextGenerationRequest):
+async def generate_text_endpoint(request: pydantic_models.LLMGenerationRequest):
     """
     Generates text using the specified LLM provider and model.
     """
