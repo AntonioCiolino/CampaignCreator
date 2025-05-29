@@ -1,0 +1,131 @@
+/* src/views/ImportDataPage.css */
+
+.import-page-wrapper {
+  /* Using global .container for padding and max-width is often done in App.tsx or Layout.tsx per page */
+  /* This provides specific styling for this view if not using a global .container */
+  padding: 1.5rem;
+  max-width: 900px; /* Wider for potentially more controls */
+  margin: 2rem auto; 
+  background-color: var(--surface-color, #fff);
+  border-radius: var(--border-radius-lg, 0.5rem); 
+  box-shadow: var(--box-shadow-lg, 0 0.5rem 1rem rgba(0,0,0,0.15)); 
+}
+
+.import-page-title {
+  margin-bottom: 1.5rem; 
+  text-align: center; 
+  color: var(--text-color, #212529);
+}
+
+.import-tabs {
+  display: flex;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid var(--border-color, #dee2e6);
+}
+
+.import-tab-button {
+  /* Leverages .btn styles if Button component is used, or define custom tab styles */
+  padding: 0.75rem 1.25rem;
+  cursor: pointer;
+  border: none; /* Remove default button border if not using Button component */
+  background-color: transparent;
+  font-size: 1.1em; /* Slightly larger for tab titles */
+  font-weight: 500;
+  color: var(--text-color-muted, #6c757d);
+  border-bottom: 3px solid transparent; /* For active state indicator */
+  margin-bottom: -2px; /* Align with parent's border-bottom */
+  transition: color 0.2s ease, border-bottom-color 0.2s ease;
+}
+
+.import-tab-button:hover {
+  color: var(--primary-color-dark, #0056b3);
+}
+
+.import-tab-button.active {
+  color: var(--primary-color, #007bff);
+  border-bottom-color: var(--primary-color, #007bff);
+}
+
+.import-section {
+  padding-top: 1rem; /* Space below tabs */
+}
+
+.import-section h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.3rem;
+    color: var(--text-color);
+}
+
+.import-form-group {
+  margin-bottom: 1.25rem;
+}
+.import-form-group label { /* For checkbox label */
+    margin-left: 0.5rem;
+    font-weight: normal; /* Checkbox labels usually normal weight */
+    color: var(--text-color);
+}
+
+.import-checkbox { /* Style for checkbox itself */
+    width: auto; /* Override .form-input width: 100% if it applies */
+    margin-right: 0.3rem;
+    vertical-align: middle;
+}
+
+
+.import-actions {
+  margin-top: 1.5rem;
+}
+
+.import-summary-card {
+  margin-top: 2rem;
+  border-top: 2px solid var(--primary-color-light, #79baff); /* Light primary color top border */
+}
+
+.import-summary-title {
+  /* Uses Card header styling by default if Card component's headerContent is used */
+  margin-bottom: 1rem;
+}
+
+.import-summary-list {
+  list-style-type: disc;
+  padding-left: 20px;
+  margin-bottom: 0.5rem;
+  font-size: 0.95em;
+}
+.import-summary-list li {
+    margin-bottom: 0.3rem;
+}
+
+.import-summary-errors-title {
+  color: var(--danger-color, #dc3545);
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.import-summary-error-list {
+  list-style-type: none;
+  padding-left: 0;
+  font-size: 0.9em;
+}
+.import-summary-error-list li {
+  background-color: rgba(220, 53, 69, 0.05);
+  padding: 0.5rem;
+  border-left: 3px solid var(--danger-color, #dc3545);
+  margin-bottom: 0.5rem;
+  border-radius: var(--border-radius-sm, 0.2rem);
+}
+.import-summary-error-list strong {
+    font-weight: 500;
+}
+
+
+.general-import-error {
+  /* Uses .error-message global style from App.css */
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--danger-color, #dc3545);
+  border-left-width: 5px; 
+  border-radius: var(--border-radius, 0.3rem);
+  background-color: rgba(220, 53, 69, 0.05); 
+}

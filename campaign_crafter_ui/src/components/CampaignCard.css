@@ -20,9 +20,9 @@
   display: flex; /* Make link fill the card */
   flex-direction: column;
   flex-grow: 1; /* Ensure link content takes up space */
-  padding: 1.25rem; /* Consistent padding */
+  /* Padding is now handled by the generic Card component */
   text-decoration: none;
-  color: inherit; 
+  color: inherit;
 }
 
 .campaign-card-content h3 {

@@ -1,0 +1,84 @@
+/* src/components/common/FileInput.css */
+
+.file-input-wrapper {
+  margin-bottom: 1rem; /* Consistent with .form-group */
+}
+
+.file-input-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500; /* Consistent with .form-label */
+  color: var(--text-color, #212529);
+}
+
+.file-input-control {
+  /* This is for the actual <input type="file">, which is often hard to style directly.
+     We often hide the default input and style a custom button/area instead.
+     For simplicity here, we'll style the browser's default input as much as possible
+     and then add a custom display for the filename.
+  */
+  display: block; /* Or inline-block depending on desired layout */
+  width: 100%; /* Make it take full width of its container */
+  font-size: 0.95rem; /* Slightly smaller than standard input for file name display */
+  
+  /* Basic styling to make it look somewhat like other inputs */
+  /* Note: Direct styling of file inputs is limited and varies by browser */
+  padding: 0.375rem 0.75rem; /* This padding might not apply as expected on all browsers */
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: var(--border-radius, 0.3rem);
+  background-color: var(--surface-color, #fff);
+  color: var(--text-color, #212529);
+  line-height: var(--line-height-base);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.075); /* Subtle inset shadow */
+  transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+}
+
+.file-input-control:focus {
+  border-color: var(--primary-color, #007bff);
+  outline: 0;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.075), 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Custom styling for better appearance - hide default input, style a label as button */
+.file-input-custom-trigger {
+  /* Uses .btn styles from Button.css or global App.css .button */
+  /* Example: apply .btn and .btn-secondary classes in the component */
+  display: inline-block;
+  margin-bottom: 0.5rem; /* Space between button and filename display */
+}
+
+.file-input-hidden { /* To hide the actual file input */
+  width: 0.1px;
+  height: 0.1px;
+  opacity: 0;
+  overflow: hidden;
+  position: absolute;
+  z-index: -1;
+}
+
+.file-input-filename {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.875em;
+  color: var(--text-color-muted, #6c757d);
+  background-color: var(--background-color, #f8f9fa);
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--border-radius-sm, 0.2rem);
+  border: 1px dashed var(--border-color, #dee2e6); /* Dashed border to indicate it's a display */
+  min-height: 1.5em; /* Ensure it has some height even if no file selected */
+  text-align: left;
+  word-break: break-all; /* Prevent long filenames from breaking layout */
+}
+
+.file-input-filename:empty::before {
+  content: "No file selected";
+  font-style: italic;
+}
+
+.file-input-wrapper.disabled .file-input-custom-trigger {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+.file-input-wrapper.disabled .file-input-filename {
+    background-color: #e9ecef; /* More muted background for disabled */
+}

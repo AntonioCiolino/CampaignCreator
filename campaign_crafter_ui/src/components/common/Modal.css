@@ -1,0 +1,117 @@
+/* src/components/common/Modal.css */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.65); /* Slightly darker overlay for more focus */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050; /* High z-index */
+  opacity: 0; /* Start hidden for transition */
+  visibility: hidden;
+  transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+}
+
+.modal-overlay.modal-open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-content-wrapper { /* For centering and max width/height handling */
+  background-color: var(--surface-color, #fff);
+  border-radius: var(--border-radius-lg, 0.5rem); /* Larger radius for modals */
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  width: 90%;
+  max-width: 600px; /* Default max-width, can be overridden by specific modal classes */
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Prevent content from spilling before internal scroll */
+  transform: scale(0.95); /* Start slightly smaller for transition */
+  transition: transform 0.3s ease-in-out;
+}
+
+.modal-open .modal-content-wrapper {
+  transform: scale(1);
+}
+
+
+.modal-header {
+  padding: 1rem 1.5rem; /* Consistent padding */
+  border-bottom: 1px solid var(--border-color, #dee2e6);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3, .modal-title { /* .modal-title class for custom title elements */
+  margin: 0;
+  font-size: 1.5rem; /* Slightly larger for modal titles */
+  font-weight: 500;
+  color: var(--text-color, #212529);
+  line-height: 1.4;
+}
+
+.modal-close-button {
+  background: transparent;
+  border: none;
+  font-size: 2rem; /* Larger close icon */
+  font-weight: 300; /* Lighter weight for 'x' */
+  line-height: 1;
+  color: var(--text-color-muted, #6c757d);
+  opacity: 0.7;
+  padding: 0.25rem 0.75rem; /* Easier to click */
+  cursor: pointer;
+  transition: opacity 0.15s ease-in-out, color 0.15s ease-in-out;
+}
+
+.modal-close-button:hover {
+  opacity: 1;
+  color: var(--text-color, #212529);
+}
+
+.modal-body {
+  padding: 1.5rem; /* Consistent padding */
+  overflow-y: auto; /* Scroll for long content */
+  flex-grow: 1; /* Allow body to take available space */
+}
+
+.modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border-color, #dee2e6);
+  display: flex;
+  justify-content: flex-end; /* Align buttons to the right by default */
+  background-color: var(--background-color, #f8f9fa); /* Slightly different bg for footer */
+}
+
+.modal-footer > :not(:last-child) { /* Space between footer buttons */
+  margin-right: 0.5rem;
+}
+
+/* Responsive adjustments for modals */
+@media (max-width: 768px) {
+  .modal-content-wrapper {
+    max-width: 95%; /* More width on smaller screens */
+    margin: 1rem; /* Some margin from screen edges */
+    max-height: calc(100vh - 2rem); /* Ensure it fits with margin */
+  }
+  .modal-header h3, .modal-title {
+    font-size: 1.25rem;
+  }
+  .modal-header, .modal-body, .modal-footer {
+    padding: 1rem; /* Slightly reduced padding on mobile */
+  }
+}
+
+/* Add specific size variants if needed, e.g., .modal-lg, .modal-sm */
+.modal-lg .modal-content-wrapper {
+  max-width: 800px;
+}
+
+.modal-sm .modal-content-wrapper {
+  max-width: 400px;
+}

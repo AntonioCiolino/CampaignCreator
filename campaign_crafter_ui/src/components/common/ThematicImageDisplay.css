@@ -1,0 +1,106 @@
+/* src/components/common/ThematicImageDisplay.css */
+
+.thematic-image-display-wrapper {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 280px; /* Increased width for better image display */
+  max-height: 320px; /* Max height before internal scroll for content */
+  background-color: var(--surface-color, #fff);
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: var(--border-radius-lg, 0.5rem); /* Larger radius */
+  box-shadow: var(--box-shadow-lg, 0 0.5rem 1rem rgba(0,0,0,0.15)); /* Softer, larger shadow */
+  z-index: 1100; /* Ensure it's above most other content */
+  overflow: hidden; /* Contains content within rounded borders */
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+  opacity: 1;
+  transform: scale(1);
+}
+
+.thematic-image-display-wrapper.hidden {
+    opacity: 0;
+    transform: scale(0.9);
+    pointer-events: none;
+}
+
+
+.thematic-image-header {
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color, #dee2e6);
+  background-color: var(--background-color, #f8f9fa); /* Slight header background */
+}
+
+.thematic-image-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-color, #212529);
+  margin: 0;
+}
+
+.thematic-image-close-button {
+  background: transparent;
+  border: none;
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: var(--text-color-muted, #6c757d);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+}
+.thematic-image-close-button:hover {
+  color: var(--text-color, #212529);
+}
+
+.thematic-image-content {
+  padding: 0.75rem;
+  overflow-y: auto; /* Scroll if content (caption + image) exceeds max-height */
+  text-align: center; /* Center loading/error messages */
+}
+
+.thematic-image-loader {
+  font-size: 0.9em;
+  color: var(--text-color-muted, #6c757d);
+  padding: 2rem 0; /* Add some padding for loading state */
+}
+
+.thematic-image-error {
+  font-size: 0.9em;
+  color: var(--danger-color, #dc3545);
+  padding: 1rem;
+  background-color: rgba(220, 53, 69, 0.05);
+  border: 1px solid rgba(220, 53, 69, 0.2);
+  border-radius: var(--border-radius, 0.3rem);
+  word-wrap: break-word; /* Ensure long error messages wrap */
+}
+
+.thematic-image-container {
+  width: 100%;
+  height: auto; /* Maintain aspect ratio */
+  margin-bottom: 0.5rem;
+}
+
+.thematic-image-container img {
+  max-width: 100%;
+  max-height: 200px; /* Max image height within the component */
+  height: auto; /* Maintain aspect ratio */
+  border-radius: var(--border-radius-sm, 0.2rem); /* Slight radius for the image */
+  display: block; /* Remove extra space below image */
+  margin: 0 auto; /* Center image if it's smaller than container */
+  background-color: #eee; /* Placeholder background for image area */
+}
+
+.thematic-image-caption {
+  font-size: 0.8em;
+  color: var(--text-color-muted, #6c757d);
+  margin-top: 0.5rem;
+  text-align: left; /* Align caption text to left */
+  word-wrap: break-word; /* Wrap long prompts */
+}
+
+.thematic-image-caption strong {
+  color: var(--text-color, #212529);
+}

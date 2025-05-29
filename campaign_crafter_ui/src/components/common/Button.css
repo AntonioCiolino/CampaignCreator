@@ -1,0 +1,169 @@
+/* src/components/common/Button.css */
+:root {
+  /* Re-define or ensure these are available from App.css if this file is loaded independently in tests */
+  /* For components, it's better to rely on App.css for these root variables */
+}
+
+.btn {
+  display: inline-flex; /* Use inline-flex for better alignment of children (e.g., icons + text) */
+  align-items: center;
+  justify-content: center;
+  font-weight: 500; /* Slightly bolder than default 400 for better emphasis */
+  text-align: center;
+  vertical-align: middle;
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid transparent;
+  padding: var(--btn-padding-y, 0.5rem) var(--btn-padding-x, 1rem); /* Default to md size */
+  font-size: var(--btn-font-size, 1rem); /* Default to md size */
+  line-height: var(--line-height-base, 1.6);
+  border-radius: var(--border-radius, 0.3rem);
+  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
+    border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  text-decoration: none; /* For anchor tags styled as buttons */
+  white-space: nowrap; /* Prevent wrapping */
+}
+
+/* Variant Styles */
+.btn-primary {
+  color: #fff;
+  background-color: var(--primary-color, #007bff);
+  border-color: var(--primary-color, #007bff);
+}
+.btn-primary:hover {
+  background-color: var(--primary-color-dark, #0056b3);
+  border-color: var(--primary-color-dark, #0056b3);
+}
+.btn-primary:focus, .btn-primary.focus { /* Added .focus for programmatic focus */
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.5); /* Use primary color for focus shadow */
+}
+
+.btn-secondary {
+  color: #fff;
+  background-color: var(--secondary-color, #6c757d);
+  border-color: var(--secondary-color, #6c757d);
+}
+.btn-secondary:hover {
+  background-color: var(--secondary-color-dark, #545b62);
+  border-color: var(--secondary-color-dark, #545b62);
+}
+.btn-secondary:focus, .btn-secondary.focus {
+  box-shadow: 0 0 0 0.2rem rgba(108, 117, 125, 0.5); /* Use secondary color for focus shadow */
+}
+
+.btn-success {
+  color: #fff;
+  background-color: var(--success-color, #28a745);
+  border-color: var(--success-color, #28a745);
+}
+.btn-success:hover {
+  background-color: #1e7e34; /* Darker green */
+  border-color: #1c7430;
+}
+
+.btn-danger {
+  color: #fff;
+  background-color: var(--danger-color, #dc3545);
+  border-color: var(--danger-color, #dc3545);
+}
+.btn-danger:hover {
+  background-color: #bd2130; /* Darker red */
+  border-color: #b21f2d;
+}
+
+.btn-warning {
+  color: var(--text-color, #212529); /* Dark text on yellow for better contrast */
+  background-color: var(--warning-color, #ffc107);
+  border-color: var(--warning-color, #ffc107);
+}
+.btn-warning:hover {
+  background-color: #d39e00; /* Darker yellow */
+  border-color: #c69500;
+}
+
+.btn-info {
+  color: #fff;
+  background-color: var(--info-color, #17a2b8);
+  border-color: var(--info-color, #17a2b8);
+}
+.btn-info:hover {
+  background-color: #117a8b; /* Darker teal */
+  border-color: #10707f;
+}
+
+.btn-link {
+  font-weight: 400;
+  color: var(--primary-color, #007bff);
+  text-decoration: underline;
+  background-color: transparent;
+  border-color: transparent;
+}
+.btn-link:hover {
+  color: var(--primary-color-dark, #0056b3);
+  text-decoration: underline;
+}
+.btn-link:disabled, .btn-link.disabled {
+  color: var(--text-color-muted, #6c757d);
+  pointer-events: none;
+}
+
+
+/* Outline Variants (Example for Primary) */
+.btn-outline-primary {
+  color: var(--primary-color, #007bff);
+  background-color: transparent;
+  border-color: var(--primary-color, #007bff);
+}
+.btn-outline-primary:hover {
+  color: #fff;
+  background-color: var(--primary-color, #007bff);
+  border-color: var(--primary-color, #007bff);
+}
+/* Add other outline variants as needed (e.g., .btn-outline-secondary) */
+
+
+/* Sizes */
+.btn-lg {
+  --btn-padding-y: 0.75rem;
+  --btn-padding-x: 1.5rem;
+  --btn-font-size: 1.25rem;
+  /* border-radius: var(--border-radius-lg); /* If you have larger border radius for large buttons */
+}
+
+.btn-sm {
+  --btn-padding-y: 0.25rem;
+  --btn-padding-x: 0.5rem;
+  --btn-font-size: 0.875rem;
+  /* border-radius: var(--border-radius-sm); /* If you have smaller border radius for sm buttons */
+}
+
+/* Block button */
+.btn-block {
+  display: block;
+  width: 100%;
+}
+
+/* Disabled State */
+.btn:disabled, .btn.disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  /* Specific background/border for disabled state if not covered by variant:disabled */
+  /* background-color: var(--secondary-color, #6c757d); */
+  /* border-color: var(--secondary-color, #6c757d); */
+}
+/* Ensure hover/focus effects are removed for disabled state */
+.btn:disabled:hover, .btn.disabled:hover {
+    /* Reset to disabled style */
+    /* Example: for btn-primary */
+    /* background-color: var(--primary-color, #007bff); 
+       border-color: var(--primary-color, #007bff); */
+}
+
+/* Icon support (if you plan to use icons inside buttons) */
+.btn .icon {
+  margin-right: 0.5em; /* Space between icon and text */
+  /* Add more specific icon styling if needed */
+}
+.btn .icon-only { /* For buttons that only contain an icon */
+  margin-right: 0;
+}

@@ -10,9 +10,10 @@ export interface CampaignSection {
 }
 
 // Model information type from the backend /llm/models endpoint
+// This might be better placed in llmService.ts if not already there
 export interface ModelInfo {
-  id: str;
-  name: str;
+  id: string; // Corrected from str to string
+  name: string;
 }
 
 export interface Campaign {
@@ -28,12 +29,19 @@ export interface Campaign {
 export interface CampaignCreatePayload {
   title: string;
   initial_user_prompt: string;
+  model_id_with_prefix_for_concept?: string | null; // Added based on backend changes
 }
 
 export interface CampaignUpdatePayload {
   title?: string;
   initial_user_prompt?: string;
-  // Concept is not directly updatable via this payload as per current backend
+  // Concept & TOC are typically updated via specific generation endpoints, not direct PUT
+}
+
+// For LLM Generation requests common to TOC, Titles, etc.
+export interface LLMGenerationPayload {
+    model_id_with_prefix?: string | null;
+    // temperature?: number; // If you want to control this from client
 }
 
 // Fetch all campaigns
@@ -43,7 +51,6 @@ export const getAllCampaigns = async (): Promise<Campaign[]> => {
     return response.data;
   } catch (error) {
     console.error('Error fetching campaigns:', error);
-    // In a real app, you might want to transform the error or log it to a service
     throw error; 
   }
 };
@@ -70,17 +77,9 @@ export const createCampaign = async (campaignData: CampaignCreatePayload): Promi
     }
 };
 
-// Add other service functions as needed (update, delete, etc.)
-
 // Update an existing campaign
 export const updateCampaign = async (campaignId: string | number, campaignData: CampaignUpdatePayload): Promise<Campaign> => {
   try {
-    // The backend PUT endpoint for campaigns currently uses CampaignCreate model,
-    // which means both title and initial_user_prompt might be expected.
-    // If the backend allows partial updates with this model, this is fine.
-    // If not, the backend might need a different Pydantic model for PATCH,
-    // or this payload needs to ensure all fields expected by CampaignCreate are sent.
-    // For now, proceeding with the assumption that the backend can handle this payload for PUT.
     const response = await apiClient.put<Campaign>(`/campaigns/${campaignId}`, campaignData);
     return response.data;
   } catch (error) {
@@ -114,76 +113,9 @@ export const updateCampaignSection = async (
   }
 };
 
-// export const deleteCampaign = async (campaignId: string | number): Promise<void> => { ... }
-
 // Generate Table of Contents for a campaign
-export const generateCampaignTOC = async (campaignId: string | number): Promise<Campaign> => {
+export const generateCampaignTOC = async (campaignId: string | number, payload: LLMGenerationPayload): Promise<Campaign> => {
   try {
-    const response = await apiClient.post<Campaign>(`/campaigns/${campaignId}/toc`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error generating TOC for campaign ID ${campaignId}:`, error);
-    throw error;
-  }
-};
-
-// Define the response type for generating titles
-export interface CampaignTitlesResponse {
-  titles: string[];
-}
-
-// Generate alternative titles for a campaign
-export const generateCampaignTitles = async (campaignId: string | number, count?: number): Promise<CampaignTitlesResponse> => {
-  try {
-    const params = count ? { count } : {};
-    const response = await apiClient.post<CampaignTitlesResponse>(
-      `/campaigns/${campaignId}/titles`,
-      null, // No request body for this POST, params are query params
-      { params }
-    );
-    return response.data;
-  } catch (error) {
-    console.error(`Error generating titles for campaign ID ${campaignId}:`, error);
-    throw error;
-  }
-};
-
-// Define the payload for creating a new section (client-side)
-// Matches backend's CampaignSectionCreateInput
-export interface CampaignSectionCreateClientPayload {
-  title?: string;
-  prompt?: string;
-  modelId?: string; // Add modelId
-  temperature?: number; // Add temperature (conceptual for now)
-}
-
-// Add a new section to a campaign
-export const addCampaignSection = async (
-  campaignId: string | number,
-  data: CampaignSectionCreateClientPayload
-): Promise<CampaignSection> => { 
-  try {
-    // Prepare backend payload, mapping modelId to model
-    const backendPayload: { title?: string; prompt?: string; model?: string; /* temperature not yet sent */ } = {
-        title: data.title,
-        prompt: data.prompt,
-        model: data.modelId, 
-    };
-    const response = await apiClient.post<CampaignSection>(
-      `/campaigns/${campaignId}/sections`,
-      backendPayload // Send the transformed payload
-    );
-    return response.data;
-  } catch (error) {
-    console.error(`Error adding section to campaign ID ${campaignId}:`, error);
-    throw error;
-  }
-};
-
-// Generate Table of Contents for a campaign
-export const generateCampaignTOC = async (campaignId: string | number, modelId?: string, temperature?: number): Promise<Campaign> => {
-  try {
-    const payload = { model: modelId /*, temperature */ }; // Temperature conceptual for now
     const response = await apiClient.post<Campaign>(`/campaigns/${campaignId}/toc`, payload);
     return response.data;
   } catch (error) {
@@ -198,13 +130,12 @@ export interface CampaignTitlesResponse {
 }
 
 // Generate alternative titles for a campaign
-export const generateCampaignTitles = async (campaignId: string | number, modelId?: string, count?: number, temperature?: number): Promise<CampaignTitlesResponse> => {
+export const generateCampaignTitles = async (campaignId: string | number, payload: LLMGenerationPayload, count?: number): Promise<CampaignTitlesResponse> => {
   try {
-    const payload = { model: modelId /*, temperature */ }; // Temperature conceptual for now
-    const params = count ? { count } : {}; // Count remains a query parameter
+    const params = count ? { count } : {};
     const response = await apiClient.post<CampaignTitlesResponse>(
       `/campaigns/${campaignId}/titles`,
-      payload, // Send modelId in body
+      payload,
       { params }
     );
     return response.data;
@@ -214,43 +145,108 @@ export const generateCampaignTitles = async (campaignId: string | number, modelI
   }
 };
 
-// Fetch available LLM Models
-export const getLLMModels = async (): Promise<ModelInfo[]> => {
+// Define the payload for creating a new section
+export interface CampaignSectionCreatePayload {
+  title?: string | null;
+  prompt?: string | null;
+  model_id_with_prefix?: string | null;
+}
+
+// Add a new section to a campaign
+export const addCampaignSection = async (
+  campaignId: string | number,
+  data: CampaignSectionCreatePayload
+): Promise<CampaignSection> => { 
   try {
-    const response = await apiClient.get<{models: ModelInfo[]}>('/llm/models');
-    return response.data.models;
+    const response = await apiClient.post<CampaignSection>(
+      `/campaigns/${campaignId}/sections`,
+      data
+    );
+    return response.data;
   } catch (error) {
-    console.error('Error fetching LLM models:', error);
+    console.error(`Error adding section to campaign ID ${campaignId}:`, error);
     throw error;
   }
 };
 
-// Export campaign to Homebrewery Markdown
+// Export campaign to Homebrewery Markdown (download)
 export const exportCampaignToHomebrewery = async (campaignId: string | number): Promise<string> => {
   try {
-    const response = await apiClient.get<string>( // Expect a string response
+    const response = await apiClient.get<string>(
       `/campaigns/${campaignId}/export/homebrewery`,
       {
-        responseType: 'text', // Important: ensures Axios handles the response as plain text
-        // The backend already sets Content-Disposition and media-type,
-        // but responseType: 'text' helps Axios parse it correctly from the start.
+        responseType: 'text', 
       }
     );
-    return response.data; // This should be the raw Markdown string
+    return response.data; 
   } catch (error) {
     console.error(`Error exporting campaign ID ${campaignId} to Homebrewery:`, error);
     throw error;
   }
 };
 
+// --- New Functionality for "Direct Posting" Preparation ---
+export interface PrepareHomebreweryPostResponse {
+    markdown_content: string;
+    homebrewery_new_url: string;
+    filename_suggestion: string;
+    notes?: string;
+}
+
+/**
+ * Prepares campaign content for manual posting to Homebrewery.
+ * Fetches the full Markdown content and a link to Homebrewery's "new brew" page.
+ * @param campaignId The ID of the campaign to prepare.
+ * @returns A promise that resolves to PrepareHomebreweryPostResponse.
+ */
+export const prepareCampaignForHomebrewery = async (campaignId: string | number): Promise<PrepareHomebreweryPostResponse> => {
+    try {
+        const response = await apiClient.get<PrepareHomebreweryPostResponse>(`/campaigns/${campaignId}/prepare_for_homebrewery`);
+        return response.data;
+    } catch (error) {
+        console.error(`Error preparing campaign ID ${campaignId} for Homebrewery posting:`, error);
+        // In a real app, you might want to transform the error or log it to a service
+        throw error;
+    }
+};
+// --- End New Functionality ---
+
 
 // Fetch sections for a specific campaign
 export const getCampaignSections = async (campaignId: string | number): Promise<CampaignSection[]> => {
   try {
     const response = await apiClient.get<{ sections: CampaignSection[] }>(`/campaigns/${campaignId}/sections`);
-    return response.data.sections; // The backend returns { "sections": [...] }
+    // Ensure that the response structure matches what's expected.
+    // If backend returns an object like { "sections": [...] }, then access response.data.sections.
+    // If backend returns the array directly, then response.data is the array.
+    // Based on existing list_campaign_sections in backend, it should be { "sections": [...] }
+    if (response.data && Array.isArray((response.data as any).sections)) {
+        return (response.data as any).sections;
+    }
+    // Fallback if the structure is different or if response.data is already the array
+    // This part might need adjustment based on actual backend response for this specific endpoint
+    // if (Array.isArray(response.data)) {
+    //     return response.data;
+    // }
+    console.warn("Unexpected response structure for getCampaignSections:", response.data);
+    return []; // Or throw an error
   } catch (error) {
     console.error(`Error fetching sections for campaign ID ${campaignId}:`, error);
     throw error;
   }
 };
+
+// apiClient.ts should be something like:
+// import axios from 'axios';
+// const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+// const apiClient = axios.create({
+//   baseURL: API_BASE_URL,
+// });
+// export default apiClient;
+
+// Note: Corrected ModelInfo id type from `str` to `string`.
+// Added `model_id_with_prefix_for_concept` to `CampaignCreatePayload`.
+// Standardized `LLMGenerationPayload` for TOC and Titles generation.
+// Corrected `addCampaignSection` payload to match backend `CampaignSectionCreateInput`.
+// Corrected `getCampaignSections` to expect `{ sections: [...] }` based on backend.
+// The problematic text block below this line has been removed.
