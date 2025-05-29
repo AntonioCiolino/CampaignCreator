@@ -1,0 +1,43 @@
+/* src/components/LLMSelector.css */
+
+.llm-selector-wrapper {
+  margin-bottom: 1rem; /* Consistent with .form-group from App.css */
+  display: flex; /* For label and select alignment */
+  flex-direction: column; /* Default stacking */
+  align-items: flex-start; /* Align label to start */
+}
+
+.llm-selector-label {
+  /* Uses .form-label global style from App.css by default if applied in component,
+     but can be customized here if needed. */
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  font-weight: 500; /* Consistent with .form-label */
+  color: var(--text-color, #212529);
+}
+
+.llm-selector-select {
+  /* Leverages .form-select global style from App.css for base appearance */
+  /* Specific overrides for LLMSelector can be added here if .form-select is not enough */
+  display: block; /* Ensure it takes up available width if not wrapped in a sized container */
+  width: 100%; /* Default to full width of its container */
+  max-width: 400px; /* Optional: set a max-width for very wide containers */
+  /* padding, border, border-radius, etc., are inherited from .form-select */
+}
+
+/* Styling for loading and error states specific to this component, if needed */
+.llm-selector-loading,
+.llm-selector-error,
+.llm-selector-no-models {
+  font-size: 0.9em;
+  padding: 0.5rem 0; /* Add some padding */
+  color: var(--text-color-muted, #6c757d);
+}
+
+.llm-selector-error {
+  color: var(--danger-color, #dc3545);
+  border: 1px solid var(--danger-color, #dc3545);
+  padding: 0.5rem;
+  border-radius: var(--border-radius, 0.3rem);
+  background-color: rgba(220, 53, 69, 0.05); /* Slight background tint for error */
+}

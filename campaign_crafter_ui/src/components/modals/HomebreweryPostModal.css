@@ -1,0 +1,81 @@
+/* src/components/modals/HomebreweryPostModal.css */
+
+.hb-modal-instructions {
+  font-size: 0.95em;
+  line-height: 1.6;
+  padding-left: 20px; /* For ol numbering */
+  margin-bottom: 1.5rem;
+  color: var(--text-color, #212529);
+}
+
+.hb-modal-filename {
+  font-size: 0.9em;
+  font-family: var(--font-family-monospace, monospace);
+  background-color: var(--background-color, #f8f9fa); /* Use a theme variable */
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--border-radius-sm, 0.2rem); /* Smaller radius for this element */
+  margin-bottom: 1rem;
+  word-break: break-all;
+  border: 1px solid var(--border-color, #dee2e6);
+}
+
+.hb-modal-notes {
+  font-size: 0.9em;
+  font-style: italic;
+  color: var(--text-color-muted, #6c757d);
+  margin-bottom: 1rem;
+}
+
+.hb-modal-textarea-label {
+  display: block;
+  font-weight: 500; /* Using 500 as per global form-label */
+  margin-bottom: 0.5rem;
+  color: var(--text-color, #212529);
+}
+
+.hb-modal-textarea {
+  /* Uses .form-textarea global style by default if applied via a common component,
+     but providing specific overrides or complete style if not using a <Textarea> component. */
+  width: 100%;
+  min-height: 200px; /* Or make this responsive / themeable */
+  max-height: calc(90vh - 350px); /* Adjust to prevent modal overflow */
+  margin-top: 0; /* Label provides spacing */
+  margin-bottom: 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: var(--border-radius, 0.3rem);
+  box-sizing: border-box;
+  font-family: var(--font-family-monospace, monospace);
+  font-size: 0.9em;
+  line-height: 1.4;
+  background-color: var(--surface-color, #fff); /* Ensure it's not transparent */
+  resize: vertical;
+}
+
+.hb-modal-copy-success {
+  color: var(--success-color, #28a745);
+  margin-left: 0.75rem;
+  font-size: 0.9em;
+}
+
+.hb-modal-actions {
+  /* This class can be used on a div wrapping the action buttons if specific layout is needed,
+     beyond what the Modal's footer provides by default.
+     The Modal footer already uses flexbox and justifies content to flex-end.
+  */
+  display: flex;
+  flex-wrap: wrap; /* Allow buttons to wrap on small screens */
+  align-items: center; /* Align items if they wrap */
+  gap: 0.5rem; /* Spacing between buttons if they wrap */
+}
+
+/* Override default margin for buttons if they are direct children of hb-modal-actions
+   or rely on Modal footer's spacing. For now, Modal footer handles spacing. */
+
+/* Ensure the content within the modal body is well-spaced */
+.hb-modal-body-content > * {
+  margin-bottom: 1rem;
+}
+.hb-modal-body-content > *:last-child {
+  margin-bottom: 0;
+}

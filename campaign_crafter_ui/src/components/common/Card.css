@@ -1,0 +1,60 @@
+/* src/components/common/Card.css */
+
+.card-component {
+  background-color: var(--surface-color, #ffffff);
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: var(--border-radius, 0.3rem);
+  box-shadow: var(--box-shadow, 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075));
+  padding: 1.25rem; /* Default padding, can be overridden by specific card content needs */
+  margin-bottom: 1rem; /* Default bottom margin for stacking */
+  display: flex; /* Allow flexbox layout by default for card content */
+  flex-direction: column; /* Default to column layout */
+  height: 100%; /* Allow card to fill height of parent grid/flex item if needed */
+  box-sizing: border-box; /* Ensure padding and border are included in width/height */
+}
+
+/* Optional: Hover effect for cards if they are interactive */
+.card-component-interactive:hover {
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1); /* Slightly more pronounced shadow */
+  transform: translateY(-2px); /* Subtle lift effect */
+  transition: box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+
+/* Card Header (Optional Structure) */
+.card-header {
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color, #dee2e6);
+  /* font-size: 1.25rem; /* Example size */
+  /* font-weight: 500; */
+}
+.card-header:empty { /* Hide if empty */
+    display: none;
+}
+
+
+/* Card Body (Optional Structure) */
+.card-body {
+  flex-grow: 1; /* Allows body to expand and fill available space */
+}
+.card-body:empty {
+    display: none;
+}
+
+/* Card Footer (Optional Structure) */
+.card-footer {
+  padding-top: 0.75rem;
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--border-color, #dee2e6);
+  /* font-size: 0.9rem; */
+  /* color: var(--text-color-muted, #6c757d); */
+}
+.card-footer:empty {
+    display: none;
+}
+
+/* If a card itself is a link, ensure consistent styling */
+a.card-component-linkable, a.card-component-linkable:hover {
+    text-decoration: none;
+    color: inherit; /* Inherit text color from card content or global text color */
+}

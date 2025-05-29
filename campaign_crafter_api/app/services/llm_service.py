@@ -1,40 +1,68 @@
 from abc import ABC, abstractmethod
-from typing import Optional, List, Dict # Ensure Dict and List are imported
+from typing import Optional, List, Dict
 
-class LLMService(ABC):
+class AbstractLLMService(ABC):
     @abstractmethod
-    def generate_campaign_concept(self, user_prompt: str, model: str = "gpt-3.5-turbo-instruct") -> str:
+    def generate_text(self, prompt: str, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str:
+        """
+        Generates text using an LLM based on a generic prompt.
+        This is a general-purpose method. Specific generation tasks might have dedicated methods.
+        The 'model' parameter is the specific model ID for the provider (e.g., "gpt-3.5-turbo" for OpenAI).
+        """
+        pass
+
+    @abstractmethod
+    def generate_campaign_concept(self, user_prompt: str, model: Optional[str] = None) -> str:
         """
         Generates a campaign concept using an LLM based on a user prompt.
+        The 'model' parameter is the specific model ID for the provider.
         """
         pass
 
     @abstractmethod
-    def generate_titles(self, campaign_concept: str, count: int = 5, model: str = "gpt-3.5-turbo-instruct") -> list[str]: # Or a newer default model
+    def generate_titles(self, campaign_concept: str, count: int = 5, model: Optional[str] = None) -> list[str]:
         """
         Generates a list of alternative campaign titles based on a campaign concept.
+        The 'model' parameter is the specific model ID for the provider.
         """
         pass
 
     @abstractmethod
-    def generate_toc(self, campaign_concept: str, model: str = "gpt-3.5-turbo-instruct") -> str: # Using a newer default
+    def generate_toc(self, campaign_concept: str, model: Optional[str] = None) -> str:
         """
         Generates a Table of Contents for a campaign based on its concept.
+        The 'model' parameter is the specific model ID for the provider.
         """
         pass
 
     @abstractmethod
-    def generate_section_content(self, campaign_concept: str, existing_sections_summary: Optional[str], section_creation_prompt: Optional[str], section_title_suggestion: Optional[str], model: str = "gpt-3.5-turbo-instruct") -> str: # Updated default model
+    def generate_section_content(
+        self, 
+        campaign_concept: str, 
+        existing_sections_summary: Optional[str], 
+        section_creation_prompt: Optional[str], 
+        section_title_suggestion: Optional[str], 
+        model: Optional[str] = None
+    ) -> str:
         """
         Generates content for a new campaign section.
+        The 'model' parameter is the specific model ID for the provider.
         """
         pass
 
     @abstractmethod
-    def list_available_models(self) -> List[Dict[str, str]]: # Returns a list of dicts, e.g., [{"id": "model_id", "name": "Model Name"}]
+    def list_available_models(self) -> List[Dict[str, str]]:
         """
-        Lists available LLM models.
+        Lists available LLM models for the specific provider.
+        Returns a list of dicts, e.g., [{"id": "model_id_for_provider", "name": "Model Name"}]
+        The 'id' should be usable in the 'model' parameter of generation methods.
         """
         pass
 
-    # Future methods can be added here, e.g.:
+    def is_available(self) -> bool:
+        """
+        Checks if the service is configured and available for use (e.g., API key is set).
+        Provides a default implementation that can be overridden if more complex checks are needed.
+        """
+        return True # Base implementation assumes availability if instantiated.
+                    # Concrete classes should override if they have specific checks (e.g. API key presence).

@@ -1,0 +1,51 @@
+/* src/components/common/Input.css */
+
+/* Leverages global form styles from App.css for consistency by default.
+   This file can be used for Input-specific overrides or variants if needed.
+   For now, we assume .form-input from App.css provides the base styling.
+*/
+
+.input-component {
+  /* This class will be applied to the input element by Input.tsx */
+  /* It can be used if we need to override or add to .form-input specifically for this component */
+  /* For example: */
+  /* box-shadow: none; */ /* If we wanted inputs from this component to not have the global focus shadow */
+}
+
+/* Example of a potential variant or state not covered globally */
+.input-error {
+  border-color: var(--danger-color, #dc3545);
+  /* box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25); /* Optional: focus shadow for error state */
+}
+
+.input-error:focus {
+  border-color: var(--danger-color, #dc3545); /* Keep border red on focus if error */
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+
+/* Add any other specific styles or variants for the Input component here */
+/* For example, if you wanted an input with an icon, or different sizes not covered by global form styles. */
+/* For now, this file is minimal, relying on App.css's .form-input for the primary styling. */
+
+/* Styling for a wrapper div if you add one in Input.tsx for labels or error messages */
+.input-wrapper {
+  margin-bottom: 1rem; /* Consistent with .form-group */
+}
+
+.input-label {
+  display: block; /* Or inline-block */
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--text-color, #212529);
+}
+
+.input-description, .input-component-error-message {
+  font-size: 0.875em;
+  color: var(--text-color-muted, #6c757d);
+  margin-top: 0.25rem;
+}
+
+.input-component-error-message { /* Specifically for errors tied to this component */
+  color: var(--danger-color, #dc3545);
+}
