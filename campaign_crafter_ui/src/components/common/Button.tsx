@@ -38,6 +38,8 @@ export interface ButtonProps {
   target?: string;
   /** Optional: For 'link' variant, rel attribute for the <a> tag. */
   rel?: string;
+  /** Optional: Inline styles to apply to the button */
+  style?: React.CSSProperties; // Added style prop
 }
 
 /**
@@ -56,6 +58,7 @@ const Button: React.FC<ButtonProps> = ({
   href,
   target,
   rel,
+  style, // Explicitly destructure style
   ...props // Spread any other native button props like aria-label, etc.
 }) => {
   const baseClass = 'btn';

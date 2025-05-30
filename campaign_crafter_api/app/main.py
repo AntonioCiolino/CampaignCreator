@@ -1,12 +1,28 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware # Added import
 from .db import init_db
 from app.api.endpoints import campaigns as campaigns_router
 from app.api.endpoints import llm_management as llm_management_router
 from app.api.endpoints import utility_endpoints as utility_router
 from app.api.endpoints import image_generation as image_generation_router
-from app.api.endpoints import import_data as import_data_router # New import
+from app.api.endpoints import import_data as import_data_router 
+from app.api.endpoints import users as users_router # New import for users
 
 app = FastAPI(title="Campaign Crafter API", version="0.1.0")
+
+origins = [
+    "http://localhost",
+    "http://localhost:3000",
+    # Potentially add your deployed frontend URL here in the future
+]
+
+app.add_middleware( # Added middleware
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.on_event("startup")
 async def on_startup():
@@ -19,7 +35,8 @@ app.include_router(campaigns_router.router, prefix="/api/v1/campaigns", tags=["C
 app.include_router(llm_management_router.router, prefix="/api/v1/llm", tags=["LLM Management"])
 app.include_router(utility_router.router, prefix="/api/v1/utils", tags=["Utilities"])
 app.include_router(image_generation_router.router, prefix="/api/v1", tags=["Image Generation"]) 
-app.include_router(import_data_router.router, prefix="/api/v1/import", tags=["Import"]) # Added new import router
+app.include_router(import_data_router.router, prefix="/api/v1/import", tags=["Import"]) 
+app.include_router(users_router.router, prefix="/api/v1/users", tags=["Users"]) # Added users router
 
 @app.get("/", tags=["Root"])
 async def read_root():

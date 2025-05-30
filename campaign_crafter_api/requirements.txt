@@ -9,3 +9,4 @@ pydantic-settings
 google-generativeai
 pytest
 httpx
+passlib[bcrypt]

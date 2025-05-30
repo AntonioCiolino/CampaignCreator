@@ -13,7 +13,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <Link to="/" className="app-title-link">
           <h1>Campaign Crafter</h1>
         </Link>
-        {/* Navigation links can be added here later */}
+        <nav className="app-nav">
+          <ul>
+            <li>
+              <Link to="/">Dashboard</Link>
+               </li>
+               <li>
+                 <Link to="/">Campaign Management</Link> {/* Added link */}
+            </li>
+            <li>
+              <Link to="/users">User Management</Link>
+            </li>
+          </ul>
+        </nav>
       </header>
       <main className="app-main-content">
         {children}

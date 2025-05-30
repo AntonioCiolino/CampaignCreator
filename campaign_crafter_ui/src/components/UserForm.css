@@ -1,0 +1,23 @@
+/* campaign_crafter_ui/src/components/UserForm.css */
+.user-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px; /* Space between form elements */
+}
+
+.user-form .form-error,
+.user-form .internal-error {
+  color: red;
+  background-color: #ffebee; /* Light red background for errors */
+  border: 1px solid red;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.user-form .form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px; /* Space between buttons */
+  margin-top: 10px;
+}
