@@ -259,7 +259,11 @@ export const getCampaignSections = async (campaignId: string | number): Promise<
 // The problematic text block below this line has been removed.
 
 export async function getLLMModels() {
-  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/llm-models`);
+  // Use process.env.REACT_APP_API_BASE_URL, consistent with apiClient.ts (implicitly)
+  // Fallback is provided if the env var is not set.
+  // Ensure no double slashes if REACT_APP_API_BASE_URL has a trailing slash.
+  const baseUrl = (process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1').replace(/\/$/, '');
+  const response = await fetch(`${baseUrl}/llm-models`);
   if (!response.ok) throw new Error('Failed to fetch LLM models');
   return response.json();
 }
