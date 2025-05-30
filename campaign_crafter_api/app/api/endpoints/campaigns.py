@@ -183,7 +183,7 @@ async def create_new_campaign_section_endpoint(
     try:
         provider_name, model_specific_id = _extract_provider_and_model(section_input.model_id_with_prefix)
         llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=section_input.model_id_with_prefix)
-        generated_content = llm_service.generate_section_content(
+        generated_content = await llm_service.generate_section_content(
             campaign_concept=db_campaign.concept or "A general creative writing piece.",
             existing_sections_summary=existing_sections_summary,
             section_creation_prompt=section_input.prompt,
