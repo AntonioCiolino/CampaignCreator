@@ -96,14 +96,14 @@ class Campaign(CampaignBase):
 #     title: Optional[str] = None
 #     content: str
 #     order: int # To maintain section order
-# 
+#
 # class CampaignSectionCreate(CampaignSectionBase):
 #     pass
-# 
+#
 # class CampaignSection(CampaignSectionBase):
 #     id: int
 #     campaign_id: int # foreign key to Campaign
-# 
+#
 #     class Config:
 #         orm_mode = True
 
@@ -127,8 +127,8 @@ class User(UserBase): # For responses
     id: int
     is_active: bool
     is_superuser: bool = False # Assuming ORM default or set value
-    
-    campaigns: List[Campaign] = [] 
+
+    campaigns: List[Campaign] = []
     llm_configs: List[LLMConfig] = []
 
     class Config:

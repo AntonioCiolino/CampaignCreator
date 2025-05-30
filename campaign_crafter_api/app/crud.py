@@ -48,7 +48,7 @@ def update_user(db: Session, user_id: int, user_update: models.UserUpdate) -> Op
             setattr(db_user, "hashed_password", get_password_hash(value))
         else:
             setattr(db_user, key, value)
-    
+
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -58,7 +58,7 @@ def delete_user(db: Session, user_id: int) -> Optional[orm_models.User]:
     db_user = get_user(db, user_id=user_id)
     if not db_user:
         return None
-    
+
     db.delete(db_user)
     db.commit()
     return db_user
