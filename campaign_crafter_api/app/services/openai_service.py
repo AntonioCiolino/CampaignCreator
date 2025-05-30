@@ -1,7 +1,7 @@
 from openai import AsyncOpenAI, APIError  # Use AsyncOpenAI and new error type
 from typing import Optional, List, Dict 
 from app.core.config import settings
-from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError # Import specific error
+from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError, LLMGenerationError # Import errors
 from app.services.feature_prompt_service import FeaturePromptService
 # Removed import from llm_factory: from app.services.llm_factory import LLMServiceUnavailableError
 
@@ -34,12 +34,13 @@ class OpenAILLMService(AbstractLLMService):
         try:
             await self.async_client.models.list()
             return True
-        except APIError as e: # Catching new openai v1.x specific API errors
-            print(f"OpenAI service not available. API error: {e}")
-            return False
-        except Exception as e: # Catch any other exceptions during the check
-            print(f"OpenAI service not available. Unexpected error: {e}")
-            return False
+        except APIError as e:
+            print(f"OpenAI service not available due to APIError during models.list(): {e.status_code} - {e.message}")
+            # This indicates a fundamental issue like bad API key or connectivity problem.
+            raise LLMServiceUnavailableError(f"OpenAI API Error: {e.status_code} - {e.message or str(e)}") from e
+        except Exception as e:
+            print(f"OpenAI service not available due to an unexpected error during models.list(): {e}")
+            raise LLMServiceUnavailableError(f"Unexpected error checking OpenAI availability: {str(e)}") from e
 
     def _get_model(self, preferred_model: Optional[str], use_chat_model: bool = True) -> str:
         """Helper to determine the model to use, falling back to defaults if None."""
@@ -59,13 +60,20 @@ class OpenAILLMService(AbstractLLMService):
             )
             if chat_completion.choices and chat_completion.choices[0].message and chat_completion.choices[0].message.content:
                 return chat_completion.choices[0].message.content.strip()
-            raise Exception("OpenAI API call (ChatCompletion) succeeded but returned no content.")
+            # If no content, it's a generation issue.
+            raise LLMGenerationError("OpenAI API call (ChatCompletion) succeeded but returned no usable content.")
         except APIError as e:
-            print(f"OpenAI API error with model {selected_model} (ChatCompletion): {e}")
-            raise LLMServiceUnavailableError(f"OpenAI API error: {str(e)}") from e
-        except Exception as e:
+            error_detail = f"OpenAI API Error ({e.status_code}): {e.message or str(e)}"
+            print(error_detail)
+            if e.status_code == 401: # Unauthorized
+                raise LLMServiceUnavailableError(error_detail) from e
+            elif e.status_code == 429: # Rate limit
+                raise LLMGenerationError(f"OpenAI rate limit exceeded. Detail: {error_detail}") from e
+            else: # Other API errors (400 for bad input, 5xx for server issues)
+                raise LLMGenerationError(error_detail) from e
+        except Exception as e: # Catch other unexpected errors
             print(f"Unexpected error with model {selected_model} (ChatCompletion): {e}")
-            raise Exception(f"An unexpected error occurred: {str(e)}") from e
+            raise LLMGenerationError(f"Unexpected error during OpenAI call: {str(e)}") from e
 
     async def _perform_legacy_completion(self, selected_model: str, prompt: str, temperature: float, max_tokens: int) -> str:
         if not self.async_client:
@@ -80,13 +88,19 @@ class OpenAILLMService(AbstractLLMService):
             )
             if completion.choices and completion.choices[0].text:
                 return completion.choices[0].text.strip()
-            raise Exception("OpenAI API call (Legacy Completion) succeeded but returned no content.")
+            raise LLMGenerationError("OpenAI API call (Legacy Completion) succeeded but returned no content.")
         except APIError as e:
-            print(f"OpenAI API error with model {selected_model} (Legacy Completion): {e}")
-            raise LLMServiceUnavailableError(f"OpenAI API error: {str(e)}") from e
+            error_detail = f"OpenAI API Error ({e.status_code}): {e.message or str(e)}"
+            print(error_detail)
+            if e.status_code == 401: # Unauthorized
+                raise LLMServiceUnavailableError(error_detail) from e
+            elif e.status_code == 429: # Rate limit
+                raise LLMGenerationError(f"OpenAI rate limit exceeded. Detail: {error_detail}") from e
+            else: # Other API errors
+                raise LLMGenerationError(error_detail) from e
         except Exception as e:
             print(f"Unexpected error with model {selected_model} (Legacy Completion): {e}")
-            raise Exception(f"An unexpected error occurred: {str(e)}") from e
+            raise LLMGenerationError(f"Unexpected error during OpenAI legacy completion call: {str(e)}") from e
 
     async def generate_text(self, prompt: str, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str:
         if not await self.is_available():
@@ -238,10 +252,20 @@ class OpenAILLMService(AbstractLLMService):
 
 
                         models_to_return[model_id] = {"id": model_id, "name": name}
-        except APIError as e: # Updated error type
-            print(f"OpenAI API error when listing models: {e}. Returning manually curated list only.")
+        except APIError as e:
+            # If listing models fails due to API key or fundamental issue, it means service is unavailable.
+            error_detail = f"OpenAI API Error ({e.status_code}) while listing models: {e.message or str(e)}"
+            print(error_detail)
+            raise LLMServiceUnavailableError(error_detail) from e
         except Exception as e:
-            print(f"An unexpected error occurred when listing models: {e}. Returning manually curated list only.")
+            # Catch any other unexpected errors during model listing
+            print(f"An unexpected error occurred when listing OpenAI models: {e}. Returning manually curated list only if any.")
+            # Depending on strictness, could raise LLMServiceUnavailableError here too,
+            # but returning what we have (even if just common_models) might be acceptable.
+            # For now, let's be strict: if API list fails, the service is not fully operational for model discovery.
+            if not models_to_return: # If we couldn't even rely on common_models initially
+                 raise LLMServiceUnavailableError(f"Unexpected error listing OpenAI models: {str(e)}") from e
+            # else, we return the common_models at least
 
         # Sort models: GPT-4 versions first, then GPT-3.5 Turbo, then Instruct, then others alphabetically.
         sorted_models = sorted(list(models_to_return.values()), key=lambda x: (

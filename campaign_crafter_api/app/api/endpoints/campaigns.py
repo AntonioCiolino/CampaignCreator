@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 
 from app import external_models, crud, orm_models, models
 from app.db import get_db 
-from app.services.llm_factory import get_llm_service, LLMServiceUnavailableError
+from app.services.llm_service import LLMServiceUnavailableError, LLMGenerationError # Updated import
+from app.services.llm_factory import get_llm_service
 from app.services.export_service import HomebreweryExportService
 from app.external_models.export_models import PrepareHomebreweryPostResponse
 
@@ -44,8 +45,11 @@ async def create_new_campaign(
         )
         if db_campaign.concept is None and campaign_input.initial_user_prompt: # <--- Changed
             print(f"Campaign {db_campaign.id} created, but concept generation might have failed or was skipped (e.g. LLM unavailable/error).")
-    except LLMServiceUnavailableError as e:
-        raise HTTPException(status_code=503, detail=f"LLM Service Error for concept generation: {e}")
+    # Note: crud.create_campaign now internally handles LLMServiceUnavailableError and LLMGenerationError
+    # by logging them and returning a campaign without a concept.
+    # The endpoint will only catch errors if crud.create_campaign re-raises them, or for other ValueErrors.
+    except LLMServiceUnavailableError as e: # This might be raised if get_llm_service fails in crud
+        raise HTTPException(status_code=503, detail=f"LLM Service Error for concept generation: {str(e)}")
     except ValueError as ve: 
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
@@ -104,7 +108,9 @@ async def generate_campaign_toc_endpoint(
             model=model_specific_id
         )
     except LLMServiceUnavailableError as e:
-        raise HTTPException(status_code=503, detail=f"LLM Service Error for TOC generation: {e}")
+        raise HTTPException(status_code=503, detail=f"LLM Service Error for TOC generation: {str(e)}")
+    except LLMGenerationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except ValueError as ve: 
         raise HTTPException(status_code=400, detail=str(ve))
     except NotImplementedError:
@@ -142,7 +148,9 @@ async def generate_campaign_titles_endpoint(
             model=model_specific_id
         )
     except LLMServiceUnavailableError as e:
-        raise HTTPException(status_code=503, detail=f"LLM Service Error for title generation: {e}")
+        raise HTTPException(status_code=503, detail=f"LLM Service Error for title generation: {str(e)}")
+    except LLMGenerationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except NotImplementedError:
@@ -183,7 +191,9 @@ async def create_new_campaign_section_endpoint(
             model=model_specific_id
         )
     except LLMServiceUnavailableError as e:
-        raise HTTPException(status_code=503, detail=f"LLM Service Error for section content generation: {e}")
+        raise HTTPException(status_code=503, detail=f"LLM Service Error for section content generation: {str(e)}")
+    except LLMGenerationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except ValueError as ve: 
         raise HTTPException(status_code=400, detail=str(ve))
     except NotImplementedError:

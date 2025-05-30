@@ -1,8 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict
 
-class LLMServiceUnavailableError(Exception): # <-- Added this
+class LLMServiceUnavailableError(Exception):
     """Custom exception for when an LLM service cannot be initialized or is unavailable."""
+    pass
+
+class LLMGenerationError(Exception):
+    """Custom exception for errors during LLM content generation attempts."""
     pass
 
 class AbstractLLMService(ABC):
