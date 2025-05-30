@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware # Added import
 from .db import init_db
 from app.api.endpoints import campaigns as campaigns_router
 from app.api.endpoints import llm_management as llm_management_router
@@ -8,6 +9,20 @@ from app.api.endpoints import import_data as import_data_router
 from app.api.endpoints import users as users_router # New import for users
 
 app = FastAPI(title="Campaign Crafter API", version="0.1.0")
+
+origins = [
+    "http://localhost",
+    "http://localhost:3000",
+    # Potentially add your deployed frontend URL here in the future
+]
+
+app.add_middleware( # Added middleware
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.on_event("startup")
 async def on_startup():
