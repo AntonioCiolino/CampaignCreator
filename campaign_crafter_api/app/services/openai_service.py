@@ -1,22 +1,45 @@
-import openai # type: ignore
+from openai import AsyncOpenAI, APIError  # Use AsyncOpenAI and new error type
 from typing import Optional, List, Dict 
 from app.core.config import settings
-from app.services.llm_service import AbstractLLMService # Updated import
+from app.services.llm_service import AbstractLLMService
 from app.services.feature_prompt_service import FeaturePromptService
+from app.services.llm_factory import LLMServiceUnavailableError # Import specific error
 
-class OpenAILLMService(AbstractLLMService): # Updated inheritance
+class OpenAILLMService(AbstractLLMService):
+    PROVIDER_NAME = "openai" # Class variable for provider name
     DEFAULT_CHAT_MODEL = "gpt-3.5-turbo"
-    DEFAULT_COMPLETION_MODEL = "gpt-3.5-turbo-instruct"
+    DEFAULT_COMPLETION_MODEL = "gpt-3.5-turbo-instruct" # Still relevant if we support legacy
 
     def __init__(self):
         self.api_key = settings.OPENAI_API_KEY
-        if not self.is_available(): # Use the new method to check availability
-            raise ValueError("OpenAI API key not configured or is a placeholder. Please set OPENAI_API_KEY in your .env file.")
-        openai.api_key = self.api_key
+        self.async_client: Optional[AsyncOpenAI] = None # Initialize as None
+        if self.api_key and self.api_key not in ["YOUR_API_KEY_HERE", "YOUR_OPENAI_API_KEY"]:
+            self.async_client = AsyncOpenAI(api_key=self.api_key)
+        else:
+            # This will be caught by is_available, or raise error if service used without key
+            print("Warning: OpenAI API key not configured or is a placeholder.")
         self.feature_prompt_service = FeaturePromptService()
 
-    def is_available(self) -> bool:
-        return bool(self.api_key and self.api_key != "YOUR_API_KEY_HERE" and self.api_key != "YOUR_OPENAI_API_KEY")
+    async def is_available(self) -> bool:
+        if not self.api_key or self.api_key in ["YOUR_API_KEY_HERE", "YOUR_OPENAI_API_KEY"]:
+            return False
+        if not self.async_client:
+            # Attempt to re-initialize if api_key was set later (though unlikely with current setup)
+            # Or simply return False, as __init__ should have set it.
+            try:
+                self.async_client = AsyncOpenAI(api_key=self.api_key)
+            except Exception:
+                return False # Failed to initialize client
+
+        try:
+            await self.async_client.models.list(limit=1)
+            return True
+        except APIError as e: # Catching new openai v1.x specific API errors
+            print(f"OpenAI service not available. API error: {e}")
+            return False
+        except Exception as e: # Catch any other exceptions during the check
+            print(f"OpenAI service not available. Unexpected error: {e}")
+            return False
 
     def _get_model(self, preferred_model: Optional[str], use_chat_model: bool = True) -> str:
         """Helper to determine the model to use, falling back to defaults if None."""
@@ -24,307 +47,213 @@ class OpenAILLMService(AbstractLLMService): # Updated inheritance
             return preferred_model
         return self.DEFAULT_CHAT_MODEL if use_chat_model else self.DEFAULT_COMPLETION_MODEL
 
-    def generate_text(self, prompt: str, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str:
+    async def _perform_chat_completion(self, selected_model: str, messages: List[Dict[str,str]], temperature: float, max_tokens: int) -> str:
+        if not self.async_client:
+             raise LLMServiceUnavailableError("OpenAI AsyncClient not initialized.")
+        try:
+            chat_completion = await self.async_client.chat.completions.create(
+                model=selected_model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens
+            )
+            if chat_completion.choices and chat_completion.choices[0].message and chat_completion.choices[0].message.content:
+                return chat_completion.choices[0].message.content.strip()
+            raise Exception("OpenAI API call (ChatCompletion) succeeded but returned no content.")
+        except APIError as e:
+            print(f"OpenAI API error with model {selected_model} (ChatCompletion): {e}")
+            raise LLMServiceUnavailableError(f"OpenAI API error: {str(e)}") from e
+        except Exception as e:
+            print(f"Unexpected error with model {selected_model} (ChatCompletion): {e}")
+            raise Exception(f"An unexpected error occurred: {str(e)}") from e
+
+    async def _perform_legacy_completion(self, selected_model: str, prompt: str, temperature: float, max_tokens: int) -> str:
+        if not self.async_client:
+             raise LLMServiceUnavailableError("OpenAI AsyncClient not initialized.")
+        print(f"Warning: Using legacy completions endpoint for model {selected_model}. Consider migrating to chat completions if possible.")
+        try:
+            completion = await self.async_client.completions.create(
+                model=selected_model,
+                prompt=prompt,
+                temperature=temperature,
+                max_tokens=max_tokens
+            )
+            if completion.choices and completion.choices[0].text:
+                return completion.choices[0].text.strip()
+            raise Exception("OpenAI API call (Legacy Completion) succeeded but returned no content.")
+        except APIError as e:
+            print(f"OpenAI API error with model {selected_model} (Legacy Completion): {e}")
+            raise LLMServiceUnavailableError(f"OpenAI API error: {str(e)}") from e
+        except Exception as e:
+            print(f"Unexpected error with model {selected_model} (Legacy Completion): {e}")
+            raise Exception(f"An unexpected error occurred: {str(e)}") from e
+
+    async def generate_text(self, prompt: str, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str:
+        if not await self.is_available():
+             raise LLMServiceUnavailableError("OpenAI service is not available.")
         if not prompt:
             raise ValueError("Prompt cannot be empty.")
 
-        selected_model = self._get_model(model, use_chat_model=True) # Default to chat model for generic text
-
-        try:
-            # Determine if the model is a chat-based model or completion-based
-            # This is a simplified check; a more robust solution might involve querying model capabilities
-            if selected_model.startswith("gpt-4") or selected_model.startswith("gpt-3.5-turbo") or "ft:gpt-3.5-turbo" in selected_model:
-                response = openai.ChatCompletion.create(
-                    model=selected_model,
-                    messages=[
-                        {"role": "system", "content": "You are a helpful assistant."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=temperature,
-                    max_tokens=max_tokens
-                )
-                if response.choices and response.choices[0].message and response.choices[0].message.content:
-                    return response.choices[0].message.content.strip()
-            elif selected_model.startswith("ft:") or selected_model.endswith("-instruct") or "davinci" in selected_model or "curie" in selected_model or "babbage" in selected_model or "ada" in selected_model:
-                response = openai.Completion.create(
-                    model=selected_model, # Use 'model' for newer versions, 'engine' was for older ones
-                    prompt=prompt,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    n=1,
-                    stop=None
-                )
-                if response.choices and response.choices[0].text:
-                    return response.choices[0].text.strip()
-            else:
-                # Fallback attempt with ChatCompletion if model type is ambiguous but not explicitly a completion model
-                print(f"Warning: Model type for '{selected_model}' is ambiguous. Attempting ChatCompletion API.")
-                response = openai.ChatCompletion.create(
-                    model=selected_model,
-                    messages=[
-                        {"role": "system", "content": "You are a helpful assistant."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=temperature,
-                    max_tokens=max_tokens
-                )
-                if response.choices and response.choices[0].message and response.choices[0].message.content:
-                    return response.choices[0].message.content.strip()
-            
-            raise Exception(f"OpenAI API call ({'ChatCompletion' if selected_model.startswith('gpt') else 'Completion'}) succeeded but returned no content for model {selected_model}.")
-
-        except openai.error.OpenAIError as e:
-            print(f"OpenAI API error during generic text generation with model {selected_model}: {e}")
-            raise Exception(f"Failed to generate text due to OpenAI API error: {str(e)}") from e
-        except Exception as e:
-            print(f"An unexpected error occurred during generic text generation with model {selected_model}: {e}")
-            raise Exception(f"An unexpected error occurred during generic text generation: {str(e)}") from e
-
-
-    def generate_campaign_concept(self, user_prompt: str, model: Optional[str] = None) -> str:
-        selected_model = self._get_model(model, use_chat_model=False) # Default to completion for this
+        selected_model = self._get_model(model, use_chat_model=True)
         
+        # Prioritize ChatCompletion, especially for newer models.
+        # The openai v1.x library encourages ChatCompletion even for instruct-like models.
+        # Models like "gpt-3.5-turbo-instruct" are generally completion models.
+        if selected_model.endswith("-instruct") or "davinci" in selected_model or "curie" in selected_model or "babbage" in selected_model or "ada" in selected_model:
+             # Check if it's one of the few that might strictly need legacy Completion API
+            if selected_model in ["text-davinci-003", "text-davinci-002", "davinci", "curie", "babbage", "ada"]: # Add other true legacy models if any
+                 return await self._perform_legacy_completion(selected_model, prompt, temperature, max_tokens)
+        
+        # Default to ChatCompletion for gpt-4, gpt-3.5-turbo, fine-tuned gpt-3.5-turbo, and others.
+        # For "gpt-3.5-turbo-instruct", it can also be used with ChatCompletion by structuring the prompt.
+        messages = [{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": prompt}]
+        if selected_model == "gpt-3.5-turbo-instruct": # Example of adapting an instruct model to chat
+            messages = [{"role": "user", "content": prompt}] # Simpler structure for instruct-like via chat
+
+        return await self._perform_chat_completion(selected_model, messages, temperature, max_tokens)
+
+    async def generate_campaign_concept(self, user_prompt: str, model: Optional[str] = None) -> str:
+        if not await self.is_available():
+            raise LLMServiceUnavailableError("OpenAI service is not available.")
+
+        # For creative tasks like campaign concept, chat models are generally preferred.
+        selected_model = self._get_model(model, use_chat_model=True)
+
         custom_prompt_template = self.feature_prompt_service.get_prompt("Campaign")
-        if custom_prompt_template:
-            final_prompt = custom_prompt_template.format(user_prompt=user_prompt)
-        else:
-            print("Warning: 'Campaign' prompt not found in features.csv. Using default prompt.")
-            final_prompt = f"Generate a detailed campaign concept, including potential plot hooks and key NPCs, based on the following idea: {user_prompt}"
-        
-        try:
-            if selected_model.startswith("gpt-4") or selected_model.startswith("gpt-3.5-turbo"):
-                 response = openai.ChatCompletion.create(
-                    model=selected_model,
-                    messages=[
-                        {"role": "system", "content": "You are a creative assistant helping to brainstorm RPG campaign concepts."},
-                        {"role": "user", "content": final_prompt} # Corrected from prompt_template
-                    ],
-                    temperature=0.7,
-                    max_tokens=1000 
-                )
-                 if response.choices and response.choices[0].message and response.choices[0].message.content:
-                    return response.choices[0].message.content.strip()
-            else: 
-                response = openai.Completion.create(
-                    model=selected_model, 
-                    prompt=final_prompt,
-                    temperature=0.7,
-                    max_tokens=1000,
-                    n=1,
-                    stop=None
-                )
-                if response.choices and response.choices[0].text:
-                    return response.choices[0].text.strip()
-            raise Exception("OpenAI API call succeeded but returned no content.")
+        final_prompt = custom_prompt_template.format(user_prompt=user_prompt) if custom_prompt_template else \
+                       f"Generate a detailed campaign concept, including potential plot hooks and key NPCs, based on the following idea: {user_prompt}"
 
-        except openai.error.OpenAIError as e:
-            print(f"OpenAI API error: {e}")
-            raise Exception(f"Failed to generate campaign concept due to OpenAI API error: {str(e)}") from e
-        except Exception as e:
-            print(f"An unexpected error occurred during LLM concept generation: {e}")
-            raise Exception(f"An unexpected error occurred: {str(e)}") from e
+        messages = [
+            {"role": "system", "content": "You are a creative assistant helping to brainstorm RPG campaign concepts."},
+            {"role": "user", "content": final_prompt}
+        ]
+        return await self._perform_chat_completion(selected_model, messages, temperature=0.7, max_tokens=1000)
 
-    def generate_toc(self, campaign_concept: str, model: Optional[str] = None) -> str:
-        selected_model = self._get_model(model, use_chat_model=True) # Default to chat for this
-
+    async def generate_toc(self, campaign_concept: str, model: Optional[str] = None) -> str:
+        if not await self.is_available():
+            raise LLMServiceUnavailableError("OpenAI service is not available.")
         if not campaign_concept:
-            raise ValueError("Campaign concept cannot be empty when generating a Table of Contents.")
+            raise ValueError("Campaign concept cannot be empty.")
 
+        selected_model = self._get_model(model, use_chat_model=True)
         custom_prompt_template = self.feature_prompt_service.get_prompt("Table of Contents")
-        if custom_prompt_template:
-            final_prompt = custom_prompt_template.format(campaign_concept=campaign_concept)
-        else:
-            print("Warning: 'Table of Contents' prompt not found in features.csv. Using default prompt.")
-            final_prompt = f"""Based on the following campaign concept, generate a hierarchical Table of Contents suitable for a tabletop role-playing game campaign... (rest of prompt)""" # Truncated for brevity
+        final_prompt = custom_prompt_template.format(campaign_concept=campaign_concept) if custom_prompt_template else \
+                       f"Based on the campaign concept: '{campaign_concept}', generate a hierarchical Table of Contents suitable for an RPG campaign book. Include main chapters and potential sub-sections."
         
-        try:
-            if selected_model.startswith("gpt-4") or selected_model.startswith("gpt-3.5-turbo"):
-                response = openai.ChatCompletion.create(
-                    model=selected_model,
-                    messages=[
-                        {"role": "system", "content": "You are an assistant skilled in structuring RPG campaign narratives and creating detailed Table of Contents."},
-                        {"role": "user", "content": final_prompt}
-                    ],
-                    temperature=0.5,
-                    max_tokens=700 
-                )
-                if response.choices and response.choices[0].message and response.choices[0].message.content:
-                    return response.choices[0].message.content.strip()
-            else: 
-                response = openai.Completion.create(
-                    model=selected_model,
-                    prompt=final_prompt,
-                    temperature=0.5,
-                    max_tokens=700,
-                    n=1,
-                    stop=None 
-                )
-                if response.choices and response.choices[0].text:
-                    return response.choices[0].text.strip()
-            raise Exception("OpenAI API call for TOC succeeded but returned no content.")
-        
-        except openai.error.OpenAIError as e:
-            print(f"OpenAI API error during TOC generation: {e}")
-            raise Exception(f"Failed to generate TOC due to OpenAI API error: {str(e)}") from e
-        except Exception as e:
-            print(f"An unexpected error occurred during LLM TOC generation: {e}")
-            raise Exception(f"An unexpected error occurred during TOC generation: {str(e)}") from e
+        messages = [
+            {"role": "system", "content": "You are an assistant skilled in structuring RPG campaign narratives and creating detailed Table of Contents."},
+            {"role": "user", "content": final_prompt}
+        ]
+        return await self._perform_chat_completion(selected_model, messages, temperature=0.5, max_tokens=700)
 
-    def generate_titles(self, campaign_concept: str, count: int = 5, model: Optional[str] = None) -> list[str]:
-        selected_model = self._get_model(model, use_chat_model=True) # Default to chat
-
+    async def generate_titles(self, campaign_concept: str, count: int = 5, model: Optional[str] = None) -> list[str]:
+        if not await self.is_available():
+            raise LLMServiceUnavailableError("OpenAI service is not available.")
         if not campaign_concept:
-            raise ValueError("Campaign concept cannot be empty when generating titles.")
+            raise ValueError("Campaign concept cannot be empty.")
         if count <= 0:
             raise ValueError("Count for titles must be a positive integer.")
 
+        selected_model = self._get_model(model, use_chat_model=True)
         custom_prompt_template = self.feature_prompt_service.get_prompt("Campaign Names")
-        if custom_prompt_template:
-            final_prompt = custom_prompt_template.format(campaign_concept=campaign_concept, count=count)
-        else:
-            print("Warning: 'Campaign Names' prompt not found in features.csv. Using default prompt.")
-            final_prompt = f"""Based on the following campaign concept, generate {count} alternative campaign titles... (rest of prompt)""" # Truncated
-        try:
-            if selected_model.startswith("gpt-4") or selected_model.startswith("gpt-3.5-turbo"):
-                response = openai.ChatCompletion.create(
-                    model=selected_model,
-                    messages=[
-                        {"role": "system", "content": "You are an assistant skilled in brainstorming creative and catchy titles for RPG campaigns."},
-                        {"role": "user", "content": final_prompt}
-                    ],
-                    temperature=0.7,
-                    max_tokens=150 + (count * 20) 
-                )
-                if response.choices and response.choices[0].message and response.choices[0].message.content:
-                    titles_text = response.choices[0].message.content.strip()
-                    titles_list = [title.strip() for title in titles_text.split('\n') if title.strip()]
-                    return titles_list[:count] 
-            else: 
-                response = openai.Completion.create(
-                    model=selected_model,
-                    prompt=final_prompt,
-                    temperature=0.7,
-                    max_tokens=150 + (count * 20),
-                    n=1,
-                    stop=None 
-                )
-                if response.choices and response.choices[0].text:
-                    titles_text = response.choices[0].text.strip()
-                    titles_list = [title.strip() for title in titles_text.split('\n') if title.strip()]
-                    return titles_list[:count]
-            raise Exception("OpenAI API call for titles succeeded but returned no content.")
+        final_prompt = custom_prompt_template.format(campaign_concept=campaign_concept, count=count) if custom_prompt_template else \
+                       f"Based on the campaign concept: '{campaign_concept}', generate {count} alternative, catchy campaign titles. List each title on a new line."
         
-        except openai.error.OpenAIError as e:
-            print(f"OpenAI API error during title generation: {e}")
-            raise Exception(f"Failed to generate titles due to OpenAI API error: {str(e)}") from e
-        except Exception as e:
-            print(f"An unexpected error occurred during LLM title generation: {e}")
-            raise Exception(f"An unexpected error occurred during title generation: {str(e)}") from e
+        messages = [
+            {"role": "system", "content": "You are an assistant skilled in brainstorming creative and catchy titles for RPG campaigns."},
+            {"role": "user", "content": final_prompt}
+        ]
 
-    def generate_section_content(self, campaign_concept: str, existing_sections_summary: Optional[str], section_creation_prompt: Optional[str], section_title_suggestion: Optional[str], model: Optional[str] = None) -> str:
-        selected_model = self._get_model(model, use_chat_model=True) # Default to chat
+        titles_text = await self._perform_chat_completion(selected_model, messages, temperature=0.7, max_tokens=150 + (count * 20))
+        titles_list = [title.strip() for title in titles_text.split('\n') if title.strip()]
+        return titles_list[:count]
 
-        if not campaign_concept:
-            raise ValueError("Campaign concept cannot be empty when generating section content.")
+    async def generate_section_content(self, campaign_concept: str, existing_sections_summary: Optional[str], section_creation_prompt: Optional[str], section_title_suggestion: Optional[str], model: Optional[str] = None) -> str:
+        if not await self.is_available():
+            raise LLMServiceUnavailableError("OpenAI service is not available.")
+        if not campaign_concept: # Basic check, though prompt construction is more complex
+            raise ValueError("Campaign concept is required.")
+
+        selected_model = self._get_model(model, use_chat_model=True)
 
         custom_prompt_template = self.feature_prompt_service.get_prompt("Section Content")
         if custom_prompt_template:
             final_prompt = custom_prompt_template.format(
                 campaign_concept=campaign_concept,
                 existing_sections_summary=existing_sections_summary or "N/A",
-                section_creation_prompt=section_creation_prompt or "Continue the story.",
-                section_title_suggestion=section_title_suggestion or "Untitled Section"
+                section_creation_prompt=section_creation_prompt or "Continue the story from where it left off, or introduce a new related event/location/character interaction.",
+                section_title_suggestion=section_title_suggestion or "Next Chapter"
             )
-        else:
-            print("Warning: 'Section Content' prompt not found in features.csv. Using default prompt.")
-            prompt_parts = ["You are writing a new section for a tabletop role-playing game campaign." , f"The overall campaign concept is:\n{campaign_concept}\n"] # Truncated
-            # ... (rest of default prompt construction)
-            final_prompt = "\n".join(prompt_parts)
+        else: # Simplified default if CSV prompt is missing
+            final_prompt = f"Campaign Concept: {campaign_concept}\n"
+            if existing_sections_summary:
+                final_prompt += f"Summary of existing sections: {existing_sections_summary}\n"
+            final_prompt += f"Instruction for new section (titled '{section_title_suggestion or 'Next Chapter'}'): {section_creation_prompt or 'Develop the next part of the story.'}"
 
+        messages = [
+            {"role": "system", "content": "You are an expert RPG writer, crafting a new section for an ongoing campaign. Ensure the content is engaging and fits the narrative style implied by the concept and existing sections."},
+            {"role": "user", "content": final_prompt}
+        ]
+        return await self._perform_chat_completion(selected_model, messages, temperature=0.7, max_tokens=1500)
 
-        try:
-            if selected_model.startswith("gpt-4") or selected_model.startswith("gpt-3.5-turbo"):
-                response = openai.ChatCompletion.create(
-                    model=selected_model,
-                    messages=[
-                        {"role": "system", "content": "You are an expert RPG writer, crafting a new section for an ongoing campaign."},
-                        {"role": "user", "content": final_prompt}
-                    ],
-                    temperature=0.7,
-                    max_tokens=1500
-                )
-                if response.choices and response.choices[0].message and response.choices[0].message.content:
-                    return response.choices[0].message.content.strip()
-            else:
-                response = openai.Completion.create(
-                    model=selected_model,
-                    prompt=final_prompt, 
-                    temperature=0.7,
-                    max_tokens=1500, 
-                    n=1,
-                    stop=None 
-                )
-                if response.choices and response.choices[0].text:
-                    return response.choices[0].text.strip()
-            raise Exception("OpenAI API call for section content succeeded but returned no content.")
-        
-        except openai.error.OpenAIError as e:
-            print(f"OpenAI API error during section content generation: {e}")
-            raise Exception(f"Failed to generate section content due to OpenAI API error: {str(e)}") from e
-        except Exception as e:
-            print(f"An unexpected error occurred during LLM section content generation: {e}")
-            raise Exception(f"An unexpected error occurred during section content generation: {str(e)}") from e
-
-    def list_available_models(self) -> List[Dict[str, str]]:
-        """
-        Lists available LLM models from OpenAI.
-        The 'id' in the returned dict is the model ID usable in generation methods.
-        """
-        if not self.is_available():
-            print("Warning: OpenAI API key not configured. Cannot fetch models.")
+    async def list_available_models(self) -> List[Dict[str, str]]:
+        if not await self.is_available(): # Use the async is_available
+            print("Warning: OpenAI API key not configured or service unavailable. Cannot fetch models.")
             return []
-            
-        models_to_return: Dict[str, Dict[str,str]] = {} 
+        if not self.async_client:
+            return [] # Should have been caught by is_available
+
+        models_to_return: Dict[str, Dict[str, str]] = {}
 
         # Manually add well-known models with user-friendly names
-        # These IDs are what the OpenAI API expects.
+        # These are preferred and will be shown first if available.
         common_models = {
             "gpt-4": {"id": "gpt-4", "name": "GPT-4"},
-            "gpt-4-turbo-preview": {"id": "gpt-4-turbo-preview", "name": "GPT-4 Turbo Preview"},
+            "gpt-4-turbo-preview": {"id": "gpt-4-turbo-preview", "name": "GPT-4 Turbo Preview"}, # Example, specific turbo model might change
+            "gpt-4o": {"id": "gpt-4o", "name": "GPT-4 Omni"},
             "gpt-3.5-turbo": {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo (Chat)"},
-            "gpt-3.5-turbo-instruct": {"id": "gpt-3.5-turbo-instruct", "name": "GPT-3.5 Turbo Instruct (Completion)"},
+            "gpt-3.5-turbo-instruct": {"id": "gpt-3.5-turbo-instruct", "name": "GPT-3.5 Turbo Instruct"},
         }
-        # Add legacy models if desired, or specific versions
-        # "text-davinci-003": {"id": "text-davinci-003", "name": "Text Davinci 003 (Legacy Completion)"}
         models_to_return.update(common_models)
 
         try:
-            response = openai.Model.list()
+            response = await self.async_client.models.list()
             if response and response.data:
                 for model_obj in response.data:
                     model_id = model_obj.id
-                    # Add to list if not already present from common_models (to keep friendlier names)
-                    if model_id not in models_to_return:
+                    if model_id not in models_to_return: # Prioritize manually defined names
                         # Simple naming for less common models pulled from API
-                        name = model_id.replace("-", " ").title() 
+                        name_parts = [part.capitalize() for part in model_id.split('-')]
+                        name = " ".join(name_parts)
+
+                        # Add hints based on model ID conventions
                         if "gpt-3.5" in model_id and "turbo" in model_id and "instruct" not in model_id:
                             name += " (Chat)"
                         elif "instruct" in model_id:
-                             name += " (Completion)"
-                        elif "davinci" in model_id or "curie" in model_id or "babbage" in model_id or "ada" in model_id:
+                             name += " (Instruct)"
+                        elif any(legacy_kw in model_id for legacy_kw in ["davinci", "curie", "babbage", "ada"]) and "instruct" not in model_id:
                              name += " (Legacy Completion)"
+                        elif "ft:" in model_id:
+                            name = f"Fine-tuned: {model_id.split(':')[-1]}"
+
 
                         models_to_return[model_id] = {"id": model_id, "name": name}
-        except openai.error.OpenAIError as e:
+        except APIError as e: # Updated error type
             print(f"OpenAI API error when listing models: {e}. Returning manually curated list only.")
         except Exception as e:
             print(f"An unexpected error occurred when listing models: {e}. Returning manually curated list only.")
 
-        # Sort models, perhaps prioritizing chat models or newer models
+        # Sort models: GPT-4 versions first, then GPT-3.5 Turbo, then Instruct, then others alphabetically.
         sorted_models = sorted(list(models_to_return.values()), key=lambda x: (
-            not x['name'].startswith("GPT-4"), # GPT-4 first
-            not x['name'].startswith("GPT-3.5 Turbo (Chat)"), # then 3.5 Turbo Chat
-            not x['name'].startswith("GPT-3.5 Turbo Instruct"), # then 3.5 Turbo Instruct
-            x['name'] # then alphabetically
+            not x['name'].startswith("GPT-4"),
+            not x['name'].startswith("GPT-3.5 Turbo (Chat)"),
+            not x['name'].startswith("GPT-3.5 Turbo Instruct"),
+            x['name']
         ))
         return sorted_models
+
+    async def close(self):
+        """Close the AsyncOpenAI client if it was initialized."""
+        if self.async_client:
+            await self.async_client.close()
+            print("OpenAI AsyncClient closed.")
