@@ -37,11 +37,10 @@ async def create_new_campaign(
     try:
         # Note: campaign_input is passed as the 'campaign' argument to crud.create_campaign
         # This is valid because CampaignCreate is a subclass of CampaignBase.
-        db_campaign = crud.create_campaign(
+        db_campaign = await crud.create_campaign(
             db=db, 
-            campaign=campaign_input, # <--- Changed
-            owner_id=owner_id,
-            model_id_for_concept=campaign_input.model_id_with_prefix_for_concept # <--- Changed
+            campaign_payload=campaign_input,
+            owner_id=owner_id
         )
         if db_campaign.concept is None and campaign_input.initial_user_prompt: # <--- Changed
             print(f"Campaign {db_campaign.id} created, but concept generation might have failed or was skipped (e.g. LLM unavailable/error).")
@@ -174,15 +173,8 @@ async def create_new_campaign_section_endpoint(
     existing_sections_summary = "; ".join([s.title for s in existing_sections if s.title]) if existing_sections else None
 
     try:
-        # Use section-specific model if provided, else campaign's default, else a general default
-        model_to_use = section_input.model_id_with_prefix or db_campaign.model_id_with_prefix_for_concept
-        # Fallback to a globally defined default model if no model is specified at any level
-        if not model_to_use:
-            from app.core.config import DEFAULT_MODEL_ID_WITH_PREFIX # Ensure this import exists and is valid
-            model_to_use = DEFAULT_MODEL_ID_WITH_PREFIX
-
-        provider_name, model_specific_id = _extract_provider_and_model(model_to_use)
-        llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=model_to_use)
+        provider_name, model_specific_id = _extract_provider_and_model(section_input.model_id_with_prefix)
+        llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=section_input.model_id_with_prefix)
         generated_content = llm_service.generate_section_content(
             campaign_concept=db_campaign.concept or "A general creative writing piece.",
             existing_sections_summary=existing_sections_summary,
@@ -243,7 +235,7 @@ async def list_campaign_sections(
     if db_campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
     sections = crud.get_campaign_sections(db=db, campaign_id=campaign_id)
-    return external_models.CampaignSectionListResponse(sections=sections)
+    return models.CampaignSectionListResponse(sections=sections)
 
 # --- Export Endpoints ---
 
