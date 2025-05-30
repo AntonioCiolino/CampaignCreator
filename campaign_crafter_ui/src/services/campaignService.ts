@@ -258,12 +258,19 @@ export const getCampaignSections = async (campaignId: string | number): Promise<
 // Corrected `getCampaignSections` to expect `{ sections: [...] }` based on backend.
 // The problematic text block below this line has been removed.
 
-export async function getLLMModels() {
+export async function getLLMModels(): Promise<ModelInfo[]> { // Added return type
   // Use process.env.REACT_APP_API_BASE_URL, consistent with apiClient.ts (implicitly)
   // Fallback is provided if the env var is not set.
   // Ensure no double slashes if REACT_APP_API_BASE_URL has a trailing slash.
   const baseUrl = (process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1').replace(/\/$/, '');
   const response = await fetch(`${baseUrl}/llm/models`);
-  if (!response.ok) throw new Error('Failed to fetch LLM models');
-  return response.json();
+  if (!response.ok) {
+    // Optionally, log more details from response if needed for debugging
+    // const errorBody = await response.text();
+    // console.error(`Failed to fetch LLM models. Status: ${response.status}. Body: ${errorBody}`);
+    throw new Error('Failed to fetch LLM models');
+  }
+  const data = await response.json();
+  // Ensure data exists and data.models is an array before returning, otherwise return empty array.
+  return (data && Array.isArray(data.models)) ? data.models : [];
 }
