@@ -1,5 +1,6 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import { useParams } from 'react-router-dom';
+import axios from 'axios'; // Added import
 import * as campaignService from '../services/campaignService';
 import CampaignSectionView from '../components/CampaignSectionView';
 import ReactMarkdown from 'react-markdown';
@@ -152,8 +153,15 @@ const CampaignEditorPage: React.FC = () => {
       setNewSectionPrompt('');
       setAddSectionSuccess("New section added successfully!");
       setTimeout(() => setAddSectionSuccess(null), 3000);
-    } catch (err) {
-      setAddSectionError('Failed to add new section.');
+    } catch (err: any) { // Use 'err: any' for easier access to response properties initially
+      console.error('Failed to add new section:', err); // Keep console log for full error
+      if (axios.isAxiosError(err) && err.response && err.response.data && typeof err.response.data.detail === 'string') {
+        setAddSectionError(err.response.data.detail);
+      } else if (err instanceof Error) {
+        setAddSectionError(err.message);
+      } else {
+        setAddSectionError('Failed to add new section due to an unexpected error.');
+      }
     } finally {
       setIsAddingSection(false);
     }
