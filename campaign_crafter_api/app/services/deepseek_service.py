@@ -68,8 +68,8 @@ class DeepSeekLLMService(AbstractLLMService):
         # Placeholder: DeepSeek has models like 'deepseek-chat' and 'deepseek-coder'.
         print(f"Warning: {self.PROVIDER_NAME.title()}LLMService.list_available_models is returning a placeholder list.")
         return [
-            {"id": "deepseek-chat", "name": f"{self.PROVIDER_NAME.title()} Chat (Placeholder)"},
-            {"id": "deepseek-coder", "name": f"{self.PROVIDER_NAME.title()} Coder (Placeholder)"},
+            {"id": "deepseek-chat", "name": f"{self.PROVIDER_NAME.title()} Chat (Placeholder)", "capabilities": ["chat"]},
+            {"id": "deepseek-coder", "name": f"{self.PROVIDER_NAME.title()} Coder (Placeholder)", "capabilities": ["completion", "code"]},
         ]
 
     async def close(self):

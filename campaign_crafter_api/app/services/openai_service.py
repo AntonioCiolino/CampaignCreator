@@ -222,11 +222,11 @@ class OpenAILLMService(AbstractLLMService):
         # Manually add well-known models with user-friendly names
         # These are preferred and will be shown first if available.
         common_models = {
-            "gpt-4": {"id": "gpt-4", "name": "GPT-4"},
-            "gpt-4-turbo-preview": {"id": "gpt-4-turbo-preview", "name": "GPT-4 Turbo Preview"}, # Example, specific turbo model might change
-            "gpt-4o": {"id": "gpt-4o", "name": "GPT-4 Omni"},
-            "gpt-3.5-turbo": {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo (Chat)"},
-            "gpt-3.5-turbo-instruct": {"id": "gpt-3.5-turbo-instruct", "name": "GPT-3.5 Turbo Instruct"},
+            "gpt-4": {"id": "gpt-4", "name": "GPT-4", "capabilities": ["chat"]},
+            "gpt-4-turbo-preview": {"id": "gpt-4-turbo-preview", "name": "GPT-4 Turbo Preview", "capabilities": ["chat"]},
+            "gpt-4o": {"id": "gpt-4o", "name": "GPT-4 Omni", "capabilities": ["chat"]}, # Assuming chat, may have vision too
+            "gpt-3.5-turbo": {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo (Chat)", "capabilities": ["chat"]},
+            "gpt-3.5-turbo-instruct": {"id": "gpt-3.5-turbo-instruct", "name": "GPT-3.5 Turbo Instruct", "capabilities": ["completion", "chat-adaptable"]},
         }
         models_to_return.update(common_models)
 
@@ -239,19 +239,30 @@ class OpenAILLMService(AbstractLLMService):
                         # Simple naming for less common models pulled from API
                         name_parts = [part.capitalize() for part in model_id.split('-')]
                         name = " ".join(name_parts)
+                        capabilities = ["chat"] # Default to chat for unknown modern models
 
-                        # Add hints based on model ID conventions
                         if "gpt-3.5" in model_id and "turbo" in model_id and "instruct" not in model_id:
                             name += " (Chat)"
-                        elif "instruct" in model_id:
+                            capabilities = ["chat"]
+                        elif "instruct" in model_id: # Covers gpt-3.5-turbo-instruct if not in common_models
                              name += " (Instruct)"
+                             capabilities = ["completion", "chat-adaptable"]
                         elif any(legacy_kw in model_id for legacy_kw in ["davinci", "curie", "babbage", "ada"]) and "instruct" not in model_id:
                              name += " (Legacy Completion)"
-                        elif "ft:" in model_id:
+                             capabilities = ["completion"]
+                        elif model_id.startswith("ft:gpt-3.5-turbo"):
+                            name = f"Fine-tuned (GPT-3.5T): {model_id.split(':')[-1]}"
+                            capabilities = ["chat"]
+                        elif model_id.startswith("ft:davinci") or model_id.startswith("ft:curie") or model_id.startswith("ft:babbage") or model_id.startswith("ft:ada"):
+                            name = f"Fine-tuned (Legacy): {model_id.split(':')[-1]}"
+                            capabilities = ["completion"]
+                        elif model_id.startswith("ft:"): # Generic fine-tune
                             name = f"Fine-tuned: {model_id.split(':')[-1]}"
+                            # Default to chat for unknown fine-tunes, or could be more specific if base model known
+                            capabilities = ["chat"]
 
 
-                        models_to_return[model_id] = {"id": model_id, "name": name}
+                        models_to_return[model_id] = {"id": model_id, "name": name, "capabilities": capabilities}
         except APIError as e:
             # If listing models fails due to API key or fundamental issue, it means service is unavailable.
             error_detail = f"OpenAI API Error ({e.status_code}) while listing models: {e.message or str(e)}"

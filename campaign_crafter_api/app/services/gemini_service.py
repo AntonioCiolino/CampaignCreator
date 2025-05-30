@@ -190,7 +190,10 @@ class GeminiLLMService(AbstractLLMService):
             for m in api_models:
                 if 'generateContent' in m.supported_generation_methods:
                     model_id = m.name.split('/')[-1] if '/' in m.name else m.name
-                    available_models.append({"id": model_id, "name": m.display_name})
+                    capabilities = ["chat"] # Default for Gemini text models
+                    if "vision" in model_id:
+                        capabilities.append("vision")
+                    available_models.append({"id": model_id, "name": m.display_name, "capabilities": capabilities})
             
             if not available_models:
                  print("Warning: Gemini API returned no models supporting 'generateContent'. Using hardcoded list.")
@@ -198,14 +201,19 @@ class GeminiLLMService(AbstractLLMService):
         except Exception as e:
             print(f"Could not dynamically fetch models from Gemini API: {e}. Using a hardcoded list as fallback.")
             available_models = [
-                {"id": "gemini-pro", "name": "Gemini Pro"},
-                {"id": "gemini-1.0-pro", "name": "Gemini 1.0 Pro"},
-                # {"id": "gemini-pro-vision", "name": "Gemini Pro Vision"}, # Keep it simple for now
+                {"id": "gemini-pro", "name": "Gemini Pro", "capabilities": ["chat"]},
+                {"id": "gemini-1.0-pro", "name": "Gemini 1.0 Pro", "capabilities": ["chat"]},
+                {"id": "gemini-pro-vision", "name": "Gemini Pro Vision", "capabilities": ["chat", "vision"]},
             ]
         
         default_model_id = self.DEFAULT_MODEL
+        # Ensure default model, if added manually, also has capabilities
         if not any(m['id'] == default_model_id for m in available_models):
-            available_models.insert(0, {"id": default_model_id, "name": default_model_id.replace("-", " ").title() + " (Default)"})
+            available_models.insert(0, {
+                "id": default_model_id,
+                "name": default_model_id.replace("-", " ").title() + " (Default)",
+                "capabilities": ["chat"] # Default model is assumed to be chat capable
+            })
             
         return available_models
 

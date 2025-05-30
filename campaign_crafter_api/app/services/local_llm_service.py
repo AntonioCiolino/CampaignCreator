@@ -143,7 +143,7 @@ class LocalLLMService(AbstractLLMService):
                     if friendly_name == model_id and model_obj.get("id") and model_obj.get("id") != model_id: # if 'name' was actually the full ID
                         friendly_name = model_obj.get("id")
 
-                    models_list.append({"id": model_id, "name": friendly_name})
+                    models_list.append({"id": model_id, "name": friendly_name, "capabilities": ["chat"]}) # Added capabilities
             
             return models_list
         except httpx.HTTPStatusError as e:

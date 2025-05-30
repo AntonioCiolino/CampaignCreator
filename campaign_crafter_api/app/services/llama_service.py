@@ -67,9 +67,9 @@ class LlamaLLMService(AbstractLLMService):
         
         print(f"Warning: {self.PROVIDER_NAME.title()}LLMService.list_available_models is returning a placeholder list.")
         return [
-            {"id": "llama-7b-chat", "name": f"{self.PROVIDER_NAME.title()} 7B Chat (Placeholder)"},
-            {"id": "llama-13b-chat", "name": f"{self.PROVIDER_NAME.title()} 13B Chat (Placeholder)"},
-            {"id": "codellama-34b-instruct", "name": f"Code{self.PROVIDER_NAME.title()} 34B Instruct (Placeholder)"},
+            {"id": "llama-7b-chat", "name": f"{self.PROVIDER_NAME.title()} 7B Chat (Placeholder)", "capabilities": ["chat"]},
+            {"id": "llama-13b-chat", "name": f"{self.PROVIDER_NAME.title()} 13B Chat (Placeholder)", "capabilities": ["chat"]},
+            {"id": "codellama-34b-instruct", "name": f"Code{self.PROVIDER_NAME.title()} 34B Instruct (Placeholder)", "capabilities": ["completion", "chat-adaptable", "code"]},
         ]
 
     async def close(self):

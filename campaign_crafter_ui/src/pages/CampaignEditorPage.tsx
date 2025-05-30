@@ -1,6 +1,6 @@
-import React, { useState, useEffect, FormEvent } from 'react';
+import React, { useState, useEffect, FormEvent, useMemo } from 'react'; // Added useMemo
 import { useParams } from 'react-router-dom';
-import axios from 'axios'; // Added import
+import axios from 'axios';
 import * as campaignService from '../services/campaignService';
 import CampaignSectionView from '../components/CampaignSectionView';
 import ReactMarkdown from 'react-markdown';
@@ -43,6 +43,13 @@ const CampaignEditorPage: React.FC = () => {
   const [selectedLLMId, setSelectedLLMId] = useState<string>('');
   const [temperature, setTemperature] = useState<number>(0.7);
 
+  const chatModels = useMemo(() => {
+    if (!availableLLMs || availableLLMs.length === 0) return [];
+    return availableLLMs.filter(model =>
+      model.capabilities && (model.capabilities.includes("chat") || model.capabilities.includes("chat-adaptable"))
+    );
+  }, [availableLLMs]);
+
   // Export State
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -69,27 +76,28 @@ const CampaignEditorPage: React.FC = () => {
         setEditableTitle(campaignDetails.title);
         setEditableInitialPrompt(campaignDetails.initial_user_prompt || '');
 
-        setAvailableLLMs(llmModels);
-        if (llmModels.length > 0) {
-          // Updated default model selection logic for prefixed IDs
-          let defaultModel = llmModels.find((m: LLMModel) => m.id === "openai/gpt-3.5-turbo-instruct");
-          if (!defaultModel) {
-            defaultModel = llmModels.find((m: LLMModel) => m.id === "openai/gpt-3.5-turbo");
-          }
-          if (!defaultModel) {
-            defaultModel = llmModels.find((m: LLMModel) => m.id === "gemini/gemini-pro"); // Check for a common Gemini model
-          }
-          if (!defaultModel && llmModels.length > 0) {
-            defaultModel = llmModels[0]; // Fallback to the first model in the list
-          }
-          
-          if (defaultModel) {
-            setSelectedLLMId(defaultModel.id);
-          } else {
-            setSelectedLLMId(''); // Or handle case where no models are available/default found
-          }
+        setAvailableLLMs(llmModels); // llmModels is campaignService.ModelInfo[]
+
+        const potentialChatModels = llmModels.filter(model =>
+            model.capabilities && (model.capabilities.includes("chat") || model.capabilities.includes("chat-adaptable"))
+        );
+
+        if (potentialChatModels.length > 0) {
+            let defaultChatModel = potentialChatModels.find(m => m.id === "openai/gpt-3.5-turbo");
+            if (!defaultChatModel) {
+                defaultChatModel = potentialChatModels.find(m => m.id === "openai/gpt-4");
+            }
+            if (!defaultChatModel) {
+                defaultChatModel = potentialChatModels.find(m => m.id === "gemini/gemini-pro");
+            }
+            if (!defaultChatModel) {
+                defaultChatModel = potentialChatModels[0];
+            }
+            setSelectedLLMId(defaultChatModel.id);
+        } else if (llmModels.length > 0) {
+            setSelectedLLMId(llmModels[0].id);
         } else {
-            setSelectedLLMId(''); // No models available
+            setSelectedLLMId('');
         }
       } catch (err) {
         console.error('Failed to fetch initial campaign or LLM data:', err);
@@ -280,11 +288,20 @@ const CampaignEditorPage: React.FC = () => {
         <h3>LLM Settings & Actions</h3>
         <div className="llm-controls">
           <div className="form-group">
-            <label htmlFor="llmModelSelect">Select LLM Model:</label>
-            <select id="llmModelSelect" value={selectedLLMId} onChange={(e) => setSelectedLLMId(e.target.value)} className="form-select" disabled={availableLLMs.length === 0 || isLoading}>
-              {isLoading && <option value="">Loading models...</option>}
-              {!isLoading && availableLLMs.length === 0 && <option value="">No models available</option>}
-              {!isLoading && availableLLMs.map(model => (<option key={model.id} value={model.id}>{model.name}</option>))}
+            <label htmlFor="llmModelSelect">Select LLM Model (Chat Optimized):</label>
+            <select
+                id="llmModelSelect"
+                value={selectedLLMId}
+                onChange={(e) => setSelectedLLMId(e.target.value)}
+                className="form-select"
+                disabled={chatModels.length === 0 || isLoading}
+            >
+                {isLoading && <option value="">Loading models...</option>}
+                {!isLoading && chatModels.length === 0 && availableLLMs.length > 0 && <option value="">No chat-suitable models found. Check all models?</option>}
+                {!isLoading && availableLLMs.length === 0 && <option value="">No models available from any provider.</option>}
+                {!isLoading && chatModels.map(model => (
+                    <option key={model.id} value={model.id}>{model.name}</option>
+                ))}
             </select>
           </div>
           <div className="form-group">
@@ -373,5 +390,4 @@ const CampaignEditorPage: React.FC = () => {
 
 export default CampaignEditorPage;
 
-// Example type for llmModels, adjust as needed
-type LLMModel = { id: string; [key: string]: any };
+// Removed redundant LLMModel type alias, as campaignService.ModelInfo is used directly

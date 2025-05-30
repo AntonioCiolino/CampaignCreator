@@ -13,8 +13,9 @@ export interface CampaignSection {
 // Model information type from the backend /llm/models endpoint
 // This might be better placed in llmService.ts if not already there
 export interface ModelInfo {
-  id: string; // Corrected from str to string
+  id: string;
   name: string;
+  capabilities: string[]; // Added field
 }
 
 export interface Campaign {
