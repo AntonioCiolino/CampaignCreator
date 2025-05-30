@@ -1,3 +1,4 @@
+import axios from 'axios';
 import apiClient from './apiClient';
 
 // Types matching backend Pydantic models
@@ -47,11 +48,17 @@ export interface LLMGenerationPayload {
 // Fetch all campaigns
 export const getAllCampaigns = async (): Promise<Campaign[]> => {
   try {
-    const response = await apiClient.get<Campaign[]>('/campaigns/');
-    return response.data;
+    const response = await apiClient.get<Campaign[] | null>('/campaigns/'); // Expect Campaign[] or null
+    // Ensure we always return an array. If response.data is null or undefined, or not an array, return [].
+    return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
-    console.error('Error fetching campaigns:', error);
-    throw error; 
+    console.error('Error details in campaignService.getAllCampaigns:', error); // Enhanced logging
+    if (axios.isAxiosError(error)) {
+        console.error('Axios error response status:', error.response?.status);
+        console.error('Axios error response data:', error.response?.data);
+        console.error('Axios error request config:', error.config);
+    }
+    throw error; // Re-throw to be caught by UI component
   }
 };
 
