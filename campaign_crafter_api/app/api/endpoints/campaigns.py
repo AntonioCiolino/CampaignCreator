@@ -174,8 +174,15 @@ async def create_new_campaign_section_endpoint(
     existing_sections_summary = "; ".join([s.title for s in existing_sections if s.title]) if existing_sections else None
 
     try:
-        provider_name, model_specific_id = _extract_provider_and_model(section_input.model_id_with_prefix)
-        llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=section_input.model_id_with_prefix)
+        # Use section-specific model if provided, else campaign's default, else a general default
+        model_to_use = section_input.model_id_with_prefix or db_campaign.model_id_with_prefix_for_concept
+        # Fallback to a globally defined default model if no model is specified at any level
+        if not model_to_use:
+            from app.core.config import DEFAULT_MODEL_ID_WITH_PREFIX # Ensure this import exists and is valid
+            model_to_use = DEFAULT_MODEL_ID_WITH_PREFIX
+
+        provider_name, model_specific_id = _extract_provider_and_model(model_to_use)
+        llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=model_to_use)
         generated_content = llm_service.generate_section_content(
             campaign_concept=db_campaign.concept or "A general creative writing piece.",
             existing_sections_summary=existing_sections_summary,
