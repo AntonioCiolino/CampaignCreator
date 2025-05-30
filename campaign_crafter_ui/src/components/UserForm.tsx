@@ -21,7 +21,7 @@ const UserForm: React.FC<UserFormProps> = ({ userToEdit, onSubmit, onCancel, for
   const [fullName, setFullName] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [isSuperuser, setIsSuperuser] = useState(false);
-  
+
   const [internalError, setInternalError] = useState<string | null>(null); // For client-side validation errors
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -88,7 +88,7 @@ const UserForm: React.FC<UserFormProps> = ({ userToEdit, onSubmit, onCancel, for
       payload = {
         ...commonData,
         // Only include password if it's being changed
-        ...(password && { password }), 
+        ...(password && { password }),
       } as UserUpdatePayload;
     } else {
       payload = {
@@ -96,7 +96,7 @@ const UserForm: React.FC<UserFormProps> = ({ userToEdit, onSubmit, onCancel, for
         password, // Password is required for UserCreatePayload
       } as UserCreatePayload;
     }
-    
+
     try {
       await onSubmit(payload, isEditing);
     } finally {

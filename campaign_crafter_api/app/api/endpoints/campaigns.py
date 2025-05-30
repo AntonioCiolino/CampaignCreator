@@ -37,11 +37,10 @@ async def create_new_campaign(
     try:
         # Note: campaign_input is passed as the 'campaign' argument to crud.create_campaign
         # This is valid because CampaignCreate is a subclass of CampaignBase.
-        db_campaign = crud.create_campaign(
+        db_campaign = await crud.create_campaign(
             db=db, 
-            campaign=campaign_input, # <--- Changed
-            owner_id=owner_id, 
-            model_id_for_concept=campaign_input.model_id_with_prefix_for_concept # <--- Changed
+            campaign_payload=campaign_input,
+            owner_id=owner_id
         )
         if db_campaign.concept is None and campaign_input.initial_user_prompt: # <--- Changed
             print(f"Campaign {db_campaign.id} created, but concept generation might have failed or was skipped (e.g. LLM unavailable/error).")
@@ -243,7 +242,7 @@ async def list_campaign_sections(
     if db_campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
     sections = crud.get_campaign_sections(db=db, campaign_id=campaign_id)
-    return external_models.CampaignSectionListResponse(sections=sections)
+    return models.CampaignSectionListResponse(sections=sections)
 
 # --- Export Endpoints ---
 
