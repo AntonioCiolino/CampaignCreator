@@ -1,7 +1,7 @@
 from typing import Optional, List, Dict
 from app.core.config import settings
-from app.services.llm_service import AbstractLLMService
-from app.services.llm_factory import LLMServiceUnavailableError # Import specific error
+from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError # Import specific error
+# Removed import from llm_factory: from app.services.llm_factory import LLMServiceUnavailableError
 
 class LlamaLLMService(AbstractLLMService):
     PROVIDER_NAME = "llama" # For easy reference

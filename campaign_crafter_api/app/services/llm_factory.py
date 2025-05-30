@@ -7,10 +7,7 @@ from app.services.llama_service import LlamaLLMService
 from app.services.deepseek_service import DeepSeekLLMService
 from app.services.local_llm_service import LocalLLMService # New import
 from app.core.config import settings
-
-class LLMServiceUnavailableError(Exception):
-    """Custom exception for when an LLM service cannot be initialized or is unavailable."""
-    pass
+from app.services.llm_service import LLMServiceUnavailableError # Added import
 
 # Updated mapping of provider names to service classes
 _llm_service_providers: Dict[str, Type[AbstractLLMService]] = {
@@ -111,6 +108,7 @@ def get_llm_service(
 
 async def get_available_models_info() -> List[ModelInfo]:
     all_models_info: List[ModelInfo] = []
+    # LLMServiceUnavailableError is used below, imported from llm_service
     # Iterate over a copy of keys in case the dictionary is modified elsewhere
     provider_names = list(_llm_service_providers.keys())
 
@@ -120,7 +118,7 @@ async def get_available_models_info() -> List[ModelInfo]:
             print(f"Attempting to get service and models for: {provider_name}")
             # get_llm_service itself checks for basic configuration (API keys/URL)
             # and raises LLMServiceUnavailableError if not configured.
-            service = get_llm_service(provider_name)
+            service = get_llm_service(provider_name) # This function internally uses LLMServiceUnavailableError
 
             if not await service.is_available():
                 print(f"Service '{provider_name}' is not available.")

@@ -1,6 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict
 
+class LLMServiceUnavailableError(Exception): # <-- Added this
+    """Custom exception for when an LLM service cannot be initialized or is unavailable."""
+    pass
+
 class AbstractLLMService(ABC):
     @abstractmethod
     def generate_text(self, prompt: str, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str:
