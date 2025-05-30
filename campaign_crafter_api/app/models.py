@@ -75,30 +75,37 @@ class TableNameListResponse(BaseModel):
 class CampaignBase(BaseModel):
     title: str
     initial_user_prompt: Optional[str] = None
-# (Moved above to resolve forward reference issue)
+
+class CampaignCreate(CampaignBase):
+    model_id_with_prefix_for_concept: Optional[str] = None
 
 class Campaign(CampaignBase):
     id: int
-    owner_id: int
-    sections: List['CampaignSection'] = []
+    owner_id: int # In a real app, this would be properly linked
+    concept: Optional[str] = None # LLM-generated campaign overview
+    toc: Optional[str] = None # LLM-generated table of contents
+    homebrewery_export: Optional[str] = None # Stores the homebrewery export
+    sections: List['CampaignSection'] = [] # Assuming CampaignSection is defined elsewhere or properly forward referenced
 
     class Config:
         orm_mode = True
 
-class CampaignSectionBase(BaseModel):
-    title: Optional[str] = None
-    content: str
-    order: int # To maintain section order
-
-class CampaignSectionCreate(CampaignSectionBase):
-    pass
-
-class CampaignSection(CampaignSectionBase):
-    id: int
-    campaign_id: int # foreign key to Campaign
-
-    class Config:
-        orm_mode = True
+# Note: The duplicate CampaignSectionBase and CampaignSection definitions were removed.
+# The first definitions encountered in the file are kept:
+# class CampaignSectionBase(BaseModel):
+#     title: Optional[str] = None
+#     content: str
+#     order: int # To maintain section order
+# 
+# class CampaignSectionCreate(CampaignSectionBase):
+#     pass
+# 
+# class CampaignSection(CampaignSectionBase):
+#     id: int
+#     campaign_id: int # foreign key to Campaign
+# 
+#     class Config:
+#         orm_mode = True
 
 class UserBase(BaseModel): # Very basic for now
     email: str

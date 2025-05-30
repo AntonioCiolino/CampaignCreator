@@ -7,3 +7,5 @@ python-dotenv
 openai
 pydantic-settings
 google-generativeai
+pytest
+httpx

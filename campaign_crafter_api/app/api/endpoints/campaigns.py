@@ -30,18 +30,20 @@ def _extract_provider_and_model(model_id_with_prefix: Optional[str]) -> tuple[Op
 
 @router.post("/", response_model=models.Campaign)
 async def create_new_campaign(
-    campaign: models.Campaign, 
+    campaign_input: models.CampaignCreate, # <--- Changed
     db: Session = Depends(get_db)
 ):
     owner_id = 1  # Placeholder
     try:
+        # Note: campaign_input is passed as the 'campaign' argument to crud.create_campaign
+        # This is valid because CampaignCreate is a subclass of CampaignBase.
         db_campaign = crud.create_campaign(
             db=db, 
-            campaign=campaign, 
+            campaign=campaign_input, # <--- Changed
             owner_id=owner_id, 
-            model_id_with_prefix_for_concept=campaign.model_id_with_prefix_for_concept
+            model_id_for_concept=campaign_input.model_id_with_prefix_for_concept # <--- Changed
         )
-        if db_campaign.concept is None and campaign.user_prompt:
+        if db_campaign.concept is None and campaign_input.initial_user_prompt: # <--- Changed
             print(f"Campaign {db_campaign.id} created, but concept generation might have failed or was skipped (e.g. LLM unavailable/error).")
     except LLMServiceUnavailableError as e:
         raise HTTPException(status_code=503, detail=f"LLM Service Error for concept generation: {e}")
@@ -57,8 +59,7 @@ async def list_campaigns(
     db: Session = Depends(get_db)
 ):
     campaigns = crud.get_all_campaigns(db=db)
-    if not campaigns:
-        raise HTTPException(status_code=404, detail="No campaigns found")
+    # No HTTPException is raised if campaigns is empty
     return campaigns
 
 @router.get("/{campaign_id}", response_model=models.Campaign)
