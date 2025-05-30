@@ -32,7 +32,7 @@ class OpenAILLMService(AbstractLLMService):
                 return False # Failed to initialize client
 
         try:
-            await self.async_client.models.list(limit=1)
+            await self.async_client.models.list()
             return True
         except APIError as e: # Catching new openai v1.x specific API errors
             print(f"OpenAI service not available. API error: {e}")
