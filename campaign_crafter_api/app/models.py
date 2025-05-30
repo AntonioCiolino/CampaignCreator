@@ -96,26 +96,38 @@ class Campaign(CampaignBase):
 #     title: Optional[str] = None
 #     content: str
 #     order: int # To maintain section order
-# 
+#
 # class CampaignSectionCreate(CampaignSectionBase):
 #     pass
-# 
+#
 # class CampaignSection(CampaignSectionBase):
 #     id: int
 #     campaign_id: int # foreign key to Campaign
-# 
+#
 #     class Config:
 #         orm_mode = True
 
-class UserBase(BaseModel): # Very basic for now
+class UserBase(BaseModel):
     email: str
+    full_name: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str
+    is_active: Optional[bool] = True # Default to True
+    is_superuser: Optional[bool] = False # Default to False
 
-class User(UserBase):
+class UserUpdate(BaseModel):
+    email: Optional[str] = None
+    full_name: Optional[str] = None
+    password: Optional[str] = None # For setting a new password
+    is_active: Optional[bool] = None
+    is_superuser: Optional[bool] = None
+
+class User(UserBase): # For responses
     id: int
-    is_active: bool = True
+    is_active: bool
+    is_superuser: bool = False # Assuming ORM default or set value
+
     campaigns: List[Campaign] = []
     llm_configs: List[LLMConfig] = []
 

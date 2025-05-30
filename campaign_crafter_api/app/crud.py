@@ -1,26 +1,74 @@
-from typing import Optional
+from typing import Optional, List # Added List
 from sqlalchemy.orm import Session
+from passlib.context import CryptContext # Added
 
-from . import external_models, orm_models # Pydantic models and ORM models
+from . import models, orm_models # Corrected external_models to models
 
-# Placeholder for user CRUD, will be expanded later
-# def get_user(db: Session, user_id: int):
-#     return db.query(orm_models.User).filter(orm_models.User.id == user_id).first()
+# --- Password Hashing Utilities ---
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# def create_user(db: Session, user: models.UserCreate):
-#     hashed_password = user.password + "notreallyhashed" # Replace with actual hashing
-#     db_user = orm_models.User(email=user.email, hashed_password=hashed_password)
-#     db.add(db_user)
-#     db.commit()
-#     db.refresh(db_user)
-#     return db_user
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+# --- User CRUD Functions ---
+def create_user(db: Session, user: models.UserCreate) -> orm_models.User:
+    hashed_password = get_password_hash(user.password)
+    db_user = orm_models.User(
+        email=user.email,
+        full_name=user.full_name,
+        hashed_password=hashed_password,
+        is_active=user.is_active,
+        is_superuser=user.is_superuser
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+def get_user(db: Session, user_id: int) -> Optional[orm_models.User]:
+    return db.query(orm_models.User).filter(orm_models.User.id == user_id).first()
+
+def get_user_by_email(db: Session, email: str) -> Optional[orm_models.User]:
+    return db.query(orm_models.User).filter(orm_models.User.email == email).first()
+
+def get_users(db: Session, skip: int = 0, limit: int = 100) -> List[orm_models.User]:
+    return db.query(orm_models.User).offset(skip).limit(limit).all()
+
+def update_user(db: Session, user_id: int, user_update: models.UserUpdate) -> Optional[orm_models.User]:
+    db_user = get_user(db, user_id=user_id)
+    if not db_user:
+        return None
+
+    update_data = user_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        if key == "password": # Handle password update specifically
+            setattr(db_user, "hashed_password", get_password_hash(value))
+        else:
+            setattr(db_user, key, value)
+
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+def delete_user(db: Session, user_id: int) -> Optional[orm_models.User]:
+    db_user = get_user(db, user_id=user_id)
+    if not db_user:
+        return None
+
+    db.delete(db_user)
+    db.commit()
+    return db_user
 
 # from app.services.openai_service import OpenAILLMService # No longer needed for direct import
 from app.services.llm_service import LLMService # For type hinting if needed
 from app.services.llm_factory import get_llm_service, LLMServiceUnavailableError # Import the factory
-from app import models 
+# from app import models # This is already imported via "from . import models, orm_models"
 
-# Campaign CRUD functions
+# --- Campaign CRUD functions ---
 def create_campaign(db: Session, campaign: models.CampaignBase, owner_id: int, model_id_for_concept: Optional[str] = None) -> orm_models.Campaign:
     generated_concept = None
     try:
