@@ -32,13 +32,13 @@ def update_user_endpoint(user_id: int, user: models.UserUpdate, db: Session = De
     db_user = crud.get_user(db, user_id=user_id)
     if db_user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found to update")
-    
+
     # If email is being updated, check if the new email is already taken by another user
     if user.email:
         existing_user_with_new_email = crud.get_user_by_email(db, email=user.email)
         if existing_user_with_new_email and existing_user_with_new_email.id != user_id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="New email already registered by another user")
-            
+
     updated_user = crud.update_user(db=db, user_id=user_id, user_update=user)
     if updated_user is None: # Should ideally be caught by the get_user check, but as a safeguard
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found after attempting update")

@@ -48,7 +48,7 @@ def update_user(db: Session, user_id: int, user_update: models.UserUpdate) -> Op
             setattr(db_user, "hashed_password", get_password_hash(value))
         else:
             setattr(db_user, key, value)
-    
+
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -58,7 +58,7 @@ def delete_user(db: Session, user_id: int) -> Optional[orm_models.User]:
     db_user = get_user(db, user_id=user_id)
     if not db_user:
         return None
-    
+
     db.delete(db_user)
     db.commit()
     return db_user
@@ -69,30 +69,26 @@ from app.services.llm_factory import get_llm_service, LLMServiceUnavailableError
 # from app import models # This is already imported via "from . import models, orm_models"
 
 # --- Campaign CRUD functions ---
-def create_campaign(db: Session, campaign: models.CampaignBase, owner_id: int, model_id_for_concept: Optional[str] = None) -> orm_models.Campaign:
+async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, owner_id: int) -> orm_models.Campaign:
     generated_concept = None
-    try:
-        # Use the factory to get the appropriate LLM service
-        # If model_id_for_concept is None, get_llm_service will use its default (OpenAI if available)
-        llm_service: LLMService = get_llm_service(model_id_for_concept)
-        generated_concept = llm_service.generate_campaign_concept(user_prompt=campaign.initial_user_prompt)
-        # Note: generate_campaign_concept in the service might also take a model_id if we want to override the factory's choice at call time
-        # For now, the factory determines the service, and the service method uses its default model or one passed to it.
-        # If model_id_for_concept from factory implies a specific model (e.g. "openai/gpt-4"), service should use it.
-    except LLMServiceUnavailableError as e:
-        print(f"LLM service unavailable for concept generation: {e}")
-        # Campaign will be created without a concept.
-    except Exception as e:
-        print(f"Error generating campaign concept from LLM: {e}")
-        # For now, we'll let the campaign be created with a None concept if LLM fails.
-        # The endpoint can decide if this is an error or acceptable.
-        # Alternatively, re-raise e here to force endpoint to handle.
+    # Only attempt to generate a concept if there's an initial prompt
+    if campaign_payload.initial_user_prompt:
+        try:
+            llm_service: LLMService = get_llm_service(campaign_payload.model_id_with_prefix_for_concept)
+            generated_concept = await llm_service.generate_campaign_concept(user_prompt=campaign_payload.initial_user_prompt)
+        except LLMServiceUnavailableError as e:
+            print(f"LLM service unavailable for concept generation: {e}")
+            # Campaign will be created without a concept.
+        except Exception as e:
+            print(f"Error generating campaign concept from LLM: {e}")
+            # For now, we'll let the campaign be created with a None concept if LLM fails.
 
     db_campaign = orm_models.Campaign(
-        title=campaign.title,
-        initial_user_prompt=campaign.initial_user_prompt,
-        concept=generated_concept, # Use the LLM-generated concept
+        title=campaign_payload.title,
+        initial_user_prompt=campaign_payload.initial_user_prompt,
+        concept=generated_concept, # Use the (awaited) LLM-generated concept
         owner_id=owner_id
+        # toc and homebrewery_export are not set here by default, which is fine
     )
     db.add(db_campaign)
     db.commit()
