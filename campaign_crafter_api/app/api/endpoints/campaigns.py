@@ -245,7 +245,7 @@ async def list_campaign_sections(
     if db_campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
     sections = crud.get_campaign_sections(db=db, campaign_id=campaign_id)
-    return models.CampaignSectionListResponse(sections=sections)
+    return {"sections": sections}
 
 # --- Export Endpoints ---
 
