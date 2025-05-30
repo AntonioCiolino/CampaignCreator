@@ -263,7 +263,7 @@ export async function getLLMModels() {
   // Fallback is provided if the env var is not set.
   // Ensure no double slashes if REACT_APP_API_BASE_URL has a trailing slash.
   const baseUrl = (process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1').replace(/\/$/, '');
-  const response = await fetch(`${baseUrl}/llm-models`);
+  const response = await fetch(`${baseUrl}/llm/models`);
   if (!response.ok) throw new Error('Failed to fetch LLM models');
   return response.json();
 }
