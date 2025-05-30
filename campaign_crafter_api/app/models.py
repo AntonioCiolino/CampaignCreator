@@ -22,7 +22,7 @@ class CampaignTitlesResponse(BaseModel):
 class CampaignSectionCreateInput(BaseModel):
     title: Optional[str] = None  # User can suggest a title for the section
     prompt: Optional[str] = None # User can provide a specific prompt/starting sentence for the section content
-    model: Optional[str] = None # LLM model to use for generating this section
+    model_id_with_prefix: Optional[str] = None # Changed field name
     # 'order' will be determined by the backend or could be optionally suggested
 
 class LLMGenerationRequest(BaseModel):

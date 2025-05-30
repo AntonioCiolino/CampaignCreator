@@ -145,7 +145,7 @@ const CampaignEditorPage: React.FC = () => {
       const newSection = await campaignService.addCampaignSection(campaignId, {
         title: newSectionTitle.trim() || undefined,
         prompt: newSectionPrompt.trim() || undefined,
-        // modelId: selectedLLMId || undefined, // Remove or comment out if not in type
+        model_id_with_prefix: selectedLLMId || undefined, // Corrected line
       });
       setSections(prev => [...prev, newSection].sort((a, b) => a.order - b.order));
       setNewSectionTitle('');
