@@ -22,11 +22,11 @@ class CampaignTitlesResponse(BaseModel):
 class CampaignSectionCreateInput(BaseModel):
     title: Optional[str] = None  # User can suggest a title for the section
     prompt: Optional[str] = None # User can provide a specific prompt/starting sentence for the section content
-    model_id_with_prefix: Optional[str] = None # LLM model to use for generating this section # e.g., "openai/gpt-3.5-turbo"
+    model: Optional[str] = None # LLM model to use for generating this section
     # 'order' will be determined by the backend or could be optionally suggested
 
 class LLMGenerationRequest(BaseModel):
-    model_id_with_prefix: Optional[str] = None # e.g., "openai/gpt-3.5-turbo"
+    model: Optional[str] = None
     # temperature: Optional[float] = None # For future use
 
 class CampaignSectionUpdateInput(BaseModel):

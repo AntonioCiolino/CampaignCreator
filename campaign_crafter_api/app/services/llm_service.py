@@ -67,3 +67,33 @@ class AbstractLLMService(ABC):
         return True # Base implementation assumes availability if instantiated.
                     # Concrete classes should override if they have specific checks (e.g. API key presence).
 
+# --- ADD THIS CONCRETE IMPLEMENTATION BELOW ---
+
+class LLMService(AbstractLLMService):
+    def generate_text(self, prompt: str, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str:
+        return f"Generated text for prompt: {prompt}"
+
+    def generate_campaign_concept(self, user_prompt: str, model: Optional[str] = None) -> str:
+        return f"Campaign concept for: {user_prompt}"
+
+    def generate_titles(self, campaign_concept: str, count: int = 5, model: Optional[str] = None) -> list[str]:
+        return [f"Title {i+1} for {campaign_concept}" for i in range(count)]
+
+    def generate_toc(self, campaign_concept: str, model: Optional[str] = None) -> str:
+        return f"Table of Contents for: {campaign_concept}"
+
+    def generate_section_content(
+        self,
+        campaign_concept: str,
+        existing_sections_summary: Optional[str],
+        section_creation_prompt: Optional[str],
+        section_title_suggestion: Optional[str],
+        model: Optional[str] = None
+    ) -> str:
+        return f"Section content for: {campaign_concept}"
+
+    def list_available_models(self) -> List[Dict[str, str]]:
+        return [
+            {"id": "openai/gpt-3.5-turbo", "name": "GPT-3.5 Turbo"},
+            {"id": "openai/gpt-4", "name": "GPT-4"},
+        ]
