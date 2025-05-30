@@ -96,7 +96,7 @@ const UserManagementPage: React.FC = () => {
   return (
     <div className="user-management-page container">
       <h1>User Management</h1>
-
+      
       <div className="page-actions">
         <Button onClick={handleOpenCreateModal} variant="primary">
           Create New User
@@ -146,9 +146,9 @@ const UserManagementPage: React.FC = () => {
       )}
 
       {isModalOpen && (
-        <Modal
-          isOpen={isModalOpen}
-          onClose={handleCloseModal}
+        <Modal 
+          isOpen={isModalOpen} 
+          onClose={handleCloseModal} 
           title={editingUser ? 'Edit User' : 'Create New User'}
         >
           <UserForm

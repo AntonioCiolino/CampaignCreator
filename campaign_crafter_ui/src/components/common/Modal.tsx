@@ -1,6 +1,5 @@
 import React, { ReactNode, useEffect } from 'react';
 import './Modal.css'; // Import the CSS file
-import Button from './Button'; // Import Button for default close button in footer
 
 export interface ModalProps {
   /** Is the modal currently open? */

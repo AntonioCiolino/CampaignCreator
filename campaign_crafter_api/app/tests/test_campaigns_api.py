@@ -58,14 +58,14 @@ async def test_list_campaigns_with_data():
 
     async with AsyncClient(app=app, base_url="http://test") as ac:
         response = await ac.get("/api/v1/campaigns/") # Adjusted path
-
+    
     assert response.status_code == 200
     response_data = response.json()
     assert len(response_data) == 1
     assert response_data[0]["title"] == "Test Campaign 1"
     assert response_data[0]["id"] == campaign_id
     # Asserting based on the Campaign model from models.py which includes these fields
-    assert "initial_user_prompt" in response_data[0]
+    assert "initial_user_prompt" in response_data[0] 
     assert "concept" in response_data[0]
     assert "toc" in response_data[0]
     assert "homebrewery_export" in response_data[0]
@@ -79,7 +79,7 @@ async def test_create_campaign_full_data():
             "model_id_with_prefix_for_concept": "openai/gpt-3.5-turbo" # Example model
         }
         response = await ac.post("/api/v1/campaigns/", json=payload)
-
+    
     assert response.status_code == 200, response.text # Include response text on failure
     data = response.json()
     assert data["title"] == "My Super Campaign"
@@ -101,7 +101,7 @@ async def test_create_campaign_no_model_id():
             # model_id_with_prefix_for_concept is omitted
         }
         response = await ac.post("/api/v1/campaigns/", json=payload)
-
+        
     assert response.status_code == 200, response.text
     data = response.json()
     assert data["title"] == "Simple Adventure"
@@ -121,7 +121,7 @@ async def test_create_campaign_only_title():
             # model_id_with_prefix_for_concept is omitted
         }
         response = await ac.post("/api/v1/campaigns/", json=payload)
-
+        
     assert response.status_code == 200, response.text
     data = response.json()
     assert data["title"] == "The Lone Artifact"
@@ -129,7 +129,7 @@ async def test_create_campaign_only_title():
     assert "id" in data
     assert "owner_id" in data
     # Concept should be None as no prompt was provided for generation
-    assert data["concept"] is None
+    assert data["concept"] is None 
     assert data["toc"] is None
     assert data["homebrewery_export"] is None
 

@@ -79,7 +79,7 @@ export const updateUser = async (userId: number, userData: UserUpdatePayload): P
 // Delete a user by ID
 // The backend currently returns the deleted user object.
 // If it were to return HTTP 204 No Content, this function signature would be Promise<void>.
-export const deleteUser = async (userId: number): Promise<User> => {
+export const deleteUser = async (userId: number): Promise<User> => { 
   try {
     const response = await apiClient.delete<User>(`/users/${userId}`);
     return response.data; // Assuming backend returns the deleted user

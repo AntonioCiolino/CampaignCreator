@@ -25,7 +25,7 @@ def override_get_db() -> Generator[SQLAlchemySession, None, None]:
 app.dependency_overrides[get_db] = override_get_db
 
 @pytest.fixture(autouse=True)
-def create_test_tables_fixture():
+def create_test_tables_fixture(): 
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
@@ -77,7 +77,7 @@ async def test_create_user_duplicate_email():
         # Create first user
         response1 = await ac.post("/api/v1/users/", json=user_data)
         assert response1.status_code == 201
-
+        
         # Try to create second user with same email
         response2 = await ac.post("/api/v1/users/", json=user_data)
         assert response2.status_code == 400
@@ -89,7 +89,7 @@ async def test_create_user_missing_fields():
         # Missing password
         response = await ac.post("/api/v1/users/", json={"email": "test@example.com"})
         assert response.status_code == 422 # Unprocessable Entity for Pydantic validation error
-
+        
         # Missing email
         response = await ac.post("/api/v1/users/", json={"password": "password123"})
         assert response.status_code == 422
@@ -108,7 +108,7 @@ async def test_read_users_with_data():
     create_user_in_db(db, {"email": "user1@example.com", "password": "p1"})
     create_user_in_db(db, {"email": "user2@example.com", "password": "p2", "full_name": "User Two"})
     db.close()
-
+    
     async with AsyncClient(app=app, base_url="http://test") as ac:
         response = await ac.get("/api/v1/users/")
     assert response.status_code == 200
@@ -130,7 +130,7 @@ async def test_read_users_pagination():
         response_limit = await ac.get("/api/v1/users/?limit=2")
         assert response_limit.status_code == 200
         assert len(response_limit.json()) == 2
-
+        
         # Test skip
         response_skip = await ac.get("/api/v1/users/?skip=2&limit=2")
         assert response_skip.status_code == 200
@@ -172,7 +172,7 @@ async def test_update_user_success():
     update_payload = {"full_name": "Updated Name", "is_active": False}
     async with AsyncClient(app=app, base_url="http://test") as ac:
         response = await ac.put(f"/api/v1/users/{user_id}", json=update_payload)
-
+    
     assert response.status_code == 200, response.text
     data = response.json()
     assert data["id"] == user_id
@@ -190,7 +190,7 @@ async def test_update_user_password():
     async with AsyncClient(app=app, base_url="http://test") as ac:
         response = await ac.put(f"/api/v1/users/{user_id}", json={"password": "newpassword"})
     assert response.status_code == 200
-
+    
     # Verify password was actually updated by fetching user and checking hash (conceptual)
     # In a real scenario, you might try to "login" or use a verify_password function if exposed/testable
     db = TestingSessionLocal()
@@ -198,7 +198,7 @@ async def test_update_user_password():
     db.close()
     assert updated_db_user is not None
     # This relies on pwd_context from crud.py, ensure it's accessible or mock verification
-    from app.crud import verify_password
+    from app.crud import verify_password 
     assert verify_password("newpassword", updated_db_user.hashed_password)
     assert not verify_password("oldpassword", updated_db_user.hashed_password)
 
