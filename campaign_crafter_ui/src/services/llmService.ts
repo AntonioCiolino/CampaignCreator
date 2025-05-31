@@ -2,6 +2,7 @@
 export interface LLMModel {
   id: string; // Prefixed ID, e.g., "openai/gpt-3.5-turbo"
   name: string; // User-friendly name, e.g., "OpenAI GPT-3.5 Turbo"
+  capabilities?: string[]; // Added optional capabilities field
 }
 
 // Defines the structure of the response from the /api/llm/models endpoint

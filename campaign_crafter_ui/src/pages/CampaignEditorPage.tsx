@@ -106,14 +106,14 @@ const CampaignEditorPage: React.FC = () => {
         ]);
         setCampaign(campaignDetails);
         // Ensure sections are correctly extracted and sorted
+        // campaignService.getCampaignSections is expected to return an object: { sections: CampaignSection[] }
         if (campaignSectionsResponse && Array.isArray(campaignSectionsResponse.sections)) {
             setSections(campaignSectionsResponse.sections.sort((a, b) => a.order - b.order));
-        } else if (Array.isArray(campaignSectionsResponse)) {
-            // Fallback if it directly returns an array (though backend was noted to return object)
-            setSections((campaignSectionsResponse as unknown as campaignService.CampaignSection[]).sort((a,b) => a.order - b.order));
         } else {
-            console.warn("Unexpected structure for campaign sections response:", campaignSectionsResponse);
-            setSections([]);
+            // This case handles if campaignSectionsResponse is null/undefined or
+            // if campaignSectionsResponse.sections is not an array.
+            console.warn("campaignSectionsResponse.sections was not an array or campaignSectionsResponse was null/falsy:", campaignSectionsResponse);
+            setSections([]); // Default to empty array or handle error appropriately
         }
 
         setEditableTitle(campaignDetails.title);
