@@ -42,7 +42,7 @@ class CampaignFullContentResponse(BaseModel):
 class ModelInfo(BaseModel):
     id: str
     name: str
-    capabilities: List[str] = [] # Added field with default empty list
+    capabilities: List[str] = ["chat"] # Default changed to ["chat"]
     # Potentially add other fields like 'description' or 'type' in the future
 
 class ModelListResponse(BaseModel):
