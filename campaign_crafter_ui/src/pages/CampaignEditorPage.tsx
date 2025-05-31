@@ -106,12 +106,13 @@ const CampaignEditorPage: React.FC = () => {
         ]);
         setCampaign(campaignDetails);
         // campaignService.getCampaignSections is now expected to return CampaignSection[] directly
+        // campaignSectionsResult is named campaignSectionsResponse in the existing code
         if (Array.isArray(campaignSectionsResponse)) {
             setSections(campaignSectionsResponse.sort((a, b) => a.order - b.order));
         } else {
-            // This case handles if campaignSectionsResponse is not an array as expected.
-            console.warn("campaignSectionsResponse was not an array as expected:", campaignSectionsResponse);
-            setSections([]); // Default to empty array or handle error appropriately
+            // This block handles cases where the result might unexpectedly not be an array.
+            console.warn("Campaign sections data (campaignSectionsResponse) was not an array as expected:", campaignSectionsResponse);
+            setSections([]); // Default to an empty array to prevent further errors.
         }
 
         setEditableTitle(campaignDetails.title);
