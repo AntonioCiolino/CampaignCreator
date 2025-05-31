@@ -13,11 +13,36 @@
 }
 
 .editor-section {
-  background-color: var(--surface-color); /* Use theme variable */
-  padding: 1.25rem; /* Consistent padding */
-  border-radius: var(--border-radius); /* Use theme variable */
-  margin-bottom: 1.5rem; /* Consistent spacing */
-  box-shadow: var(--box-shadow); /* Use theme variable */
+  background-color: var(--surface-color); /* Theme variable */
+  padding: 1.5rem; /* Increased padding for a bit more space inside */
+  border-radius: 8px; /* Slightly more rounded corners */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* Softer shadow */
+  margin-bottom: 2rem; /* Increased bottom margin for better separation */
+}
+
+/* Style for clickable h3 headers in collapsible sections */
+.editor-section > h3[style*="cursor: pointer"] {
+  margin-bottom: 1rem; /* Space below header before content */
+  padding: 0.75rem 1rem; /* Padding inside the header */
+  background-color: var(--primary-color-light); /* Lighter primary color for header bar */
+  color: var(--primary-color-dark); /* Darker text for contrast on light bg */
+  border-radius: 6px; /* Rounded corners for the header bar */
+  transition: background-color 0.2s ease-in-out;
+  border-bottom: 1px solid var(--border-color);
+}
+.editor-section > h3[style*="cursor: pointer"]:hover {
+  background-color: var(--primary-color); /* Slightly darker on hover */
+  color: white;
+}
+
+/* Default h3 styling within editor sections (non-clickable) */
+.editor-section > h3:not([style*="cursor: pointer"]) {
+  font-size: 1.4rem;
+  color: var(--text-color);
+  margin-top: 0;
+  margin-bottom: 1rem; /* Default bottom margin for non-collapsible headers */
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
 }
 
 /* Re-using global .form-label, .form-input, .form-textarea, .form-select, .form-range */
@@ -43,13 +68,50 @@
   border-bottom: 1px solid var(--border-color);
 }
 
-.save-actions {
-  margin-top: 1.5rem; 
-  padding: 1rem 0; /* Less padding as it's not a 'card' */
-  text-align: right; 
-  background-color: transparent; /* No separate background */
-  box-shadow: none; /* No shadow for this action bar */
+/* Adjustments for control groups and action areas for consistent spacing */
+.save-actions,
+.section-display-controls,
+.llm-settings-and-actions .llm-controls, /* Target .llm-controls inside .llm-settings-and-actions */
+.llm-settings-and-actions .llm-actions,  /* Target .llm-actions inside .llm-settings-and-actions */
+.add-section-form { /* Target the form within the add section area */
+  margin-top: 1rem; /* Standard top margin for control/action groups */
+  margin-bottom: 1rem; /* Standard bottom margin */
 }
+
+.save-actions {
+  /* Specific overrides if needed, e.g., if it's not a 'card' */
+  padding: 1rem 0;
+  text-align: right; 
+  background-color: transparent;
+  box-shadow: none;
+  margin-top: 0; /* Save actions might be directly after a field, so less top margin */
+}
+
+/* Ensure that .llm-settings-and-actions h3 (now clickable) is handled by the new rules */
+/* The existing .llm-settings-and-actions h3 rule needs to be removed or adapted */
+/* Removing the old specific rule for .llm-settings-and-actions h3 as it's covered by the generic one now */
+/*
+.llm-settings-and-actions h3 {
+  font-size: 1.4rem;
+  color: var(--text-color);
+  margin-top: 0;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+*/
+
+/* Similarly for .add-section-area h3 */
+/*
+.add-section-area h3 {
+  font-size: 1.4rem;
+  color: var(--text-color);
+  margin-top: 0;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+*/
 
 .save-actions .main-save-button { /* Specific class for main save button */
   background-color: var(--success-color);
@@ -76,19 +138,11 @@
   /* editor-section styles are already applied */
   margin-top: 1.5rem;
 }
-.llm-settings-and-actions h3 {
-  font-size: 1.4rem; /* Adjusted size */
-  color: var(--text-color);
-  margin-top: 0;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border-color);
-}
 .llm-controls {
   display: flex;
   flex-wrap: wrap;
   gap: 1.5rem; 
-  margin-bottom: 1.5rem; 
+  /* margin-bottom is now handled by the generic rule */
 }
 .llm-controls .form-group {
   flex: 1; 
@@ -100,7 +154,8 @@
   display: flex;
   flex-wrap: wrap; 
   gap: 1rem; 
-  align-items: flex-start; 
+  align-items: flex-start;
+  /* margin-bottom is now handled by the generic rule */
 }
 .llm-actions .action-group {
   display: flex;
@@ -175,15 +230,8 @@
   /* editor-section styles are already applied */
   margin-top: 2rem; /* More space before this final section */
 }
-.add-section-area h3 {
-  font-size: 1.4rem; /* Consistent with other section headers */
-  color: var(--text-color);
-  margin-top: 0;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border-color);
-}
 /* .add-section-form .form-group, .form-label, .form-input, .form-textarea use global styles */
+/* The h3 for add-section-area is now covered by the generic .editor-section > h3 rule */
 .add-section-form .add-section-button {
   background-color: var(--success-color);
   border-color: var(--success-color);
@@ -211,8 +259,66 @@
 .toc-content p:last-child { margin-bottom: 0; }
 .toc-content ul, .toc-content ol { padding-left: 1.5rem; }
 
+/* Section Display Controls Styling */
+.section-display-controls {
+  /* editor-section styles are applied through className in TSX */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem; /* Spacing between buttons */
+  align-items: center;
+  margin-bottom: 1.5rem; /* Consistent with other editor-sections */
+}
+.section-display-controls h3 { /* This h3 is not clickable, so it should use default styling or a more specific one */
+  font-size: 1.4rem;
+  color: var(--text-color);
+  margin-top: 0;
+  margin-bottom: 0;
+  margin-right: auto;
+  flex-basis: 100%;
+  /* If it needs a border like other non-clickable h3s: */
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.section-display-controls .action-button {
+  /* Uses global .action-button styles, can add specifics here */
+  background-color: var(--primary-color); /* Example: Use primary color */
+  border-color: var(--primary-color);
+  color: white;
+}
+.section-display-controls .action-button:hover:not(:disabled) {
+  background-color: var(--primary-color-dark); /* Example: Darker primary */
+  border-color: var(--primary-color-dark);
+}
+.section-display-controls .secondary-action-button {
+  background-color: var(--secondary-color); /* Example: Use secondary color */
+  border-color: var(--secondary-color);
+  color: white;
+}
+.section-display-controls .secondary-action-button:hover:not(:disabled) {
+  background-color: var(--secondary-color-dark); /* Example: Darker secondary */
+  border-color: var(--secondary-color-dark);
+}
+/* Ensure h3 is on its own line if screen is too small and buttons wrap */
+@media (max-width: 768px) { /* Matches existing breakpoint */
+  .section-display-controls {
+    flex-direction: column; /* Stack controls vertically */
+    align-items: stretch; /* Make buttons full width */
+  }
+  .section-display-controls h3 {
+    margin-bottom: 0.75rem; /* Add some space below title when stacked */
+    margin-right: 0; /* Reset margin */
+    text-align: center; /* Center title */
+  }
+  .section-display-controls .action-button {
+    width: 100%; /* Make buttons take full width */
+  }
+}
+
+
 .campaign-sections-list {
   margin-top: 2rem; /* Consistent spacing */
+  /* editor-section class is now added in TSX for the section containing this list, so this can be just read-only-section if desired */
+  /* However, if campaign-sections-list itself is also an editor-section, this margin might be redundant */
 }
 .campaign-sections-list h2 {
   font-size: 1.75rem; /* Consistent with other main headers */

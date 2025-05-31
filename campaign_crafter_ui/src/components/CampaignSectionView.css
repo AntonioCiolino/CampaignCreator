@@ -8,6 +8,11 @@
   box-shadow: var(--box-shadow);
 }
 
+.section-title-header {
+  cursor: pointer;
+  /* Potentially add other styles like hover effects if desired */
+}
+
 .campaign-section-view .section-title {
   margin-top: 0;
   margin-bottom: 0.75rem;

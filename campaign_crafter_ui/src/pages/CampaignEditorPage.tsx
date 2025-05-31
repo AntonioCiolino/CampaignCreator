@@ -55,6 +55,34 @@ const CampaignEditorPage: React.FC = () => {
   const [exportError, setExportError] = useState<string | null>(null);
   // Re-using saveSuccess for general positive feedback for simplicity
 
+  // State for "Collapse All" / "Expand All" functionality
+  const [forceCollapseAll, setForceCollapseAll] = useState<boolean | undefined>(undefined);
+
+  // State for UI collapsible sections
+  const [isLLMSettingsCollapsed, setIsLLMSettingsCollapsed] = useState<boolean>(false);
+  const [isAddSectionCollapsed, setIsAddSectionCollapsed] = useState<boolean>(true);
+
+  const processedToc = useMemo(() => {
+    if (!campaign?.toc || !sections?.length) {
+      return campaign?.toc || '';
+    }
+    const tocLines = campaign.toc.split('\n');
+    const sectionTitleToIdMap = new Map(sections.map(sec => [sec.title.trim().toLowerCase(), `section-container-${sec.id}`]));
+
+    return tocLines.map(line => {
+      const match = line.match(/^(?:[#-*]\s*)?(.*)/);
+      const potentialTitle = match ? match[1].trim().toLowerCase() : '';
+
+      if (potentialTitle && sectionTitleToIdMap.has(potentialTitle)) {
+        const sectionId = sectionTitleToIdMap.get(potentialTitle);
+        const prefixMatch = line.match(/^([#-*]\s*)/);
+        const prefix = prefixMatch ? prefixMatch[1] : '';
+        return `${prefix}[${match[1].trim()}](#${sectionId})`;
+      }
+      return line;
+    }).join('\n');
+  }, [campaign?.toc, sections]);
+
   useEffect(() => {
     if (!campaignId) {
       setError('Campaign ID is missing.');
@@ -303,10 +331,14 @@ const CampaignEditorPage: React.FC = () => {
       </div>
 
       <div className="llm-settings-and-actions editor-section">
-        <h3>LLM Settings & Actions</h3>
-        <div className="llm-controls">
-          <div className="form-group">
-            <label htmlFor="llmModelSelect">Select LLM Model (Chat Optimized):</label>
+        <h3 onClick={() => setIsLLMSettingsCollapsed(!isLLMSettingsCollapsed)} style={{ cursor: 'pointer' }}>
+          {isLLMSettingsCollapsed ? '▶' : '▼'} LLM Settings & Actions
+        </h3>
+        {!isLLMSettingsCollapsed && (
+          <>
+            <div className="llm-controls">
+              <div className="form-group">
+                <label htmlFor="llmModelSelect">Select LLM Model (Chat Optimized):</label>
             <select
                 id="llmModelSelect"
                 value={selectedLLMId}
@@ -348,6 +380,8 @@ const CampaignEditorPage: React.FC = () => {
           </button>
           {exportError && <p className="error-message llm-feedback">{exportError}</p>}
         </div>
+          </>
+        )}
       </div>
       
       {suggestedTitles && suggestedTitles.length > 0 && (
@@ -369,21 +403,30 @@ const CampaignEditorPage: React.FC = () => {
       {campaign.toc && (
         <section className="campaign-detail-section read-only-section">
           <h2>Table of Contents (Read-Only)</h2>
-          <div className="toc-content"><ReactMarkdown>{campaign.toc}</ReactMarkdown></div>
+          <div className="toc-content"><ReactMarkdown>{processedToc}</ReactMarkdown></div>
         </section>
       )}
+
+      {/* Section Display Controls */}
+      <div className="section-display-controls editor-section">
+        <h3>Section Display</h3>
+        <button onClick={() => setForceCollapseAll(true)} className="action-button">Collapse All Sections</button>
+        <button onClick={() => setForceCollapseAll(false)} className="action-button">Expand All Sections</button>
+        <button onClick={() => setForceCollapseAll(undefined)} className="action-button secondary-action-button">Enable Individual Toggling</button>
+      </div>
 
       <section className="campaign-sections-list read-only-section">
         <h2>Campaign Sections</h2>
         {sections.length > 0 ? (
           sections.map((section) => (
-            <div key={section.id} className="section-wrapper">
+            <div key={section.id} id={`section-container-${section.id}`} className="section-wrapper">
               <CampaignSectionView
                 section={section}
                 onSave={handleUpdateSection}
                 isSaving={savingSectionId === section.id}
                 saveError={sectionSaveError[section.id] || null}
                 onDelete={handleDeleteSection} // Added onDelete prop
+                forceCollapse={forceCollapseAll} // Pass the forceCollapseAll state
               />
             </div>
           ))
@@ -391,22 +434,28 @@ const CampaignEditorPage: React.FC = () => {
       </section>
       
       <div className="editor-actions add-section-area editor-section">
-        <h3>Add New Section</h3>
-        <form onSubmit={handleAddSection} className="add-section-form">
-          <div className="form-group">
-            <label htmlFor="newSectionTitle">Section Title (Optional):</label>
-            <input type="text" id="newSectionTitle" className="form-input" value={newSectionTitle} onChange={(e) => setNewSectionTitle(e.target.value)} placeholder="E.g., Chapter 1: The Discovery" />
-          </div>
-          <div className="form-group">
-            <label htmlFor="newSectionPrompt">Section Prompt (Optional):</label>
-            <textarea id="newSectionPrompt" className="form-textarea" value={newSectionPrompt} onChange={(e) => setNewSectionPrompt(e.target.value)} rows={3} placeholder="E.g., Start with the players finding a mysterious map..." />
-          </div>
-          {addSectionError && <p className="error-message feedback-message">{addSectionError}</p>}
-          {addSectionSuccess && <p className="success-message feedback-message">{addSectionSuccess}</p>}
-          <button type="submit" disabled={isAddingSection || !selectedLLMId} className="action-button add-section-button">
-            {isAddingSection ? 'Adding Section...' : 'Add Section with Selected LLM'}
-          </button>
-        </form>
+        <h3 onClick={() => setIsAddSectionCollapsed(!isAddSectionCollapsed)} style={{ cursor: 'pointer' }}>
+          {isAddSectionCollapsed ? '▶' : '▼'} Add New Section
+        </h3>
+        {!isAddSectionCollapsed && (
+          <>
+            <form onSubmit={handleAddSection} className="add-section-form">
+              <div className="form-group">
+                <label htmlFor="newSectionTitle">Section Title (Optional):</label>
+                <input type="text" id="newSectionTitle" className="form-input" value={newSectionTitle} onChange={(e) => setNewSectionTitle(e.target.value)} placeholder="E.g., Chapter 1: The Discovery" />
+              </div>
+              <div className="form-group">
+                <label htmlFor="newSectionPrompt">Section Prompt (Optional):</label>
+                <textarea id="newSectionPrompt" className="form-textarea" value={newSectionPrompt} onChange={(e) => setNewSectionPrompt(e.target.value)} rows={3} placeholder="E.g., Start with the players finding a mysterious map..." />
+              </div>
+              {addSectionError && <p className="error-message feedback-message">{addSectionError}</p>}
+              {addSectionSuccess && <p className="success-message feedback-message">{addSectionSuccess}</p>}
+              <button type="submit" disabled={isAddingSection || !selectedLLMId} className="action-button add-section-button">
+                {isAddingSection ? 'Adding Section...' : 'Add Section with Selected LLM'}
+              </button>
+            </form>
+          </>
+        )}
       </div>
     </div>
   );

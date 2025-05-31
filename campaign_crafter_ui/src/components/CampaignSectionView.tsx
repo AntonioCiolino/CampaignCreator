@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'; // Added useState here, though it was already present.
 import { CampaignSection } from '../services/campaignService';
 import ReactMarkdown from 'react-markdown';
 import ReactQuill from 'react-quill';
@@ -13,9 +13,11 @@ interface CampaignSectionViewProps {
   isSaving: boolean; // Prop to indicate if this specific section is being saved
   saveError: string | null; // Prop to display save error for this section
   onDelete: (sectionId: number) => void; // Added onDelete prop
+  forceCollapse?: boolean; // Optional prop to force collapse state
 }
 
-const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSave, isSaving, saveError: externalSaveError, onDelete }) => {
+const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSave, isSaving, saveError: externalSaveError, onDelete, forceCollapse }) => {
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(true); // Add isCollapsed state
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editedContent, setEditedContent] = useState<string>(section.content);
   const [localSaveError, setLocalSaveError] = useState<string | null>(null);
@@ -31,8 +33,15 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
         setLocalSaveError(null);
     }
   }, [section.content, externalSaveError]);
+
+  useEffect(() => {
+    if (forceCollapse !== undefined) {
+      setIsCollapsed(forceCollapse);
+    }
+  }, [forceCollapse]);
   
   const handleEdit = () => {
+    setIsCollapsed(false); // Expand section on edit
     setEditedContent(section.content); 
     setIsEditing(true);
     setLocalSaveError(null); // Clear local errors when starting to edit
@@ -84,49 +93,59 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
 
   return (
     <div className="campaign-section-view">
-      {section.title && <h3 className="section-title">{section.title}</h3>}
-      
-      {isEditing ? (
-        <div className="section-editor">
-          <ReactQuill 
-            theme="snow" 
-            value={editedContent} 
-            onChange={setEditedContent}
-            modules={quillModules}
-            formats={quillFormats}
-            className="quill-editor"
-          />
-          <div className="editor-actions">
-            <button onClick={handleSave} className="editor-button save-button" disabled={isSaving}>
-              {isSaving ? 'Saving...' : 'Save Content'}
-            </button>
-            <button onClick={handleCancel} className="editor-button cancel-button" disabled={isSaving}>
-              Cancel
-            </button>
-            {localSaveError && <p className="error-message editor-feedback">{localSaveError}</p>}
-            {externalSaveError && !localSaveError && <p className="error-message editor-feedback">{externalSaveError}</p>}
-            {saveSuccess && <p className="success-message editor-feedback">Content saved!</p>}
-          </div>
+      {section.title && (
+        <div className="section-title-header" onClick={() => setIsCollapsed(!isCollapsed)}>
+          <h3 className="section-title">
+            {isCollapsed ? '▶' : '▼'} {section.title}
+          </h3>
         </div>
-      ) : (
+      )}
+
+      {!isCollapsed && (
         <>
-          <div className="section-content">
-            <ReactMarkdown>{section.content}</ReactMarkdown>
-          </div>
-          <div className="view-actions">
-            <button onClick={handleEdit} className="editor-button edit-button">
-              Edit Section Content
-            </button>
-            <Button
-              onClick={() => onDelete(section.id)}
-              variant="danger"
-              size="sm"
-              className="editor-button delete-button" // Keep existing classes if they add value
-              style={{ marginLeft: '10px' }}
-            >
-              Delete Section
-            </Button>
-          </div>
+          {isEditing ? (
+            <div className="section-editor">
+              <ReactQuill
+                theme="snow"
+                value={editedContent}
+                onChange={setEditedContent}
+                modules={quillModules}
+                formats={quillFormats}
+                className="quill-editor"
+              />
+              <div className="editor-actions">
+                <button onClick={handleSave} className="editor-button save-button" disabled={isSaving}>
+                  {isSaving ? 'Saving...' : 'Save Content'}
+                </button>
+                <button onClick={handleCancel} className="editor-button cancel-button" disabled={isSaving}>
+                  Cancel
+                </button>
+                {localSaveError && <p className="error-message editor-feedback">{localSaveError}</p>}
+                {externalSaveError && !localSaveError && <p className="error-message editor-feedback">{externalSaveError}</p>}
+                {saveSuccess && <p className="success-message editor-feedback">Content saved!</p>}
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="section-content">
+                <ReactMarkdown>{section.content}</ReactMarkdown>
+              </div>
+              <div className="view-actions">
+                <button onClick={handleEdit} className="editor-button edit-button">
+                  Edit Section Content
+                </button>
+                <Button
+                  onClick={() => onDelete(section.id)}
+                  variant="danger"
+                  size="sm"
+                  className="editor-button delete-button" // Keep existing classes if they add value
+                  style={{ marginLeft: '10px' }}
+                >
+                  Delete Section
+                </Button>
+              </div>
+            </>
+          )}
         </>
       )}
     </div>
