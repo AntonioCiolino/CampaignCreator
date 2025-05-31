@@ -10,8 +10,7 @@ interface LLMModelsResponse {
   models: LLMModel[];
 }
 
-import { getApiBaseUrl } from './env'; // Import the new function
-const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
 
 /**
  * Fetches the list of available LLM models from the backend.
@@ -22,17 +21,55 @@ export const getAvailableLLMs = async (): Promise<LLMModel[]> => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/llm/models`);
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: 'Network response was not ok.' }));
-      throw new Error(errorData.detail || `Failed to fetch LLM models: ${response.statusText}`);
+      // Attempt to get more specific error information
+      const contentType = response.headers.get("content-type");
+      let errorDetail = `Failed to fetch LLM models: ${response.status} ${response.statusText}`;
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          const errorData = await response.json();
+          errorDetail = errorData.detail || errorDetail;
+        } catch (jsonError) {
+          // If parsing JSON fails, stick with the status text or provide raw text
+          console.error("Failed to parse error response as JSON:", jsonError);
+          // Optionally, try to read as text if JSON parsing fails
+          // errorDetail = await response.text();
+        }
+      } else if (contentType && contentType.includes("text/html")) {
+        // If we received HTML, it's likely a misconfiguration or server error page
+        errorDetail = `Received HTML response from server (status ${response.status}). Check API proxy configuration or server logs.`;
+        // To get a snippet of the HTML for debugging, you could do:
+        // const htmlSnippet = (await response.text()).substring(0, 200);
+        // errorDetail += ` HTML Snippet: ${htmlSnippet}`;
+      }
+      throw new Error(errorDetail);
     }
+
+    // If response.ok is true, we still need to verify Content-Type
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      // If response.ok is true but content is not JSON, this is unexpected.
+      let responseText = await response.text(); // Get the actual response text
+      throw new Error(
+        `Expected JSON response but received ${contentType || 'unknown content type'}. ` +
+        `Status: ${response.status}. Response: ${responseText.substring(0, 200)}...` // Show a snippet
+      );
+    }
+
     const data: LLMModelsResponse = await response.json();
     if (!data.models) {
-        console.warn('No models found in response:', data);
+        console.warn('No models found in response (but was valid JSON):', data);
         return []; 
     }
     return data.models;
+
   } catch (error) {
-    console.error("Error fetching available LLM models:", error);
+    // Log the full error object if it's not just a string message
+    if (error instanceof Error) {
+        console.error("Error fetching available LLM models:", error.message, error.stack);
+    } else {
+        console.error("Error fetching available LLM models (unknown type):", error);
+    }
+    // Re-throw the original error or a new one if you transformed it
     throw error;
   }
 };

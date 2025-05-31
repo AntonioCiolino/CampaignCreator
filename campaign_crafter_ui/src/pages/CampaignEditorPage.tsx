@@ -1,6 +1,7 @@
 import React, { useState, useEffect, FormEvent, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
+import LLMSelectionDialog from '../components/modals/LLMSelectionDialog';
 import * as campaignService from '../services/campaignService';
 import { getAvailableLLMs, LLMModel } from '../services/llmService'; // Corrected import
 import CampaignSectionView from '../components/CampaignSectionView';
@@ -44,13 +45,6 @@ const CampaignEditorPage: React.FC = () => {
   const [selectedLLMId, setSelectedLLMId] = useState<string>('');
   const [temperature, setTemperature] = useState<number>(0.7);
 
-  const chatModels = useMemo(() => {
-    if (!availableLLMs || availableLLMs.length === 0) return [];
-    return availableLLMs.filter(model =>
-      model.capabilities && (model.capabilities.includes("chat") || model.capabilities.includes("chat-adaptable"))
-    );
-  }, [availableLLMs]);
-
   // Export State
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -62,6 +56,7 @@ const CampaignEditorPage: React.FC = () => {
   // State for UI collapsible sections
   const [isLLMSettingsCollapsed, setIsLLMSettingsCollapsed] = useState<boolean>(false);
   const [isAddSectionCollapsed, setIsAddSectionCollapsed] = useState<boolean>(true);
+  const [isLLMDialogOpen, setIsLLMDialogOpen] = useState<boolean>(false);
   const [isCampaignDetailsCollapsed, setIsCampaignDetailsCollapsed] = useState<boolean>(true); // Default to true
 
   const processedToc = useMemo(() => {
@@ -376,24 +371,16 @@ const CampaignEditorPage: React.FC = () => {
           <>
             <div className="llm-controls">
               <div className="form-group">
-                <label htmlFor="llmModelSelect">Select LLM Model (Chat Optimized):</label>
-            <select
-                id="llmModelSelect"
-                value={selectedLLMId}
-                onChange={(e) => setSelectedLLMId(e.target.value)}
-                className="form-select"
-                disabled={chatModels.length === 0 || isLoading}
-            >
-                {isLoading && <option value="">Loading models...</option>}
-                {!isLoading && chatModels.length === 0 && availableLLMs.length > 0 && <option value="">No chat-suitable models found. Check all models?</option>}
-                {!isLoading && availableLLMs.length === 0 && <option value="">No models available from any provider.</option>}
-                {!isLoading && chatModels.map(model => (
-                    <option key={model.id} value={model.id}>{model.name}</option>
-                ))}
-            </select>
-          </div>
-          <div className="form-group">
-            <label htmlFor="temperatureRange">Temperature: {temperature.toFixed(1)}</label>
+                <label>Selected LLM Model:</label>
+                <div className="selected-llm-display">
+                  <span>{selectedLLMId ? (availableLLMs.find(m => m.id === selectedLLMId)?.name || selectedLLMId) : 'None Selected'}</span>
+                  <button onClick={() => setIsLLMDialogOpen(true)} className="button-link change-llm-button">
+                    (Change)
+                  </button>
+                </div>
+              </div>
+              <div className="form-group">
+                <label htmlFor="temperatureRange">Temperature: {temperature.toFixed(1)}</label>
             <input type="range" id="temperatureRange" min="0" max="2" step="0.1" value={temperature} onChange={(e) => setTemperature(parseFloat(e.target.value))} className="form-range"/>
           </div>
         </div>
@@ -458,6 +445,18 @@ const CampaignEditorPage: React.FC = () => {
         ) : (<p>No sections available for this campaign yet.</p>)}
       </section>
       
+      <LLMSelectionDialog
+        isOpen={isLLMDialogOpen}
+        currentModelId={selectedLLMId}
+        onModelSelect={(modelId) => {
+          if (modelId !== null) { // Ensure a model is actually selected
+            setSelectedLLMId(modelId);
+          }
+          setIsLLMDialogOpen(false);
+        }}
+        onClose={() => setIsLLMDialogOpen(false)}
+      />
+
       <div className="editor-actions add-section-area editor-section">
         <h3 onClick={() => setIsAddSectionCollapsed(!isAddSectionCollapsed)} style={{ cursor: 'pointer' }}>
           {isAddSectionCollapsed ? '▶' : '▼'} Add New Section

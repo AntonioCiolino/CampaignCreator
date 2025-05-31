@@ -83,325 +83,62 @@
   margin-bottom: 1rem; /* Standard bottom margin */
 }
 
-.save-actions {
-  /* Specific overrides if needed, e.g., if it's not a 'card' */
-  padding: 1rem 0;
-  text-align: right; 
-  background-color: transparent;
-  box-shadow: none;
-  margin-top: 0; /* Save actions might be directly after a field, so less top margin */
-}
-
-/* Ensure that .llm-settings-and-actions h3 (now clickable) is handled by the new rules */
-/* The existing .llm-settings-and-actions h3 rule needs to be removed or adapted */
-/* Removing the old specific rule for .llm-settings-and-actions h3 as it's covered by the generic one now */
-/*
-.llm-settings-and-actions h3 {
-  font-size: 1.4rem;
-  color: var(--text-color);
-  margin-top: 0;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border-color);
-}
-*/
-
-/* Similarly for .add-section-area h3 */
-/*
-.add-section-area h3 {
-  font-size: 1.4rem;
-  color: var(--text-color);
-  margin-top: 0;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border-color);
-}
-*/
-
-.save-actions .main-save-button { /* Specific class for main save button */
-  background-color: var(--success-color);
-  border-color: var(--success-color);
-  /* Other button styles inherited from global */
-}
-.save-actions .main-save-button:hover:not(:disabled) {
-  background-color: #1e7e34; /* Darker success */
-  border-color: #1e7e34;
-}
-/* .save-button:disabled uses global styles */
-
-.save-feedback { 
-  display: inline-block;
-  margin-left: 1rem;
-  font-size: 0.9em;
-  font-weight: 500;
-}
-/* success-message and error-message classes already styled globally via App.css */
-
-
-/* LLM Settings Specific Styling */
-.llm-settings-and-actions {
-  /* editor-section styles are already applied */
-  margin-top: 1.5rem;
-}
-.llm-controls {
+/* Styles for the selected LLM display and change button */
+.selected-llm-display {
   display: flex;
-  flex-wrap: wrap;
-  gap: 1.5rem; 
-  /* margin-bottom is now handled by the generic rule */
-}
-.llm-controls .form-group {
-  flex: 1; 
-  min-width: 200px; 
-}
-/* .llm-controls .form-label, .form-select, .form-range use global styles from App.css */
-
-.llm-actions {
-  display: flex;
-  flex-wrap: wrap; 
-  gap: 1rem; 
-  align-items: flex-start;
-  /* margin-bottom is now handled by the generic rule */
-}
-.llm-actions .action-group {
-  display: flex;
-  flex-direction: column; 
-  gap: 0.5rem; 
-  flex: 1; 
-  min-width: 180px; /* Ensure buttons have enough space */
-}
-.llm-actions .llm-button { /* General style for LLM action buttons */
-  background-color: var(--info-color); /* Use theme variable */
-  border-color: var(--info-color);
-  color: white;
-  width: 100%; /* Full width for buttons in action groups */
-}
-.llm-actions .llm-button:hover:not(:disabled) {
-  background-color: #117a8b; /* Darker info */
-  border-color: #117a8b;
-}
-.llm-actions .export-button { /* Specific style for export button */
-  background-color: var(--warning-color);
-  border-color: var(--warning-color);
-  color: var(--text-color); /* Dark text on yellow for better contrast */
-}
-.llm-actions .export-button:hover:not(:disabled) {
-  background-color: #e0a800; /* Darker warning */
-  border-color: #d39e00;
-}
-/* .llm-button:disabled uses global styles */
-.llm-feedback { 
-  font-size: 0.85em;
-  margin-top: 0.25rem;
-}
-
-/* Suggested Titles Section Styling */
-.suggested-titles-section {
-  /* editor-section styles are already applied */
-  margin-top: 1.5rem;
-}
-.suggested-titles-section h3 {
-  font-size: 1.2rem; /* Adjusted size */
-  color: var(--text-color);
-  margin-top: 0;
-  margin-bottom: 0.75rem;
-}
-.titles-list {
-  list-style-type: disc;
-  padding-left: 1.5rem; /* Consistent with other lists */
-  margin-bottom: 1rem;
-}
-.title-item {
-  padding: 0.25rem 0;
-  font-size: 0.95rem;
-  color: var(--text-color-muted);
-  border-bottom: 1px dashed var(--border-color);
-}
-.title-item:last-child { border-bottom: none; }
-
-.dismiss-titles-button {
-  background-color: var(--danger-color);
-  border-color: var(--danger-color);
-  color: white;
-  padding: 0.4rem 0.8rem; /* Smaller button */
-  font-size: 0.85rem;
-}
-.dismiss-titles-button:hover {
-  background-color: #c82333; /* Darker danger */
-  border-color: #bd2130;
-}
-
-/* Add Section Area Styling */
-.add-section-area {
-  /* editor-section styles are already applied */
-  margin-top: 2rem; /* More space before this final section */
-}
-/* .add-section-form .form-group, .form-label, .form-input, .form-textarea use global styles */
-/* The h3 for add-section-area is now covered by the generic .editor-section > h3 rule */
-.add-section-form .add-section-button {
-  background-color: var(--success-color);
-  border-color: var(--success-color);
-  /* width: 100%; /* Make button full width on mobile - handled by global button style or media query below */
-}
-.add-section-form .add-section-button:hover:not(:disabled) {
-  background-color: #1e7e34; /* Darker success */
-  border-color: #1e7e34;
-}
-/* .add-section-button:disabled uses global styles */
-/* .feedback-message, .success-message, .error-message use global styles */
-
-
-/* Content display styles for ReadOnly sections */
-.prompt-content,
-.concept-content,
-.toc-content {
-  font-size: 1rem; /* Base font size */
-  line-height: var(--line-height-base); /* Use theme variable */
-  color: var(--text-color-muted); /* Slightly muted for read-only generated content */
-  word-wrap: break-word; /* Prevent overflow */
-}
-.prompt-content p:last-child,
-.concept-content p:last-child,
-.toc-content p:last-child { margin-bottom: 0; }
-.toc-content ul, .toc-content ol { padding-left: 1.5rem; }
-
-/* Section Display Controls Styling */
-.section-display-controls {
-  /* editor-section styles are applied through className in TSX */
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem; /* Spacing between buttons */
   align-items: center;
-  margin-bottom: 1.5rem; /* Consistent with other editor-sections */
-}
-.section-display-controls h3 { /* This h3 is not clickable, so it should use default styling or a more specific one */
-  font-size: 1.4rem;
-  color: var(--text-color);
-  margin-top: 0;
-  margin-bottom: 0;
-  margin-right: auto;
-  flex-basis: 100%;
-  /* If it needs a border like other non-clickable h3s: */
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border-color);
-}
-.section-display-controls .action-button {
-  /* Uses global .action-button styles, can add specifics here */
-  background-color: var(--primary-color); /* Example: Use primary color */
-  border-color: var(--primary-color);
-  color: white;
-}
-.section-display-controls .action-button:hover:not(:disabled) {
-  background-color: var(--primary-color-dark); /* Example: Darker primary */
-  border-color: var(--primary-color-dark);
-}
-.section-display-controls .secondary-action-button {
-  background-color: var(--secondary-color); /* Example: Use secondary color */
-  border-color: var(--secondary-color);
-  color: white;
-}
-.section-display-controls .secondary-action-button:hover:not(:disabled) {
-  background-color: var(--secondary-color-dark); /* Example: Darker secondary */
-  border-color: var(--secondary-color-dark);
-}
-/* Ensure h3 is on its own line if screen is too small and buttons wrap */
-@media (max-width: 768px) { /* Matches existing breakpoint */
-  .section-display-controls {
-    flex-direction: column; /* Stack controls vertically */
-    align-items: stretch; /* Make buttons full width */
-  }
-  .section-display-controls h3 {
-    margin-bottom: 0.75rem; /* Add some space below title when stacked */
-    margin-right: 0; /* Reset margin */
-    text-align: center; /* Center title */
-  }
-  .section-display-controls .action-button {
-    width: 100%; /* Make buttons take full width */
-  }
+  justify-content: space-between; /* Distributes space between name and button */
+  padding: 8px 12px; /* Adjusted padding */
+  border: 1px solid #ced4da; /* Standard input border color */
+  border-radius: .25rem; /* Standard border-radius */
+  background-color: #e9ecef; /* Light background for display area */
+  margin-bottom: 10px; /* Space below this element */
+  min-height: 38px; /* Match typical input height */
+  box-sizing: border-box;
 }
 
-
-.campaign-sections-list {
-  margin-top: 2rem; /* Consistent spacing */
-  /* editor-section class is now added in TSX for the section containing this list, so this can be just read-only-section if desired */
-  /* However, if campaign-sections-list itself is also an editor-section, this margin might be redundant */
-}
-.campaign-sections-list h2 {
-  font-size: 1.75rem; /* Consistent with other main headers */
-  color: var(--text-color);
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border-color);
+.selected-llm-display span {
+  flex-grow: 1;
+  font-weight: 500; /* Make the name slightly bolder */
+  color: #212529; /* Darker text for better readability */
 }
 
-/* Global loading/error messages not tied to specific forms */
-.loading-message,
-.error-message:not(.save-feedback):not(.llm-feedback):not(.feedback-message) { 
-  text-align: center;
-  font-size: 1.1em;
-  padding: 1.5rem;
-  background-color: var(--surface-color);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
+.change-llm-button {
+  background: none;
+  border: none;
+  color: #007bff; /* Primary link color */
+  cursor: pointer;
+  text-decoration: none; /* No underline by default */
+  padding: 0 0 0 10px; /* Padding on the left */
+  margin-left: 8px;
+  font-size: 0.9rem;
+  font-weight: normal; /* Ensure it's not bold if a parent is */
+  line-height: 1; /* Ensure proper vertical alignment */
 }
-/* .error-message is global from App.css */
 
-/* Removing generic .editor-actions as specific action sections are styled */
-/* .editor-actions { ... } */
-/* .editor-actions button { ... } */
-/* .editor-actions button:disabled { ... } */
-/* .editor-actions button:hover:not(:disabled) { ... } */
+.change-llm-button:hover {
+  color: #0056b3; /* Darker on hover */
+  text-decoration: underline; /* Underline on hover for affordance */
+}
 
+/* Ensure form-group and label have some basic styling if not already globally defined */
+/* This is just to make sure the LLM display doesn't look completely out of place */
+/* These might exist in a global stylesheet like index.css or App.css */
+.form-group {
+  margin-bottom: 1rem; /* Standard spacing for form groups */
+}
 
-/* Responsive adjustments for CampaignEditorPage */
-@media (max-width: 768px) {
-  .campaign-editor-page {
-    padding: 0.75rem; /* Reduced padding on smaller screens */
-  }
-  .editor-section, 
-  .read-only-section, /* This class is used for concept, toc, sections list */
-  .llm-settings-and-actions,
-  .suggested-titles-section,
-  .add-section-area {
-    padding: 1rem; /* Reduced padding for sections */
-    margin-bottom: 1rem; /* Reduced margin between sections */
-  }
+.form-group label {
+  display: block;
+  margin-bottom: .5rem; /* Space between label and control */
+  font-weight: bold;
+}
 
-  .editor-section .form-input-title {
-    font-size: 1.5rem; /* Smaller title input */
-  }
-  .read-only-section h2,
-  .llm-settings-and-actions h3,
-  .suggested-titles-section h3,
-  .add-section-area h3,
-  .campaign-sections-list h2 {
-    font-size: 1.3rem; /* Smaller section headers */
-  }
+/* Adjustments for LLM Controls section in CampaignEditorPage */
+.llm-controls .form-group {
+  margin-bottom: 0.5rem; /* Reduce bottom margin for tighter packing if needed */
+}
 
-  .llm-controls {
-    flex-direction: column; /* Stack LLM controls */
-    gap: 1rem;
-  }
-  .llm-actions {
-    flex-direction: column; /* Stack LLM action buttons */
-    gap: 0.75rem;
-  }
-  .llm-actions .action-group {
-    min-width: 100%; /* Full width for action groups */
-  }
-
-  .save-actions {
-    text-align: center; /* Center save button on mobile */
-  }
-  .save-actions .main-save-button {
-    width: 100%; /* Full width save button */
-  }
-  .save-feedback {
-    display: block; /* Stack feedback message */
-    text-align: center;
-    margin-left: 0;
-    margin-top: 0.5rem;
-  }
-  .add-section-form .add-section-button {
-    width: 100%; /* Full width add section button */
-  }
+.llm-controls .form-group label {
+  margin-bottom: 0.25rem;
 }
