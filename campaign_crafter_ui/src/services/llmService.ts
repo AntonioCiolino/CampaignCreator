@@ -9,7 +9,7 @@ interface LLMModelsResponse {
   models: LLMModel[];
 }
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
 
 /**
  * Fetches the list of available LLM models from the backend.
