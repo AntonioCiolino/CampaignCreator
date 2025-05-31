@@ -44,13 +44,6 @@ const CampaignEditorPage: React.FC = () => {
   const [selectedLLMId, setSelectedLLMId] = useState<string>('');
   const [temperature, setTemperature] = useState<number>(0.7);
 
-  const chatModels = useMemo(() => {
-    if (!availableLLMs || availableLLMs.length === 0) return [];
-    return availableLLMs.filter(model =>
-      model.capabilities && (model.capabilities.includes("chat") || model.capabilities.includes("chat-adaptable"))
-    );
-  }, [availableLLMs]);
-
   // Export State
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportError, setExportError] = useState<string | null>(null);
