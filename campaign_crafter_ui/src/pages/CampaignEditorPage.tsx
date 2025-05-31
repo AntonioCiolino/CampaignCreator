@@ -67,17 +67,20 @@ const CampaignEditorPage: React.FC = () => {
       return campaign?.toc || '';
     }
     const tocLines = campaign.toc.split('\n');
-    const sectionTitleToIdMap = new Map(sections.map(sec => [sec.title.trim().toLowerCase(), `section-container-${sec.id}`]));
+    const sectionTitleToIdMap = new Map(sections.filter(sec => sec.title).map(sec => [sec.title!.trim().toLowerCase(), `section-container-${sec.id}`]));
 
     return tocLines.map(line => {
       const match = line.match(/^(?:[#-*]\s*)?(.*)/);
-      const potentialTitle = match ? match[1].trim().toLowerCase() : '';
+      if (!match || typeof match[1] !== 'string') { // Check if match is null or capture group is not a string
+        return line; // Return original line if no valid match
+      }
+      const potentialTitle = match[1].trim().toLowerCase();
 
       if (potentialTitle && sectionTitleToIdMap.has(potentialTitle)) {
         const sectionId = sectionTitleToIdMap.get(potentialTitle);
         const prefixMatch = line.match(/^([#-*]\s*)/);
-        const prefix = prefixMatch ? prefixMatch[1] : '';
-        return `${prefix}[${match[1].trim()}](#${sectionId})`;
+        const prefix = prefixMatch ? prefixMatch[1] : ''; // prefixMatch can also be null
+        return `${prefix || ''}[${match[1].trim()}](#${sectionId})`;
       }
       return line;
     }).join('\n');
