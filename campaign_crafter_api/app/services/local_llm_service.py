@@ -49,7 +49,7 @@ class LocalLLMService(AbstractLLMService):
         temperature: float = 0.7, # Default temperature
         max_tokens: int = 1024 # Default max_tokens
     ) -> str:
-        if not self.is_available(): # Should ideally be checked by factory, but good safeguard
+        if not await self.is_available(): # Added await
             raise HTTPException(status_code=503, detail=f"{self.PROVIDER_NAME.title()} service is not available or configured.")
 
         selected_model = model or self.default_model_id
@@ -108,7 +108,7 @@ class LocalLLMService(AbstractLLMService):
 
 
     async def list_available_models(self) -> List[Dict[str, str]]:
-        if not self.is_available():
+        if not await self.is_available(): # Added await
             return [] # Or raise an error, but factory might just skip if unavailable
 
         try:
