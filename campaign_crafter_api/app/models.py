@@ -26,7 +26,7 @@ class CampaignSectionCreateInput(BaseModel):
     # 'order' will be determined by the backend or could be optionally suggested
 
 class LLMGenerationRequest(BaseModel):
-    model: Optional[str] = None
+    model_id_with_prefix: Optional[str] = None # Changed field name
     # temperature: Optional[float] = None # For future use
 
 class CampaignSectionUpdateInput(BaseModel):

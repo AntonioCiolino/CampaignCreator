@@ -16,11 +16,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <nav className="app-nav">
           <ul>
             <li>
-              <Link to="/">Dashboard</Link>
-               </li>
-               <li>
-                 <Link to="/">Campaign Management</Link> {/* Added link */}
+              <Link to="/">Campaigns</Link> {/* Renamed */}
             </li>
+            {/* The "Campaign Management" li element is removed */}
             <li>
               <Link to="/users">User Management</Link>
             </li>

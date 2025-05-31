@@ -3,6 +3,7 @@ import { CampaignSection } from '../services/campaignService';
 import ReactMarkdown from 'react-markdown';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css'; // Import Quill's snow theme CSS
+import Button from './common/Button'; // Added Button import
 import './CampaignSectionView.css';
 import { CampaignSectionUpdatePayload } from '../services/campaignService'; // Import the payload type
 
@@ -116,9 +117,15 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
             <button onClick={handleEdit} className="editor-button edit-button">
               Edit Section Content
             </button>
-            <button onClick={() => onDelete(section.id)} className="editor-button delete-button" style={{ marginLeft: '10px' }}>
+            <Button
+              onClick={() => onDelete(section.id)}
+              variant="danger"
+              size="sm"
+              className="editor-button delete-button" // Keep existing classes if they add value
+              style={{ marginLeft: '10px' }}
+            >
               Delete Section
-            </button>
+            </Button>
           </div>
         </>
       )}

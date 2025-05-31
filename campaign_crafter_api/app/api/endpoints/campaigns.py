@@ -103,7 +103,7 @@ async def generate_campaign_toc_endpoint(
     try:
         provider_name, model_specific_id = _extract_provider_and_model(request_body.model_id_with_prefix)
         llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=request_body.model_id_with_prefix)
-        generated_toc = llm_service.generate_toc(
+        generated_toc = await llm_service.generate_toc( # Added await
             campaign_concept=db_campaign.concept, 
             model=model_specific_id
         )
@@ -142,7 +142,7 @@ async def generate_campaign_titles_endpoint(
     try:
         provider_name, model_specific_id = _extract_provider_and_model(request_body.model_id_with_prefix)
         llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=request_body.model_id_with_prefix)
-        generated_titles = llm_service.generate_titles(
+        generated_titles = await llm_service.generate_titles( # Added await
             campaign_concept=db_campaign.concept, 
             count=count, 
             model=model_specific_id
