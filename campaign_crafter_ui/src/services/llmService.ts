@@ -9,7 +9,8 @@ interface LLMModelsResponse {
   models: LLMModel[];
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+import { getApiBaseUrl } from './env'; // Import the new function
+const API_BASE_URL = getApiBaseUrl();
 
 /**
  * Fetches the list of available LLM models from the backend.

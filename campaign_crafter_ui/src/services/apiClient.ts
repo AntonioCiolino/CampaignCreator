@@ -1,7 +1,10 @@
 import axios from 'axios';
+import { getApiBaseUrl } from './env'; // Import the new function
+
+const API_BASE_URL = getApiBaseUrl();
 
 const apiClient = axios.create({
-  baseURL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1/',
+  baseURL: API_BASE_URL, // Use the centralized base URL
   headers: {
     'Content-Type': 'application/json',
   },

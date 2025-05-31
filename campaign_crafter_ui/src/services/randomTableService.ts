@@ -9,7 +9,8 @@ export interface RandomItemResponse {
   item: string | null; // Item can be null if table is empty or other server-side logic allows
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+import { getApiBaseUrl } from './env'; // Import the new function
+const API_BASE_URL = getApiBaseUrl();
 
 /**
  * Fetches the list of all available random table names from the backend.
