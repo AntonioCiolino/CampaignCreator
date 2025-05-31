@@ -62,6 +62,7 @@ const CampaignEditorPage: React.FC = () => {
   // State for UI collapsible sections
   const [isLLMSettingsCollapsed, setIsLLMSettingsCollapsed] = useState<boolean>(false);
   const [isAddSectionCollapsed, setIsAddSectionCollapsed] = useState<boolean>(true);
+  const [isCampaignDetailsCollapsed, setIsCampaignDetailsCollapsed] = useState<boolean>(true); // Default to true
 
   const processedToc = useMemo(() => {
     if (!campaign?.toc || !sections?.length) {
@@ -327,22 +328,44 @@ const CampaignEditorPage: React.FC = () => {
 
   return (
     <div className="campaign-editor-page">
-      <header className="campaign-header editor-section">
-        <label htmlFor="campaignTitle" className="form-label">Campaign Title:</label>
-        <input type="text" id="campaignTitle" className="form-input form-input-title" value={editableTitle} onChange={(e) => setEditableTitle(e.target.value)} />
-      </header>
+      <div className="campaign-main-details-section editor-section">
+        <h2 onClick={() => setIsCampaignDetailsCollapsed(!isCampaignDetailsCollapsed)} style={{ cursor: 'pointer' }}>
+          {isCampaignDetailsCollapsed ? '▶' : '▼'} Campaign Details & Overview
+        </h2>
+        {!isCampaignDetailsCollapsed && (
+          <>
+            <header className="campaign-header editor-section">
+              <label htmlFor="campaignTitle" className="form-label">Campaign Title:</label>
+              <input type="text" id="campaignTitle" className="form-input form-input-title" value={editableTitle} onChange={(e) => setEditableTitle(e.target.value)} />
+            </header>
 
-      <section className="campaign-detail-section editor-section">
-        <label htmlFor="campaignInitialPrompt" className="form-label">Initial User Prompt:</label>
-        <textarea id="campaignInitialPrompt" className="form-textarea" value={editableInitialPrompt} onChange={(e) => setEditableInitialPrompt(e.target.value)} rows={5} />
-      </section>
-      
-      <div className="save-actions editor-section">
-        <button onClick={handleSaveChanges} disabled={isSaving || !hasChanges} className="save-button main-save-button">
-          {isSaving ? 'Saving Details...' : 'Save Campaign Details'}
-        </button>
-        {saveError && <p className="error-message save-feedback">{saveError}</p>}
-        {saveSuccess && <p className="success-message save-feedback">{saveSuccess}</p>}
+            <section className="campaign-detail-section editor-section">
+              <label htmlFor="campaignInitialPrompt" className="form-label">Initial User Prompt:</label>
+              <textarea id="campaignInitialPrompt" className="form-textarea" value={editableInitialPrompt} onChange={(e) => setEditableInitialPrompt(e.target.value)} rows={5} />
+            </section>
+
+            <div className="save-actions editor-section">
+              <button onClick={handleSaveChanges} disabled={isSaving || !hasChanges} className="save-button main-save-button">
+                {isSaving ? 'Saving Details...' : 'Save Campaign Details'}
+              </button>
+              {saveError && <p className="error-message save-feedback">{saveError}</p>}
+              {saveSuccess && <p className="success-message save-feedback">{saveSuccess}</p>}
+            </div>
+
+            {campaign.concept && (
+              <section className="campaign-detail-section read-only-section">
+                <h2>Campaign Concept (Read-Only)</h2>
+                <div className="concept-content"><ReactMarkdown>{campaign.concept}</ReactMarkdown></div>
+              </section>
+            )}
+            {campaign.toc && (
+              <section className="campaign-detail-section read-only-section">
+                <h2>Table of Contents (Read-Only)</h2>
+                <div className="toc-content"><ReactMarkdown>{processedToc}</ReactMarkdown></div>
+              </section>
+            )}
+          </>
+        )}
       </div>
 
       <div className="llm-settings-and-actions editor-section">
@@ -406,19 +429,6 @@ const CampaignEditorPage: React.FC = () => {
             {suggestedTitles.map((title, index) => (<li key={index} className="title-item">{title}</li>))}
           </ul>
           <button onClick={() => setSuggestedTitles(null)} className="dismiss-titles-button">Dismiss</button>
-        </section>
-      )}
-
-      {campaign.concept && (
-        <section className="campaign-detail-section read-only-section">
-          <h2>Campaign Concept (Read-Only)</h2>
-          <div className="concept-content"><ReactMarkdown>{campaign.concept}</ReactMarkdown></div>
-        </section>
-      )}
-      {campaign.toc && (
-        <section className="campaign-detail-section read-only-section">
-          <h2>Table of Contents (Read-Only)</h2>
-          <div className="toc-content"><ReactMarkdown>{processedToc}</ReactMarkdown></div>
         </section>
       )}
 
