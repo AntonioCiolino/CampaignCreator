@@ -7,7 +7,7 @@ class FeaturePromptService:
         self.prompts: Dict[str, str] = {}
         
         if csv_file_path is None:
-            base_path = Path(__file__).resolve().parent.parent.parent 
+            base_path = Path(__file__).resolve().parent.parent.parent.parent
             self.csv_path = base_path / "csv" / "features.csv"
         else:
             self.csv_path = csv_file_path
