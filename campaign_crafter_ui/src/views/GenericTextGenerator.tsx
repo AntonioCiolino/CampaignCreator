@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Added useEffect
 import LLMSelector from '../components/LLMSelector';
 import { 
     generateTextLLM, LLMTextGenerationParams, 
     generateImage, ImageGenerationRequest, ImageGenerationResponse 
 } from '../services/llmService';
+import { getAllFeaturePrompts, FeaturePrompt } from '../services/featureService'; // New import
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import Input from '../components/common/Input'; // Import Input component
@@ -16,8 +17,14 @@ const GenericTextGenerator: React.FC = () => {
   const [selectedLLMModelId, setSelectedLLMModelId] = useState<string | null>(null);
   const [generatedText, setGeneratedText] = useState<string | null>(null);
   const [textIsLoading, setTextIsLoading] = useState<boolean>(false);
-  const [textError, setTextError] = useState<string | null>(null);
+  const [textError, setTextError] = useState<string | null>(null); // Existing text error
   const [textModelUsed, setTextModelUsed] = useState<string | null>(null);
+
+  // State for Feature Prompts
+  const [features, setFeatures] = useState<FeaturePrompt[]>([]);
+  const [selectedFeatureName, setSelectedFeatureName] = useState<string>('');
+  const [featureError, setFeatureError] = useState<string | null>(null); // Error for fetching features
+  const [selectedFeatureTemplateDisplay, setSelectedFeatureTemplateDisplay] = useState<string | null>(null);
 
   // State for Image Generation
   const [imagePrompt, setImagePrompt] = useState<string>('');
@@ -31,28 +38,77 @@ const GenericTextGenerator: React.FC = () => {
   // const [imageSize, setImageSize] = useState<string | null>(null); // e.g., "1024x1024"
   // const [imageQuality, setImageQuality] = useState<string | null>(null); // e.g., "standard"
 
+  // Effect to load features on mount
+  useEffect(() => {
+    const loadFeatures = async () => {
+      try {
+        setFeatureError(null);
+        const fetchedFeatures = await getAllFeaturePrompts();
+        setFeatures(fetchedFeatures);
+      } catch (error) {
+        console.error("Failed to load features:", error);
+        setFeatureError(error instanceof Error ? error.message : "An unknown error occurred while fetching features.");
+      }
+    };
+    loadFeatures();
+  }, []);
 
   const handleLLMModelChange = (modelId: string | null) => {
     setSelectedLLMModelId(modelId);
     setGeneratedText(null); // Clear previous results
     setTextModelUsed(null);
-    setTextError(null);
+    setTextError(null); // Clear text generation errors
+  };
+
+  const handleFeatureChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const featureName = event.target.value;
+    setSelectedFeatureName(featureName);
+    const selectedFeature = features.find(f => f.name === featureName);
+    if (selectedFeature) {
+      setSelectedFeatureTemplateDisplay(selectedFeature.template);
+      // If template does not have a placeholder, replace textPrompt.
+      // If it has a placeholder, clear textPrompt to encourage user to fill it.
+      if (!selectedFeature.template.includes('{}')) {
+        setTextPrompt(selectedFeature.template);
+      } else {
+        setTextPrompt(''); // Clear prompt for user to input placeholder content
+      }
+    } else {
+      setSelectedFeatureTemplateDisplay(null);
+      // Optionally, reset textPrompt if no feature is selected, or leave it as is
+      // setTextPrompt('');
+    }
   };
 
   const handleGenerateText = async () => {
-    if (!textPrompt.trim()) {
+    let finalPrompt = textPrompt;
+    const selectedFeature = features.find(f => f.name === selectedFeatureName);
+
+    if (selectedFeature && selectedFeature.template) {
+      if (selectedFeature.template.includes('{}')) {
+        // Ensure textPrompt is not empty if placeholder exists
+        if (!textPrompt.trim()) {
+          setTextError("Please provide input for the selected feature's placeholder {}.");
+          return;
+        }
+        finalPrompt = selectedFeature.template.replace('{}', textPrompt);
+      } else {
+        // If no placeholder, the template is the full prompt
+        finalPrompt = selectedFeature.template;
+      }
+    } else if (!textPrompt.trim()) { // No feature selected, check normal prompt
       setTextError("Text prompt cannot be empty.");
       return;
     }
     
     setTextIsLoading(true);
-    setTextError(null);
+    setTextError(null); // Clear previous text errors
     setGeneratedText(null);
     setTextModelUsed(null);
 
     try {
       const params: LLMTextGenerationParams = {
-        prompt: textPrompt,
+        prompt: finalPrompt, // Use the finalPrompt
         model_id_with_prefix: selectedLLMModelId,
       };
       const result = await generateTextLLM(params);
@@ -118,16 +174,47 @@ const GenericTextGenerator: React.FC = () => {
           label="Choose LLM Model for Text (optional):"
         />
 
+        {/* Feature Prompts Section */}
+        <div className="gt-feature-group form-group">
+          <label htmlFor="feature-select" className="form-label">Select Feature (Optional):</label>
+          <select
+            id="feature-select"
+            value={selectedFeatureName}
+            onChange={handleFeatureChange}
+            className="form-select"
+          >
+            <option value="">-- Select a Feature --</option>
+            {features.map(feature => (
+              <option key={feature.name} value={feature.name}>
+                {feature.name}
+              </option>
+            ))}
+          </select>
+          {featureError && <p className="gt-error-message">Error loading features: {featureError}</p>}
+          {selectedFeatureTemplateDisplay && (
+            <p className="gt-template-display">
+              <strong>Template:</strong> <code className="gt-code-block">{selectedFeatureTemplateDisplay}</code>
+              {selectedFeatureTemplateDisplay.includes("{}") && <em> (Fill the <code>{"{}"}</code> in the prompt below)</em>}
+            </p>
+          )}
+        </div>
+
         <div className="gt-prompt-group form-group">
           <label htmlFor="text-prompt-textarea" className="gt-prompt-label form-label">
-            Enter your text prompt:
+            {selectedFeatureTemplateDisplay && selectedFeatureTemplateDisplay.includes("{}")
+              ? "Enter content for the placeholder {}:"
+              : "Enter your text prompt (or use a feature above):"}
           </label>
           <textarea
             id="text-prompt-textarea"
             value={textPrompt}
             onChange={(e) => setTextPrompt(e.target.value)}
             rows={5}
-            placeholder="e.g., Write a short story about a brave knight..."
+            placeholder={
+              selectedFeatureTemplateDisplay && selectedFeatureTemplateDisplay.includes("{}")
+              ? "e.g., a mysterious artifact"
+              : "e.g., Write a short story about a brave knight..."
+            }
             className="form-textarea gt-prompt-textarea"
           />
         </div>
@@ -135,7 +222,7 @@ const GenericTextGenerator: React.FC = () => {
         <div className="gt-actions">
           <Button 
             onClick={handleGenerateText} 
-            disabled={textIsLoading || !textPrompt.trim()}
+            disabled={textIsLoading || (!textPrompt.trim() && !(selectedFeatureName && features.find(f=>f.name === selectedFeatureName)?.template && !features.find(f=>f.name === selectedFeatureName)!.template.includes('{}')))}
             variant="primary"
           >
             {textIsLoading ? 'Generating Text...' : 'Generate Text'}
