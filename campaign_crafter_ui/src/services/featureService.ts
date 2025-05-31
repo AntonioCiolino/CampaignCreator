@@ -19,7 +19,7 @@ const API_BASE_URL = getApiBaseUrl();
  */
 export const getAllFeaturePrompts = async (): Promise<FeaturePrompt[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/features`);
+    const response = await fetch(`${API_BASE_URL}/api/v1/features`);
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ detail: 'Network response was not ok.' }));
       throw new Error(errorData.detail || `Failed to fetch feature prompts: ${response.statusText}`);
@@ -44,7 +44,7 @@ export const getAllFeaturePrompts = async (): Promise<FeaturePrompt[]> => {
  */
 export const getFeaturePromptByName = async (featureName: string): Promise<FeaturePrompt | null> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/features/${featureName}`);
+    const response = await fetch(`${API_BASE_URL}/api/v1/features/${featureName}`);
     if (!response.ok) {
       if (response.status === 404) {
         return null; // Feature not found, return null as per requirement

@@ -20,7 +20,7 @@ const API_BASE_URL = getApiBaseUrl();
  */
 export const getAvailableLLMs = async (): Promise<LLMModel[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/llm/models`);
+    const response = await fetch(`${API_BASE_URL}/api/v1/llm/models`);
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ detail: 'Network response was not ok.' }));
       throw new Error(errorData.detail || `Failed to fetch LLM models: ${response.statusText}`);
@@ -64,7 +64,7 @@ export const generateTextLLM = async (params: LLMTextGenerationParams): Promise<
             requestBody.max_tokens = params.max_tokens;
         }
 
-        const response = await fetch(`${API_BASE_URL}/llm/generate-text`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/llm/generate-text`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -119,7 +119,7 @@ export const generateImage = async (request: ImageGenerationRequest): Promise<Im
     // if (request.style) requestBody.style = request.style;
 
 
-    const response = await fetch(`${API_BASE_URL}/images/generate`, { // Updated endpoint path
+    const response = await fetch(`${API_BASE_URL}/api/v1/images/generate`, { // Updated endpoint path
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

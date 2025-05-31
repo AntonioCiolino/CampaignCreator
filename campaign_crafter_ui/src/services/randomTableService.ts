@@ -19,7 +19,7 @@ const API_BASE_URL = getApiBaseUrl();
  */
 export const getAllRandomTableNames = async (): Promise<string[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/random-tables`);
+    const response = await fetch(`${API_BASE_URL}/api/v1/random-tables`);
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ detail: 'Network response was not ok.' }));
       throw new Error(errorData.detail || `Failed to fetch random table names: ${response.statusText}`);
@@ -45,7 +45,7 @@ export const getAllRandomTableNames = async (): Promise<string[]> => {
  */
 export const getRandomItemFromTable = async (tableName: string): Promise<RandomItemResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/random-tables/${tableName}/item`);
+    const response = await fetch(`${API_BASE_URL}/api/v1/random-tables/${tableName}/item`);
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ detail: `Failed to fetch item from table '${tableName}'.` }));
       // Specific message for 404, more generic for others
