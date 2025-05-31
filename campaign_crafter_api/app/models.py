@@ -137,3 +137,10 @@ class User(UserBase): # For responses
 
 class LLMTextGenerationResponse(BaseModel):
     text: str  # Placeholder field; add more fields as needed
+
+class FeaturePromptItem(BaseModel):
+    name: str
+    template: str
+
+class FeaturePromptListResponse(BaseModel):
+    features: List[FeaturePromptItem]

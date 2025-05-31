@@ -17,7 +17,7 @@ export interface ImportSummaryResponse {
   errors: ImportErrorDetail[];
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'; // Consistent with other services
+// const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'; // This line is redundant if apiClient is correctly configured via getApiBaseUrl
 
 /**
  * Imports campaign data from a JSON file.
@@ -37,7 +37,7 @@ export const importJsonFile = async (
 
   try {
     // Adjust endpoint path if your apiClient is not pre-configured with /api/v1
-    const response = await apiClient.post<ImportSummaryResponse>(`/import/json_file`, formData, {
+    const response = await apiClient.post<ImportSummaryResponse>(`/api/v1/import/json_file`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -75,7 +75,7 @@ export const importZipFile = async (
   }
 
   try {
-    const response = await apiClient.post<ImportSummaryResponse>(`/import/zip_file`, formData, {
+    const response = await apiClient.post<ImportSummaryResponse>(`/api/v1/import/zip_file`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },

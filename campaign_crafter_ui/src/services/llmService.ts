@@ -2,6 +2,7 @@
 export interface LLMModel {
   id: string; // Prefixed ID, e.g., "openai/gpt-3.5-turbo"
   name: string; // User-friendly name, e.g., "OpenAI GPT-3.5 Turbo"
+  capabilities?: string[]; // Added optional capabilities field
 }
 
 // Defines the structure of the response from the /api/llm/models endpoint
@@ -18,8 +19,7 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:800
  */
 export const getAvailableLLMs = async (): Promise<LLMModel[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/llm/models`);
-
+    const response = await fetch(`${API_BASE_URL}/api/v1/llm/models`);
     if (!response.ok) {
       // Attempt to get more specific error information
       const contentType = response.headers.get("content-type");
@@ -101,7 +101,7 @@ export const generateTextLLM = async (params: LLMTextGenerationParams): Promise<
             requestBody.max_tokens = params.max_tokens;
         }
 
-        const response = await fetch(`${API_BASE_URL}/llm/generate-text`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/llm/generate-text`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -156,7 +156,7 @@ export const generateImage = async (request: ImageGenerationRequest): Promise<Im
     // if (request.style) requestBody.style = request.style;
 
 
-    const response = await fetch(`${API_BASE_URL}/images/generate`, { // Updated endpoint path
+    const response = await fetch(`${API_BASE_URL}/api/v1/images/generate`, { // Updated endpoint path
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

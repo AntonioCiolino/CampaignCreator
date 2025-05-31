@@ -1,8 +1,9 @@
-import React, { useState, useEffect, FormEvent, useMemo } from 'react'; // Added useMemo
+import React, { useState, useEffect, FormEvent, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import LLMSelectionDialog from '../components/modals/LLMSelectionDialog';
 import * as campaignService from '../services/campaignService';
+import { getAvailableLLMs, LLMModel } from '../services/llmService'; // Corrected import
 import CampaignSectionView from '../components/CampaignSectionView';
 import ReactMarkdown from 'react-markdown';
 import './CampaignEditorPage.css'; 
@@ -40,7 +41,7 @@ const CampaignEditorPage: React.FC = () => {
   const [addSectionSuccess, setAddSectionSuccess] = useState<string | null>(null);
 
   // LLM Settings State
-  const [availableLLMs, setAvailableLLMs] = useState<campaignService.ModelInfo[]>([]);
+  const [availableLLMs, setAvailableLLMs] = useState<LLMModel[]>([]); // Corrected type
   const [selectedLLMId, setSelectedLLMId] = useState<string>('');
   const [temperature, setTemperature] = useState<number>(0.7);
 
@@ -56,6 +57,7 @@ const CampaignEditorPage: React.FC = () => {
   const [isLLMSettingsCollapsed, setIsLLMSettingsCollapsed] = useState<boolean>(false);
   const [isAddSectionCollapsed, setIsAddSectionCollapsed] = useState<boolean>(true);
   const [isLLMDialogOpen, setIsLLMDialogOpen] = useState<boolean>(false);
+  const [isCampaignDetailsCollapsed, setIsCampaignDetailsCollapsed] = useState<boolean>(true); // Default to true
 
   const processedToc = useMemo(() => {
     if (!campaign?.toc || !sections?.length) {
@@ -92,19 +94,30 @@ const CampaignEditorPage: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const [campaignDetails, campaignSections, llmModels] = await Promise.all([
+        // Use getAvailableLLMs from llmService
+        const [campaignDetails, campaignSectionsResponse, fetchedLLMs] = await Promise.all([
           campaignService.getCampaignById(campaignId),
-          campaignService.getCampaignSections(campaignId),
-          campaignService.getLLMModels(),
+          campaignService.getCampaignSections(campaignId), // This returns { sections: CampaignSection[] }
+          getAvailableLLMs(),
         ]);
         setCampaign(campaignDetails);
-        setSections(campaignSections.sort((a, b) => a.order - b.order));
+        // campaignService.getCampaignSections is now expected to return CampaignSection[] directly
+        // campaignSectionsResult is named campaignSectionsResponse in the existing code
+        if (Array.isArray(campaignSectionsResponse)) {
+            setSections(campaignSectionsResponse.sort((a, b) => a.order - b.order));
+        } else {
+            // This block handles cases where the result might unexpectedly not be an array.
+            console.warn("Campaign sections data (campaignSectionsResponse) was not an array as expected:", campaignSectionsResponse);
+            setSections([]); // Default to an empty array to prevent further errors.
+        }
+
         setEditableTitle(campaignDetails.title);
         setEditableInitialPrompt(campaignDetails.initial_user_prompt || '');
 
-        setAvailableLLMs(llmModels); // llmModels is campaignService.ModelInfo[]
+        setAvailableLLMs(fetchedLLMs); // fetchedLLMs is now LLMModel[]
 
-        const potentialChatModels = llmModels.filter(model =>
+        // This filter should now work correctly with LLMModel type
+        const potentialChatModels = fetchedLLMs.filter(model =>
             model.capabilities && (model.capabilities.includes("chat") || model.capabilities.includes("chat-adaptable"))
         );
 
@@ -120,8 +133,8 @@ const CampaignEditorPage: React.FC = () => {
                 defaultChatModel = potentialChatModels[0];
             }
             setSelectedLLMId(defaultChatModel.id);
-        } else if (llmModels.length > 0) {
-            setSelectedLLMId(llmModels[0].id);
+        } else if (fetchedLLMs.length > 0) {
+            setSelectedLLMId(fetchedLLMs[0].id);
         } else {
             setSelectedLLMId('');
         }
@@ -310,22 +323,44 @@ const CampaignEditorPage: React.FC = () => {
 
   return (
     <div className="campaign-editor-page">
-      <header className="campaign-header editor-section">
-        <label htmlFor="campaignTitle" className="form-label">Campaign Title:</label>
-        <input type="text" id="campaignTitle" className="form-input form-input-title" value={editableTitle} onChange={(e) => setEditableTitle(e.target.value)} />
-      </header>
+      <div className="campaign-main-details-section editor-section">
+        <h2 onClick={() => setIsCampaignDetailsCollapsed(!isCampaignDetailsCollapsed)} style={{ cursor: 'pointer' }}>
+          {isCampaignDetailsCollapsed ? '▶' : '▼'} Campaign Details & Overview
+        </h2>
+        {!isCampaignDetailsCollapsed && (
+          <>
+            <header className="campaign-header editor-section">
+              <label htmlFor="campaignTitle" className="form-label">Campaign Title:</label>
+              <input type="text" id="campaignTitle" className="form-input form-input-title" value={editableTitle} onChange={(e) => setEditableTitle(e.target.value)} />
+            </header>
 
-      <section className="campaign-detail-section editor-section">
-        <label htmlFor="campaignInitialPrompt" className="form-label">Initial User Prompt:</label>
-        <textarea id="campaignInitialPrompt" className="form-textarea" value={editableInitialPrompt} onChange={(e) => setEditableInitialPrompt(e.target.value)} rows={5} />
-      </section>
-      
-      <div className="save-actions editor-section">
-        <button onClick={handleSaveChanges} disabled={isSaving || !hasChanges} className="save-button main-save-button">
-          {isSaving ? 'Saving Details...' : 'Save Campaign Details'}
-        </button>
-        {saveError && <p className="error-message save-feedback">{saveError}</p>}
-        {saveSuccess && <p className="success-message save-feedback">{saveSuccess}</p>}
+            <section className="campaign-detail-section editor-section">
+              <label htmlFor="campaignInitialPrompt" className="form-label">Initial User Prompt:</label>
+              <textarea id="campaignInitialPrompt" className="form-textarea" value={editableInitialPrompt} onChange={(e) => setEditableInitialPrompt(e.target.value)} rows={5} />
+            </section>
+
+            <div className="save-actions editor-section">
+              <button onClick={handleSaveChanges} disabled={isSaving || !hasChanges} className="save-button main-save-button">
+                {isSaving ? 'Saving Details...' : 'Save Campaign Details'}
+              </button>
+              {saveError && <p className="error-message save-feedback">{saveError}</p>}
+              {saveSuccess && <p className="success-message save-feedback">{saveSuccess}</p>}
+            </div>
+
+            {campaign.concept && (
+              <section className="campaign-detail-section read-only-section">
+                <h2>Campaign Concept (Read-Only)</h2>
+                <div className="concept-content"><ReactMarkdown>{campaign.concept}</ReactMarkdown></div>
+              </section>
+            )}
+            {campaign.toc && (
+              <section className="campaign-detail-section read-only-section">
+                <h2>Table of Contents (Read-Only)</h2>
+                <div className="toc-content"><ReactMarkdown>{processedToc}</ReactMarkdown></div>
+              </section>
+            )}
+          </>
+        )}
       </div>
 
       <div className="llm-settings-and-actions editor-section">
@@ -381,19 +416,6 @@ const CampaignEditorPage: React.FC = () => {
             {suggestedTitles.map((title, index) => (<li key={index} className="title-item">{title}</li>))}
           </ul>
           <button onClick={() => setSuggestedTitles(null)} className="dismiss-titles-button">Dismiss</button>
-        </section>
-      )}
-
-      {campaign.concept && (
-        <section className="campaign-detail-section read-only-section">
-          <h2>Campaign Concept (Read-Only)</h2>
-          <div className="concept-content"><ReactMarkdown>{campaign.concept}</ReactMarkdown></div>
-        </section>
-      )}
-      {campaign.toc && (
-        <section className="campaign-detail-section read-only-section">
-          <h2>Table of Contents (Read-Only)</h2>
-          <div className="toc-content"><ReactMarkdown>{processedToc}</ReactMarkdown></div>
         </section>
       )}
 
@@ -465,4 +487,4 @@ const CampaignEditorPage: React.FC = () => {
 
 export default CampaignEditorPage;
 
-// Removed redundant LLMModel type alias, as campaignService.ModelInfo is used directly
+// Note: The redundant LLMModel type alias (campaignService.ModelInfo) was already addressed by using LLMModel from llmService.

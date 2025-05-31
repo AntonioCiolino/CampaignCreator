@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css'; // Import Quill's snow theme CSS
 import Button from './common/Button'; // Added Button import
+import RandomTableRoller from './RandomTableRoller'; // Import RandomTableRoller
 import './CampaignSectionView.css';
 import { CampaignSectionUpdatePayload } from '../services/campaignService'; // Import the payload type
 
@@ -20,6 +21,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
   const [isCollapsed, setIsCollapsed] = useState<boolean>(true); // Add isCollapsed state
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editedContent, setEditedContent] = useState<string>(section.content);
+  const [quillInstance, setQuillInstance] = useState<any>(null); // To store Quill instance if needed
   const [localSaveError, setLocalSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
 
@@ -53,6 +55,22 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
     setEditedContent(section.content); 
     setLocalSaveError(null);
     setSaveSuccess(false);
+  };
+
+  const handleInsertRandomItem = (itemText: string) => {
+    // For now, append to the current content.
+    // A more advanced implementation would insert at the cursor in ReactQuill.
+    // This might require getting a ref to the Quill instance.
+    setEditedContent(prevContent => {
+      // Add a space if prevContent is not empty and doesn't end with a space
+      const prefix = prevContent && !prevContent.endsWith(' ') && !prevContent.endsWith('\n') ? " " : "";
+      return prevContent + prefix + itemText;
+    });
+    // If you have the Quill instance, you could do:
+    // if (quillInstance) {
+    //   const range = quillInstance.getSelection(true);
+    //   quillInstance.insertText(range.index, itemText, 'user');
+    // }
   };
 
   const handleSave = async () => {
@@ -112,7 +130,12 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
                 modules={quillModules}
                 formats={quillFormats}
                 className="quill-editor"
+                // Consider getting a ref to the Quill instance if more advanced control is needed
+                // ref={(el) => { if (el) setQuillInstance(el.getEditor()); }}
               />
+              {/* Random Table Roller Integration */}
+              <RandomTableRoller onInsertItem={handleInsertRandomItem} />
+
               <div className="editor-actions">
                 <button onClick={handleSave} className="editor-button save-button" disabled={isSaving}>
                   {isSaving ? 'Saving...' : 'Save Content'}

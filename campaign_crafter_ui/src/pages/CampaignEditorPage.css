@@ -1,4 +1,87 @@
 /* CampaignEditorPage.css */
+.campaign-editor-page {
+  padding: 1rem; /* Use theme-consistent spacing */
+  /* max-width is already set and fine */
+  margin: 0 auto; 
+  /* Uses global .container via App.tsx's Layout if main content is wrapped */
+}
+
+.campaign-header {
+  margin-bottom: 1.5rem; 
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--border-color); /* Use theme variable */
+}
+
+.editor-section {
+  background-color: var(--surface-color); /* Theme variable */
+  padding: 1.5rem; /* Increased padding for a bit more space inside */
+  border-radius: 8px; /* Slightly more rounded corners */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* Softer shadow */
+  margin-bottom: 2rem; /* Increased bottom margin for better separation */
+}
+
+/* Style for clickable h2/h3 headers in collapsible sections */
+.editor-section > h2[style*="cursor: pointer"],
+.editor-section > h3[style*="cursor: pointer"] {
+  margin-bottom: 1rem; /* Space below header before content */
+  padding: 0.75rem 1rem; /* Padding inside the header */
+  background-color: var(--primary-color-light); /* Lighter primary color for header bar */
+  color: var(--primary-color-dark); /* Darker text for contrast on light bg */
+  border-radius: 6px; /* Rounded corners for the header bar */
+  transition: background-color 0.2s ease-in-out;
+  border-bottom: 1px solid var(--border-color);
+  /* Ensure cursor property is explicitly set if not already via inline style, though inline style takes precedence */
+  cursor: pointer;
+}
+
+.editor-section > h2[style*="cursor: pointer"]:hover,
+.editor-section > h3[style*="cursor: pointer"]:hover {
+  background-color: var(--primary-color); /* Slightly darker on hover */
+  color: white;
+}
+
+/* Default h3 styling within editor sections (non-clickable) */
+.editor-section > h3:not([style*="cursor: pointer"]) {
+  font-size: 1.4rem;
+  color: var(--text-color);
+  margin-top: 0;
+  margin-bottom: 1rem; /* Default bottom margin for non-collapsible headers */
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Re-using global .form-label, .form-input, .form-textarea, .form-select, .form-range */
+/* Specifics for Campaign Editor */
+.editor-section .form-input-title {
+  font-size: 1.8rem; /* Adjusted title input size */
+  font-weight: 600; /* Bolder for main title */
+  color: var(--text-color);
+  /* padding and margin are handled by global .form-input */
+}
+
+.editor-section .form-textarea { /* For initial prompt */
+  min-height: 100px; /* Adjusted min-height */
+  line-height: var(--line-height-base); /* Use theme variable */
+}
+
+.read-only-section h2 {
+  font-size: 1.5rem; /* Adjusted size for read-only section headers */
+  color: var(--text-color); 
+  margin-top: 0;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Adjustments for control groups and action areas for consistent spacing */
+.save-actions,
+.section-display-controls,
+.llm-settings-and-actions .llm-controls, /* Target .llm-controls inside .llm-settings-and-actions */
+.llm-settings-and-actions .llm-actions,  /* Target .llm-actions inside .llm-settings-and-actions */
+.add-section-form { /* Target the form within the add section area */
+  margin-top: 1rem; /* Standard top margin for control/action groups */
+  margin-bottom: 1rem; /* Standard bottom margin */
+}
 
 /* Styles for the selected LLM display and change button */
 .selected-llm-display {

@@ -33,7 +33,7 @@ export interface UserUpdatePayload {
 // Fetch all users (with optional pagination)
 export const getUsers = async (skip: number = 0, limit: number = 100): Promise<User[]> => {
   try {
-    const response = await apiClient.get<User[]>('/users/', {
+    const response = await apiClient.get<User[]>('/api/v1/users/', {
       params: { skip, limit },
     });
     return response.data;
@@ -46,7 +46,7 @@ export const getUsers = async (skip: number = 0, limit: number = 100): Promise<U
 // Fetch a single user by ID
 export const getUserById = async (userId: number): Promise<User> => {
   try {
-    const response = await apiClient.get<User>(`/users/${userId}`);
+    const response = await apiClient.get<User>(`/api/v1/users/${userId}`);
     return response.data;
   } catch (error) {
     console.error(`Error fetching user with ID ${userId}:`, error);
@@ -57,7 +57,7 @@ export const getUserById = async (userId: number): Promise<User> => {
 // Create a new user
 export const createUser = async (userData: UserCreatePayload): Promise<User> => {
   try {
-    const response = await apiClient.post<User>('/users/', userData);
+    const response = await apiClient.post<User>('/api/v1/users/', userData);
     return response.data;
   } catch (error) {
     console.error('Error creating user:', error);
@@ -68,7 +68,7 @@ export const createUser = async (userData: UserCreatePayload): Promise<User> => 
 // Update an existing user
 export const updateUser = async (userId: number, userData: UserUpdatePayload): Promise<User> => {
   try {
-    const response = await apiClient.put<User>(`/users/${userId}`, userData);
+    const response = await apiClient.put<User>(`/api/v1/users/${userId}`, userData);
     return response.data;
   } catch (error) {
     console.error(`Error updating user with ID ${userId}:`, error);
@@ -81,7 +81,7 @@ export const updateUser = async (userId: number, userData: UserUpdatePayload): P
 // If it were to return HTTP 204 No Content, this function signature would be Promise<void>.
 export const deleteUser = async (userId: number): Promise<User> => {
   try {
-    const response = await apiClient.delete<User>(`/users/${userId}`);
+    const response = await apiClient.delete<User>(`/api/v1/users/${userId}`);
     return response.data; // Assuming backend returns the deleted user
   } catch (error) {
     console.error(`Error deleting user with ID ${userId}:`, error);
