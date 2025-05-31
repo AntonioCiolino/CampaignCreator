@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react'; // Added useState here, though it was already present.
+import React, { useState, useEffect } from 'react';
 import { CampaignSection } from '../services/campaignService';
 import ReactMarkdown from 'react-markdown';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css'; // Import Quill's snow theme CSS
 import Button from './common/Button'; // Added Button import
-import RandomTableRoller from './RandomTableRoller'; // Import RandomTableRoller
+import RandomTableRoller from './RandomTableRoller';
+import ImageGenerationModal from './modals/ImageGenerationModal/ImageGenerationModal'; // Import the new modal
 import './CampaignSectionView.css';
-import { CampaignSectionUpdatePayload } from '../services/campaignService'; // Import the payload type
+import { CampaignSectionUpdatePayload } from '../services/campaignService';
 
 interface CampaignSectionViewProps {
   section: CampaignSection;
@@ -21,9 +22,10 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
   const [isCollapsed, setIsCollapsed] = useState<boolean>(true); // Add isCollapsed state
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editedContent, setEditedContent] = useState<string>(section.content);
-  const [quillInstance, setQuillInstance] = useState<any>(null); // To store Quill instance if needed
+  // const [quillInstance, setQuillInstance] = useState<any>(null); // To store Quill instance if needed (keep if used)
   const [localSaveError, setLocalSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+  const [isImageGenerationModalOpen, setIsImageGenerationModalOpen] = useState<boolean>(false);
 
 
   // Ensure editedContent is updated if the section prop changes externally
@@ -135,14 +137,18 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
               />
               {/* Random Table Roller Integration */}
               <RandomTableRoller onInsertItem={handleInsertRandomItem} />
+              {/* TODO: Consider adding a Quill ref to get the instance: ref={(el) => { if (el) setQuillInstance(el.getEditor()); }} */}
 
               <div className="editor-actions">
-                <button onClick={handleSave} className="editor-button save-button" disabled={isSaving}>
+                <Button onClick={handleSave} className="editor-button" disabled={isSaving}>
                   {isSaving ? 'Saving...' : 'Save Content'}
-                </button>
-                <button onClick={handleCancel} className="editor-button cancel-button" disabled={isSaving}>
+                </Button>
+                <Button onClick={() => setIsImageGenerationModalOpen(true)} className="editor-button">
+                  Generate Image
+                </Button>
+                <Button onClick={handleCancel} className="editor-button" variant="secondary" disabled={isSaving}>
                   Cancel
-                </button>
+                </Button>
                 {localSaveError && <p className="error-message editor-feedback">{localSaveError}</p>}
                 {externalSaveError && !localSaveError && <p className="error-message editor-feedback">{externalSaveError}</p>}
                 {saveSuccess && <p className="success-message editor-feedback">Content saved!</p>}
@@ -171,6 +177,26 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
           )}
         </>
       )}
+      <ImageGenerationModal
+        isOpen={isImageGenerationModalOpen}
+        onClose={() => setIsImageGenerationModalOpen(false)}
+        // onImageGenerated={(imageUrl) => {
+        //   // Optionally insert the image URL into the editor or handle as needed
+        //   console.log("Generated image URL:", imageUrl);
+        //   // Example: Insert into Quill (would require quillInstance)
+        //   // if (quillInstance) {
+        //   //   const range = quillInstance.getSelection(true) || { index: editedContent.length, length: 0 };
+        //   //   quillInstance.insertEmbed(range.index, 'image', imageUrl, 'user');
+        //   //   // Or, to insert as markdown if your editor handles it:
+        //   //   // quillInstance.insertText(range.index, `\n![Generated Image](${imageUrl})\n`, 'user');
+        //   //   setEditedContent(quillInstance.root.innerHTML); // Or however you get content from Quill
+        //   // } else {
+        //   // Fallback: append to text state if no Quill instance
+        //     setEditedContent(prev => `${prev}\n![Generated Image](${imageUrl})\n`);
+        //   // }
+        //   setIsImageGenerationModalOpen(false); // Close modal after generation
+        // }}
+      />
     </div>
   );
 };
