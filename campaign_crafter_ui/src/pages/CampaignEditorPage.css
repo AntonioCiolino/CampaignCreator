@@ -20,7 +20,8 @@
   margin-bottom: 2rem; /* Increased bottom margin for better separation */
 }
 
-/* Style for clickable h3 headers in collapsible sections */
+/* Style for clickable h2/h3 headers in collapsible sections */
+.editor-section > h2[style*="cursor: pointer"],
 .editor-section > h3[style*="cursor: pointer"] {
   margin-bottom: 1rem; /* Space below header before content */
   padding: 0.75rem 1rem; /* Padding inside the header */
@@ -29,7 +30,11 @@
   border-radius: 6px; /* Rounded corners for the header bar */
   transition: background-color 0.2s ease-in-out;
   border-bottom: 1px solid var(--border-color);
+  /* Ensure cursor property is explicitly set if not already via inline style, though inline style takes precedence */
+  cursor: pointer;
 }
+
+.editor-section > h2[style*="cursor: pointer"]:hover,
 .editor-section > h3[style*="cursor: pointer"]:hover {
   background-color: var(--primary-color); /* Slightly darker on hover */
   color: white;
