@@ -140,6 +140,24 @@ const CampaignEditorPage: React.FC = () => {
     }
   };
 
+  const handleDeleteSection = async (sectionId: number) => {
+    if (!campaignId) return;
+
+    if (window.confirm(`Are you sure you want to delete section ${sectionId}? This action cannot be undone.`)) {
+      try {
+        await campaignService.deleteCampaignSection(campaignId, sectionId);
+        setSections(prevSections => prevSections.filter(s => s.id !== sectionId));
+        setSaveSuccess(`Section ${sectionId} deleted successfully.`);
+        setTimeout(() => setSaveSuccess(null), 3000);
+      } catch (err: any) {
+        console.error(`Failed to delete section ${sectionId}:`, err);
+        const detail = axios.isAxiosError(err) && err.response?.data?.detail ? err.response.data.detail : (err.message || 'Failed to delete section.');
+        setError(`Error deleting section ${sectionId}: ${detail}`);
+         setTimeout(() => setError(null), 5000);
+      }
+    }
+  };
+
   const handleAddSection = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!campaignId) return;
@@ -360,7 +378,13 @@ const CampaignEditorPage: React.FC = () => {
         {sections.length > 0 ? (
           sections.map((section) => (
             <div key={section.id} className="section-wrapper">
-              <CampaignSectionView section={section} onSave={handleUpdateSection} isSaving={savingSectionId === section.id} saveError={sectionSaveError[section.id] || null} />
+              <CampaignSectionView
+                section={section}
+                onSave={handleUpdateSection}
+                isSaving={savingSectionId === section.id}
+                saveError={sectionSaveError[section.id] || null}
+                onDelete={handleDeleteSection} // Added onDelete prop
+              />
             </div>
           ))
         ) : (<p>No sections available for this campaign yet.</p>)}

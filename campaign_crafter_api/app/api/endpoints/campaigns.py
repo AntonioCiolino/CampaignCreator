@@ -247,6 +247,17 @@ async def list_campaign_sections(
     sections = crud.get_campaign_sections(db=db, campaign_id=campaign_id)
     return {"sections": sections}
 
+@router.delete("/{campaign_id}/sections/{section_id}", response_model=models.CampaignSection, tags=["Campaign Sections"])
+async def delete_campaign_section_endpoint(
+    campaign_id: int,
+    section_id: int,
+    db: Session = Depends(get_db)
+):
+    deleted_section = crud.delete_campaign_section(db=db, section_id=section_id, campaign_id=campaign_id)
+    if deleted_section is None:
+        raise HTTPException(status_code=404, detail="Campaign section not found or does not belong to this campaign.")
+    return deleted_section
+
 # --- Export Endpoints ---
 
 @router.get("/{campaign_id}/export/homebrewery", tags=["Campaigns", "Export"])

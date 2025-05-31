@@ -11,9 +11,10 @@ interface CampaignSectionViewProps {
   onSave: (sectionId: number, updatedData: CampaignSectionUpdatePayload) => Promise<void>;
   isSaving: boolean; // Prop to indicate if this specific section is being saved
   saveError: string | null; // Prop to display save error for this section
+  onDelete: (sectionId: number) => void; // Added onDelete prop
 }
 
-const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSave, isSaving, saveError: externalSaveError }) => {
+const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSave, isSaving, saveError: externalSaveError, onDelete }) => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editedContent, setEditedContent] = useState<string>(section.content);
   const [localSaveError, setLocalSaveError] = useState<string | null>(null);
@@ -114,6 +115,9 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
           <div className="view-actions">
             <button onClick={handleEdit} className="editor-button edit-button">
               Edit Section Content
+            </button>
+            <button onClick={() => onDelete(section.id)} className="editor-button delete-button" style={{ marginLeft: '10px' }}>
+              Delete Section
             </button>
           </div>
         </>

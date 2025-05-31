@@ -173,6 +173,15 @@ def update_campaign_section(db: Session, section_id: int, campaign_id: int, sect
         db.refresh(db_section)
     return db_section
 
+def delete_campaign_section(db: Session, section_id: int, campaign_id: int) -> Optional[orm_models.CampaignSection]:
+    db_section = get_section(db, section_id=section_id, campaign_id=campaign_id)
+    if not db_section:
+        return None
+
+    db.delete(db_section)
+    db.commit()
+    return db_section # Returns the object as it was before deletion from session's perspective
+
 # LLMConfig CRUD functions (example, can be expanded)
 # def create_llm_config(db: Session, config: models.LLMConfigCreate, owner_id: int) -> orm_models.LLMConfig:
 #     db_config = orm_models.LLMConfig(**config.dict(), owner_id=owner_id)

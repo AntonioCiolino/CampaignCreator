@@ -177,6 +177,17 @@ export const addCampaignSection = async (
   }
 };
 
+// Delete a specific campaign section
+export const deleteCampaignSection = async (campaignId: string | number, sectionId: string | number): Promise<void> => {
+  try {
+    await apiClient.delete(`/campaigns/${campaignId}/sections/${sectionId}`);
+    // No specific data is expected to be returned on successful DELETE for this void function
+  } catch (error) {
+    console.error(`Error deleting section ID ${sectionId} for campaign ID ${campaignId}:`, error);
+    throw error; // Re-throw to be handled by the calling component
+  }
+};
+
 // Export campaign to Homebrewery Markdown (download)
 export const exportCampaignToHomebrewery = async (campaignId: string | number): Promise<string> => {
   try {
