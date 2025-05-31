@@ -105,14 +105,12 @@ const CampaignEditorPage: React.FC = () => {
           getAvailableLLMs(),
         ]);
         setCampaign(campaignDetails);
-        // Ensure sections are correctly extracted and sorted
-        // campaignService.getCampaignSections is expected to return an object: { sections: CampaignSection[] }
-        if (campaignSectionsResponse && Array.isArray(campaignSectionsResponse.sections)) {
-            setSections(campaignSectionsResponse.sections.sort((a, b) => a.order - b.order));
+        // campaignService.getCampaignSections is now expected to return CampaignSection[] directly
+        if (Array.isArray(campaignSectionsResponse)) {
+            setSections(campaignSectionsResponse.sort((a, b) => a.order - b.order));
         } else {
-            // This case handles if campaignSectionsResponse is null/undefined or
-            // if campaignSectionsResponse.sections is not an array.
-            console.warn("campaignSectionsResponse.sections was not an array or campaignSectionsResponse was null/falsy:", campaignSectionsResponse);
+            // This case handles if campaignSectionsResponse is not an array as expected.
+            console.warn("campaignSectionsResponse was not an array as expected:", campaignSectionsResponse);
             setSections([]); // Default to empty array or handle error appropriately
         }
 
