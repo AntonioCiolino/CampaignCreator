@@ -2,6 +2,7 @@
 export interface LLMModel {
   id: string; // Prefixed ID, e.g., "openai/gpt-3.5-turbo"
   name: string; // User-friendly name, e.g., "OpenAI GPT-3.5 Turbo"
+  capabilities?: string[]; // Added optional capabilities field
 }
 
 // Defines the structure of the response from the /api/llm/models endpoint
@@ -9,7 +10,8 @@ interface LLMModelsResponse {
   models: LLMModel[];
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+import { getApiBaseUrl } from './env'; // Import the new function
+const API_BASE_URL = getApiBaseUrl();
 
 /**
  * Fetches the list of available LLM models from the backend.
@@ -18,7 +20,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
  */
 export const getAvailableLLMs = async (): Promise<LLMModel[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/llm/models`);
+    const response = await fetch(`${API_BASE_URL}/api/v1/llm/models`);
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ detail: 'Network response was not ok.' }));
       throw new Error(errorData.detail || `Failed to fetch LLM models: ${response.statusText}`);
@@ -62,7 +64,7 @@ export const generateTextLLM = async (params: LLMTextGenerationParams): Promise<
             requestBody.max_tokens = params.max_tokens;
         }
 
-        const response = await fetch(`${API_BASE_URL}/llm/generate-text`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/llm/generate-text`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -117,7 +119,7 @@ export const generateImage = async (request: ImageGenerationRequest): Promise<Im
     // if (request.style) requestBody.style = request.style;
 
 
-    const response = await fetch(`${API_BASE_URL}/images/generate`, { // Updated endpoint path
+    const response = await fetch(`${API_BASE_URL}/api/v1/images/generate`, { // Updated endpoint path
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

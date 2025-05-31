@@ -26,6 +26,35 @@
   /* Styles for the text generation part if needed, for now groups handle spacing */
 }
 
+.gt-feature-group {
+  margin-bottom: 1.5rem;
+}
+
+.gt-template-display {
+  margin-top: 0.75rem;
+  padding: 0.5rem;
+  background-color: var(--background-color-secondary, #f8f9fa); /* A light background */
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: var(--border-radius-sm, 0.25rem);
+  font-size: 0.9em;
+  color: var(--text-color-muted, #6c757d);
+}
+
+.gt-template-display .gt-code-block {
+  background-color: var(--code-background-color, #e9ecef); /* Slightly darker for code */
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--border-radius-sm, 0.25rem);
+  font-family: var(--font-family-monospace, monospace);
+  color: var(--code-text-color, #333); /* Ensure good contrast */
+}
+
+.gt-template-display em {
+    font-style: italic;
+    color: var(--primary-color, #007bff); /* Highlight the instruction */
+    margin-left: 0.5em;
+}
+
+
 .gt-prompt-group { /* Also used for image prompt group */
   margin-bottom: 1.5rem; 
 }

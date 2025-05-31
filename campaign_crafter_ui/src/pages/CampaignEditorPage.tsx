@@ -1,7 +1,8 @@
-import React, { useState, useEffect, FormEvent, useMemo } from 'react'; // Added useMemo
+import React, { useState, useEffect, FormEvent, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import * as campaignService from '../services/campaignService';
+import { getAvailableLLMs, LLMModel } from '../services/llmService'; // Corrected import
 import CampaignSectionView from '../components/CampaignSectionView';
 import ReactMarkdown from 'react-markdown';
 import './CampaignEditorPage.css'; 
@@ -39,7 +40,7 @@ const CampaignEditorPage: React.FC = () => {
   const [addSectionSuccess, setAddSectionSuccess] = useState<string | null>(null);
 
   // LLM Settings State
-  const [availableLLMs, setAvailableLLMs] = useState<campaignService.ModelInfo[]>([]);
+  const [availableLLMs, setAvailableLLMs] = useState<LLMModel[]>([]); // Corrected type
   const [selectedLLMId, setSelectedLLMId] = useState<string>('');
   const [temperature, setTemperature] = useState<number>(0.7);
 
@@ -97,19 +98,30 @@ const CampaignEditorPage: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const [campaignDetails, campaignSections, llmModels] = await Promise.all([
+        // Use getAvailableLLMs from llmService
+        const [campaignDetails, campaignSectionsResponse, fetchedLLMs] = await Promise.all([
           campaignService.getCampaignById(campaignId),
-          campaignService.getCampaignSections(campaignId),
-          campaignService.getLLMModels(),
+          campaignService.getCampaignSections(campaignId), // This returns { sections: CampaignSection[] }
+          getAvailableLLMs(),
         ]);
         setCampaign(campaignDetails);
-        setSections(campaignSections.sort((a, b) => a.order - b.order));
+        // campaignService.getCampaignSections is now expected to return CampaignSection[] directly
+        // campaignSectionsResult is named campaignSectionsResponse in the existing code
+        if (Array.isArray(campaignSectionsResponse)) {
+            setSections(campaignSectionsResponse.sort((a, b) => a.order - b.order));
+        } else {
+            // This block handles cases where the result might unexpectedly not be an array.
+            console.warn("Campaign sections data (campaignSectionsResponse) was not an array as expected:", campaignSectionsResponse);
+            setSections([]); // Default to an empty array to prevent further errors.
+        }
+
         setEditableTitle(campaignDetails.title);
         setEditableInitialPrompt(campaignDetails.initial_user_prompt || '');
 
-        setAvailableLLMs(llmModels); // llmModels is campaignService.ModelInfo[]
+        setAvailableLLMs(fetchedLLMs); // fetchedLLMs is now LLMModel[]
 
-        const potentialChatModels = llmModels.filter(model =>
+        // This filter should now work correctly with LLMModel type
+        const potentialChatModels = fetchedLLMs.filter(model =>
             model.capabilities && (model.capabilities.includes("chat") || model.capabilities.includes("chat-adaptable"))
         );
 
@@ -125,8 +137,8 @@ const CampaignEditorPage: React.FC = () => {
                 defaultChatModel = potentialChatModels[0];
             }
             setSelectedLLMId(defaultChatModel.id);
-        } else if (llmModels.length > 0) {
-            setSelectedLLMId(llmModels[0].id);
+        } else if (fetchedLLMs.length > 0) {
+            setSelectedLLMId(fetchedLLMs[0].id);
         } else {
             setSelectedLLMId('');
         }
@@ -466,4 +478,4 @@ const CampaignEditorPage: React.FC = () => {
 
 export default CampaignEditorPage;
 
-// Removed redundant LLMModel type alias, as campaignService.ModelInfo is used directly
+// Note: The redundant LLMModel type alias (campaignService.ModelInfo) was already addressed by using LLMModel from llmService.

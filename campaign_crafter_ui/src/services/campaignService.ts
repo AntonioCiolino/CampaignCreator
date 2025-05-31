@@ -49,7 +49,7 @@ export interface LLMGenerationPayload {
 // Fetch all campaigns
 export const getAllCampaigns = async (): Promise<Campaign[]> => {
   try {
-    const response = await apiClient.get<Campaign[] | null>('/campaigns/'); // Expect Campaign[] or null
+    const response = await apiClient.get<Campaign[] | null>('/api/v1/campaigns/'); // Expect Campaign[] or null
     // Ensure we always return an array. If response.data is null or undefined, or not an array, return [].
     return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
@@ -66,7 +66,7 @@ export const getAllCampaigns = async (): Promise<Campaign[]> => {
 // Fetch a single campaign by ID
 export const getCampaignById = async (campaignId: string | number): Promise<Campaign> => {
     try {
-        const response = await apiClient.get<Campaign>(`/campaigns/${campaignId}`);
+        const response = await apiClient.get<Campaign>(`/api/v1/campaigns/${campaignId}`);
         return response.data;
     } catch (error) {
         console.error(`Error fetching campaign with ID ${campaignId}:`, error);
@@ -77,7 +77,7 @@ export const getCampaignById = async (campaignId: string | number): Promise<Camp
 // Create a new campaign
 export const createCampaign = async (campaignData: CampaignCreatePayload): Promise<Campaign> => {
     try {
-        const response = await apiClient.post<Campaign>('/campaigns/', campaignData);
+        const response = await apiClient.post<Campaign>('/api/v1/campaigns/', campaignData);
         return response.data;
     } catch (error) {
         console.error('Error creating campaign:', error);
@@ -88,7 +88,7 @@ export const createCampaign = async (campaignData: CampaignCreatePayload): Promi
 // Update an existing campaign
 export const updateCampaign = async (campaignId: string | number, campaignData: CampaignUpdatePayload): Promise<Campaign> => {
   try {
-    const response = await apiClient.put<Campaign>(`/campaigns/${campaignId}`, campaignData);
+    const response = await apiClient.put<Campaign>(`/api/v1/campaigns/${campaignId}`, campaignData);
     return response.data;
   } catch (error) {
     console.error(`Error updating campaign with ID ${campaignId}:`, error);
@@ -111,7 +111,7 @@ export const updateCampaignSection = async (
 ): Promise<CampaignSection> => {
   try {
     const response = await apiClient.put<CampaignSection>(
-      `/campaigns/${campaignId}/sections/${sectionId}`,
+      `/api/v1/campaigns/${campaignId}/sections/${sectionId}`,
       data
     );
     return response.data;
@@ -124,7 +124,7 @@ export const updateCampaignSection = async (
 // Generate Table of Contents for a campaign
 export const generateCampaignTOC = async (campaignId: string | number, payload: LLMGenerationPayload): Promise<Campaign> => {
   try {
-    const response = await apiClient.post<Campaign>(`/campaigns/${campaignId}/toc`, payload);
+    const response = await apiClient.post<Campaign>(`/api/v1/campaigns/${campaignId}/toc`, payload);
     return response.data;
   } catch (error) {
     console.error(`Error generating TOC for campaign ID ${campaignId}:`, error);
@@ -142,7 +142,7 @@ export const generateCampaignTitles = async (campaignId: string | number, payloa
   try {
     const params = count ? { count } : {};
     const response = await apiClient.post<CampaignTitlesResponse>(
-      `/campaigns/${campaignId}/titles`,
+      `/api/v1/campaigns/${campaignId}/titles`,
       payload,
       { params }
     );
@@ -167,7 +167,7 @@ export const addCampaignSection = async (
 ): Promise<CampaignSection> => { 
   try {
     const response = await apiClient.post<CampaignSection>(
-      `/campaigns/${campaignId}/sections`,
+      `/api/v1/campaigns/${campaignId}/sections`,
       data
     );
     return response.data;
@@ -180,7 +180,7 @@ export const addCampaignSection = async (
 // Delete a specific campaign section
 export const deleteCampaignSection = async (campaignId: string | number, sectionId: string | number): Promise<void> => {
   try {
-    await apiClient.delete(`/campaigns/${campaignId}/sections/${sectionId}`);
+    await apiClient.delete(`/api/v1/campaigns/${campaignId}/sections/${sectionId}`);
     // No specific data is expected to be returned on successful DELETE for this void function
   } catch (error) {
     console.error(`Error deleting section ID ${sectionId} for campaign ID ${campaignId}:`, error);
@@ -192,7 +192,7 @@ export const deleteCampaignSection = async (campaignId: string | number, section
 export const exportCampaignToHomebrewery = async (campaignId: string | number): Promise<string> => {
   try {
     const response = await apiClient.get<string>(
-      `/campaigns/${campaignId}/export/homebrewery`,
+      `/api/v1/campaigns/${campaignId}/export/homebrewery`,
       {
         responseType: 'text', 
       }
@@ -220,7 +220,7 @@ export interface PrepareHomebreweryPostResponse {
  */
 export const prepareCampaignForHomebrewery = async (campaignId: string | number): Promise<PrepareHomebreweryPostResponse> => {
     try {
-        const response = await apiClient.get<PrepareHomebreweryPostResponse>(`/campaigns/${campaignId}/prepare_for_homebrewery`);
+        const response = await apiClient.get<PrepareHomebreweryPostResponse>(`/api/v1/campaigns/${campaignId}/prepare_for_homebrewery`);
         return response.data;
     } catch (error) {
         console.error(`Error preparing campaign ID ${campaignId} for Homebrewery posting:`, error);
@@ -234,7 +234,7 @@ export const prepareCampaignForHomebrewery = async (campaignId: string | number)
 // Fetch sections for a specific campaign
 export const getCampaignSections = async (campaignId: string | number): Promise<CampaignSection[]> => {
   try {
-    const response = await apiClient.get<{ sections: CampaignSection[] }>(`/campaigns/${campaignId}/sections`);
+    const response = await apiClient.get<{ sections: CampaignSection[] }>(`/api/v1/campaigns/${campaignId}/sections`);
     // Ensure that the response structure matches what's expected.
     // If backend returns an object like { "sections": [...] }, then access response.data.sections.
     // If backend returns the array directly, then response.data is the array.
@@ -269,20 +269,6 @@ export const getCampaignSections = async (campaignId: string | number): Promise<
 // Corrected `addCampaignSection` payload to match backend `CampaignSectionCreateInput`.
 // Corrected `getCampaignSections` to expect `{ sections: [...] }` based on backend.
 // The problematic text block below this line has been removed.
-
-export async function getLLMModels(): Promise<ModelInfo[]> { // Added return type
-  // Use process.env.REACT_APP_API_BASE_URL, consistent with apiClient.ts (implicitly)
-  // Fallback is provided if the env var is not set.
-  // Ensure no double slashes if REACT_APP_API_BASE_URL has a trailing slash.
-  const baseUrl = (process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1').replace(/\/$/, '');
-  const response = await fetch(`${baseUrl}/llm/models`);
-  if (!response.ok) {
-    // Optionally, log more details from response if needed for debugging
-    // const errorBody = await response.text();
-    // console.error(`Failed to fetch LLM models. Status: ${response.status}. Body: ${errorBody}`);
-    throw new Error('Failed to fetch LLM models');
-  }
-  const data = await response.json();
-  // Ensure data exists and data.models is an array before returning, otherwise return empty array.
-  return (data && Array.isArray(data.models)) ? data.models : [];
-}
+// The standalone getLLMModels function that used process.env and fetch directly has also been removed
+// to ensure consistency with API calls going through apiClient or services using getApiBaseUrl.
+// Functionality for fetching LLM models is available in llmService.ts via getAvailableLLMs.
