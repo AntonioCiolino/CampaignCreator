@@ -1,4 +1,5 @@
-from typing import Optional, Type, Dict
+from typing import Optional, Type, Dict, List # Added List
+from app.models import ModelInfo # Added ModelInfo
 from app.services.llm_service import AbstractLLMService
 from app.services.openai_service import OpenAILLMService
 from app.services.gemini_service import GeminiLLMService
@@ -6,10 +7,7 @@ from app.services.llama_service import LlamaLLMService
 from app.services.deepseek_service import DeepSeekLLMService
 from app.services.local_llm_service import LocalLLMService # New import
 from app.core.config import settings
-
-class LLMServiceUnavailableError(Exception):
-    """Custom exception for when an LLM service cannot be initialized or is unavailable."""
-    pass
+from app.services.llm_service import LLMServiceUnavailableError # Added import
 
 # Updated mapping of provider names to service classes
 _llm_service_providers: Dict[str, Type[AbstractLLMService]] = {
@@ -107,3 +105,55 @@ def get_llm_service(
         raise LLMServiceUnavailableError(f"Failed to initialize {selected_provider} service: {e}")
     except Exception as e: 
         raise LLMServiceUnavailableError(f"An unexpected error occurred while initializing {selected_provider} service ({type(e).__name__}): {e}")
+
+async def get_available_models_info() -> List[ModelInfo]:
+    all_models_info: List[ModelInfo] = []
+    # LLMServiceUnavailableError is used below, imported from llm_service
+    # Iterate over a copy of keys in case the dictionary is modified elsewhere
+    provider_names = list(_llm_service_providers.keys())
+
+    for provider_name in provider_names:
+        service: Optional[AbstractLLMService] = None
+        try:
+            print(f"Attempting to get service and models for: {provider_name}")
+            # get_llm_service itself checks for basic configuration (API keys/URL)
+            # and raises LLMServiceUnavailableError if not configured.
+            service = get_llm_service(provider_name) # This function internally uses LLMServiceUnavailableError
+
+            if not await service.is_available():
+                print(f"Service '{provider_name}' is not available.")
+                continue
+
+            service_models = await service.list_available_models()
+            if not service_models:
+                print(f"No models listed by service '{provider_name}'.")
+                continue
+
+            for model_dict in service_models:
+                # Ensure model_dict has 'id' and 'name' as list_available_models should provide
+                original_model_id = model_dict.get("id")
+                model_name = model_dict.get("name", original_model_id) # Fallback name to id
+
+                if not original_model_id:
+                    print(f"Warning: Model from '{provider_name}' missing 'id': {model_dict}")
+                    continue
+
+                prefixed_id = f"{provider_name}/{original_model_id}"
+                # Use PROVIDER_NAME for a more descriptive name if desired, or just model_name
+                # For consistency with how models might be displayed, let's use the name from the service.
+                # The prefixed_id already contains the provider context.
+                all_models_info.append(ModelInfo(id=prefixed_id, name=model_name if model_name else prefixed_id))
+            print(f"Successfully processed models for {provider_name}")
+
+        except LLMServiceUnavailableError as e:
+            print(f"Service '{provider_name}' is unavailable or misconfigured: {e}")
+        except Exception as e:
+            print(f"Failed to get models from provider '{provider_name}': {type(e).__name__} - {e}")
+        finally:
+            if service and hasattr(service, 'close') and callable(service.close):
+                try:
+                    await service.close() # Ensure async close is awaited
+                except Exception as e:
+                    print(f"Error closing service client for '{provider_name}': {e}")
+
+    return all_models_info

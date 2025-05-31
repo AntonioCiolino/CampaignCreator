@@ -81,6 +81,21 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className="dashboard-page container"> {/* Added .container for consistent padding/max-width */}
+      {/* Section 1: Your Campaigns List */}
+      <section className="campaign-list-section">
+        <h1>Your Campaigns</h1>
+        {campaigns.length === 0 && !isLoading ? ( // Ensure not loading before showing "no campaigns"
+          <p>No campaigns yet. Create one below to get started!</p> /* Updated message */
+        ) : (
+          <ul className="campaign-list">
+            {campaigns.map((campaign) => (
+              <CampaignCard key={campaign.id} campaign={campaign} />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Section 2: Create New Campaign */}
       <section className="create-campaign-section">
         <h2>Create New Campaign</h2>
         <form onSubmit={handleCreateCampaign} className="create-campaign-form">
@@ -121,19 +136,6 @@ const DashboardPage: React.FC = () => {
             {isCreating ? 'Creating...' : 'Create Campaign & Start Editing'}
           </Button>
         </form>
-      </section>
-
-      <section className="campaign-list-section">
-        <h1>Your Campaigns</h1>
-        {campaigns.length === 0 && !isLoading ? ( // Ensure not loading before showing "no campaigns"
-          <p>No campaigns yet. Create one above to get started!</p>
-        ) : (
-          <ul className="campaign-list">
-            {campaigns.map((campaign) => (
-              <CampaignCard key={campaign.id} campaign={campaign} />
-            ))}
-          </ul>
-        )}
       </section>
     </div>
   );

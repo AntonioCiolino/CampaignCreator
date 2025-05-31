@@ -1,43 +1,69 @@
 import google.generativeai as genai # type: ignore
 from typing import List, Dict, Optional
 from app.core.config import settings
-from app.services.llm_service import AbstractLLMService # Updated import
+from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError # Import specific error
 from app.services.feature_prompt_service import FeaturePromptService
+# Removed import from llm_factory: from app.services.llm_factory import LLMServiceUnavailableError
 from pathlib import Path # For the __main__ block
+import asyncio # For testing async methods in __main__
 
-class GeminiLLMService(AbstractLLMService): # Updated inheritance
+class GeminiLLMService(AbstractLLMService):
+    PROVIDER_NAME = "gemini" # Class variable for provider name
     DEFAULT_MODEL = "gemini-pro" 
 
     def __init__(self):
         self.api_key = settings.GEMINI_API_KEY
-        if not self.is_available(): # Use the new method
-            raise ValueError("Gemini API key not configured or is a placeholder. Please set GEMINI_API_KEY in your .env file.")
+        # Removed self.is_available() call from __init__
+        if not (self.api_key and self.api_key != "YOUR_GEMINI_API_KEY"):
+            print("Warning: Gemini API key not configured or is a placeholder.")
+            # Service will report as unavailable.
         
         try:
-            genai.configure(api_key=self.api_key)
+            # Configure should ideally happen once, but SDK might handle re-configuration.
+            # If API key is missing, this might not raise an error immediately,
+            # but subsequent calls will fail. is_available() will catch this.
+            if self.api_key and self.api_key != "YOUR_GEMINI_API_KEY":
+                 genai.configure(api_key=self.api_key)
         except Exception as e:
-            raise ValueError(f"Failed to configure Gemini client, possibly due to API key issue: {e}")
+            # This might catch issues if genai.configure fails immediately
+            print(f"Error configuring Gemini client during __init__: {e}")
+            # This doesn't prevent service instantiation but is_available should fail.
 
         self.feature_prompt_service = FeaturePromptService()
 
-    def is_available(self) -> bool:
-        return bool(self.api_key and self.api_key != "YOUR_GEMINI_API_KEY")
+    async def is_available(self) -> bool:
+        if not (self.api_key and self.api_key != "YOUR_GEMINI_API_KEY"):
+            return False
+        try:
+            # Attempt to configure here again if not done, or if it needs to be per-instance
+            # However, genai.configure is typically global.
+            # A lightweight API call is better for checking availability.
+            genai.configure(api_key=self.api_key) # Ensure configured for this check if not globally
+            model_instance = self._get_model_instance(self.DEFAULT_MODEL) # Use a known default
+            # Perform a very small, non-empty prompt generation
+            await model_instance.generate_content_async(
+                "test",
+                generation_config=genai.types.GenerationConfig(candidate_count=1, max_output_tokens=1)
+            )
+            return True
+        except Exception as e:
+            print(f"Gemini service not available. API check failed: {e}")
+            return False
 
     def _get_model_instance(self, model_id: Optional[str] = None):
-        # Helper to get a model instance.
-        # model_id here is the direct model ID, e.g., "gemini-pro".
-        # The factory handles provider prefixes.
         effective_model_id = model_id or self.DEFAULT_MODEL
-        
         if not effective_model_id or not effective_model_id.strip():
-            effective_model_id = self.DEFAULT_MODEL # Fallback to a default if empty/whitespace
-
+            effective_model_id = self.DEFAULT_MODEL
         try:
+            # This part remains synchronous as model instantiation itself is not async.
             return genai.GenerativeModel(effective_model_id)
-        except Exception as e:
-            raise ValueError(f"Failed to initialize Gemini model '{effective_model_id}': {e}")
+        except Exception as e: # Broad catch, as various errors can occur here
+            raise LLMServiceUnavailableError(f"Failed to initialize Gemini model '{effective_model_id}': {e}")
 
-    def generate_text(self, prompt: str, model: Optional[str] = None, temperature: float = 0.7, max_tokens: Optional[int] = None) -> str:
+
+    async def generate_text(self, prompt: str, model: Optional[str] = None, temperature: float = 0.7, max_tokens: Optional[int] = None) -> str:
+        if not await self.is_available():
+            raise LLMServiceUnavailableError("Gemini service is not available.")
         if not prompt:
             raise ValueError("Prompt cannot be empty.")
 
@@ -45,172 +71,159 @@ class GeminiLLMService(AbstractLLMService): # Updated inheritance
 
         generation_config_params = {}
         if temperature is not None:
-            generation_config_params["temperature"] = max(0.0, min(temperature, 1.0)) # Gemini typical range
+            generation_config_params["temperature"] = max(0.0, min(temperature, 1.0))
         if max_tokens is not None:
             generation_config_params["max_output_tokens"] = max_tokens
         
         generation_config = genai.types.GenerationConfig(**generation_config_params) if generation_config_params else None
 
         try:
-            response = model_instance.generate_content(prompt, generation_config=generation_config) if generation_config else model_instance.generate_content(prompt)
+            response = await model_instance.generate_content_async(prompt, generation_config=generation_config) if generation_config else await model_instance.generate_content_async(prompt)
                 
             if response.parts:
                 return "".join(part.text for part in response.parts if hasattr(part, 'text'))
-            elif hasattr(response, 'text') and response.text:
+            elif hasattr(response, 'text') and response.text: # Check for simple text response
                 return response.text
-            else:
+            else: # Handle cases where response might be empty or malformed
                 error_details = "Unknown reason for empty content."
                 if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
                     error_details = f"Prompt feedback: {response.prompt_feedback}"
-                elif not response.candidates:
+                elif not response.candidates: # No candidates means no valid response.
                     error_details = "No candidates returned in response."
-                raise Exception(f"Gemini API call for generic text succeeded but returned no usable content. Model: {model_instance.model_name}. Details: {error_details}")
-        except Exception as e:
-            raise Exception(f"Failed to generate text with Gemini model {model_instance.model_name} due to API error ({type(e).__name__}): {str(e)}") from e
+                raise LLMServiceUnavailableError(f"Gemini API call succeeded but returned no usable content. Model: {model_instance.model_name}. Details: {error_details}")
+        except Exception as e: # Catch broader exceptions from the SDK or logic
+            # Check if it's a Google specific API error if possible, otherwise generic
+            # from google.api_core import exceptions as google_exceptions
+            # if isinstance(e, google_exceptions.GoogleAPIError):
+            print(f"Gemini API error (model: {model_instance.model_name}): {type(e).__name__} - {e}")
+            raise LLMServiceUnavailableError(f"Failed to generate text with Gemini model {model_instance.model_name} due to API error: {str(e)}") from e
+            # else:
+            #     print(f"Unexpected error (model: {model_instance.model_name}): {type(e).__name__} - {e}")
+            #     raise Exception(f"An unexpected error occurred: {str(e)}") from e
 
-    def generate_campaign_concept(self, user_prompt: str, model: Optional[str] = None) -> str:
+
+    async def generate_campaign_concept(self, user_prompt: str, model: Optional[str] = None) -> str:
+        if not await self.is_available():
+            raise LLMServiceUnavailableError("Gemini service is not available.")
         model_instance = self._get_model_instance(model)
         
         custom_prompt_template = self.feature_prompt_service.get_prompt("Campaign")
-        if custom_prompt_template:
-            final_prompt = custom_prompt_template.format(user_prompt=user_prompt)
-        else:
-            print(f"Warning: 'Campaign' prompt not found. Using default prompt for Gemini model {model_instance.model_name}.")
-            final_prompt = f"Generate a detailed and engaging RPG campaign concept based on this idea: {user_prompt}. Include potential plot hooks, key NPCs, and unique settings."
+        final_prompt = custom_prompt_template.format(user_prompt=user_prompt) if custom_prompt_template else \
+                       f"Generate a detailed and engaging RPG campaign concept based on this idea: {user_prompt}. Include potential plot hooks, key NPCs, and unique settings."
         
-        try:
-            response = model_instance.generate_content(final_prompt)
-            if response.parts:
-                 return "".join(part.text for part in response.parts if hasattr(part, 'text'))
-            elif hasattr(response, 'text') and response.text:
-                 return response.text
-            else: 
-                 raise Exception(f"Gemini API call (model: {model_instance.model_name}) succeeded but returned no usable content.")
-        except Exception as e:
-            print(f"Gemini API error (model: {model_instance.model_name}) during campaign concept generation: {e}")
-            raise Exception(f"Failed to generate campaign concept with {model_instance.model_name} due to API error: {str(e)}") from e
+        # Re-use generate_text for actual generation
+        return await self.generate_text(prompt=final_prompt, model=model_instance.model_name, temperature=0.7, max_tokens=1000)
 
-    def generate_toc(self, campaign_concept: str, model: Optional[str] = None) -> str:
+
+    async def generate_toc(self, campaign_concept: str, model: Optional[str] = None) -> str:
+        if not await self.is_available():
+            raise LLMServiceUnavailableError("Gemini service is not available.")
+        if not campaign_concept:
+            raise ValueError("Campaign concept cannot be empty.")
         model_instance = self._get_model_instance(model)
         
         custom_prompt_template = self.feature_prompt_service.get_prompt("Table of Contents")
-        if custom_prompt_template:
-            final_prompt = custom_prompt_template.format(campaign_concept=campaign_concept)
-        else:
-            print(f"Warning: 'Table of Contents' prompt not found. Using default prompt for Gemini model {model_instance.model_name}.")
-            final_prompt = f"""Based on the following RPG campaign concept, generate a hierarchical Table of Contents... (prompt text)""" # Truncated
+        final_prompt = custom_prompt_template.format(campaign_concept=campaign_concept) if custom_prompt_template else \
+                       f"Based on the following RPG campaign concept: '{campaign_concept}', generate a hierarchical Table of Contents suitable for an RPG campaign book. Include main chapters and potential sub-sections with brief descriptions for each."
         
-        try:
-            response = model_instance.generate_content(final_prompt)
-            if response.parts:
-                 return "".join(part.text for part in response.parts if hasattr(part, 'text'))
-            elif hasattr(response, 'text') and response.text:
-                 return response.text
-            else:
-                 raise Exception(f"Gemini API call for TOC (model: {model_instance.model_name}) succeeded but returned no usable content.")
-        except Exception as e:
-            print(f"Gemini API error (model: {model_instance.model_name}) during TOC generation: {e}")
-            raise Exception(f"Failed to generate TOC with {model_instance.model_name} due to API error: {str(e)}") from e
+        return await self.generate_text(prompt=final_prompt, model=model_instance.model_name, temperature=0.5, max_tokens=700)
 
-    def generate_titles(self, campaign_concept: str, count: int = 5, model: Optional[str] = None) -> List[str]:
+    async def generate_titles(self, campaign_concept: str, count: int = 5, model: Optional[str] = None) -> List[str]:
+        if not await self.is_available():
+            raise LLMServiceUnavailableError("Gemini service is not available.")
+        if not campaign_concept:
+            raise ValueError("Campaign concept cannot be empty.")
+        if count <= 0:
+            raise ValueError("Count for titles must be a positive integer.")
+
         model_instance = self._get_model_instance(model)
-
         custom_prompt_template = self.feature_prompt_service.get_prompt("Campaign Names")
-        if custom_prompt_template:
-            final_prompt = custom_prompt_template.format(campaign_concept=campaign_concept, count=count)
-        else:
-            print(f"Warning: 'Campaign Names' prompt not found. Using default prompt for Gemini model {model_instance.model_name}.")
-            final_prompt = f"""Based on the following RPG campaign concept, generate {count} alternative campaign titles... (prompt text)""" # Truncated
+        final_prompt = custom_prompt_template.format(campaign_concept=campaign_concept, count=count) if custom_prompt_template else \
+                       f"Based on the following RPG campaign concept: '{campaign_concept}', generate {count} alternative, catchy campaign titles. List each title on a new line. Ensure only the titles are listed, nothing else."
 
-        try:
-            response = model_instance.generate_content(final_prompt)
-            text_response = ""
-            if response.parts:
-                 text_response = "".join(part.text for part in response.parts if hasattr(part, 'text'))
-            elif hasattr(response, 'text') and response.text:
-                 text_response = response.text
-            else:
-                 raise Exception(f"Gemini API call for titles (model: {model_instance.model_name}) succeeded but returned no usable content.")
+        text_response = await self.generate_text(prompt=final_prompt, model=model_instance.model_name, temperature=0.7, max_tokens=150 + (count * 20))
+        titles = [title.strip() for title in text_response.split('\n') if title.strip()]
+        return titles[:count]
 
-            titles = [title.strip() for title in text_response.split('\n') if title.strip()]
-            return titles[:count]
-        except Exception as e:
-            print(f"Gemini API error (model: {model_instance.model_name}) during title generation: {e}")
-            raise Exception(f"Failed to generate titles with {model_instance.model_name} due to API error: {str(e)}") from e
+    async def generate_section_content(self, campaign_concept: str, existing_sections_summary: Optional[str], section_creation_prompt: Optional[str], section_title_suggestion: Optional[str], model: Optional[str] = None) -> str:
+        if not await self.is_available():
+            raise LLMServiceUnavailableError("Gemini service is not available.")
+        if not campaign_concept: # Basic check
+            raise ValueError("Campaign concept is required.")
 
-    def generate_section_content(self, campaign_concept: str, existing_sections_summary: Optional[str], section_creation_prompt: Optional[str], section_title_suggestion: Optional[str], model: Optional[str] = None) -> str:
         model_instance = self._get_model_instance(model)
-
         custom_prompt_template = self.feature_prompt_service.get_prompt("Section Content")
+
         if custom_prompt_template:
             final_prompt = custom_prompt_template.format(
                 campaign_concept=campaign_concept,
                 existing_sections_summary=existing_sections_summary or "N/A",
-                section_creation_prompt=section_creation_prompt or "Continue the story logically.",
-                section_title_suggestion=section_title_suggestion or "Untitled Section"
+                section_creation_prompt=section_creation_prompt or "Continue the story logically, introducing new elements or developing existing ones.",
+                section_title_suggestion=section_title_suggestion or "Next Part"
             )
-        else:
-            print(f"Warning: 'Section Content' prompt not found. Using default prompt for Gemini model {model_instance.model_name}.")
-            prompt_parts = ["You are writing a new section for a tabletop role-playing game campaign." , f"The overall campaign concept is:\n{campaign_concept}\n"] # Truncated
-            # ... (rest of default prompt construction)
-            final_prompt = "\n".join(prompt_parts)
+        else: # Simplified default
+            final_prompt = f"Campaign Concept: {campaign_concept}\n"
+            if existing_sections_summary:
+                final_prompt += f"Summary of existing sections: {existing_sections_summary}\n"
+            final_prompt += f"Instruction for new section (titled '{section_title_suggestion or 'Next Part'}'): {section_creation_prompt or 'Develop the next part of the campaign story.'}"
         
-        try:
-            response = model_instance.generate_content(final_prompt)
-            if response.parts:
-                 return "".join(part.text for part in response.parts if hasattr(part, 'text'))
-            elif hasattr(response, 'text') and response.text:
-                 return response.text
-            else:
-                 raise Exception(f"Gemini API call for section content (model: {model_instance.model_name}) succeeded but returned no usable content.")
-        except Exception as e:
-            print(f"Gemini API error (model: {model_instance.model_name}) during section content generation: {e}")
-            raise Exception(f"Failed to generate section content with {model_instance.model_name} due to API error: {str(e)}") from e
+        return await self.generate_text(prompt=final_prompt, model=model_instance.model_name, temperature=0.7, max_tokens=1500)
 
-    def list_available_models(self) -> List[Dict[str, str]]:
-        """
-        Lists available Gemini models.
-        The 'id' in the returned dict is the model ID usable in generation methods (e.g., "gemini-pro").
-        It attempts to list models from the API and falls back to a hardcoded list.
-        """
-        if not self.is_available():
-            print("Warning: Gemini API key not configured. Cannot dynamically fetch models.")
-            # Fallback to a minimal hardcoded list if API key isn't set for genai.list_models()
+    async def list_available_models(self) -> List[Dict[str, str]]:
+        if not await self.is_available(): # Use async is_available
+            print("Warning: Gemini API key not configured or service unavailable. Cannot fetch models.")
             return [
-                {"id": "gemini-pro", "name": "Gemini Pro (Fallback)"},
-                {"id": "gemini-1.0-pro", "name": "Gemini 1.0 Pro (Fallback)"},
+                {"id": "gemini-pro", "name": "Gemini Pro (Unavailable/Fallback)"},
+                {"id": "gemini-1.0-pro", "name": "Gemini 1.0 Pro (Unavailable/Fallback)"},
             ]
 
-        available_models = []
+        available_models: List[Dict[str, str]] = []
         try:
             print("Fetching available models from Gemini API...")
-            for m in genai.list_models():
-                # We are interested in models that support 'generateContent' for text generation
+            # genai.list_models() is synchronous.
+            # For a truly non-blocking call in an async context, this would ideally be:
+            # loop = asyncio.get_running_loop()
+            # api_models = await loop.run_in_executor(None, genai.list_models)
+            # For now, calling it directly as it's usually fast.
+            api_models = genai.list_models()
+
+            for m in api_models:
                 if 'generateContent' in m.supported_generation_methods:
-                    # The model name from API is typically like "models/gemini-pro". We need "gemini-pro".
                     model_id = m.name.split('/')[-1] if '/' in m.name else m.name
-                    available_models.append({"id": model_id, "name": m.display_name})
+                    capabilities = ["chat"] # Default for Gemini text models
+                    if "vision" in model_id:
+                        capabilities.append("vision")
+                    available_models.append({"id": model_id, "name": m.display_name, "capabilities": capabilities})
             
-            if not available_models: # If API returned empty list for some reason
+            if not available_models:
                  print("Warning: Gemini API returned no models supporting 'generateContent'. Using hardcoded list.")
-                 raise Exception("No models found from API") # Fall through to except block for hardcoded list
+                 raise Exception("No models found from API") # Fall through to hardcoded list
         except Exception as e:
-            print(f"Could not dynamically fetch models from Gemini API: {e}. Using a hardcoded list.")
-            # Fallback to a hardcoded list if API call fails or returns no suitable models
+            print(f"Could not dynamically fetch models from Gemini API: {e}. Using a hardcoded list as fallback.")
             available_models = [
-                {"id": "gemini-pro", "name": "Gemini Pro"},
-                {"id": "gemini-1.0-pro", "name": "Gemini 1.0 Pro"},
-                {"id": "gemini-pro-vision", "name": "Gemini Pro Vision (Multimodal)"}, # Example, might not be suitable for all text tasks
-                # Models like 'text-bison-001' (PaLM) might be listed by older API versions or different endpoints
-                # For `genai.GenerativeModel`, we need models compatible with it.
+                {"id": "gemini-pro", "name": "Gemini Pro", "capabilities": ["chat"]},
+                {"id": "gemini-1.0-pro", "name": "Gemini 1.0 Pro", "capabilities": ["chat"]},
+                {"id": "gemini-pro-vision", "name": "Gemini Pro Vision", "capabilities": ["chat", "vision"]},
             ]
         
-        # Ensure default model is in the list, if not add it.
         default_model_id = self.DEFAULT_MODEL
+        # Ensure default model, if added manually, also has capabilities
         if not any(m['id'] == default_model_id for m in available_models):
-            available_models.insert(0, {"id": default_model_id, "name": default_model_id.replace("-", " ").title() + " (Default)"})
+            available_models.insert(0, {
+                "id": default_model_id,
+                "name": default_model_id.replace("-", " ").title() + " (Default)",
+                "capabilities": ["chat"] # Default model is assumed to be chat capable
+            })
             
         return available_models
+
+    async def close(self):
+        """Close any persistent connections if the SDK requires it."""
+        # The google-generativeai library for Gemini (as of early 2024)
+        # does not typically require explicit client closing for basic generate_content_async usage.
+        # If it were using something like an httpx.AsyncClient internally that needs closing,
+        # this is where it would be done. For now, it's a no-op.
+        pass
 
 
 if __name__ == '__main__':

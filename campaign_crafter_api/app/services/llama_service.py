@@ -1,6 +1,7 @@
 from typing import Optional, List, Dict
 from app.core.config import settings
-from app.services.llm_service import AbstractLLMService
+from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError # Import specific error
+# Removed import from llm_factory: from app.services.llm_factory import LLMServiceUnavailableError
 
 class LlamaLLMService(AbstractLLMService):
     PROVIDER_NAME = "llama" # For easy reference
@@ -8,29 +9,22 @@ class LlamaLLMService(AbstractLLMService):
     def __init__(self):
         self.api_key = settings.LLAMA_API_KEY 
         self.api_url = settings.LLAMA_API_URL # Assuming a base URL might be needed
+        # Removed self.is_available() call from __init__
+        if not (self.api_key and self.api_key not in ["YOUR_LLAMA_API_KEY", "YOUR_API_KEY_HERE"]):
+            print(f"Warning: {self.PROVIDER_NAME.title()} API key not configured or is a placeholder.")
 
-        if not self.is_available():
-            # This message can be more specific if only one part is missing
-            raise ValueError(
-                f"{self.PROVIDER_NAME.title()} API key or URL not configured. "
-                f"Please set LLAMA_API_KEY and potentially LLAMA_API_URL in your .env file."
-            )
-        # Placeholder for actual client initialization if needed, e.g.:
-        # self.client = SomeLlamaClient(api_key=self.api_key, base_url=self.api_url)
-        print(f"{self.PROVIDER_NAME.title()}LLMService initialized (placeholder). Ensure API key and URL are correctly set if you intend to use it.")
+        # Placeholder for actual client initialization if needed
+        print(f"{self.PROVIDER_NAME.title()}LLMService initialized (placeholder).")
 
-    def is_available(self) -> bool:
-        # Checks if essential configuration is present.
-        # For Llama, this might mean an API key and potentially a self-hosted URL or a specific cloud provider's key.
-        # For this placeholder, we'll check for the key and a conceptual URL.
+    async def is_available(self) -> bool:
         key_present = bool(self.api_key and self.api_key not in ["YOUR_LLAMA_API_KEY", "YOUR_API_KEY_HERE"])
-        # url_present = bool(self.api_url and self.api_url not in ["YOUR_LLAMA_API_URL"]) # If URL is mandatory
-        # For now, let's assume API key is the primary check. URL might be optional or have a default.
+        # In a real scenario, this might involve an async check to an API endpoint if one exists
+        # For this placeholder, key_present is sufficient.
         return key_present 
 
-    def generate_text(self, prompt: str, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str:
-        if not self.is_available():
-            return f"{self.PROVIDER_NAME.title()} service not available. Please configure API key/URL."
+    async def generate_text(self, prompt: str, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str:
+        if not await self.is_available():
+            raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available. Please configure API key/URL.")
         
         error_message = (
             f"{self.PROVIDER_NAME.title()}LLMService.generate_text is not implemented. "
@@ -39,19 +33,22 @@ class LlamaLLMService(AbstractLLMService):
         print(f"WARNING: {error_message}")
         raise NotImplementedError(error_message)
 
-    def generate_campaign_concept(self, user_prompt: str, model: Optional[str] = None) -> str:
-        if not self.is_available(): return f"{self.PROVIDER_NAME.title()} service not available."
+    async def generate_campaign_concept(self, user_prompt: str, model: Optional[str] = None) -> str:
+        if not await self.is_available():
+            raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available.")
         raise NotImplementedError(f"{self.PROVIDER_NAME.title()}LLMService.generate_campaign_concept not implemented.")
 
-    def generate_titles(self, campaign_concept: str, count: int = 5, model: Optional[str] = None) -> list[str]:
-        if not self.is_available(): return [f"{self.PROVIDER_NAME.title()} service not available."]
+    async def generate_titles(self, campaign_concept: str, count: int = 5, model: Optional[str] = None) -> list[str]:
+        if not await self.is_available():
+            raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available.")
         raise NotImplementedError(f"{self.PROVIDER_NAME.title()}LLMService.generate_titles not implemented.")
 
-    def generate_toc(self, campaign_concept: str, model: Optional[str] = None) -> str:
-        if not self.is_available(): return f"{self.PROVIDER_NAME.title()} service not available."
+    async def generate_toc(self, campaign_concept: str, model: Optional[str] = None) -> str:
+        if not await self.is_available():
+            raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available.")
         raise NotImplementedError(f"{self.PROVIDER_NAME.title()}LLMService.generate_toc not implemented.")
 
-    def generate_section_content(
+    async def generate_section_content(
         self, 
         campaign_concept: str, 
         existing_sections_summary: Optional[str], 
@@ -59,73 +56,90 @@ class LlamaLLMService(AbstractLLMService):
         section_title_suggestion: Optional[str], 
         model: Optional[str] = None
     ) -> str:
-        if not self.is_available(): return f"{self.PROVIDER_NAME.title()} service not available."
+        if not await self.is_available():
+            raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available.")
         raise NotImplementedError(f"{self.PROVIDER_NAME.title()}LLMService.generate_section_content not implemented.")
 
-    def list_available_models(self) -> List[Dict[str, str]]:
-        if not self.is_available(): 
+    async def list_available_models(self) -> List[Dict[str, str]]:
+        if not await self.is_available():
             print(f"Warning: {self.PROVIDER_NAME.title()} service not available. Cannot list models.")
             return []
         
-        # Placeholder: In a real scenario, this would query the Llama API endpoint or list known model IDs.
-        # The 'id' should be the string expected by the 'model' parameter in generation methods.
         print(f"Warning: {self.PROVIDER_NAME.title()}LLMService.list_available_models is returning a placeholder list.")
         return [
-            {"id": "llama-7b-chat", "name": "Llama 7B Chat (Placeholder)"},
-            {"id": "llama-13b-chat", "name": "Llama 13B Chat (Placeholder)"},
-            {"id": "codellama-34b-instruct", "name": "CodeLlama 34B Instruct (Placeholder)"},
+            {"id": "llama-7b-chat", "name": f"{self.PROVIDER_NAME.title()} 7B Chat (Placeholder)", "capabilities": ["chat"]},
+            {"id": "llama-13b-chat", "name": f"{self.PROVIDER_NAME.title()} 13B Chat (Placeholder)", "capabilities": ["chat"]},
+            {"id": "codellama-34b-instruct", "name": f"Code{self.PROVIDER_NAME.title()} 34B Instruct (Placeholder)", "capabilities": ["completion", "chat-adaptable", "code"]},
         ]
 
-if __name__ == '__main__':
-    from app.core.config import settings
-    from dotenv import load_dotenv
-    from pathlib import Path
+    async def close(self):
+        """Close any persistent connections if the SDK requires it."""
+        # For most Llama implementations (e.g. via huggingface transformers or local http endpoints),
+        # explicit closing might not be needed in the same way as an AsyncClient.
+        # This is a placeholder.
+        print(f"{self.PROVIDER_NAME.title()}LLMService close method called (placeholder).")
+        pass
 
-    env_path_api_root = Path(__file__).resolve().parent.parent.parent / ".env"
-    if env_path_api_root.exists():
-        load_dotenv(dotenv_path=env_path_api_root)
+# if __name__ == '__main__':
+#     from app.core.config import settings
+#     from dotenv import load_dotenv
+#     from pathlib import Path
+#     import os # Required for os.getenv if used in __main__
+
+#     env_path_api_root = Path(__file__).resolve().parent.parent.parent / ".env"
+#     if env_path_api_root.exists():
+#         load_dotenv(dotenv_path=env_path_api_root)
     
-    # Simulate settings update from .env for testing this script directly
-    settings.LLAMA_API_KEY = settings.LLAMA_API_KEY or os.getenv("LLAMA_API_KEY")
-    settings.LLAMA_API_URL = settings.LLAMA_API_URL or os.getenv("LLAMA_API_URL")
+#     # Simulate settings update from .env for testing this script directly
+#     settings.LLAMA_API_KEY = settings.LLAMA_API_KEY or os.getenv("LLAMA_API_KEY")
+#     settings.LLAMA_API_URL = settings.LLAMA_API_URL or os.getenv("LLAMA_API_URL")
 
-    print(f"--- Testing {LlamaLLMService.PROVIDER_NAME.title()}LLMService Placeholder ---")
+#     print(f"--- Testing {LlamaLLMService.PROVIDER_NAME.title()}LLMService Placeholder ---")
+
+#     # To test async methods, you'd need asyncio.run()
+#     # This block would need to be refactored to use an async event loop.
+#     # For simplicity in this refactor, we're commenting it out as the service is a placeholder.
     
-    available_check = False
-    try:
-        # Check if is_available() works as expected based on current .env
-        # Temporarily set a dummy key for testing instantiation if key is missing
-        original_key = settings.LLAMA_API_KEY
-        if not original_key or original_key in ["YOUR_LLAMA_API_KEY", "YOUR_API_KEY_HERE"]:
-            print(f"LLAMA_API_KEY not found or is placeholder in .env. Using dummy key for {LlamaLLMService.PROVIDER_NAME.title()} service instantiation test.")
-            settings.LLAMA_API_KEY = "dummy_key_for_test"
-            # settings.LLAMA_API_URL = "http://dummy.url.for.test" # if URL is also needed for is_available
-
-        service = LlamaLLMService()
-        available_check = service.is_available() # This will use the dummy key if original was missing
-        print(f"{LlamaLLMService.PROVIDER_NAME.title()} Service initialized. Is Available (with current settings/dummy key): {available_check}")
-
-        if available_check: # Only try to call methods if it (conceptually) could be available
-            print("\nAvailable Llama Models (Placeholder List):")
-            models = service.list_available_models()
-            for m in models:
-                print(f"- {m['name']} (id: {m['id']})")
-
-            print("\nAttempting to call generate_text (expected NotImplementedError):")
-            try:
-                service.generate_text("Test prompt for Llama.")
-            except NotImplementedError as e:
-                print(f"Correctly caught: {e}")
-        else:
-            print(f"{LlamaLLMService.PROVIDER_NAME.title()} service is not available based on current settings (even with dummy key). Skipping further tests.")
+#     # Example of how you might test (requires Python 3.7+ for asyncio.run):
+#     # import asyncio
+#     # async def main_test():
+#     #     available_check = False
+#     #     try:
+#     #         original_key = settings.LLAMA_API_KEY
+#     #         if not original_key or original_key in ["YOUR_LLAMA_API_KEY", "YOUR_API_KEY_HERE"]:
+#     #             print(f"LLAMA_API_KEY not found or is placeholder in .env. Using dummy key for {LlamaLLMService.PROVIDER_NAME.title()} service instantiation test.")
+#     #             settings.LLAMA_API_KEY = "dummy_key_for_test"
             
-        settings.LLAMA_API_KEY = original_key # Restore original key
+#     #         service = LlamaLLMService() # __init__ is sync
+#     #         available_check = await service.is_available()
+#     #         print(f"{LlamaLLMService.PROVIDER_NAME.title()} Service initialized. Is Available: {available_check}")
 
-    except ValueError as ve:
-        # This will be caught if is_available() in __init__ returns False due to missing actual key in .env
-        # (and dummy key logic above is removed or fails)
-        print(f"Error during {LlamaLLMService.PROVIDER_NAME.title()} service initialization: {ve}")
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+#     #         if available_check:
+#     #             print("\nAvailable Llama Models (Placeholder List):")
+#     #             models = await service.list_available_models()
+#     #             for m in models:
+#     #                 print(f"- {m['name']} (id: {m['id']})")
 
-    print(f"--- End Test for {LlamaLLMService.PROVIDER_NAME.title()}LLMService ---")
+#     #             print("\nAttempting to call generate_text (expected NotImplementedError or LLMServiceUnavailableError):")
+#     #             try:
+#     #                 await service.generate_text("Test prompt for Llama.")
+#     #             except (NotImplementedError, LLMServiceUnavailableError) as e:
+#     #                 print(f"Correctly caught: {e}")
+#     #         else:
+#     #             print(f"{LlamaLLMService.PROVIDER_NAME.title()} service is not available. Skipping further tests.")
+
+#     #         settings.LLAMA_API_KEY = original_key # Restore original key
+#     #         await service.close()
+
+#     #     except ValueError as ve:
+#     #         print(f"Error during {LlamaLLMService.PROVIDER_NAME.title()} service initialization: {ve}")
+#     #     except Exception as e:
+#     #         print(f"An unexpected error occurred: {e}")
+
+#     # if os.getenv("RUN_LLAMA_TESTS") == "true": # Control execution if needed
+#     #    asyncio.run(main_test())
+#     # else:
+#     #    print("Skipping LlamaLLMService async tests in __main__ block. Set RUN_LLAMA_TESTS=true to run.")
+
+
+#     print(f"--- End Test for {LlamaLLMService.PROVIDER_NAME.title()}LLMService ---")

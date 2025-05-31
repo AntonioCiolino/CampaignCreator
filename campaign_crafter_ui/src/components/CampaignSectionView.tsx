@@ -3,6 +3,7 @@ import { CampaignSection } from '../services/campaignService';
 import ReactMarkdown from 'react-markdown';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css'; // Import Quill's snow theme CSS
+import Button from './common/Button'; // Added Button import
 import './CampaignSectionView.css';
 import { CampaignSectionUpdatePayload } from '../services/campaignService'; // Import the payload type
 
@@ -11,9 +12,10 @@ interface CampaignSectionViewProps {
   onSave: (sectionId: number, updatedData: CampaignSectionUpdatePayload) => Promise<void>;
   isSaving: boolean; // Prop to indicate if this specific section is being saved
   saveError: string | null; // Prop to display save error for this section
+  onDelete: (sectionId: number) => void; // Added onDelete prop
 }
 
-const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSave, isSaving, saveError: externalSaveError }) => {
+const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSave, isSaving, saveError: externalSaveError, onDelete }) => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editedContent, setEditedContent] = useState<string>(section.content);
   const [localSaveError, setLocalSaveError] = useState<string | null>(null);
@@ -115,6 +117,15 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
             <button onClick={handleEdit} className="editor-button edit-button">
               Edit Section Content
             </button>
+            <Button
+              onClick={() => onDelete(section.id)}
+              variant="danger"
+              size="sm"
+              className="editor-button delete-button" // Keep existing classes if they add value
+              style={{ marginLeft: '10px' }}
+            >
+              Delete Section
+            </Button>
           </div>
         </>
       )}

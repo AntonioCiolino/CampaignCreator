@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 
 from app import external_models, crud, orm_models, models
 from app.db import get_db 
-from app.services.llm_factory import get_llm_service, LLMServiceUnavailableError
+from app.services.llm_service import LLMServiceUnavailableError, LLMGenerationError # Updated import
+from app.services.llm_factory import get_llm_service
 from app.services.export_service import HomebreweryExportService
 from app.external_models.export_models import PrepareHomebreweryPostResponse
 
@@ -44,8 +45,11 @@ async def create_new_campaign(
         )
         if db_campaign.concept is None and campaign_input.initial_user_prompt: # <--- Changed
             print(f"Campaign {db_campaign.id} created, but concept generation might have failed or was skipped (e.g. LLM unavailable/error).")
-    except LLMServiceUnavailableError as e:
-        raise HTTPException(status_code=503, detail=f"LLM Service Error for concept generation: {e}")
+    # Note: crud.create_campaign now internally handles LLMServiceUnavailableError and LLMGenerationError
+    # by logging them and returning a campaign without a concept.
+    # The endpoint will only catch errors if crud.create_campaign re-raises them, or for other ValueErrors.
+    except LLMServiceUnavailableError as e: # This might be raised if get_llm_service fails in crud
+        raise HTTPException(status_code=503, detail=f"LLM Service Error for concept generation: {str(e)}")
     except ValueError as ve: 
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
@@ -99,12 +103,14 @@ async def generate_campaign_toc_endpoint(
     try:
         provider_name, model_specific_id = _extract_provider_and_model(request_body.model_id_with_prefix)
         llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=request_body.model_id_with_prefix)
-        generated_toc = llm_service.generate_toc(
+        generated_toc = await llm_service.generate_toc( # Added await
             campaign_concept=db_campaign.concept, 
             model=model_specific_id
         )
     except LLMServiceUnavailableError as e:
-        raise HTTPException(status_code=503, detail=f"LLM Service Error for TOC generation: {e}")
+        raise HTTPException(status_code=503, detail=f"LLM Service Error for TOC generation: {str(e)}")
+    except LLMGenerationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except ValueError as ve: 
         raise HTTPException(status_code=400, detail=str(ve))
     except NotImplementedError:
@@ -136,13 +142,15 @@ async def generate_campaign_titles_endpoint(
     try:
         provider_name, model_specific_id = _extract_provider_and_model(request_body.model_id_with_prefix)
         llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=request_body.model_id_with_prefix)
-        generated_titles = llm_service.generate_titles(
+        generated_titles = await llm_service.generate_titles( # Added await
             campaign_concept=db_campaign.concept, 
             count=count, 
             model=model_specific_id
         )
     except LLMServiceUnavailableError as e:
-        raise HTTPException(status_code=503, detail=f"LLM Service Error for title generation: {e}")
+        raise HTTPException(status_code=503, detail=f"LLM Service Error for title generation: {str(e)}")
+    except LLMGenerationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except NotImplementedError:
@@ -175,7 +183,7 @@ async def create_new_campaign_section_endpoint(
     try:
         provider_name, model_specific_id = _extract_provider_and_model(section_input.model_id_with_prefix)
         llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=section_input.model_id_with_prefix)
-        generated_content = llm_service.generate_section_content(
+        generated_content = await llm_service.generate_section_content(
             campaign_concept=db_campaign.concept or "A general creative writing piece.",
             existing_sections_summary=existing_sections_summary,
             section_creation_prompt=section_input.prompt,
@@ -183,7 +191,9 @@ async def create_new_campaign_section_endpoint(
             model=model_specific_id
         )
     except LLMServiceUnavailableError as e:
-        raise HTTPException(status_code=503, detail=f"LLM Service Error for section content generation: {e}")
+        raise HTTPException(status_code=503, detail=f"LLM Service Error for section content generation: {str(e)}")
+    except LLMGenerationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except ValueError as ve: 
         raise HTTPException(status_code=400, detail=str(ve))
     except NotImplementedError:
@@ -235,7 +245,18 @@ async def list_campaign_sections(
     if db_campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
     sections = crud.get_campaign_sections(db=db, campaign_id=campaign_id)
-    return models.CampaignSectionListResponse(sections=sections)
+    return {"sections": sections}
+
+@router.delete("/{campaign_id}/sections/{section_id}", response_model=models.CampaignSection, tags=["Campaign Sections"])
+async def delete_campaign_section_endpoint(
+    campaign_id: int,
+    section_id: int,
+    db: Session = Depends(get_db)
+):
+    deleted_section = crud.delete_campaign_section(db=db, section_id=section_id, campaign_id=campaign_id)
+    if deleted_section is None:
+        raise HTTPException(status_code=404, detail="Campaign section not found or does not belong to this campaign.")
+    return deleted_section
 
 # --- Export Endpoints ---
 

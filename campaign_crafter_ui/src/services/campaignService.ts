@@ -13,8 +13,9 @@ export interface CampaignSection {
 // Model information type from the backend /llm/models endpoint
 // This might be better placed in llmService.ts if not already there
 export interface ModelInfo {
-  id: string; // Corrected from str to string
+  id: string;
   name: string;
+  capabilities: string[]; // Added field
 }
 
 export interface Campaign {
@@ -176,6 +177,17 @@ export const addCampaignSection = async (
   }
 };
 
+// Delete a specific campaign section
+export const deleteCampaignSection = async (campaignId: string | number, sectionId: string | number): Promise<void> => {
+  try {
+    await apiClient.delete(`/campaigns/${campaignId}/sections/${sectionId}`);
+    // No specific data is expected to be returned on successful DELETE for this void function
+  } catch (error) {
+    console.error(`Error deleting section ID ${sectionId} for campaign ID ${campaignId}:`, error);
+    throw error; // Re-throw to be handled by the calling component
+  }
+};
+
 // Export campaign to Homebrewery Markdown (download)
 export const exportCampaignToHomebrewery = async (campaignId: string | number): Promise<string> => {
   try {
@@ -258,12 +270,19 @@ export const getCampaignSections = async (campaignId: string | number): Promise<
 // Corrected `getCampaignSections` to expect `{ sections: [...] }` based on backend.
 // The problematic text block below this line has been removed.
 
-export async function getLLMModels() {
+export async function getLLMModels(): Promise<ModelInfo[]> { // Added return type
   // Use process.env.REACT_APP_API_BASE_URL, consistent with apiClient.ts (implicitly)
   // Fallback is provided if the env var is not set.
   // Ensure no double slashes if REACT_APP_API_BASE_URL has a trailing slash.
   const baseUrl = (process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1').replace(/\/$/, '');
-  const response = await fetch(`${baseUrl}/llm-models`);
-  if (!response.ok) throw new Error('Failed to fetch LLM models');
-  return response.json();
+  const response = await fetch(`${baseUrl}/llm/models`);
+  if (!response.ok) {
+    // Optionally, log more details from response if needed for debugging
+    // const errorBody = await response.text();
+    // console.error(`Failed to fetch LLM models. Status: ${response.status}. Body: ${errorBody}`);
+    throw new Error('Failed to fetch LLM models');
+  }
+  const data = await response.json();
+  // Ensure data exists and data.models is an array before returning, otherwise return empty array.
+  return (data && Array.isArray(data.models)) ? data.models : [];
 }

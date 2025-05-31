@@ -29,21 +29,34 @@
   margin: 0;
   padding: 0;
   display: flex;
+  gap: 10px; /* Use gap for spacing */
 }
 
 .app-nav li {
-  margin-left: 20px;
+  /* margin-left: 20px; /* Removed as gap is used on ul */
 }
 
 .app-nav a {
   color: white;
   text-decoration: none;
   font-size: 1rem;
+  padding: 0.5rem 0.75rem; /* Added padding */
+  border-radius: 4px;     /* Added border-radius */
+  transition: background-color 0.2s ease-in-out; /* Smooth transition */
 }
 
-.app-nav a:hover {
-  text-decoration: underline;
+.app-nav a:hover,
+.app-nav a:focus { /* Added focus for accessibility */
+  background-color: #555; /* Changed hover effect */
+  text-decoration: none;  /* Ensure no underline on hover/focus */
 }
+
+/* Optional: Style for an 'active' link if NavLink is used later
+.app-nav a.active {
+  background-color: #007bff;
+  color: white;
+}
+*/
 
 .app-main-content {
   flex-grow: 1;
