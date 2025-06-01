@@ -2,6 +2,7 @@ from typing import Optional
 import openai # Direct import of the openai library
 import requests
 import os
+import base64 # Added base64 import
 import uuid
 import shutil
 from pathlib import Path
@@ -233,108 +234,86 @@ class ImageGenerationService:
         """
         if not self.stable_diffusion_api_key or self.stable_diffusion_api_key == "YOUR_STABLE_DIFFUSION_API_KEY_HERE":
             raise HTTPException(status_code=503, detail="Stable Diffusion API key is not configured. Check server settings.")
-        if not self.stable_diffusion_api_url: # Validated in __init__ to be None if placeholder or invalid
+        if not self.stable_diffusion_api_url:
             raise HTTPException(status_code=503, detail="Stable Diffusion API URL is not configured or is invalid. Check server settings.")
         if not prompt:
             raise HTTPException(status_code=400, detail="Prompt cannot be empty.")
 
-        headers = {
-            # Common practice for API keys, but might vary (e.g., "X-Api-Key", or specific auth for some services)
-            "Authorization": f"Bearer {self.stable_diffusion_api_key}",
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        }
-
         # Use defaults from settings if not provided by the caller
+        # final_size is still available if needed for logging or aspect_ratio conversion, but not sent directly
         final_size = size or settings.STABLE_DIFFUSION_DEFAULT_IMAGE_SIZE
         final_steps = steps or settings.STABLE_DIFFUSION_DEFAULT_STEPS
         final_cfg_scale = cfg_scale or settings.STABLE_DIFFUSION_DEFAULT_CFG_SCALE
-        # Use the provided sd_model_checkpoint or default from settings (can be None if API doesn't need it or uses its own default)
-        final_sd_model_name = sd_model_checkpoint or settings.STABLE_DIFFUSION_DEFAULT_MODEL
+        final_sd_model_name = sd_model_checkpoint or settings.STABLE_DIFFUSION_DEFAULT_MODEL # For logging
 
-
-        try:
-            width, height = map(int, final_size.split('x'))
-        except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid size format for Stable Diffusion. Expected 'widthxheight'. Provided: {final_size}")
-
-        payload = {
-            "prompt": prompt,
-            "width": width,
-            "height": height,
-            "steps": final_steps,
-            "cfg_scale": final_cfg_scale,
-            # Add other common SD parameters if needed, e.g., sampler_index, seed, etc.
+        headers = {
+            "Authorization": f"Bearer {self.stable_diffusion_api_key}",
+            "Accept": "image/*", # Requesting image bytes directly
+            # Content-Type is not explicitly set here for multipart/form-data; requests will handle it with `files` and `data`
         }
 
-        # API-specific: How to specify a model/checkpoint.
-        # For AUTOMATIC1111, it might be in "override_settings": { "sd_model_checkpoint": "model_name.safetensors" }
-        # Or a top-level "model" field for other APIs. This is an example.
-        if final_sd_model_name:
-            # This is a placeholder for where you'd put the model if the API supports it.
-            # Example for AUTOMATIC1111-like API:
-            # if "override_settings" not in payload: payload["override_settings"] = {}
-            # payload["override_settings"]["sd_model_checkpoint"] = final_sd_model_name
-            # Or for other APIs:
-            # payload["model"] = final_sd_model_name
-            pass # Actual implementation depends on the specific SD API chosen.
+        form_data = {
+            "prompt": prompt,
+            "output_format": "webp", # Or png, jpeg
+            "steps": str(final_steps), # Ensure form data values are strings if API expects that
+            "cfg_scale": str(final_cfg_scale),
+            # "model": final_sd_model_name, # If API takes model in form-data
+            # "aspect_ratio": "1:1", # Example if API uses aspect_ratio instead of width/height
+                                     # Could derive from final_size if needed: e.g. "1024x768" -> "4:3"
+        }
+
+        # The Stability AI example uses `files` for `multipart/form-data` even if no actual file is uploaded,
+        # it can be used to ensure the request is `multipart/form-data`.
+        # An empty file part like this is often how you ensure multipart:
+        files_payload = {'none': (None, '')} # Sends an empty part named "none"
 
         try:
-            # Use self.stable_diffusion_api_url which is now configured from settings
-            api_response = requests.post(self.stable_diffusion_api_url, headers=headers, json=payload)
-            api_response.raise_for_status()
-            response_json = api_response.json()
+            api_response = requests.post(
+                self.stable_diffusion_api_url,
+                headers=headers,
+                data=form_data,
+                files=files_payload
+            )
 
-            temporary_url: Optional[str] = None
-            original_filename: Optional[str] = None # If API provides filename/format info
+            if api_response.status_code == 200:
+                image_bytes = api_response.content
+                mime_type = api_response.headers.get("content-type", "image/webp") # Default to webp if not specified
+                base64_encoded_string = base64.b64encode(image_bytes).decode("utf-8")
+                temporary_url = f"data:{mime_type};base64,{base64_encoded_string}"
 
-            # Hypothetical response structures - adjust to actual API
-            if response_json.get("artifacts") and isinstance(response_json["artifacts"], list) and len(response_json["artifacts"]) > 0:
-                image_data = response_json["artifacts"][0]
-                if image_data.get("url"): # Ideal: API gives a direct (temp) URL
-                    temporary_url = image_data["url"]
-                elif image_data.get("base64"):
-                    # This service currently expects a URL to download from.
-                    # Handling base64 directly would require saving the decoded string.
-                    # For now, we state this is not directly supported by _save_image_and_log_db without a URL.
-                    # A workaround could be to save base64 to a temp file and pass its file:// URL,
-                    # or modify _save_image_and_log_db to accept base64.
-                    # For this subtask, we assume the API gives a URL or we can't process it.
-                    raise HTTPException(status_code=500, detail="Stable Diffusion API returned base64 image data; direct URL download is preferred by current implementation.")
-                # Potentially, API might give filename hint or format
-                # original_filename = image_data.get("filename") or image_data.get("format")
+                # Logging (even if not saving to DB via _save_image_and_log_db)
+                print(f"Successfully received image bytes from Stable Diffusion API for prompt: '{prompt}'. Size: approx {len(image_bytes)} bytes. Mime: {mime_type}")
 
-            elif response_json.get("image_url"): # Simpler case
-                temporary_url = response_json["image_url"]
+                # The call to _save_image_and_log_db is currently commented out as per previous changes.
+                # If it were to be used, it would need to handle data URLs or raw bytes.
+                # For now, returning the data URL.
+                return temporary_url
+            else:
+                # Handle API errors
+                try:
+                    error_data = api_response.json()
+                    # Stability AI errors are often in a list under "errors" or "name"/"message" at top level
+                    if "errors" in error_data and isinstance(error_data["errors"], list):
+                        detail = f"Stable Diffusion API Error: {'; '.join(error_data['errors'])}"
+                    elif "name" in error_data and "message" in error_data:
+                         detail = f"Stable Diffusion API Error: {error_data['name']} - {error_data['message']}"
+                    else:
+                        detail = f"Stable Diffusion API Error: {error_data}"
+                except ValueError: # If response is not JSON
+                    detail = f"Stable Diffusion API Error: {api_response.status_code} - {api_response.text}"
 
-            if not temporary_url:
-                print(f"Stable Diffusion API response did not contain expected image URL: {response_json}")
-                raise HTTPException(status_code=500, detail="Image generation with Stable Diffusion succeeded but no image URL was found.")
-
-            # Save image and log to DB
-            # permanent_url = await self._save_image_and_log_db(
-            #     temporary_url=temporary_url,
-            #     prompt=prompt,
-            #     model_used=f"stable-diffusion ({final_sd_model_name})" if final_sd_model_name else "stable-diffusion",
-            #     size_used=final_size,
-            #     db=db,
-            #     user_id=user_id,
-            #     original_filename_from_api=original_filename
-            # )
-            # return permanent_url
-            return temporary_url # Return temporary URL directly
+                print(f"Stable Diffusion API request failed with status {api_response.status_code}: {detail}")
+                raise HTTPException(
+                    status_code=api_response.status_code if api_response.status_code >= 400 else 503,
+                    detail=detail
+                )
 
         except requests.exceptions.RequestException as e:
-            error_detail = str(e)
-            if e.response is not None:
-                try: error_detail = f"{e.response.status_code} - {e.response.text}"
-                except: pass
-            raise HTTPException(status_code=503, detail=f"Failed to connect to Stable Diffusion API: {error_detail}")
-        except HTTPException: # Re-raise HTTPExceptions from _save_image_and_log_db
-            raise
+            print(f"Stable Diffusion API request failed: {e}")
+            raise HTTPException(status_code=503, detail=f"Failed to connect to Stable Diffusion API: {str(e)}")
         except Exception as e:
             print(f"Unexpected error during Stable Diffusion image generation: {e}")
-            raise HTTPException(status_code=500, detail=f"An unexpected error occurred during Stable Diffusion image generation: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
 
 # Example Usage (for testing purposes, if run directly)

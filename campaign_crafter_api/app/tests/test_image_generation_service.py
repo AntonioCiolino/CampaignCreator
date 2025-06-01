@@ -1,4 +1,5 @@
 import pytest
+import base64 # Added for data URL construction
 from unittest.mock import patch, MagicMock, AsyncMock
 
 from fastapi import HTTPException
@@ -119,52 +120,59 @@ async def test_generate_image_dalle_success(image_service, mock_db_session, mock
 async def test_generate_image_stable_diffusion_success(image_service, mock_db_session):
     prompt = "a futuristic city"
     user_id = 1
-    expected_temp_url_from_api = "http://sd-api.com/temp_image.png"
+    mock_image_bytes = b'fake_webp_image_content'
+    output_format = "webp" # As hardcoded in the service method's form_data
+    mime_type = f"image/{output_format}"
+
+    # Expected data URL
+    expected_base64_content = base64.b64encode(mock_image_bytes).decode('utf-8')
+    expected_data_url = f"data:{mime_type};base64,{expected_base64_content}"
 
     # Mock requests.post for Stable Diffusion
-    with patch('requests.post') as mock_requests_post:
+    with patch('app.services.image_generation_service.requests.post') as mock_requests_post:
         mock_sd_api_response = MagicMock()
-        mock_sd_api_response.raise_for_status = MagicMock()
-        # Simulate a response structure that the service expects, e.g., with an image_url
-        # This structure needs to match what generate_image_stable_diffusion expects to parse.
-        # Based on current service code: response_json.get("image_url") or response_json.get("artifacts")[0].get("url")
-        mock_sd_api_response.json.return_value = {"image_url": expected_temp_url_from_api}
+        mock_sd_api_response.status_code = 200
+        mock_sd_api_response.content = mock_image_bytes
+        mock_sd_api_response.headers = {'Content-Type': mime_type}
+        # No longer need mock_sd_api_response.json as we expect image bytes for success
         mock_requests_post.return_value = mock_sd_api_response
 
-        # _save_image_and_log_db is no longer called directly in this flow.
         actual_url = await image_service.generate_image_stable_diffusion(
             prompt=prompt,
-            db=mock_db_session, # db session is still a param
+            db=mock_db_session,
             user_id=user_id,
-            size=settings.STABLE_DIFFUSION_DEFAULT_IMAGE_SIZE,
+            size=settings.STABLE_DIFFUSION_DEFAULT_IMAGE_SIZE, # This is used for logging, not direct payload now
             steps=settings.STABLE_DIFFUSION_DEFAULT_STEPS,
             cfg_scale=settings.STABLE_DIFFUSION_DEFAULT_CFG_SCALE,
-            sd_model_checkpoint=settings.STABLE_DIFFUSION_DEFAULT_MODEL
+            sd_model_checkpoint=settings.STABLE_DIFFUSION_DEFAULT_MODEL # Used for logging
         )
 
-        width, height = map(int, settings.STABLE_DIFFUSION_DEFAULT_IMAGE_SIZE.split('x'))
-        expected_payload = {
+        assert actual_url == expected_data_url
+
+        # Check the arguments passed to requests.post
+        mock_requests_post.assert_called_once()
+        args, kwargs = mock_requests_post.call_args
+
+        assert args[0] == image_service.stable_diffusion_api_url
+
+        # Check headers (Accept header is key)
+        assert kwargs['headers']['Authorization'] == f"Bearer {image_service.stable_diffusion_api_key}"
+        assert kwargs['headers']['Accept'] == "image/*"
+        # Content-Type is not explicitly set in headers by service, requests infers it for multipart
+
+        # Check form data
+        expected_form_data = {
             "prompt": prompt,
-            "width": width,
-            "height": height,
-            "steps": settings.STABLE_DIFFUSION_DEFAULT_STEPS,
-            "cfg_scale": settings.STABLE_DIFFUSION_DEFAULT_CFG_SCALE,
+            "output_format": output_format, # Service uses 'webp'
+            "steps": str(settings.STABLE_DIFFUSION_DEFAULT_STEPS),
+            "cfg_scale": str(settings.STABLE_DIFFUSION_DEFAULT_CFG_SCALE),
         }
-        # If model checkpoint is part of payload, add check here.
-        # Based on current service code, it is not added to payload directly unless modified.
+        assert kwargs['data'] == expected_form_data
 
-        mock_requests_post.assert_called_once_with(
-            image_service.stable_diffusion_api_url,
-            headers=pytest.approx({
-                "Authorization": f"Bearer {image_service.stable_diffusion_api_key}",
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            }),
-            json=expected_payload
-        )
+        # Check files payload
+        assert 'none' in kwargs['files']
+        assert kwargs['files']['none'] == (None, '')
 
-        # Assert that the returned URL is the temporary URL from the API response
-        assert actual_url == expected_temp_url_from_api
 
 # TODO: Add tests for error handling in all three methods
 # e.g., API connection errors, API returning error status, _save_image failure scenarios.

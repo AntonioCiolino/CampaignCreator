@@ -30,7 +30,7 @@ class ImageGenerationRequest(BaseModel):
     # style: Optional[str] = "vivid" # Example for DALL-E 3 for DALL-E model
 
 class ImageGenerationResponse(BaseModel):
-    image_url: HttpUrl
+    image_url: str # Changed from HttpUrl to str, to accommodate data URLs
     prompt_used: str
     model_used: ImageModelName
     size_used: str
