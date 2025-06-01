@@ -92,37 +92,27 @@ async def test_generate_image_dalle_success(image_service, mock_db_session, mock
     mock_openai_response.data = [MagicMock(url=expected_temp_url)]
     mock_openai_client.images.generate.return_value = mock_openai_response
 
-    # Mock the _save_image_and_log_db method for this test
-    expected_permanent_url = "http://localhost/static/generated_images/dalle_test.png"
-    with patch.object(image_service, '_save_image_and_log_db', new_callable=AsyncMock) as mock_save_method:
-        mock_save_method.return_value = expected_permanent_url
+    # _save_image_and_log_db is no longer called directly in this flow, so no need to mock it here.
+    # The method now returns the temporary URL.
+    actual_url = await image_service.generate_image_dalle(
+        prompt=prompt,
+        db=mock_db_session, # db session is still a param, even if _save_image_and_log_db is not used by this flow.
+        user_id=user_id,
+        model="dall-e-3", # Specify model for clarity in test
+        size="1024x1024",
+        quality="standard"
+    )
 
-        actual_url = await image_service.generate_image_dalle(
-            prompt=prompt,
-            db=mock_db_session,
-            user_id=user_id,
-            model="dall-e-3", # Specify model for clarity in test
-            size="1024x1024",
-            quality="standard"
-        )
-
-        mock_openai_client.images.generate.assert_called_once_with(
-            model="dall-e-3",
-            prompt=prompt,
-            size="1024x1024",
-            quality="standard",
-            n=1,
-            response_format="url"
-        )
-        mock_save_method.assert_called_once_with(
-            temporary_url=expected_temp_url,
-            prompt=prompt,
-            model_used="dall-e-3",
-            size_used="1024x1024",
-            db=mock_db_session,
-            user_id=user_id
-        )
-        assert actual_url == expected_permanent_url
+    mock_openai_client.images.generate.assert_called_once_with(
+        model="dall-e-3",
+        prompt=prompt,
+        size="1024x1024",
+        quality="standard",
+        n=1,
+        response_format="url"
+    )
+    # Assert that the returned URL is the temporary URL from the API response
+    assert actual_url == expected_temp_url
 
 # --- Tests for generate_image_stable_diffusion ---
 @pytest.mark.asyncio
@@ -136,59 +126,45 @@ async def test_generate_image_stable_diffusion_success(image_service, mock_db_se
         mock_sd_api_response = MagicMock()
         mock_sd_api_response.raise_for_status = MagicMock()
         # Simulate a response structure that the service expects, e.g., with an image_url
+        # This structure needs to match what generate_image_stable_diffusion expects to parse.
+        # Based on current service code: response_json.get("image_url") or response_json.get("artifacts")[0].get("url")
         mock_sd_api_response.json.return_value = {"image_url": expected_temp_url_from_api}
         mock_requests_post.return_value = mock_sd_api_response
 
-        # Mock the _save_image_and_log_db method
-        expected_permanent_url = "http://localhost/static/generated_images/sd_test.png"
-        with patch.object(image_service, '_save_image_and_log_db', new_callable=AsyncMock) as mock_save_method:
-            mock_save_method.return_value = expected_permanent_url
+        # _save_image_and_log_db is no longer called directly in this flow.
+        actual_url = await image_service.generate_image_stable_diffusion(
+            prompt=prompt,
+            db=mock_db_session, # db session is still a param
+            user_id=user_id,
+            size=settings.STABLE_DIFFUSION_DEFAULT_IMAGE_SIZE,
+            steps=settings.STABLE_DIFFUSION_DEFAULT_STEPS,
+            cfg_scale=settings.STABLE_DIFFUSION_DEFAULT_CFG_SCALE,
+            sd_model_checkpoint=settings.STABLE_DIFFUSION_DEFAULT_MODEL
+        )
 
-            actual_url = await image_service.generate_image_stable_diffusion(
-                prompt=prompt,
-                db=mock_db_session,
-                user_id=user_id,
-                size=settings.STABLE_DIFFUSION_DEFAULT_IMAGE_SIZE,
-                steps=settings.STABLE_DIFFUSION_DEFAULT_STEPS,
-                cfg_scale=settings.STABLE_DIFFUSION_DEFAULT_CFG_SCALE,
-                sd_model_checkpoint=settings.STABLE_DIFFUSION_DEFAULT_MODEL
-            )
+        width, height = map(int, settings.STABLE_DIFFUSION_DEFAULT_IMAGE_SIZE.split('x'))
+        expected_payload = {
+            "prompt": prompt,
+            "width": width,
+            "height": height,
+            "steps": settings.STABLE_DIFFUSION_DEFAULT_STEPS,
+            "cfg_scale": settings.STABLE_DIFFUSION_DEFAULT_CFG_SCALE,
+        }
+        # If model checkpoint is part of payload, add check here.
+        # Based on current service code, it is not added to payload directly unless modified.
 
-            width, height = map(int, settings.STABLE_DIFFUSION_DEFAULT_IMAGE_SIZE.split('x'))
-            expected_payload = {
-                "prompt": prompt,
-                "width": width,
-                "height": height,
-                "steps": settings.STABLE_DIFFUSION_DEFAULT_STEPS,
-                "cfg_scale": settings.STABLE_DIFFUSION_DEFAULT_CFG_SCALE,
-            }
-            # If model checkpoint is part of payload, add check here:
-            # if settings.STABLE_DIFFUSION_DEFAULT_MODEL:
-            #    payload["override_settings"] = {"sd_model_checkpoint": settings.STABLE_DIFFUSION_DEFAULT_MODEL}
+        mock_requests_post.assert_called_once_with(
+            image_service.stable_diffusion_api_url,
+            headers=pytest.approx({
+                "Authorization": f"Bearer {image_service.stable_diffusion_api_key}",
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }),
+            json=expected_payload
+        )
 
-            mock_requests_post.assert_called_once_with(
-                image_service.stable_diffusion_api_url, # Check URL from service instance
-                headers=pytest.approx({ # Use approx for headers if some are dynamic or less critical
-                    "Authorization": f"Bearer {image_service.stable_diffusion_api_key}",
-                    "Content-Type": "application/json",
-                    "Accept": "application/json"
-                }),
-                json=expected_payload
-            )
-
-            model_used_for_log = f"stable-diffusion ({settings.STABLE_DIFFUSION_DEFAULT_MODEL})" \
-                if settings.STABLE_DIFFUSION_DEFAULT_MODEL else "stable-diffusion"
-
-            mock_save_method.assert_called_once_with(
-                temporary_url=expected_temp_url_from_api,
-                prompt=prompt,
-                model_used=model_used_for_log,
-                size_used=settings.STABLE_DIFFUSION_DEFAULT_IMAGE_SIZE,
-                db=mock_db_session,
-                user_id=user_id,
-                original_filename_from_api=None # Assuming API doesn't provide this in current mock
-            )
-            assert actual_url == expected_permanent_url
+        # Assert that the returned URL is the temporary URL from the API response
+        assert actual_url == expected_temp_url_from_api
 
 # TODO: Add tests for error handling in all three methods
 # e.g., API connection errors, API returning error status, _save_image failure scenarios.

@@ -180,15 +180,16 @@ class ImageGenerationService:
                 # revised_prompt = api_response.data[0].revised_prompt
 
                 # Save image and log to DB
-                permanent_url = await self._save_image_and_log_db(
-                    temporary_url=temporary_url,
-                    prompt=prompt, # Or revised_prompt if available and desired
-                    model_used=final_model_name,
-                    size_used=final_size,
-                    db=db,
-                    user_id=user_id
-                )
-                return permanent_url
+                # permanent_url = await self._save_image_and_log_db(
+                #     temporary_url=temporary_url,
+                #     prompt=prompt, # Or revised_prompt if available and desired
+                #     model_used=final_model_name,
+                #     size_used=final_size,
+                #     db=db,
+                #     user_id=user_id
+                # )
+                # return permanent_url
+                return temporary_url # Return temporary URL directly
             else:
                 # This case should ideally not be reached if API call was successful and n=1
                 print(f"DALL-E API response did not contain expected data structure: {api_response}")
@@ -311,16 +312,17 @@ class ImageGenerationService:
                 raise HTTPException(status_code=500, detail="Image generation with Stable Diffusion succeeded but no image URL was found.")
 
             # Save image and log to DB
-            permanent_url = await self._save_image_and_log_db(
-                temporary_url=temporary_url,
-                prompt=prompt,
-                model_used=f"stable-diffusion ({final_sd_model_name})" if final_sd_model_name else "stable-diffusion",
-                size_used=final_size,
-                db=db,
-                user_id=user_id,
-                original_filename_from_api=original_filename
-            )
-            return permanent_url
+            # permanent_url = await self._save_image_and_log_db(
+            #     temporary_url=temporary_url,
+            #     prompt=prompt,
+            #     model_used=f"stable-diffusion ({final_sd_model_name})" if final_sd_model_name else "stable-diffusion",
+            #     size_used=final_size,
+            #     db=db,
+            #     user_id=user_id,
+            #     original_filename_from_api=original_filename
+            # )
+            # return permanent_url
+            return temporary_url # Return temporary URL directly
 
         except requests.exceptions.RequestException as e:
             error_detail = str(e)
