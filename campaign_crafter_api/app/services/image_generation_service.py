@@ -165,7 +165,7 @@ class ImageGenerationService:
              # DALL-E 2 does not use 'quality' parameter in the same way, so it might be ignored or error if sent.
 
         try:
-            api_response = await self.openai_client.images.generate( # Use await for async client call
+            api_response = self.openai_client.images.generate( # Use await for async client call
                 model=final_model_name,
                 prompt=prompt,
                 size=final_size, # type: ignore

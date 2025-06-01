@@ -19,7 +19,8 @@ def mock_db_session():
 @pytest.fixture
 def mock_openai_client():
     client = MagicMock()
-    client.images.generate = AsyncMock() # Mock the async method
+    # .images.generate() is now a synchronous method, so it should be a MagicMock
+    client.images.generate = MagicMock()
     return client
 
 @pytest.fixture
