@@ -105,6 +105,15 @@ def test_generate_image_invalid_model(client):
     assert any(err["loc"] == ["body", "model"] for err in data["detail"])
 
 
+def test_image_generation_endpoint_exists(client: TestClient):
+    """
+    Tests if the /api/v1/images/generate endpoint is registered and does not return 404.
+    It's expected to return 422 if payload is empty/invalid, or 5xx if service has issues.
+    """
+    response = client.post("/api/v1/images/generate", json={}) # Minimal payload
+    assert response.status_code != 404
+
+
 # TODO: Add tests for other specific error scenarios from the service,
 # e.g., if the service raises HTTPException for API key issues or other failures.
 # These would involve configuring the mock_image_service methods to raise those exceptions.

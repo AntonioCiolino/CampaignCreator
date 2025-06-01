@@ -63,7 +63,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
     };
 
     try {
-      const response = await apiClient.post<ImageGenerationResponseData>('/api/images/generate', payload);
+      const response = await apiClient.post<ImageGenerationResponseData>('/api/v1/images/generate', payload);
       if (response.data && response.data.image_url) {
         setGeneratedImageUrl(response.data.image_url);
         // setGenerationDetails(response.data);

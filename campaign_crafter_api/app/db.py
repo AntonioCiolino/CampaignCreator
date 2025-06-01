@@ -6,9 +6,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5432/campaign_crafter")
+# Try to get DATABASE_URL from environment, otherwise default to a local SQLite file for easier testing/dev startup
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    print("DATABASE_URL not found in environment, defaulting to SQLite: ./test_app_temp.db")
+    DATABASE_URL = "sqlite:///./test_app_temp.db"
 
-engine = create_engine(DATABASE_URL)
+# For SQLite, connect_args might be needed if using check_same_thread=False, but default is fine for now.
+engine_args = {}
+if DATABASE_URL.startswith("sqlite"):
+    engine_args["connect_args"] = {"check_same_thread": False} # Common for FastAPI + SQLite
+
+engine = create_engine(DATABASE_URL, **engine_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
