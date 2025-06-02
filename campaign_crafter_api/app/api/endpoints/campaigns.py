@@ -165,6 +165,44 @@ async def generate_campaign_titles_endpoint(
 
 # --- Campaign Section Endpoints ---
 
+# Pydantic model for the request body of section order update
+class SectionOrderUpdate(external_models.BaseModel): # Assuming BaseModel is available or use Pydantic's
+    section_ids: List[int]
+
+@router.put("/{campaign_id}/sections/order", status_code=204, tags=["Campaign Sections"])
+async def update_section_order_endpoint(
+    campaign_id: int,
+    order_update: SectionOrderUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    Updates the order of sections within a campaign.
+    The list of section_ids should be in the desired new order.
+    """
+    db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
+    if db_campaign is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    # Fetch all sections for the campaign to ensure all IDs are valid and belong to this campaign
+    existing_sections = crud.get_campaign_sections(db=db, campaign_id=campaign_id, limit=None) # Get all
+    existing_section_ids = {section.id for section in existing_sections}
+
+    if len(order_update.section_ids) != len(existing_section_ids):
+        raise HTTPException(status_code=400, detail="The number of section IDs provided does not match the number of sections in the campaign.")
+
+    for section_id in order_update.section_ids:
+        if section_id not in existing_section_ids:
+            raise HTTPException(status_code=400, detail=f"Section ID {section_id} is invalid or does not belong to campaign {campaign_id}.")
+    
+    try:
+        await crud.update_section_order(db=db, campaign_id=campaign_id, ordered_section_ids=order_update.section_ids)
+        return PlainTextResponse(status_code=204, content="") # No content response
+    except Exception as e:
+        # Log the error e
+        print(f"Error updating section order for campaign {campaign_id}: {e}")
+        raise HTTPException(status_code=500, detail="An error occurred while updating section order.")
+
+
 @router.post("/{campaign_id}/sections", response_model=models.CampaignSection, tags=["Campaign Sections"])
 async def create_new_campaign_section_endpoint(
     campaign_id: int,
@@ -335,5 +373,16 @@ async def prepare_campaign_for_homebrewery_posting(
         filename_suggestion=filename_suggestion
     )
 
-class Config:
-    from_attributes = True
+# The Config class should be at the module level if it's meant for Pydantic model configuration,
+# or within each Pydantic model that needs it.
+# For example, if SectionOrderUpdate needed it:
+# class SectionOrderUpdate(external_models.BaseModel):
+# section_ids: List[int]
+# class Config:
+# from_attributes = True
+#
+# However, usually external_models.BaseModel would already have its Config.
+# If this `class Config` was erroneously placed at the end of the file, it should be removed or moved.
+# For now, I'll assume it's not needed here or handled by BaseModel.
+# class Config:
+#     from_attributes = True

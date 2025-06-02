@@ -2,12 +2,21 @@ import React, { useState, useEffect, FormEvent, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import LLMSelectionDialog from '../components/modals/LLMSelectionDialog';
-import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal'; // Added
+import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal';
 import * as campaignService from '../services/campaignService';
-import { getAvailableLLMs, LLMModel } from '../services/llmService'; 
-import CampaignSectionView from '../components/CampaignSectionView';
+import { getAvailableLLMs, LLMModel } from '../services/llmService';
+// CampaignSectionView will be used by CampaignSectionEditor
+// import CampaignSectionView from '../components/CampaignSectionView'; 
 import ReactMarkdown from 'react-markdown';
-import './CampaignEditorPage.css'; 
+import './CampaignEditorPage.css';
+
+// New Component Imports
+import CampaignDetailsEditor from '../components/campaign_editor/CampaignDetailsEditor';
+import CampaignLLMSettings from '../components/campaign_editor/CampaignLLMSettings';
+import CampaignSectionEditor from '../components/campaign_editor/CampaignSectionEditor';
+import { LLM } from '../utils/llm'; // Assuming LLM type for CampaignLLMSettings
+import Tabs, { TabItem } from '../components/common/Tabs'; // Import Tabs component
+import { Box, Typography } from '@mui/material'; // For layout within tabs if needed
 
 const CampaignEditorPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -58,12 +67,42 @@ const CampaignEditorPage: React.FC = () => {
   const [isLLMSettingsCollapsed, setIsLLMSettingsCollapsed] = useState<boolean>(false);
   const [isAddSectionCollapsed, setIsAddSectionCollapsed] = useState<boolean>(true);
   const [isLLMDialogOpen, setIsLLMDialogOpen] = useState<boolean>(false);
-  const [isCampaignDetailsCollapsed, setIsCampaignDetailsCollapsed] = useState<boolean>(true); // Default to true
+  // isCampaignDetailsCollapsed will be managed by the new component or removed if not needed at page level
   const [isBadgeImageModalOpen, setIsBadgeImageModalOpen] = useState(false); // Added for modal
 
   // State for badge image updates
+  // badgeUpdateLoading, setBadgeUpdateLoading, badgeUpdateError, setBadgeUpdateError will be managed by CampaignDetailsEditor (or passed to it)
+  // For now, we keep them here if they are used by functions like handleBadgeImageGenerated that remain in this file.
   const [badgeUpdateLoading, setBadgeUpdateLoading] = useState(false);
   const [badgeUpdateError, setBadgeUpdateError] = useState<string | null>(null);
+
+  // campaignBadgeImage and setCampaignBadgeImage for CampaignDetailsEditor
+  // This state is initialized from `campaign.badge_image_url` in useEffect
+  const [campaignBadgeImage, setCampaignBadgeImage] = useState<string>('');
+
+  // Helper function to get selected LLM object
+  const selectedLLMObject = useMemo(() => {
+    // Ensure availableLLMs is not empty and selectedLLMId is valid before finding
+    if (availableLLMs.length > 0 && selectedLLMId) {
+      return availableLLMs.find(llm => llm.id === selectedLLMId) as LLM | undefined;
+    }
+    return undefined;
+  }, [selectedLLMId, availableLLMs]);
+
+  // Handler to set selected LLM (object) for the new component
+  const handleSetSelectedLLM = (llm: LLM) => {
+    setSelectedLLMId(llm.id);
+  };
+  
+  // Handler for updating section content (to be passed to CampaignSectionEditor)
+  const handleUpdateSectionContent = (sectionId: number, newContent: string) => {
+    handleUpdateSection(sectionId, { content: newContent });
+  };
+
+  // Handler for updating section title (to be passed to CampaignSectionEditor)
+  const handleUpdateSectionTitle = (sectionId: number, newTitle: string) => {
+    handleUpdateSection(sectionId, { title: newTitle });
+  };
 
   const processedToc = useMemo(() => {
     if (!campaign?.toc || !sections?.length) {
@@ -119,6 +158,7 @@ const CampaignEditorPage: React.FC = () => {
 
         setEditableTitle(campaignDetails.title);
         setEditableInitialPrompt(campaignDetails.initial_user_prompt || '');
+        setCampaignBadgeImage(campaignDetails.badge_image_url || ''); // Initialize badge image state
 
         setAvailableLLMs(fetchedLLMs); // fetchedLLMs is now LLMModel[]
 
@@ -182,6 +222,28 @@ const CampaignEditorPage: React.FC = () => {
       setSaveError('Failed to save changes.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleUpdateSectionOrder = async (orderedSectionIds: number[]) => {
+    if (!campaignId) return;
+    // Optimistically update the UI
+    const oldSections = [...sections];
+    const newSections = orderedSectionIds.map((id, index) => {
+      const section = sections.find(s => s.id === id);
+      if (!section) throw new Error(`Section with id ${id} not found for reordering.`); // Should not happen
+      return { ...section, order: index };
+    }).sort((a,b) => a.order - b.order); // Ensure sorted by new order for local state
+    setSections(newSections);
+
+    try {
+      await campaignService.updateCampaignSectionOrder(campaignId, orderedSectionIds);
+      setSaveSuccess("Section order saved successfully!"); // Provide feedback
+      setTimeout(() => setSaveSuccess(null), 3000);
+    } catch (error) {
+      console.error("Failed to update section order:", error);
+      setError("Failed to save section order. Please try again."); // Show error feedback
+      setSections(oldSections); // Revert optimistic update on error
     }
   };
 
@@ -434,133 +496,147 @@ const CampaignEditorPage: React.FC = () => {
   if (error) return <p className="error-message">{error}</p>;
   if (!campaign) return <p className="error-message">Campaign not found.</p>;
 
-  return (
-    <div className="campaign-editor-page">
-      <div className="campaign-main-details-section editor-section">
-        <h2 onClick={() => setIsCampaignDetailsCollapsed(!isCampaignDetailsCollapsed)} style={{ cursor: 'pointer' }}>
-          {isCampaignDetailsCollapsed ? '▶' : '▼'} Campaign Details & Overview
-        </h2>
-        {!isCampaignDetailsCollapsed && (
-          <>
-            <header className="campaign-header editor-section">
-              <label htmlFor="campaignTitle" className="form-label">Campaign Title:</label>
-              <input type="text" id="campaignTitle" className="form-input form-input-title" value={editableTitle} onChange={(e) => setEditableTitle(e.target.value)} />
-            </header>
+  const detailsTabContent = (
+    <>
+      <CampaignDetailsEditor
+        editableTitle={editableTitle}
+        setEditableTitle={setEditableTitle}
+        initialPrompt={editableInitialPrompt}
+        setInitialPrompt={setEditableInitialPrompt}
+        campaignBadgeImage={campaignBadgeImage}
+        setCampaignBadgeImage={(value: string) => {
+          setCampaignBadgeImage(value);
+        }}
+        handleSaveCampaignDetails={handleSaveChanges}
+      />
+      {/* Global save error/success can be shown here or above tabs */}
+      {saveError && <p className="error-message save-feedback">{saveError}</p>}
+      {saveSuccess && <p className="success-message save-feedback">{saveSuccess}</p>}
 
-            <section className="campaign-detail-section editor-section">
-              <label htmlFor="campaignInitialPrompt" className="form-label">Initial User Prompt:</label>
-              <textarea id="campaignInitialPrompt" className="form-textarea" value={editableInitialPrompt} onChange={(e) => setEditableInitialPrompt(e.target.value)} rows={5} />
-            </section>
-
-            <div className="save-actions editor-section">
-              <button onClick={handleSaveChanges} disabled={isSaving || !hasChanges} className="save-button main-save-button">
-                {isSaving ? 'Saving Details...' : 'Save Campaign Details'}
-              </button>
-              {saveError && <p className="error-message save-feedback">{saveError}</p>}
-              {saveSuccess && <p className="success-message save-feedback">{saveSuccess}</p>}
-            </div>
-            
-            {/* Campaign Badge Display */}
-            <div className="campaign-badge-area editor-section">
-              <h3>Campaign Badge</h3>
-              {campaign.badge_image_url ? (
-                <a 
-                  href={campaign.badge_image_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="campaign-badge-link"
-                >
-                  <img 
-                    src={campaign.badge_image_url} 
-                    alt={`${campaign.title} Badge`} 
-                    className="campaign-badge-image"
-                  />
-                </a>
-              ) : (
-                <p className="campaign-badge-placeholder">No badge image set.</p>
-              )}
-              <div className="campaign-badge-actions">
-                <button onClick={handleOpenBadgeImageModal} disabled={badgeUpdateLoading} className="action-button">
-                  {badgeUpdateLoading ? "Processing..." : "Generate Badge"}
-                </button>
-                <button onClick={handleEditBadgeImageUrl} disabled={badgeUpdateLoading} className="action-button secondary-action-button">
-                  {badgeUpdateLoading ? "Processing..." : "Edit URL"}
-                </button>
-                {campaign?.badge_image_url && (
-                  <button 
-                    onClick={handleRemoveBadgeImage} 
-                    disabled={badgeUpdateLoading || !campaign?.badge_image_url}
-                    className="action-button remove-button" 
-                  >
-                    {badgeUpdateLoading ? "Removing..." : "Remove Badge"}
-                  </button>
-                )}
-              </div>
-              {badgeUpdateError && <p className="error-message feedback-message">{badgeUpdateError}</p>}
-            </div>
-
-            {campaign.concept && (
-              <section className="campaign-detail-section read-only-section">
-                <h2>Campaign Concept (Read-Only)</h2>
-                <div className="concept-content"><ReactMarkdown>{campaign.concept}</ReactMarkdown></div>
-              </section>
-            )}
-            {campaign.toc && (
-              <section className="campaign-detail-section read-only-section">
-                <h2>Table of Contents (Read-Only)</h2>
-                <div className="toc-content"><ReactMarkdown>{processedToc}</ReactMarkdown></div>
-              </section>
-            )}
-          </>
+      <div className="campaign-badge-area editor-section">
+        <h3>Campaign Badge Actions</h3>
+        {campaign.badge_image_url && (
+          <Box sx={{ mt: 1, mb: 1, textAlign: 'center' }}>
+            <Typography variant="caption" display="block" gutterBottom>
+              Current Badge:
+            </Typography>
+            <img
+              src={campaign.badge_image_url}
+              alt="Campaign Badge"
+              style={{ maxWidth: '100px', maxHeight: '100px', border: '1px solid #ccc' }}
+            />
+          </Box>
         )}
-      </div>
-
-      <div className="llm-settings-and-actions editor-section">
-        <h3 onClick={() => setIsLLMSettingsCollapsed(!isLLMSettingsCollapsed)} style={{ cursor: 'pointer' }}>
-          {isLLMSettingsCollapsed ? '▶' : '▼'} LLM Settings & Actions
-        </h3>
-        {!isLLMSettingsCollapsed && (
-          <>
-            <div className="llm-controls">
-              <div className="form-group">
-                <label>Selected LLM Model:</label>
-                <div className="selected-llm-display">
-                  <span>{selectedLLMId ? (availableLLMs.find(m => m.id === selectedLLMId)?.name || selectedLLMId) : 'None Selected'}</span>
-                  <button onClick={() => setIsLLMDialogOpen(true)} className="button-link change-llm-button">
-                    (Change)
-                  </button>
-                </div>
-              </div>
-              <div className="form-group">
-                <label htmlFor="temperatureRange">Temperature: {temperature.toFixed(1)}</label>
-            <input type="range" id="temperatureRange" min="0" max="2" step="0.1" value={temperature} onChange={(e) => setTemperature(parseFloat(e.target.value))} className="form-range"/>
-          </div>
-        </div>
-        <div className="llm-actions">
-          <div className="action-group">
-            <button onClick={handleGenerateTOC} disabled={isGeneratingTOC || !campaign?.concept || !selectedLLMId} className="llm-button">
-              {isGeneratingTOC ? 'Generating TOC...' : (campaign?.toc ? 'Regenerate Table of Contents' : 'Generate Table of Contents')}
-            </button>
-            {tocError && <p className="error-message llm-feedback">{tocError}</p>}
-          </div>
-          <div className="action-group">
-            <button onClick={handleGenerateTitles} disabled={isGeneratingTitles || !campaign?.concept || !selectedLLMId} className="llm-button">
-              {isGeneratingTitles ? 'Generating Titles...' : 'Suggest Campaign Titles'}
-            </button>
-            {titlesError && <p className="error-message llm-feedback">{titlesError}</p>}
-          </div>
-        </div>
-        {/* Export Button within LLM Settings/Actions or a new Export section */}
-        <div className="action-group export-action-group"> 
-          <button onClick={handleExportHomebrewery} disabled={isExporting} className="llm-button export-button">
-            {isExporting ? 'Exporting...' : 'Export to Homebrewery'}
+        <div className="campaign-badge-actions">
+          <button onClick={handleOpenBadgeImageModal} disabled={badgeUpdateLoading} className="action-button">
+            {badgeUpdateLoading ? "Processing..." : "Generate New Badge"}
           </button>
-          {exportError && <p className="error-message llm-feedback">{exportError}</p>}
+          <button onClick={handleEditBadgeImageUrl} disabled={badgeUpdateLoading} className="action-button secondary-action-button">
+            {badgeUpdateLoading ? "Processing..." : "Edit Badge URL"}
+          </button>
+          {campaign?.badge_image_url && (
+            <button
+              onClick={handleRemoveBadgeImage}
+              disabled={badgeUpdateLoading || !campaign?.badge_image_url}
+              className="action-button remove-button"
+            >
+              {badgeUpdateLoading ? "Removing..." : "Remove Badge"}
+            </button>
+          )}
         </div>
-          </>
-        )}
+        {badgeUpdateError && <p className="error-message feedback-message">{badgeUpdateError}</p>}
       </div>
-      
+
+      {campaign.concept && (
+        <section className="campaign-detail-section read-only-section editor-section">
+          <h2>Campaign Concept (Read-Only)</h2>
+          <div className="concept-content"><ReactMarkdown>{campaign.concept}</ReactMarkdown></div>
+        </section>
+      )}
+      {campaign.toc && (
+        <section className="campaign-detail-section read-only-section editor-section">
+          <h2>Table of Contents (Read-Only)</h2>
+          <div className="toc-content"><ReactMarkdown>{processedToc}</ReactMarkdown></div>
+        </section>
+      )}
+    </>
+  );
+
+  const sectionsTabContent = (
+    <>
+      <div className="section-display-controls editor-section">
+        <h3>Section Display</h3>
+        <button onClick={() => setForceCollapseAll(true)} className="action-button">Collapse All Sections</button>
+        <button onClick={() => setForceCollapseAll(false)} className="action-button">Expand All Sections</button>
+        <button onClick={() => setForceCollapseAll(undefined)} className="action-button secondary-action-button">Enable Individual Toggling</button>
+      </div>
+      <CampaignSectionEditor
+        sections={sections}
+        setSections={setSections}
+        handleAddNewSection={() => setIsAddSectionCollapsed(false)}
+        handleDeleteSection={handleDeleteSection}
+        handleUpdateSectionContent={handleUpdateSectionContent}
+        handleUpdateSectionTitle={handleUpdateSectionTitle}
+        onUpdateSectionOrder={handleUpdateSectionOrder} // Pass the new handler
+        // TODO: Pass savingSectionId, sectionSaveError, forceCollapseAll if CSE is updated to use them
+      />
+      {!isAddSectionCollapsed && (
+        <div className="editor-actions add-section-area editor-section card-like" style={{ marginTop: '20px' }}>
+          <h3>Add New Section</h3>
+          <form onSubmit={handleAddSection} className="add-section-form">
+            <div className="form-group">
+              <label htmlFor="newSectionTitle">Section Title (Optional):</label>
+              <input type="text" id="newSectionTitle" className="form-input" value={newSectionTitle} onChange={(e) => setNewSectionTitle(e.target.value)} placeholder="E.g., Chapter 1: The Discovery" />
+            </div>
+            <div className="form-group">
+              <label htmlFor="newSectionPrompt">Section Prompt (Optional):</label>
+              <textarea id="newSectionPrompt" className="form-textarea" value={newSectionPrompt} onChange={(e) => setNewSectionPrompt(e.target.value)} rows={3} placeholder="E.g., Start with the players finding a mysterious map..." />
+            </div>
+            {selectedLLMObject && (
+                 <p style={{fontSize: '0.9em', margin: '10px 0'}}>New section will use LLM: <strong>{selectedLLMObject.name}</strong></p>
+            )}
+            {addSectionError && <p className="error-message feedback-message">{addSectionError}</p>}
+            {addSectionSuccess && <p className="success-message feedback-message">{addSectionSuccess}</p>}
+            <button type="submit" disabled={isAddingSection || !selectedLLMId} className="action-button add-section-button">
+              {isAddingSection ? 'Adding Section...' : 'Confirm & Add Section'}
+            </button>
+            <button type="button" onClick={() => setIsAddSectionCollapsed(true)} className="action-button secondary-action-button" style={{marginLeft: '10px'}}>
+              Cancel
+            </button>
+          </form>
+        </div>
+      )}
+    </>
+  );
+
+  const settingsTabContent = (
+    <>
+      {selectedLLMObject && availableLLMs.length > 0 ? (
+        <CampaignLLMSettings
+          selectedLLM={selectedLLMObject}
+          setSelectedLLM={handleSetSelectedLLM}
+          temperature={temperature}
+          setTemperature={setTemperature}
+          isGeneratingTOC={isGeneratingTOC}
+          handleGenerateTOC={handleGenerateTOC}
+          isGeneratingTitles={isGeneratingTitles}
+          handleGenerateTitles={handleGenerateTitles}
+          availableLLMs={availableLLMs.map(m => ({...m, name: m.name || m.id})) as LLM[]}
+        />
+      ) : (
+        <div className="editor-section">
+          <p>Loading LLM settings or no LLMs available...</p>
+          {!selectedLLMId && availableLLMs.length > 0 && (
+            <button onClick={() => setIsLLMDialogOpen(true)} className="action-button">
+              Select Initial LLM Model
+            </button>
+          )}
+        </div>
+      )}
+      {/* LLM related errors can be shown within this tab or globally */}
+      {tocError && <p className="error-message llm-feedback editor-section">{tocError}</p>}
+      {titlesError && <p className="error-message llm-feedback editor-section">{titlesError}</p>}
+
       {suggestedTitles && suggestedTitles.length > 0 && (
         <section className="suggested-titles-section editor-section">
           <h3>Suggested Titles:</h3>
@@ -571,73 +647,41 @@ const CampaignEditorPage: React.FC = () => {
         </section>
       )}
 
-      {/* Section Display Controls */}
-      <div className="section-display-controls editor-section">
-        <h3>Section Display</h3>
-        <button onClick={() => setForceCollapseAll(true)} className="action-button">Collapse All Sections</button>
-        <button onClick={() => setForceCollapseAll(false)} className="action-button">Expand All Sections</button>
-        <button onClick={() => setForceCollapseAll(undefined)} className="action-button secondary-action-button">Enable Individual Toggling</button>
+      <div className="action-group export-action-group editor-section"> 
+        <button onClick={handleExportHomebrewery} disabled={isExporting} className="llm-button export-button">
+          {isExporting ? 'Exporting...' : 'Export to Homebrewery'}
+        </button>
+        {exportError && <p className="error-message llm-feedback">{exportError}</p>}
       </div>
+    </>
+  );
 
-      <section className="campaign-sections-list read-only-section">
-        <h2>Campaign Sections</h2>
-        {sections.length > 0 ? (
-          sections.map((section) => (
-            <div key={section.id} id={`section-container-${section.id}`} className="section-wrapper">
-              <CampaignSectionView
-                section={section}
-                onSave={handleUpdateSection}
-                isSaving={savingSectionId === section.id}
-                saveError={sectionSaveError[section.id] || null}
-                onDelete={handleDeleteSection} // Added onDelete prop
-                forceCollapse={forceCollapseAll} // Pass the forceCollapseAll state
-              />
-            </div>
-          ))
-        ) : (<p>No sections available for this campaign yet.</p>)}
-      </section>
-      
+  const tabItems: TabItem[] = [
+    { name: 'Details', content: detailsTabContent },
+    { name: 'Sections', content: sectionsTabContent },
+    { name: 'Settings', content: settingsTabContent },
+  ];
+
+  return (
+    <div className="campaign-editor-page">
+      <Tabs tabs={tabItems} />
+
+      {/* Modals remain at the top level */}
       <LLMSelectionDialog
         isOpen={isLLMDialogOpen}
         currentModelId={selectedLLMId}
         onModelSelect={(modelId) => {
-          if (modelId !== null) { // Ensure a model is actually selected
+          if (modelId !== null) {
             setSelectedLLMId(modelId);
           }
           setIsLLMDialogOpen(false);
         }}
         onClose={() => setIsLLMDialogOpen(false)}
       />
-
-      <div className="editor-actions add-section-area editor-section">
-        <h3 onClick={() => setIsAddSectionCollapsed(!isAddSectionCollapsed)} style={{ cursor: 'pointer' }}>
-          {isAddSectionCollapsed ? '▶' : '▼'} Add New Section
-        </h3>
-        {!isAddSectionCollapsed && (
-          <>
-            <form onSubmit={handleAddSection} className="add-section-form">
-              <div className="form-group">
-                <label htmlFor="newSectionTitle">Section Title (Optional):</label>
-                <input type="text" id="newSectionTitle" className="form-input" value={newSectionTitle} onChange={(e) => setNewSectionTitle(e.target.value)} placeholder="E.g., Chapter 1: The Discovery" />
-              </div>
-              <div className="form-group">
-                <label htmlFor="newSectionPrompt">Section Prompt (Optional):</label>
-                <textarea id="newSectionPrompt" className="form-textarea" value={newSectionPrompt} onChange={(e) => setNewSectionPrompt(e.target.value)} rows={3} placeholder="E.g., Start with the players finding a mysterious map..." />
-              </div>
-              {addSectionError && <p className="error-message feedback-message">{addSectionError}</p>}
-              {addSectionSuccess && <p className="success-message feedback-message">{addSectionSuccess}</p>}
-              <button type="submit" disabled={isAddingSection || !selectedLLMId} className="action-button add-section-button">
-                {isAddingSection ? 'Adding Section...' : 'Add Section with Selected LLM'}
-              </button>
-            </form>
-          </>
-        )}
-      </div>
-
       <ImageGenerationModal
         isOpen={isBadgeImageModalOpen}
         onClose={() => setIsBadgeImageModalOpen(false)}
-        onImageSuccessfullyGenerated={handleBadgeImageGenerated} // Pass the new handler
+        onImageSuccessfullyGenerated={handleBadgeImageGenerated}
       />
     </div>
   );
