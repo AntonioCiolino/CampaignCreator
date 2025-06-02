@@ -22,6 +22,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <li>
               <Link to="/users">User Management</Link>
             </li>
+            <li>
+              <Link to="/data-management">Data Management</Link>
+            </li>
           </ul>
         </nav>
       </header>
