@@ -1,0 +1,97 @@
+/* src/components/datamanagement/RollTableForm.css */
+.roll-table-form {
+  background-color: #fdfdfd;
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.roll-table-form .form-field {
+  margin-bottom: 15px;
+}
+
+.roll-table-form label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: bold;
+  color: #333;
+}
+
+.roll-table-form input[type="text"],
+.roll-table-form textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 1rem;
+}
+
+.roll-table-form textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.roll-table-form .items-section {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #eee;
+}
+
+.roll-table-form .items-section h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #444;
+}
+
+.roll-table-form .add-item-button {
+  padding: 10px 15px;
+  background-color: #5cb85c; /* Green */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  margin-top: 10px;
+  margin-bottom: 15px;
+}
+
+.roll-table-form .add-item-button:hover {
+  background-color: #4cae4c;
+}
+
+.roll-table-form .form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 25px;
+}
+
+.roll-table-form button {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.roll-table-form .save-button {
+  background-color: #007bff; /* Primary Blue */
+  color: white;
+}
+
+.roll-table-form .cancel-button {
+  background-color: #6c757d; /* Gray */
+  color: white;
+}
+
+.roll-table-form button:hover {
+  opacity: 0.9;
+}
+
+.roll-table-form .validation-error {
+  color: #D8000C;
+  font-size: 0.9rem;
+  margin-top: 5px;
+}

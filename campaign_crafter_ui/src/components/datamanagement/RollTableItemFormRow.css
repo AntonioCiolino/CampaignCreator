@@ -1,0 +1,55 @@
+/* src/components/datamanagement/RollTableItemFormRow.css */
+.roll-table-item-form-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  background-color: #fff;
+}
+
+.roll-table-item-form-row .item-input-group {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.roll-table-item-form-row label {
+  font-size: 0.85rem;
+  color: #555;
+  margin-bottom: 2px;
+}
+
+.roll-table-item-form-row input[type="number"],
+.roll-table-item-form-row input[type="text"] {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+.roll-table-item-form-row input[type="number"] {
+  width: 70px; /* Adjust as needed */
+}
+
+.roll-table-item-form-row .item-description-input {
+  flex-grow: 2; /* Allow description to take more space */
+}
+
+
+.roll-table-item-form-row .remove-item-button {
+  padding: 8px 12px;
+  background-color: #ef5350; /* Lighter red */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  height: fit-content; /* Align with inputs */
+}
+
+.roll-table-item-form-row .remove-item-button:hover {
+  background-color: #d32f2f; /* Darker red */
+}
