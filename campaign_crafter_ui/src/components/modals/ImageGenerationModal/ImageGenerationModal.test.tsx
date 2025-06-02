@@ -38,7 +38,7 @@ describe('ImageGenerationModal', () => {
     mockOnClose.mockClear();
     mockedApiClient.post.mockClear();
     (navigator.clipboard.writeText as jest.Mock).mockClear();
-
+    
     // Clear spies
     jest.restoreAllMocks();
   });
@@ -69,7 +69,7 @@ describe('ImageGenerationModal', () => {
     fireEvent.change(screen.getByLabelText('Prompt:'), { target: { value: 'A test prompt' } });
     expect(screen.getByRole('button', { name: 'Generate' })).toBeEnabled();
   });
-
+  
   test('shows error if Generate is clicked with empty prompt', () => {
     render(<ImageGenerationModal isOpen={true} onClose={mockOnClose} />);
     // Ensure prompt is empty or only whitespace
@@ -92,7 +92,7 @@ describe('ImageGenerationModal', () => {
     mockedApiClient.post.mockResolvedValue(mockApiResponse);
 
     render(<ImageGenerationModal isOpen={true} onClose={mockOnClose} />);
-
+    
     fireEvent.change(screen.getByLabelText('Prompt:'), { target: { value: testPrompt } });
     fireEvent.change(screen.getByLabelText('Model:'), { target: { value: 'dall-e' } });
     fireEvent.click(screen.getByRole('button', { name: 'Generate' }));
@@ -128,11 +128,11 @@ describe('ImageGenerationModal', () => {
     expect(screen.getByRole('button', { name: 'Copy URL' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Download' })).toBeDisabled();
   });
-
+  
   test('displays API error detail from response', async () => {
     const errorDetail = "Invalid prompt content policy violation";
-    mockedApiClient.post.mockRejectedValue({
-      response: { data: { detail: errorDetail } }
+    mockedApiClient.post.mockRejectedValue({ 
+      response: { data: { detail: errorDetail } } 
     });
 
     render(<ImageGenerationModal isOpen={true} onClose={mockOnClose} />);
@@ -153,7 +153,7 @@ describe('ImageGenerationModal', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Generate' }));
 
       await waitFor(() => expect(screen.getByRole('img')).toBeInTheDocument());
-
+      
       const copyButton = screen.getByRole('button', { name: 'Copy URL' });
       expect(copyButton).toBeEnabled();
       fireEvent.click(copyButton);
@@ -168,7 +168,7 @@ describe('ImageGenerationModal', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Generate' }));
 
       await waitFor(() => expect(screen.getByRole('img')).toBeInTheDocument());
-
+      
       const copyButton = screen.getByRole('button', { name: 'Copy URL' });
       expect(copyButton).toBeDisabled();
     });
@@ -179,7 +179,7 @@ describe('ImageGenerationModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
-
+  
   test('resets state on open', () => {
     const { rerender } = render(<ImageGenerationModal isOpen={false} onClose={mockOnClose} />);
     // Simulate it being opened, then having state changed, then closed, then reopened
@@ -188,14 +188,14 @@ describe('ImageGenerationModal', () => {
     // Simulate generation
     mockedApiClient.post.mockResolvedValue({ data: { image_url: 'http://example.com/img1.png' }});
     fireEvent.click(screen.getByRole('button', {name: "Generate"}));
-
+    
     // Wait for first generation to "complete" to set state like generatedImageUrl
     return waitFor(() => {
-        expect(screen.getByRole('img')).toBeInTheDocument();
+        expect(screen.getByRole('img')).toBeInTheDocument(); 
       }).then(() => {
         rerender(<ImageGenerationModal isOpen={false} onClose={mockOnClose} />); // Close it
         rerender(<ImageGenerationModal isOpen={true} onClose={mockOnClose} />); // Reopen
-
+    
         expect(screen.getByLabelText('Prompt:')).toHaveValue('');
         expect(screen.getByLabelText('Model:')).toHaveValue('dall-e');
         expect(screen.queryByRole('img')).not.toBeInTheDocument();
@@ -209,8 +209,8 @@ describe('ImageGenerationModal', () => {
     const sanitizedTestPrompt = sanitizeFilename(testPrompt); // "a_beautiful_landscape_painting"
 
     const setupGeneratedImageWithPrompt = async (imageUrl: string) => {
-      mockedApiClient.post.mockResolvedValue({
-        data: { image_url: imageUrl, prompt_used: testPrompt, model_used: 'dall-e', size_used: '512x512' }
+      mockedApiClient.post.mockResolvedValue({ 
+        data: { image_url: imageUrl, prompt_used: testPrompt, model_used: 'dall-e', size_used: '512x512' } 
       });
       render(<ImageGenerationModal isOpen={true} onClose={mockOnClose} />);
       // Simulate user typing the prompt
@@ -225,7 +225,7 @@ describe('ImageGenerationModal', () => {
 
       const createElementSpy = jest.spyOn(document, 'createElement');
       const anchorClickSpy = jest.fn();
-
+      
       createElementSpy.mockImplementation(() => ({
         href: '',
         download: '',
@@ -233,7 +233,7 @@ describe('ImageGenerationModal', () => {
         click: anchorClickSpy,
         remove: jest.fn(),
       } as any));
-
+      
       const appendChildSpy = jest.spyOn(document.body, 'appendChild').mockImplementation(() => ({} as Node));
       const removeChildSpy = jest.spyOn(document.body, 'removeChild').mockImplementation(() => ({} as Node));
 
@@ -243,8 +243,9 @@ describe('ImageGenerationModal', () => {
       const mockedAnchor = createElementSpy.mock.results[0].value;
       expect(mockedAnchor.href).toBe(httpImageUrl);
       expect(mockedAnchor.download).toBe(`${sanitizedTestPrompt}.jpeg`); // Sanitized name + original extension
+      expect(mockedAnchor.target).toBe('_blank'); // Added assertion
       expect(anchorClickSpy).toHaveBeenCalledTimes(1);
-
+      
       createElementSpy.mockRestore();
       appendChildSpy.mockRestore();
       removeChildSpy.mockRestore();
@@ -261,7 +262,7 @@ describe('ImageGenerationModal', () => {
       const fetchSpy = jest.spyOn(window, 'fetch').mockResolvedValue(new Response(mockBlob));
       const createObjectURLSpy = jest.spyOn(window.URL, 'createObjectURL').mockReturnValue(mockObjectUrl);
       const revokeObjectURLSpy = jest.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {});
-
+      
       const createElementSpy = jest.spyOn(document, 'createElement');
       const anchorClickSpy = jest.fn();
       createElementSpy.mockImplementation(() => ({
@@ -278,7 +279,7 @@ describe('ImageGenerationModal', () => {
 
       await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith(dataImageUrl));
       await waitFor(() => expect(createObjectURLSpy).toHaveBeenCalledWith(expect.any(Blob)));
-
+      
       const mockedAnchor = createElementSpy.mock.results[0].value;
       expect(mockedAnchor.href).toBe(mockObjectUrl);
       expect(mockedAnchor.download).toBe(`${sanitizedTestPrompt}.webp`); // Sanitized name + extension from blob type
@@ -292,11 +293,11 @@ describe('ImageGenerationModal', () => {
       appendChildSpy.mockRestore();
       removeChildSpy.mockRestore();
     });
-
+    
     test('handles error when creating blob from data URL during download', async () => {
       const dataImageUrl = `data:image/png;base64,problematic`;
       await setupGeneratedImageWithPrompt(dataImageUrl); // Prompt is set here
-
+      
       const fetchSpy = jest.spyOn(window, 'fetch').mockResolvedValue({
         blob: () => Promise.reject(new Error('Blob creation failed')),
       } as any);
@@ -306,7 +307,7 @@ describe('ImageGenerationModal', () => {
 
       await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith(dataImageUrl));
       await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Failed to prepare image for download.'));
-
+      
       fetchSpy.mockRestore();
       alertSpy.mockRestore();
     });

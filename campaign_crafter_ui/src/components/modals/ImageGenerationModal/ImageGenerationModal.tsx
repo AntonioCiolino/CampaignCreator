@@ -17,17 +17,17 @@ const sanitizeFilename = (text: string, maxLength = 50): string => {
     .replace(/[^\w.-]/g, '') // Remove characters that are not alphanumeric, underscore, dot, or hyphen
     .substring(0, maxLength); // Truncate to maxLength
   // If sanitization results in an empty string (e.g., prompt was all special chars), fallback.
-  return sanitized || "generated_image";
+  return sanitized || "generated_image"; 
 };
 
 interface ImageGenerationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  // onImageGenerated?: (imageUrl: string, prompt: string, model: ImageModel) => void;
+  // onImageGenerated?: (imageUrl: string, prompt: string, model: ImageModel) => void; 
 }
 
 // Matches the backend ImageModelName enum and ImageGenerationRequest model
-type ImageModel = 'dall-e' | 'stable-diffusion';
+type ImageModel = 'dall-e' | 'stable-diffusion'; 
 
 interface ImageGenerationRequestPayload {
   prompt: string;
@@ -51,7 +51,7 @@ interface ImageGenerationResponseData {
 const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
   isOpen,
   onClose,
-  // onImageGenerated,
+  // onImageGenerated, 
 }) => {
   const [prompt, setPrompt] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<ImageModel>('dall-e');
@@ -123,7 +123,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
           const a = document.createElement('a');
           a.style.display = 'none';
           a.href = url;
-
+          
           // Attempt to get a better file extension from MIME type
           const mimeType = blob.type; // e.g., "image/webp"
           let extension = ".png"; // default
@@ -132,7 +132,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
             if (ext) extension = "." + ext;
           }
           a.download = baseFileName + extension; // Use baseFileName
-
+          
           document.body.appendChild(a);
           a.click();
           window.URL.revokeObjectURL(url);
@@ -150,7 +150,9 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = generatedImageUrl;
-
+      a.target = "_blank"; // Added
+      a.rel = "noopener noreferrer"; // Added
+      
       // Try to get filename from URL, fallback to default
       try {
         const urlObj = new URL(generatedImageUrl); // Define urlObj once
@@ -170,7 +172,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
       } catch {
         a.download = baseFileName + ".png"; // Fallback with default extension
       }
-
+      
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -215,11 +217,11 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
             disabled={isLoading}
           />
         </label>
-
+        
         <label>
           Model:
-          <select
-            value={selectedModel}
+          <select 
+            value={selectedModel} 
             onChange={(e) => setSelectedModel(e.target.value as ImageModel)}
             disabled={isLoading}
           >
@@ -241,7 +243,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
             <div className="image-preview-placeholder">Image will appear here</div>
           )}
         </div>
-
+        
         {/* {generatedImageUrl && !isLoading && !error && (
           <div className="image-url-display">
             <span>{generatedImageUrl}</span>
@@ -252,8 +254,8 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
            <Button onClick={handleGenerateImage} disabled={isLoading || !prompt.trim()}>
             {isLoading ? 'Generating...' : 'Generate'}
           </Button>
-          <Button
-            onClick={handleCopyToClipboard}
+          <Button 
+            onClick={handleCopyToClipboard} 
             disabled={isLoading || !generatedImageUrl || !!error || generatedImageUrl.startsWith('data:')}
           >
             Copy URL

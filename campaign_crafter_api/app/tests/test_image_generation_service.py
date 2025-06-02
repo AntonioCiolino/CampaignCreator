@@ -21,7 +21,7 @@ def mock_db_session():
 def mock_openai_client():
     client = MagicMock()
     # .images.generate() is now a synchronous method, so it should be a MagicMock
-    client.images.generate = MagicMock()
+    client.images.generate = MagicMock() 
     return client
 
 @pytest.fixture
@@ -43,7 +43,7 @@ async def test_save_image_and_log_db_success(image_service, mock_db_session):
     size_used = "1024x1024"
     user_id = 1
     expected_filename_partial = ".png" # from uuid.uuid4().hex + .png
-
+    
     # Mock external calls made by _save_image_and_log_db
     with patch('requests.get') as mock_requests_get, \
          patch('shutil.copyfileobj') as mock_shutil_copy, \
@@ -51,7 +51,7 @@ async def test_save_image_and_log_db_success(image_service, mock_db_session):
          patch('pathlib.Path.mkdir') as mock_mkdir:
 
         mock_uuid.return_value.hex = "testuuid"
-
+        
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
         mock_response.raw = MagicMock()
@@ -64,7 +64,7 @@ async def test_save_image_and_log_db_success(image_service, mock_db_session):
         mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
         mock_requests_get.assert_called_once_with(temporary_url, stream=True)
         mock_shutil_copy.assert_called_once()
-
+        
         # Check DB interaction
         mock_db_session.add.assert_called_once()
         added_image = mock_db_session.add.call_args[0][0]
@@ -75,10 +75,10 @@ async def test_save_image_and_log_db_success(image_service, mock_db_session):
         assert added_image.model_used == model_used
         assert added_image.size == size_used
         assert added_image.user_id == user_id
-
+        
         mock_db_session.commit.assert_called_once()
         mock_db_session.refresh.assert_called_once_with(added_image)
-
+        
         assert permanent_url == f"{settings.IMAGE_BASE_URL}testuuid{expected_filename_partial}"
 
 # --- Tests for generate_image_dalle ---
@@ -96,7 +96,7 @@ async def test_generate_image_dalle_success(image_service, mock_db_session, mock
     # _save_image_and_log_db is no longer called directly in this flow, so no need to mock it here.
     # The method now returns the temporary URL.
     actual_url = await image_service.generate_image_dalle(
-        prompt=prompt,
+        prompt=prompt, 
         db=mock_db_session, # db session is still a param, even if _save_image_and_log_db is not used by this flow.
         user_id=user_id,
         model="dall-e-3", # Specify model for clarity in test
@@ -139,22 +139,22 @@ async def test_generate_image_stable_diffusion_success(image_service, mock_db_se
 
         actual_url = await image_service.generate_image_stable_diffusion(
             prompt=prompt,
-            db=mock_db_session,
+            db=mock_db_session, 
             user_id=user_id,
             size=settings.STABLE_DIFFUSION_DEFAULT_IMAGE_SIZE, # This is used for logging, not direct payload now
             steps=settings.STABLE_DIFFUSION_DEFAULT_STEPS,
             cfg_scale=settings.STABLE_DIFFUSION_DEFAULT_CFG_SCALE,
             sd_model_checkpoint=settings.STABLE_DIFFUSION_DEFAULT_MODEL # Used for logging
         )
-
+        
         assert actual_url == expected_data_url
 
         # Check the arguments passed to requests.post
         mock_requests_post.assert_called_once()
         args, kwargs = mock_requests_post.call_args
-
+        
         assert args[0] == image_service.stable_diffusion_api_url
-
+        
         # Check headers (Accept header is key)
         assert kwargs['headers']['Authorization'] == f"Bearer {image_service.stable_diffusion_api_key}"
         assert kwargs['headers']['Accept'] == "image/*"
@@ -168,7 +168,7 @@ async def test_generate_image_stable_diffusion_success(image_service, mock_db_se
             "cfg_scale": str(settings.STABLE_DIFFUSION_DEFAULT_CFG_SCALE),
         }
         assert kwargs['data'] == expected_form_data
-
+        
         # Check files payload
         assert 'none' in kwargs['files']
         assert kwargs['files']['none'] == (None, '')

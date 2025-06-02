@@ -138,7 +138,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
               {/* Random Table Roller Integration */}
               <RandomTableRoller onInsertItem={handleInsertRandomItem} />
               {/* TODO: Consider adding a Quill ref to get the instance: ref={(el) => { if (el) setQuillInstance(el.getEditor()); }} */}
-
+              
               <div className="editor-actions">
                 <Button onClick={handleSave} className="editor-button" disabled={isSaving}>
                   {isSaving ? 'Saving...' : 'Save Content'}

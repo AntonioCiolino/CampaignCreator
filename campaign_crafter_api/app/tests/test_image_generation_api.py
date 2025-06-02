@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock 
 
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session # Not strictly needed here if service is fully mocked
@@ -32,7 +32,7 @@ def override_dependencies(mock_image_service):
     # you might need to mock get_db as well, though for endpoint tests
     # focusing on request/response and service interaction, mocking the service is often enough.
     # mock_db = MagicMock(spec=Session)
-    # app.dependency_overrides[get_db] = lambda: mock_db
+    # app.dependency_overrides[get_db] = lambda: mock_db 
     yield
     app.dependency_overrides = {} # Clean up overrides after tests
 
@@ -51,7 +51,7 @@ def test_generate_image_dalle_success(client, mock_image_service):
     assert data["prompt_used"] == "A white cat on a red carpet"
     assert data["model_used"] == "dall-e"
     assert data["size_used"] == "1024x1024" # This comes from endpoint logic, not mock service directly for this field
-
+    
     mock_image_service.generate_image_dalle.assert_called_once()
     # You can add more detailed argument checking for the service call if needed
     # print(mock_image_service.generate_image_dalle.call_args)
@@ -64,8 +64,8 @@ def test_generate_image_stable_diffusion_success(client, mock_image_service):
     response = client.post(
         "/api/images/generate",
         json={
-            "prompt": "A futuristic city skyline",
-            "model": "stable-diffusion",
+            "prompt": "A futuristic city skyline", 
+            "model": "stable-diffusion", 
             "size": "512x512",
             "steps": 30,
             "cfg_scale": 7.0

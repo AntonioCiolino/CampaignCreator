@@ -68,7 +68,7 @@ class ImageGenerationService:
                 temp_path = Path(temporary_url.split('?')[0]) # Remove query params for suffix
                 if temp_path.suffix and len(temp_path.suffix) > 1: # Ensure suffix is meaningful
                     file_extension = temp_path.suffix
-
+            
             # Sanitize extension to ensure it starts with a dot and is reasonable
             if not file_extension.startswith(".") or len(file_extension) > 5:
                 file_extension = ".png"
@@ -86,7 +86,7 @@ class ImageGenerationService:
 
             with open(file_path, 'wb') as f:
                 shutil.copyfileobj(response.raw, f)
-
+            
             print(f"Image saved to: {file_path}")
 
             # Create database record
@@ -101,7 +101,7 @@ class ImageGenerationService:
             db.add(db_image)
             db.commit()
             db.refresh(db_image)
-
+            
             return permanent_image_url
 
         except requests.exceptions.RequestException as e:
@@ -178,8 +178,8 @@ class ImageGenerationService:
             if api_response.data and len(api_response.data) > 0 and api_response.data[0].url:
                 temporary_url = api_response.data[0].url
                 # DALL-E might also return a revised prompt
-                # revised_prompt = api_response.data[0].revised_prompt
-
+                # revised_prompt = api_response.data[0].revised_prompt 
+                
                 # Save image and log to DB
                 # permanent_url = await self._save_image_and_log_db(
                 #     temporary_url=temporary_url,
@@ -241,7 +241,7 @@ class ImageGenerationService:
 
         # Use defaults from settings if not provided by the caller
         # final_size is still available if needed for logging or aspect_ratio conversion, but not sent directly
-        final_size = size or settings.STABLE_DIFFUSION_DEFAULT_IMAGE_SIZE
+        final_size = size or settings.STABLE_DIFFUSION_DEFAULT_IMAGE_SIZE 
         final_steps = steps or settings.STABLE_DIFFUSION_DEFAULT_STEPS
         final_cfg_scale = cfg_scale or settings.STABLE_DIFFUSION_DEFAULT_CFG_SCALE
         final_sd_model_name = sd_model_checkpoint or settings.STABLE_DIFFUSION_DEFAULT_MODEL # For logging
@@ -251,7 +251,7 @@ class ImageGenerationService:
             "Accept": "image/*", # Requesting image bytes directly
             # Content-Type is not explicitly set here for multipart/form-data; requests will handle it with `files` and `data`
         }
-
+        
         form_data = {
             "prompt": prompt,
             "output_format": "webp", # Or png, jpeg
@@ -261,7 +261,7 @@ class ImageGenerationService:
             # "aspect_ratio": "1:1", # Example if API uses aspect_ratio instead of width/height
                                      # Could derive from final_size if needed: e.g. "1024x768" -> "4:3"
         }
-
+        
         # The Stability AI example uses `files` for `multipart/form-data` even if no actual file is uploaded,
         # it can be used to ensure the request is `multipart/form-data`.
         # An empty file part like this is often how you ensure multipart:
@@ -272,7 +272,7 @@ class ImageGenerationService:
                 self.stable_diffusion_api_url,
                 headers=headers,
                 data=form_data,
-                files=files_payload
+                files=files_payload 
             )
 
             if api_response.status_code == 200:
@@ -280,7 +280,7 @@ class ImageGenerationService:
                 mime_type = api_response.headers.get("content-type", "image/webp") # Default to webp if not specified
                 base64_encoded_string = base64.b64encode(image_bytes).decode("utf-8")
                 temporary_url = f"data:{mime_type};base64,{base64_encoded_string}"
-
+                
                 # Logging (even if not saving to DB via _save_image_and_log_db)
                 print(f"Successfully received image bytes from Stable Diffusion API for prompt: '{prompt}'. Size: approx {len(image_bytes)} bytes. Mime: {mime_type}")
 
@@ -301,10 +301,10 @@ class ImageGenerationService:
                         detail = f"Stable Diffusion API Error: {error_data}"
                 except ValueError: # If response is not JSON
                     detail = f"Stable Diffusion API Error: {api_response.status_code} - {api_response.text}"
-
+                
                 print(f"Stable Diffusion API request failed with status {api_response.status_code}: {detail}")
                 raise HTTPException(
-                    status_code=api_response.status_code if api_response.status_code >= 400 else 503,
+                    status_code=api_response.status_code if api_response.status_code >= 400 else 503, 
                     detail=detail
                 )
 

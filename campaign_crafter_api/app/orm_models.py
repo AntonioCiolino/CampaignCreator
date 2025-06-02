@@ -64,6 +64,6 @@ class GeneratedImage(Base):
     model_used = Column(String, nullable=True) # e.g., "dall-e-3", "stable-diffusion-v1-5"
     size = Column(String, nullable=True) # e.g., "1024x1024"
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
+    
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True) # Optional user link
     owner = relationship("User", backref="generated_images") # Define relationship to User

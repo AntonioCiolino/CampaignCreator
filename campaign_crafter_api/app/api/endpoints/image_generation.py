@@ -104,7 +104,7 @@ async def generate_image_endpoint(
             dalle_model_name = settings.OPENAI_DALLE_MODEL_NAME # e.g. "dall-e-3"
             final_size = request.size or settings.OPENAI_DALLE_DEFAULT_IMAGE_SIZE
             final_quality = request.quality or settings.OPENAI_DALLE_DEFAULT_IMAGE_QUALITY
-
+            
             # Validate DALL-E specific parameters (service also does this, but good for early feedback)
             if dalle_model_name == "dall-e-3":
                 if final_size not in ["1024x1024", "1792x1024", "1024x1792"]:
