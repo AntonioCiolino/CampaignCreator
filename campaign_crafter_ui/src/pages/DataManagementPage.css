@@ -1,0 +1,116 @@
+.data-management-page {
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+.data-management-page h1 {
+  color: #333;
+  margin-bottom: 5px;
+}
+.data-management-page > p { /* Target only the direct child p for main description */
+  color: #555;
+  margin-bottom: 20px;
+}
+
+.feature-management-section {
+  margin-top: 30px;
+  padding: 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: #fff;
+}
+
+.feature-management-section h2 {
+  color: #444;
+  margin-top: 0;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.error-message {
+  color: #D8000C; /* Red */
+  background-color: #FFD2D2; /* Light red */
+  border: 1px solid #D8000C;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+.action-button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  margin-right: 5px;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.create-new-button {
+  background-color: #007bff; /* Blue */
+  color: white;
+  margin-bottom: 15px;
+}
+.create-new-button:hover {
+  background-color: #0056b3;
+}
+
+.edit-button {
+  background-color: #ffc107; /* Yellow */
+  color: #333;
+}
+.edit-button:hover {
+  background-color: #e0a800;
+}
+
+.delete-button {
+  background-color: #dc3545; /* Red */
+  color: white;
+}
+.delete-button:hover {
+  background-color: #c82333;
+}
+
+
+.features-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.features-table th,
+.features-table td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.features-table th {
+  background-color: #f2f2f2;
+  color: #333;
+  font-weight: bold;
+}
+
+.features-table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.features-table tr:hover {
+  background-color: #f1f1f1;
+}
+
+.features-table .actions-cell {
+  width: 150px; /* Adjust as needed */
+  text-align: center;
+}
+
+.features-table .actions-cell button {
+  margin: 2px;
+}
+
+/* Loading and no data messages */
+.data-management-page p { 
+  color: #666; /* General paragraph color, can be overridden */
+}

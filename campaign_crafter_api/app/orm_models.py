@@ -67,3 +67,33 @@ class GeneratedImage(Base):
     
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True) # Optional user link
     owner = relationship("User", backref="generated_images") # Define relationship to User
+
+
+class Feature(Base):
+    __tablename__ = "features"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True, nullable=False)
+    template = Column(Text, nullable=False)
+
+
+class RollTable(Base):
+    __tablename__ = "roll_tables"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True, nullable=False)
+    description = Column(String, nullable=True)
+
+    items = relationship("RollTableItem", back_populates="roll_table", cascade="all, delete-orphan")
+
+
+class RollTableItem(Base):
+    __tablename__ = "roll_table_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    min_roll = Column(Integer, nullable=False)
+    max_roll = Column(Integer, nullable=False)
+    description = Column(Text, nullable=False)
+    roll_table_id = Column(Integer, ForeignKey("roll_tables.id"), nullable=False)
+
+    roll_table = relationship("RollTable", back_populates="items")

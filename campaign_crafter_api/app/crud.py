@@ -63,6 +63,113 @@ def delete_user(db: Session, user_id: int) -> Optional[orm_models.User]:
     db.commit()
     return db_user
 
+# --- Feature CRUD Functions ---
+def get_feature(db: Session, feature_id: int) -> Optional[orm_models.Feature]:
+    return db.query(orm_models.Feature).filter(orm_models.Feature.id == feature_id).first()
+
+def get_feature_by_name(db: Session, name: str) -> Optional[orm_models.Feature]:
+    return db.query(orm_models.Feature).filter(orm_models.Feature.name == name).first()
+
+def get_features(db: Session, skip: int = 0, limit: int = 100) -> List[orm_models.Feature]:
+    return db.query(orm_models.Feature).offset(skip).limit(limit).all()
+
+def create_feature(db: Session, feature: models.FeatureCreate) -> orm_models.Feature:
+    db_feature = orm_models.Feature(**feature.dict())
+    db.add(db_feature)
+    db.commit()
+    db.refresh(db_feature)
+    return db_feature
+
+def update_feature(db: Session, feature_id: int, feature_update: models.FeatureUpdate) -> Optional[orm_models.Feature]:
+    db_feature = get_feature(db, feature_id=feature_id)
+    if not db_feature:
+        return None
+
+    update_data = feature_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_feature, key, value)
+
+    db.add(db_feature)
+    db.commit()
+    db.refresh(db_feature)
+    return db_feature
+
+def delete_feature(db: Session, feature_id: int) -> Optional[orm_models.Feature]:
+    db_feature = get_feature(db, feature_id=feature_id)
+    if not db_feature:
+        return None
+
+    db.delete(db_feature)
+    db.commit()
+    return db_feature
+
+# --- RollTable and RollTableItem CRUD Functions ---
+def get_roll_table(db: Session, roll_table_id: int) -> Optional[orm_models.RollTable]:
+    return db.query(orm_models.RollTable).filter(orm_models.RollTable.id == roll_table_id).first()
+
+def get_roll_table_by_name(db: Session, name: str) -> Optional[orm_models.RollTable]:
+    return db.query(orm_models.RollTable).filter(orm_models.RollTable.name == name).first()
+
+def get_roll_tables(db: Session, skip: int = 0, limit: int = 100) -> List[orm_models.RollTable]:
+    return db.query(orm_models.RollTable).offset(skip).limit(limit).all()
+
+def create_roll_table(db: Session, roll_table: models.RollTableCreate) -> orm_models.RollTable:
+    db_roll_table = orm_models.RollTable(
+        name=roll_table.name,
+        description=roll_table.description
+    )
+    for item_data in roll_table.items:
+        db_item = orm_models.RollTableItem(**item_data.dict(), roll_table=db_roll_table)
+        # db_roll_table.items.append(db_item) # SQLAlchemy handles this via backref or we add manually
+        # Actually, it's better to add to the session if not using cascade for item creation through table.
+        # However, since items are part of the table creation, linking them as below is common.
+    # Add them to the table's collection. SQLAlchemy will handle associating them.
+    db_roll_table.items = [orm_models.RollTableItem(**item.dict()) for item in roll_table.items]
+
+    db.add(db_roll_table)
+    db.commit()
+    db.refresh(db_roll_table)
+    return db_roll_table
+
+def update_roll_table(db: Session, roll_table_id: int, roll_table_update: models.RollTableUpdate) -> Optional[orm_models.RollTable]:
+    db_roll_table = get_roll_table(db, roll_table_id=roll_table_id)
+    if not db_roll_table:
+        return None
+
+    if roll_table_update.name is not None:
+        db_roll_table.name = roll_table_update.name
+    if roll_table_update.description is not None:
+        db_roll_table.description = roll_table_update.description
+
+    if roll_table_update.items is not None:
+        # Delete existing items
+        db.query(orm_models.RollTableItem).filter(orm_models.RollTableItem.roll_table_id == roll_table_id).delete()
+        
+        # Create new items
+        new_items = []
+        for item_data in roll_table_update.items:
+            new_item = orm_models.RollTableItem(**item_data.dict(), roll_table_id=roll_table_id)
+            new_items.append(new_item)
+        db_roll_table.items = new_items # Assign new list of items
+
+    db.add(db_roll_table) # db.add() is used to stage changes, good practice.
+    db.commit()
+    db.refresh(db_roll_table)
+    return db_roll_table
+
+def delete_roll_table(db: Session, roll_table_id: int) -> Optional[orm_models.RollTable]:
+    db_roll_table = get_roll_table(db, roll_table_id=roll_table_id)
+    if not db_roll_table:
+        return None
+
+    db.delete(db_roll_table)
+    db.commit()
+    # The object is expired after commit, so we can return it as is if needed,
+    # or None if we want to indicate it's no longer in DB.
+    # For consistency with other delete functions, returning the object.
+    return db_roll_table
+
+
 # from app.services.openai_service import OpenAILLMService # No longer needed for direct import
 from app.services.llm_service import LLMService # For type hinting if needed
 from app.services.llm_factory import get_llm_service, LLMServiceUnavailableError # Import the factory
