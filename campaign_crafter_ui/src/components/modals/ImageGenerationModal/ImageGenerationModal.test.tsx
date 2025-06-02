@@ -24,6 +24,9 @@ describe('ImageGenerationModal', () => {
     mockOnClose.mockClear();
     mockedApiClient.post.mockClear();
     (navigator.clipboard.writeText as jest.Mock).mockClear();
+
+    // Clear spies
+    jest.restoreAllMocks();
   });
 
   test('renders correctly when open', () => {
@@ -33,6 +36,7 @@ describe('ImageGenerationModal', () => {
     expect(screen.getByLabelText('Model:')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Generate' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy URL' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Download' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
   });
 
@@ -42,6 +46,7 @@ describe('ImageGenerationModal', () => {
     expect(screen.getByLabelText('Model:')).toHaveValue('dall-e');
     expect(screen.getByRole('button', { name: 'Generate' })).toBeDisabled(); // Disabled because prompt is empty
     expect(screen.getByRole('button', { name: 'Copy URL' })).toBeDisabled(); // Disabled because no image URL
+    expect(screen.getByRole('button', { name: 'Download' })).toBeDisabled(); // Disabled because no image URL
     expect(screen.getByText('Image will appear here')).toBeInTheDocument();
   });
 
@@ -87,8 +92,9 @@ describe('ImageGenerationModal', () => {
       expect(screen.getByRole('img', { name: 'Generated' })).toHaveAttribute('src', mockApiResponse.data.image_url);
     });
     expect(screen.getByRole('button', { name: 'Copy URL' })).toBeEnabled();
-    // Check if URL is displayed
-    expect(screen.getByText(mockApiResponse.data.image_url)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Download' })).toBeEnabled();
+    // Check that the URL string itself is NOT directly displayed
+    expect(screen.queryByText(mockApiResponse.data.image_url)).not.toBeInTheDocument();
   });
 
   test('displays error message on API failure', async () => {
@@ -105,6 +111,7 @@ describe('ImageGenerationModal', () => {
     });
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy URL' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Download' })).toBeDisabled();
   });
 
   test('displays API error detail from response', async () => {
@@ -171,4 +178,116 @@ describe('ImageGenerationModal', () => {
       });
   });
 
+  describe('Download button functionality', () => {
+    const setupGeneratedImage = async (imageUrl: string) => {
+      mockedApiClient.post.mockResolvedValue({
+        data: { image_url: imageUrl, prompt_used: 'test', model_used: 'dall-e', size_used: '512x512' }
+      });
+      render(<ImageGenerationModal isOpen={true} onClose={mockOnClose} />);
+      fireEvent.change(screen.getByLabelText('Prompt:'), { target: { value: 'Test prompt for download' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Generate' }));
+      await waitFor(() => expect(screen.getByRole('img', { name: 'Generated' })).toBeInTheDocument());
+    };
+
+    test('downloads an HTTP URL image', async () => {
+      const httpImageUrl = 'http://example.com/image.png';
+      await setupGeneratedImage(httpImageUrl);
+
+      const createElementSpy = jest.spyOn(document, 'createElement');
+      const anchorClickSpy = jest.fn();
+
+      // @ts-ignore
+      createElementSpy.mockImplementation(() => ({
+        href: '',
+        download: '',
+        style: { display: '' },
+        click: anchorClickSpy,
+        remove: jest.fn(), // if you use removeChild
+      }));
+
+      const appendChildSpy = jest.spyOn(document.body, 'appendChild').mockImplementation(() => ({} as Node));
+      const removeChildSpy = jest.spyOn(document.body, 'removeChild').mockImplementation(() => ({} as Node));
+
+
+      fireEvent.click(screen.getByRole('button', { name: 'Download' }));
+
+      expect(createElementSpy).toHaveBeenCalledWith('a');
+      const mockedAnchor = createElementSpy.mock.results[0].value;
+      expect(mockedAnchor.href).toBe(httpImageUrl);
+      expect(mockedAnchor.download).toBe('image.png'); // From URL parsing
+      expect(anchorClickSpy).toHaveBeenCalledTimes(1);
+      expect(appendChildSpy).toHaveBeenCalled();
+      expect(removeChildSpy).toHaveBeenCalled();
+
+      createElementSpy.mockRestore();
+      appendChildSpy.mockRestore();
+      removeChildSpy.mockRestore();
+    });
+
+    test('downloads a Data URL image (webp)', async () => {
+      const base64Content = 'dGVzdGluZ1dlYnA='; // "testingWebp"
+      const dataImageUrl = `data:image/webp;base64,${base64Content}`;
+      await setupGeneratedImage(dataImageUrl);
+
+      const mockBlob = new Blob([Buffer.from(base64Content, 'base64')], { type: 'image/webp' });
+      const mockObjectUrl = 'blob:http://localhost/mock-object-url';
+
+      const fetchSpy = jest.spyOn(window, 'fetch').mockResolvedValue(
+        new Response(mockBlob)
+      );
+      const createObjectURLSpy = jest.spyOn(window.URL, 'createObjectURL').mockReturnValue(mockObjectUrl);
+      const revokeObjectURLSpy = jest.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {});
+
+      const createElementSpy = jest.spyOn(document, 'createElement');
+      const anchorClickSpy = jest.fn();
+      // @ts-ignore
+      createElementSpy.mockImplementation(() => ({
+        href: '',
+        download: '',
+        style: { display: '' },
+        click: anchorClickSpy,
+        remove: jest.fn(),
+      }));
+      const appendChildSpy = jest.spyOn(document.body, 'appendChild').mockImplementation(() => ({} as Node));
+      const removeChildSpy = jest.spyOn(document.body, 'removeChild').mockImplementation(() => ({} as Node));
+
+      fireEvent.click(screen.getByRole('button', { name: 'Download' }));
+
+      await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith(dataImageUrl));
+      await waitFor(() => expect(createObjectURLSpy).toHaveBeenCalledWith(expect.any(Blob)));
+
+      const mockedAnchor = createElementSpy.mock.results[0].value;
+      expect(mockedAnchor.href).toBe(mockObjectUrl);
+      expect(mockedAnchor.download).toBe('generated_image.webp'); // Default name + extension from blob type
+      expect(anchorClickSpy).toHaveBeenCalledTimes(1);
+      expect(appendChildSpy).toHaveBeenCalled();
+      expect(removeChildSpy).toHaveBeenCalled();
+      expect(revokeObjectURLSpy).toHaveBeenCalledWith(mockObjectUrl);
+
+      fetchSpy.mockRestore();
+      createObjectURLSpy.mockRestore();
+      revokeObjectURLSpy.mockRestore();
+      createElementSpy.mockRestore();
+      appendChildSpy.mockRestore();
+      removeChildSpy.mockRestore();
+    });
+
+    test('handles error when creating blob from data URL', async () => {
+      const dataImageUrl = `data:image/png;base64,problematic`;
+      await setupGeneratedImage(dataImageUrl);
+
+      const fetchSpy = jest.spyOn(window, 'fetch').mockResolvedValue({
+        blob: () => Promise.reject(new Error('Blob creation failed')),
+      } as any);
+      const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+
+      fireEvent.click(screen.getByRole('button', { name: 'Download' }));
+
+      await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith(dataImageUrl));
+      await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Failed to prepare image for download.'));
+
+      fetchSpy.mockRestore();
+      alertSpy.mockRestore();
+    });
+  });
 });

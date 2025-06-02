@@ -94,6 +94,63 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
     }
   };
 
+  const handleDownloadImage = () => {
+    if (!generatedImageUrl) return;
+
+    const fileName = "generated_image"; // Basic name, can be improved
+
+    if (generatedImageUrl.startsWith('data:')) {
+      // Handle Data URL
+      try {
+        const response = fetch(generatedImageUrl); // fetch can handle data URLs
+        response.then(res => res.blob()).then(blob => {
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+
+          // Attempt to get a better file extension from MIME type
+          const mimeType = blob.type; // e.g., "image/webp"
+          let extension = ".png"; // default
+          if (mimeType) {
+            const ext = mimeType.split('/')[1];
+            if (ext) extension = "." + ext;
+          }
+          a.download = fileName + extension;
+
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        }).catch(e => {
+          console.error("Error creating blob from data URL:", e);
+          alert("Failed to prepare image for download.");
+        });
+      } catch (e) {
+          console.error("Error processing data URL for download:", e);
+          alert("Failed to download image.");
+      }
+    } else {
+      // Handle regular HTTP/HTTPS URL
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = generatedImageUrl;
+
+      // Try to get filename from URL, fallback to default
+      try {
+        const urlPath = new URL(generatedImageUrl).pathname;
+        const baseName = urlPath.substring(urlPath.lastIndexOf('/') + 1);
+        a.download = baseName || fileName + ".png"; // Use .png as a fallback extension for remote URLs
+      } catch {
+        a.download = fileName + ".png";
+      }
+
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
+
   const handleCopyToClipboard = () => {
     if (generatedImageUrl) {
       navigator.clipboard.writeText(generatedImageUrl)
@@ -159,11 +216,11 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
           )}
         </div>
 
-        {generatedImageUrl && !isLoading && !error && (
+        {/* {generatedImageUrl && !isLoading && !error && (
           <div className="image-url-display">
             <span>{generatedImageUrl}</span>
           </div>
-        )}
+        )} */}
 
         <div className="modal-actions">
            <Button onClick={handleGenerateImage} disabled={isLoading || !prompt.trim()}>
@@ -171,6 +228,9 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
           </Button>
           <Button onClick={handleCopyToClipboard} disabled={isLoading || !generatedImageUrl || !!error}>
             Copy URL
+          </Button>
+          <Button onClick={handleDownloadImage} disabled={isLoading || !generatedImageUrl || !!error}>
+            Download
           </Button>
            <Button onClick={onClose} variant="secondary" disabled={isLoading}>
             Close
