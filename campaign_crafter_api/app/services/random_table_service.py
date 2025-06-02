@@ -8,12 +8,86 @@ class TableNotFoundError(Exception):
     pass
 
 class RandomTableService:
-    def __init__(self):
-        """
-        Service to fetch random items from roll tables stored in the database.
-        CSV loading logic has been removed.
-        """
-        pass
+
+    def __init__(self, csv_file_path: Optional[Path] = None):
+        self.random_tables: Dict[str, List[Tuple[int, str]]] = {}
+        
+        if csv_file_path is None:
+            # Assuming the script is run from the project root or 'app' directory
+            # Adjust if necessary based on execution context
+            base_path = Path(__file__).resolve().parent.parent.parent.parent
+            self.csv_path = base_path / "csv" / "tables1e.csv"
+        else:
+            self.csv_path = csv_file_path
+            
+        self._load_tables()
+
+    def _load_tables(self):
+        current_table_name = None
+        current_table_items: List[Tuple[int, str]] = []
+
+        try:
+            with open(self.csv_path, 'r', encoding='utf-8') as f:
+                reader = csv.reader(f, delimiter='\t') # Assuming tab-separated
+                for row_num, row in enumerate(reader):
+                    if not row: # Skip empty rows
+                        continue
+                    
+                    # Check if this row defines a new table (e.g., "d100	Fantasy Names")
+                    if row[0].startswith('d') and len(row) > 1 and row[1].strip():
+                        if current_table_name and current_table_items:
+                            self.random_tables[current_table_name] = current_table_items
+                        
+                        current_table_name = row[1].strip()
+                        current_table_items = []
+                    elif current_table_name:
+                        # This row is an item for the current table
+                        try:
+                            # Try to parse the first column as a number (range or single value)
+                            # For simplicity, we'll treat single numbers as a range of 1.
+                            # e.g., "1" becomes 1, "1-5" becomes 5 (max of range)
+                            # The original script might have more complex range parsing.
+                            # This simplified version assumes the first value is the roll result.
+                            
+                            roll_value_str = row[0].strip()
+                            item_description = row[1].strip() if len(row) > 1 else f"Unnamed Item {row_num}"
+
+                            if not item_description: # Skip if item description is empty
+                                continue
+
+                            # Basic range handling (e.g., "1", "1-5")
+                            if '-' in roll_value_str:
+                                # For ranges, we store the item multiple times up to max of range
+                                # or handle it differently in get_random_item.
+                                # Simplified: use the lower bound as the key for now or expand.
+                                # The original script's logic for range mapping was complex.
+                                # This version will just use the number before the dash.
+                                first_val_str = roll_value_str.split('-')[0].strip()
+                                roll_value = int(first_val_str)
+
+                            else:
+                                roll_value = int(roll_value_str)
+                            
+                            current_table_items.append((roll_value, item_description))
+                        except ValueError:
+                            print(f"Warning: Skipping malformed row in table '{current_table_name}': {row}")
+                        except IndexError:
+                            print(f"Warning: Skipping row with missing data in table '{current_table_name}': {row}")
+
+
+                # Add the last table being processed
+                if current_table_name and current_table_items:
+                    self.random_tables[current_table_name] = current_table_items
+        
+        except FileNotFoundError:
+            print(f"Error: The CSV file was not found at {self.csv_path}")
+            # Depending on requirements, could raise an error or operate with empty tables
+        except Exception as e:
+            print(f"An error occurred while loading tables: {e}")
+
+
+    def get_available_table_names(self) -> List[str]:
+        return list(self.random_tables.keys())
 
     def get_available_table_names(self, db: Session) -> List[str]:
         """

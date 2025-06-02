@@ -39,3 +39,40 @@
   margin-bottom: 0; 
   flex-grow: 1; /* Allow snippet to take available space */
 }
+
+.campaign-card-header {
+  display: flex;
+  align-items: center; /* Vertically align badge and title */
+  margin-bottom: 0.75rem; /* Space below header (badge+title) */
+}
+
+.campaign-card-title { /* Renamed from campaign-card-content h3 for specificity */
+  margin-top: 0;
+  margin-bottom: 0; /* Remove bottom margin as header div has it */
+  color: var(--text-color);
+  font-size: 1.25rem; 
+}
+
+.campaign-card-badge-image {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-right: 10px; 
+  border: 1px solid var(--border-color-light, #eee); /* Add a light border */
+  flex-shrink: 0; /* Prevent image from shrinking */
+}
+
+.campaign-card-badge-placeholder {
+  width: 50px;
+  height: 50px;
+  background-color: #f0f0f0; /* Consider var(--surface-muted-color) */
+  border-radius: 4px;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ccc; /* Consider var(--text-color-placeholder) */
+  /* font-size: 24px; Example for icon */
+  flex-shrink: 0; /* Prevent placeholder from shrinking */
+}

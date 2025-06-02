@@ -194,7 +194,8 @@ async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, 
         title=campaign_payload.title,
         initial_user_prompt=campaign_payload.initial_user_prompt,
         concept=generated_concept, # Use the (awaited) LLM-generated concept
-        owner_id=owner_id
+        owner_id=owner_id,
+        badge_image_url=campaign_payload.badge_image_url # Added new field
         # toc and homebrewery_export are not set here by default, which is fine
     )
     db.add(db_campaign)
@@ -205,25 +206,20 @@ async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, 
 def get_campaign(db: Session, campaign_id: int) -> Optional[orm_models.Campaign]:
     return db.query(orm_models.Campaign).filter(orm_models.Campaign.id == campaign_id).first()
 
-def update_campaign(db: Session, campaign_id: int, campaign_update: models.CampaignBase) -> Optional[orm_models.Campaign]:
-    # Note: campaign_update is CampaignCreate model, which has title and initial_user_prompt
-    # The 'concept' field (LLM-generated) is not directly updatable via this function.
-    # A separate mechanism (e.g., a 'regenerate_concept' endpoint) would handle concept updates.
+def update_campaign(db: Session, campaign_id: int, campaign_update: models.CampaignUpdate) -> Optional[orm_models.Campaign]:
     db_campaign = get_campaign(db, campaign_id=campaign_id)
     if db_campaign:
-        # Only update fields that are part of CampaignCreate model
-        if campaign_update.title is not None: # Ensure title is part of the update model if optional
-            db_campaign.title = campaign_update.title
-        if campaign_update.initial_user_prompt is not None:
-            db_campaign.initial_user_prompt = campaign_update.initial_user_prompt
+        # Use model_dump with exclude_unset=True for partial updates
+        update_data = campaign_update.model_dump(exclude_unset=True)
         
-        # If you want to allow clearing concept (or other fields) if not provided:
-        # update_data = campaign_update.dict(exclude_unset=True) 
-        # for key, value in update_data.items():
-        #     if hasattr(db_campaign, key): # Ensure the attribute exists on the ORM model
-        #         setattr(db_campaign, key, value)
+        for key, value in update_data.items():
+            if hasattr(db_campaign, key):
+                setattr(db_campaign, key, value)
+            # else:
+                # Optionally log or handle fields in payload that are not in ORM model
+                # print(f"Warning: Field '{key}' not in Campaign ORM model.")
 
-        db.add(db_campaign)
+        db.add(db_campaign) # Add to session, SQLAlchemy tracks changes
         db.commit()
         db.refresh(db_campaign)
     return db_campaign

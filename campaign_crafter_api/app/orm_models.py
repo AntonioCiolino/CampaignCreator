@@ -26,6 +26,7 @@ class Campaign(Base):
     concept = Column(Text, nullable=True) # LLM-generated campaign overview
     toc = Column(Text, nullable=True)
     homebrewery_export = Column(Text, nullable=True)
+    badge_image_url = Column(String, nullable=True) # New field for campaign badge
     owner_id = Column(Integer, ForeignKey("users.id"))
 
     owner = relationship("User", back_populates="campaigns")

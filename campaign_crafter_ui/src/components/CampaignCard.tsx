@@ -21,7 +21,28 @@ const CampaignCard: React.FC<CampaignCardProps> = ({ campaign }) => {
         className="campaign-card-link-wrapper" // Optional: if Card needs an additional class from here
       >
         <div className="campaign-card-content"> {/* This class from CampaignCard.css styles the inner content */}
-          <h3>{campaign.title}</h3>
+          <div className="campaign-card-header">
+            {campaign.badge_image_url ? (
+              <a 
+                href={campaign.badge_image_url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="campaign-card-badge-link" // Optional: for styling
+                onClick={(e) => e.stopPropagation()} // Prevent card click when clicking badge link
+              >
+                <img 
+                  src={campaign.badge_image_url} 
+                  alt={`${campaign.title} Badge`} 
+                  className="campaign-card-badge-image"
+                />
+              </a>
+            ) : (
+              <div className="campaign-card-badge-placeholder">
+                {/* Optional: <span className="default-badge-icon">📷</span> */}
+              </div>
+            )}
+            <h3 className="campaign-card-title">{campaign.title}</h3>
+          </div>
           {campaign.concept ? 
             <p className="campaign-snippet">{conceptSnippet}</p> :
             <p className="campaign-snippet">{promptSnippet}</p>

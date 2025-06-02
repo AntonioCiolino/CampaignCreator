@@ -76,6 +76,7 @@ class TableNameListResponse(BaseModel):
 class CampaignBase(BaseModel):
     title: str
     initial_user_prompt: Optional[str] = None
+    badge_image_url: Optional[str] = None
 
 class CampaignCreate(CampaignBase):
     model_id_with_prefix_for_concept: Optional[str] = None
@@ -116,6 +117,15 @@ class UserCreate(UserBase):
     password: str
     is_active: Optional[bool] = True # Default to True
     is_superuser: Optional[bool] = False # Default to False
+
+class CampaignUpdate(BaseModel): # Assuming CampaignUpdate is for PATCH, all fields optional
+    title: Optional[str] = None
+    initial_user_prompt: Optional[str] = None
+    concept: Optional[str] = None
+    toc: Optional[str] = None
+    homebrewery_export: Optional[str] = None
+    badge_image_url: Optional[str] = None # Added badge_image_url
+
 
 class UserUpdate(BaseModel):
     email: Optional[str] = None
