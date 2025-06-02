@@ -14,7 +14,7 @@ class LLMConfig(LLMConfigBase):
     owner_id: int # foreign key to User, will be added later
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class CampaignTitlesResponse(BaseModel):
     titles: List[str]
@@ -61,7 +61,7 @@ class CampaignSection(CampaignSectionBase):
     campaign_id: int # foreign key to Campaign
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class CampaignSectionListResponse(BaseModel):
     sections: List[CampaignSection] # Reuses the existing CampaignSection model
@@ -90,7 +90,7 @@ class Campaign(CampaignBase):
     sections: List['CampaignSection'] = [] # Assuming CampaignSection is defined elsewhere or properly forward referenced
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Note: The duplicate CampaignSectionBase and CampaignSection definitions were removed.
 # The first definitions encountered in the file are kept:
@@ -143,7 +143,7 @@ class User(UserBase): # For responses
     llm_configs: List[LLMConfig] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Feature Models
 class FeatureBase(BaseModel):
@@ -161,7 +161,7 @@ class Feature(FeatureBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # RollTableItem Models
 class RollTableItemBase(BaseModel):
@@ -182,7 +182,7 @@ class RollTableItem(RollTableItemBase):
     roll_table_id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # RollTable Models
 class RollTableBase(BaseModel):
@@ -202,7 +202,7 @@ class RollTable(RollTableBase):
     items: List[RollTableItem] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class LLMTextGenerationResponse(BaseModel):
     text: str  # Placeholder field; add more fields as needed
