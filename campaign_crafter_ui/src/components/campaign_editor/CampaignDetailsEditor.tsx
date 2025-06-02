@@ -32,7 +32,7 @@ const CampaignDetailsEditor: React.FC<CampaignDetailsEditorProps> = ({
             <TextField
               label="Campaign Title"
               value={editableTitle}
-              onChange={(e) => setEditableTitle(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setEditableTitle(e.target.value)}
               fullWidth
               variant="outlined"
               sx={{ mb: 2 }}
@@ -42,7 +42,7 @@ const CampaignDetailsEditor: React.FC<CampaignDetailsEditorProps> = ({
             <TextField
               label="Initial Prompt"
               value={initialPrompt}
-              onChange={(e) => setInitialPrompt(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setInitialPrompt(e.target.value)}
               fullWidth
               multiline
               rows={4}
@@ -54,7 +54,7 @@ const CampaignDetailsEditor: React.FC<CampaignDetailsEditorProps> = ({
             <TextField
               label="Campaign Badge Image URL"
               value={campaignBadgeImage}
-              onChange={(e) => setCampaignBadgeImage(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setCampaignBadgeImage(e.target.value)}
               fullWidth
               variant="outlined"
               sx={{ mb: 2 }}

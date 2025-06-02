@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import CampaignLLMSettings from './CampaignLLMSettings';
-import { LLM } from '../../utils/llm'; // Adjust path as needed
+import { LLMModel as LLM } from '../../services/llmService'; // Corrected import path and type
 
 describe('CampaignLLMSettings', () => {
   // Clear mocks before each test

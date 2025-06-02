@@ -14,19 +14,29 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
-import DragIndicatorIcon from '@mui/icons-material/DragIndicator'; // For drag handle
-import { CampaignSection } from '../../types'; 
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator'; 
+import { CampaignSection, CampaignSectionUpdatePayload } from '../../services/campaignService'; // Corrected import
 import CampaignSectionView from '../CampaignSectionView';
-import { DragDropContext, Droppable, Draggable, DropResult, ResponderProvided } from 'react-beautiful-dnd';
+import { 
+  DragDropContext, 
+  Droppable, 
+  Draggable, 
+  DropResult, 
+  DroppableProvided, // For typing
+  DroppableStateSnapshot, // For typing
+  DraggableProvided, // For typing
+  DraggableStateSnapshot // For typing
+} from 'react-beautiful-dnd';
 
 interface CampaignSectionEditorProps {
   sections: CampaignSection[];
-  setSections: (sections: CampaignSection[]) => void; // Keep for optimistic updates if parent doesn't handle it all
+  setSections: (sections: CampaignSection[]) => void; 
   handleAddNewSection: () => void;
-  handleDeleteSection: (sectionId: string) => void;
-  handleUpdateSectionContent: (sectionId: string, newContent: string) => void;
-  handleUpdateSectionTitle: (sectionId: string, newTitle: string) => void;
-  onUpdateSectionOrder: (orderedSectionIds: number[]) => Promise<void>; // Add this prop
+  handleDeleteSection: (sectionId: number) => void; // Changed sectionId to number
+  // These direct handlers might be replaced if onSave handles all updates
+  handleUpdateSectionContent: (sectionId: number, newContent: string) => void; // Changed sectionId to number
+  handleUpdateSectionTitle: (sectionId: number, newTitle: string) => void; // Changed sectionId to number
+  onUpdateSectionOrder: (orderedSectionIds: number[]) => Promise<void>; 
 }
 
 const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
@@ -34,11 +44,11 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
   setSections,
   handleAddNewSection,
   handleDeleteSection,
-  handleUpdateSectionContent,
-  handleUpdateSectionTitle,
+  handleUpdateSectionContent, // Keep this prop
+  handleUpdateSectionTitle,   // Keep this prop for now, though CampaignSectionView might not edit title
   onUpdateSectionOrder,
 }) => {
-  const onDragEnd = (result: DropResult, provided: ResponderProvided) => {
+  const onDragEnd = (result: DropResult) => { // Removed ResponderProvided as it's not typically used in onDragEnd
     const { source, destination } = result;
 
     // Dropped outside the list
@@ -55,19 +65,27 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
     const [reorderedItem] = items.splice(source.index, 1);
     items.splice(destination.index, 0, reorderedItem);
 
-    // Update local state for immediate UI feedback (optimistic update)
-    setSections(items);
+    setSections(items); // Optimistic update
 
-    // Prepare array of IDs in the new order
-    const orderedSectionIds = items.map(item => parseInt(item.id, 10)); // Ensure IDs are numbers if they are not already
-
-    // Call the handler passed from parent to update backend
+    const orderedSectionIds = items.map(item => typeof item.id === 'string' ? parseInt(item.id, 10) : item.id);
+    
     onUpdateSectionOrder(orderedSectionIds).catch(() => {
-      // If backend update fails, revert to original order (or handle error appropriately)
-      // For simplicity, current CampaignEditorPage's handleUpdateSectionOrder handles error by reverting.
-      // Here, we could also revert if setSections was purely local and not also an optimistic update from parent.
+      // Error handling (reverting) is done in CampaignEditorPage's handleUpdateSectionOrder
     });
   };
+
+  // This function will be passed as the onSave prop to CampaignSectionView
+  const handleSectionViewSave = async (sectionId: number, updatedData: CampaignSectionUpdatePayload) => {
+    // CampaignSectionView's onSave currently only sends content
+    if (updatedData.content !== undefined) {
+      await handleUpdateSectionContent(sectionId, updatedData.content);
+    }
+    // If CampaignSectionView were to also handle title, it would be:
+    // if (updatedData.title !== undefined) {
+    //   await handleUpdateSectionTitle(sectionId, updatedData.title);
+    // }
+  };
+
 
   return (
     <Card sx={{ mb: 3 }}>
@@ -90,47 +108,52 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
         ) : (
           <DragDropContext onDragEnd={onDragEnd}>
             <Droppable droppableId="campaignSections">
-              {(provided, snapshot) => (
+              {(provided: DroppableProvided, snapshot: DroppableStateSnapshot) => (
                 <List
                   {...provided.droppableProps}
                   ref={provided.innerRef}
                   sx={{
                     background: snapshot.isDraggingOver ? 'lightblue' : 'inherit',
-                    padding: snapshot.isDraggingOver ? '8px' : '0', // Visual cue for drop area
+                    padding: snapshot.isDraggingOver ? '8px' : '0', 
                     transition: 'background-color 0.2s ease, padding 0.2s ease',
                   }}
                 >
                   {sections.map((section, index) => (
                     <Draggable key={section.id.toString()} draggableId={section.id.toString()} index={index}>
-                      {(provided, snapshot) => (
+                      {(providedDraggable: DraggableProvided, snapshotDraggable: DraggableStateSnapshot) => (
                         <Paper
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          elevation={snapshot.isDragging ? 4 : 2} // Higher elevation when dragging
+                          ref={providedDraggable.innerRef}
+                          {...providedDraggable.draggableProps}
+                          elevation={snapshotDraggable.isDragging ? 4 : 2} 
                           sx={{ 
                             mb: 2, 
                             display: 'flex', 
                             alignItems: 'center',
-                            border: snapshot.isDragging ? '2px dashed #ccc' : '2px solid transparent', // Dragging border
-                            background: snapshot.isDragging ? '#f0f0f0' : 'white', // Background change when dragging
+                            border: snapshotDraggable.isDragging ? '2px dashed #ccc' : '2px solid transparent',
+                            background: snapshotDraggable.isDragging ? '#f0f0f0' : 'white',
                           }}
                         >
-                          <Box {...provided.dragHandleProps} sx={{ pl: 1, pr: 1, cursor: 'grab', display: 'flex', alignItems: 'center' }}>
+                          <Box {...providedDraggable.dragHandleProps} sx={{ pl: 1, pr: 1, cursor: 'grab', display: 'flex', alignItems: 'center' }}>
                             <DragIndicatorIcon />
                           </Box>
-                          <Box sx={{ width: '100%', p: 1 }}> {/* Ensure content takes full width */}
+                          <Box sx={{ width: '100%', p: 1 }}>
                             <CampaignSectionView
                               section={section}
-                              onContentChange={(newContent) => handleUpdateSectionContent(section.id, newContent)}
-                              onTitleChange={(newTitle) => handleUpdateSectionTitle(section.id, newTitle)}
+                              // Removed onContentChange and onTitleChange
+                              // Add onSave prop:
+                              onSave={(sectionIdFromView, data) => handleSectionViewSave(sectionIdFromView, data)}
+                              // These props are from CampaignSectionView's own needs, not directly from CampaignSectionEditor's props
+                              isSaving={false} // TODO: Determine how to manage isSaving state for individual sections if needed
+                              saveError={null} // TODO: Determine how to manage saveError for individual sections
+                              onDelete={() => handleDeleteSection(typeof section.id === 'string' ? parseInt(section.id, 10): section.id)} // Pass onDelete through
                             />
                           </Box>
                           <IconButton
                             edge="end"
                             aria-label="delete"
-                            onClick={() => handleDeleteSection(section.id)}
+                            onClick={() => handleDeleteSection(typeof section.id === 'string' ? parseInt(section.id, 10): section.id)}
                             color="error"
-                            sx={{ ml: 1, mr:1 }} // Margin for spacing
+                            sx={{ ml: 1, mr:1 }} 
                           >
                             <DeleteIcon />
                           </IconButton>

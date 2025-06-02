@@ -11,8 +11,9 @@ import {
   InputLabel,
   Slider,
   Box,
+  SelectChangeEvent, // Import SelectChangeEvent
 } from '@mui/material';
-import { LLM } from '../../utils/llm'; // Assuming LLM type is defined here
+import { LLMModel as LLM } from '../../services/llmService'; // Corrected import path and type
 
 interface CampaignLLMSettingsProps {
   selectedLLM: LLM;
@@ -51,8 +52,9 @@ const CampaignLLMSettings: React.FC<CampaignLLMSettingsProps> = ({
                 labelId="llm-select-label"
                 value={selectedLLM.id}
                 label="Select LLM"
-                onChange={(e) => {
-                  const foundLLM = availableLLMs.find(llm => llm.id === e.target.value);
+                onChange={(e: SelectChangeEvent<string>) => { // Typed event parameter
+                  const modelId = e.target.value;
+                  const foundLLM = availableLLMs.find(llm => llm.id === modelId);
                   if (foundLLM) {
                     setSelectedLLM(foundLLM);
                   }
@@ -70,7 +72,11 @@ const CampaignLLMSettings: React.FC<CampaignLLMSettingsProps> = ({
             <Typography gutterBottom>Temperature</Typography>
             <Slider
               value={temperature}
-              onChange={(_, newValue) => setTemperature(newValue as number)}
+              onChange={(_: Event, newValue: number | number[]) => { // Typed parameters
+                if (typeof newValue === 'number') {
+                  setTemperature(newValue);
+                }
+              }}
               aria-labelledby="temperature-slider"
               valueLabelDisplay="auto"
               step={0.1}

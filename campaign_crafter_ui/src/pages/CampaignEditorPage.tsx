@@ -14,7 +14,7 @@ import './CampaignEditorPage.css';
 import CampaignDetailsEditor from '../components/campaign_editor/CampaignDetailsEditor';
 import CampaignLLMSettings from '../components/campaign_editor/CampaignLLMSettings';
 import CampaignSectionEditor from '../components/campaign_editor/CampaignSectionEditor';
-import { LLM } from '../utils/llm'; // Assuming LLM type for CampaignLLMSettings
+import { LLMModel as LLM } from '../services/llmService'; // Corrected LLM import
 import Tabs, { TabItem } from '../components/common/Tabs'; // Import Tabs component
 import { Box, Typography } from '@mui/material'; // For layout within tabs if needed
 

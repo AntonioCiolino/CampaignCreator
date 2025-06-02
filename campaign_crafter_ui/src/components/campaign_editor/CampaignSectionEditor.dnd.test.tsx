@@ -1,9 +1,12 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { DragDropContext, DropResult, ResponderProvided } from 'react-beautiful-dnd';
+// DropResult and ResponderProvided are not directly used in this test file's code,
+// but DragDropContext might be if we were testing deeper.
+// For now, keeping imports minimal if they are not strictly necessary for the test code itself.
+// import { DragDropContext, DropResult, ResponderProvided } from 'react-beautiful-dnd'; 
 import CampaignSectionEditor from './CampaignSectionEditor';
-import { CampaignSection } from '../../types';
+import { CampaignSection } from '../../services/campaignService'; // Corrected import path
 
 // Mock CampaignSectionView to simplify the test
 jest.mock('../CampaignSectionView', () => {

@@ -3,6 +3,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
+from pydantic import BaseModel # Added BaseModel import
 
 from app import external_models, crud, orm_models, models
 from app.db import get_db 
@@ -166,7 +167,7 @@ async def generate_campaign_titles_endpoint(
 # --- Campaign Section Endpoints ---
 
 # Pydantic model for the request body of section order update
-class SectionOrderUpdate(external_models.BaseModel): # Assuming BaseModel is available or use Pydantic's
+class SectionOrderUpdate(BaseModel): # Changed to use pydantic.BaseModel
     section_ids: List[int]
 
 @router.put("/{campaign_id}/sections/order", status_code=204, tags=["Campaign Sections"])
