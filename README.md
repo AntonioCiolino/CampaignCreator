@@ -1,44 +1,20 @@
-# CampaignCreator Monorepo
+# CampaignCreator
 
 ## Project Overview
 
-This repository is a monorepo for the "CampaignCreator" suite of tools, designed to assist creative writers, authors, and world-builders. The name "CampaignCreator" is used as an umbrella term for the entire project, which currently includes:
+This repository contains the "CampaignCreator" suite of tools, designed to assist creative writers, authors, and world-builders. The "CampaignCreator" project includes:
 
-*   **CampaignCreator (iOS App)**: An iOS application for document editing, story crafting, and LLM-assisted content generation. This was the original project and retains the main name.
-*   **campaign_crafter_api**: A Python-based backend API that provides LLM integrations and other services for the CampaignCreator ecosystem.
+*   **CampaignCreator (iOS App)**: The original iOS application for document editing and LLM-assisted content generation. (See section below for more details).
+*   **campaign_crafter_api**: A Python-based backend API that provides LLM integrations, data management, and other services for the CampaignCreator ecosystem. This is a core focus for future development.
 *   **campaign_crafter_ui**: A React-based web interface that will interact with the `campaign_crafter_api` to offer a web-based experience for some of the CampaignCreator functionalities.
 
 ## CampaignCreator (iOS App)
 
-### Description
+The CampaignCreator iOS application was the original project under this name, providing a document editor for story crafting with LLM assistance. While it remains part of the ecosystem, the broader "CampaignCreator" project is now expanding to focus more on the backend API (`campaign_crafter_api`) and web interface (`campaign_crafter_ui`).
 
-The CampaignCreator iOS application is a document editor tailored for crafting stories, lore, and detailed world elements. It integrates with multiple Large Language Models (LLMs) like OpenAI's GPT and Google's Gemini to provide text suggestions and assist in the creative process. Key goals include robust content import/export capabilities, with current support for Homebrewery and planned integration for World Anvil.
+The iOS app offers local document management and direct integration with LLMs (OpenAI GPT, Google Gemini) via API keys configured in a local `Secrets.swift` file. It also includes features for content import (JSON, Zip, local directories) and Homebrewery export.
 
-### Current Features (iOS App)
-
-*   **iOS Native Text Editor**: Full-featured local document management including:
-    *   Creating new text documents.
-    *   Editing with a rich text view.
-    *   Viewing and listing existing documents.
-    *   Saving changes to local device storage.
-    *   Loading documents for continued editing.
-    *   Deleting documents.
-    *   Renaming documents.
-*   **Dual LLM Integration (via local `Secrets.swift`)**:
-    *   Supports text suggestions via API from OpenAI (GPT models) and Google Gemini.
-    *   User interface (UISegmentedControl in the editor) to switch between selected LLM providers.
-    *   API key management via a local `Secrets.swift` file (specific to the iOS app).
-*   **Content Import (iOS App)**:
-    *   **JSON Files**: Import documents from structured JSON files (`[{ "title": "...", "content": "..." }]`).
-    *   **Zip Archives**: Import documents from Zip archives containing `.txt` files and/or compatible JSON files. (Note: Relies on ZipFoundation, which is conceptually included).
-    *   **Local Directories**: Recursively import `.txt` files from user-selected local directories.
-*   **Homebrewery Export (iOS App)**:
-    *   Generates Markdown output from the document content.
-    *   Preserves user-defined markers such as `\page` (for page breaks) and `\column` (for column breaks) for easy copy-pasting into Homebrewery.
-*   **Basic Theming (iOS App)**:
-    *   A subtle, parchment-and-sepia inspired custom color palette.
-    *   Custom fonts (Georgia, Helvetica Neue) for UI elements and editor.
-    *   Use of SF Symbols for navigation bar icons.
+For setup, see the "Setup for Developers" section. Future development of the iOS app will be coordinated with the overall project direction, which prioritizes the API and web components.
 
 ## campaign_crafter_api (Backend API)
 
@@ -97,23 +73,23 @@ Ensure you have Node.js and npm (or yarn) installed.
 
 ## Project Status
 
-*   **CampaignCreator (iOS App)**: Actively under development. Core editing features, local LLM integration, initial import/export, and basic theming are functional.
-*   **campaign_crafter_api**: Initial development phase. Basic Flask app setup with Poetry. LLM routing and core endpoints are being defined.
-*   **campaign_crafter_ui**: Initial development phase. Basic React app setup with Vite. Component structure and API integration are being planned.
+*   **CampaignCreator (iOS App)**: Core local editing features, direct LLM integration, import/export, and basic theming are functional. Future development will be aligned with the broader project goals, which prioritize the API and web UI.
+*   **campaign_crafter_api**: Under active development. This Python-based API is central to the project's strategy, providing LLM integration and backend services.
+*   **campaign_crafter_ui**: Under active development. This React-based web interface will be the primary client for the `campaign_crafter_api`.
 
-## Setup for Developers (Monorepo)
+## Setup for Developers
 
 1.  **Clone the Repository**:
     ```bash
     git clone <repository_url> # Replace <repository_url> with the actual URL
-    cd campaign_creator_monorepo # Or your chosen directory name
+    cd <repository_directory_name> # Replace <repository_directory_name> with your chosen directory name
     ```
 2.  **iOS App (CampaignCreator)**:
-    *   Navigate to the `CampaignCreator` sub-directory.
-    *   Open the `CampaignCreator.xcworkspace` file in Xcode. (Using `.xcworkspace` is important).
+    *   Navigate to the `CampaignCreator` directory (contains the Xcode project).
+    *   Open the `CampaignCreator.xcworkspace` file in Xcode.
     *   Recommended: Xcode 14.0 or later.
     *   **iOS Target**: Currently targets iOS 14.0.
-    *   **API Keys (iOS App)**: For LLM features in the iOS app, create `Secrets.swift` in `CampaignCreator/CampaignCreator/` with your OpenAI and Gemini keys:
+    *   **API Keys (iOS App)**: For LLM features, create `Secrets.swift` in `CampaignCreator/CampaignCreator/` (this is specific to the iOS app's direct LLM access):
         ```swift
         // CampaignCreator/CampaignCreator/Secrets.swift
         import Foundation
@@ -124,20 +100,20 @@ Ensure you have Node.js and npm (or yarn) installed.
         }
         ```
     *   **Third-Party Libraries (iOS App)**:
-        *   **ZipFoundation**: Conceptually used. If formally adding, use Swift Package Manager in Xcode.
+        *   **ZipFoundation**: Used for some import features. If formally adding or updating, use Swift Package Manager in Xcode.
 3.  **Backend API (campaign_crafter_api)**:
-    *   See `campaign_crafter_api/README.md` for detailed setup. Requires Python and Poetry.
+    *   Navigate to `campaign_crafter_api/`. See its `README.md` for detailed setup (requires Python and Poetry).
 4.  **Web UI (campaign_crafter_ui)**:
-    *   See `campaign_crafter_ui/README.md` for detailed setup. Requires Node.js and npm/yarn.
+    *   Navigate to `campaign_crafter_ui/`. See its `README.md` for detailed setup (requires Node.js and npm/yarn).
 
 ## Future Goals (Overall Project)
 
-*   **Full Feature Parity (where applicable)**: Bring relevant iOS app features to the web UI via the API.
-*   **Cross-Platform Synchronization**: Allow users to work on their projects across iOS and web.
-*   **World Anvil Export/Import**: Robust integration for both import and export with World Anvil.
-*   **Local LLM Support**: Explore options for on-device LLM integration (iOS) and self-hosted LLMs (via API) for enhanced privacy and offline capabilities.
-*   **Multi-User Collaboration**: Investigate real-time or asynchronous collaboration features across platforms.
-*   **Advanced Editor Features**: Syntax highlighting for Markdown, richer text formatting options (iOS and Web).
+*   **Expansion of Web Capabilities**: Prioritize bringing rich features to the web UI, leveraging the `campaign_crafter_api`. This includes adapting relevant concepts from the original iOS application.
+*   **Data Synchronization**: Enable users to access and manage their projects across different platforms (e.g., web and potentially mobile applications) through the central API.
+*   **World Anvil Export/Import**: Robust integration for both import and export with World Anvil, likely managed via the API and available to connected clients.
+*   **Flexible LLM Support**: Continue to support LLM integration via the API, exploring options for self-hosted models. On-device LLM capabilities for any client applications (like the existing iOS app) will be considered based on platform feasibility and project priorities.
+*   **Multi-User Collaboration**: Investigate real-time or asynchronous collaboration features, primarily focused on the web platform.
+*   **Advanced Editor Features**: Implement syntax highlighting for Markdown and richer text formatting options, with a primary focus on the web UI.
 *   **Comprehensive API Services**: Expand the `campaign_crafter_api` to support a wider range of functionalities.
 *   **Deployment & Scalability**:
     *   Containerize the API and UI for easier deployment (e.g., using Docker).

@@ -2,13 +2,7 @@
 
 ## Overview
 
-Campaign Crafter UI is the frontend web application for the CampaignCreator monorepo. It serves as the primary user interface for interacting with the services provided by the `campaign_crafter_api`. This application aims to provide a web-based experience for creative writers, authors, and world-builders, complementing the features of the CampaignCreator iOS app.
-
-## Role in the Monorepo
-
-*   **Frontend Interface**: Provides a user-friendly web interface for users to access CampaignCreator tools.
-*   **API Consumer**: Interacts with the `campaign_crafter_api` to fetch data, send user requests, and integrate LLM functionalities.
-*   **Part of a Larger Ecosystem**: Works in conjunction with the iOS application and the backend API to offer a comprehensive suite of tools.
+Campaign Crafter UI is the frontend web application for CampaignCreator. It serves as the primary user interface for interacting with the services provided by the `campaign_crafter_api`. This application aims to provide a web-based experience for creative writers, authors, and world-builders, and aims to be the primary interface for the CampaignCreator suite.
 
 ## Key Features (Planned & In Development)
 
@@ -16,7 +10,7 @@ Campaign Crafter UI is the frontend web application for the CampaignCreator mono
 *   **Project and Document Management**: Organize creative projects, documents, and related elements.
 *   **LLM Integration**: Access AI-assisted text suggestions and content generation by connecting to the `campaign_crafter_api`.
 *   **User Authentication**: Secure user accounts and project access (dependent on API implementation).
-*   **Content Synchronization**: (Future Goal) Synchronize content with the CampaignCreator iOS app via the backend.
+*   **Content Synchronization**: (Future Goal) Synchronize content across different client platforms via the backend API.
 
 ## Tech Stack
 
@@ -42,10 +36,10 @@ To build and run this project locally, you will need:
 
 ### 1. Clone the Repository
 
-If you haven't already, clone the entire monorepo:
+If you haven't already, clone the repository:
 ```bash
-git clone <repository_url> # Replace <repository_url> with the actual monorepo URL
-cd <repository_directory>/campaign_crafter_ui # Navigate to this project's directory
+git clone <repository_url> # Replace <repository_url> with the actual repository URL
+cd <path_to_campaign_crafter_ui_directory> # Navigate to this project's directory
 ```
 
 ### 2. Install Dependencies
