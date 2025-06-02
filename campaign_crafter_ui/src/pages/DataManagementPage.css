@@ -1,0 +1,155 @@
+.data-management-page {
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+.data-management-page h1 {
+  color: #333;
+  margin-bottom: 5px;
+  text-align: center;
+}
+.data-management-page > p { /* Target only the direct child p for main description */
+  color: #555;
+  margin-bottom: 25px;
+  text-align: center;
+}
+
+/* General Management Section Styling */
+.management-section {
+  margin-top: 30px;
+  padding: 20px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: #f9f9f9; /* Light gray background for sections */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.management-section h2 {
+  color: #333; /* Darker heading for section titles */
+  margin-top: 0;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #007bff; /* Blue accent border */
+  padding-bottom: 10px;
+  font-size: 1.5rem;
+}
+
+.error-message {
+  color: #D8000C; /* Red */
+  background-color: #FFD2D2; /* Light red */
+  border: 1px solid #D8000C;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.loading-message {
+  text-align: center;
+  padding: 15px;
+  color: #007bff;
+  font-style: italic;
+}
+
+.action-button {
+  padding: 8px 15px; /* Slightly more padding */
+  border: none;
+  border-radius: 5px; /* More rounded */
+  cursor: pointer;
+  font-size: 0.95rem;
+  margin-right: 8px; /* More spacing */
+  transition: all 0.2s ease-in-out; /* Smoother transition */
+  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.create-new-button {
+  background-color: #28a745; /* Green for create */
+  color: white;
+  margin-bottom: 20px; /* More space below create button */
+  display: inline-block; /* To allow margin-bottom */
+}
+.create-new-button:hover {
+  background-color: #218838; /* Darker green */
+  transform: translateY(-1px); /* Slight lift effect */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.edit-button {
+  background-color: #ffc107; /* Yellow */
+  color: #212529; /* Darker text for better contrast */
+}
+.edit-button:hover {
+  background-color: #e0a800;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.delete-button {
+  background-color: #dc3545; /* Red */
+  color: white;
+}
+.delete-button:hover {
+  background-color: #c82333;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* General Table Styling */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.05); /* Subtle shadow for tables */
+}
+
+.data-table th,
+.data-table td {
+  border: 1px solid #ddd;
+  padding: 12px; /* Increased padding */
+  text-align: left;
+  vertical-align: middle; /* Align content vertically */
+}
+
+.data-table th {
+  background-color: #007bff; /* Blue header */
+  color: white; /* White text for header */
+  font-weight: 600; /* Bolder header text */
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.9rem;
+}
+
+.data-table tr:nth-child(even) {
+  background-color: #f8f9fa; /* Lighter alternating row */
+}
+
+.data-table tr:hover {
+  background-color: #e9ecef; /* Hover effect for rows */
+}
+
+.data-table .actions-cell {
+  width: 180px; /* Wider for two buttons */
+  text-align: center;
+}
+
+.data-table .actions-cell button {
+  margin: 3px; /* Spacing around buttons in cell */
+}
+
+/* Specifics for each section if needed */
+.feature-management-section {
+  /* Add specific styles if different from general .management-section */
+}
+
+.rolltable-management-section {
+  margin-top: 40px; /* More space between sections */
+}
+
+/* No data message */
+.management-section > p {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    padding: 15px;
+}

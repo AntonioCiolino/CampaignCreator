@@ -4,7 +4,8 @@ import {
     generateTextLLM, LLMTextGenerationParams, 
     generateImage, ImageGenerationRequest, ImageGenerationResponse 
 } from '../services/llmService';
-import { getAllFeaturePrompts, FeaturePrompt } from '../services/featureService'; // New import
+import { getFeatures } from '../services/featureService'; // Updated import
+import { Feature } from '../types/featureTypes'; // Updated import
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import Input from '../components/common/Input'; // Import Input component
@@ -21,7 +22,7 @@ const GenericTextGenerator: React.FC = () => {
   const [textModelUsed, setTextModelUsed] = useState<string | null>(null);
 
   // State for Feature Prompts
-  const [features, setFeatures] = useState<FeaturePrompt[]>([]);
+  const [features, setFeatures] = useState<Feature[]>([]); // Updated type
   const [selectedFeatureName, setSelectedFeatureName] = useState<string>('');
   const [featureError, setFeatureError] = useState<string | null>(null); // Error for fetching features
   const [selectedFeatureTemplateDisplay, setSelectedFeatureTemplateDisplay] = useState<string | null>(null);
@@ -43,7 +44,7 @@ const GenericTextGenerator: React.FC = () => {
     const loadFeatures = async () => {
       try {
         setFeatureError(null);
-        const fetchedFeatures = await getAllFeaturePrompts();
+        const fetchedFeatures = await getFeatures(); // Updated function call
         setFeatures(fetchedFeatures);
       } catch (error) {
         console.error("Failed to load features:", error);

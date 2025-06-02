@@ -145,6 +145,65 @@ class User(UserBase): # For responses
     class Config:
         orm_mode = True
 
+# Feature Models
+class FeatureBase(BaseModel):
+    name: str
+    template: str
+
+class FeatureCreate(FeatureBase):
+    pass
+
+class FeatureUpdate(FeatureBase):
+    name: Optional[str] = None
+    template: Optional[str] = None
+
+class Feature(FeatureBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+
+# RollTableItem Models
+class RollTableItemBase(BaseModel):
+    min_roll: int
+    max_roll: int
+    description: str
+
+class RollTableItemCreate(RollTableItemBase):
+    pass
+
+class RollTableItemUpdate(RollTableItemBase):
+    min_roll: Optional[int] = None
+    max_roll: Optional[int] = None
+    description: Optional[str] = None
+
+class RollTableItem(RollTableItemBase):
+    id: int
+    roll_table_id: int
+
+    class Config:
+        orm_mode = True
+
+# RollTable Models
+class RollTableBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class RollTableCreate(RollTableBase):
+    items: List[RollTableItemCreate]
+
+class RollTableUpdate(RollTableBase):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    items: Optional[List[RollTableItemCreate]] = None
+
+class RollTable(RollTableBase):
+    id: int
+    items: List[RollTableItem] = []
+
+    class Config:
+        orm_mode = True
+
 class LLMTextGenerationResponse(BaseModel):
     text: str  # Placeholder field; add more fields as needed
 

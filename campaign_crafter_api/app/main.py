@@ -1,12 +1,19 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware # Added import
-from .db import init_db
+
+# sys.path manipulation for 'utils' is no longer needed here.
+# We will use a relative import for the seeding module.
+
+from .core.seeding import seed_all_csv_data # Updated import
+from .db import init_db, SessionLocal, engine, Base 
+from app import crud 
 from app.api.endpoints import campaigns as campaigns_router
 from app.api.endpoints import llm_management as llm_management_router
 from app.api.endpoints import utility_endpoints as utility_router
 from app.api.endpoints import image_generation as image_generation_router
 from app.api.endpoints import import_data as import_data_router
 from app.api.endpoints import users as users_router # New import for users
+from app.api.endpoints import data_tables # New import for data_tables
 
 app = FastAPI(title="Campaign Crafter API", version="0.1.0")
 
@@ -26,9 +33,30 @@ app.add_middleware( # Added middleware
 
 @app.on_event("startup")
 async def on_startup():
-    # This will create tables if they don't exist.
-    # In a production environment, you might use Alembic for migrations.
-    init_db()
+    print("Application startup: Initializing database...")
+    # init_db() likely calls Base.metadata.create_all(bind=engine)
+    # If not, or to be explicit, call it here:
+    Base.metadata.create_all(bind=engine)
+    print("Database tables checked/created.")
+
+    db = None
+    try:
+        db = SessionLocal()
+        # Idempotency Check: Check if features table has any data.
+        # If it's empty, assume no seeding has happened.
+        existing_features = crud.get_features(db=db, limit=1)
+        if not existing_features:
+            print("No existing features found, proceeding with data seeding...")
+            seed_all_csv_data(db) # This function now handles both features and rolltables
+            print("Data seeding process completed.")
+        else:
+            print("Data already exists (features found), skipping CSV data seeding.")
+    except Exception as e:
+        print(f"An error occurred during startup data seeding: {e}")
+    finally:
+        if db:
+            db.close()
+            print("Database session closed after startup.")
 
 # Include routers
 app.include_router(campaigns_router.router, prefix="/api/v1/campaigns", tags=["Campaigns"])
@@ -37,6 +65,8 @@ app.include_router(utility_router.router, prefix="/api/v1", tags=["Utilities"])
 app.include_router(image_generation_router.router, prefix="/api/v1", tags=["Image Generation"]) 
 app.include_router(import_data_router.router, prefix="/api/v1/import", tags=["Import"])
 app.include_router(users_router.router, prefix="/api/v1/users", tags=["Users"]) # Added users router
+app.include_router(data_tables.router_features, prefix="/api/v1/features", tags=["Features"])
+app.include_router(data_tables.router_roll_tables, prefix="/api/v1/roll_tables", tags=["Rolltables"])
 
 @app.get("/", tags=["Root"])
 async def read_root():

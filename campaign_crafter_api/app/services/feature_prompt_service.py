@@ -1,68 +1,65 @@
-import csv
-from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional, List
+from sqlalchemy.orm import Session
+from app import crud, models, orm_models # Ensure orm_models is available if crud returns them
 
 class FeaturePromptService:
-    def __init__(self, csv_file_path: Optional[Path] = None):
-        self.prompts: Dict[str, str] = {}
-        
-        if csv_file_path is None:
-            base_path = Path(__file__).resolve().parent.parent.parent.parent
-            self.csv_path = base_path / "csv" / "features.csv"
-        else:
-            self.csv_path = csv_file_path
-            
-        self._load_prompts()
+    def __init__(self):
+        """
+        Service to fetch feature prompts from the database.
+        CSV loading logic has been removed.
+        """
+        pass
 
-    def _load_prompts(self):
-        try:
-            with open(self.csv_path, 'r', encoding='utf-8') as f:
-                reader = csv.reader(f, delimiter=',') # Comma-separated
-                for row_num, row in enumerate(reader):
-                    if not row or len(row) < 2: # Skip empty or malformed rows
-                        print(f"Warning: Skipping malformed row {row_num+1} in {self.csv_path}: {row}")
-                        continue
-                    
-                    feature_name = row[0].strip()
-                    prompt_template = row[1].strip()
-                    
-                    if not feature_name or not prompt_template:
-                        print(f"Warning: Skipping row {row_num+1} with empty feature name or prompt in {self.csv_path}: {row}")
-                        continue
-                        
-                    self.prompts[feature_name] = prompt_template
-            
-            if not self.prompts:
-                print(f"Warning: No prompts were loaded from {self.csv_path}. The file might be empty or all rows were malformed.")
+    def get_prompt(self, feature_name: str, db: Session) -> Optional[str]:
+        """
+        Retrieves a feature prompt template by its name from the database.
+        """
+        db_feature = crud.get_feature_by_name(db, name=feature_name)
+        if db_feature:
+            return db_feature.template
+        return None
 
-        except FileNotFoundError:
-            print(f"Error: The prompt CSV file was not found at {self.csv_path}. Feature prompts will not be available.")
-            # In a real application, this might raise an error or use hardcoded defaults.
-        except Exception as e:
-            print(f"An error occurred while loading prompts from {self.csv_path}: {e}")
-            # Similar handling for other errors.
+    def get_all_features(self, db: Session) -> List[orm_models.Feature]:
+        """
+        Retrieves all features from the database.
+        Returns a list of ORM Feature objects.
+        """
+        return crud.get_features(db)
 
-    def get_prompt(self, feature_name: str) -> Optional[str]:
-        return self.prompts.get(feature_name)
-
-# Example usage (for testing):
-if __name__ == '__main__':
-    # This assumes the CSV is in ../../csv/features.csv relative to this file
-    # or that the script is run from project root.
-    
-    # For direct execution testing, provide the correct path if needed:
-    # test_csv_path = Path(__file__).resolve().parent.parent.parent / "csv" / "features.csv"
-    # print(f"Looking for prompt CSV at: {test_csv_path}")
-    # service = FeaturePromptService(csv_file_path=test_csv_path)
-    
-    service = FeaturePromptService() # Assumes correct path resolution
-
-    print("Loaded prompts:")
-    if service.prompts:
-        for name, template in service.prompts.items():
-            print(f"- Feature: '{name}'\n  Template: '{template}'\n")
-    else:
-        print("No prompts loaded.")
-
-    print(f"Test get_prompt('Campaign'): {service.get_prompt('Campaign')}")
-    print(f"Test get_prompt('NonExistentFeature'): {service.get_prompt('NonExistentFeature')}")
+# Example usage (for testing - requires database setup and data):
+# if __name__ == '__main__':
+#     from app.db import SessionLocal, engine, Base
+#     # Create tables if they don't exist (e.g., by running the migration script first)
+#     # Base.metadata.create_all(bind=engine)
+# 
+#     db = SessionLocal()
+#     service = FeaturePromptService()
+# 
+#     # Example: Create a feature if it doesn't exist (or use migration script)
+#     # existing_feature = crud.get_feature_by_name(db, name="Sample Feature")
+#     # if not existing_feature:
+#     #     crud.create_feature(db, models.FeatureCreate(name="Sample Feature", template="This is a {{description}}."))
+# 
+#     print("Testing get_prompt:")
+#     prompt = service.get_prompt("Sample Feature", db)
+#     if prompt:
+#         print(f"Prompt for 'Sample Feature': {prompt}")
+#     else:
+#         print("Prompt for 'Sample Feature' not found.")
+# 
+#     prompt_non_existent = service.get_prompt("NonExistentFeature", db)
+#     if prompt_non_existent:
+#         print(f"Prompt for 'NonExistentFeature': {prompt_non_existent}")
+#     else:
+#         print("Prompt for 'NonExistentFeature' not found.")
+# 
+#     print("\nTesting get_all_features:")
+#     all_features = service.get_all_features(db)
+#     if all_features:
+#         print("All features found in DB:")
+#         for feature in all_features:
+#             print(f"- ID: {feature.id}, Name: {feature.name}, Template: {feature.template}")
+#     else:
+#         print("No features found in the database.")
+# 
+#     db.close()

@@ -1,13 +1,14 @@
-import csv
 import random
-from pathlib import Path
-from typing import List, Optional, Dict, Tuple
+from typing import List, Optional
+from sqlalchemy.orm import Session
+from app import crud, models, orm_models # Assuming models might be needed for Pydantic types if returned
 
 class TableNotFoundError(Exception):
     """Custom exception for when a table is not found."""
     pass
 
 class RandomTableService:
+
     def __init__(self, csv_file_path: Optional[Path] = None):
         self.random_tables: Dict[str, List[Tuple[int, str]]] = {}
         
@@ -88,52 +89,106 @@ class RandomTableService:
     def get_available_table_names(self) -> List[str]:
         return list(self.random_tables.keys())
 
-    def get_random_item_from_table(self, table_name: str) -> Optional[str]:
-        if table_name not in self.random_tables:
+    def get_available_table_names(self, db: Session) -> List[str]:
+        """
+        Retrieves a list of all available roll table names from the database.
+        """
+        tables = crud.get_roll_tables(db, limit=1000) # Assuming a reasonable limit for table names
+        return [table.name for table in tables]
+
+    def get_random_item_from_table(self, table_name: str, db: Session) -> Optional[str]:
+        """
+        Retrieves a random item from the specified roll table using dice roll logic.
+        """
+        db_roll_table = crud.get_roll_table_by_name(db, name=table_name)
+
+        if not db_roll_table:
             raise TableNotFoundError(f"Table '{table_name}' not found.")
         
-        table_items = self.random_tables[table_name]
-        if not table_items:
-            return None # Or raise an error if table is empty
+        if not db_roll_table.items:
+            # Table exists but has no items
+            return None 
 
-        # The items are stored as (roll_value, description).
-        # For a simple random choice, we can just pick one of the descriptions.
-        # A more accurate d100 roll would require respecting the roll_values.
-        # For now, a uniform random choice from the list of descriptions.
+        min_possible_roll = 1
+        max_possible_roll = 0
+
+        # Attempt to parse max roll from table description (e.g., "d100", "d20")
+        if db_roll_table.description and db_roll_table.description.startswith('d'):
+            try:
+                max_possible_roll = int(db_roll_table.description[1:])
+            except ValueError:
+                # Description is not in "dX" format, try to infer from items
+                pass # Fall through to infer from items
         
-        # To simulate a roll, we'd do something like:
-        # roll = random.randint(1, max_roll_value_for_table) 
-        # Then find the item corresponding to that roll.
-        # This simplified version just picks a random entry from the list of items.
-        _, item_description = random.choice(table_items)
-        return item_description
+        if max_possible_roll == 0: # If not determined from description or parsing failed
+            # Infer from actual min/max values in items if not standard dX table
+            # This provides a fallback if description isn't dX or is missing
+            if not db_roll_table.items: return None # Should be caught above, but defensive
+            
+            # min_roll_in_items = min(item.min_roll for item in db_roll_table.items)
+            # This is not necessarily the dice min, dice usually start at 1.
+            # We should use the max_roll from items as the max dice roll value.
+            max_roll_in_items = max(item.max_roll for item in db_roll_table.items)
+            
+            # If description was not like "d100", use the max roll found in items.
+            # Min roll is still assumed to be 1 for typical dice.
+            max_possible_roll = max_roll_in_items
+            # min_possible_roll could be set to min_roll_in_items if non-standard dice.
+            # For now, assume standard dice start at 1.
 
-# Example usage (for testing):
-if __name__ == '__main__':
-    # This assumes the CSV is in ../../csv/tables1e.csv relative to this file
-    # or that the script is run from project root.
-    
-    # For direct execution testing, provide the correct path if needed:
-    # test_csv_path = Path(__file__).resolve().parent.parent.parent / "csv" / "tables1e.csv"
-    # print(f"Looking for CSV at: {test_csv_path}")
-    # service = RandomTableService(csv_file_path=test_csv_path)
-    
-    service = RandomTableService() # Assumes correct path resolution
+        if max_possible_roll == 0 : # Still zero, means no items or bad data.
+             # This case should ideally be prevented by data validation or if table has no items.
+            return None
 
-    print("Available tables:")
-    table_names = service.get_available_table_names()
-    for name in table_names:
-        print(f"- {name}")
 
-    if table_names:
-        selected_table = table_names[0] # Pick the first table for testing
-        print(f"\nRandom item from '{selected_table}':")
-        item = service.get_random_item_from_table(selected_table)
-        print(item)
+        # Perform the roll
+        roll = random.randint(min_possible_roll, max_possible_roll)
 
-        # Test with a non-existent table
-        try:
-            print("\nTrying to get item from 'NonExistent Table':")
-            service.get_random_item_from_table("NonExistent Table")
-        except TableNotFoundError as e:
-            print(e)
+        for item in db_roll_table.items:
+            if item.min_roll <= roll <= item.max_roll:
+                return item.description
+        
+        # This should ideally not be reached if the table items cover the full roll range.
+        # Could indicate a gap in the table data.
+        # For example, d100 table where items only go up to 90. A roll of 95 would find nothing.
+        print(f"Warning: Rolled {roll} for table '{table_name}', but no matching item found. Check table data for gaps.")
+        return None
+
+
+# Example usage (for testing - requires database setup and data):
+# if __name__ == '__main__':
+#     from app.db import SessionLocal, engine, Base
+#     # Base.metadata.create_all(bind=engine) # Ensure tables are created via migration script
+# 
+#     db = SessionLocal()
+#     service = RandomTableService()
+# 
+#     print("Available tables:")
+#     try:
+#         table_names = service.get_available_table_names(db)
+#         for name in table_names:
+#             print(f"- {name}")
+# 
+#         # Example: Test with a known table (ensure 'Magic Items' table exists from migration)
+#         # test_table_name = "Magic Items" # Or any table loaded by your migration
+#         # if test_table_name in table_names:
+#         #     print(f"\nRandom item from '{test_table_name}':")
+#         #     for _ in range(5): # Roll 5 times
+#         #         item = service.get_random_item_from_table(test_table_name, db)
+#         #         print(item if item else "No item found for roll.")
+#         # else:
+#         #     print(f"\nTest table '{test_table_name}' not found in DB, skipping item roll test.")
+# 
+#     except Exception as e:
+#         print(f"Error during testing: {e}")
+# 
+#     # Test with a non-existent table
+#     try:
+#         print("\nTrying to get item from 'NonExistent Table':")
+#         service.get_random_item_from_table("NonExistent Table", db)
+#     except TableNotFoundError as e:
+#         print(e)
+#     except Exception as e:
+#         print(f"An unexpected error occurred: {e}")
+#     finally:
+#         db.close()
