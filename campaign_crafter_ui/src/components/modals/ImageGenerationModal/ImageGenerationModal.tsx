@@ -2,8 +2,23 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../../common/Modal';
 import Input from '../../common/Input';
 import Button from '../../common/Button';
-import apiClient from '../../../services/apiClient'; // Import the apiClient
+import apiClient from '../../../services/apiClient';
 import './ImageGenerationModal.css';
+
+// Helper function to sanitize prompt for use as filename
+const sanitizeFilename = (text: string, maxLength = 50): string => {
+  if (!text) return "generated_image";
+  const sanitized = text
+    .trim() // Remove leading/trailing whitespace
+    .toLowerCase()
+    .split(/\s+/) // Split by one or more whitespace characters
+    .slice(0, 5)   // Take the first 5 words
+    .join('_')     // Join with underscores
+    .replace(/[^\w.-]/g, '') // Remove characters that are not alphanumeric, underscore, dot, or hyphen
+    .substring(0, maxLength); // Truncate to maxLength
+  // If sanitization results in an empty string (e.g., prompt was all special chars), fallback.
+  return sanitized || "generated_image";
+};
 
 interface ImageGenerationModalProps {
   isOpen: boolean;
@@ -97,7 +112,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
   const handleDownloadImage = () => {
     if (!generatedImageUrl) return;
 
-    const fileName = "generated_image"; // Basic name, can be improved
+    const baseFileName = sanitizeFilename(prompt); // Use the 'prompt' state variable
 
     if (generatedImageUrl.startsWith('data:')) {
       // Handle Data URL
@@ -116,7 +131,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
             const ext = mimeType.split('/')[1];
             if (ext) extension = "." + ext;
           }
-          a.download = fileName + extension;
+          a.download = baseFileName + extension; // Use baseFileName
 
           document.body.appendChild(a);
           a.click();
@@ -138,11 +153,22 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
 
       // Try to get filename from URL, fallback to default
       try {
-        const urlPath = new URL(generatedImageUrl).pathname;
-        const baseName = urlPath.substring(urlPath.lastIndexOf('/') + 1);
-        a.download = baseName || fileName + ".png"; // Use .png as a fallback extension for remote URLs
+        const urlObj = new URL(generatedImageUrl); // Define urlObj once
+        const urlPath = urlObj.pathname;
+        const originalFileNameFromUrl = urlPath.substring(urlPath.lastIndexOf('/') + 1);
+        let extension = ".png"; // Default extension
+        if (originalFileNameFromUrl.includes('.')) {
+          const parts = originalFileNameFromUrl.split('.');
+          const ext = parts.pop();
+          if (ext && parts.join('.').length > 0) { // Ensure there was a name before the dot and ext is not empty
+               extension = "." + ext.toLowerCase();
+          } else if (ext) { // if originalFileNameFromUrl was just ".ext" or "ext"
+               extension = "." + ext.toLowerCase();
+          }
+        }
+        a.download = baseFileName + extension;
       } catch {
-        a.download = fileName + ".png";
+        a.download = baseFileName + ".png"; // Fallback with default extension
       }
 
       document.body.appendChild(a);
@@ -226,7 +252,10 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
            <Button onClick={handleGenerateImage} disabled={isLoading || !prompt.trim()}>
             {isLoading ? 'Generating...' : 'Generate'}
           </Button>
-          <Button onClick={handleCopyToClipboard} disabled={isLoading || !generatedImageUrl || !!error}>
+          <Button
+            onClick={handleCopyToClipboard}
+            disabled={isLoading || !generatedImageUrl || !!error || generatedImageUrl.startsWith('data:')}
+          >
             Copy URL
           </Button>
           <Button onClick={handleDownloadImage} disabled={isLoading || !generatedImageUrl || !!error}>
