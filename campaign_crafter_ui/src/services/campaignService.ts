@@ -24,6 +24,7 @@ export interface Campaign {
   initial_user_prompt: string | null; 
   concept: string | null;
   toc: string | null;
+  badge_image_url?: string | null; // Added
   // owner_id: number; 
   // sections: CampaignSection[]; // Backend doesn't nest this in the Campaign Pydantic model by default
 }
@@ -37,6 +38,7 @@ export interface CampaignCreatePayload {
 export interface CampaignUpdatePayload {
   title?: string;
   initial_user_prompt?: string;
+  badge_image_url?: string | null; // Added
   // Concept & TOC are typically updated via specific generation endpoints, not direct PUT
 }
 

@@ -78,7 +78,7 @@ async def read_campaign(
 @router.put("/{campaign_id}", response_model=models.Campaign)
 async def update_existing_campaign(
     campaign_id: int,
-    campaign_update: models.CampaignBase, 
+    campaign_update: models.CampaignUpdate, # Changed from CampaignBase to CampaignUpdate
     db: Session = Depends(get_db)
 ):
     updated_campaign = crud.update_campaign(db=db, campaign_id=campaign_id, campaign_update=campaign_update)

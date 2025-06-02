@@ -23,7 +23,7 @@ const sanitizeFilename = (text: string, maxLength = 50): string => {
 interface ImageGenerationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  // onImageGenerated?: (imageUrl: string, prompt: string, model: ImageModel) => void; 
+  onImageSuccessfullyGenerated?: (imageUrl: string) => void; 
 }
 
 // Matches the backend ImageModelName enum and ImageGenerationRequest model
@@ -51,7 +51,7 @@ interface ImageGenerationResponseData {
 const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
   isOpen,
   onClose,
-  // onImageGenerated, 
+  onImageSuccessfullyGenerated, 
 }) => {
   const [prompt, setPrompt] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<ImageModel>('dall-e');
@@ -81,8 +81,8 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
       const response = await apiClient.post<ImageGenerationResponseData>('/api/v1/images/generate', payload);
       if (response.data && response.data.image_url) {
         setGeneratedImageUrl(response.data.image_url);
-        // setGenerationDetails(response.data);
-        // onImageGenerated?.(response.data.image_url, response.data.prompt_used, response.data.model_used);
+        // setGenerationDetails(response.data); // Optional: if you want to store more details
+        onImageSuccessfullyGenerated?.(response.data.image_url); // Call the callback
       } else {
         setError('Failed to generate image: Invalid response from server.');
       }
