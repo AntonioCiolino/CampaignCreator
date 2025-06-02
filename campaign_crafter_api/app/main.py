@@ -1,15 +1,12 @@
-import sys # Added import
-from pathlib import Path # Added import
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware # Added import
 
-# Add project root to sys.path to allow importing from 'utils'
-project_root = Path(__file__).resolve().parent.parent # main.py is in app/, so app/.parent is project root
-sys.path.append(str(project_root))
+# sys.path manipulation for 'utils' is no longer needed here.
+# We will use a relative import for the seeding module.
 
-from utils.migrate_csv_data import seed_all_csv_data # Added import
-from .db import init_db, SessionLocal, engine, Base # Added SessionLocal, engine, Base
-from app import crud # Added import
+from .core.seeding import seed_all_csv_data # Updated import
+from .db import init_db, SessionLocal, engine, Base 
+from app import crud 
 from app.api.endpoints import campaigns as campaigns_router
 from app.api.endpoints import llm_management as llm_management_router
 from app.api.endpoints import utility_endpoints as utility_router
