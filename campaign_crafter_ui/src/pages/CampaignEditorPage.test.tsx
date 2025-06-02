@@ -10,15 +10,30 @@ import * as llmService from '../services/llmService'; // For getAvailableLLMs
 jest.mock('../services/campaignService');
 jest.mock('../services/llmService');
 
+// Mock ImageGenerationModal
+jest.mock('../components/modals/ImageGenerationModal/ImageGenerationModal', () => ({
+  __esModule: true,
+  default: jest.fn(({ isOpen, onClose, onImageSuccessfullyGenerated }) => {
+    if (!isOpen) return null;
+    return (
+      <div data-testid="mock-image-gen-modal">
+        Mock Image Generation Modal
+        <button onClick={() => onImageSuccessfullyGenerated?.('http://example.com/mock-generated-badge.png')}>
+          Simulate Generate Badge
+        </button>
+        <button onClick={onClose}>Close Mock Modal</button>
+      </div>
+    );
+  }),
+}));
+
 const mockGetCampaignById = campaignService.getCampaignById as jest.Mock;
 const mockGetCampaignSections = campaignService.getCampaignSections as jest.Mock;
 const mockUpdateCampaign = campaignService.updateCampaign as jest.Mock;
 const mockGetAvailableLLMs = llmService.getAvailableLLMs as jest.Mock;
 
-// Mock window.prompt and window.confirm
-const mockPrompt = jest.fn();
+// Mock window.confirm (window.prompt mock is no longer needed)
 const mockConfirm = jest.fn();
-global.prompt = mockPrompt;
 global.confirm = mockConfirm;
 
 const mockCampaignWithBadge = {
@@ -71,7 +86,7 @@ describe('CampaignEditorPage - Badge Image Functionality', () => {
     mockGetCampaignSections.mockReset();
     mockUpdateCampaign.mockReset();
     mockGetAvailableLLMs.mockReset();
-    mockPrompt.mockReset();
+    // mockPrompt.mockReset(); // No longer needed
     mockConfirm.mockReset();
 
     // Default mocks for services called on page load
@@ -110,54 +125,70 @@ describe('CampaignEditorPage - Badge Image Functionality', () => {
     expect(screen.queryByRole('button', { name: 'Remove Badge' })).not.toBeInTheDocument();
   });
 
-  test('Set Badge button updates badge_image_url via prompt', async () => {
+  test('Set Badge button opens modal and updates badge_image_url on generation', async () => {
     mockGetCampaignById.mockResolvedValue(mockCampaignWithoutBadge);
-    const newImageUrl = 'http://example.com/newbadge.png';
-    mockPrompt.mockReturnValue(newImageUrl); // User enters this URL in prompt
-    mockUpdateCampaign.mockResolvedValue({ ...mockCampaignWithoutBadge, badge_image_url: newImageUrl });
-
+    const newImageUrlFromModal = 'http://example.com/mock-generated-badge.png';
+    mockUpdateCampaign.mockResolvedValue({ 
+      ...mockCampaignWithoutBadge, 
+      badge_image_url: newImageUrlFromModal 
+    });
+  
     renderPage(mockCampaignWithoutBadge.id);
-    await waitFor(() => expect(screen.getByText('Campaign Badge')).toBeInTheDocument());
-
-    const setBadgeButton = screen.getByRole('button', { name: 'Set Badge' });
+  
+    const setBadgeButton = await screen.findByRole('button', { name: 'Set Badge' });
+    expect(screen.queryByTestId('mock-image-gen-modal')).not.toBeInTheDocument();
+  
     fireEvent.click(setBadgeButton);
-
-    expect(mockPrompt).toHaveBeenCalledTimes(1);
+  
+    const mockModal = await screen.findByTestId('mock-image-gen-modal');
+    expect(mockModal).toBeInTheDocument();
+  
+    const simulateGenerationButtonInModal = screen.getByRole('button', { name: 'Simulate Generate Badge' });
+    fireEvent.click(simulateGenerationButtonInModal);
+  
     await waitFor(() => expect(mockUpdateCampaign).toHaveBeenCalledWith(
       mockCampaignWithoutBadge.id,
-      { badge_image_url: newImageUrl }
+      { badge_image_url: newImageUrlFromModal }
     ));
     
-    // Check if UI updates (image appears, buttons change)
+    await waitFor(() => expect(screen.queryByTestId('mock-image-gen-modal')).not.toBeInTheDocument());
+  
     await waitFor(() => {
       const badgeImage = screen.getByRole('img', { name: /badge/i });
-      expect(badgeImage).toHaveAttribute('src', newImageUrl);
+      expect(badgeImage).toHaveAttribute('src', newImageUrlFromModal);
       expect(screen.getByRole('button', { name: 'Change Badge' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Remove Badge' })).toBeInTheDocument();
     });
   });
 
-  test('Change Badge button updates badge_image_url via prompt', async () => {
+  test('Change Badge button opens modal and updates badge_image_url on generation', async () => {
     mockGetCampaignById.mockResolvedValue(mockCampaignWithBadge);
-    const changedImageUrl = 'http://example.com/changedbadge.png';
-    mockPrompt.mockReturnValue(changedImageUrl);
-    mockUpdateCampaign.mockResolvedValue({ ...mockCampaignWithBadge, badge_image_url: changedImageUrl });
+    const newImageUrlFromModal = 'http://example.com/new-mock-badge.png';
+    mockUpdateCampaign.mockResolvedValue({ 
+      ...mockCampaignWithBadge, 
+      badge_image_url: newImageUrlFromModal 
+    });
 
     renderPage(mockCampaignWithBadge.id);
-    await waitFor(() => expect(screen.getByText('Campaign Badge')).toBeInTheDocument());
 
-    const changeBadgeButton = screen.getByRole('button', { name: 'Change Badge' });
+    const changeBadgeButton = await screen.findByRole('button', { name: 'Change Badge' });
     fireEvent.click(changeBadgeButton);
 
-    expect(mockPrompt).toHaveBeenCalledTimes(1);
+    const mockModal = await screen.findByTestId('mock-image-gen-modal');
+    expect(mockModal).toBeInTheDocument();
+
+    const simulateGenerationButtonInModal = screen.getByRole('button', { name: 'Simulate Generate Badge' });
+    fireEvent.click(simulateGenerationButtonInModal);
+    
     await waitFor(() => expect(mockUpdateCampaign).toHaveBeenCalledWith(
       mockCampaignWithBadge.id,
-      { badge_image_url: changedImageUrl }
+      { badge_image_url: newImageUrlFromModal }
     ));
+
+    await waitFor(() => expect(screen.queryByTestId('mock-image-gen-modal')).not.toBeInTheDocument());
 
     await waitFor(() => {
       const badgeImage = screen.getByRole('img', { name: /badge/i });
-      expect(badgeImage).toHaveAttribute('src', changedImageUrl);
+      expect(badgeImage).toHaveAttribute('src', newImageUrlFromModal);
     });
   });
 

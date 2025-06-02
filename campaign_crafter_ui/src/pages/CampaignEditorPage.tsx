@@ -2,8 +2,9 @@ import React, { useState, useEffect, FormEvent, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import LLMSelectionDialog from '../components/modals/LLMSelectionDialog';
+import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal'; // Added
 import * as campaignService from '../services/campaignService';
-import { getAvailableLLMs, LLMModel } from '../services/llmService'; // Corrected import
+import { getAvailableLLMs, LLMModel } from '../services/llmService'; 
 import CampaignSectionView from '../components/CampaignSectionView';
 import ReactMarkdown from 'react-markdown';
 import './CampaignEditorPage.css'; 
@@ -58,6 +59,7 @@ const CampaignEditorPage: React.FC = () => {
   const [isAddSectionCollapsed, setIsAddSectionCollapsed] = useState<boolean>(true);
   const [isLLMDialogOpen, setIsLLMDialogOpen] = useState<boolean>(false);
   const [isCampaignDetailsCollapsed, setIsCampaignDetailsCollapsed] = useState<boolean>(true); // Default to true
+  const [isBadgeImageModalOpen, setIsBadgeImageModalOpen] = useState(false); // Added for modal
 
   // State for badge image updates
   const [badgeUpdateLoading, setBadgeUpdateLoading] = useState(false);
@@ -180,6 +182,47 @@ const CampaignEditorPage: React.FC = () => {
       setSaveError('Failed to save changes.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleBadgeImageGenerated = async (imageUrl: string) => {
+    if (!campaign) {
+      setBadgeUpdateError("No active campaign to update."); // Or handle more gracefully
+      return;
+    }
+
+    if (!imageUrl || typeof imageUrl !== 'string') {
+      setBadgeUpdateError("Invalid image URL received from generation modal.");
+      setIsBadgeImageModalOpen(false); // Close modal even if URL is bad
+      return;
+    }
+
+    setBadgeUpdateLoading(true);
+    setBadgeUpdateError(null);
+    setIsBadgeImageModalOpen(false); // Close modal immediately
+
+    try {
+      const updatedCampaignData = { badge_image_url: imageUrl };
+      const updatedCampaign = await campaignService.updateCampaign(campaign.id, updatedCampaignData);
+      
+      if (typeof setCampaign === 'function') { // setCampaign should be available from useState [campaign, setCampaign]
+          setCampaign(updatedCampaign);
+          // Optionally, show a success message for badge update
+          // setSaveSuccess("Campaign badge updated successfully!");
+          // setTimeout(() => setSaveSuccess(null), 3000);
+      } else {
+          console.warn("setCampaign function is not available to update local state.");
+          // Consider a page reload or other mechanism if direct state update isn't possible
+          // For now, rely on next full fetch or manual refresh by user.
+      }
+
+    } catch (error: any) {
+      console.error("Failed to update badge image URL from modal:", error);
+      const detail = error.response?.data?.detail || error.message || "Failed to update badge image from modal.";
+      setBadgeUpdateError(detail);
+      alert(`Error setting badge: ${detail}`); // Alert for immediate user feedback
+    } finally {
+      setBadgeUpdateLoading(false);
     }
   };
 
@@ -321,41 +364,13 @@ const CampaignEditorPage: React.FC = () => {
     }
   };
 
-  const handleSetOrChangeBadgeImage = async () => {
+  const handleSetOrChangeBadgeImage = async () => { // Still async if future ops need it, but simple for now
     if (!campaign) return;
-    const imageUrl = window.prompt("Enter the image URL for the campaign badge:", campaign.badge_image_url || "");
-
-    if (imageUrl === null) return; // User cancelled prompt
-
-    // Basic validation (optional, but good practice)
-    if (imageUrl.trim() !== "" && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) { // Allow data URLs too
-       alert("Please enter a valid HTTP/HTTPS URL or a Data URL.");
-       return;
-    }
-    
-    setBadgeUpdateLoading(true);
-    setBadgeUpdateError(null);
-    try {
-      const updatedCampaignData = { badge_image_url: imageUrl.trim() === "" ? null : imageUrl.trim() };
-      
-      const updatedCampaign = await campaignService.updateCampaign(campaign.id, updatedCampaignData);
-      
-      if (typeof setCampaign === 'function') { 
-          setCampaign(updatedCampaign);
-      } else {
-          console.log("Campaign badge URL updated. Parent component should re-fetch or update state.");
-      }
-
-    } catch (error: any) {
-      console.error("Failed to update badge image URL:", error);
-      const detail = error.response?.data?.detail || error.message || "Failed to update badge image.";
-      setBadgeUpdateError(detail);
-      alert(`Error: ${detail}`);
-    } finally {
-      setBadgeUpdateLoading(false);
-    }
+    // Logic to get URL and update campaign will move to onImageSuccessfullyGenerated
+    setIsBadgeImageModalOpen(true); 
   };
 
+  // handleRemoveBadgeImage remains as is for now, using window.confirm
   const handleRemoveBadgeImage = async () => {
     if (!campaign || !campaign.badge_image_url) return;
 
@@ -577,6 +592,12 @@ const CampaignEditorPage: React.FC = () => {
           </>
         )}
       </div>
+
+      <ImageGenerationModal
+        isOpen={isBadgeImageModalOpen}
+        onClose={() => setIsBadgeImageModalOpen(false)}
+        onImageSuccessfullyGenerated={handleBadgeImageGenerated} // Pass the new handler
+      />
     </div>
   );
 };
