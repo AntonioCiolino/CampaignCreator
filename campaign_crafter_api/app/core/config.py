@@ -18,6 +18,18 @@ class Settings(BaseSettings):
     OPENAI_DALLE_DEFAULT_IMAGE_SIZE: str = "1024x1024"
     OPENAI_DALLE_DEFAULT_IMAGE_QUALITY: str = "standard"
 
+    # Image Storage Settings
+    IMAGE_STORAGE_PATH: str = "/app/static/generated_images/"
+    IMAGE_BASE_URL: str = "/static/generated_images/" # URL path to access stored images
+
+    # Stable Diffusion Image Generation Settings
+    STABLE_DIFFUSION_API_KEY: Optional[str] = "YOUR_STABLE_DIFFUSION_API_KEY_HERE"
+    STABLE_DIFFUSION_API_URL: Optional[str] = "YOUR_STABLE_DIFFUSION_API_URL_HERE" # e.g. http://localhost:7860/sdapi/v1/txt2img for Auto1111
+    STABLE_DIFFUSION_DEFAULT_MODEL: Optional[str] = "stable-diffusion-v1-5" # Model checkpoint name if API supports it
+    STABLE_DIFFUSION_DEFAULT_IMAGE_SIZE: str = "512x512"
+    STABLE_DIFFUSION_DEFAULT_STEPS: int = 30
+    STABLE_DIFFUSION_DEFAULT_CFG_SCALE: float = 7.5
+
     # Generic Local LLM Provider (OpenAI-Compatible API)
     LOCAL_LLM_PROVIDER_NAME: str = "local_llm" # Used as a key in the LLM factory
     LOCAL_LLM_API_BASE_URL: Optional[str] = None # e.g., "http://localhost:11434/v1" for Ollama's OpenAI compat endpoint
