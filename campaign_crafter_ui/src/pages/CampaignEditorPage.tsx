@@ -364,13 +364,44 @@ const CampaignEditorPage: React.FC = () => {
     }
   };
 
-  const handleSetOrChangeBadgeImage = async () => { // Still async if future ops need it, but simple for now
+  const handleOpenBadgeImageModal = async () => { // Renamed from handleSetOrChangeBadgeImage
     if (!campaign) return;
-    // Logic to get URL and update campaign will move to onImageSuccessfullyGenerated
     setIsBadgeImageModalOpen(true); 
   };
 
-  // handleRemoveBadgeImage remains as is for now, using window.confirm
+  const handleEditBadgeImageUrl = async () => {
+    if (!campaign) return;
+    const currentUrl = campaign.badge_image_url || "";
+    const imageUrl = window.prompt("Enter or edit the image URL for the campaign badge:", currentUrl);
+
+    if (imageUrl === null) return; // User cancelled prompt
+
+    if (imageUrl.trim() !== "" && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
+       alert("Please enter a valid HTTP/HTTPS URL or a Data URL.");
+       return;
+    }
+    
+    setBadgeUpdateLoading(true);
+    setBadgeUpdateError(null);
+    try {
+      const updatedCampaignData = { badge_image_url: imageUrl.trim() === "" ? null : imageUrl.trim() };
+      const updatedCampaign = await campaignService.updateCampaign(campaign.id, updatedCampaignData);
+      
+      if (typeof setCampaign === 'function') { 
+          setCampaign(updatedCampaign);
+      } else {
+          console.warn("setCampaign function is not available to update local state.");
+      }
+    } catch (error: any) {
+      console.error("Failed to update badge image URL via edit:", error);
+      const detail = error.response?.data?.detail || error.message || "Failed to update badge image URL.";
+      setBadgeUpdateError(detail);
+      alert(`Error: ${detail}`);
+    } finally {
+      setBadgeUpdateLoading(false);
+    }
+  };
+
   const handleRemoveBadgeImage = async () => {
     if (!campaign || !campaign.badge_image_url) return;
 
@@ -433,17 +464,27 @@ const CampaignEditorPage: React.FC = () => {
             <div className="campaign-badge-area editor-section">
               <h3>Campaign Badge</h3>
               {campaign.badge_image_url ? (
-                <img 
-                  src={campaign.badge_image_url} 
-                  alt={`${campaign.title} Badge`} 
-                  className="campaign-badge-image"
-                />
+                <a 
+                  href={campaign.badge_image_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="campaign-badge-link"
+                >
+                  <img 
+                    src={campaign.badge_image_url} 
+                    alt={`${campaign.title} Badge`} 
+                    className="campaign-badge-image"
+                  />
+                </a>
               ) : (
                 <p className="campaign-badge-placeholder">No badge image set.</p>
               )}
               <div className="campaign-badge-actions">
-                <button onClick={handleSetOrChangeBadgeImage} disabled={badgeUpdateLoading} className="action-button">
-                  {badgeUpdateLoading ? "Saving..." : (campaign?.badge_image_url ? "Change Badge" : "Set Badge")}
+                <button onClick={handleOpenBadgeImageModal} disabled={badgeUpdateLoading} className="action-button">
+                  {badgeUpdateLoading ? "Processing..." : "Generate Badge"}
+                </button>
+                <button onClick={handleEditBadgeImageUrl} disabled={badgeUpdateLoading} className="action-button secondary-action-button">
+                  {badgeUpdateLoading ? "Processing..." : "Edit URL"}
                 </button>
                 {campaign?.badge_image_url && (
                   <button 

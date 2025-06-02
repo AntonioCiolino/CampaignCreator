@@ -32,8 +32,10 @@ const mockGetCampaignSections = campaignService.getCampaignSections as jest.Mock
 const mockUpdateCampaign = campaignService.updateCampaign as jest.Mock;
 const mockGetAvailableLLMs = llmService.getAvailableLLMs as jest.Mock;
 
-// Mock window.confirm (window.prompt mock is no longer needed)
+// Mock window.prompt and window.confirm
+const mockPrompt = jest.fn(); // Re-adding for 'Edit URL'
 const mockConfirm = jest.fn();
+global.prompt = mockPrompt;
 global.confirm = mockConfirm;
 
 const mockCampaignWithBadge = {
@@ -86,7 +88,7 @@ describe('CampaignEditorPage - Badge Image Functionality', () => {
     mockGetCampaignSections.mockReset();
     mockUpdateCampaign.mockReset();
     mockGetAvailableLLMs.mockReset();
-    // mockPrompt.mockReset(); // No longer needed
+    mockPrompt.mockReset(); // Re-added
     mockConfirm.mockReset();
 
     // Default mocks for services called on page load
@@ -105,8 +107,13 @@ describe('CampaignEditorPage - Badge Image Functionality', () => {
     const badgeImage = screen.getByRole('img', { name: /badge/i });
     expect(badgeImage).toBeInTheDocument();
     expect(badgeImage).toHaveAttribute('src', mockCampaignWithBadge.badge_image_url);
+
+    const parentLink = badgeImage.closest('a');
+    expect(parentLink).toHaveAttribute('href', mockCampaignWithBadge.badge_image_url);
+    expect(parentLink).toHaveAttribute('target', '_blank');
     
-    expect(screen.getByRole('button', { name: 'Change Badge' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Generate Badge' })).toBeInTheDocument(); // Text changed
+    expect(screen.getByRole('button', { name: 'Edit URL' })).toBeInTheDocument(); // New button
     expect(screen.getByRole('button', { name: 'Remove Badge' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Remove Badge' })).toBeEnabled();
   });
@@ -121,11 +128,12 @@ describe('CampaignEditorPage - Badge Image Functionality', () => {
     expect(screen.getByText('No badge image set.')).toBeInTheDocument();
     expect(screen.queryByRole('img', { name: /badge/i })).not.toBeInTheDocument();
     
-    expect(screen.getByRole('button', { name: 'Set Badge' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Generate Badge' })).toBeInTheDocument(); // Text changed
+    expect(screen.getByRole('button', { name: 'Edit URL' })).toBeInTheDocument(); // New button
     expect(screen.queryByRole('button', { name: 'Remove Badge' })).not.toBeInTheDocument();
   });
 
-  test('Set Badge button opens modal and updates badge_image_url on generation', async () => {
+  test('Generate Badge button (previously Set Badge) opens modal and updates badge_image_url on generation', async () => {
     mockGetCampaignById.mockResolvedValue(mockCampaignWithoutBadge);
     const newImageUrlFromModal = 'http://example.com/mock-generated-badge.png';
     mockUpdateCampaign.mockResolvedValue({ 
@@ -135,10 +143,10 @@ describe('CampaignEditorPage - Badge Image Functionality', () => {
   
     renderPage(mockCampaignWithoutBadge.id);
   
-    const setBadgeButton = await screen.findByRole('button', { name: 'Set Badge' });
+    const generateBadgeButton = await screen.findByRole('button', { name: 'Generate Badge' });
     expect(screen.queryByTestId('mock-image-gen-modal')).not.toBeInTheDocument();
   
-    fireEvent.click(setBadgeButton);
+    fireEvent.click(generateBadgeButton);
   
     const mockModal = await screen.findByTestId('mock-image-gen-modal');
     expect(mockModal).toBeInTheDocument();
@@ -156,11 +164,13 @@ describe('CampaignEditorPage - Badge Image Functionality', () => {
     await waitFor(() => {
       const badgeImage = screen.getByRole('img', { name: /badge/i });
       expect(badgeImage).toHaveAttribute('src', newImageUrlFromModal);
-      expect(screen.getByRole('button', { name: 'Change Badge' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Generate Badge' })).toBeInTheDocument(); // Text should remain "Generate Badge"
     });
   });
 
-  test('Change Badge button opens modal and updates badge_image_url on generation', async () => {
+  // This test is for the "Generate Badge" button when a badge already exists.
+  // It effectively replaces the old "Change Badge" test's primary function of opening the modal.
+  test('Generate Badge button (when badge exists) opens modal and updates badge_image_url on generation', async () => {
     mockGetCampaignById.mockResolvedValue(mockCampaignWithBadge);
     const newImageUrlFromModal = 'http://example.com/new-mock-badge.png';
     mockUpdateCampaign.mockResolvedValue({ 
@@ -170,8 +180,8 @@ describe('CampaignEditorPage - Badge Image Functionality', () => {
 
     renderPage(mockCampaignWithBadge.id);
 
-    const changeBadgeButton = await screen.findByRole('button', { name: 'Change Badge' });
-    fireEvent.click(changeBadgeButton);
+    const generateBadgeButton = await screen.findByRole('button', { name: 'Generate Badge' });
+    fireEvent.click(generateBadgeButton);
 
     const mockModal = await screen.findByTestId('mock-image-gen-modal');
     expect(mockModal).toBeInTheDocument();
@@ -235,4 +245,69 @@ describe('CampaignEditorPage - Badge Image Functionality', () => {
     expect(badgeImage).toHaveAttribute('src', mockCampaignWithBadge.badge_image_url);
   });
 
+  describe('Edit URL button functionality', () => {
+    test('is visible and updates badge_image_url via prompt', async () => {
+      mockGetCampaignById.mockResolvedValue(mockCampaignWithBadge); // Start with an existing badge
+      const editedImageUrl = 'http://example.com/edited-badge.jpg';
+      mockPrompt.mockReturnValue(editedImageUrl); // User enters this URL in prompt
+      mockUpdateCampaign.mockResolvedValue({ ...mockCampaignWithBadge, badge_image_url: editedImageUrl });
+  
+      renderPage(mockCampaignWithBadge.id);
+      const editUrlButton = await screen.findByRole('button', { name: 'Edit URL' });
+      expect(editUrlButton).toBeInTheDocument();
+  
+      fireEvent.click(editUrlButton);
+  
+      expect(mockPrompt).toHaveBeenCalledWith(
+        "Enter or edit the image URL for the campaign badge:", 
+        mockCampaignWithBadge.badge_image_url // Check if current URL is default in prompt
+      );
+      await waitFor(() => expect(mockUpdateCampaign).toHaveBeenCalledWith(
+        mockCampaignWithBadge.id,
+        { badge_image_url: editedImageUrl }
+      ));
+      
+      await waitFor(() => {
+        const badgeImage = screen.getByRole('img', { name: /badge/i });
+        expect(badgeImage).toHaveAttribute('src', editedImageUrl);
+      });
+    });
+
+    test('Edit URL button sets URL to null if prompt returns empty string', async () => {
+      mockGetCampaignById.mockResolvedValue(mockCampaignWithBadge);
+      mockPrompt.mockReturnValue(""); // User clears the URL in prompt
+      mockUpdateCampaign.mockResolvedValue({ ...mockCampaignWithBadge, badge_image_url: null });
+
+      renderPage(mockCampaignWithBadge.id);
+      const editUrlButton = await screen.findByRole('button', { name: 'Edit URL' });
+      fireEvent.click(editUrlButton);
+
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(mockUpdateCampaign).toHaveBeenCalledWith(
+        mockCampaignWithBadge.id,
+        { badge_image_url: null }
+      ));
+
+      await waitFor(() => {
+        expect(screen.getByText('No badge image set.')).toBeInTheDocument();
+        expect(screen.queryByRole('img', { name: /badge/i })).not.toBeInTheDocument();
+      });
+    });
+
+    test('Edit URL button does nothing if prompt is cancelled', async () => {
+      mockGetCampaignById.mockResolvedValue(mockCampaignWithBadge);
+      mockPrompt.mockReturnValue(null); // User cancels prompt
+
+      renderPage(mockCampaignWithBadge.id);
+      const editUrlButton = await screen.findByRole('button', { name: 'Edit URL' });
+      fireEvent.click(editUrlButton);
+
+      expect(mockPrompt).toHaveBeenCalledTimes(1);
+      expect(mockUpdateCampaign).not.toHaveBeenCalled();
+      
+      // Image should still be the original one
+      const badgeImage = screen.getByRole('img', { name: /badge/i });
+      expect(badgeImage).toHaveAttribute('src', mockCampaignWithBadge.badge_image_url);
+    });
+  });
 });
