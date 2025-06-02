@@ -21,7 +21,20 @@ const CampaignCard: React.FC<CampaignCardProps> = ({ campaign }) => {
         className="campaign-card-link-wrapper" // Optional: if Card needs an additional class from here
       >
         <div className="campaign-card-content"> {/* This class from CampaignCard.css styles the inner content */}
-          <h3>{campaign.title}</h3>
+          <div className="campaign-card-header">
+            {campaign.badge_image_url ? (
+              <img 
+                src={campaign.badge_image_url} 
+                alt={`${campaign.title} Badge`} 
+                className="campaign-card-badge-image"
+              />
+            ) : (
+              <div className="campaign-card-badge-placeholder">
+                {/* Optional: <span className="default-badge-icon">📷</span> */}
+              </div>
+            )}
+            <h3 className="campaign-card-title">{campaign.title}</h3>
+          </div>
           {campaign.concept ? 
             <p className="campaign-snippet">{conceptSnippet}</p> :
             <p className="campaign-snippet">{promptSnippet}</p>

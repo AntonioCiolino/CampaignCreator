@@ -142,3 +142,72 @@
 .llm-controls .form-group label {
   margin-bottom: 0.25rem;
 }
+
+/* Campaign Badge Styles */
+.campaign-badge-area {
+  margin-top: 1rem; /* Add some space above the badge area */
+  margin-bottom: 20px; /* Original margin-bottom */
+  padding: 10px;
+  border: 1px solid #eee; /* Consider var(--border-color) */
+  border-radius: 4px;
+  /* background-color: var(--surface-color); /* Consistent with other sections if not already nested */
+}
+
+.campaign-badge-area h3 { /* Style for the "Campaign Badge" title */
+  font-size: 1.2rem; /* Slightly smaller than section titles */
+  color: var(--text-color);
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color-light); /* Lighter border for sub-sections */
+}
+
+.campaign-badge-image {
+  max-width: 150px; 
+  max-height: 150px;
+  display: block;
+  border: 1px solid #ddd; /* Consider var(--border-color-light) */
+  margin-top: 5px;
+  border-radius: 4px; /* Rounded corners for the image */
+}
+
+.campaign-badge-placeholder {
+  font-style: italic;
+  color: #777; /* Consider var(--text-color-muted) or similar */
+  margin-top: 5px;
+  padding: 10px; /* Add some padding if it's just text */
+  background-color: var(--background-color); /* Slightly different background for placeholder */
+  border: 1px dashed #ddd; /* Dashed border for placeholder */
+  border-radius: 4px;
+  text-align: center;
+}
+
+.campaign-badge-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px; /* Spacing between buttons */
+}
+
+/* Using existing .action-button class if suitable, or define new ones */
+/* .campaign-badge-actions .action-button { ... } */
+
+.campaign-badge-actions .remove-button {
+  background-color: var(--danger-color, #dc3545); /* Example danger color */
+  color: white;
+  border-color: var(--danger-color-dark, #bd2130);
+}
+
+.campaign-badge-actions .remove-button:hover {
+  background-color: var(--danger-color-dark, #c82333);
+  border-color: var(--danger-color-darker, #bd2130);
+}
+
+/* Ensure feedback messages are styled, if not already globally */
+.feedback-message { 
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+.error-message.feedback-message { /* Specific for badge update errors */
+  color: var(--danger-color, #dc3545);
+}
+/* Success message styling can be added if needed */

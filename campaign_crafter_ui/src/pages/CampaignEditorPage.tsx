@@ -59,6 +59,10 @@ const CampaignEditorPage: React.FC = () => {
   const [isLLMDialogOpen, setIsLLMDialogOpen] = useState<boolean>(false);
   const [isCampaignDetailsCollapsed, setIsCampaignDetailsCollapsed] = useState<boolean>(true); // Default to true
 
+  // State for badge image updates
+  const [badgeUpdateLoading, setBadgeUpdateLoading] = useState(false);
+  const [badgeUpdateError, setBadgeUpdateError] = useState<string | null>(null);
+
   const processedToc = useMemo(() => {
     if (!campaign?.toc || !sections?.length) {
       return campaign?.toc || '';
@@ -317,6 +321,69 @@ const CampaignEditorPage: React.FC = () => {
     }
   };
 
+  const handleSetOrChangeBadgeImage = async () => {
+    if (!campaign) return;
+    const imageUrl = window.prompt("Enter the image URL for the campaign badge:", campaign.badge_image_url || "");
+
+    if (imageUrl === null) return; // User cancelled prompt
+
+    // Basic validation (optional, but good practice)
+    if (imageUrl.trim() !== "" && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) { // Allow data URLs too
+       alert("Please enter a valid HTTP/HTTPS URL or a Data URL.");
+       return;
+    }
+    
+    setBadgeUpdateLoading(true);
+    setBadgeUpdateError(null);
+    try {
+      const updatedCampaignData = { badge_image_url: imageUrl.trim() === "" ? null : imageUrl.trim() };
+      
+      const updatedCampaign = await campaignService.updateCampaign(campaign.id, updatedCampaignData);
+      
+      if (typeof setCampaign === 'function') { 
+          setCampaign(updatedCampaign);
+      } else {
+          console.log("Campaign badge URL updated. Parent component should re-fetch or update state.");
+      }
+
+    } catch (error: any) {
+      console.error("Failed to update badge image URL:", error);
+      const detail = error.response?.data?.detail || error.message || "Failed to update badge image.";
+      setBadgeUpdateError(detail);
+      alert(`Error: ${detail}`);
+    } finally {
+      setBadgeUpdateLoading(false);
+    }
+  };
+
+  const handleRemoveBadgeImage = async () => {
+    if (!campaign || !campaign.badge_image_url) return;
+
+    if (!window.confirm("Are you sure you want to remove the campaign badge image?")) return;
+
+    setBadgeUpdateLoading(true);
+    setBadgeUpdateError(null);
+    try {
+      const updatedCampaignData = { badge_image_url: null }; // Set to null to remove
+      const updatedCampaign = await campaignService.updateCampaign(campaign.id, updatedCampaignData);
+      
+      if (typeof setCampaign === 'function') {
+          setCampaign(updatedCampaign);
+      } else {
+           console.log("Campaign badge URL removed. Parent component should re-fetch or update state.");
+      }
+
+    } catch (error: any) {
+      console.error("Failed to remove badge image URL:", error);
+      const detail = error.response?.data?.detail || error.message || "Failed to remove badge image.";
+      setBadgeUpdateError(detail);
+      alert(`Error: ${detail}`);
+    } finally {
+      setBadgeUpdateLoading(false);
+    }
+  };
+
+
   if (isLoading) return <p className="loading-message">Loading campaign details...</p>;
   if (error) return <p className="error-message">{error}</p>;
   if (!campaign) return <p className="error-message">Campaign not found.</p>;
@@ -345,6 +412,35 @@ const CampaignEditorPage: React.FC = () => {
               </button>
               {saveError && <p className="error-message save-feedback">{saveError}</p>}
               {saveSuccess && <p className="success-message save-feedback">{saveSuccess}</p>}
+            </div>
+            
+            {/* Campaign Badge Display */}
+            <div className="campaign-badge-area editor-section">
+              <h3>Campaign Badge</h3>
+              {campaign.badge_image_url ? (
+                <img 
+                  src={campaign.badge_image_url} 
+                  alt={`${campaign.title} Badge`} 
+                  className="campaign-badge-image"
+                />
+              ) : (
+                <p className="campaign-badge-placeholder">No badge image set.</p>
+              )}
+              <div className="campaign-badge-actions">
+                <button onClick={handleSetOrChangeBadgeImage} disabled={badgeUpdateLoading} className="action-button">
+                  {badgeUpdateLoading ? "Saving..." : (campaign?.badge_image_url ? "Change Badge" : "Set Badge")}
+                </button>
+                {campaign?.badge_image_url && (
+                  <button 
+                    onClick={handleRemoveBadgeImage} 
+                    disabled={badgeUpdateLoading || !campaign?.badge_image_url}
+                    className="action-button remove-button" 
+                  >
+                    {badgeUpdateLoading ? "Removing..." : "Remove Badge"}
+                  </button>
+                )}
+              </div>
+              {badgeUpdateError && <p className="error-message feedback-message">{badgeUpdateError}</p>}
             </div>
 
             {campaign.concept && (
