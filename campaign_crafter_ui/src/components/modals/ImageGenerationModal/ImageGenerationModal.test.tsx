@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ImageGenerationModal from './ImageGenerationModal';
-import apiClient from '../../../services/api apiClient'; // Path to your apiClient
+import apiClient from '../../../services/apiClient'; // Path to your apiClient
 
 // Helper function (copy from component or import if exported)
 const sanitizeFilename = (text: string, maxLength = 50): string => {
