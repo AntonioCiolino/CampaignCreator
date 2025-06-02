@@ -14,7 +14,7 @@ class RandomTableService:
         if csv_file_path is None:
             # Assuming the script is run from the project root or 'app' directory
             # Adjust if necessary based on execution context
-            base_path = Path(__file__).resolve().parent.parent.parent 
+            base_path = Path(__file__).resolve().parent.parent.parent.parent
             self.csv_path = base_path / "csv" / "tables1e.csv"
         else:
             self.csv_path = csv_file_path
