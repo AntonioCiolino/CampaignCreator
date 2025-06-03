@@ -136,9 +136,18 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
                             background: snapshotDraggable.isDragging ? '#f0f0f0' : 'white',
                           }}
                         >
-                          <Box {...providedDraggable.dragHandleProps} sx={{ pl: 1, pr: 1, cursor: 'grab', display: 'flex', alignItems: 'center' }}>
-                            <DragIndicatorIcon />
-                          </Box>
+                          <div
+                            {...providedDraggable.dragHandleProps}
+                            style={{
+                              padding: '10px',
+                              border: '1px solid blue',
+                              cursor: 'grab',
+                              backgroundColor: 'lightgray',
+                              display: 'inline-block' // Ensure it has layout
+                            }}
+                          >
+                            DRAG
+                          </div>
                           <Box sx={{ width: '100%', p: 1 }}>
                             <CampaignSectionView
                               section={section}
