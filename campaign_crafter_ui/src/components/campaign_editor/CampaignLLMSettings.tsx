@@ -20,8 +20,6 @@ interface CampaignLLMSettingsProps {
   setSelectedLLM: (llm: LLM) => void;
   temperature: number;
   setTemperature: (temp: number) => void;
-  isGeneratingTOC: boolean;
-  handleGenerateTOC: () => void;
   isGeneratingTitles: boolean;
   handleGenerateTitles: () => void;
   availableLLMs: LLM[]; // Assuming this prop will be passed from the parent
@@ -32,8 +30,6 @@ const CampaignLLMSettings: React.FC<CampaignLLMSettingsProps> = ({
   setSelectedLLM,
   temperature,
   setTemperature,
-  isGeneratingTOC,
-  handleGenerateTOC,
   isGeneratingTitles,
   handleGenerateTitles,
   availableLLMs,
@@ -86,26 +82,16 @@ const CampaignLLMSettings: React.FC<CampaignLLMSettingsProps> = ({
               sx={{ mb: 1 }} // Added margin bottom for spacing before buttons
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={handleGenerateTOC}
-              disabled={isGeneratingTOC || isGeneratingTitles}
-              fullWidth
-            >
-              {isGeneratingTOC ? 'Generating TOC...' : 'Generate TOC'}
-            </Button>
-          </Grid>
-          <Grid item xs={12} sm={6}>
+          {/* Removed TOC Button Grid Item */}
+          <Grid item xs={12} sm={6}> {/* Adjusted sm to 6 if only one button left, or keep 12 for full width */}
             <Button
               variant="contained"
               color="secondary"
               onClick={handleGenerateTitles}
-              disabled={isGeneratingTitles || isGeneratingTOC}
+              disabled={isGeneratingTitles} {/* Removed isGeneratingTOC from disabled condition */}
               fullWidth
             >
-              {isGeneratingTitles ? 'Generating Titles...' : 'Generate Titles for Sections'}
+              {isGeneratingTitles ? 'Generating Titles...' : 'Suggest Campaign Titles'} {/* Changed text slightly for clarity */}
             </Button>
           </Grid>
         </Grid>
