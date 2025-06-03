@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaEdit, FaTrash, FaBeer } from 'react-icons/fa'; // Added FaBeer
+import { FaEdit, FaTrash } from 'react-icons/fa';
 import { User, getUsers, deleteUser, createUser, updateUser, UserCreatePayload, UserUpdatePayload } from '../services/userService';
 // import { Link } from 'react-router-dom';
 import Button from '../components/common/Button';
@@ -143,7 +143,7 @@ const UserManagementPage: React.FC = () => {
                 <td>{user.is_superuser ? 'Yes' : 'No'}</td>
                 <td className="user-actions">
                   <Button onClick={() => handleOpenEditModal(user)} variant="secondary" size="sm">
-                    <FaBeer /> {/* Temporarily replaced FaEdit with FaBeer */}
+                    <FaEdit />
                   </Button>
                   <Button onClick={() => handleDeleteUser(user.id)} variant="danger" size="sm" style={{ marginLeft: '10px' }}>
                     <FaTrash />
