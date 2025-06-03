@@ -1,6 +1,12 @@
 import React, { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import './Layout.css'; // We'll create this CSS file next
+import './Layout.css';
+// Assuming logo_placeholder.svg is in the public folder,
+// it can be referenced directly by path in Vite/CRA.
+// For specific import behavior, ensure your bundler (e.g., Vite) handles SVG as ReactComponent or provides its URL.
+// If using Vite and want to use it as a component: import { ReactComponent as Logo } from '/logo_placeholder.svg';
+// For simplicity, we'll use it as a direct src path.
+// const logoUrl = '/logo_placeholder.svg'; // This is how you'd typically reference public assets
 
 interface LayoutProps {
   children: ReactNode;
@@ -11,6 +17,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="app-layout">
       <header className="app-header">
         <Link to="/" className="app-title-link">
+          <img src="/logo_placeholder.svg" alt="Campaign Crafter Logo" className="app-logo" />
           <h1>Campaign Crafter</h1>
         </Link>
         <nav className="app-nav">

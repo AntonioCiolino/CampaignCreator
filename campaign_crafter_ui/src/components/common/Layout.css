@@ -8,20 +8,29 @@
 .app-header {
   background-color: #333;
   color: white;
-  padding: 1rem 2rem;
+  padding: 0.75rem 2rem; /* Adjusted padding */
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
+.app-logo {
+  height: 40px; /* Control logo size */
+  margin-right: 10px; /* Space between logo and title */
+  vertical-align: middle; /* Helps align if text is not perfectly centered by flex */
+}
+
 .app-title-link {
-  color: white;
+  color: #FFFFFF; /* Lighten title color for better contrast */
   text-decoration: none;
+  display: flex; /* Align logo and title */
+  align-items: center; /* Vertically center logo and title */
 }
 
 .app-title-link h1 {
   margin: 0;
   font-size: 1.5rem;
+  color: #FFFFFF; /* Ensure h1 color is also light */
 }
 
 .app-nav ul {
