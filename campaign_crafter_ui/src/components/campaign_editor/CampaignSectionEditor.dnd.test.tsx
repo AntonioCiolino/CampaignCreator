@@ -4,7 +4,7 @@ import '@testing-library/jest-dom';
 // DropResult and ResponderProvided are not directly used in this test file's code,
 // but DragDropContext might be if we were testing deeper.
 // For now, keeping imports minimal if they are not strictly necessary for the test code itself.
-// import { DragDropContext, DropResult, ResponderProvided } from 'react-beautiful-dnd'; 
+import { DropResult } from 'react-beautiful-dnd'; 
 import CampaignSectionEditor from './CampaignSectionEditor';
 import { CampaignSection } from '../../services/campaignService'; // Corrected import path
 
@@ -16,9 +16,9 @@ jest.mock('../CampaignSectionView', () => {
 });
 
 const mockSections: CampaignSection[] = [
-  { id: '1', title: 'Section Alpha', content: 'Alpha content', order: 0, campaign_id: 1, model_id_with_prefix: 'test/alpha' },
-  { id: '2', title: 'Section Beta', content: 'Beta content', order: 1, campaign_id: 1, model_id_with_prefix: 'test/beta' },
-  { id: '3', title: 'Section Gamma', content: 'Gamma content', order: 2, campaign_id: 1, model_id_with_prefix: 'test/gamma' },
+  { id: 1, title: 'Section Alpha', content: 'Alpha content', order: 0, campaign_id: 1, model_id_with_prefix: 'test/alpha' },
+  { id: 2, title: 'Section Beta', content: 'Beta content', order: 1, campaign_id: 1, model_id_with_prefix: 'test/beta' },
+  { id: 3, title: 'Section Gamma', content: 'Gamma content', order: 2, campaign_id: 1, model_id_with_prefix: 'test/gamma' },
 ];
 
 describe('CampaignSectionEditor Drag and Drop', () => {
@@ -79,7 +79,7 @@ describe('CampaignSectionEditor Drag and Drop', () => {
       items.splice(destination.index, 0, reorderedItem);
       
       mockSetSections(items); // Simulate optimistic update
-      const orderedSectionIds = items.map(item => parseInt(item.id, 10));
+      const orderedSectionIds = items.map(item => item.id); // item.id is now a number
       mockOnUpdateSectionOrder(orderedSectionIds);
     };
 

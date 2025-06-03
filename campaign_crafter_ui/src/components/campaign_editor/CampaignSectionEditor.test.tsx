@@ -49,8 +49,8 @@ describe('CampaignSectionEditor', () => {
     }
   });
 
-  const section1: CampaignSection = { id: '1', title: 'Section One', content: 'Content One', prompt: '', order: 0, model_id_with_prefix: 'test/model' };
-  const section2: CampaignSection = { id: '2', title: 'Section Two', content: 'Content Two', prompt: '', order: 1, model_id_with_prefix: 'test/model' };
+  const section1: CampaignSection = { id: 1, title: 'Section One', content: 'Content One', prompt: '', order: 0, model_id_with_prefix: 'test/model' };
+  const section2: CampaignSection = { id: 2, title: 'Section Two', content: 'Content Two', prompt: '', order: 1, model_id_with_prefix: 'test/model' };
 
   const defaultProps = {
     sections: [],
@@ -77,13 +77,13 @@ describe('CampaignSectionEditor', () => {
     expect(screen.getByRole('button', { name: /Add New Section/i })).toBeInTheDocument();
     
     // Check for mocked CampaignSectionView instances
-    expect(screen.getByTestId('mock-section-view-1')).toBeInTheDocument();
-    expect(screen.getByLabelText('Title for 1')).toHaveValue(section1.title);
-    expect(screen.getByLabelText('Content for 1')).toHaveValue(section1.content);
+    expect(screen.getByTestId(`mock-section-view-${section1.id}`)).toBeInTheDocument();
+    expect(screen.getByLabelText(`Title for ${section1.id}`)).toHaveValue(section1.title);
+    expect(screen.getByLabelText(`Content for ${section1.id}`)).toHaveValue(section1.content);
 
-    expect(screen.getByTestId('mock-section-view-2')).toBeInTheDocument();
-    expect(screen.getByLabelText('Title for 2')).toHaveValue(section2.title);
-    expect(screen.getByLabelText('Content for 2')).toHaveValue(section2.content);
+    expect(screen.getByTestId(`mock-section-view-${section2.id}`)).toBeInTheDocument();
+    expect(screen.getByLabelText(`Title for ${section2.id}`)).toHaveValue(section2.title);
+    expect(screen.getByLabelText(`Content for ${section2.id}`)).toHaveValue(section2.content);
 
     // Check for delete buttons (aria-label "delete" is default for IconButton with DeleteIcon)
     // This relies on the mock rendering something identifiable for delete.

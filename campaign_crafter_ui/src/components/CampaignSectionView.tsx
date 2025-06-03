@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CampaignSection } from '../services/campaignService';
 import ReactMarkdown from 'react-markdown';
-import ReactQuill from 'react-quill';
+import ReactQuill, { Quill } from 'react-quill';
 import 'react-quill/dist/quill.snow.css'; // Import Quill's snow theme CSS
 import Button from './common/Button'; // Added Button import
 import RandomTableRoller from './RandomTableRoller';
@@ -104,7 +104,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
       const range = quillInstance.getSelection(true); // Get selection or default to current cursor position
       // If there's a selection, it will be replaced by the image. 
       // If no selection, it inserts at the cursor.
-      quillInstance.insertEmbed(range.index, 'image', url, ReactQuill.Quill.sources.USER);
+      quillInstance.insertEmbed(range.index, 'image', url, Quill.sources.USER);
     }
   };
 
@@ -226,7 +226,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
         onImageSuccessfullyGenerated={(imageUrl) => { // Example if you want to connect it
           if (quillInstance) {
             const range = quillInstance.getSelection(true) || { index: editedContent.length, length: 0 };
-            quillInstance.insertEmbed(range.index, 'image', imageUrl, ReactQuill.Quill.sources.USER);
+            quillInstance.insertEmbed(range.index, 'image', imageUrl, Quill.sources.USER);
           } else {
             setEditedContent(prev => `${prev}\n![Generated Image](${imageUrl})\n`);
           }
