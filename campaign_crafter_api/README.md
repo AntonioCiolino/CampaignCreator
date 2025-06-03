@@ -2,14 +2,7 @@
 
 ## Overview
 
-Campaign Crafter API is the backend server for the CampaignCreator monorepo. It provides the core business logic, data persistence, and integration with Large Language Models (LLMs) for all CampaignCreator applications, including the iOS app and the web UI (`campaign_crafter_ui`).
-
-## Role in the Monorepo
-
-*   **Backend Engine**: Powers the functionality of the CampaignCreator suite.
-*   **Data Management**: Handles storage and retrieval of user data, documents, projects, and other creative elements.
-*   **LLM Integration**: Provides a centralized service for interacting with various LLMs (e.g., OpenAI GPT, Google Gemini).
-*   **API Provider**: Exposes a RESTful API for client applications (iOS, Web UI) to consume.
+Campaign Crafter API is the backend server for CampaignCreator. It provides the core business logic, data persistence, and integration with Large Language Models (LLMs) for CampaignCreator applications, including the web UI (`campaign_crafter_ui`) and potentially other client applications.
 
 ## Key Features & Functional Areas
 
@@ -48,12 +41,12 @@ To build and run this project locally, you will need:
 
 ## Getting Started
 
-### 1. Clone the Monorepo
+### 1. Clone the Repository
 
-If you haven't already, clone the entire monorepo:
+If you haven't already, clone the repository:
 ```bash
-git clone <repository_url> # Replace <repository_url> with the actual monorepo URL
-cd <repository_directory>/campaign_crafter_api # Navigate to this project's directory
+git clone <repository_url> # Replace <repository_url> with the actual repository URL
+cd <path_to_campaign_crafter_api_directory> # Navigate to this project's directory
 ```
 
 ### 2. Create and Activate a Virtual Environment
