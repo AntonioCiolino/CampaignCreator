@@ -36,7 +36,8 @@ interface CampaignSectionEditorProps {
   // These direct handlers might be replaced if onSave handles all updates
   handleUpdateSectionContent: (sectionId: number, newContent: string) => void; // Changed sectionId to number
   handleUpdateSectionTitle: (sectionId: number, newTitle: string) => void; // Changed sectionId to number
-  onUpdateSectionOrder: (orderedSectionIds: number[]) => Promise<void>; 
+  onUpdateSectionOrder: (orderedSectionIds: number[]) => Promise<void>;
+  forceCollapseAllSections?: boolean; // Added new prop
 }
 
 const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
@@ -47,6 +48,7 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
   handleUpdateSectionContent, // Keep this prop
   handleUpdateSectionTitle,   // Keep this prop for now, though CampaignSectionView might not edit title
   onUpdateSectionOrder,
+  forceCollapseAllSections, // Destructure the new prop
 }) => {
   const onDragEnd = (result: DropResult) => { // Removed ResponderProvided as it's not typically used in onDragEnd
     const { source, destination } = result;
@@ -144,6 +146,7 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
                               isSaving={false} // TODO: Manage individual section saving state
                               saveError={null} // TODO: Manage individual section error state
                               onDelete={() => handleDeleteSection(typeof section.id === 'string' ? parseInt(section.id, 10) : section.id)}
+                              forceCollapse={forceCollapseAllSections} // Pass the prop here
                             />
                           </Box>
                           <IconButton

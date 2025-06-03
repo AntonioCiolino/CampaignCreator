@@ -587,7 +587,6 @@ const CampaignEditorPage: React.FC = () => {
         <h3>Section Display</h3>
         <button onClick={() => setForceCollapseAll(true)} className="action-button">Collapse All Sections</button>
         <button onClick={() => setForceCollapseAll(false)} className="action-button">Expand All Sections</button>
-        <button onClick={() => setForceCollapseAll(undefined)} className="action-button secondary-action-button">Enable Individual Toggling</button>
       </div>
       <CampaignSectionEditor
         sections={sections}
@@ -597,7 +596,7 @@ const CampaignEditorPage: React.FC = () => {
         handleUpdateSectionContent={handleUpdateSectionContent}
         handleUpdateSectionTitle={handleUpdateSectionTitle}
         onUpdateSectionOrder={handleUpdateSectionOrder} // Pass the new handler
-        // TODO: Pass savingSectionId, sectionSaveError, forceCollapseAll if CSE is updated to use them
+        forceCollapseAllSections={forceCollapseAll} // Pass the state here
       />
       {!isAddSectionCollapsed && (
         <div className="editor-actions add-section-area editor-section card-like" style={{ marginTop: '20px' }}>
