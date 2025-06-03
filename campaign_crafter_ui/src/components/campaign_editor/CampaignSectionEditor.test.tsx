@@ -49,8 +49,8 @@ describe('CampaignSectionEditor', () => {
     }
   });
 
-  const section1: CampaignSection = { id: 1, title: 'Section One', content: 'Content One', order: 0 };
-  const section2: CampaignSection = { id: 2, title: 'Section Two', content: 'Content Two', order: 1 };
+  const section1: CampaignSection = { id: 1, title: 'Section One', content: 'Content One', order: 0, campaign_id: 1 };
+  const section2: CampaignSection = { id: 2, title: 'Section Two', content: 'Content Two', order: 1, campaign_id: 1 };
 
   const defaultProps = {
     sections: [],
