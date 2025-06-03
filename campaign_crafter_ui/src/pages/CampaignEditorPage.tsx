@@ -363,7 +363,8 @@ const CampaignEditorPage: React.FC = () => {
     setTocError(null);
     setSaveSuccess(null);
     try {
-      const updatedCampaign = await campaignService.generateCampaignTOC(campaignId, {});
+      const payload = { model_id_with_prefix: selectedLLMId };
+      const updatedCampaign = await campaignService.generateCampaignTOC(campaignId, payload);
       setCampaign(updatedCampaign);
       setSaveSuccess("Table of Contents generated successfully!");
       setTimeout(() => setSaveSuccess(null), 3000);
