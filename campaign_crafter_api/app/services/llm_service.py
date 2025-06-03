@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict
+from sqlalchemy.orm import Session
 
 class LLMServiceUnavailableError(Exception):
     """Custom exception for when an LLM service cannot be initialized or is unavailable."""
@@ -20,7 +21,7 @@ class AbstractLLMService(ABC):
         pass
 
     @abstractmethod
-    def generate_campaign_concept(self, user_prompt: str, model: Optional[str] = None) -> str:
+    def generate_campaign_concept(self, user_prompt: str, db: Session, model: Optional[str] = None) -> str:
         """
         Generates a campaign concept using an LLM based on a user prompt.
         The 'model' parameter is the specific model ID for the provider.
@@ -28,7 +29,7 @@ class AbstractLLMService(ABC):
         pass
 
     @abstractmethod
-    def generate_titles(self, campaign_concept: str, count: int = 5, model: Optional[str] = None) -> list[str]:
+    def generate_titles(self, campaign_concept: str, db: Session, count: int = 5, model: Optional[str] = None) -> list[str]:
         """
         Generates a list of alternative campaign titles based on a campaign concept.
         The 'model' parameter is the specific model ID for the provider.
@@ -36,7 +37,7 @@ class AbstractLLMService(ABC):
         pass
 
     @abstractmethod
-    def generate_toc(self, campaign_concept: str, model: Optional[str] = None) -> str:
+    def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> str:
         """
         Generates a Table of Contents for a campaign based on its concept.
         The 'model' parameter is the specific model ID for the provider.
@@ -47,6 +48,7 @@ class AbstractLLMService(ABC):
     def generate_section_content(
         self, 
         campaign_concept: str, 
+        db: Session,
         existing_sections_summary: Optional[str], 
         section_creation_prompt: Optional[str], 
         section_title_suggestion: Optional[str], 
@@ -81,18 +83,19 @@ class LLMService(AbstractLLMService):
     def generate_text(self, prompt: str, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str:
         return f"Generated text for prompt: {prompt}"
 
-    def generate_campaign_concept(self, user_prompt: str, model: Optional[str] = None) -> str:
+    def generate_campaign_concept(self, user_prompt: str, db: Session, model: Optional[str] = None) -> str:
         return f"Campaign concept for: {user_prompt}"
 
-    def generate_titles(self, campaign_concept: str, count: int = 5, model: Optional[str] = None) -> list[str]:
+    def generate_titles(self, campaign_concept: str, db: Session, count: int = 5, model: Optional[str] = None) -> list[str]:
         return [f"Title {i+1} for {campaign_concept}" for i in range(count)]
 
-    def generate_toc(self, campaign_concept: str, model: Optional[str] = None) -> str:
+    def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> str:
         return f"Table of Contents for: {campaign_concept}"
 
     def generate_section_content(
         self,
         campaign_concept: str,
+        db: Session,
         existing_sections_summary: Optional[str],
         section_creation_prompt: Optional[str],
         section_title_suggestion: Optional[str],

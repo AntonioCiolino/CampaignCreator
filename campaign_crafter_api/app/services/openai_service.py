@@ -1,5 +1,6 @@
 from openai import AsyncOpenAI, APIError  # Use AsyncOpenAI and new error type
-from typing import Optional, List, Dict 
+from typing import Optional, List, Dict
+from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError, LLMGenerationError # Import errors
 from app.services.feature_prompt_service import FeaturePromptService
@@ -126,14 +127,14 @@ class OpenAILLMService(AbstractLLMService):
 
         return await self._perform_chat_completion(selected_model, messages, temperature, max_tokens)
 
-    async def generate_campaign_concept(self, user_prompt: str, model: Optional[str] = None) -> str:
+    async def generate_campaign_concept(self, user_prompt: str, db: Session, model: Optional[str] = None) -> str:
         if not await self.is_available():
             raise LLMServiceUnavailableError("OpenAI service is not available.")
 
         # For creative tasks like campaign concept, chat models are generally preferred.
         selected_model = self._get_model(model, use_chat_model=True)
 
-        custom_prompt_template = self.feature_prompt_service.get_prompt("Campaign")
+        custom_prompt_template = self.feature_prompt_service.get_prompt("Campaign", db=db)
         final_prompt = custom_prompt_template.format(user_prompt=user_prompt) if custom_prompt_template else \
                        f"Generate a detailed campaign concept, including potential plot hooks and key NPCs, based on the following idea: {user_prompt}"
 
@@ -143,14 +144,14 @@ class OpenAILLMService(AbstractLLMService):
         ]
         return await self._perform_chat_completion(selected_model, messages, temperature=0.7, max_tokens=1000)
 
-    async def generate_toc(self, campaign_concept: str, model: Optional[str] = None) -> str:
+    async def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> str:
         if not await self.is_available():
             raise LLMServiceUnavailableError("OpenAI service is not available.")
         if not campaign_concept:
             raise ValueError("Campaign concept cannot be empty.")
 
         selected_model = self._get_model(model, use_chat_model=True)
-        custom_prompt_template = self.feature_prompt_service.get_prompt("Table of Contents")
+        custom_prompt_template = self.feature_prompt_service.get_prompt("Table of Contents", db=db)
         final_prompt = custom_prompt_template.format(campaign_concept=campaign_concept) if custom_prompt_template else \
                        f"Based on the campaign concept: '{campaign_concept}', generate a hierarchical Table of Contents suitable for an RPG campaign book. Include main chapters and potential sub-sections."
         
@@ -160,7 +161,7 @@ class OpenAILLMService(AbstractLLMService):
         ]
         return await self._perform_chat_completion(selected_model, messages, temperature=0.5, max_tokens=700)
 
-    async def generate_titles(self, campaign_concept: str, count: int = 5, model: Optional[str] = None) -> list[str]:
+    async def generate_titles(self, campaign_concept: str, db: Session, count: int = 5, model: Optional[str] = None) -> list[str]:
         if not await self.is_available():
             raise LLMServiceUnavailableError("OpenAI service is not available.")
         if not campaign_concept:
@@ -169,7 +170,7 @@ class OpenAILLMService(AbstractLLMService):
             raise ValueError("Count for titles must be a positive integer.")
 
         selected_model = self._get_model(model, use_chat_model=True)
-        custom_prompt_template = self.feature_prompt_service.get_prompt("Campaign Names")
+        custom_prompt_template = self.feature_prompt_service.get_prompt("Campaign Names", db=db)
         final_prompt = custom_prompt_template.format(campaign_concept=campaign_concept, count=count) if custom_prompt_template else \
                        f"Based on the campaign concept: '{campaign_concept}', generate {count} alternative, catchy campaign titles. List each title on a new line."
         
@@ -182,7 +183,7 @@ class OpenAILLMService(AbstractLLMService):
         titles_list = [title.strip() for title in titles_text.split('\n') if title.strip()]
         return titles_list[:count]
 
-    async def generate_section_content(self, campaign_concept: str, existing_sections_summary: Optional[str], section_creation_prompt: Optional[str], section_title_suggestion: Optional[str], model: Optional[str] = None) -> str:
+    async def generate_section_content(self, campaign_concept: str, db: Session, existing_sections_summary: Optional[str], section_creation_prompt: Optional[str], section_title_suggestion: Optional[str], model: Optional[str] = None) -> str:
         if not await self.is_available():
             raise LLMServiceUnavailableError("OpenAI service is not available.")
         if not campaign_concept: # Basic check, though prompt construction is more complex
@@ -190,7 +191,7 @@ class OpenAILLMService(AbstractLLMService):
 
         selected_model = self._get_model(model, use_chat_model=True)
 
-        custom_prompt_template = self.feature_prompt_service.get_prompt("Section Content")
+        custom_prompt_template = self.feature_prompt_service.get_prompt("Section Content", db=db)
         if custom_prompt_template:
             final_prompt = custom_prompt_template.format(
                 campaign_concept=campaign_concept,

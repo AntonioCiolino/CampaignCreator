@@ -1,5 +1,6 @@
 import google.generativeai as genai # type: ignore
 from typing import List, Dict, Optional
+from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError # Import specific error
 from app.services.feature_prompt_service import FeaturePromptService
@@ -102,12 +103,12 @@ class GeminiLLMService(AbstractLLMService):
             #     raise Exception(f"An unexpected error occurred: {str(e)}") from e
 
 
-    async def generate_campaign_concept(self, user_prompt: str, model: Optional[str] = None) -> str:
+    async def generate_campaign_concept(self, user_prompt: str, db: Session, model: Optional[str] = None) -> str:
         if not await self.is_available():
             raise LLMServiceUnavailableError("Gemini service is not available.")
         model_instance = self._get_model_instance(model)
         
-        custom_prompt_template = self.feature_prompt_service.get_prompt("Campaign")
+        custom_prompt_template = self.feature_prompt_service.get_prompt("Campaign", db=db)
         final_prompt = custom_prompt_template.format(user_prompt=user_prompt) if custom_prompt_template else \
                        f"Generate a detailed and engaging RPG campaign concept based on this idea: {user_prompt}. Include potential plot hooks, key NPCs, and unique settings."
         
@@ -115,20 +116,20 @@ class GeminiLLMService(AbstractLLMService):
         return await self.generate_text(prompt=final_prompt, model=model_instance.model_name, temperature=0.7, max_tokens=1000)
 
 
-    async def generate_toc(self, campaign_concept: str, model: Optional[str] = None) -> str:
+    async def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> str:
         if not await self.is_available():
             raise LLMServiceUnavailableError("Gemini service is not available.")
         if not campaign_concept:
             raise ValueError("Campaign concept cannot be empty.")
         model_instance = self._get_model_instance(model)
         
-        custom_prompt_template = self.feature_prompt_service.get_prompt("Table of Contents")
+        custom_prompt_template = self.feature_prompt_service.get_prompt("Table of Contents", db=db)
         final_prompt = custom_prompt_template.format(campaign_concept=campaign_concept) if custom_prompt_template else \
                        f"Based on the following RPG campaign concept: '{campaign_concept}', generate a hierarchical Table of Contents suitable for an RPG campaign book. Include main chapters and potential sub-sections with brief descriptions for each."
         
         return await self.generate_text(prompt=final_prompt, model=model_instance.model_name, temperature=0.5, max_tokens=700)
 
-    async def generate_titles(self, campaign_concept: str, count: int = 5, model: Optional[str] = None) -> List[str]:
+    async def generate_titles(self, campaign_concept: str, db: Session, count: int = 5, model: Optional[str] = None) -> List[str]:
         if not await self.is_available():
             raise LLMServiceUnavailableError("Gemini service is not available.")
         if not campaign_concept:
@@ -137,7 +138,7 @@ class GeminiLLMService(AbstractLLMService):
             raise ValueError("Count for titles must be a positive integer.")
 
         model_instance = self._get_model_instance(model)
-        custom_prompt_template = self.feature_prompt_service.get_prompt("Campaign Names")
+        custom_prompt_template = self.feature_prompt_service.get_prompt("Campaign Names", db=db)
         final_prompt = custom_prompt_template.format(campaign_concept=campaign_concept, count=count) if custom_prompt_template else \
                        f"Based on the following RPG campaign concept: '{campaign_concept}', generate {count} alternative, catchy campaign titles. List each title on a new line. Ensure only the titles are listed, nothing else."
 
@@ -145,14 +146,14 @@ class GeminiLLMService(AbstractLLMService):
         titles = [title.strip() for title in text_response.split('\n') if title.strip()]
         return titles[:count]
 
-    async def generate_section_content(self, campaign_concept: str, existing_sections_summary: Optional[str], section_creation_prompt: Optional[str], section_title_suggestion: Optional[str], model: Optional[str] = None) -> str:
+    async def generate_section_content(self, campaign_concept: str, db: Session, existing_sections_summary: Optional[str], section_creation_prompt: Optional[str], section_title_suggestion: Optional[str], model: Optional[str] = None) -> str:
         if not await self.is_available():
             raise LLMServiceUnavailableError("Gemini service is not available.")
         if not campaign_concept: # Basic check
             raise ValueError("Campaign concept is required.")
 
         model_instance = self._get_model_instance(model)
-        custom_prompt_template = self.feature_prompt_service.get_prompt("Section Content")
+        custom_prompt_template = self.feature_prompt_service.get_prompt("Section Content", db=db)
 
         if custom_prompt_template:
             final_prompt = custom_prompt_template.format(

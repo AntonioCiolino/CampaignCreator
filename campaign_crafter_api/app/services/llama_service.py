@@ -1,4 +1,5 @@
 from typing import Optional, List, Dict
+from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError # Import specific error
 # Removed import from llm_factory: from app.services.llm_factory import LLMServiceUnavailableError
@@ -33,17 +34,17 @@ class LlamaLLMService(AbstractLLMService):
         print(f"WARNING: {error_message}")
         raise NotImplementedError(error_message)
 
-    async def generate_campaign_concept(self, user_prompt: str, model: Optional[str] = None) -> str:
+    async def generate_campaign_concept(self, user_prompt: str, db: Session, model: Optional[str] = None) -> str:
         if not await self.is_available():
             raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available.")
         raise NotImplementedError(f"{self.PROVIDER_NAME.title()}LLMService.generate_campaign_concept not implemented.")
 
-    async def generate_titles(self, campaign_concept: str, count: int = 5, model: Optional[str] = None) -> list[str]:
+    async def generate_titles(self, campaign_concept: str, db: Session, count: int = 5, model: Optional[str] = None) -> list[str]:
         if not await self.is_available():
             raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available.")
         raise NotImplementedError(f"{self.PROVIDER_NAME.title()}LLMService.generate_titles not implemented.")
 
-    async def generate_toc(self, campaign_concept: str, model: Optional[str] = None) -> str:
+    async def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> str:
         if not await self.is_available():
             raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available.")
         raise NotImplementedError(f"{self.PROVIDER_NAME.title()}LLMService.generate_toc not implemented.")
@@ -51,6 +52,7 @@ class LlamaLLMService(AbstractLLMService):
     async def generate_section_content(
         self, 
         campaign_concept: str, 
+        db: Session,
         existing_sections_summary: Optional[str], 
         section_creation_prompt: Optional[str], 
         section_title_suggestion: Optional[str], 

@@ -182,7 +182,7 @@ async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, 
     if campaign_payload.initial_user_prompt:
         try:
             llm_service: LLMService = get_llm_service(campaign_payload.model_id_with_prefix_for_concept)
-            generated_concept = await llm_service.generate_campaign_concept(user_prompt=campaign_payload.initial_user_prompt)
+            generated_concept = await llm_service.generate_campaign_concept(user_prompt=campaign_payload.initial_user_prompt, db=db)
         except LLMServiceUnavailableError as e:
             print(f"LLM service unavailable for concept generation: {e}")
             # Campaign will be created without a concept.
