@@ -19,7 +19,7 @@ interface CampaignSectionViewProps {
 }
 
 const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSave, isSaving, saveError: externalSaveError, onDelete, forceCollapse }) => {
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(true); 
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(forceCollapse !== undefined ? forceCollapse : true); 
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editedContent, setEditedContent] = useState<string>(section.content);
   const [quillInstance, setQuillInstance] = useState<any>(null); // Enabled to store Quill instance
@@ -38,11 +38,11 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
     }
   }, [section.content, externalSaveError]);
 
-  useEffect(() => {
-    if (forceCollapse !== undefined) {
-      setIsCollapsed(forceCollapse);
-    }
-  }, [forceCollapse]);
+  // useEffect(() => {
+  //   if (forceCollapse !== undefined) {
+  //     setIsCollapsed(forceCollapse);
+  //   }
+  // }, [forceCollapse]);
   
   const handleEdit = () => {
     setIsCollapsed(false); // Expand section on edit
