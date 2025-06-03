@@ -88,7 +88,7 @@ const CampaignLLMSettings: React.FC<CampaignLLMSettingsProps> = ({
               variant="contained"
               color="secondary"
               onClick={handleGenerateTitles}
-              disabled={isGeneratingTitles} {/* Removed isGeneratingTOC from disabled condition */}
+              disabled={isGeneratingTitles}
               fullWidth
             >
               {isGeneratingTitles ? 'Generating Titles...' : 'Suggest Campaign Titles'} {/* Changed text slightly for clarity */}

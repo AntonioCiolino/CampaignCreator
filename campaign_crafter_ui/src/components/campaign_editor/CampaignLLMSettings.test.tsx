@@ -27,8 +27,6 @@ describe('CampaignLLMSettings', () => {
     setSelectedLLM: mockSetSelectedLLM,
     temperature: 0.7,
     setTemperature: mockSetTemperature,
-    isGeneratingTOC: false,
-    handleGenerateTOC: mockHandleGenerateTOC,
     isGeneratingTitles: false,
     handleGenerateTitles: mockHandleGenerateTitles,
     availableLLMs: availableLLMs,
@@ -45,24 +43,22 @@ describe('CampaignLLMSettings', () => {
     // Slider value might be hard to check directly, but its presence and label are good indicators.
     expect(screen.getByRole('slider')).toBeInTheDocument();
 
-    expect(screen.getByRole('button', { name: /Generate TOC/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Generate Titles for Sections/i })).toBeInTheDocument();
+    // expect(screen.getByRole('button', { name: /Generate TOC/i })).toBeInTheDocument(); // Removed
+    expect(screen.getByRole('button', { name: /Suggest Campaign Titles/i })).toBeInTheDocument(); // Updated name
   });
 
-  test('shows generating state for TOC button', () => {
-    render(<CampaignLLMSettings {...defaultProps} isGeneratingTOC={true} />);
-    expect(screen.getByRole('button', { name: /Generating TOC.../i })).toBeInTheDocument();
-  });
+  // Removed test: 'shows generating state for TOC button'
 
   test('shows generating state for Titles button', () => {
     render(<CampaignLLMSettings {...defaultProps} isGeneratingTitles={true} />);
     expect(screen.getByRole('button', { name: /Generating Titles.../i })).toBeInTheDocument();
   });
 
-  test('disables buttons when one generation is in progress', () => {
-    render(<CampaignLLMSettings {...defaultProps} isGeneratingTOC={true} />);
-    expect(screen.getByRole('button', { name: /Generating TOC.../i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /Generate Titles for Sections/i })).toBeDisabled();
+  test('disables Titles button when title generation is in progress', () => { // Updated test description
+    render(<CampaignLLMSettings {...defaultProps} isGeneratingTitles={true} />);
+    // const tocButton = screen.queryByRole('button', { name: /Generating TOC.../i }); // TOC button is gone
+    // expect(tocButton).not.toBeInTheDocument(); // Or ensure it's not there if the test structure requires an assertion
+    expect(screen.getByRole('button', { name: /Generating Titles.../i })).toBeDisabled();
   });
 
   test('calls setSelectedLLM when a new LLM is selected', () => {
@@ -113,16 +109,11 @@ describe('CampaignLLMSettings', () => {
                                                     // To make this testable, one might wrap the Slider and expose a testable onChange.
   });
 
-  test('calls handleGenerateTOC when "Generate TOC" button is clicked', () => {
-    render(<CampaignLLMSettings {...defaultProps} />);
-    const tocButton = screen.getByRole('button', { name: /Generate TOC/i });
-    fireEvent.click(tocButton);
-    expect(mockHandleGenerateTOC).toHaveBeenCalledTimes(1);
-  });
+  // Removed test: 'calls handleGenerateTOC when "Generate TOC" button is clicked'
 
-  test('calls handleGenerateTitles when "Generate Titles" button is clicked', () => {
+  test('calls handleGenerateTitles when "Suggest Campaign Titles" button is clicked', () => { // Updated name
     render(<CampaignLLMSettings {...defaultProps} />);
-    const titlesButton = screen.getByRole('button', { name: /Generate Titles for Sections/i });
+    const titlesButton = screen.getByRole('button', { name: /Suggest Campaign Titles/i }); // Updated name
     fireEvent.click(titlesButton);
     expect(mockHandleGenerateTitles).toHaveBeenCalledTimes(1);
   });
