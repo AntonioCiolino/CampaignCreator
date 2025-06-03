@@ -257,6 +257,20 @@ export const getCampaignSections = async (campaignId: string | number): Promise<
   }
 };
 
+// Update the order of sections in a campaign
+export const updateCampaignSectionOrder = async (
+  campaignId: string | number,
+  section_ids: number[] // Array of section IDs in the new order
+): Promise<void> => {
+  try {
+    await apiClient.put(`/api/v1/campaigns/${campaignId}/sections/order`, { section_ids });
+    // The endpoint returns 204 No Content, so no data to return here.
+  } catch (error) {
+    console.error(`Error updating section order for campaign ID ${campaignId}:`, error);
+    throw error;
+  }
+};
+
 // apiClient.ts should be something like:
 // import axios from 'axios';
 // const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';

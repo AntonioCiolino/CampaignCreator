@@ -1,38 +1,45 @@
 /* CampaignSectionView.css */
+/* Assuming :root variables are defined in a global scope e.g. CampaignEditorPage.css or index.css */
+
 .campaign-section-view {
-  background-color: var(--surface-color); 
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  padding: 1rem 1.25rem; /* Consistent padding */
-  margin-bottom: 1.5rem; /* Consistent spacing */
-  box-shadow: var(--box-shadow);
+  /* Now that Paper from MUI in CampaignSectionEditor provides the card,
+     this component itself might not need its own border/shadow.
+     Making it simpler and adaptable to its container. */
+  background-color: transparent; /* Blend with parent Paper */
+  padding: 0; /* Padding will be controlled by content areas or parent */
+  width: 100%; /* Ensure it takes full width of its container */
 }
 
 .section-title-header {
   cursor: pointer;
-  /* Potentially add other styles like hover effects if desired */
+  padding: calc(var(--global-spacing-unit, 1rem) * 0.5) 0; /* Vertical padding, no horizontal as content will have it */
+  /* Remove background/border from here if the title itself is styled enough */
 }
 
 .campaign-section-view .section-title {
   margin-top: 0;
-  margin-bottom: 0.75rem;
-  font-size: 1.4rem; /* Adjusted size */
-  color: var(--text-color);
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 0.5rem;
+  margin-bottom: calc(var(--global-spacing-unit, 1rem) * 0.75);
+  font-size: 1.2rem; /* Slightly smaller as it's within a card item */
+  font-weight: 600; /* Good for titles */
+  color: var(--text-color, #333);
+  /* Optional: remove border if the overall look is cleaner without it */
+  /* border-bottom: 1px solid var(--border-color, #dee2e6); */
+  /* padding-bottom: calc(var(--global-spacing-unit, 1rem) * 0.4); */
 }
 
-.campaign-section-view .section-content {
+.campaign-section-view .section-content,
+.campaign-section-view .section-editor { /* Apply consistent padding to content and editor areas */
+  padding: calc(var(--global-spacing-unit, 1rem) * 0.5) calc(var(--global-spacing-unit, 1rem) * 0.25);
   font-size: 1rem; /* Base font size */
-  line-height: var(--line-height-base);
-  color: var(--text-color);
+  line-height: var(--line-height-base, 1.6);
+  color: var(--text-color, #333);
   word-wrap: break-word; /* Prevent overflow */
 }
 
 /* ReactMarkdown specific styles to match theme */
 .campaign-section-view .section-content p {
   margin-top: 0;
-  margin-bottom: 1rem;
+  margin-bottom: calc(var(--global-spacing-unit, 1rem) * 0.75); /* Slightly reduced margin */
 }
 .campaign-section-view .section-content h1,
 .campaign-section-view .section-content h2,
@@ -40,70 +47,75 @@
 .campaign-section-view .section-content h4,
 .campaign-section-view .section-content h5,
 .campaign-section-view .section-content h6 {
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
-  font-weight: 600; /* Slightly bolder for markdown headers */
+  margin-top: calc(var(--global-spacing-unit, 1rem) * 0.75);
+  margin-bottom: calc(var(--global-spacing-unit, 1rem) * 0.4);
+  font-weight: 600; 
+  line-height: 1.3; /* Tighter line height for headers */
 }
 .campaign-section-view .section-content ul,
 .campaign-section-view .section-content ol {
-  margin-bottom: 1rem;
-  padding-left: 1.5rem; 
+  margin-bottom: calc(var(--global-spacing-unit, 1rem) * 0.75);
+  padding-left: calc(var(--global-spacing-unit, 1rem) * 1.25); 
 }
 .campaign-section-view .section-content blockquote {
-  border-left: 4px solid var(--border-color);
-  padding-left: 0.75rem;
+  border-left: 3px solid var(--border-color, #dee2e6); /* Thinner border */
+  padding-left: calc(var(--global-spacing-unit, 1rem) * 0.75);
   margin-left: 0;
-  color: var(--text-color-muted);
+  color: var(--text-color-muted, #6c757d);
   font-style: italic;
 }
 .campaign-section-view .section-content pre {
-  background-color: #2d2d2d; /* Keep dark for code blocks, or use a light theme variable */
-  color: #f8f8f2;
-  padding: 0.75rem;
-  border-radius: var(--border-radius);
+  background-color: #2d2d2d; /* Keep dark for code blocks if it's a preference */
+  /* Or use a light theme: background-color: var(--border-color-light, #f1f3f5); */
+  color: #f8f8f2; /* color: var(--text-color); for light theme */
+  padding: calc(var(--global-spacing-unit, 1rem) * 0.75);
+  border-radius: var(--border-radius, 4px);
   overflow-x: auto; 
 }
-.campaign-section-view .section-content code:not(pre > code) { /* Inline code */
-  font-family: var(--font-family-monospace);
-  background-color: rgba(0,0,0,0.05); 
+.campaign-section-view .section-content code:not(pre > code) { 
+  font-family: var(--font-family-monospace, monospace);
+  background-color: var(--border-color-light, #f1f3f5); 
   padding: 0.2em 0.4em;
   border-radius: 3px;
   font-size: 0.9em;
+  color: var(--primary-color-dark, #0056b3); /* Make inline code stand out a bit */
 }
 .campaign-section-view .section-content pre code {
   background-color: transparent; 
   padding: 0;
   font-size: inherit; 
+  color: inherit; /* Inherit color from pre */
 }
 
 /* Styles for Edit Mode and ReactQuill */
 .campaign-section-view .section-editor {
-  margin-top: 1rem;
+  margin-top: calc(var(--global-spacing-unit, 1rem) * 0.5); /* Space above editor */
 }
 
-/* Quill editor needs specific styling to override defaults if necessary */
+/* Quill editor styling */
 .campaign-section-view .quill-editor .ql-toolbar.ql-snow {
-  border-top-left-radius: var(--border-radius);
-  border-top-right-radius: var(--border-radius);
-  border-bottom: 1px solid var(--border-color); 
-  background-color: #fefefe; /* Slightly off-white for toolbar */
+  border-top-left-radius: var(--border-radius, 4px);
+  border-top-right-radius: var(--border-radius, 4px);
+  border-bottom: 1px solid var(--border-color, #dee2e6); 
+  background-color: var(--background-color, #f8f9fa); /* Lighter toolbar */
 }
 .campaign-section-view .quill-editor .ql-container.ql-snow {
-  border-bottom-left-radius: var(--border-radius);
-  border-bottom-right-radius: var(--border-radius);
-  min-height: 150px; /* Adjusted min-height */
+  border-bottom-left-radius: var(--border-radius, 4px);
+  border-bottom-right-radius: var(--border-radius, 4px);
+  min-height: 180px; /* Slightly increased min-height */
   font-size: 1rem; 
-  background-color: var(--surface-color);
-  color: var(--text-color);
+  background-color: var(--surface-color, #fff);
+  color: var(--text-color, #333);
+  line-height: var(--line-height-base, 1.6); /* Ensure editor line height matches display */
 }
 .campaign-section-view .quill-editor .ql-editor {
-  padding: 0.75rem; /* Padding inside the editor area */
+  padding: calc(var(--global-spacing-unit, 1rem) * 0.75); 
 }
 
 
 .campaign-section-view .editor-actions,
 .campaign-section-view .view-actions {
-  margin-top: 1rem;
+  margin-top: calc(var(--global-spacing-unit, 1rem) * 0.75);
   display: flex;
   flex-wrap: wrap; /* Allow buttons to wrap on small screens */
   gap: 0.5rem; 

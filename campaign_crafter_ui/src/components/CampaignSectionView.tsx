@@ -19,10 +19,10 @@ interface CampaignSectionViewProps {
 }
 
 const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSave, isSaving, saveError: externalSaveError, onDelete, forceCollapse }) => {
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(true); // Add isCollapsed state
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(true); 
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editedContent, setEditedContent] = useState<string>(section.content);
-  // const [quillInstance, setQuillInstance] = useState<any>(null); // To store Quill instance if needed (keep if used)
+  const [quillInstance, setQuillInstance] = useState<any>(null); // Enabled to store Quill instance
   const [localSaveError, setLocalSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [isImageGenerationModalOpen, setIsImageGenerationModalOpen] = useState<boolean>(false);
@@ -94,22 +94,48 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
     }
   };
 
+  const handleImageInsert = () => {
+    if (!quillInstance) {
+      console.error("Quill instance not available");
+      return;
+    }
+    const url = prompt('Enter image URL:');
+    if (url) {
+      const range = quillInstance.getSelection(true); // Get selection or default to current cursor position
+      // If there's a selection, it will be replaced by the image. 
+      // If no selection, it inserts at the cursor.
+      quillInstance.insertEmbed(range.index, 'image', url, ReactQuill.Quill.sources.USER);
+    }
+  };
+
   const quillModules = {
-    toolbar: [
-      [{ 'header': [1, 2, 3, false] }],
-      ['bold', 'italic', 'underline', 'strike', 'blockquote'],
-      [{'list': 'ordered'}, {'list': 'bullet'}, {'indent': '-1'}, {'indent': '+1'}],
-      ['link', /*'image'*/], // Image uploads would require more setup
-      ['clean']
-    ],
+    toolbar: {
+      container: [
+        [{ 'header': [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+        [{'list': 'ordered'}, {'list': 'bullet'}, {'indent': '-1'}, {'indent': '+1'}],
+        ['link', 'image'], // Enabled 'image'
+        ['clean']
+      ],
+      handlers: {
+        image: handleImageInsert, // Assign custom image handler
+      }
+    },
   };
 
   const quillFormats = [
     'header',
     'bold', 'italic', 'underline', 'strike', 'blockquote',
     'list', 'bullet', 'indent',
-    'link', /*'image'*/
+    'link', 'image' // Added 'image'
   ];
+
+  // Function to get the Quill instance
+  const setQuillRef = (el: ReactQuill | null) => {
+    if (el) {
+      setQuillInstance(el.getEditor());
+    }
+  };
 
   return (
     <div className="campaign-section-view">
@@ -132,12 +158,10 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
                 modules={quillModules}
                 formats={quillFormats}
                 className="quill-editor"
-                // Consider getting a ref to the Quill instance if more advanced control is needed
-                // ref={(el) => { if (el) setQuillInstance(el.getEditor()); }}
+                ref={setQuillRef} // Set the ref to get Quill instance
               />
               {/* Random Table Roller Integration */}
               <RandomTableRoller onInsertItem={handleInsertRandomItem} />
-              {/* TODO: Consider adding a Quill ref to get the instance: ref={(el) => { if (el) setQuillInstance(el.getEditor()); }} */}
               
               <div className="editor-actions">
                 <Button onClick={handleSave} className="editor-button" disabled={isSaving}>
@@ -196,6 +220,18 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
         //   // }
         //   setIsImageGenerationModalOpen(false); // Close modal after generation
         // }}
+        // This modal is for AI image generation, the toolbar button is for URL insertion.
+        // If AI generated image URL needs to be inserted into editor, the onImageSuccessfullyGenerated
+        // prop for ImageGenerationModal (if it's added) could use a similar logic to handleImageInsert.
+        onImageSuccessfullyGenerated={(imageUrl) => { // Example if you want to connect it
+          if (quillInstance) {
+            const range = quillInstance.getSelection(true) || { index: editedContent.length, length: 0 };
+            quillInstance.insertEmbed(range.index, 'image', imageUrl, ReactQuill.Quill.sources.USER);
+          } else {
+            setEditedContent(prev => `${prev}\n![Generated Image](${imageUrl})\n`);
+          }
+          setIsImageGenerationModalOpen(false);
+        }}
       />
     </div>
   );

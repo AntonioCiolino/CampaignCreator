@@ -1,213 +1,229 @@
 /* CampaignEditorPage.css */
+/* Using :root for CSS variables if not already defined globally */
+:root {
+  --primary-color: #007bff;
+  --primary-color-light: #e0f2fe;
+  --primary-color-dark: #0056b3;
+  --text-color: #333;
+  --text-color-muted: #6c757d;
+  --border-color: #dee2e6;
+  --border-color-light: #f1f3f5;
+  --surface-color: #ffffff;
+  --background-color: #f8f9fa;
+  --danger-color: #dc3545;
+  --danger-color-dark: #c82333;
+  --line-height-base: 1.6;
+  --global-spacing-unit: 1rem; /* Define a global spacing unit */
+}
+
 .campaign-editor-page {
-  padding: 1rem; /* Use theme-consistent spacing */
-  /* max-width is already set and fine */
-  margin: 0 auto; 
-  /* Uses global .container via App.tsx's Layout if main content is wrapped */
+  padding: var(--global-spacing-unit);
+  margin: 0 auto;
+  background-color: var(--background-color); /* Give the page a light background */
 }
 
-.campaign-header {
-  margin-bottom: 1.5rem; 
-  padding-bottom: 1rem;
-  border-bottom: 2px solid var(--border-color); /* Use theme variable */
-}
+/* Styles for content *within* tabs. The .tab-content class from Tabs.css already provides padding. */
+/* We target specific components/areas if they need further adjustment inside tabs. */
 
+/* Remove heavy background and shadow from .editor-section if tabs provide enough separation */
 .editor-section {
-  background-color: var(--surface-color); /* Theme variable */
-  padding: 1.5rem; /* Increased padding for a bit more space inside */
-  border-radius: 8px; /* Slightly more rounded corners */
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* Softer shadow */
-  margin-bottom: 2rem; /* Increased bottom margin for better separation */
+  background-color: transparent; /* Make it blend with tab content bg */
+  padding: 0; /* Padding is now handled by .tab-content or specific elements */
+  border-radius: 0;
+  box-shadow: none;
+  margin-bottom: var(--global-spacing-unit); /* Consistent bottom margin */
 }
 
-/* Style for clickable h2/h3 headers in collapsible sections */
+/* Simplify clickable headers if they are used within tabs */
 .editor-section > h2[style*="cursor: pointer"],
 .editor-section > h3[style*="cursor: pointer"] {
-  margin-bottom: 1rem; /* Space below header before content */
-  padding: 0.75rem 1rem; /* Padding inside the header */
-  background-color: var(--primary-color-light); /* Lighter primary color for header bar */
-  color: var(--primary-color-dark); /* Darker text for contrast on light bg */
-  border-radius: 6px; /* Rounded corners for the header bar */
+  margin-bottom: calc(var(--global-spacing-unit) * 0.75);
+  padding: calc(var(--global-spacing-unit) * 0.5) calc(var(--global-spacing-unit) * 0.75);
+  background-color: var(--border-color-light); /* Lighter, less prominent */
+  color: var(--text-color);
+  border-radius: 4px;
   transition: background-color 0.2s ease-in-out;
-  border-bottom: 1px solid var(--border-color);
-  /* Ensure cursor property is explicitly set if not already via inline style, though inline style takes precedence */
+  border: 1px solid var(--border-color); /* Add a subtle border */
   cursor: pointer;
 }
 
 .editor-section > h2[style*="cursor: pointer"]:hover,
 .editor-section > h3[style*="cursor: pointer"]:hover {
-  background-color: var(--primary-color); /* Slightly darker on hover */
-  color: white;
+  background-color: var(--border-color);
 }
 
-/* Default h3 styling within editor sections (non-clickable) */
-.editor-section > h3:not([style*="cursor: pointer"]) {
-  font-size: 1.4rem;
+/* Default h3 styling (non-clickable, e.g., "Add New Section" title) */
+.editor-section > h3:not([style*="cursor: pointer"]),
+.campaign-badge-area > h3, /* Targeting specific h3s for consistency */
+.read-only-section > h2 { /* Targeting specific h2s */
+  font-size: 1.25rem; /* Consistent heading size for sub-sections within tabs */
   color: var(--text-color);
-  margin-top: 0;
-  margin-bottom: 1rem; /* Default bottom margin for non-collapsible headers */
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border-color);
+  margin-top: 0; /* Remove top margin if it's the first element in a section */
+  margin-bottom: var(--global-spacing-unit);
+  padding-bottom: calc(var(--global-spacing-unit) * 0.5);
+  border-bottom: 1px solid var(--border-color-light);
 }
 
-/* Re-using global .form-label, .form-input, .form-textarea, .form-select, .form-range */
-/* Specifics for Campaign Editor */
-.editor-section .form-input-title {
-  font-size: 1.8rem; /* Adjusted title input size */
-  font-weight: 600; /* Bolder for main title */
-  color: var(--text-color);
-  /* padding and margin are handled by global .form-input */
+/* Ensure CampaignDetailsEditor, CampaignLLMSettings, CampaignSectionEditor cards have some margin */
+/* These are Material UI Cards, so their internal padding is fine. Add margin for spacing between them if multiple in one tab. */
+/* This is handled by their `sx={{ mb: 3 }}` prop, which is good. */
+
+
+/* Read-only sections (Concept, TOC) styling */
+.read-only-section {
+  margin-top: var(--global-spacing-unit);
+  padding: var(--global-spacing-unit);
+  background-color: var(--surface-color); /* White background to stand out a bit */
+  border: 1px solid var(--border-color-light);
+  border-radius: 4px;
+}
+.read-only-section .concept-content,
+.read-only-section .toc-content {
+  font-size: 0.95rem;
+  color: var(--text-color-muted);
+  line-height: var(--line-height-base);
+}
+.read-only-section .toc-content ul,
+.read-only-section .toc-content ol {
+  padding-left: calc(var(--global-spacing-unit) * 1.5); /* Indent lists */
 }
 
-.editor-section .form-textarea { /* For initial prompt */
-  min-height: 100px; /* Adjusted min-height */
-  line-height: var(--line-height-base); /* Use theme variable */
-}
 
-.read-only-section h2 {
-  font-size: 1.5rem; /* Adjusted size for read-only section headers */
-  color: var(--text-color); 
-  margin-top: 0;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border-color);
-}
-
-/* Adjustments for control groups and action areas for consistent spacing */
-.save-actions,
+/* Control groups and action areas */
+.save-actions, /* Part of CampaignDetailsEditor now */
 .section-display-controls,
-.llm-settings-and-actions .llm-controls, /* Target .llm-controls inside .llm-settings-and-actions */
-.llm-settings-and-actions .llm-actions,  /* Target .llm-actions inside .llm-settings-and-actions */
-.add-section-form { /* Target the form within the add section area */
-  margin-top: 1rem; /* Standard top margin for control/action groups */
-  margin-bottom: 1rem; /* Standard bottom margin */
+.add-section-form,
+.export-action-group { /* Specific class for export */
+  margin-top: var(--global-spacing-unit);
+  margin-bottom: var(--global-spacing-unit);
+  padding: var(--global-spacing-unit);
+  background-color: var(--surface-color); /* Light background for these areas */
+  border: 1px solid var(--border-color-light);
+  border-radius: 4px;
+}
+.add-section-form.card-like { /* From previous step, ensure it's styled */
+  margin-top: var(--global-spacing-unit) !important; /* Ensure spacing */
+  padding: var(--global-spacing-unit);
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color-light);
+  border-radius: 4px;
 }
 
-/* Styles for the selected LLM display and change button */
-.selected-llm-display {
-  display: flex;
-  align-items: center;
-  justify-content: space-between; /* Distributes space between name and button */
-  padding: 8px 12px; /* Adjusted padding */
-  border: 1px solid #ced4da; /* Standard input border color */
-  border-radius: .25rem; /* Standard border-radius */
-  background-color: #e9ecef; /* Light background for display area */
-  margin-bottom: 10px; /* Space below this element */
-  min-height: 38px; /* Match typical input height */
-  box-sizing: border-box;
-}
 
-.selected-llm-display span {
-  flex-grow: 1;
-  font-weight: 500; /* Make the name slightly bolder */
-  color: #212529; /* Darker text for better readability */
+/* LLM Selection (inside CampaignLLMSettings Card) - these styles might not be needed if MUI handles it well */
+.selected-llm-display { /* If this class is still used inside CampaignLLMSettings */
+  /* ... existing styles ... */
+  border-color: var(--border-color);
+  background-color: var(--border-color-light);
 }
-
-.change-llm-button {
-  background: none;
-  border: none;
-  color: #007bff; /* Primary link color */
-  cursor: pointer;
-  text-decoration: none; /* No underline by default */
-  padding: 0 0 0 10px; /* Padding on the left */
-  margin-left: 8px;
-  font-size: 0.9rem;
-  font-weight: normal; /* Ensure it's not bold if a parent is */
-  line-height: 1; /* Ensure proper vertical alignment */
+.change-llm-button { /* If used */
+  color: var(--primary-color);
 }
-
 .change-llm-button:hover {
-  color: #0056b3; /* Darker on hover */
-  text-decoration: underline; /* Underline on hover for affordance */
+  color: var(--primary-color-dark);
 }
 
-/* Ensure form-group and label have some basic styling if not already globally defined */
-/* This is just to make sure the LLM display doesn't look completely out of place */
-/* These might exist in a global stylesheet like index.css or App.css */
+
+/* Form group consistency (if not handled by a global form system or MUI) */
 .form-group {
-  margin-bottom: 1rem; /* Standard spacing for form groups */
+  margin-bottom: var(--global-spacing-unit);
 }
-
 .form-group label {
   display: block;
-  margin-bottom: .5rem; /* Space between label and control */
-  font-weight: bold;
+  margin-bottom: calc(var(--global-spacing-unit) * 0.3);
+  font-weight: 500; /* Slightly less than bold */
+  color: var(--text-color);
 }
+/* Inputs should have consistent styling (assuming a global .form-input or relying on MUI) */
 
-/* Adjustments for LLM Controls section in CampaignEditorPage */
-.llm-controls .form-group {
-  margin-bottom: 0.5rem; /* Reduce bottom margin for tighter packing if needed */
-}
 
-.llm-controls .form-group label {
-  margin-bottom: 0.25rem;
-}
-
-/* Campaign Badge Styles */
+/* Campaign Badge Area (inside Details tab) */
 .campaign-badge-area {
-  margin-top: 1rem; /* Add some space above the badge area */
-  margin-bottom: 20px; /* Original margin-bottom */
-  padding: 10px;
-  border: 1px solid #eee; /* Consider var(--border-color) */
+  margin-top: var(--global-spacing-unit);
+  padding: var(--global-spacing-unit);
+  border: 1px solid var(--border-color-light);
   border-radius: 4px;
-  /* background-color: var(--surface-color); /* Consistent with other sections if not already nested */
+  background-color: var(--surface-color);
+}
+.campaign-badge-image {
+  max-width: 120px; /* Slightly smaller */
+  max-height: 120px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+.campaign-badge-placeholder {
+  color: var(--text-color-muted);
+  background-color: var(--background-color);
+  border: 1px dashed var(--border-color);
+}
+.campaign-badge-actions {
+  margin-top: calc(var(--global-spacing-unit) * 0.75);
+  display: flex;
+  flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
+  gap: calc(var(--global-spacing-unit) * 0.5);
 }
 
-.campaign-badge-area h3 { /* Style for the "Campaign Badge" title */
-  font-size: 1.2rem; /* Slightly smaller than section titles */
+/* Suggested Titles section */
+.suggested-titles-section {
+  margin-top: var(--global-spacing-unit);
+  padding: var(--global-spacing-unit);
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color-light);
+  border-radius: 4px;
+}
+.suggested-titles-section h3 {
+  font-size: 1.1rem;
   color: var(--text-color);
   margin-top: 0;
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--border-color-light); /* Lighter border for sub-sections */
+  margin-bottom: calc(var(--global-spacing-unit) * 0.75);
+}
+.titles-list {
+  list-style-type: disc;
+  padding-left: calc(var(--global-spacing-unit) * 1.5);
+  margin-bottom: calc(var(--global-spacing-unit) * 0.75);
+}
+.title-item {
+  margin-bottom: calc(var(--global-spacing-unit) * 0.25);
+  color: var(--text-color-muted);
 }
 
-.campaign-badge-image {
-  max-width: 150px; 
-  max-height: 150px;
-  display: block;
-  border: 1px solid #ddd; /* Consider var(--border-color-light) */
-  margin-top: 5px;
-  border-radius: 4px; /* Rounded corners for the image */
-}
 
-.campaign-badge-placeholder {
-  font-style: italic;
-  color: #777; /* Consider var(--text-color-muted) or similar */
-  margin-top: 5px;
-  padding: 10px; /* Add some padding if it's just text */
-  background-color: var(--background-color); /* Slightly different background for placeholder */
-  border: 1px dashed #ddd; /* Dashed border for placeholder */
+/* Feedback messages (global styling for consistency) */
+.feedback-message, 
+.save-feedback, /* Ensure these also use consistent styling */
+.llm-feedback {
+  margin-top: calc(var(--global-spacing-unit) * 0.5);
+  padding: calc(var(--global-spacing-unit) * 0.5) calc(var(--global-spacing-unit) * 0.75);
   border-radius: 4px;
-  text-align: center;
-}
-
-.campaign-badge-actions {
-  margin-top: 10px;
-  display: flex;
-  gap: 10px; /* Spacing between buttons */
-}
-
-/* Using existing .action-button class if suitable, or define new ones */
-/* .campaign-badge-actions .action-button { ... } */
-
-.campaign-badge-actions .remove-button {
-  background-color: var(--danger-color, #dc3545); /* Example danger color */
-  color: white;
-  border-color: var(--danger-color-dark, #bd2130);
-}
-
-.campaign-badge-actions .remove-button:hover {
-  background-color: var(--danger-color-dark, #c82333);
-  border-color: var(--danger-color-darker, #bd2130);
-}
-
-/* Ensure feedback messages are styled, if not already globally */
-.feedback-message { 
-  margin-top: 0.5rem;
   font-size: 0.9rem;
 }
-.error-message.feedback-message { /* Specific for badge update errors */
-  color: var(--danger-color, #dc3545);
+.error-message, .error-message.save-feedback, .error-message.llm-feedback {
+  color: var(--danger-color-dark);
+  background-color: #f8d7da; /* Light red background */
+  border: 1px solid #f5c6cb; /* Reddish border */
 }
-/* Success message styling can be added if needed */
+.success-message, .success-message.save-feedback {
+  color: #155724; /* Dark green text */
+  background-color: #d4edda; /* Light green background */
+  border: 1px solid #c3e6cb; /* Greenish border */
+}
+
+/* Remove specific background from .llm-settings-and-actions if it's now within a tab */
+/* .llm-settings-and-actions was a wrapper, now CampaignLLMSettings (MUI Card) is used. */
+
+/* Ensure .card-like (used for Add New Section form) has consistent styling */
+.card-like {
+  padding: var(--global-spacing-unit);
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color-light);
+  border-radius: 4px;
+  margin-top: var(--global-spacing-unit);
+}
+.card-like h3 { /* For "Add New Section" title */
+    font-size: 1.25rem;
+    color: var(--text-color);
+    margin-top: 0;
+    margin-bottom: var(--global-spacing-unit);
+    padding-bottom: calc(var(--global-spacing-unit) * 0.5);
+    border-bottom: 1px solid var(--border-color-light);
+}

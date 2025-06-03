@@ -1,0 +1,175 @@
+import React from 'react';
+import {
+  Button,
+  Grid,
+  Typography,
+  Card,
+  CardContent,
+  Box,
+  IconButton,
+  List,
+  // ListItem, // Will be replaced by Draggable
+  // ListItemText,
+  Paper,
+} from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator'; 
+import { CampaignSection, CampaignSectionUpdatePayload } from '../../services/campaignService'; // Corrected import
+import CampaignSectionView from '../CampaignSectionView';
+import { 
+  DragDropContext, 
+  Droppable, 
+  Draggable, 
+  DropResult, 
+  DroppableProvided, // For typing
+  DroppableStateSnapshot, // For typing
+  DraggableProvided, // For typing
+  DraggableStateSnapshot // For typing
+} from 'react-beautiful-dnd';
+
+interface CampaignSectionEditorProps {
+  sections: CampaignSection[];
+  setSections: (sections: CampaignSection[]) => void; 
+  handleAddNewSection: () => void;
+  handleDeleteSection: (sectionId: number) => void; // Changed sectionId to number
+  // These direct handlers might be replaced if onSave handles all updates
+  handleUpdateSectionContent: (sectionId: number, newContent: string) => void; // Changed sectionId to number
+  handleUpdateSectionTitle: (sectionId: number, newTitle: string) => void; // Changed sectionId to number
+  onUpdateSectionOrder: (orderedSectionIds: number[]) => Promise<void>; 
+}
+
+const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
+  sections,
+  setSections,
+  handleAddNewSection,
+  handleDeleteSection,
+  handleUpdateSectionContent, // Keep this prop
+  handleUpdateSectionTitle,   // Keep this prop for now, though CampaignSectionView might not edit title
+  onUpdateSectionOrder,
+}) => {
+  const onDragEnd = (result: DropResult) => { // Removed ResponderProvided as it's not typically used in onDragEnd
+    const { source, destination } = result;
+
+    // Dropped outside the list
+    if (!destination) {
+      return;
+    }
+
+    // If dropped in the same place
+    if (destination.droppableId === source.droppableId && destination.index === source.index) {
+      return;
+    }
+
+    const items = Array.from(sections);
+    const [reorderedItem] = items.splice(source.index, 1);
+    items.splice(destination.index, 0, reorderedItem);
+
+    setSections(items); // Optimistic update
+
+    const orderedSectionIds = items.map(item => typeof item.id === 'string' ? parseInt(item.id, 10) : item.id);
+    
+    onUpdateSectionOrder(orderedSectionIds).catch(() => {
+      // Error handling (reverting) is done in CampaignEditorPage's handleUpdateSectionOrder
+    });
+  };
+
+  // This function will be passed as the onSave prop to CampaignSectionView
+  const handleSectionViewSave = async (sectionId: number, updatedData: CampaignSectionUpdatePayload) => {
+    // CampaignSectionView's onSave currently only sends content
+    if (updatedData.content !== undefined) {
+      await handleUpdateSectionContent(sectionId, updatedData.content);
+    }
+    // If CampaignSectionView were to also handle title, it would be:
+    // if (updatedData.title !== undefined) {
+    //   await handleUpdateSectionTitle(sectionId, updatedData.title);
+    // }
+  };
+
+
+  return (
+    <Card sx={{ mb: 3 }}>
+      <CardContent>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6">Campaign Sections</Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddCircleOutlineIcon />}
+            onClick={handleAddNewSection}
+          >
+            Add New Section
+          </Button>
+        </Box>
+        {sections.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            No sections yet. Click "Add New Section" to begin.
+          </Typography>
+        ) : (
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId="campaignSections">
+              {(provided: DroppableProvided, snapshot: DroppableStateSnapshot) => (
+                <List
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  sx={{
+                    background: snapshot.isDraggingOver ? 'lightblue' : 'inherit',
+                    padding: snapshot.isDraggingOver ? '8px' : '0', 
+                    transition: 'background-color 0.2s ease, padding 0.2s ease',
+                  }}
+                >
+                  {sections.map((section, index) => (
+                    <Draggable key={section.id.toString()} draggableId={section.id.toString()} index={index}>
+                      {(providedDraggable: DraggableProvided, snapshotDraggable: DraggableStateSnapshot) => (
+                        <Paper
+                          ref={providedDraggable.innerRef}
+                          {...providedDraggable.draggableProps}
+                          elevation={snapshotDraggable.isDragging ? 4 : 2} 
+                          sx={{ 
+                            mb: 2, 
+                            display: 'flex', 
+                            alignItems: 'center',
+                            border: snapshotDraggable.isDragging ? '2px dashed #ccc' : '2px solid transparent',
+                            background: snapshotDraggable.isDragging ? '#f0f0f0' : 'white',
+                          }}
+                        >
+                          <Box {...providedDraggable.dragHandleProps} sx={{ pl: 1, pr: 1, cursor: 'grab', display: 'flex', alignItems: 'center' }}>
+                            <DragIndicatorIcon />
+                          </Box>
+                          <Box sx={{ width: '100%', p: 1 }}>
+                            <CampaignSectionView
+                              section={section}
+                              // Removed onContentChange and onTitleChange
+                              // Add onSave prop:
+                              onSave={(sectionIdFromView, data) => handleSectionViewSave(sectionIdFromView, data)}
+                              // These props are from CampaignSectionView's own needs, not directly from CampaignSectionEditor's props
+                              isSaving={false} // TODO: Determine how to manage isSaving state for individual sections if needed
+                              saveError={null} // TODO: Determine how to manage saveError for individual sections
+                              onDelete={() => handleDeleteSection(typeof section.id === 'string' ? parseInt(section.id, 10): section.id)} // Pass onDelete through
+                            />
+                          </Box>
+                          <IconButton
+                            edge="end"
+                            aria-label="delete"
+                            onClick={() => handleDeleteSection(typeof section.id === 'string' ? parseInt(section.id, 10): section.id)}
+                            color="error"
+                            sx={{ ml: 1, mr:1 }} 
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Paper>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </List>
+              )}
+            </Droppable>
+          </DragDropContext>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+export default CampaignSectionEditor;

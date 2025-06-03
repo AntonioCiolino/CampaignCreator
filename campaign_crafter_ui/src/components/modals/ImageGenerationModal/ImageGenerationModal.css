@@ -1,61 +1,87 @@
+/* Assuming :root variables are defined in a global scope */
 .image-generation-modal-content {
     display: flex;
     flex-direction: column;
-    gap: 15px; /* Spacing between elements */
+    gap: var(--global-spacing-unit, 1rem); /* Use CSS variable */
+}
+
+.image-generation-modal-content .form-group { /* Use a common class if available */
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--global-spacing-unit, 1rem) * 0.3);
 }
 
 .image-generation-modal-content label {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    font-weight: bold;
+    font-weight: 500; /* Consistent with other labels */
+    color: var(--text-color, #333);
 }
 
 .image-generation-modal-content input[type="text"],
 .image-generation-modal-content select {
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    padding: calc(var(--global-spacing-unit, 1rem) * 0.5) calc(var(--global-spacing-unit, 1rem) * 0.75);
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 4px; /* Consistent border-radius */
     font-size: 1rem;
+    background-color: var(--surface-color, #fff);
+    color: var(--text-color, #333);
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+    width: 100%; /* Make form elements take full width of their container */
 }
+
+.image-generation-modal-content input[type="text"]:focus,
+.image-generation-modal-content select:focus {
+    border-color: var(--primary-color, #007bff);
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); /* Focus indicator */
+    outline: none;
+}
+
 
 .image-preview {
     width: 100%;
-    max-width: 512px; /* Or desired max width */
-    height: auto;
-    min-height: 200px; /* Placeholder height */
-    border: 1px dashed #ccc;
+    max-width: 480px; /* Slightly reduced max width */
+    aspect-ratio: 1 / 1; /* Maintain square aspect ratio for previews if desired, or use auto */
+    min-height: 256px; 
+    border: 2px dashed var(--border-color, #dee2e6); /* Dashed border */
     display: flex;
     justify-content: center;
     align-items: center;
-    margin: 10px 0;
-    background-color: #f9f9f9;
+    margin: var(--global-spacing-unit, 1rem) auto; /* Center the preview area */
+    background-color: var(--background-color, #f8f9fa); /* Light background */
+    border-radius: 4px; /* Consistent border-radius */
+    padding: calc(var(--global-spacing-unit, 1rem) * 0.25); /* Small padding inside */
 }
 
 .image-preview img {
     max-width: 100%;
-    max-height: 512px; /* Or desired max height */
+    max-height: 100%; /* Ensure image fits within the padded area */
     object-fit: contain;
+    border-radius: 2px; /* Slight radius for the image itself */
 }
 
 .image-preview-placeholder {
-    color: #aaa;
+    color: var(--text-color-muted, #6c757d);
     text-align: center;
+    font-size: 0.9rem;
 }
 
 .modal-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
-    margin-top: 10px;
+    gap: calc(var(--global-spacing-unit, 1rem) * 0.5);
+    margin-top: var(--global-spacing-unit, 1rem);
+    padding-top: var(--global-spacing-unit, 1rem);
+    border-top: 1px solid var(--border-color-light, #f1f3f5); /* Separator line */
 }
+/* Buttons within modal-actions are assumed to be MUI Buttons or use global .button styles */
 
 .image-url-display {
-    margin-top: 10px;
-    padding: 8px;
-    background-color: #f0f0f0;
-    border: 1px solid #ddd;
+    margin-top: var(--global-spacing-unit, 1rem);
+    padding: calc(var(--global-spacing-unit, 1rem) * 0.5);
+    background-color: var(--background-color, #f8f9fa);
+    border: 1px solid var(--border-color-light, #f1f3f5);
     border-radius: 4px;
     font-family: monospace;
     word-break: break-all;
+    font-size: 0.85rem;
+    color: var(--text-color-muted, #6c757d);
 }

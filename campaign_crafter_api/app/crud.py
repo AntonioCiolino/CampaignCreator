@@ -283,7 +283,43 @@ def delete_campaign_section(db: Session, section_id: int, campaign_id: int) -> O
 
     db.delete(db_section)
     db.commit()
-    return db_section # Returns the object as it was before deletion from session's perspective
+    # After commit, the db_section object is expired. If you need to return the object
+    # with its state before deletion, you might need to handle it differently,
+    # or simply return None or a success indicator. For consistency with other delete ops,
+    # returning the object, though its state in session might be "deleted".
+    return db_section
+
+async def update_section_order(db: Session, campaign_id: int, ordered_section_ids: List[int]):
+    """
+    Updates the order of sections for a given campaign.
+    :param db: The database session.
+    :param campaign_id: The ID of the campaign whose sections are to be reordered.
+    :param ordered_section_ids: A list of section IDs in their new desired order.
+    """
+    # Fetch sections that belong to the campaign and are in the provided list
+    sections_to_update = db.query(orm_models.CampaignSection).filter(
+        orm_models.CampaignSection.campaign_id == campaign_id,
+        orm_models.CampaignSection.id.in_(ordered_section_ids)
+    ).all()
+
+    # Create a dictionary for quick lookups of sections by ID
+    section_map = {section.id: section for section in sections_to_update}
+
+    for index, section_id in enumerate(ordered_section_ids):
+        if section_id in section_map:
+            section = section_map[section_id]
+            if section.order != index: # Only update if the order has actually changed
+                section.order = index
+                db.add(section) # Add to session to mark for update
+        else:
+            # This case should ideally be prevented by checks in the API endpoint
+            # If a section_id is provided that doesn't belong to the campaign or doesn't exist,
+            # it will be ignored here, or you could raise an error.
+            print(f"Warning: Section ID {section_id} not found in campaign {campaign_id} during order update.")
+
+    db.commit()
+    # No specific return value needed, or perhaps return the updated sections if desired.
+    # For a 204 response, nothing needs to be returned by the CRUD usually.
 
 # LLMConfig CRUD functions (example, can be expanded)
 # def create_llm_config(db: Session, config: models.LLMConfigCreate, owner_id: int) -> orm_models.LLMConfig:
