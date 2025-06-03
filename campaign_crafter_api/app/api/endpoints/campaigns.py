@@ -105,7 +105,8 @@ async def generate_campaign_toc_endpoint(
         provider_name, model_specific_id = _extract_provider_and_model(request_body.model_id_with_prefix)
         llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=request_body.model_id_with_prefix)
         generated_toc = await llm_service.generate_toc( # Added await
-            campaign_concept=db_campaign.concept, 
+            campaign_concept=db_campaign.concept,
+            db=db,
             model=model_specific_id
         )
     except LLMServiceUnavailableError as e:
@@ -144,7 +145,8 @@ async def generate_campaign_titles_endpoint(
         provider_name, model_specific_id = _extract_provider_and_model(request_body.model_id_with_prefix)
         llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=request_body.model_id_with_prefix)
         generated_titles = await llm_service.generate_titles( # Added await
-            campaign_concept=db_campaign.concept, 
+            campaign_concept=db_campaign.concept,
+            db=db,
             count=count, 
             model=model_specific_id
         )
@@ -224,6 +226,7 @@ async def create_new_campaign_section_endpoint(
         llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=section_input.model_id_with_prefix)
         generated_content = await llm_service.generate_section_content(
             campaign_concept=db_campaign.concept or "A general creative writing piece.",
+            db=db,
             existing_sections_summary=existing_sections_summary,
             section_creation_prompt=section_input.prompt,
             section_title_suggestion=section_input.title,

@@ -19,7 +19,7 @@ interface CampaignSectionViewProps {
 }
 
 const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSave, isSaving, saveError: externalSaveError, onDelete, forceCollapse }) => {
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(true); 
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(true);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editedContent, setEditedContent] = useState<string>(section.content);
   const [quillInstance, setQuillInstance] = useState<any>(null); // Enabled to store Quill instance
@@ -104,7 +104,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
       const range = quillInstance.getSelection(true); // Get selection or default to current cursor position
       // If there's a selection, it will be replaced by the image. 
       // If no selection, it inserts at the cursor.
-      quillInstance.insertEmbed(range.index, 'image', url, Quill.sources.USER);
+      quillInstance.insertEmbed(range.index, 'image', url, 'user');
     }
   };
 
@@ -226,7 +226,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
         onImageSuccessfullyGenerated={(imageUrl) => { // Example if you want to connect it
           if (quillInstance) {
             const range = quillInstance.getSelection(true) || { index: editedContent.length, length: 0 };
-            quillInstance.insertEmbed(range.index, 'image', imageUrl, Quill.sources.USER);
+            quillInstance.insertEmbed(range.index, 'image', imageUrl, 'user');
           } else {
             setEditedContent(prev => `${prev}\n![Generated Image](${imageUrl})\n`);
           }

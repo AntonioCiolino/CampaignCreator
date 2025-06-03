@@ -1,6 +1,7 @@
 import httpx # For making async HTTP requests
 from typing import Optional, List, Dict, Any, AsyncGenerator
 from fastapi import HTTPException
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.services.llm_service import AbstractLLMService
@@ -156,28 +157,28 @@ class LocalLLMService(AbstractLLMService):
 
 
     # Implement other abstract methods by calling self.generate_text
-    async def generate_campaign_concept(self, user_prompt: str, model: Optional[str] = None) -> str:
-        custom_prompt = self.feature_prompt_service.get_prompt("Campaign")
+    async def generate_campaign_concept(self, user_prompt: str, db: Session, model: Optional[str] = None) -> str:
+        custom_prompt = self.feature_prompt_service.get_prompt("Campaign", db=db)
         final_prompt = custom_prompt.format(user_prompt=user_prompt) if custom_prompt else f"Generate a detailed RPG campaign concept: {user_prompt}"
         return await self.generate_text(prompt=final_prompt, model=model)
 
-    async def generate_titles(self, campaign_concept: str, count: int = 5, model: Optional[str] = None) -> list[str]:
-        custom_prompt = self.feature_prompt_service.get_prompt("Campaign Names")
+    async def generate_titles(self, campaign_concept: str, db: Session, count: int = 5, model: Optional[str] = None) -> list[str]:
+        custom_prompt = self.feature_prompt_service.get_prompt("Campaign Names", db=db)
         final_prompt = custom_prompt.format(campaign_concept=campaign_concept, count=count) if custom_prompt else f"Generate {count} campaign titles for: {campaign_concept}. Each on a new line."
         generated_string = await self.generate_text(prompt=final_prompt, model=model)
         return [title.strip() for title in generated_string.split('\n') if title.strip()][:count]
 
-    async def generate_toc(self, campaign_concept: str, model: Optional[str] = None) -> str:
-        custom_prompt = self.feature_prompt_service.get_prompt("Table of Contents")
+    async def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> str:
+        custom_prompt = self.feature_prompt_service.get_prompt("Table of Contents", db=db)
         final_prompt = custom_prompt.format(campaign_concept=campaign_concept) if custom_prompt else f"Generate a table of contents for campaign: {campaign_concept}"
         return await self.generate_text(prompt=final_prompt, model=model)
 
     async def generate_section_content(
-        self, campaign_concept: str, existing_sections_summary: Optional[str], 
+        self, campaign_concept: str, db: Session, existing_sections_summary: Optional[str],
         section_creation_prompt: Optional[str], section_title_suggestion: Optional[str], 
         model: Optional[str] = None
     ) -> str:
-        custom_prompt_template = self.feature_prompt_service.get_prompt("Section Content")
+        custom_prompt_template = self.feature_prompt_service.get_prompt("Section Content", db=db)
         if custom_prompt_template:
             final_prompt = custom_prompt_template.format(
                 campaign_concept=campaign_concept,

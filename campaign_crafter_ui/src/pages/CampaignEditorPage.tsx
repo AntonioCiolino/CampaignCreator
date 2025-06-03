@@ -64,6 +64,7 @@ const CampaignEditorPage: React.FC = () => {
   const [forceCollapseAll, setForceCollapseAll] = useState<boolean | undefined>(undefined);
 
   // State for UI collapsible sections
+  const [isTocCollapsed, setIsTocCollapsed] = useState<boolean>(false); // Default to expanded
   const [isLLMSettingsCollapsed, setIsLLMSettingsCollapsed] = useState<boolean>(false);
   const [isAddSectionCollapsed, setIsAddSectionCollapsed] = useState<boolean>(true);
   const [isLLMDialogOpen, setIsLLMDialogOpen] = useState<boolean>(false);
@@ -553,12 +554,30 @@ const CampaignEditorPage: React.FC = () => {
           <div className="concept-content"><ReactMarkdown>{campaign.concept}</ReactMarkdown></div>
         </section>
       )}
-      {campaign.toc && (
-        <section className="campaign-detail-section read-only-section editor-section">
-          <h2>Table of Contents (Read-Only)</h2>
-          <div className="toc-content"><ReactMarkdown>{processedToc}</ReactMarkdown></div>
-        </section>
-      )}
+      {/* TOC Section */}
+      <section className="campaign-detail-section editor-section">
+        {campaign.toc && ( // Only show header if TOC exists to be collapsed/expanded
+          <h2 onClick={() => setIsTocCollapsed(!isTocCollapsed)} style={{ cursor: 'pointer' }}>
+            {isTocCollapsed ? '▶' : '▼'} Table of Contents
+          </h2>
+        )}
+        {/* Content: TOC display and/or Generate button */}
+        {(!campaign.toc || !isTocCollapsed) && ( // Show if no TOC, or if TOC exists and is not collapsed
+          <div className="toc-controls-and-display" style={{ marginTop: '10px' }}>
+            {campaign.toc && <ReactMarkdown>{processedToc}</ReactMarkdown>}
+            <button
+              onClick={handleGenerateTOC}
+              disabled={isGeneratingTOC || !selectedLLMId} // Also disable if no LLM selected
+              className="action-button" // Use your project's standard button class
+              style={{ marginTop: campaign.toc ? '10px' : '0' }} // Add margin if TOC is above
+              title={!selectedLLMId ? "Select an LLM model from the Settings tab first" : ""}
+            >
+              {isGeneratingTOC ? 'Generating TOC...' : (campaign.toc ? 'Re-generate Table of Contents' : 'Generate Table of Contents')}
+            </button>
+            {tocError && <p className="error-message feedback-message" style={{ marginTop: '5px' }}>{tocError}</p>}
+          </div>
+        )}
+      </section>
     </>
   );
 
@@ -568,7 +587,6 @@ const CampaignEditorPage: React.FC = () => {
         <h3>Section Display</h3>
         <button onClick={() => setForceCollapseAll(true)} className="action-button">Collapse All Sections</button>
         <button onClick={() => setForceCollapseAll(false)} className="action-button">Expand All Sections</button>
-        <button onClick={() => setForceCollapseAll(undefined)} className="action-button secondary-action-button">Enable Individual Toggling</button>
       </div>
       <CampaignSectionEditor
         sections={sections}
@@ -578,7 +596,7 @@ const CampaignEditorPage: React.FC = () => {
         handleUpdateSectionContent={handleUpdateSectionContent}
         handleUpdateSectionTitle={handleUpdateSectionTitle}
         onUpdateSectionOrder={handleUpdateSectionOrder} // Pass the new handler
-        // TODO: Pass savingSectionId, sectionSaveError, forceCollapseAll if CSE is updated to use them
+        forceCollapseAllSections={forceCollapseAll} // Pass the state here
       />
       {!isAddSectionCollapsed && (
         <div className="editor-actions add-section-area editor-section card-like" style={{ marginTop: '20px' }}>
@@ -617,8 +635,6 @@ const CampaignEditorPage: React.FC = () => {
           setSelectedLLM={handleSetSelectedLLM}
           temperature={temperature}
           setTemperature={setTemperature}
-          isGeneratingTOC={isGeneratingTOC}
-          handleGenerateTOC={handleGenerateTOC}
           isGeneratingTitles={isGeneratingTitles}
           handleGenerateTitles={handleGenerateTitles}
           availableLLMs={availableLLMs.map(m => ({...m, name: m.name || m.id})) as LLM[]}
