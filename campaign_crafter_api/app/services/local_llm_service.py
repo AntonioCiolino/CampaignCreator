@@ -174,7 +174,7 @@ class LocalLLMService(AbstractLLMService):
         return await self.generate_text(prompt=final_prompt, model=model)
 
     async def generate_section_content(
-        self, campaign_concept: str, db: Session, existing_sections_summary: Optional[str], 
+        self, campaign_concept: str, db: Session, existing_sections_summary: Optional[str],
         section_creation_prompt: Optional[str], section_title_suggestion: Optional[str], 
         model: Optional[str] = None
     ) -> str:

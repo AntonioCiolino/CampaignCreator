@@ -19,7 +19,7 @@ interface CampaignSectionViewProps {
 }
 
 const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSave, isSaving, saveError: externalSaveError, onDelete, forceCollapse }) => {
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(forceCollapse !== undefined ? forceCollapse : true); 
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(forceCollapse !== undefined ? forceCollapse : true);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editedContent, setEditedContent] = useState<string>(section.content);
   const [quillInstance, setQuillInstance] = useState<any>(null); // Enabled to store Quill instance

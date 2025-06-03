@@ -101,33 +101,34 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
             Add New Section
           </Button>
         </Box>
-        {sections.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            No sections yet. Click "Add New Section" to begin.
-          </Typography>
-        ) : (
-          <DragDropContext onDragEnd={onDragEnd}>
-            <Droppable droppableId="campaignSections">
-              {(provided: DroppableProvided, snapshot: DroppableStateSnapshot) => (
-                <List
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
-                  sx={{
-                    background: snapshot.isDraggingOver ? 'lightblue' : 'inherit',
-                    padding: snapshot.isDraggingOver ? '8px' : '0', 
-                    transition: 'background-color 0.2s ease, padding 0.2s ease',
-                  }}
-                >
-                  {sections.map((section, index) => (
+        <DragDropContext onDragEnd={onDragEnd}>
+          <Droppable droppableId="campaignSections">
+            {(provided: DroppableProvided, snapshot: DroppableStateSnapshot) => (
+              <List
+                {...provided.droppableProps}
+                ref={provided.innerRef}
+                sx={{
+                  background: snapshot.isDraggingOver ? 'lightblue' : 'inherit',
+                  padding: snapshot.isDraggingOver ? '8px' : '0',
+                  transition: 'background-color 0.2s ease, padding 0.2s ease',
+                  minHeight: '50px', // Ensure droppable area has some height
+                }}
+              >
+                {sections.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary" sx={{ padding: '16px', textAlign: 'center' }}>
+                    No sections yet. Click 'Add New Section' to begin.
+                  </Typography>
+                ) : (
+                  sections.map((section, index) => (
                     <Draggable key={section.id.toString()} draggableId={section.id.toString()} index={index}>
                       {(providedDraggable: DraggableProvided, snapshotDraggable: DraggableStateSnapshot) => (
                         <Paper
                           ref={providedDraggable.innerRef}
                           {...providedDraggable.draggableProps}
-                          elevation={snapshotDraggable.isDragging ? 4 : 2} 
-                          sx={{ 
-                            mb: 2, 
-                            display: 'flex', 
+                          elevation={snapshotDraggable.isDragging ? 4 : 2}
+                          sx={{
+                            mb: 2,
+                            display: 'flex',
                             alignItems: 'center',
                             border: snapshotDraggable.isDragging ? '2px dashed #ccc' : '2px solid transparent',
                             background: snapshotDraggable.isDragging ? '#f0f0f0' : 'white',
@@ -139,34 +140,31 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
                           <Box sx={{ width: '100%', p: 1 }}>
                             <CampaignSectionView
                               section={section}
-                              // Removed onContentChange and onTitleChange
-                              // Add onSave prop:
                               onSave={(sectionIdFromView, data) => handleSectionViewSave(sectionIdFromView, data)}
-                              // These props are from CampaignSectionView's own needs, not directly from CampaignSectionEditor's props
-                              isSaving={false} // TODO: Determine how to manage isSaving state for individual sections if needed
-                              saveError={null} // TODO: Determine how to manage saveError for individual sections
-                              onDelete={() => handleDeleteSection(typeof section.id === 'string' ? parseInt(section.id, 10): section.id)} // Pass onDelete through
+                              isSaving={false} // TODO: Manage individual section saving state
+                              saveError={null} // TODO: Manage individual section error state
+                              onDelete={() => handleDeleteSection(typeof section.id === 'string' ? parseInt(section.id, 10) : section.id)}
                             />
                           </Box>
                           <IconButton
                             edge="end"
                             aria-label="delete"
-                            onClick={() => handleDeleteSection(typeof section.id === 'string' ? parseInt(section.id, 10): section.id)}
+                            onClick={() => handleDeleteSection(typeof section.id === 'string' ? parseInt(section.id, 10) : section.id)}
                             color="error"
-                            sx={{ ml: 1, mr:1 }} 
+                            sx={{ ml: 1, mr: 1 }}
                           >
                             <DeleteIcon />
                           </IconButton>
                         </Paper>
                       )}
                     </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </List>
-              )}
-            </Droppable>
-          </DragDropContext>
-        )}
+                  ))
+                )}
+                {provided.placeholder}
+              </List>
+            )}
+          </Droppable>
+        </DragDropContext>
       </CardContent>
     </Card>
   );
