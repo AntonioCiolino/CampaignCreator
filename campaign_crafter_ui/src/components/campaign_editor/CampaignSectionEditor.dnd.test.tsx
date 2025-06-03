@@ -16,9 +16,9 @@ jest.mock('../CampaignSectionView', () => {
 });
 
 const mockSections: CampaignSection[] = [
-  { id: 1, title: 'Section Alpha', content: 'Alpha content', order: 0, campaign_id: 1, model_id_with_prefix: 'test/alpha' },
-  { id: 2, title: 'Section Beta', content: 'Beta content', order: 1, campaign_id: 1, model_id_with_prefix: 'test/beta' },
-  { id: 3, title: 'Section Gamma', content: 'Gamma content', order: 2, campaign_id: 1, model_id_with_prefix: 'test/gamma' },
+  { id: 1, title: 'Section Alpha', content: 'Alpha content', order: 0, campaign_id: 1 },
+  { id: 2, title: 'Section Beta', content: 'Beta content', order: 1, campaign_id: 1 },
+  { id: 3, title: 'Section Gamma', content: 'Gamma content', order: 2, campaign_id: 1 },
 ];
 
 describe('CampaignSectionEditor Drag and Drop', () => {
@@ -90,6 +90,8 @@ describe('CampaignSectionEditor Drag and Drop', () => {
       source: { index: 1, droppableId: 'campaignSections' }, // Moving Section Beta (index 1)
       destination: { index: 0, droppableId: 'campaignSections' }, // To the first position (index 0)
       reason: 'DROP',
+      combine: null,
+      mode: 'FLUID',
     };
 
     // Call the implemented onDragEnd logic
@@ -123,6 +125,8 @@ describe('CampaignSectionEditor Drag and Drop', () => {
       source: { index: 0, droppableId: 'campaignSections' },
       destination: null, // Dropped outside
       reason: 'DROP',
+      combine: null,
+      mode: 'FLUID',
     };
     const result = onDragEndImplementation(dropResult, initialSections);
     expect(result).toBe("NO_DESTINATION");
@@ -146,6 +150,8 @@ describe('CampaignSectionEditor Drag and Drop', () => {
       source: { index: 0, droppableId: 'campaignSections' },
       destination: { index: 0, droppableId: 'campaignSections' }, // Same place
       reason: 'DROP',
+      combine: null,
+      mode: 'FLUID',
     };
     const result = onDragEndImplementation(dropResult, initialSections);
     expect(result).toBe("SAME_PLACE");
