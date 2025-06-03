@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaEdit } from 'react-icons/lib/icons/fa/FaEdit';
-import { FaTrash } from 'react-icons/lib/icons/fa/FaTrash';
+import { FaEdit, FaTrash } from 'react-icons/fa';
 import { User, getUsers, deleteUser, createUser, updateUser, UserCreatePayload, UserUpdatePayload } from '../services/userService';
 // import { Link } from 'react-router-dom';
 import Button from '../components/common/Button';
