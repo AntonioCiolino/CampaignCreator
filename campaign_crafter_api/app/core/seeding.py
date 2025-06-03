@@ -27,6 +27,7 @@ def seed_features(db: Session):
             
             processed_count = 0
             created_count = 0
+            updated_count = 0 # Initialize updated_count
             skipped_malformed = 0
             for row_num, row in enumerate(reader, 1):
                 processed_count += 1
@@ -44,14 +45,20 @@ def seed_features(db: Session):
 
                 existing_feature = crud.get_feature_by_name(db, name=feature_name)
                 if existing_feature:
-                    print(f"Feature '{feature_name}' already exists. Skipping.")
+                    if existing_feature.template != feature_template:
+                        print(f"Feature '{feature_name}' already exists. Updating template.")
+                        existing_feature.template = feature_template
+                        db.add(existing_feature) # Stage the change for commit
+                        updated_count += 1
+                    else:
+                        print(f"Feature '{feature_name}' already exists and template is identical. Skipping update.")
                 else:
                     feature_data = models.FeatureCreate(name=feature_name, template=feature_template)
                     crud.create_feature(db, feature=feature_data)
                     created_count += 1
                     print(f"Created feature: '{feature_name}'")
         print(f"--- Feature Seeding Finished ---")
-        print(f"Processed {processed_count} data rows. Created {created_count} new features. Skipped {skipped_malformed} malformed rows.")
+        print(f"Processed {processed_count} data rows. Created {created_count} new features. Updated {updated_count} existing features. Skipped {skipped_malformed} malformed rows.")
 
     except FileNotFoundError: # More specific error handling
         print(f"ERROR: Features CSV file not found at {FEATURES_CSV_PATH}. Please ensure the file exists.")
