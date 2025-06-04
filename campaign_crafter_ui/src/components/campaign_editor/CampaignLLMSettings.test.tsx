@@ -27,8 +27,8 @@ describe('CampaignLLMSettings', () => {
     setSelectedLLM: mockSetSelectedLLM,
     temperature: 0.7,
     setTemperature: mockSetTemperature,
-    isGeneratingTitles: false,
-    handleGenerateTitles: mockHandleGenerateTitles,
+    // isGeneratingTitles: false, // Removed
+    // handleGenerateTitles: mockHandleGenerateTitles, // Removed
     availableLLMs: availableLLMs,
   };
 
@@ -44,22 +44,14 @@ describe('CampaignLLMSettings', () => {
     expect(screen.getByRole('slider')).toBeInTheDocument();
 
     // expect(screen.getByRole('button', { name: /Generate TOC/i })).toBeInTheDocument(); // Removed
-    expect(screen.getByRole('button', { name: /Suggest Campaign Titles/i })).toBeInTheDocument(); // Updated name
+    // expect(screen.getByRole('button', { name: /Suggest Campaign Titles/i })).not.toBeInTheDocument(); // Button is removed
   });
 
   // Removed test: 'shows generating state for TOC button'
 
-  test('shows generating state for Titles button', () => {
-    render(<CampaignLLMSettings {...defaultProps} isGeneratingTitles={true} />);
-    expect(screen.getByRole('button', { name: /Generating Titles.../i })).toBeInTheDocument();
-  });
+  // Test 'shows generating state for Titles button' is removed as the button is gone.
 
-  test('disables Titles button when title generation is in progress', () => { // Updated test description
-    render(<CampaignLLMSettings {...defaultProps} isGeneratingTitles={true} />);
-    // const tocButton = screen.queryByRole('button', { name: /Generating TOC.../i }); // TOC button is gone
-    // expect(tocButton).not.toBeInTheDocument(); // Or ensure it's not there if the test structure requires an assertion
-    expect(screen.getByRole('button', { name: /Generating Titles.../i })).toBeDisabled();
-  });
+  // Test 'disables Titles button when title generation is in progress' is removed as the button is gone.
 
   test('calls setSelectedLLM when a new LLM is selected', () => {
     render(<CampaignLLMSettings {...defaultProps} />);
@@ -104,17 +96,13 @@ describe('CampaignLLMSettings', () => {
     // or we'd need to test the visual outcome.
     // For this test, we'll assume the prop is correctly wired up.
     // If we had a visible value display tied to temperature that updates, we could check that.
-    expect(mockSetTemperature).not.toHaveBeenCalled(); // This will likely fail unless we can truly simulate a change.
-                                                    // We'll rely on the button click tests below for now.
-                                                    // To make this testable, one might wrap the Slider and expose a testable onChange.
+    // Consider improving Slider testing if more direct interaction is needed.
+    // For now, checking if setTemperature is passed is implicitly covered by rendering the component
+    // and not having type errors. A direct call simulation is complex for MUI Slider.
+    // expect(mockSetTemperature).not.toHaveBeenCalled(); // This assertion is not very useful without proper simulation
   });
 
   // Removed test: 'calls handleGenerateTOC when "Generate TOC" button is clicked'
 
-  test('calls handleGenerateTitles when "Suggest Campaign Titles" button is clicked', () => { // Updated name
-    render(<CampaignLLMSettings {...defaultProps} />);
-    const titlesButton = screen.getByRole('button', { name: /Suggest Campaign Titles/i }); // Updated name
-    fireEvent.click(titlesButton);
-    expect(mockHandleGenerateTitles).toHaveBeenCalledTimes(1);
-  });
+  // Test 'calls handleGenerateTitles when "Suggest Campaign Titles" button is clicked' is removed as the button is gone.
 });

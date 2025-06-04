@@ -755,8 +755,6 @@ const CampaignEditorPage: React.FC = () => {
           setSelectedLLM={handleSetSelectedLLM}
           temperature={temperature}
           setTemperature={setTemperature}
-          isGeneratingTitles={isGeneratingTitles}
-          handleGenerateTitles={handleGenerateTitles}
           availableLLMs={availableLLMs.map(m => ({...m, name: m.name || m.id})) as LLM[]}
         />
       ) : (
