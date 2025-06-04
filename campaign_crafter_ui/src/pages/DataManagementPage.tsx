@@ -8,6 +8,7 @@ import { RollTable, RollTableCreate, RollTableUpdate } from '../types/rollTableT
 import * as rollTableService from '../services/rollTableService';
 import RollTableForm from '../components/datamanagement/RollTableForm';
 import CollapsibleSection from '../components/common/CollapsibleSection'; // Import CollapsibleSection
+import Button from '../components/common/Button'; // Import Button component
 
 import './DataManagementPage.css';
 
@@ -187,9 +188,9 @@ const DataManagementPage: React.FC = () => {
           {errorFeatures && <p className="error-message">Error: {errorFeatures}</p>}
 
           {!showFeatureForm && (
-            <button onClick={handleCreateNewFeatureClick} className="action-button create-new-button">
+            <Button onClick={handleCreateNewFeatureClick} variant="primary">
               Create New Feature
-            </button>
+            </Button>
           )}
 
           {isLoadingFeatures && <p className="loading-message">Loading features...</p>}
@@ -221,8 +222,8 @@ const DataManagementPage: React.FC = () => {
                     <td>{feature.name}</td>
                     <td>{feature.template.substring(0, 100)}{feature.template.length > 100 ? '...' : ''}</td>
                     <td className="actions-cell">
-                      <button onClick={() => handleEditFeatureClick(feature)} className="action-button edit-button">Edit</button>
-                      <button onClick={() => handleDeleteFeatureClick(feature.id)} className="action-button delete-button">Delete</button>
+                      <Button onClick={() => handleEditFeatureClick(feature)} variant="secondary" size="sm">Edit</Button>
+                      <Button onClick={() => handleDeleteFeatureClick(feature.id)} variant="danger" size="sm" style={{ marginLeft: '5px' }}>Delete</Button>
                     </td>
                   </tr>
                 ))}
@@ -237,9 +238,9 @@ const DataManagementPage: React.FC = () => {
           {errorRollTables && <p className="error-message">Error: {errorRollTables}</p>}
 
           {!showRollTableForm && (
-            <button onClick={handleCreateNewRollTableClick} className="action-button create-new-button">
+            <Button onClick={handleCreateNewRollTableClick} variant="primary">
               Create New Rolltable
-            </button>
+            </Button>
           )}
 
           {isLoadingRollTables && <p className="loading-message">Loading rolltables...</p>}
@@ -273,8 +274,8 @@ const DataManagementPage: React.FC = () => {
                     <td>{rollTable.description || '-'}</td>
                     <td>{rollTable.items.length}</td>
                     <td className="actions-cell">
-                      <button onClick={() => handleEditRollTableClick(rollTable)} className="action-button edit-button">Edit</button>
-                      <button onClick={() => handleDeleteRollTableClick(rollTable.id)} className="action-button delete-button">Delete</button>
+                      <Button onClick={() => handleEditRollTableClick(rollTable)} variant="secondary" size="sm">Edit</Button>
+                      <Button onClick={() => handleDeleteRollTableClick(rollTable.id)} variant="danger" size="sm" style={{ marginLeft: '5px' }}>Delete</Button>
                     </td>
                   </tr>
                 ))}
