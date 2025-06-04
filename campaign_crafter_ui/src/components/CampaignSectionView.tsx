@@ -153,7 +153,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
         <>
           {isEditing ? (
             <div className="section-editor">
-              {console.log('Rendering ReactQuill')}
+              {(() => { console.log('Rendering ReactQuill'); return null; })()}
               <ReactQuill
                 theme="snow"
                 value={editedContent}
@@ -183,7 +183,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
             </div>
           ) : (
             <>
-              {console.log('Rendering ReactMarkdown')}
+              {(() => { console.log('Rendering ReactMarkdown'); return null; })()}
               <div className="section-content">
                 <ReactMarkdown>{section.content}</ReactMarkdown>
               </div>

@@ -1,3 +1,5 @@
+import { getApiBaseUrl } from './env'; // Import the new function
+
 // Defines the structure of the response from the /api/random-tables endpoint
 export interface TableNameListResponse {
   table_names: string[];
@@ -9,7 +11,6 @@ export interface RandomItemResponse {
   item: string | null; // Item can be null if table is empty or other server-side logic allows
 }
 
-import { getApiBaseUrl } from './env'; // Import the new function
 const API_BASE_URL = getApiBaseUrl();
 
 /**
