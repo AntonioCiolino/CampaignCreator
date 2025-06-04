@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { FaEdit, FaTrash } from 'react-icons/fa';
 import { User, getUsers, deleteUser, createUser, updateUser, UserCreatePayload, UserUpdatePayload } from '../services/userService';
 // import { Link } from 'react-router-dom';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal'; // Added Modal import
 import UserForm from '../components/UserForm'; // Added UserForm import
+import LoadingSpinner from '../components/common/LoadingSpinner'; // Import LoadingSpinner
 import './UserManagementPage.css';
 
 const UserManagementPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true); // For initial fetch
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false); // For CUD operations
   const [error, setError] = useState<string | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -53,6 +56,7 @@ const UserManagementPage: React.FC = () => {
 
   const handleUserFormSubmit = async (data: UserCreatePayload | UserUpdatePayload, isEditing: boolean) => {
     setUserFormError(null);
+    setIsSubmitting(true);
     try {
       if (isEditing && editingUser) {
         await updateUser(editingUser.id, data as UserUpdatePayload);
@@ -62,30 +66,35 @@ const UserManagementPage: React.FC = () => {
         alert('User created successfully!');
       }
       handleCloseModal();
-      fetchUsers();
+      fetchUsers(); // Refresh users list
     } catch (err: any) {
       console.error('Error submitting user form:', err);
       const errorMessage = err.response?.data?.detail || (err.message || 'An unexpected error occurred.');
       setUserFormError(errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDeleteUser = async (userId: number) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
+      setIsSubmitting(true);
       try {
         await deleteUser(userId);
-        fetchUsers();
+        fetchUsers(); // Refresh users list
         alert('User deleted successfully!');
       } catch (err: any) {
         console.error(`Failed to delete user ${userId}:`, err);
         const deleteErrorMessage = err.response?.data?.detail || (err.message || `Failed to delete user ${userId}.`);
         setError(deleteErrorMessage); // Display this error more prominently on the page
+      } finally {
+        setIsSubmitting(false);
       }
     }
   };
 
   if (isLoading) {
-    return <div className="container"><p>Loading users...</p></div>;
+    return <LoadingSpinner />;
   }
 
   // Display general page error first if it exists
@@ -95,6 +104,7 @@ const UserManagementPage: React.FC = () => {
 
   return (
     <div className="user-management-page container">
+      {isSubmitting && <LoadingSpinner />}
       <h1>User Management</h1>
 
       <div className="page-actions">
@@ -133,10 +143,10 @@ const UserManagementPage: React.FC = () => {
                 <td>{user.is_superuser ? 'Yes' : 'No'}</td>
                 <td className="user-actions">
                   <Button onClick={() => handleOpenEditModal(user)} variant="secondary" size="sm">
-                    Edit
+                    <FaEdit />
                   </Button>
-                  <Button onClick={() => handleDeleteUser(user.id)} variant="danger" size="sm" style={{ marginLeft: '5px' }}>
-                    Delete
+                  <Button onClick={() => handleDeleteUser(user.id)} variant="danger" size="sm" style={{ marginLeft: '10px' }}>
+                    <FaTrash />
                   </Button>
                 </td>
               </tr>

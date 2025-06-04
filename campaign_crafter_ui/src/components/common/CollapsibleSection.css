@@ -1,0 +1,58 @@
+/* campaign_crafter_ui/src/components/common/CollapsibleSection.css */
+
+.collapsible-section {
+  border: 1px solid #e0e0e0; /* Light grey border for separation */
+  border-radius: 4px;
+  margin-bottom: 1rem; /* Space between sections */
+  background-color: #f9f9f9; /* Slightly off-white background */
+}
+
+.collapsible-section-header {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  background-color: #f0f0f0; /* Header background */
+  border-bottom: 1px solid #e0e0e0; /* Separator line if content is shown */
+  transition: background-color 0.2s ease-in-out;
+}
+
+.collapsible-section-header:hover {
+  background-color: #e9e9e9; /* Lighter grey on hover */
+}
+
+.collapsible-section-icon {
+  margin-right: 0.75rem;
+  font-size: 0.9rem; /* Adjust icon size if needed */
+  color: #333;
+  width: 15px; /* Ensure consistent width for the icon area */
+  text-align: center;
+}
+
+.collapsible-section-title {
+  margin: 0;
+  font-size: 1.1rem; /* Adjust title font size */
+  color: #333;     /* Dark grey title color */
+  font-weight: bold;
+}
+
+.collapsible-section-content {
+  padding: 1rem;
+  border-top: none; /* Header already has a bottom border */
+  background-color: #ffffff; /* White background for content area */
+}
+
+/* When section is collapsed, the header might not need a bottom border if it's the last thing seen */
+.collapsible-section .collapsible-section-header.collapsed {
+  border-bottom: none;
+}
+
+/* If you want the border only when expanded, adjust the CSS like this: */
+/*
+.collapsible-section-header {
+  border-bottom: none;
+}
+.collapsible-section-header.expanded {
+  border-bottom: 1px solid #e0e0e0;
+}
+*/

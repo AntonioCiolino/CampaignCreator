@@ -1,6 +1,7 @@
 import React, { useState, useEffect, FormEvent, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 import LLMSelectionDialog from '../components/modals/LLMSelectionDialog';
 import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal';
 import * as campaignService from '../services/campaignService';
@@ -22,7 +23,8 @@ const CampaignEditorPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
   const [campaign, setCampaign] = useState<campaignService.Campaign | null>(null);
   const [sections, setSections] = useState<campaignService.CampaignSection[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true); // For initial page load
+  const [isPageLoading, setIsPageLoading] = useState<boolean>(false); // For subsequent actions
   const [error, setError] = useState<string | null>(null);
 
   // Editable campaign details
@@ -137,7 +139,7 @@ const CampaignEditorPage: React.FC = () => {
     }
 
     const fetchInitialData = async () => {
-      setIsLoading(true);
+      setIsLoading(true); // This is for the initial load indication
       setError(null);
       try {
         // Use getAvailableLLMs from llmService
@@ -189,7 +191,7 @@ const CampaignEditorPage: React.FC = () => {
         console.error('Failed to fetch initial campaign or LLM data:', err);
         setError('Failed to load initial data. Please try again later.');
       } finally {
-        setIsLoading(false);
+        setIsLoading(false); // Initial load finished
       }
     };
     fetchInitialData();
@@ -206,6 +208,7 @@ const CampaignEditorPage: React.FC = () => {
       setSaveError("Title and Initial Prompt cannot be empty.");
       return;
     }
+    setIsPageLoading(true);
     setIsSaving(true);
     setSaveError(null);
     setSaveSuccess(null);
@@ -223,6 +226,7 @@ const CampaignEditorPage: React.FC = () => {
       setSaveError('Failed to save changes.');
     } finally {
       setIsSaving(false);
+      setIsPageLoading(false);
     }
   };
 
@@ -236,7 +240,7 @@ const CampaignEditorPage: React.FC = () => {
       return { ...section, order: index };
     }).sort((a,b) => a.order - b.order); // Ensure sorted by new order for local state
     setSections(newSections);
-
+    setIsPageLoading(true);
     try {
       await campaignService.updateCampaignSectionOrder(campaignId, orderedSectionIds);
       setSaveSuccess("Section order saved successfully!"); // Provide feedback
@@ -245,6 +249,8 @@ const CampaignEditorPage: React.FC = () => {
       console.error("Failed to update section order:", error);
       setError("Failed to save section order. Please try again."); // Show error feedback
       setSections(oldSections); // Revert optimistic update on error
+    } finally {
+      setIsPageLoading(false);
     }
   };
 
@@ -260,6 +266,7 @@ const CampaignEditorPage: React.FC = () => {
       return;
     }
 
+    setIsPageLoading(true);
     setBadgeUpdateLoading(true);
     setBadgeUpdateError(null);
     setIsBadgeImageModalOpen(false); // Close modal immediately
@@ -286,6 +293,7 @@ const CampaignEditorPage: React.FC = () => {
       alert(`Error setting badge: ${detail}`); // Alert for immediate user feedback
     } finally {
       setBadgeUpdateLoading(false);
+      setIsPageLoading(false);
     }
   };
 
@@ -293,6 +301,7 @@ const CampaignEditorPage: React.FC = () => {
     if (!campaignId) return;
 
     if (window.confirm(`Are you sure you want to delete section ${sectionId}? This action cannot be undone.`)) {
+      setIsPageLoading(true);
       try {
         await campaignService.deleteCampaignSection(campaignId, sectionId);
         setSections(prevSections => prevSections.filter(s => s.id !== sectionId));
@@ -303,6 +312,8 @@ const CampaignEditorPage: React.FC = () => {
         const detail = axios.isAxiosError(err) && err.response?.data?.detail ? err.response.data.detail : (err.message || 'Failed to delete section.');
         setError(`Error deleting section ${sectionId}: ${detail}`);
          setTimeout(() => setError(null), 5000);
+      } finally {
+        setIsPageLoading(false);
       }
     }
   };
@@ -314,6 +325,7 @@ const CampaignEditorPage: React.FC = () => {
       setAddSectionError("Please provide a title or a prompt for the new section.");
       return;
     }
+    setIsPageLoading(true);
     setIsAddingSection(true);
     setAddSectionError(null);
     setAddSectionSuccess(null);
@@ -339,11 +351,13 @@ const CampaignEditorPage: React.FC = () => {
       }
     } finally {
       setIsAddingSection(false);
+    setIsPageLoading(false);
     }
   };
 
   const handleUpdateSection = async (sectionId: number, updatedData: campaignService.CampaignSectionUpdatePayload) => {
     if (!campaignId) return;
+    setIsPageLoading(true);
     setSavingSectionId(sectionId);
     setSectionSaveError(prev => ({ ...prev, [sectionId]: null }));
     try {
@@ -351,14 +365,22 @@ const CampaignEditorPage: React.FC = () => {
       setSections(prev => prev.map(sec => sec.id === sectionId ? updatedSection : sec));
     } catch (err) {
       setSectionSaveError(prev => ({ ...prev, [sectionId]: 'Failed to save section.' }));
+      // We might want to set setIsPageLoading(false) in a finally block within the try-catch if this function becomes more complex
+      // For now, if it throws, the calling function's finally block (if any) or subsequent user action will be the path to clear loading.
+      // However, it's better to handle it here.
+      setIsPageLoading(false);
       throw err;
     } finally {
       setSavingSectionId(null);
+      // If the above try block succeeded, we also need to set loading to false.
+      // If it failed and threw, this might be redundant if already set in catch, but ensures it's always set.
+      setIsPageLoading(false);
     }
   };
 
   const handleGenerateTOC = async () => {
     if (!campaignId) return;
+    setIsPageLoading(true);
     setIsGeneratingTOC(true);
     setTocError(null);
     setSaveSuccess(null);
@@ -371,11 +393,13 @@ const CampaignEditorPage: React.FC = () => {
       setTocError('Failed to generate Table of Contents.');
     } finally {
       setIsGeneratingTOC(false);
+      setIsPageLoading(false);
     }
   };
 
   const handleGenerateTitles = async () => {
     if (!campaignId) return;
+    setIsPageLoading(true);
     setIsGeneratingTitles(true);
     setTitlesError(null);
     setSuggestedTitles(null);
@@ -389,6 +413,7 @@ const CampaignEditorPage: React.FC = () => {
       setTitlesError('Failed to generate titles.');
     } finally {
       setIsGeneratingTitles(false);
+      setIsPageLoading(false);
     }
   };
   
@@ -397,6 +422,7 @@ const CampaignEditorPage: React.FC = () => {
   const handleExportHomebrewery = async () => {
     if (!campaignId || !campaign) return;
 
+    setIsPageLoading(true);
     setIsExporting(true);
     setExportError(null);
     setSaveSuccess(null); // Clear other messages
@@ -424,6 +450,7 @@ const CampaignEditorPage: React.FC = () => {
       setTimeout(() => setExportError(null), 5000); // Clear error after 5s
     } finally {
       setIsExporting(false);
+      setIsPageLoading(false);
     }
   };
 
@@ -444,6 +471,7 @@ const CampaignEditorPage: React.FC = () => {
        return;
     }
     
+    setIsPageLoading(true);
     setBadgeUpdateLoading(true);
     setBadgeUpdateError(null);
     try {
@@ -462,6 +490,7 @@ const CampaignEditorPage: React.FC = () => {
       alert(`Error: ${detail}`);
     } finally {
       setBadgeUpdateLoading(false);
+      setIsPageLoading(false);
     }
   };
 
@@ -470,6 +499,7 @@ const CampaignEditorPage: React.FC = () => {
 
     if (!window.confirm("Are you sure you want to remove the campaign badge image?")) return;
 
+    setIsPageLoading(true);
     setBadgeUpdateLoading(true);
     setBadgeUpdateError(null);
     try {
@@ -489,11 +519,12 @@ const CampaignEditorPage: React.FC = () => {
       alert(`Error: ${detail}`);
     } finally {
       setBadgeUpdateLoading(false);
+      setIsPageLoading(false);
     }
   };
 
 
-  if (isLoading) return <p className="loading-message">Loading campaign details...</p>;
+  if (isLoading) return <LoadingSpinner />; // Use spinner for initial load
   if (error) return <p className="error-message">{error}</p>;
   if (!campaign) return <p className="error-message">Campaign not found.</p>;
 
@@ -680,6 +711,7 @@ const CampaignEditorPage: React.FC = () => {
 
   return (
     <div className="campaign-editor-page">
+      {isPageLoading && <LoadingSpinner />}
       <Tabs tabs={tabItems} />
 
       {/* Modals remain at the top level */}

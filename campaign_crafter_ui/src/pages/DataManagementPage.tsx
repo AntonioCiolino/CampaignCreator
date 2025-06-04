@@ -7,6 +7,8 @@ import FeatureForm from '../components/datamanagement/FeatureForm';
 import { RollTable, RollTableCreate, RollTableUpdate } from '../types/rollTableTypes';
 import * as rollTableService from '../services/rollTableService';
 import RollTableForm from '../components/datamanagement/RollTableForm';
+import CollapsibleSection from '../components/common/CollapsibleSection'; // Import CollapsibleSection
+import Button from '../components/common/Button'; // Import Button component
 
 import './DataManagementPage.css';
 
@@ -181,107 +183,107 @@ const DataManagementPage: React.FC = () => {
       <h1>Data Management</h1>
       <p>Manage Features and Rolltables from this section.</p>
 
-      {/* --- Features Section --- */}
-      <div className="management-section feature-management-section">
-        <h2>Features Management</h2>
-        {errorFeatures && <p className="error-message">Error: {errorFeatures}</p>}
-        
-        {!showFeatureForm && (
-          <button onClick={handleCreateNewFeatureClick} className="action-button create-new-button">
-            Create New Feature
-          </button>
-        )}
+      <CollapsibleSection title="Features Management" initialCollapsed={false}>
+        <div className="management-section feature-management-section">
+          {errorFeatures && <p className="error-message">Error: {errorFeatures}</p>}
 
-        {isLoadingFeatures && <p className="loading-message">Loading features...</p>}
+          {!showFeatureForm && (
+            <Button onClick={handleCreateNewFeatureClick} variant="primary">
+              Create New Feature
+            </Button>
+          )}
 
-        {showFeatureForm && (
-          <FeatureForm
-            onSubmit={handleFeatureFormSubmit}
-            onCancel={handleFeatureFormCancel}
-            initialFeature={editingFeature || undefined}
-          />
-        )}
+          {isLoadingFeatures && <p className="loading-message">Loading features...</p>}
 
-        {!showFeatureForm && !isLoadingFeatures && features.length === 0 && !errorFeatures && (
-          <p>No features found. Create one to get started!</p>
-        )}
+          {showFeatureForm && (
+            <FeatureForm
+              onSubmit={handleFeatureFormSubmit}
+              onCancel={handleFeatureFormCancel}
+              initialFeature={editingFeature || undefined}
+            />
+          )}
 
-        {!showFeatureForm && features.length > 0 && (
-          <table className="data-table features-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Template (excerpt)</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {features.map((feature) => (
-                <tr key={feature.id}>
-                  <td>{feature.name}</td>
-                  <td>{feature.template.substring(0, 100)}{feature.template.length > 100 ? '...' : ''}</td>
-                  <td className="actions-cell">
-                    <button onClick={() => handleEditFeatureClick(feature)} className="action-button edit-button">Edit</button>
-                    <button onClick={() => handleDeleteFeatureClick(feature.id)} className="action-button delete-button">Delete</button>
-                  </td>
+          {!showFeatureForm && !isLoadingFeatures && features.length === 0 && !errorFeatures && (
+            <p>No features found. Create one to get started!</p>
+          )}
+
+          {!showFeatureForm && features.length > 0 && (
+            <table className="data-table features-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Template (excerpt)</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+              </thead>
+              <tbody>
+                {features.map((feature) => (
+                  <tr key={feature.id}>
+                    <td>{feature.name}</td>
+                    <td>{feature.template.substring(0, 100)}{feature.template.length > 100 ? '...' : ''}</td>
+                    <td className="actions-cell">
+                      <Button onClick={() => handleEditFeatureClick(feature)} variant="secondary" size="sm">Edit</Button>
+                      <Button onClick={() => handleDeleteFeatureClick(feature.id)} variant="danger" size="sm" style={{ marginLeft: '5px' }}>Delete</Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </CollapsibleSection>
 
-      {/* --- Rolltables Section --- */}
-      <div className="management-section rolltable-management-section">
-        <h2>Rolltables Management</h2>
-        {errorRollTables && <p className="error-message">Error: {errorRollTables}</p>}
+      <CollapsibleSection title="Rolltables Management" initialCollapsed={false}>
+        <div className="management-section rolltable-management-section">
+          {errorRollTables && <p className="error-message">Error: {errorRollTables}</p>}
 
-        {!showRollTableForm && (
-          <button onClick={handleCreateNewRollTableClick} className="action-button create-new-button">
-            Create New Rolltable
-          </button>
-        )}
+          {!showRollTableForm && (
+            <Button onClick={handleCreateNewRollTableClick} variant="primary">
+              Create New Rolltable
+            </Button>
+          )}
 
-        {isLoadingRollTables && <p className="loading-message">Loading rolltables...</p>}
-        
-        {showRollTableForm && (
-          <RollTableForm
-            onSubmit={handleRollTableFormSubmit}
-            onCancel={handleRollTableFormCancel}
-            initialRollTable={editingRollTable || undefined}
-          />
-        )}
+          {isLoadingRollTables && <p className="loading-message">Loading rolltables...</p>}
 
-        {!showRollTableForm && !isLoadingRollTables && rollTables.length === 0 && !errorRollTables && (
-          <p>No rolltables found. Create one to get started!</p>
-        )}
+          {showRollTableForm && (
+            <RollTableForm
+              onSubmit={handleRollTableFormSubmit}
+              onCancel={handleRollTableFormCancel}
+              initialRollTable={editingRollTable || undefined}
+            />
+          )}
 
-        {!showRollTableForm && rollTables.length > 0 && (
-          <table className="data-table rolltables-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Description</th>
-                <th>Item Count</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rollTables.map((rollTable) => (
-                <tr key={rollTable.id}>
-                  <td>{rollTable.name}</td>
-                  <td>{rollTable.description || '-'}</td>
-                  <td>{rollTable.items.length}</td>
-                  <td className="actions-cell">
-                    <button onClick={() => handleEditRollTableClick(rollTable)} className="action-button edit-button">Edit</button>
-                    <button onClick={() => handleDeleteRollTableClick(rollTable.id)} className="action-button delete-button">Delete</button>
-                  </td>
+          {!showRollTableForm && !isLoadingRollTables && rollTables.length === 0 && !errorRollTables && (
+            <p>No rolltables found. Create one to get started!</p>
+          )}
+
+          {!showRollTableForm && rollTables.length > 0 && (
+            <table className="data-table rolltables-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Description</th>
+                  <th>Item Count</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+              </thead>
+              <tbody>
+                {rollTables.map((rollTable) => (
+                  <tr key={rollTable.id}>
+                    <td>{rollTable.name}</td>
+                    <td>{rollTable.description || '-'}</td>
+                    <td>{rollTable.items.length}</td>
+                    <td className="actions-cell">
+                      <Button onClick={() => handleEditRollTableClick(rollTable)} variant="secondary" size="sm">Edit</Button>
+                      <Button onClick={() => handleDeleteRollTableClick(rollTable.id)} variant="danger" size="sm" style={{ marginLeft: '5px' }}>Delete</Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </CollapsibleSection>
     </div>
   );
 };
