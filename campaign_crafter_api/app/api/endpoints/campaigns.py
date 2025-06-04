@@ -164,7 +164,7 @@ async def generate_campaign_titles_endpoint(
 
     if not generated_titles:
         raise HTTPException(status_code=500, detail="Title generation resulted in empty content.")
-    return external_models.CampaignTitlesResponse(titles=generated_titles)
+    return models.CampaignTitlesResponse(titles=generated_titles)
 
 # --- Campaign Section Endpoints ---
 

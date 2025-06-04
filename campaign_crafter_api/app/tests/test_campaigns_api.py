@@ -3,11 +3,13 @@ from httpx import AsyncClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
+from unittest.mock import patch, AsyncMock, ANY
 
 
 from app.main import app  # Adjust if your FastAPI app instance is named differently or located elsewhere
 from app.db import Base, get_db  # Adjust to your actual db setup and get_db dependency
 from app.orm_models import Campaign # Import your Campaign ORM model
+# from app.models import CampaignTitlesResponse # Not strictly needed if comparing dict
 
 # Use an in-memory SQLite database for testing
 DATABASE_URL = "sqlite:///:memory:"
@@ -132,6 +134,48 @@ async def test_create_campaign_only_title():
     assert data["concept"] is None
     assert data["toc"] is None
     assert data["homebrewery_export"] is None
+
+@pytest.mark.asyncio
+@patch('app.api.endpoints.campaigns.get_llm_service')
+async def test_generate_campaign_titles_success(mock_get_llm_service): # Removed client: AsyncClient
+    # Setup campaign
+    db = TestingSessionLocal()
+    test_campaign = Campaign(title="Title Gen Test", concept="A cool concept", owner_id=1)
+    db.add(test_campaign)
+    db.commit()
+    db.refresh(test_campaign)
+    campaign_id = test_campaign.id
+    db.close()
+
+    # Configure mock LLM service
+    mock_llm_instance = AsyncMock()
+    expected_titles = ["Title 1", "Awesome Title 2", "The Third Title"]
+    mock_llm_instance.generate_titles = AsyncMock(return_value=expected_titles)
+    mock_get_llm_service.return_value = mock_llm_instance
+
+    # Make API call
+    async with AsyncClient(app=app, base_url="http://test") as ac: # Ensure ac is used if client fixture is not used
+        response = await ac.post(
+            f"/api/v1/campaigns/{campaign_id}/titles",
+            json={"model_id_with_prefix": "test_provider/test_model"},
+            params={"count": 3}
+        )
+
+    # Assert response
+    assert response.status_code == 200, response.text
+    assert response.json() == {"titles": expected_titles}
+
+    # Assert mock calls
+    mock_get_llm_service.assert_called_once_with(provider_name="test_provider", model_id_with_prefix="test_provider/test_model")
+
+    # Need to access the db session the endpoint used. This is tricky without more involved mocking or inspection.
+    # For now, we'll use ANY for the db argument.
+    mock_llm_instance.generate_titles.assert_called_once_with(
+        campaign_concept="A cool concept",
+        db=ANY, # The actual db session object passed in the endpoint
+        count=3,
+        model="test_model"
+    )
 
 # If you have a main.py that runs uvicorn, you might need to adjust how 'app' is imported or accessed.
 # For example, if app is created inside a function in main.py, you might need:
