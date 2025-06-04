@@ -4,6 +4,7 @@ import './Tabs.css'; // Import the CSS file
 export interface TabItem {
   name: string;
   content: ReactElement;
+  disabled?: boolean;
 }
 
 interface TabsProps {
@@ -23,7 +24,10 @@ const Tabs: React.FC<TabsProps> = ({ tabs, initialTabName }) => {
     return <div className="tabs-container"><p>No tabs to display.</p></div>;
   }
 
-  const handleTabClick = (tabName: string) => {
+  const handleTabClick = (tabName: string, isDisabled?: boolean) => {
+    if (isDisabled) {
+      return; // Do not change tab if it's disabled
+    }
     setActiveTab(tabName);
   };
 
@@ -35,13 +39,14 @@ const Tabs: React.FC<TabsProps> = ({ tabs, initialTabName }) => {
         {tabs.map((tab) => (
           <li
             key={tab.name}
-            className={`tab-list-item ${tab.name === activeTab ? 'active' : ''}`}
-            onClick={() => handleTabClick(tab.name)}
+            className={`tab-list-item ${tab.name === activeTab ? 'active' : ''} ${tab.disabled ? 'tab-disabled' : ''}`}
+            onClick={() => handleTabClick(tab.name, tab.disabled)}
             role="tab"
             aria-selected={tab.name === activeTab}
+            aria-disabled={tab.disabled} // Announce disabled state to assistive technologies
             aria-controls={`tabpanel-${tab.name}`}
-            tabIndex={0} // Make tabs focusable
-            onKeyPress={(e) => { if (e.key === 'Enter' || e.key === ' ') handleTabClick(tab.name);}}
+            tabIndex={tab.disabled ? -1 : 0} // Make disabled tabs not focusable
+            onKeyPress={(e) => { if (!tab.disabled && (e.key === 'Enter' || e.key === ' ')) handleTabClick(tab.name, tab.disabled);}}
           >
             {tab.name}
           </li>

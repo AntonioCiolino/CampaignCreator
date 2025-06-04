@@ -4,12 +4,29 @@ import axios from 'axios';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import LLMSelectionDialog from '../components/modals/LLMSelectionDialog';
 import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal';
+import SuggestedTitlesModal from '../components/modals/SuggestedTitlesModal';
 import * as campaignService from '../services/campaignService';
 import { getAvailableLLMs, LLMModel } from '../services/llmService';
 // CampaignSectionView will be used by CampaignSectionEditor
 // import CampaignSectionView from '../components/CampaignSectionView'; 
 import ReactMarkdown from 'react-markdown';
 import './CampaignEditorPage.css';
+import Button from '../components/common/Button'; // Ensure common Button is imported
+
+// MUI Icons (attempt to import, will use text/emoji if fails)
+import SaveIcon from '@mui/icons-material/Save';
+import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
+import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import ListAltIcon from '@mui/icons-material/ListAlt';
+import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
+import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import CancelIcon from '@mui/icons-material/Cancel';
+import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
+import PublishIcon from '@mui/icons-material/Publish';
+
 
 // New Component Imports
 import CampaignDetailsEditor from '../components/campaign_editor/CampaignDetailsEditor';
@@ -72,6 +89,7 @@ const CampaignEditorPage: React.FC = () => {
   const [isLLMDialogOpen, setIsLLMDialogOpen] = useState<boolean>(false);
   // isCampaignDetailsCollapsed will be managed by the new component or removed if not needed at page level
   const [isBadgeImageModalOpen, setIsBadgeImageModalOpen] = useState(false); // Added for modal
+  const [isSuggestedTitlesModalOpen, setIsSuggestedTitlesModalOpen] = useState<boolean>(false);
 
   // State for badge image updates
   // badgeUpdateLoading, setBadgeUpdateLoading, badgeUpdateError, setBadgeUpdateError will be managed by CampaignDetailsEditor (or passed to it)
@@ -407,14 +425,21 @@ const CampaignEditorPage: React.FC = () => {
     try {
       const response = await campaignService.generateCampaignTitles(campaignId, {}, 5);
       setSuggestedTitles(response.titles);
-      setSaveSuccess("Suggested titles generated successfully!");
-      setTimeout(() => setSaveSuccess(null), 3000);
+      // setSaveSuccess("Suggested titles generated successfully!"); // Optional: keep or remove
+      // setTimeout(() => setSaveSuccess(null), 3000);
+      setIsSuggestedTitlesModalOpen(true); // Open the modal
     } catch (err) {
       setTitlesError('Failed to generate titles.');
     } finally {
       setIsGeneratingTitles(false);
       setIsPageLoading(false);
     }
+  };
+
+  const handleTitleSelected = (selectedTitle: string) => {
+    setEditableTitle(selectedTitle);
+    setIsSuggestedTitlesModalOpen(false);
+    // setSuggestedTitles(null); // Optional: Clear suggestions after selection
   };
   
   const hasChanges = campaign ? (editableTitle !== campaign.title || editableInitialPrompt !== (campaign.initial_user_prompt || '')) : false;
@@ -545,6 +570,19 @@ const CampaignEditorPage: React.FC = () => {
       {saveError && <p className="error-message save-feedback">{saveError}</p>}
       {saveSuccess && <p className="success-message save-feedback">{saveSuccess}</p>}
 
+      <div className="editor-section title-generation-section">
+        <Button
+          onClick={handleGenerateTitles}
+          disabled={isGeneratingTitles || !selectedLLMId}
+          className="action-button"
+          icon={<LightbulbOutlinedIcon />}
+          tooltip="Suggest alternative titles for your campaign based on the concept"
+        >
+          {isGeneratingTitles ? 'Generating...' : 'Suggest Titles'}
+        </Button>
+        {titlesError && <p className="error-message feedback-message">{titlesError}</p>}
+      </div>
+
       <div className="campaign-badge-area editor-section">
         <h3>Campaign Badge Actions</h3>
         {campaign.badge_image_url && (
@@ -560,20 +598,34 @@ const CampaignEditorPage: React.FC = () => {
           </Box>
         )}
         <div className="campaign-badge-actions">
-          <button onClick={handleOpenBadgeImageModal} disabled={badgeUpdateLoading} className="action-button">
+          <Button
+            onClick={handleOpenBadgeImageModal}
+            disabled={badgeUpdateLoading}
+            className="action-button"
+            icon={<AddPhotoAlternateIcon />}
+            tooltip="Generate a new badge image for your campaign"
+          >
             {badgeUpdateLoading ? "Processing..." : "Generate New Badge"}
-          </button>
-          <button onClick={handleEditBadgeImageUrl} disabled={badgeUpdateLoading} className="action-button secondary-action-button">
+          </Button>
+          <Button
+            onClick={handleEditBadgeImageUrl}
+            disabled={badgeUpdateLoading}
+            className="action-button secondary-action-button"
+            icon={<EditIcon />}
+            tooltip="Manually set or change the URL for the campaign badge"
+          >
             {badgeUpdateLoading ? "Processing..." : "Edit Badge URL"}
-          </button>
+          </Button>
           {campaign?.badge_image_url && (
-            <button
+            <Button
               onClick={handleRemoveBadgeImage}
               disabled={badgeUpdateLoading || !campaign?.badge_image_url}
               className="action-button remove-button"
+              icon={<DeleteOutlineIcon />}
+              tooltip="Remove the current campaign badge image"
             >
               {badgeUpdateLoading ? "Removing..." : "Remove Badge"}
-            </button>
+            </Button>
           )}
         </div>
         {badgeUpdateError && <p className="error-message feedback-message">{badgeUpdateError}</p>}
@@ -596,15 +648,16 @@ const CampaignEditorPage: React.FC = () => {
         {(!campaign.toc || !isTocCollapsed) && ( // Show if no TOC, or if TOC exists and is not collapsed
           <div className="toc-controls-and-display" style={{ marginTop: '10px' }}>
             {campaign.toc && <ReactMarkdown>{processedToc}</ReactMarkdown>}
-            <button
+            <Button
               onClick={handleGenerateTOC}
-              disabled={isGeneratingTOC || !selectedLLMId} // Also disable if no LLM selected
-              className="action-button" // Use your project's standard button class
-              style={{ marginTop: campaign.toc ? '10px' : '0' }} // Add margin if TOC is above
-              title={!selectedLLMId ? "Select an LLM model from the Settings tab first" : ""}
+              disabled={isGeneratingTOC || !selectedLLMId}
+              className="action-button"
+              style={{ marginTop: campaign.toc ? '10px' : '0' }}
+              icon={<ListAltIcon />}
+              tooltip={!selectedLLMId ? "Select an LLM model from the Settings tab first" : "Generate or re-generate the Table of Contents based on the campaign concept and sections"}
             >
               {isGeneratingTOC ? 'Generating TOC...' : (campaign.toc ? 'Re-generate Table of Contents' : 'Generate Table of Contents')}
-            </button>
+            </Button>
             {tocError && <p className="error-message feedback-message" style={{ marginTop: '5px' }}>{tocError}</p>}
           </div>
         )}
@@ -616,20 +669,36 @@ const CampaignEditorPage: React.FC = () => {
     <>
       <div className="section-display-controls editor-section">
         <h3>Section Display</h3>
-        <button onClick={() => setForceCollapseAll(true)} className="action-button">Collapse All Sections</button>
-        <button onClick={() => setForceCollapseAll(false)} className="action-button">Expand All Sections</button>
+        <Button
+          onClick={() => setForceCollapseAll(true)}
+          className="action-button"
+          icon={<UnfoldLessIcon />}
+          tooltip="Collapse all campaign sections"
+        >
+          Collapse All Sections
+        </Button>
+        <Button
+          onClick={() => setForceCollapseAll(false)}
+          className="action-button"
+          icon={<UnfoldMoreIcon />}
+          tooltip="Expand all campaign sections"
+        >
+          Expand All Sections
+        </Button>
       </div>
       <CampaignSectionEditor
         sections={sections}
         setSections={setSections}
         handleAddNewSection={() => setIsAddSectionCollapsed(false)}
+        // Disable "Add New Section" button if concept is not defined
+        isAddSectionDisabled={!campaign?.concept?.trim()}
         handleDeleteSection={handleDeleteSection}
         handleUpdateSectionContent={handleUpdateSectionContent}
         handleUpdateSectionTitle={handleUpdateSectionTitle}
         onUpdateSectionOrder={handleUpdateSectionOrder} // Pass the new handler
         forceCollapseAllSections={forceCollapseAll} // Pass the state here
       />
-      {!isAddSectionCollapsed && (
+      {!isAddSectionCollapsed && campaign?.concept?.trim() && ( // Only show form if concept exists and not collapsed
         <div className="editor-actions add-section-area editor-section card-like" style={{ marginTop: '20px' }}>
           <h3>Add New Section</h3>
           <form onSubmit={handleAddSection} className="add-section-form">
@@ -646,13 +715,33 @@ const CampaignEditorPage: React.FC = () => {
             )}
             {addSectionError && <p className="error-message feedback-message">{addSectionError}</p>}
             {addSectionSuccess && <p className="success-message feedback-message">{addSectionSuccess}</p>}
-            <button type="submit" disabled={isAddingSection || !selectedLLMId} className="action-button add-section-button">
+            <Button
+              type="submit"
+              disabled={isAddingSection || !selectedLLMId || !campaign?.concept?.trim()}
+              className="action-button add-section-button"
+              icon={<AddCircleOutlineIcon />}
+              tooltip={!campaign?.concept?.trim() ? "Please define and save a campaign concept first." : (!selectedLLMId ? "Please select an LLM in settings." : "Add this new section to the campaign")}
+            >
               {isAddingSection ? 'Adding Section...' : 'Confirm & Add Section'}
-            </button>
-            <button type="button" onClick={() => setIsAddSectionCollapsed(true)} className="action-button secondary-action-button" style={{marginLeft: '10px'}}>
+            </Button>
+            <Button
+              type="button"
+              onClick={() => setIsAddSectionCollapsed(true)}
+              className="action-button secondary-action-button"
+              style={{marginLeft: '10px'}}
+              icon={<CancelIcon />}
+              tooltip="Cancel adding a new section"
+            >
               Cancel
-            </button>
+            </Button>
           </form>
+        </div>
+      )}
+      {!campaign?.concept?.trim() && (
+        <div className="editor-section user-message card-like" style={{ marginTop: '20px', padding: '15px', textAlign: 'center' }}>
+          <Typography variant="h6" color="textSecondary">
+            Please define and save a campaign concept in the 'Details' tab before adding or managing sections.
+          </Typography>
         </div>
       )}
     </>
@@ -674,30 +763,34 @@ const CampaignEditorPage: React.FC = () => {
         <div className="editor-section">
           <p>Loading LLM settings or no LLMs available...</p>
           {!selectedLLMId && availableLLMs.length > 0 && (
-            <button onClick={() => setIsLLMDialogOpen(true)} className="action-button">
+            <Button
+              onClick={() => setIsLLMDialogOpen(true)}
+              className="action-button"
+              icon={<SettingsSuggestIcon />}
+              tooltip="Select the primary Language Model for campaign generation tasks"
+            >
               Select Initial LLM Model
-            </button>
+            </Button>
           )}
         </div>
       )}
       {/* LLM related errors can be shown within this tab or globally */}
       {tocError && <p className="error-message llm-feedback editor-section">{tocError}</p>}
-      {titlesError && <p className="error-message llm-feedback editor-section">{titlesError}</p>}
+      {/* titlesError is now shown in the details tab near the button, so we can remove it from here if it's redundant */}
+      {/* {titlesError && <p className="error-message llm-feedback editor-section">{titlesError}</p>} */}
 
-      {suggestedTitles && suggestedTitles.length > 0 && (
-        <section className="suggested-titles-section editor-section">
-          <h3>Suggested Titles:</h3>
-          <ul className="titles-list">
-            {suggestedTitles.map((title, index) => (<li key={index} className="title-item">{title}</li>))}
-          </ul>
-          <button onClick={() => setSuggestedTitles(null)} className="dismiss-titles-button">Dismiss</button>
-        </section>
-      )}
+      {/* The old suggested titles display is removed from here. It's now handled by the modal. */}
 
-      <div className="action-group export-action-group editor-section"> 
-        <button onClick={handleExportHomebrewery} disabled={isExporting} className="llm-button export-button">
+      <div className="action-group export-action-group editor-section">
+        <Button
+          onClick={handleExportHomebrewery}
+          disabled={isExporting}
+          className="llm-button export-button" // Assuming llm-button is a valid class for Button or should be action-button
+          icon={<PublishIcon />}
+          tooltip="Export the campaign content as Markdown formatted for Homebrewery"
+        >
           {isExporting ? 'Exporting...' : 'Export to Homebrewery'}
-        </button>
+        </Button>
         {exportError && <p className="error-message llm-feedback">{exportError}</p>}
       </div>
     </>
@@ -705,7 +798,7 @@ const CampaignEditorPage: React.FC = () => {
 
   const tabItems: TabItem[] = [
     { name: 'Details', content: detailsTabContent },
-    { name: 'Sections', content: sectionsTabContent },
+    { name: 'Sections', content: sectionsTabContent, disabled: !campaign?.concept?.trim() },
     { name: 'Settings', content: settingsTabContent },
   ];
 
@@ -730,6 +823,15 @@ const CampaignEditorPage: React.FC = () => {
         isOpen={isBadgeImageModalOpen}
         onClose={() => setIsBadgeImageModalOpen(false)}
         onImageSuccessfullyGenerated={handleBadgeImageGenerated}
+      />
+      <SuggestedTitlesModal
+        isOpen={isSuggestedTitlesModalOpen}
+        onClose={() => {
+          setIsSuggestedTitlesModalOpen(false);
+          // setSuggestedTitles(null); // Optional: Clear suggestions when modal is closed without selection
+        }}
+        titles={suggestedTitles || []}
+        onSelectTitle={handleTitleSelected}
       />
     </div>
   );
