@@ -45,6 +45,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
   }, [forceCollapse]);
   
   const handleEdit = () => {
+    console.log('handleEdit called, setting isEditing to true');
     setIsCollapsed(false); // Expand section on edit
     setEditedContent(section.content || '');
     setIsEditing(true);
@@ -137,6 +138,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
     }
   };
 
+  console.log('CampaignSectionView render, isEditing:', isEditing);
   return (
     <div className="campaign-section-view">
       {section.title && (
@@ -151,6 +153,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
         <>
           {isEditing ? (
             <div className="section-editor">
+              {console.log('Rendering ReactQuill')}
               <ReactQuill
                 theme="snow"
                 value={editedContent}
@@ -180,6 +183,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
             </div>
           ) : (
             <>
+              {console.log('Rendering ReactMarkdown')}
               <div className="section-content">
                 <ReactMarkdown>{section.content}</ReactMarkdown>
               </div>
