@@ -38,6 +38,7 @@ interface CampaignSectionEditorProps {
   handleUpdateSectionTitle: (sectionId: number, newTitle: string) => void; // Changed sectionId to number
   onUpdateSectionOrder: (orderedSectionIds: number[]) => Promise<void>;
   forceCollapseAllSections?: boolean; // Added new prop
+  isAddSectionDisabled?: boolean; // Prop to disable the "Add New Section" button
 }
 
 const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
@@ -49,6 +50,7 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
   handleUpdateSectionTitle,   // Keep this prop for now, though CampaignSectionView might not edit title
   onUpdateSectionOrder,
   forceCollapseAllSections, // Destructure the new prop
+  isAddSectionDisabled = false, // Destructure and default to false
 }) => {
   const onDragEnd = (result: DropResult) => { // Removed ResponderProvided as it's not typically used in onDragEnd
     const { source, destination } = result;
@@ -99,6 +101,8 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
             color="primary"
             startIcon={<AddCircleOutlineIcon />}
             onClick={handleAddNewSection}
+            disabled={isAddSectionDisabled}
+            title={isAddSectionDisabled ? "Please define and save a campaign concept in the 'Details' tab first." : "Add a new section to the campaign"}
           >
             Add New Section
           </Button>

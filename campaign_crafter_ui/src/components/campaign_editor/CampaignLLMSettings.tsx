@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Button,
   Grid,
   Typography,
   Card,
@@ -20,9 +19,9 @@ interface CampaignLLMSettingsProps {
   setSelectedLLM: (llm: LLM) => void;
   temperature: number;
   setTemperature: (temp: number) => void;
-  isGeneratingTitles: boolean;
-  handleGenerateTitles: () => void;
   availableLLMs: LLM[]; // Assuming this prop will be passed from the parent
+  // Props related to title generation (isGeneratingTitles, handleGenerateTitles) are removed.
+  // titlesError might also be removed if it was only for the generate titles button.
 }
 
 const CampaignLLMSettings: React.FC<CampaignLLMSettingsProps> = ({
@@ -30,15 +29,14 @@ const CampaignLLMSettings: React.FC<CampaignLLMSettingsProps> = ({
   setSelectedLLM,
   temperature,
   setTemperature,
-  isGeneratingTitles,
-  handleGenerateTitles,
   availableLLMs,
+  // Removed isGeneratingTitles and handleGenerateTitles from destructured props
 }) => {
   return (
     <Card sx={{ mb: 3 }}>
       <CardContent>
         <Typography variant="h6" gutterBottom>
-          LLM Settings & Actions
+          LLM Settings
         </Typography>
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} sm={6}>
@@ -79,21 +77,10 @@ const CampaignLLMSettings: React.FC<CampaignLLMSettingsProps> = ({
               marks
               min={0}
               max={1}
-              sx={{ mb: 1 }} // Added margin bottom for spacing before buttons
+              sx={{ mb: 1 }}
             />
           </Grid>
-          {/* Removed TOC Button Grid Item */}
-          <Grid item xs={12} sm={6}> {/* Adjusted sm to 6 if only one button left, or keep 12 for full width */}
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={handleGenerateTitles}
-              disabled={isGeneratingTitles}
-              fullWidth
-            >
-              {isGeneratingTitles ? 'Generating Titles...' : 'Suggest Campaign Titles'} {/* Changed text slightly for clarity */}
-            </Button>
-          </Grid>
+          {/* The Grid item for "Suggest Campaign Titles" button has been removed. */}
         </Grid>
       </CardContent>
     </Card>

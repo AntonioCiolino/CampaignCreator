@@ -38,6 +38,19 @@
   color: #0056b3;
 }
 
+.tab-list-item.tab-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #e9ecef; /* Visually distinct background */
+  color: #6c757d; /* Muted text color */
+}
+
+.tab-list-item.tab-disabled:hover {
+  background-color: #e9ecef; /* Keep background same as disabled */
+  border-color: transparent; /* No border change on hover for disabled */
+  color: #6c757d; /* Keep text color same as disabled */
+}
+
 .tab-content {
   padding: 1.5rem; /* Increased padding for content area */
   border: 2px solid #dee2e6;

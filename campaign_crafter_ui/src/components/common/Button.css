@@ -159,11 +159,13 @@
        border-color: var(--primary-color, #007bff); */
 }
 
-/* Icon support (if you plan to use icons inside buttons) */
-.btn .icon {
-  margin-right: 0.5em; /* Space between icon and text */
-  /* Add more specific icon styling if needed */
+/* Icon support */
+.btn-icon {
+  display: inline-flex; /* Helps with vertical alignment particularly for SVG icons */
+  align-items: center;
+  /* margin-right is handled dynamically in the component for spacing */
 }
-.btn .icon-only { /* For buttons that only contain an icon */
-  margin-right: 0;
-}
+
+/* Ensure .btn itself handles alignment well with its children (icon and text) */
+/* .btn already has display: inline-flex; align-items: center; justify-content: center; */
+/* so specific .btn-icon styling is minimal and mostly for the dynamic margin. */

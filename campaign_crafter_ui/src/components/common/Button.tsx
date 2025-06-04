@@ -40,6 +40,10 @@ export interface ButtonProps {
   rel?: string;
   /** Optional: Inline styles to apply to the button */
   style?: React.CSSProperties; // Added style prop
+  /** Optional: Icon to display in the button */
+  icon?: ReactNode;
+  /** Optional: Tooltip text to display on hover */
+  tooltip?: string;
 }
 
 /**
@@ -59,6 +63,8 @@ const Button: React.FC<ButtonProps> = ({
   target,
   rel,
   style, // Explicitly destructure style
+  icon,
+  tooltip,
   ...props // Spread any other native button props like aria-label, etc.
 }) => {
   const baseClass = 'btn';
@@ -82,9 +88,11 @@ const Button: React.FC<ButtonProps> = ({
         rel={rel || (target === '_blank' ? 'noopener noreferrer' : undefined)} // Common security for _blank links
         role="button" // ARIA role for accessibility
         aria-disabled={disabled}
-        {...(disabled && { style: { pointerEvents: 'none', opacity: 0.65 } })} // Basic disabled styling for links
+        title={tooltip}
+        style={{ ...(disabled ? { pointerEvents: 'none', opacity: 0.65 } : {}), ...style }} // Merge disabled styles with provided style
         {...props}
       >
+        {icon && <span className="btn-icon" style={{ marginRight: children ? '0.5em' : '0' }}>{icon}</span>}
         {children}
       </a>
     );
@@ -96,8 +104,11 @@ const Button: React.FC<ButtonProps> = ({
       className={classes}
       onClick={onClick}
       disabled={disabled}
+      title={tooltip}
+      style={style}
       {...props} // Spread other props
     >
+      {icon && <span className="btn-icon" style={{ marginRight: children ? '0.5em' : '0' }}>{icon}</span>}
       {children}
     </button>
   );
