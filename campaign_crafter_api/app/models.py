@@ -77,6 +77,8 @@ class CampaignBase(BaseModel):
     title: str
     initial_user_prompt: Optional[str] = None
     badge_image_url: Optional[str] = None
+    selected_llm_id: Optional[str] = None
+    temperature: Optional[float] = None
 
 class CampaignCreate(CampaignBase):
     model_id_with_prefix_for_concept: Optional[str] = None
@@ -124,7 +126,9 @@ class CampaignUpdate(BaseModel): # Assuming CampaignUpdate is for PATCH, all fie
     concept: Optional[str] = None
     toc: Optional[str] = None
     homebrewery_export: Optional[str] = None
-    badge_image_url: Optional[str] = None # Added badge_image_url
+    badge_image_url: Optional[str] = None
+    selected_llm_id: Optional[str] = None # Ensure it's part of CampaignUpdate for PATCH
+    temperature: Optional[float] = None   # Ensure it's part of CampaignUpdate for PATCH
 
 
 class UserUpdate(BaseModel):

@@ -1,6 +1,7 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime
-from sqlalchemy.orm import relationship
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime, Float
+from sqlalchemy.orm import relationship, Mapped, mapped_column # Ensure Mapped and mapped_column are imported
 from sqlalchemy.sql import func # For default datetime
+from typing import Optional # For Mapped[Optional[...]]
 
 from .db import Base # Import Base from app.db
 
@@ -27,6 +28,8 @@ class Campaign(Base):
     toc = Column(Text, nullable=True)
     homebrewery_export = Column(Text, nullable=True)
     badge_image_url = Column(String, nullable=True) # New field for campaign badge
+    selected_llm_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    temperature: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id"))
 
     owner = relationship("User", back_populates="campaigns")

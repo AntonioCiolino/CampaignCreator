@@ -21,7 +21,7 @@ interface CampaignSectionViewProps {
 const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSave, isSaving, saveError: externalSaveError, onDelete, forceCollapse }) => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(true);
   const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [editedContent, setEditedContent] = useState<string>(section.content);
+  const [editedContent, setEditedContent] = useState<string>(section.content || '');
   const [quillInstance, setQuillInstance] = useState<any>(null); // Enabled to store Quill instance
   const [localSaveError, setLocalSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
@@ -31,7 +31,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
   // Ensure editedContent is updated if the section prop changes externally
   // (e.g. if parent component re-fetches and passes a new section object, or after a save)
   useEffect(() => {
-    setEditedContent(section.content);
+    setEditedContent(section.content || '');
     // If the external save error for this section is cleared, clear local error too
     if (externalSaveError === null) {
         setLocalSaveError(null);
@@ -46,7 +46,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
   
   const handleEdit = () => {
     setIsCollapsed(false); // Expand section on edit
-    setEditedContent(section.content); 
+    setEditedContent(section.content || '');
     setIsEditing(true);
     setLocalSaveError(null); // Clear local errors when starting to edit
     setSaveSuccess(false);
@@ -54,7 +54,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
 
   const handleCancel = () => {
     setIsEditing(false);
-    setEditedContent(section.content); 
+    setEditedContent(section.content || '');
     setLocalSaveError(null);
     setSaveSuccess(false);
   };

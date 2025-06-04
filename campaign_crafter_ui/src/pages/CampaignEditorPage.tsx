@@ -1,4 +1,4 @@
-import React, { useState, useEffect, FormEvent, useMemo } from 'react';
+import React, { useState, useEffect, FormEvent, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -91,6 +91,13 @@ const CampaignEditorPage: React.FC = () => {
   const [isBadgeImageModalOpen, setIsBadgeImageModalOpen] = useState(false); // Added for modal
   const [isSuggestedTitlesModalOpen, setIsSuggestedTitlesModalOpen] = useState<boolean>(false);
 
+  // Auto-save LLM settings state
+  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  const [isAutoSavingLLMSettings, setIsAutoSavingLLMSettings] = useState<boolean>(false);
+  const [autoSaveLLMSettingsError, setAutoSaveLLMSettingsError] = useState<string | null>(null);
+  const [autoSaveLLMSettingsSuccess, setAutoSaveLLMSettingsSuccess] = useState<string | null>(null);
+  const initialLoadCompleteRef = useRef(false);
+
   // State for badge image updates
   // badgeUpdateLoading, setBadgeUpdateLoading, badgeUpdateError, setBadgeUpdateError will be managed by CampaignDetailsEditor (or passed to it)
   // For now, we keep them here if they are used by functions like handleBadgeImageGenerated that remain in this file.
@@ -181,30 +188,41 @@ const CampaignEditorPage: React.FC = () => {
         setEditableInitialPrompt(campaignDetails.initial_user_prompt || '');
         setCampaignBadgeImage(campaignDetails.badge_image_url || ''); // Initialize badge image state
 
-        setAvailableLLMs(fetchedLLMs); // fetchedLLMs is now LLMModel[]
-
-        // This filter should now work correctly with LLMModel type
-        const potentialChatModels = fetchedLLMs.filter(model =>
-            model.capabilities && (model.capabilities.includes("chat") || model.capabilities.includes("chat-adaptable"))
-        );
-
-        if (potentialChatModels.length > 0) {
-            let defaultChatModel = potentialChatModels.find(m => m.id === "openai/gpt-3.5-turbo");
-            if (!defaultChatModel) {
-                defaultChatModel = potentialChatModels.find(m => m.id === "openai/gpt-4");
-            }
-            if (!defaultChatModel) {
-                defaultChatModel = potentialChatModels.find(m => m.id === "gemini/gemini-pro");
-            }
-            if (!defaultChatModel) {
-                defaultChatModel = potentialChatModels[0];
-            }
-            setSelectedLLMId(defaultChatModel.id);
-        } else if (fetchedLLMs.length > 0) {
-            setSelectedLLMId(fetchedLLMs[0].id);
+        // Load LLM settings from fetched campaign data
+        if (campaignDetails.temperature !== null && campaignDetails.temperature !== undefined) {
+            setTemperature(campaignDetails.temperature);
         } else {
-            setSelectedLLMId('');
+            setTemperature(0.7); // Default if not set
         }
+
+        setAvailableLLMs(fetchedLLMs);
+
+        if (campaignDetails.selected_llm_id) {
+            setSelectedLLMId(campaignDetails.selected_llm_id);
+        } else {
+            // Existing logic to set a default LLM if none is saved for the campaign
+            const potentialChatModels = fetchedLLMs.filter(model =>
+                model.capabilities && (model.capabilities.includes("chat") || model.capabilities.includes("chat-adaptable"))
+            );
+            if (potentialChatModels.length > 0) {
+                let defaultChatModel = potentialChatModels.find(m => m.id === "openai/gpt-3.5-turbo");
+                if (!defaultChatModel) {
+                    defaultChatModel = potentialChatModels.find(m => m.id === "openai/gpt-4");
+                }
+                if (!defaultChatModel) {
+                    defaultChatModel = potentialChatModels.find(m => m.id === "gemini/gemini-pro");
+                }
+                if (!defaultChatModel) {
+                    defaultChatModel = potentialChatModels[0];
+                }
+                setSelectedLLMId(defaultChatModel.id);
+            } else if (fetchedLLMs.length > 0) {
+                setSelectedLLMId(fetchedLLMs[0].id);
+            } else {
+                setSelectedLLMId('');
+            }
+        }
+        initialLoadCompleteRef.current = true; // Mark initial load of settings as complete
       } catch (err) {
         console.error('Failed to fetch initial campaign or LLM data:', err);
         setError('Failed to load initial data. Please try again later.');
@@ -214,6 +232,72 @@ const CampaignEditorPage: React.FC = () => {
     };
     fetchInitialData();
   }, [campaignId]);
+
+  // Auto-save LLM settings
+  useEffect(() => {
+    if (!initialLoadCompleteRef.current || !campaignId || !campaign || isLoading) {
+        return; // Don't run if initial load isn't complete or essential data missing
+    }
+
+    // Clear previous timer if it exists
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+    }
+
+    const newTimer = setTimeout(async () => {
+        if (!campaignId) return;
+
+        // Prevent saving if settings haven't changed from the loaded campaign state
+        // This check is crucial to avoid saving right after initial load if values happened to be different from defaults
+        // but were just set from campaignDetails.
+        // However, if the user interacts and changes them, campaign.selected_llm_id will be the *previous* saved state.
+        if (selectedLLMId === campaign.selected_llm_id && temperature === campaign.temperature) {
+            // If selectedLLMId is falsey (empty or null) and it was also falsey in campaign, and temp matches, do nothing.
+            // This handles the case where a campaign is loaded with no LLM selected yet.
+            if (!selectedLLMId && !campaign.selected_llm_id && temperature === (campaign.temperature ?? 0.7)) {
+                 return;
+            }
+            // If values are truly unchanged from the *current* campaign state, don't save.
+            // This condition might need to be more robust if campaign object itself is a dependency and changes often.
+            // For now, this is a reasonable check.
+             if(selectedLLMId === campaign.selected_llm_id && temperature === campaign.temperature) return;
+        }
+
+
+        console.log("Auto-saving LLM settings...", { selectedLLMId, temperature });
+        setIsAutoSavingLLMSettings(true);
+        setAutoSaveLLMSettingsError(null);
+        setAutoSaveLLMSettingsSuccess(null);
+
+        try {
+            const payload: campaignService.CampaignUpdatePayload = {
+                selected_llm_id: selectedLLMId || null, // Send null if empty string
+                temperature: temperature,
+            };
+
+            const updatedCampaign = await campaignService.updateCampaign(campaignId, payload);
+            setCampaign(updatedCampaign); // Update local campaign state with the full response
+            setAutoSaveLLMSettingsSuccess("LLM settings auto-saved!");
+            setTimeout(() => setAutoSaveLLMSettingsSuccess(null), 3000);
+        } catch (err) {
+            console.error("Failed to auto-save LLM settings:", err);
+            setAutoSaveLLMSettingsError("Failed to auto-save LLM settings.");
+            setTimeout(() => setAutoSaveLLMSettingsError(null), 5000);
+        } finally {
+            setIsAutoSavingLLMSettings(false);
+        }
+    }, 1500); // Debounce period (e.g., 1.5 seconds)
+
+    setDebounceTimer(newTimer);
+
+    // Cleanup timer on component unmount or before next effect run
+    return () => {
+        if (newTimer) {
+            clearTimeout(newTimer);
+        }
+    };
+  }, [selectedLLMId, temperature, campaignId, campaign, isLoading]); // Dependencies
+
 
   const handleSaveChanges = async () => {
     if (!campaignId || !campaign) return;
@@ -772,6 +856,11 @@ const CampaignEditorPage: React.FC = () => {
           )}
         </div>
       )}
+      <div className="llm-autosave-feedback editor-section feedback-messages">
+        {isAutoSavingLLMSettings && <p className="feedback-message saving-indicator">Auto-saving LLM settings...</p>}
+        {autoSaveLLMSettingsError && <p className="error-message feedback-message">{autoSaveLLMSettingsError}</p>}
+        {autoSaveLLMSettingsSuccess && <p className="success-message feedback-message">{autoSaveLLMSettingsSuccess}</p>}
+      </div>
       {/* LLM related errors can be shown within this tab or globally */}
       {tocError && <p className="error-message llm-feedback editor-section">{tocError}</p>}
       {/* titlesError is now shown in the details tab near the button, so we can remove it from here if it's redundant */}

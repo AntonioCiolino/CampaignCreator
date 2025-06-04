@@ -25,6 +25,8 @@ export interface Campaign {
   concept: string | null;
   toc: string | null;
   badge_image_url?: string | null; // Added
+  selected_llm_id?: string | null;
+  temperature?: number | null;
   // owner_id: number; 
   // sections: CampaignSection[]; // Backend doesn't nest this in the Campaign Pydantic model by default
 }
@@ -39,6 +41,8 @@ export interface CampaignUpdatePayload {
   title?: string;
   initial_user_prompt?: string;
   badge_image_url?: string | null; // Added
+  selected_llm_id?: string | null;
+  temperature?: number | null;
   // Concept & TOC are typically updated via specific generation endpoints, not direct PUT
 }
 
