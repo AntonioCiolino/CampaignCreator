@@ -46,7 +46,6 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
   }, [forceCollapse]);
   
   const handleEdit = () => {
-    console.log('handleEdit called, setting isEditing to true');
     setIsCollapsed(false); // Expand section on edit
     setEditedContent(section.content || '');
     setIsEditing(true);
@@ -96,20 +95,6 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
     }
   };
 
-  const handleImageInsert = () => {
-    if (!quillInstance) {
-      console.error("Quill instance not available");
-      return;
-    }
-    const url = prompt('Enter image URL:');
-    if (url) {
-      const range = quillInstance.getSelection(true); // Get selection or default to current cursor position
-      // If there's a selection, it will be replaced by the image. 
-      // If no selection, it inserts at the cursor.
-      quillInstance.insertEmbed(range.index, 'image', url, 'user');
-    }
-  };
-
   const quillModules = {
     toolbar: {
       container: [
@@ -136,7 +121,6 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
     }
   };
 
-  console.log('CampaignSectionView render, isEditing:', isEditing);
   return (
     <div className="campaign-section-view">
       {section.title && (
@@ -151,7 +135,6 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
         <>
           {isEditing ? (
             <div className="section-editor">
-              {(() => { console.log('Rendering ReactQuill'); return null; })()}
               <ReactQuill
                 theme="snow"
                 value={editedContent}
@@ -181,7 +164,6 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
             </div>
           ) : (
             <>
-              {(() => { console.log('Rendering ReactMarkdown'); return null; })()}
               <div className="section-content">
                 <ReactMarkdown rehypePlugins={[rehypeRaw]}>{section.content}</ReactMarkdown>
               </div>
