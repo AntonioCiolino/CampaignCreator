@@ -117,10 +117,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
         [{'list': 'ordered'}, {'list': 'bullet'}, {'indent': '-1'}, {'indent': '+1'}],
         ['link', 'image'], // Enabled 'image'
         ['clean']
-      ],
-      // handlers: {
-      //   image: handleImageInsert, // Assign custom image handler
-      // }
+      ]
     },
   };
 
