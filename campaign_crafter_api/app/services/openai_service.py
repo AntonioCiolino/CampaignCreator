@@ -180,6 +180,7 @@ class OpenAILLMService(AbstractLLMService):
         ]
 
         titles_text = await self._perform_chat_completion(selected_model, messages, temperature=0.7, max_tokens=150 + (count * 20))
+        print(f"DEBUG: Raw titles_text from LLM: ||{titles_text}||")
         titles_list = [title.strip() for title in titles_text.split('\n') if title.strip()]
         return titles_list[:count]
 
