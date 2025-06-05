@@ -158,8 +158,6 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
                 theme="snow"
                 value={editedContent}
                 onChange={setEditedContent}
-                modules={quillModules}
-                formats={quillFormats}
                 className="quill-editor"
                 ref={setQuillRef} // Set the ref to get Quill instance
               />
