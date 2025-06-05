@@ -187,3 +187,26 @@
     font-size: 0.85em; /* Smaller font for pickers */
   }
 }
+
+.section-content img,
+.ql-editor img {
+  max-width: 100%; /* Ensures image is not wider than its container */
+  height: auto;    /* Maintains aspect ratio */
+  display: block;  /* Can help with spacing issues */
+  /* Optional: add some space below images, using a variable if available or a fixed value */
+  margin-bottom: 1rem; /* Or var(--global-spacing-unit, 1rem) if that variable is accessible here */
+}
+
+/* Optional: If a hard cap on image size is desired, this can be used instead or in addition.
+   For now, we'll keep it commented out as per the plan, but include it for easy uncommenting.
+*/
+/*
+.section-content img,
+.ql-editor img {
+  max-width: 500px; /* Example: Cap images at 500px width */
+  width: 100%; /* Still allows it to be smaller if container is smaller than 500px */
+  height: auto;
+  display: block;
+  margin-bottom: 1rem;
+}
+*/
