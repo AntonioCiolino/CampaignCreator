@@ -188,23 +188,23 @@
   }
 }
 
+/* Responsive image scaling for content and editor */
 .section-content img,
 .ql-editor img {
   max-width: 100%; /* Ensures image is not wider than its container */
   height: auto;    /* Maintains aspect ratio */
   display: block;  /* Can help with spacing issues */
-  /* Optional: add some space below images, using a variable if available or a fixed value */
-  margin-bottom: 1rem; /* Or var(--global-spacing-unit, 1rem) if that variable is accessible here */
+  margin-bottom: 1rem; /* Space below images */
 }
 
-/* Optional: If a hard cap on image size is desired, this can be used instead or in addition.
-   For now, we'll keep it commented out as per the plan, but include it for easy uncommenting.
-*/
 /*
+  Optional: If a hard cap on image size is desired, uncomment the following.
+  Make sure to comment out or remove the block above if you use this one.
+
 .section-content img,
 .ql-editor img {
-  max-width: 500px; /* Example: Cap images at 500px width */
-  width: 100%; /* Still allows it to be smaller if container is smaller than 500px */
+  max-width: 500px;
+  width: 100%;
   height: auto;
   display: block;
   margin-bottom: 1rem;
