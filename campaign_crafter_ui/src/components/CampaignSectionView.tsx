@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CampaignSection } from '../services/campaignService';
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
 import ReactQuill, { Quill } from 'react-quill';
 import 'react-quill/dist/quill.snow.css'; // Import Quill's snow theme CSS
 import Button from './common/Button'; // Added Button import
@@ -182,7 +183,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
             <>
               {(() => { console.log('Rendering ReactMarkdown'); return null; })()}
               <div className="section-content">
-                <ReactMarkdown>{section.content}</ReactMarkdown>
+                <ReactMarkdown rehypePlugins={[rehypeRaw]}>{section.content}</ReactMarkdown>
               </div>
               <div className="view-actions">
                 <button onClick={handleEdit} className="editor-button edit-button">
