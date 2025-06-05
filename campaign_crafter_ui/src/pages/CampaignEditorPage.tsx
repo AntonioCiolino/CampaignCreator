@@ -508,9 +508,6 @@ const CampaignEditorPage: React.FC = () => {
     setSaveSuccess(null);
     try {
       const response = await campaignService.generateCampaignTitles(campaignId, {}, 5);
-      console.log('CampaignEditorPage: generateCampaignTitles response:', response);
-      console.log('CampaignEditorPage: titles from response:', response.titles);
-      console.log('CampaignEditorPage: Setting suggested titles with:', response.titles);
       setSuggestedTitles(response.titles);
       // setSaveSuccess("Suggested titles generated successfully!"); // Optional: keep or remove
       // setTimeout(() => setSaveSuccess(null), 3000);

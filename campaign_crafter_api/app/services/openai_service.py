@@ -173,14 +173,12 @@ class OpenAILLMService(AbstractLLMService):
         custom_prompt_template = self.feature_prompt_service.get_prompt("Campaign Names", db=db)
         final_prompt = custom_prompt_template.format(campaign_concept=campaign_concept, count=count) if custom_prompt_template else \
                        f"Based on the campaign concept: '{campaign_concept}', generate {count} alternative, catchy campaign titles. List each title on a new line."
-        print(f"DEBUG: Final prompt for titles: ||{final_prompt}||")
         messages = [
             {"role": "system", "content": "You are an assistant skilled in brainstorming creative and catchy titles for RPG campaigns."},
             {"role": "user", "content": final_prompt}
         ]
 
         titles_text = await self._perform_chat_completion(selected_model, messages, temperature=0.7, max_tokens=150 + (count * 20))
-        print(f"DEBUG: Raw titles_text from LLM: ||{titles_text}||")
         titles_list = [title.strip() for title in titles_text.split('\n') if title.strip()]
         return titles_list[:count]
 

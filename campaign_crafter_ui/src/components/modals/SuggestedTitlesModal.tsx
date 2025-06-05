@@ -14,7 +14,6 @@ const SuggestedTitlesModal: React.FC<SuggestedTitlesModalProps> = ({
   titles,
   onSelectTitle,
 }) => {
-  console.log('SuggestedTitlesModal: received titles prop:', titles);
   const handleTitleClick = (title: string) => {
     onSelectTitle(title);
     onClose();
