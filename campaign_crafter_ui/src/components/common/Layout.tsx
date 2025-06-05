@@ -1,6 +1,6 @@
 import React, { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ReactComponent as Logo } from '../../../logo_cc.svg';
+import { ReactComponent as Logo } from '../../logo_cc.svg';
 import './Layout.css';
 // Assuming logo_placeholder.svg is in the public folder,
 // it can be referenced directly by path in Vite/CRA.
