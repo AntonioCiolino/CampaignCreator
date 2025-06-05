@@ -51,28 +51,6 @@ const CampaignDetailsEditor: React.FC<CampaignDetailsEditorProps> = ({
             />
           </Grid>
           <Grid item xs={12}>
-            <TextField
-              label="Campaign Badge Image URL"
-              value={campaignBadgeImage}
-              onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setCampaignBadgeImage(e.target.value)}
-              fullWidth
-              variant="outlined"
-              sx={{ mb: 2 }}
-            />
-            {campaignBadgeImage && (
-              <Box sx={{ mt: 1, mb: 1, textAlign: 'center' }}>
-                <Typography variant="caption" display="block" gutterBottom>
-                  Badge Preview:
-                </Typography>
-                <img
-                  src={campaignBadgeImage}
-                  alt="Campaign Badge Preview"
-                  style={{ maxWidth: '100px', maxHeight: '100px', border: '1px solid #ccc' }}
-                />
-              </Box>
-            )}
-          </Grid>
-          <Grid item xs={12}>
             <Button
               variant="contained"
               color="primary"

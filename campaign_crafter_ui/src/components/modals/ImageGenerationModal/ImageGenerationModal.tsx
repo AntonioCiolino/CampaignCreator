@@ -55,6 +55,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
 }) => {
   const [prompt, setPrompt] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<ImageModel>('dall-e');
+  const [selectedSize, setSelectedSize] = useState<string>('1024x1024'); // Default size
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,8 +75,10 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
     const payload: ImageGenerationRequestPayload = {
       prompt,
       model: selectedModel,
-      // Add size, quality, steps, cfg_scale here if you add UI controls for them
     };
+    if (selectedModel === 'dall-e') {
+      payload.size = selectedSize;
+    }
 
     try {
       const response = await apiClient.post<ImageGenerationResponseData>('/api/v1/images/generate', payload);
@@ -198,6 +201,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
     if (isOpen) {
       setPrompt('');
       setSelectedModel('dall-e');
+      setSelectedSize('1024x1024');
       setGeneratedImageUrl(null);
       setIsLoading(false);
       setError(null);
@@ -227,6 +231,18 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
           >
             <option value="dall-e">DALL-E</option>
             <option value="stable-diffusion">Stable Diffusion</option>
+          </select>
+        </label>
+        <label>
+          Size (DALL-E):
+          <select
+            value={selectedSize}
+            onChange={(e) => setSelectedSize(e.target.value)}
+            disabled={isLoading || selectedModel !== 'dall-e'}
+          >
+            <option value="1024x1024">1024x1024</option>
+            <option value="1792x1024">1792x1024</option>
+            <option value="1024x1792">1024x1792</option>
           </select>
         </label>
 

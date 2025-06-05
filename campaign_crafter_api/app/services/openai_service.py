@@ -173,7 +173,6 @@ class OpenAILLMService(AbstractLLMService):
         custom_prompt_template = self.feature_prompt_service.get_prompt("Campaign Names", db=db)
         final_prompt = custom_prompt_template.format(campaign_concept=campaign_concept, count=count) if custom_prompt_template else \
                        f"Based on the campaign concept: '{campaign_concept}', generate {count} alternative, catchy campaign titles. List each title on a new line."
-        
         messages = [
             {"role": "system", "content": "You are an assistant skilled in brainstorming creative and catchy titles for RPG campaigns."},
             {"role": "user", "content": final_prompt}

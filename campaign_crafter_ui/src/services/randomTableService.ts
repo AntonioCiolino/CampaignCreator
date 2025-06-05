@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from './env'; // Import the new function
+
 // Defines the structure of the response from the /api/random-tables endpoint
 export interface TableNameListResponse {
   table_names: string[];

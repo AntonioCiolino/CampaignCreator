@@ -187,3 +187,26 @@
     font-size: 0.85em; /* Smaller font for pickers */
   }
 }
+
+/* Responsive image scaling for content and editor */
+.section-content img,
+.ql-editor img {
+  max-width: 100%; /* Ensures image is not wider than its container */
+  height: auto;    /* Maintains aspect ratio */
+  display: block;  /* Can help with spacing issues */
+  margin-bottom: 1rem; /* Space below images */
+}
+
+/*
+  Optional: If a hard cap on image size is desired, uncomment the following.
+  Make sure to comment out or remove the block above if you use this one.
+
+.section-content img,
+.ql-editor img {
+  max-width: 500px;
+  width: 100%;
+  height: auto;
+  display: block;
+  margin-bottom: 1rem;
+}
+*/
