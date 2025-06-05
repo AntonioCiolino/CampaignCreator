@@ -118,9 +118,9 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
         ['link', 'image'], // Enabled 'image'
         ['clean']
       ],
-      handlers: {
-        image: handleImageInsert, // Assign custom image handler
-      }
+      // handlers: {
+      //   image: handleImageInsert, // Assign custom image handler
+      // }
     },
   };
 
