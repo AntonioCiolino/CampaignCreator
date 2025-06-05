@@ -238,11 +238,11 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
           <select
             value={selectedSize}
             onChange={(e) => setSelectedSize(e.target.value)}
-            disabled={isLoading || selectedModel !== 'dall-e'} // Disable if not DALL-E or loading
+            disabled={isLoading || selectedModel !== 'dall-e'}
           >
-            <option value="256x256">256x256</option>
-            <option value="512x512">512x512</option>
             <option value="1024x1024">1024x1024</option>
+            <option value="1792x1024">1792x1024</option>
+            <option value="1024x1792">1024x1792</option>
           </select>
         </label>
 
