@@ -1,5 +1,6 @@
 import React, { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { ReactComponent as Logo } from '../../../logo_cc.svg';
 import './Layout.css';
 // Assuming logo_placeholder.svg is in the public folder,
 // it can be referenced directly by path in Vite/CRA.
@@ -17,7 +18,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="app-layout">
       <header className="app-header">
         <Link to="/" className="app-title-link">
-          <img src="/logo_placeholder.svg" alt="Campaign Crafter Logo" className="app-logo" />
+          <Logo className="app-logo" title="Campaign Crafter Logo" />
           <h1>Campaign Crafter</h1>
         </Link>
         <nav className="app-nav">
