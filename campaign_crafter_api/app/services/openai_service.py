@@ -249,6 +249,7 @@ class OpenAILLMService(AbstractLLMService):
             "gpt-4": {"id": "gpt-4", "name": "GPT-4", "capabilities": ["chat"]},
             "gpt-4-turbo-preview": {"id": "gpt-4-turbo-preview", "name": "GPT-4 Turbo Preview", "capabilities": ["chat"]},
             "gpt-4o": {"id": "gpt-4o", "name": "GPT-4 Omni", "capabilities": ["chat"]}, # Assuming chat, may have vision too
+            "gpt-4.1-nano": {"id": "gpt-4.1-nano", "name": "OpenAI GPT 4.1 Nano", "capabilities": ["chat"]},
             "gpt-3.5-turbo": {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo (Chat)", "capabilities": ["chat"]},
             "gpt-3.5-turbo-instruct": {"id": "gpt-3.5-turbo-instruct", "name": "GPT-3.5 Turbo Instruct", "capabilities": ["completion", "chat-adaptable"]},
         }
