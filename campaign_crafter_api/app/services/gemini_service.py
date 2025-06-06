@@ -176,29 +176,66 @@ class GeminiLLMService(AbstractLLMService):
         titles = [title.strip() for title in text_response.split('\n') if title.strip()]
         return titles[:count]
 
-    async def generate_section_content(self, campaign_concept: str, db: Session, existing_sections_summary: Optional[str], section_creation_prompt: Optional[str], section_title_suggestion: Optional[str], model: Optional[str] = None) -> str:
+    async def generate_section_content(
+        self,
+        campaign_concept: str,
+        db: Session,
+        existing_sections_summary: Optional[str],
+        section_creation_prompt: Optional[str],
+        section_title_suggestion: Optional[str],
+        model: Optional[str] = None,
+        section_type: Optional[str] = None # New parameter
+    ) -> str:
         if not await self.is_available():
             raise LLMServiceUnavailableError("Gemini service is not available.")
-        if not campaign_concept: # Basic check
+        if not campaign_concept:
             raise ValueError("Campaign concept is required.")
 
         model_instance = self._get_model_instance(model)
-        custom_prompt_template = self.feature_prompt_service.get_prompt("Section Content", db=db)
 
+        effective_section_prompt = section_creation_prompt
+        type_based_instruction = ""
+
+        if section_type and section_type.lower() not in ["generic", "unknown", "", None]:
+            title_str = section_title_suggestion or "the current section"
+            if section_type.lower() == "npc" or section_type.lower() == "character":
+                type_based_instruction = f"This section is about an NPC or character named '{title_str}'. Generate a detailed description including appearance, personality, motivations, potential plot hooks, and if appropriate, a basic stat block suitable for a tabletop RPG."
+            elif section_type.lower() == "location":
+                type_based_instruction = f"This section describes a location: '{title_str}'. Detail its key features, atmosphere, inhabitants (if any), notable points of interest, secrets, and potential encounters."
+            elif section_type.lower() == "chapter" or section_type.lower() == "quest":
+                type_based_instruction = f"This section outlines a chapter or quest titled '{title_str}'. Describe the main events, objectives, challenges, potential rewards, and any key NPCs or locations involved."
+            else: # Other specific types
+                type_based_instruction = f"This section is specifically about '{title_str}' which is a '{section_type}'. Generate detailed content appropriate for this type."
+
+        if not effective_section_prompt and type_based_instruction:
+            effective_section_prompt = type_based_instruction
+        elif effective_section_prompt and type_based_instruction:
+            effective_section_prompt = f"{type_based_instruction}\n\nFurther specific instructions for this section: {section_creation_prompt}"
+        elif not effective_section_prompt:
+            effective_section_prompt = "Continue the story logically, introducing new elements or developing existing ones."
+
+        custom_prompt_template = self.feature_prompt_service.get_prompt("Section Content", db=db)
+        final_prompt_for_generation: str
         if custom_prompt_template:
-            final_prompt = custom_prompt_template.format(
+            final_prompt_for_generation = custom_prompt_template.format(
                 campaign_concept=campaign_concept,
                 existing_sections_summary=existing_sections_summary or "N/A",
-                section_creation_prompt=section_creation_prompt or "Continue the story logically, introducing new elements or developing existing ones.",
+                section_creation_prompt=effective_section_prompt, # Use the refined prompt
                 section_title_suggestion=section_title_suggestion or "Next Part"
             )
         else: # Simplified default
-            final_prompt = f"Campaign Concept: {campaign_concept}\n"
+            final_prompt_for_generation = f"Campaign Concept: {campaign_concept}\n"
             if existing_sections_summary:
-                final_prompt += f"Summary of existing sections: {existing_sections_summary}\n"
-            final_prompt += f"Instruction for new section (titled '{section_title_suggestion or 'Next Part'}'): {section_creation_prompt or 'Develop the next part of the campaign story.'}"
+                final_prompt_for_generation += f"Summary of existing sections: {existing_sections_summary}\n"
+            final_prompt_for_generation += f"Instruction for new section (titled '{section_title_suggestion or 'Next Part'}', Type: '{section_type or 'Generic'}'): {effective_section_prompt}"
+
+        # The system prompt for Gemini is often part of the main prompt or handled differently by the SDK.
+        # For now, we'll ensure the final_prompt_for_generation is comprehensive.
+        # If a system prompt equivalent is needed, it might be prepended to final_prompt_for_generation.
+        # Example: system_guidance = f"You are an expert RPG writer. Pay special attention to the section type: {section_type}.\n\n"
+        # final_prompt = system_guidance + final_prompt if section_type else final_prompt
         
-        return await self.generate_text(prompt=final_prompt, model=model_instance.model_name, temperature=0.7, max_tokens=4000) # Increased max_tokens
+        return await self.generate_text(prompt=final_prompt_for_generation, model=model_instance.model_name, temperature=0.7, max_tokens=4000)
 
     async def list_available_models(self) -> List[Dict[str, str]]:
         if not await self.is_available(): # Use async is_available

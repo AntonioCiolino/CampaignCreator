@@ -1,4 +1,4 @@
-from typing import Optional, List # Added List
+from typing import Optional, List, Dict # Added List and Dict
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext # Added
 
@@ -206,10 +206,17 @@ async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, 
     return db_campaign
 
 def get_campaign(db: Session, campaign_id: int) -> Optional[orm_models.Campaign]:
-    return db.query(orm_models.Campaign).filter(orm_models.Campaign.id == campaign_id).first()
+    db_campaign = db.query(orm_models.Campaign).filter(orm_models.Campaign.id == campaign_id).first()
+    if db_campaign:
+        # Convert string TOCs to list-of-dicts for backward compatibility
+        if isinstance(db_campaign.display_toc, str):
+            db_campaign.display_toc = [{"title": db_campaign.display_toc, "type": "unknown"}] if db_campaign.display_toc else []
+        if isinstance(db_campaign.homebrewery_toc, str):
+            db_campaign.homebrewery_toc = [{"title": db_campaign.homebrewery_toc, "type": "unknown"}] if db_campaign.homebrewery_toc else []
+    return db_campaign
 
 def update_campaign(db: Session, campaign_id: int, campaign_update: models.CampaignUpdate) -> Optional[orm_models.Campaign]:
-    db_campaign = get_campaign(db, campaign_id=campaign_id)
+    db_campaign = get_campaign(db, campaign_id=campaign_id) # get_campaign will now handle potential TOC conversion if data was old
     if db_campaign:
         # Use model_dump with exclude_unset=True for partial updates
         update_data = campaign_update.model_dump(exclude_unset=True)
@@ -226,8 +233,8 @@ def update_campaign(db: Session, campaign_id: int, campaign_update: models.Campa
         db.refresh(db_campaign)
     return db_campaign
 
-def update_campaign_toc(db: Session, campaign_id: int, display_toc_content: str, homebrewery_toc_content: str) -> Optional[orm_models.Campaign]:
-    db_campaign = get_campaign(db, campaign_id=campaign_id)
+def update_campaign_toc(db: Session, campaign_id: int, display_toc_content: List[Dict[str, str]], homebrewery_toc_content: List[Dict[str, str]]) -> Optional[orm_models.Campaign]:
+    db_campaign = get_campaign(db, campaign_id=campaign_id) # get_campaign will handle potential string TOC conversion before update
     if db_campaign:
         db_campaign.display_toc = display_toc_content
         db_campaign.homebrewery_toc = homebrewery_toc_content
@@ -244,12 +251,13 @@ def delete_sections_for_campaign(db: Session, campaign_id: int) -> int:
     db.commit() # Commit after deletion
     return num_deleted
 
-def create_section_with_placeholder_content(db: Session, campaign_id: int, title: str, order: int, placeholder_content: str = "Content to be generated.") -> orm_models.CampaignSection:
-    """Creates a new campaign section with a title, order, and placeholder content."""
+def create_section_with_placeholder_content(db: Session, campaign_id: int, title: str, order: int, placeholder_content: str = "Content to be generated.", type: Optional[str] = "generic") -> orm_models.CampaignSection:
+    """Creates a new campaign section with a title, order, placeholder content, and type."""
     db_section = orm_models.CampaignSection(
         title=title,
         content=placeholder_content,
         order=order,
+        type=type, # Added type
         campaign_id=campaign_id
     )
     db.add(db_section)
@@ -260,7 +268,7 @@ def create_section_with_placeholder_content(db: Session, campaign_id: int, title
 def get_campaign_sections(db: Session, campaign_id: int, skip: int = 0, limit: int = 1000) -> list[orm_models.CampaignSection]:
     return db.query(orm_models.CampaignSection).filter(orm_models.CampaignSection.campaign_id == campaign_id).order_by(orm_models.CampaignSection.order).offset(skip).limit(limit).all()
 
-def create_campaign_section(db: Session, campaign_id: int, section_title: Optional[str], section_content: str) -> orm_models.CampaignSection:
+def create_campaign_section(db: Session, campaign_id: int, section_title: Optional[str], section_content: str, section_type: Optional[str] = "generic") -> orm_models.CampaignSection:
     existing_sections = get_campaign_sections(db=db, campaign_id=campaign_id, limit=1000) # Get all sections to determine order
     max_order = -1
     if existing_sections:
@@ -272,6 +280,7 @@ def create_campaign_section(db: Session, campaign_id: int, section_title: Option
         title=section_title,
         content=section_content,
         order=new_order,
+        type=section_type, # Added type
         campaign_id=campaign_id
     )
     db.add(db_section)

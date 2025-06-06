@@ -206,31 +206,69 @@ class OpenAILLMService(AbstractLLMService):
         titles_list = [title.strip() for title in titles_text.split('\n') if title.strip()]
         return titles_list[:count]
 
-    async def generate_section_content(self, campaign_concept: str, db: Session, existing_sections_summary: Optional[str], section_creation_prompt: Optional[str], section_title_suggestion: Optional[str], model: Optional[str] = None) -> str:
+    async def generate_section_content(
+        self,
+        campaign_concept: str,
+        db: Session,
+        existing_sections_summary: Optional[str],
+        section_creation_prompt: Optional[str],
+        section_title_suggestion: Optional[str],
+        model: Optional[str] = None,
+        section_type: Optional[str] = None # New parameter
+    ) -> str:
         if not await self.is_available():
             raise LLMServiceUnavailableError("OpenAI service is not available.")
-        if not campaign_concept: # Basic check, though prompt construction is more complex
+        if not campaign_concept:
             raise ValueError("Campaign concept is required.")
 
         selected_model = self._get_model(model, use_chat_model=True)
 
+        # Determine effective section creation prompt based on section_type and provided prompt
+        effective_section_prompt = section_creation_prompt
+        type_based_instruction = ""
+
+        if section_type and section_type.lower() not in ["generic", "unknown", "", None]:
+            title_str = section_title_suggestion or "the current section"
+            if section_type.lower() == "npc" or section_type.lower() == "character":
+                type_based_instruction = f"This section is about an NPC or character named '{title_str}'. Generate a detailed description including appearance, personality, motivations, potential plot hooks, and if appropriate, a basic stat block suitable for a tabletop RPG."
+            elif section_type.lower() == "location":
+                type_based_instruction = f"This section describes a location: '{title_str}'. Detail its key features, atmosphere, inhabitants (if any), notable points of interest, secrets, and potential encounters."
+            elif section_type.lower() == "chapter" or section_type.lower() == "quest":
+                type_based_instruction = f"This section outlines a chapter or quest titled '{title_str}'. Describe the main events, objectives, challenges, potential rewards, and any key NPCs or locations involved."
+            else: # Other specific types
+                type_based_instruction = f"This section is specifically about '{title_str}' which is a '{section_type}'. Generate detailed content appropriate for this type."
+
+        if not effective_section_prompt and type_based_instruction:
+            effective_section_prompt = type_based_instruction
+        elif effective_section_prompt and type_based_instruction:
+            # Combine if both exist, ensuring type_based_instruction is clearly framed as context or a primary goal
+            effective_section_prompt = f"{type_based_instruction}\n\nFurther specific instructions for this section: {section_creation_prompt}"
+        elif not effective_section_prompt:
+            effective_section_prompt = "Continue the story from where it left off, or introduce a new related event/location/character interaction."
+
+
         custom_prompt_template = self.feature_prompt_service.get_prompt("Section Content", db=db)
         if custom_prompt_template:
-            final_prompt = custom_prompt_template.format(
+            final_prompt_for_user_role = custom_prompt_template.format(
                 campaign_concept=campaign_concept,
                 existing_sections_summary=existing_sections_summary or "N/A",
-                section_creation_prompt=section_creation_prompt or "Continue the story from where it left off, or introduce a new related event/location/character interaction.",
+                section_creation_prompt=effective_section_prompt,
                 section_title_suggestion=section_title_suggestion or "Next Chapter"
             )
         else: # Simplified default if CSV prompt is missing
-            final_prompt = f"Campaign Concept: {campaign_concept}\n"
+            final_prompt_for_user_role = f"Campaign Concept: {campaign_concept}\n"
             if existing_sections_summary:
-                final_prompt += f"Summary of existing sections: {existing_sections_summary}\n"
-            final_prompt += f"Instruction for new section (titled '{section_title_suggestion or 'Next Chapter'}'): {section_creation_prompt or 'Develop the next part of the story.'}"
+                final_prompt_for_user_role += f"Summary of existing sections: {existing_sections_summary}\n"
+            final_prompt_for_user_role += f"Instruction for new section (titled '{section_title_suggestion or 'Next Chapter'}', Type: '{section_type or 'Generic'}'): {effective_section_prompt}"
+
+        system_message_content = "You are an expert RPG writer, crafting a new section for an ongoing campaign. Ensure the content is engaging and fits the narrative style implied by the concept and existing sections."
+        if section_type and section_type.lower() not in ["generic", "unknown", "", None]:
+            system_message_content += f" Pay special attention to the section type: {section_type}."
+
 
         messages = [
-            {"role": "system", "content": "You are an expert RPG writer, crafting a new section for an ongoing campaign. Ensure the content is engaging and fits the narrative style implied by the concept and existing sections."},
-            {"role": "user", "content": final_prompt}
+            {"role": "system", "content": system_message_content},
+            {"role": "user", "content": final_prompt_for_user_role}
         ]
         return await self._perform_chat_completion(selected_model, messages, temperature=0.7, max_tokens=1500)
 

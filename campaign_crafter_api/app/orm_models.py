@@ -43,6 +43,7 @@ class CampaignSection(Base):
     title = Column(String, nullable=True)
     content = Column(Text, nullable=False)
     order = Column(Integer, nullable=False, default=0)
+    type = Column(String, nullable=True) # New field for section type
     campaign_id = Column(Integer, ForeignKey("campaigns.id"))
 
     campaign = relationship("Campaign", back_populates="sections")
