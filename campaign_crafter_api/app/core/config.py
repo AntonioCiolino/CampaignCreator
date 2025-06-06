@@ -1,7 +1,15 @@
 from pydantic_settings import BaseSettings
-from typing import Optional
+from typing import Optional, List
 
 class Settings(BaseSettings):
+    BACKEND_CORS_ORIGINS_CSV: Optional[str] = None
+
+    @property
+    def BACKEND_CORS_ORIGINS(self) -> list[str]:
+        if self.BACKEND_CORS_ORIGINS_CSV:
+            return [origin.strip() for origin in self.BACKEND_CORS_ORIGINS_CSV.split(',')]
+        return ["http://localhost:3000"] # Default if the env var is not set
+
     # Existing keys
     OPENAI_API_KEY: str = "YOUR_OPENAI_API_KEY" 
     GEMINI_API_KEY: Optional[str] = "YOUR_GEMINI_API_KEY" 

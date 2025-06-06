@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware # Added import
 
 # sys.path manipulation for 'utils' is no longer needed here.
 # We will use a relative import for the seeding module.
-
+from .core.config import settings # Added import
 from .core.seeding import seed_all_csv_data # Updated import
 from .db import init_db, SessionLocal, engine, Base 
 from app import crud 
@@ -17,15 +17,11 @@ from app.api.endpoints import data_tables # New import for data_tables
 
 app = FastAPI(title="Campaign Crafter API", version="0.1.0")
 
-origins = [
-    "http://localhost",
-    "http://localhost:3000",
-    # Potentially add your deployed frontend URL here in the future
-]
+# origins = ["*"] # Removed this line
 
 app.add_middleware( # Added middleware
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=settings.BACKEND_CORS_ORIGINS, # Use the new setting
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
