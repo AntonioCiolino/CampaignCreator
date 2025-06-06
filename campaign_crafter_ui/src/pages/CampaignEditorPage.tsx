@@ -170,6 +170,7 @@ const CampaignEditorPage: React.FC = () => {
       return;
     }
 
+    setIsPageLoading(true); // <--- ADDED THIS
     setIsSeedingSections(true);
     setSeedSectionsError(null);
     // setSaveSuccess(null); // Optional: Clear other success messages
@@ -197,6 +198,7 @@ const CampaignEditorPage: React.FC = () => {
       }
     } finally {
       setIsSeedingSections(false);
+      setIsPageLoading(false); // <--- ADDED THIS
     }
   };
 
