@@ -193,10 +193,8 @@ const CampaignDetailsEditor: React.FC<CampaignDetailsEditorProps> = ({
               variant="primary" // Changed from "contained"
               onClick={handleSaveCampaignDetails}
               disabled={!hasUnsavedChanges} // Disable button if no unsaved changes
-              // sx prop might not be supported by common/Button, remove if it causes issues
-              // For now, assuming sx is fine or will be ignored if not supported by common/Button
               // color="primary" is removed as it's usually part of MUI Button, not a common custom prop combined with variant="primary"
-              sx={{ mt: 2 }} // Added margin top for spacing from the prompt field
+              style={{ marginTop: '16px' }} // Use style prop for custom styling
             >
               Save Details
             </Button>

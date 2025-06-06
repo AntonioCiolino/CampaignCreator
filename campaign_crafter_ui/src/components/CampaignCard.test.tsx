@@ -10,7 +10,8 @@ const mockCampaignWithBadge: Campaign = {
   title: 'Test Campaign With Badge',
   initial_user_prompt: 'A grand adventure awaits!',
   concept: 'A quest to find the ancient artifact.',
-  toc: 'Chapter 1: The Beginning',
+  display_toc: null, // Added
+  homebrewery_toc: 'Chapter 1: The Beginning', // Added, old toc content moved here
   badge_image_url: 'http://example.com/campaign_badge.png',
   // owner_id and sections are not directly used by CampaignCard display but part of the interface
   // owner_id: 1, 
@@ -22,7 +23,8 @@ const mockCampaignWithoutBadge: Campaign = {
   title: 'Test Campaign No Badge',
   initial_user_prompt: 'Another journey begins.',
   concept: 'Exploring the unknown lands.',
-  toc: 'Introduction',
+  display_toc: null, // Added
+  homebrewery_toc: 'Introduction', // Added, old toc content moved here
   badge_image_url: null,
   // owner_id: 2,
   // sections: [],
