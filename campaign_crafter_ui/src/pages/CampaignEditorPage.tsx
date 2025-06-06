@@ -82,6 +82,7 @@ const CampaignEditorPage: React.FC = () => {
   const [forceCollapseAll, setForceCollapseAll] = useState<boolean | undefined>(undefined);
 
   // State for UI collapsible sections
+  const [isCampaignConceptCollapsed, setIsCampaignConceptCollapsed] = useState<boolean>(true);
   const [isTocCollapsed, setIsTocCollapsed] = useState<boolean>(false); // Default to expanded
   // const [isLLMSettingsCollapsed, setIsLLMSettingsCollapsed] = useState<boolean>(false); // Removed
   const [isAddSectionCollapsed, setIsAddSectionCollapsed] = useState<boolean>(true);
@@ -1032,8 +1033,12 @@ const CampaignEditorPage: React.FC = () => {
       {/* === Campaign Concept Display === */}
       {campaign && campaign.concept && (
         <section className="campaign-detail-section read-only-section editor-section page-level-concept">
-          <h2>Campaign Concept</h2>
-          <div className="concept-content"><ReactMarkdown>{campaign.concept}</ReactMarkdown></div>
+          <h2 onClick={() => setIsCampaignConceptCollapsed(!isCampaignConceptCollapsed)} style={{ cursor: 'pointer' }}>
+            {isCampaignConceptCollapsed ? '▶' : '▼'} Campaign Concept
+          </h2>
+          {!isCampaignConceptCollapsed && (
+            <div className="concept-content"><ReactMarkdown>{campaign.concept}</ReactMarkdown></div>
+          )}
         </section>
       )}
       {/* === End of Campaign Concept Display === */}
