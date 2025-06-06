@@ -263,4 +263,173 @@ async def test_regenerate_section_llm_fails(
 # This is a common way to get a plain dict for creating copies or for assertions.
 # Test for selected_llm_id parsing in test_seed_sections_from_toc_with_autopopulate was also refined.
 # Placeholder titles in test_seed_sections_from_toc_with_autopopulate and _llm_error were made more specific.
+
+# --- SSE Test Helper and Tests ---
+
+async def consume_sse_events(client: AsyncClient, url: str) -> list:
+    events = []
+    try:
+        async with client.stream("POST", url) as response:
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if line.startswith("data:"):
+                    try:
+                        data_str = line[len("data:"):].strip()
+                        if data_str:
+                             events.append(json.loads(data_str))
+                    except json.JSONDecodeError:
+                        print(f"Warning: Failed to decode JSON from SSE event: {line}")
+                elif line.strip() == "" and events and events[-1].get("event_type") == "complete":
+                    pass
+    except Exception as e:
+        print(f"Error consuming SSE stream: {type(e).__name__} - {e}")
+    return events
+
+async def test_seed_sections_from_toc_sse_no_autopopulate(
+    test_client: AsyncClient,
+    test_campaign: orm_models.Campaign,
+    db_session_mock: Session,
+    mock_llm_service: AsyncMock
+):
+    # Assuming test_campaign.display_toc = "- Chapter 1: The Beginning\n- NPC: Gandalf\n- Location: The Shire"
+    expected_titles = ["Chapter 1: The Beginning", "NPC: Gandalf", "Location: The Shire"]
+
+    def mock_create_section_side_effect(db, campaign_id, title, order, placeholder_content):
+        mock_orm_section = orm_models.CampaignSection(
+            id=order + 1,
+            campaign_id=campaign_id,
+            title=title,
+            content=placeholder_content,
+            order=order
+        )
+        return mock_orm_section
+
+    with patch('app.api.endpoints.campaigns.crud.delete_sections_for_campaign', return_value=0) as mock_delete, \
+         patch('app.api.endpoints.campaigns.crud.create_section_with_placeholder_content', side_effect=mock_create_section_side_effect) as mock_create:
+
+        url = f"/api/v1/campaigns/{test_campaign.id}/seed_sections_from_toc?auto_populate=false"
+        events = await consume_sse_events(test_client, url)
+
+        assert len(events) > 0, "No SSE events received"
+
+        section_update_events = [e for e in events if e.get("event_type") == "section_update"]
+        assert len(section_update_events) == len(expected_titles)
+
+        for i, event in enumerate(section_update_events):
+            assert event["current_section_title"] == expected_titles[i]
+            assert event["section_data"]["title"] == expected_titles[i]
+            assert event["section_data"]["content"] == f"Content for '{expected_titles[i]}' to be generated."
+            assert event["progress_percent"] == round(((i + 1) / len(expected_titles)) * 100, 2)
+
+        completion_events = [e for e in events if e.get("event_type") == "complete"]
+        assert len(completion_events) == 1
+        assert completion_events[0]["message"] == "Section seeding process finished."
+        assert completion_events[0]["total_sections_processed"] == len(expected_titles)
+
+
+        mock_delete.assert_called_once_with(db=db_session_mock, campaign_id=test_campaign.id)
+        assert mock_create.call_count == len(expected_titles)
+        mock_llm_service.generate_section_content.assert_not_called()
+
+
+async def test_seed_sections_from_toc_sse_with_autopopulate(
+    test_client: AsyncClient,
+    test_campaign: orm_models.Campaign,
+    db_session_mock: Session,
+    mock_llm_service: AsyncMock
+):
+    # Ensure test_campaign has selected_llm_id and concept for this test
+    assert test_campaign.selected_llm_id, "Test campaign must have selected_llm_id for auto-populate tests"
+    assert test_campaign.concept, "Test campaign must have a concept for auto-populate tests"
+
+    expected_titles = ["Chapter 1: The Beginning", "NPC: Gandalf", "Location: The Shire"]
+    mock_llm_service.generate_section_content.return_value = "Mocked LLM Content via SSE"
+
+    def mock_create_section_side_effect(db, campaign_id, title, order, placeholder_content):
+        mock_orm_section = orm_models.CampaignSection(
+            id=order + 1, campaign_id=campaign_id, title=title, content=placeholder_content, order=order
+        )
+        return mock_orm_section
+
+    with patch('app.api.endpoints.campaigns.crud.delete_sections_for_campaign', return_value=0), \
+         patch('app.api.endpoints.campaigns.crud.create_section_with_placeholder_content', side_effect=mock_create_section_side_effect):
+
+        url = f"/api/v1/campaigns/{test_campaign.id}/seed_sections_from_toc?auto_populate=true"
+        events = await consume_sse_events(test_client, url)
+
+        assert len(events) > 0, "No SSE events received"
+        section_update_events = [e for e in events if e.get("event_type") == "section_update"]
+        assert len(section_update_events) == len(expected_titles)
+
+        for i, event in enumerate(section_update_events):
+            assert event["current_section_title"] == expected_titles[i]
+            assert event["section_data"]["content"] == "Mocked LLM Content via SSE"
+
+        completion_events = [e for e in events if e.get("event_type") == "complete"]
+        assert len(completion_events) == 1
+        assert completion_events[0]["total_sections_processed"] == len(expected_titles)
+
+        assert mock_llm_service.generate_section_content.call_count == len(expected_titles)
+        # Example: Check arguments for the "NPC: Gandalf" call specifically
+        gandalf_call = next((c for c in mock_llm_service.generate_section_content.call_args_list
+                             if c.kwargs.get("section_title_suggestion") == "NPC: Gandalf"), None)
+        assert gandalf_call is not None
+        assert "NPC named 'Gandalf'" in gandalf_call.kwargs.get("section_creation_prompt", "")
+
+
+async def test_seed_sections_from_toc_sse_autopopulate_llm_error_per_section(
+    test_client: AsyncClient,
+    test_campaign: orm_models.Campaign,
+    db_session_mock: Session,
+    mock_llm_service: AsyncMock
+):
+    expected_titles = ["Chapter 1: The Beginning", "NPC: Gandalf", "Location: The Shire"]
+
+    async def llm_side_effect(*args, **kwargs):
+        if kwargs.get("section_title_suggestion") == "NPC: Gandalf": # Target specific title
+            raise LLMGenerationError("LLM failed for Gandalf")
+        return "Successfully generated content"
+    mock_llm_service.generate_section_content.side_effect = llm_side_effect
+
+    def mock_create_section_side_effect(db, campaign_id, title, order, placeholder_content):
+        return orm_models.CampaignSection(id=order + 1, campaign_id=campaign_id, title=title, content=placeholder_content, order=order)
+
+    with patch('app.api.endpoints.campaigns.crud.delete_sections_for_campaign', return_value=0), \
+         patch('app.api.endpoints.campaigns.crud.create_section_with_placeholder_content', side_effect=mock_create_section_side_effect):
+
+        url = f"/api/v1/campaigns/{test_campaign.id}/seed_sections_from_toc?auto_populate=true"
+        events = await consume_sse_events(test_client, url)
+
+        section_update_events = [e for e in events if e.get("event_type") == "section_update"]
+        assert len(section_update_events) == len(expected_titles)
+
+        for event in section_update_events:
+            if event["current_section_title"] == "NPC: Gandalf":
+                assert event["section_data"]["content"] == "Content for 'NPC: Gandalf' to be generated."
+            else:
+                assert event["section_data"]["content"] == "Successfully generated content"
+
+        assert mock_llm_service.generate_section_content.call_count == len(expected_titles)
+
+        completion_events = [e for e in events if e.get("event_type") == "complete"]
+        assert len(completion_events) == 1
+        assert completion_events[0]["total_sections_processed"] == len(expected_titles)
+
+async def test_seed_sections_from_toc_sse_empty_toc(
+    test_client: AsyncClient,
+    test_campaign: orm_models.Campaign,
+    db_session_mock: Session
+):
+    # Temporarily override test_campaign's display_toc for this test
+    with patch.object(test_campaign, 'display_toc', ""): # Empty TOC
+        url = f"/api/v1/campaigns/{test_campaign.id}/seed_sections_from_toc?auto_populate=false"
+        events = await consume_sse_events(test_client, url)
+
+        assert len(events) == 1
+        assert events[0]["event_type"] == "complete"
+        assert "No titles found in TOC" in events[0]["message"]
+        # No sections should be processed
+        assert events[0].get("total_sections_processed") is None # Or 0, depending on backend logic for this case. The current SSE impl might not send it.
+
+# Consider adding pytest-asyncio and an event_loop fixture if not already configured.
 ```

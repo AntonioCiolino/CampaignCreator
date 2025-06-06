@@ -1,5 +1,7 @@
 from typing import Optional, List
 import re # Add import re
+import json # Added for SSE
+import asyncio # Added for SSE
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
@@ -7,7 +9,8 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel # Added BaseModel import
 
 from app import external_models, crud, orm_models, models
-from app.db import get_db 
+from app.db import get_db
+from sse_starlette.sse import EventSourceResponse # Added for SSE
 from app.services.llm_service import LLMServiceUnavailableError, LLMGenerationError # Updated import
 from app.services.llm_factory import get_llm_service
 from app.services.export_service import HomebreweryExportService
@@ -192,87 +195,78 @@ async def generate_campaign_titles_endpoint(
 
 @router.post(
     "/{campaign_id}/seed_sections_from_toc",
-    response_model=List[models.CampaignSection], # Returns a list of the created sections
+    # response_model=List[models.CampaignSection], # Removed for SSE
     tags=["Campaigns", "Campaign Sections"]
 )
 async def seed_sections_from_toc_endpoint(
     campaign_id: int,
-    auto_populate: bool = False, # Added auto_populate parameter
+    auto_populate: bool = False,
     db: Session = Depends(get_db)
 ):
     db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
     if db_campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
 
-    print(f"--- Seeding sections for campaign {campaign_id} ---")
+    print(f"--- Seeding sections for campaign {campaign_id} (SSE) ---")
     if not db_campaign.display_toc:
         print(f"Campaign {campaign_id} has no display_toc. Cannot seed sections.")
         raise HTTPException(status_code=400, detail="No display_toc found for this campaign. Cannot seed sections.")
-    print(f"Raw display_toc for campaign {campaign_id}:\n{db_campaign.display_toc}")
 
-    try:
-        # Step 1: Parse db_campaign.display_toc into a list of section titles
-        raw_toc_lines = db_campaign.display_toc.splitlines()
-        parsed_titles = []
-        for line in raw_toc_lines:
-            stripped_line = line.strip()
-            # Regex to match lines starting with '-', '*', or '+' followed by space and then capture the title
-            match = re.match(r"^(?:-|\*|\+)\s+(.+)", stripped_line)
-            if match:
-                title = match.group(1).strip()
-                if title: # Ensure title is not empty after stripping
-                    # Further clean title: remove potential markdown links like [Title](...)
-                    title = re.sub(r"\[(.*?)\]\(.*?\)", r"\1", title).strip()
-                    parsed_titles.append(title)
+    # Step 1: Parse TOC (outside the generator, so it's done once)
+    raw_toc_lines = db_campaign.display_toc.splitlines()
+    parsed_titles = []
+    for line in raw_toc_lines:
+        stripped_line = line.strip()
+        match = re.match(r"^(?:-|\*|\+)\s+(.+)", stripped_line)
+        if match:
+            title = match.group(1).strip()
+            if title:
+                title = re.sub(r"\[(.*?)\]\(.*?\)", r"\1", title).strip()
+                parsed_titles.append(title)
 
-        print(f"Parsed titles for campaign {campaign_id}: {parsed_titles}")
-        if not parsed_titles:
-            print(f"No titles were parsed from display_toc for campaign {campaign_id}. No sections will be created.")
+    if not parsed_titles:
+        print(f"No titles were parsed from display_toc for campaign {campaign_id}. No sections will be created.")
+        # For SSE, we should still return an EventSourceResponse, perhaps with a completion event.
+        async def empty_generator():
+            yield json.dumps({"event_type": "complete", "message": "No titles found in TOC. No sections created."}) + "\n\n"
+        return EventSourceResponse(empty_generator())
 
-        # Step 2: Delete existing sections for this campaign
-        print(f"About to delete existing sections for campaign {campaign_id}.")
-        deleted_count = crud.delete_sections_for_campaign(db=db, campaign_id=campaign_id)
-        print(f"Deleted {deleted_count} existing sections for campaign {campaign_id} before seeding from TOC.")
+    print(f"Parsed {len(parsed_titles)} titles for campaign {campaign_id}: {parsed_titles}")
 
-        # Step 3: Create new sections based on parsed_titles
-        created_sections_orm = []
-        llm_service = None # Initialize LLM service variable
+    # Step 2: Delete existing sections (outside the generator)
+    print(f"About to delete existing sections for campaign {campaign_id}.")
+    deleted_count = crud.delete_sections_for_campaign(db=db, campaign_id=campaign_id)
+    print(f"Deleted {deleted_count} existing sections for campaign {campaign_id} before seeding from TOC.")
 
-        if auto_populate and db_campaign.selected_llm_id:
-            # print(f"DEBUG: Auto-population requested. Campaign LLM ID: {db_campaign.selected_llm_id}")
-            # print(f"DEBUG: Campaign Concept available: {bool(db_campaign.concept)}. Concept (excerpt): '{db_campaign.concept[:100] if db_campaign.concept else 'N/A'}'")
-            try:
-                # Use the campaign's selected LLM and temperature
-                provider_name, model_specific_id = _extract_provider_and_model(db_campaign.selected_llm_id)
-                llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=db_campaign.selected_llm_id)
-                # print(f"DEBUG: LLM Service initialized: {bool(llm_service)}")
-            except LLMServiceUnavailableError as e:
-                print(f"LLM Service unavailable for auto-population: {e}. Sections will be created with placeholders.") # Keep this non-debug one
-                # print(f"DEBUG: LLM Service unavailable for auto-population: {e}. Sections will be created with placeholders.")
-                llm_service = None # Ensure it's None if initialization failed
-            except ValueError as ve: # Catch errors from _extract_provider_and_model
-                print(f"Invalid LLM model ID format ('{db_campaign.selected_llm_id}') for auto-population: {ve}. Sections will be created with placeholders.") # Keep this non-debug one
-                # print(f"DEBUG: Invalid LLM model ID format ('{db_campaign.selected_llm_id}') for auto-population: {ve}. Sections will be created with placeholders.")
-                llm_service = None
-        elif auto_populate:
-            # print(f"DEBUG: Auto-population requested but campaign.selected_llm_id is not set. Skipping LLM generation.")
-            pass # No specific user-facing print needed here, already handled by lack of llm_service
+    # Initialize LLM service (outside the generator, if applicable)
+    llm_service_instance = None
+    if auto_populate and db_campaign.selected_llm_id and db_campaign.concept:
+        try:
+            provider_name, _ = _extract_provider_and_model(db_campaign.selected_llm_id)
+            llm_service_instance = get_llm_service(provider_name=provider_name, model_id_with_prefix=db_campaign.selected_llm_id)
+            print(f"LLM Service for auto-population initialized: {bool(llm_service_instance)}")
+        except Exception as e:
+            print(f"LLM service initialization failed for SSE auto-population: {type(e).__name__} - {e}")
+            llm_service_instance = None # Ensure it's None if init fails
+    elif auto_populate:
+        print(f"Auto-population requested but campaign.selected_llm_id ('{db_campaign.selected_llm_id}') or campaign.concept (available: {bool(db_campaign.concept)}) is not set appropriately. Skipping LLM generation.")
 
+
+    async def event_generator():
+        total_sections = len(parsed_titles)
+        if total_sections == 0: # Should be caught above, but as a safeguard
+            yield json.dumps({"event_type": "complete", "message": "No sections to process."}) + "\n\n"
+            return
 
         for order, title in enumerate(parsed_titles):
-            section_content = f"Content for '{title}' to be generated." # Default placeholder
+            section_content_for_crud = f"Content for '{title}' to be generated." # Default placeholder
 
-            if auto_populate and llm_service and db_campaign.concept:
-                # print(f"DEBUG: Processing section title for auto-population: '{title}'")
+            if auto_populate and llm_service_instance and db_campaign.concept:
                 section_type = "Generic"
                 title_lower = title.lower()
-                if "npc" in title_lower or "character" in title_lower:
-                    section_type = "NPC"
-                elif "location" in title_lower or "place" in title_lower:
-                    section_type = "Location"
-                elif "chapter" in title_lower or "quest" in title_lower or "adventure" in title_lower:
-                    section_type = "Chapter/Quest"
-                # print(f"DEBUG: Determined section type: {section_type}")
+                if "npc" in title_lower or "character" in title_lower: section_type = "NPC"
+                elif "location" in title_lower or "place" in title_lower: section_type = "Location"
+                elif "chapter" in title_lower or "quest" in title_lower or "adventure" in title_lower: section_type = "Chapter/Quest"
 
                 prompt = ""
                 if section_type == "NPC":
@@ -283,57 +277,73 @@ async def seed_sections_from_toc_endpoint(
                     prompt = f"Outline the main events and encounters for the adventure chapter titled '{title}'. Provide a brief overview of the objectives, challenges, and potential rewards."
                 else: # Generic
                     prompt = f"Generate content for a section titled '{title}' as part of a larger campaign document."
-                # print(f"DEBUG: Constructed LLM prompt (excerpt): {prompt[:200]}...")
 
                 try:
-                    # print(f"DEBUG: Attempting LLM generation for: '{title}' using LLM: {db_campaign.selected_llm_id}")
+                    print(f"Attempting LLM generation for section: '{title}' (Type: {section_type})")
                     _, model_specific_id_for_call = _extract_provider_and_model(db_campaign.selected_llm_id)
-
-                    generated_content = await llm_service.generate_section_content(
+                    generated_llm_content = await llm_service_instance.generate_section_content(
                         campaign_concept=db_campaign.concept,
-                        db=db,
+                        db=db, # Pass the db session
                         existing_sections_summary=None,
                         section_creation_prompt=prompt,
                         section_title_suggestion=title,
                         model=model_specific_id_for_call
                     )
-                    # print(f"DEBUG: LLM generated_content (excerpt) for '{title}': '{generated_content[:100] if generated_content else 'None or Empty'}'")
-                    if generated_content:
-                        section_content = generated_content
+                    if generated_llm_content:
+                        section_content_for_crud = generated_llm_content
+                        print(f"LLM content generated for '{title}' (excerpt): {section_content_for_crud[:50]}...")
                     else:
-                        print(f"LLM generated empty content for section '{title}'. Using placeholder.") # Keep this non-debug one
-                        # print(f"DEBUG: LLM generated empty content for section '{title}'. Using placeholder.")
-                except LLMServiceUnavailableError as e:
-                    print(f"LLM Service Error for section '{title}': {e}. Using placeholder.") # Keep this non-debug one
-                    # print(f"DEBUG: Exception during LLM call for '{title}': {type(e).__name__} - {e}. Using placeholder.")
-                except LLMGenerationError as e:
-                    print(f"LLM Generation Error for section '{title}': {e}. Using placeholder.") # Keep this non-debug one
-                    # print(f"DEBUG: Exception during LLM call for '{title}': {type(e).__name__} - {e}. Using placeholder.")
-                except Exception as e:
-                    print(f"Unexpected error during LLM generation for section '{title}': {e}. Using placeholder.") # Keep this non-debug one
-                    # print(f"DEBUG: Unexpected exception during LLM generation for section '{title}': {type(e).__name__} - {e}. Using placeholder.")
+                        print(f"LLM generated empty content for section '{title}'. Using placeholder.")
+                except Exception as e_llm:
+                    print(f"LLM generation failed for section '{title}': {type(e_llm).__name__} - {e_llm}. Using placeholder.")
 
-            # print(f"DEBUG: Final section_content for CRUD (excerpt) for title '{title}': '{section_content[:100]}...'")
-            print(f"Creating section for campaign {campaign_id}: Title='{title}', Order={order}, Content (first 50 chars)='{section_content[:50]}...'")
-            created_section = crud.create_section_with_placeholder_content(
+            # Create section in DB
+            created_section_orm = crud.create_section_with_placeholder_content(
                 db=db,
                 campaign_id=campaign_id,
                 title=title,
                 order=order,
-                placeholder_content=section_content # Pass generated content or placeholder
+                placeholder_content=section_content_for_crud
             )
-            created_sections_orm.append(created_section)
+            # Convert to Pydantic model for serialization
+            pydantic_section = models.CampaignSection.from_orm(created_section_orm)
 
-        print(f"Returning {len(created_sections_orm)} created sections for campaign {campaign_id}: {[s.title for s in created_sections_orm]}")
-        print(f"--- Finished seeding sections for campaign {campaign_id} ---")
-        return created_sections_orm
+            current_progress = round(((order + 1) / total_sections) * 100, 2)
+            event_payload = {
+                "event_type": "section_update",
+                "progress_percent": current_progress,
+                "current_section_title": title,
+                "section_data": pydantic_section.model_dump() # Use model_dump for Pydantic v2
+            }
 
-    except Exception as e:
-        # Log the exception e
-        print(f"Error during seeding sections from TOC for campaign {campaign_id}: {e}")
-        # Consider if db.rollback() is needed if operations are not atomic within services/CRUD
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while seeding sections: {str(e)}")
+            try:
+                yield f"data: {json.dumps(event_payload)}\n\n"
+                await asyncio.sleep(0.01) # Small sleep to allow message to be sent
+            except Exception as e_yield:
+                print(f"Error yielding SSE event for section '{title}': {type(e_yield).__name__} - {e_yield}. Stopping.")
+                # Optionally, send one last error event to the client if possible
+                error_event = {"event_type": "error", "message": f"Failed to stream update for section '{title}'. Process halted."}
+                try:
+                    yield f"data: {json.dumps(error_event)}\n\n"
+                except:
+                    pass # If this also fails, nothing more can be done here
+                break # Stop processing further sections
 
+        # After the loop completes (or if broken by yield error)
+        # This completion event might not be sent if the client disconnects due to the break.
+        completion_message = "Section seeding process finished."
+        if order + 1 < total_sections : # if loop was broken early
+             completion_message = f"Section seeding process interrupted after processing {order + 1} of {total_sections} sections."
+
+        completion_event = {"event_type": "complete", "message": completion_message, "total_sections_processed": order +1}
+        try:
+            yield f"data: {json.dumps(completion_event)}\n\n"
+        except Exception as e_complete:
+            print(f"Error yielding final completion event: {type(e_complete).__name__} - {e_complete}")
+
+        print(f"--- Finished SSE event_generator for campaign {campaign_id} ---")
+
+    return EventSourceResponse(event_generator())
 
 # --- Campaign Section Endpoints ---
 

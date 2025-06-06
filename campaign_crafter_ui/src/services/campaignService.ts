@@ -276,37 +276,84 @@ export const updateCampaignSectionOrder = async (
   }
 };
 
-// Add this new function:
-export const seedSectionsFromToc = async (campaignId: string | number, autoPopulate?: boolean): Promise<CampaignSection[]> => {
+// --- Server-Sent Events (SSE) for Seeding Sections ---
+
+export interface SeedSectionsProgressEvent {
+  event_type: "section_update";
+  progress_percent: number;
+  current_section_title: string;
+  section_data: CampaignSection;
+}
+
+export interface SeedSectionsCompleteEvent {
+  event_type: "complete";
+  message: string;
+  total_sections_processed: number; // Added to match backend
+}
+
+export type SeedSectionsEvent = SeedSectionsProgressEvent | SeedSectionsCompleteEvent;
+
+export interface SeedSectionsCallbacks {
+  onOpen?: (event: Event) => void;
+  onProgress?: (data: SeedSectionsProgressEvent) => void;
+  onSectionComplete?: (data: CampaignSection) => void; // For convenience
+  onDone?: (message: string, totalProcessed: number) => void;
+  onError?: (error: Event | { message: string }) => void;
+}
+
+export const seedSectionsFromToc = (
+  campaignId: string | number,
+  autoPopulate: boolean,
+  callbacks: SeedSectionsCallbacks
+): EventSource | null => {
+  const baseUrl = (process.env.REACT_APP_API_BASE_URL || apiClient.defaults.baseURL || window.location.origin).replace(/\/$/, '');
+  const endpointPath = `/api/v1/campaigns/${campaignId}/seed_sections_from_toc?auto_populate=${autoPopulate}`;
+  const url = `${baseUrl}${endpointPath}`;
+
   try {
-    // The backend endpoint POST /api/v1/campaigns/{campaignId}/seed_sections_from_toc
-    // is expected to perform the operation and then return the new list of sections for that campaign.
-    const params = autoPopulate !== undefined ? { auto_populate: autoPopulate } : {};
-    const response = await apiClient.post<{ sections: CampaignSection[] } | CampaignSection[]>(
-      `/api/v1/campaigns/${campaignId}/seed_sections_from_toc`,
-      {}, // Empty object for request body as FastAPI takes auto_populate from query params
-      { params }
-    );
+    const eventSource = new EventSource(url, { withCredentials: true });
 
-    // The backend might return an object { sections: CampaignSection[] } or just CampaignSection[]
-    // Adjust based on the actual backend implementation.
-    // For now, let's assume it might return an object like getCampaignSections, or just the array.
-    if (response.data && Array.isArray((response.data as any).sections)) {
-      return (response.data as any).sections;
-    } else if (Array.isArray(response.data)) {
-      return response.data as CampaignSection[];
-    }
+    eventSource.onopen = (event) => {
+      console.log("SSE Connection Opened for seedSectionsFromToc to URL:", url);
+      callbacks.onOpen?.(event);
+    };
 
-    // If the response is not in the expected format, log a warning and return empty or throw.
-    console.warn('Unexpected response structure from seedSectionsFromToc:', response.data);
-    // Depending on strictness, you might throw an error here.
-    // For now, returning an empty array to prevent UI crashes if backend sends unexpected valid but different JSON.
-    return [];
+    eventSource.onmessage = (event) => {
+      try {
+        const parsedData = JSON.parse(event.data) as SeedSectionsEvent;
+
+        if (parsedData.event_type === "section_update") {
+          const progressEvent = parsedData as SeedSectionsProgressEvent;
+          callbacks.onProgress?.(progressEvent);
+          if (progressEvent.section_data) { // Check if section_data exists
+            callbacks.onSectionComplete?.(progressEvent.section_data);
+          }
+        } else if (parsedData.event_type === "complete") {
+          const completeEvent = parsedData as SeedSectionsCompleteEvent;
+          callbacks.onDone?.(completeEvent.message, completeEvent.total_sections_processed);
+          eventSource.close();
+        } else {
+          console.warn("Received unknown SSE event type:", parsedData);
+        }
+      } catch (e) {
+        console.error("Failed to parse SSE event data:", event.data, e);
+        callbacks.onError?.({ message: "Failed to parse event data: " + String(event.data) });
+        // Do not close on single parse error, stream might recover or send other valid messages.
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error("SSE Error for seedSectionsFromToc:", error);
+      callbacks.onError?.(error);
+      eventSource.close();
+    };
+
+    return eventSource;
 
   } catch (error) {
-    console.error(`Error seeding sections from TOC for campaign ID ${campaignId}:`, error);
-    // In a real app, you might want to transform the error or log it to a service
-    throw error; // Re-throw to be caught by the UI component's error handler
+    console.error("Failed to initialize EventSource for seedSectionsFromToc:", error);
+    callbacks.onError?.({ message: "Failed to initialize EventSource: " + (error instanceof Error ? error.message : String(error)) });
+    return null;
   }
 };
 

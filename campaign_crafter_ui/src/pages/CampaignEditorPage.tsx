@@ -6,6 +6,7 @@ import LLMSelectionDialog from '../components/modals/LLMSelectionDialog';
 import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal';
 import SuggestedTitlesModal from '../components/modals/SuggestedTitlesModal';
 import * as campaignService from '../services/campaignService';
+import { CampaignSection, SeedSectionsProgressEvent, SeedSectionsCallbacks } from '../services/campaignService'; // Added CampaignSection, SeedSectionsProgressEvent, SeedSectionsCallbacks
 import { getAvailableLLMs, LLMModel } from '../services/llmService';
 // CampaignSectionView will be used by CampaignSectionEditor
 // import CampaignSectionView from '../components/CampaignSectionView'; 
@@ -32,6 +33,7 @@ import CampaignSectionEditor from '../components/campaign_editor/CampaignSection
 import { LLMModel as LLM } from '../services/llmService'; // Corrected LLM import
 import Tabs, { TabItem } from '../components/common/Tabs'; // Import Tabs component
 import { Typography } from '@mui/material'; // Removed Box, kept Typography
+import DetailedProgressDisplay from '../components/common/DetailedProgressDisplay'; // Import the new component
 
 const CampaignEditorPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -108,7 +110,13 @@ const CampaignEditorPage: React.FC = () => {
   // State for "Approve TOC & Create Sections" button
   const [isSeedingSections, setIsSeedingSections] = useState<boolean>(false);
   const [seedSectionsError, setSeedSectionsError] = useState<string | null>(null);
-  const [autoPopulateSections, setAutoPopulateSections] = useState<boolean>(false); // Added state for auto-populate
+  const [autoPopulateSections, setAutoPopulateSections] = useState<boolean>(false);
+
+  // New SSE State Variables
+  const [detailedProgressPercent, setDetailedProgressPercent] = useState<number>(0);
+  const [detailedProgressCurrentTitle, setDetailedProgressCurrentTitle] = useState<string>('');
+  const [isDetailedProgressVisible, setIsDetailedProgressVisible] = useState<boolean>(false);
+  const eventSourceRef = useRef<EventSource | null>(null);
 
   // Helper function to get selected LLM object
   const selectedLLMObject = useMemo(() => {
@@ -170,37 +178,77 @@ const CampaignEditorPage: React.FC = () => {
       return;
     }
 
-    setIsPageLoading(true); // <--- ADDED THIS
-    setIsSeedingSections(true);
+    // Clear existing sections as they will be streamed in
+    setSections([]);
     setSeedSectionsError(null);
-    // setSaveSuccess(null); // Optional: Clear other success messages
+    setIsSeedingSections(true); // Keeps button disabled and text updated
+    // setIsPageLoading(true); // REMOVED - let detailed progress control primary feedback
+    setIsDetailedProgressVisible(true);
+    setDetailedProgressPercent(0);
+    setDetailedProgressCurrentTitle('');
 
-    try {
-      // Call the actual service function to seed sections from TOC.
-      // This function is expected to return the new list of sections.
-      // Pass the autoPopulateSections state to the service call
-      const newSections = await campaignService.seedSectionsFromToc(campaignId, autoPopulateSections);
+    const callbacks: SeedSectionsCallbacks = {
+      onOpen: (event) => {
+        console.log("SSE connection opened for seeding sections.", event);
+        setIsPageLoading(false); // Turn off global spinner once SSE is established
+      },
+      onProgress: (data: SeedSectionsProgressEvent) => {
+        setDetailedProgressPercent(data.progress_percent);
+        setDetailedProgressCurrentTitle(data.current_section_title);
+      },
+      onSectionComplete: (sectionData: CampaignSection) => {
+        setSections(prevSections => [...prevSections, sectionData].sort((a, b) => a.order - b.order));
+      },
+      onDone: (message: string, totalProcessed: number) => {
+        console.log("SSE Done:", message, "Total processed:", totalProcessed);
+        setIsDetailedProgressVisible(false);
+        setIsSeedingSections(false);
+        setIsPageLoading(false);
+        // Using setSaveSuccess for user feedback instead of alert
+        setSaveSuccess(message || `Sections created successfully! Processed: ${totalProcessed}`);
+        setTimeout(() => setSaveSuccess(null), 5000); // Clear after 5s
 
-      // Update the local sections state with the new sections returned by the service.
-      // Ensure sections are sorted by order.
-      setSections(newSections.sort((a, b) => a.order - b.order));
-
-      alert("Sections created successfully from Table of Contents!");
-
-    } catch (err: any) {
-      console.error('Failed to seed sections from TOC:', err);
-      if (axios.isAxiosError(err) && err.response && err.response.data && typeof err.response.data.detail === 'string') {
-        setSeedSectionsError(err.response.data.detail);
-      } else if (err instanceof Error) {
-        setSeedSectionsError(err.message);
-      } else {
-        setSeedSectionsError('An unexpected error occurred while creating sections from TOC.');
+        if (eventSourceRef.current) {
+          eventSourceRef.current.close();
+          eventSourceRef.current = null;
+        }
+      },
+      onError: (error) => {
+        console.error("SSE Error:", error);
+        setIsDetailedProgressVisible(false);
+        setIsSeedingSections(false);
+        setIsPageLoading(false);
+        const errorMessage = (error as any)?.message || "An error occurred during section creation.";
+        setSeedSectionsError(`SSE Error: ${errorMessage}`);
+        if (eventSourceRef.current) {
+          eventSourceRef.current.close();
+          eventSourceRef.current = null;
+        }
       }
-    } finally {
+    };
+
+    if (campaignId) {
+      // Start with page loading true, will be turned off by onOpen or onError
+      setIsPageLoading(true);
+      eventSourceRef.current = campaignService.seedSectionsFromToc(campaignId, autoPopulateSections, callbacks);
+    } else {
+      setSeedSectionsError("Campaign ID is missing, cannot start section creation.");
+      setIsDetailedProgressVisible(false);
       setIsSeedingSections(false);
-      setIsPageLoading(false); // <--- ADDED THIS
+      setIsPageLoading(false);
     }
   };
+
+  useEffect(() => {
+    // Cleanup function to close EventSource if component unmounts
+    return () => {
+      if (eventSourceRef.current) {
+        console.log("Closing EventSource on component unmount.");
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+    };
+  }, []); // Empty dependency array means this runs once on mount and cleanup on unmount
 
   useEffect(() => {
     if (!campaignId) {
@@ -753,31 +801,42 @@ const CampaignEditorPage: React.FC = () => {
             </Button>
             {tocError && <p className="error-message feedback-message" style={{ marginTop: '5px' }}>{tocError}</p>}
 
-            {campaign.display_toc && ( // Only show this button if a display_toc exists
-              <div style={{ marginTop: '15px' }}> {/* Added a div for spacing */}
-                <Button
-                  onClick={handleSeedSectionsFromToc}
-                  disabled={isSeedingSections || !campaign.display_toc}
-                  className="action-button"
-                  icon={<AddCircleOutlineIcon />} // Using existing icon for now
-                  tooltip="Parse the current Table of Contents and create campaign sections based on its structure. Optionally auto-populate content."
-                >
-                  {isSeedingSections ? (autoPopulateSections ? 'Creating & Populating Sections...' : 'Creating Sections...') : 'Approve TOC & Create Sections'}
-                </Button>
-                {seedSectionsError && <p className="error-message feedback-message" style={{ marginTop: '5px' }}>{seedSectionsError}</p>}
-                {/* Checkbox for auto-populating sections */}
-                <div style={{ marginTop: '10px', marginBottom: '10px' }}>
-                  <label htmlFor="autoPopulateCheckbox" style={{ marginRight: '8px' }}>
-                    Auto-populate sections with generated content:
-                  </label>
-                  <input
-                    type="checkbox"
-                    id="autoPopulateCheckbox"
-                    checked={autoPopulateSections}
-                    onChange={(e) => setAutoPopulateSections(e.target.checked)}
-                    disabled={isSeedingSections} // Disable while seeding
+            {campaign.display_toc && (
+              <div style={{ marginTop: '15px' }}>
+                {!isDetailedProgressVisible ? (
+                  <>
+                    <Button
+                      onClick={handleSeedSectionsFromToc}
+                      disabled={isSeedingSections || !campaign.display_toc}
+                      className="action-button"
+                      icon={<AddCircleOutlineIcon />}
+                      tooltip="Parse the current Table of Contents and create campaign sections based on its structure. Optionally auto-populate content."
+                    >
+                      {isSeedingSections ? (autoPopulateSections ? 'Creating & Populating Sections...' : 'Creating Sections...') : 'Approve TOC & Create Sections'}
+                    </Button>
+                    {/* seedSectionsError is now displayed by DetailedProgressDisplay if isDetailedProgressVisible, or here if not */}
+                    {!isDetailedProgressVisible && seedSectionsError && <p className="error-message feedback-message" style={{ marginTop: '5px' }}>{seedSectionsError}</p>}
+                    <div style={{ marginTop: '10px', marginBottom: '10px' }}>
+                      <label htmlFor="autoPopulateCheckbox" style={{ marginRight: '8px' }}>
+                        Auto-populate sections with generated content:
+                      </label>
+                      <input
+                        type="checkbox"
+                        id="autoPopulateCheckbox"
+                        checked={autoPopulateSections}
+                        onChange={(e) => setAutoPopulateSections(e.target.checked)}
+                        disabled={isSeedingSections}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <DetailedProgressDisplay
+                    percent={detailedProgressPercent}
+                    currentTitle={detailedProgressCurrentTitle}
+                    error={seedSectionsError} // Pass the error to the component
+                    title="Seeding Sections from Table of Contents..." // Optional: override default title
                   />
-                </div>
+                )}
               </div>
             )}
           </div>
