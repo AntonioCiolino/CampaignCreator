@@ -1030,6 +1030,10 @@ const CampaignEditorPage: React.FC = () => {
     <div className="campaign-editor-page">
       {isPageLoading && <LoadingSpinner />}
 
+      {campaign && campaign.title && (
+        <h1 className="campaign-main-title">{campaign.title}</h1>
+      )}
+
       {/* === Campaign Concept Display === */}
       {campaign && campaign.concept && (
         <section className="campaign-detail-section read-only-section editor-section page-level-concept">
