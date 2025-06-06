@@ -431,7 +431,7 @@ const CampaignEditorPage: React.FC = () => {
             clearTimeout(newTimer);
         }
     };
-  }, [selectedLLMId, temperature, campaignId, campaign?.selected_llm_id, campaign?.temperature, isLoading, debounceTimer]);
+  }, [selectedLLMId, temperature, campaignId, campaign, isLoading, debounceTimer]);
 
 
   const handleSaveChanges = async () => {
@@ -637,7 +637,9 @@ const CampaignEditorPage: React.FC = () => {
     setTocError(null);
     setSaveSuccess(null);
     try {
-      const updatedCampaign = await campaignService.generateCampaignTOC(campaignId, {});
+      const updatedCampaign = await campaignService.generateCampaignTOC(campaignId, {
+        prompt: "Generate a table of contents for the campaign based on its concept."
+      });
       setCampaign(updatedCampaign);
       setSaveSuccess("Table of Contents generated successfully!");
       setTimeout(() => setSaveSuccess(null), 3000);
@@ -657,7 +659,9 @@ const CampaignEditorPage: React.FC = () => {
     setSuggestedTitles(null);
     setSaveSuccess(null);
     try {
-      const response = await campaignService.generateCampaignTitles(campaignId, {}, 5);
+      const response = await campaignService.generateCampaignTitles(campaignId, {
+        prompt: "Generate alternative titles for the campaign."
+      }, 5);
       setSuggestedTitles(response.titles);
       // setSaveSuccess("Suggested titles generated successfully!"); // Optional: keep or remove
       // setTimeout(() => setSaveSuccess(null), 3000);

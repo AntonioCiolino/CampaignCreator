@@ -50,6 +50,7 @@ export interface CampaignUpdatePayload {
 
 // For LLM Generation requests common to TOC, Titles, etc.
 export interface LLMGenerationPayload {
+    prompt: string;
     model_id_with_prefix?: string | null;
     // temperature?: number; // If you want to control this from client
 }
