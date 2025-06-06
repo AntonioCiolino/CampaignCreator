@@ -261,9 +261,8 @@ if __name__ == '__main__':
     from dotenv import load_dotenv
     import os
 
-    async def main_test(): # Wrap existing logic in an async function
-        # Load .env from the project root or monorepo root
-        env_path_api_root = Path(__file__).resolve().parent.parent.parent / ".env"
+    # Synchronous setup should be outside main_test but inside if __name__ == '__main__'
+    env_path_api_root = Path(__file__).resolve().parent.parent.parent / ".env"
     env_path_monorepo_root = Path(__file__).resolve().parent.parent.parent.parent / ".env"
 
     if env_path_api_root.exists():
@@ -273,20 +272,27 @@ if __name__ == '__main__':
     else:
         print(f"Warning: .env file not found at {env_path_api_root} or {env_path_monorepo_root}. Service might not initialize correctly.")
 
-        settings.GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", settings.GEMINI_API_KEY)
-        settings.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", settings.OPENAI_API_KEY)
+    settings.GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", settings.GEMINI_API_KEY)
+    settings.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", settings.OPENAI_API_KEY)
+
+    async def main_test(): # Async function definition
+        db_session_placeholder: Optional[Session] = None # Placeholder for db session
 
         gemini_service_instance_for_check = GeminiLLMService() # Create instance for is_available check
-        if not await gemini_service_instance_for_check.is_available(): # Check availability using the instance method
+        is_initially_available = False
+        try:
+            is_initially_available = await gemini_service_instance_for_check.is_available()
+        finally:
+            await gemini_service_instance_for_check.close() # Ensure close is awaited
+
+        if not is_initially_available: # Check availability using the instance method
             print("Skipping GeminiLLMService tests as GEMINI_API_KEY is not set or is a placeholder.")
-            await gemini_service_instance_for_check.close() # Close the temporary instance
             return # Exit main_test if not available
-        await gemini_service_instance_for_check.close() # Close the temporary instance if it was available
 
         print(f"Attempting to initialize GeminiLLMService with key: ...{settings.GEMINI_API_KEY[-4:] if settings.GEMINI_API_KEY else 'None'}")
         gemini_service = GeminiLLMService() # Re-initialize for actual use
         try:
-            print("GeminiLLMService Initialized.")
+            print("GeminiLLMService Initialized for tests.") # Clarified print message
 
             print("\nAvailable Gemini Models (IDs are for service methods):")
             models_list = await gemini_service.list_available_models() # Use a different variable name
