@@ -43,8 +43,7 @@ class Settings(BaseSettings):
     LOCAL_LLM_API_BASE_URL: Optional[str] = None # e.g., "http://localhost:11434/v1" for Ollama's OpenAI compat endpoint
     LOCAL_LLM_DEFAULT_MODEL_ID: Optional[str] = None # e.g., "mistral:latest" or just "mistral"
 
-    # Database URL (example, if you had one)
-    # DATABASE_URL: str = "sqlite:///./test.db"
+    DATABASE_URL: str = "sqlite:///./campaign_crafter_default.db"
 
     # JWT Settings (example, if you had them)
     # SECRET_KEY: str = "your_super_secret_key"
