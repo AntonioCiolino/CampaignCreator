@@ -413,7 +413,7 @@ const CampaignEditorPage: React.FC = () => {
             clearTimeout(newTimer);
         }
     };
-  }, [selectedLLMId, temperature, campaignId, campaign, isLoading, debounceTimer]); // Added debounceTimer to deps
+  }, [selectedLLMId, temperature, campaignId, campaign?.selected_llm_id, campaign?.temperature, isLoading, debounceTimer]);
 
 
   const handleSaveChanges = async () => {
