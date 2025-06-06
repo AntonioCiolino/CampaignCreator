@@ -347,8 +347,16 @@ export const seedSectionsFromToc = (
          console.warn("Received SSE message with no data:", event);
          return;
       }
+
+      let jsonData = event.data;
+      const prefix = "data: "; // Standard SSE prefix, though fetchEventSource usually strips it.
+                              // This is a safeguard or for servers that might double-prefix.
+      if (jsonData.startsWith(prefix)) {
+        jsonData = jsonData.substring(prefix.length);
+      }
+
       try {
-        const parsedData = JSON.parse(event.data) as SeedSectionsEvent;
+        const parsedData = JSON.parse(jsonData) as SeedSectionsEvent; // Use cleaned jsonData
 
         if (parsedData.event_type === "section_update") {
           const progressEvent = parsedData as SeedSectionsProgressEvent;
@@ -364,8 +372,8 @@ export const seedSectionsFromToc = (
           console.warn("Received unknown SSE event type via fetchEventSource:", parsedData);
         }
       } catch (e) {
-        console.error("Failed to parse SSE event data (fetchEventSource):", event.data, e);
-        callbacks.onError?.({ message: "Failed to parse event data: " + String(event.data) });
+        console.error("Failed to parse SSE event data (fetchEventSource):", jsonData, e); // Log cleaned jsonData
+        callbacks.onError?.({ message: "Failed to parse event data: " + String(jsonData) });
       }
     },
     onclose: () => {
