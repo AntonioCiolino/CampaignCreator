@@ -1,5 +1,6 @@
 import axios from 'axios';
 import apiClient from './apiClient';
+import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-source';
 
 // Types matching backend Pydantic models
 export interface CampaignSection {
@@ -305,56 +306,88 @@ export const seedSectionsFromToc = (
   campaignId: string | number,
   autoPopulate: boolean,
   callbacks: SeedSectionsCallbacks
-): EventSource | null => {
+): (() => void) => { // Returns an abort function
   const baseUrl = (process.env.REACT_APP_API_BASE_URL || apiClient.defaults.baseURL || window.location.origin).replace(/\/$/, '');
   const endpointPath = `/api/v1/campaigns/${campaignId}/seed_sections_from_toc?auto_populate=${autoPopulate}`;
   const url = `${baseUrl}${endpointPath}`;
 
-  try {
-    const eventSource = new EventSource(url, { withCredentials: true });
+  const controller = new AbortController();
 
-    eventSource.onopen = (event) => {
-      console.log("SSE Connection Opened for seedSectionsFromToc to URL:", url);
-      callbacks.onOpen?.(event);
-    };
+  fetchEventSource(url, {
+    method: 'POST', // Changed to POST as per backend
+    headers: {
+      'Accept': 'text/event-stream',
+      // Add any other necessary headers, e.g., CSRF token if your app uses them for POST
+      // 'X-CSRF-Token': 'your_token_here', // Example
+    },
+    body: JSON.stringify({}), // Send an empty JSON body for POST
+    signal: controller.signal,
 
-    eventSource.onmessage = (event) => {
+    onopen: async (response) => {
+      if (response.ok) {
+        console.log("SSE Connection Opened (fetchEventSource) for seedSectionsFromToc to URL:", url);
+        callbacks.onOpen?.(new Event('open'));
+      } else {
+        const errorPayload = { message: `Failed to open SSE connection: ${response.status} ${response.statusText}` };
+        try {
+             const errorBody = await response.json();
+             if (errorBody && errorBody.detail) {
+                 errorPayload.message = typeof errorBody.detail === 'string' ? errorBody.detail : JSON.stringify(errorBody.detail);
+             }
+        } catch(e) { /* ignore if body isn't json */ }
+        callbacks.onError?.(errorPayload);
+      }
+    },
+    onmessage: (event: EventSourceMessage) => {
+      if (event.event === 'error') {
+         callbacks.onError?.({ message: event.data || "An error event was received from server."});
+         return;
+      }
+      if (!event.data) {
+         console.warn("Received SSE message with no data:", event);
+         return;
+      }
       try {
         const parsedData = JSON.parse(event.data) as SeedSectionsEvent;
 
         if (parsedData.event_type === "section_update") {
           const progressEvent = parsedData as SeedSectionsProgressEvent;
           callbacks.onProgress?.(progressEvent);
-          if (progressEvent.section_data) { // Check if section_data exists
+          if (progressEvent.section_data) {
             callbacks.onSectionComplete?.(progressEvent.section_data);
           }
         } else if (parsedData.event_type === "complete") {
           const completeEvent = parsedData as SeedSectionsCompleteEvent;
           callbacks.onDone?.(completeEvent.message, completeEvent.total_sections_processed);
-          eventSource.close();
+          // controller.abort(); // Optional: fetchEventSource might close automatically on server close.
         } else {
-          console.warn("Received unknown SSE event type:", parsedData);
+          console.warn("Received unknown SSE event type via fetchEventSource:", parsedData);
         }
       } catch (e) {
-        console.error("Failed to parse SSE event data:", event.data, e);
+        console.error("Failed to parse SSE event data (fetchEventSource):", event.data, e);
         callbacks.onError?.({ message: "Failed to parse event data: " + String(event.data) });
-        // Do not close on single parse error, stream might recover or send other valid messages.
       }
-    };
+    },
+    onclose: () => {
+      console.log("SSE Connection Closed (fetchEventSource) for seedSectionsFromToc.");
+      // This is called when the connection is definitively closed.
+      // Consider if onDone should be called here if not already by a "complete" event.
+      // For example, if the server just closes the connection without a final "complete" message.
+      // However, the current backend sends "complete", so this might be mostly for logging.
+    },
+    onerror: (err: any) => {
+      console.error("SSE Error (fetchEventSource) for seedSectionsFromToc:", err);
+      callbacks.onError?.({ message: err.message || "An unknown error occurred with SSE connection." });
+      // fetchEventSource will retry on some errors. To stop retries, re-throw the error.
+      // For this application, if an error occurs, we probably want to stop.
+      throw err;
+    }
+  });
 
-    eventSource.onerror = (error) => {
-      console.error("SSE Error for seedSectionsFromToc:", error);
-      callbacks.onError?.(error);
-      eventSource.close();
-    };
-
-    return eventSource;
-
-  } catch (error) {
-    console.error("Failed to initialize EventSource for seedSectionsFromToc:", error);
-    callbacks.onError?.({ message: "Failed to initialize EventSource: " + (error instanceof Error ? error.message : String(error)) });
-    return null;
-  }
+  return () => {
+    console.log("Aborting SSE connection for seedSectionsFromToc.");
+    controller.abort();
+  };
 };
 
 // Payload for regenerating a section (matches backend SectionRegenerateInput)
