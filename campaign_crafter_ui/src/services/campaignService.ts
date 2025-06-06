@@ -277,13 +277,15 @@ export const updateCampaignSectionOrder = async (
 };
 
 // Add this new function:
-export const seedSectionsFromToc = async (campaignId: string | number): Promise<CampaignSection[]> => {
+export const seedSectionsFromToc = async (campaignId: string | number, autoPopulate?: boolean): Promise<CampaignSection[]> => {
   try {
     // The backend endpoint POST /api/v1/campaigns/{campaignId}/seed_sections_from_toc
     // is expected to perform the operation and then return the new list of sections for that campaign.
+    const params = autoPopulate !== undefined ? { auto_populate: autoPopulate } : {};
     const response = await apiClient.post<{ sections: CampaignSection[] } | CampaignSection[]>(
-      `/api/v1/campaigns/${campaignId}/seed_sections_from_toc`
-      // No request body is needed if the backend uses the campaign's stored TOC
+      `/api/v1/campaigns/${campaignId}/seed_sections_from_toc`,
+      {}, // Empty object for request body as FastAPI takes auto_populate from query params
+      { params }
     );
 
     // The backend might return an object { sections: CampaignSection[] } or just CampaignSection[]
@@ -305,6 +307,36 @@ export const seedSectionsFromToc = async (campaignId: string | number): Promise<
     console.error(`Error seeding sections from TOC for campaign ID ${campaignId}:`, error);
     // In a real app, you might want to transform the error or log it to a service
     throw error; // Re-throw to be caught by the UI component's error handler
+  }
+};
+
+// Payload for regenerating a section (matches backend SectionRegenerateInput)
+export interface SectionRegeneratePayload {
+  new_prompt?: string;
+  new_title?: string;
+  section_type?: string; // E.g., "NPC", "Location", "Chapter/Quest", "Generic"
+  model_id_with_prefix?: string;
+}
+
+// Regenerate a specific campaign section
+export const regenerateCampaignSection = async (
+  campaignId: string | number,
+  sectionId: number, // sectionId is a number
+  payload?: SectionRegeneratePayload
+): Promise<CampaignSection> => {
+  try {
+    const response = await apiClient.post<CampaignSection>(
+      `/api/v1/campaigns/${campaignId}/sections/${sectionId}/regenerate`,
+      payload || {} // Send payload or an empty object if undefined
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error regenerating section ID ${sectionId} for campaign ID ${campaignId}:`, error);
+    if (axios.isAxiosError(error) && error.response) {
+      // Rethrow with more specific error message if available from backend
+      throw new Error(error.response.data.detail || `Failed to regenerate section: ${error.message}`);
+    }
+    throw error; // Re-throw original error if not AxiosError or no response detail
   }
 };
 

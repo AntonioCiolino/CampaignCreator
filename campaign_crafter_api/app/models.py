@@ -219,3 +219,10 @@ class FeaturePromptItem(BaseModel):
 
 class FeaturePromptListResponse(BaseModel):
     features: List[FeaturePromptItem]
+
+# Input model for regenerating a section
+class SectionRegenerateInput(BaseModel):
+    new_prompt: Optional[str] = None
+    new_title: Optional[str] = None
+    section_type: Optional[str] = None # E.g., "NPC", "Location", "Chapter/Quest", "Generic"
+    model_id_with_prefix: Optional[str] = None

@@ -108,6 +108,7 @@ const CampaignEditorPage: React.FC = () => {
   // State for "Approve TOC & Create Sections" button
   const [isSeedingSections, setIsSeedingSections] = useState<boolean>(false);
   const [seedSectionsError, setSeedSectionsError] = useState<string | null>(null);
+  const [autoPopulateSections, setAutoPopulateSections] = useState<boolean>(false); // Added state for auto-populate
 
   // Helper function to get selected LLM object
   const selectedLLMObject = useMemo(() => {
@@ -176,7 +177,8 @@ const CampaignEditorPage: React.FC = () => {
     try {
       // Call the actual service function to seed sections from TOC.
       // This function is expected to return the new list of sections.
-      const newSections = await campaignService.seedSectionsFromToc(campaignId);
+      // Pass the autoPopulateSections state to the service call
+      const newSections = await campaignService.seedSectionsFromToc(campaignId, autoPopulateSections);
 
       // Update the local sections state with the new sections returned by the service.
       // Ensure sections are sorted by order.
@@ -752,11 +754,24 @@ const CampaignEditorPage: React.FC = () => {
                   disabled={isSeedingSections || !campaign.display_toc}
                   className="action-button"
                   icon={<AddCircleOutlineIcon />} // Using existing icon for now
-                  tooltip="Parse the current Table of Contents and create campaign sections based on its structure."
+                  tooltip="Parse the current Table of Contents and create campaign sections based on its structure. Optionally auto-populate content."
                 >
-                  {isSeedingSections ? 'Creating Sections...' : 'Approve TOC & Create Sections'}
+                  {isSeedingSections ? (autoPopulateSections ? 'Creating & Populating Sections...' : 'Creating Sections...') : 'Approve TOC & Create Sections'}
                 </Button>
                 {seedSectionsError && <p className="error-message feedback-message" style={{ marginTop: '5px' }}>{seedSectionsError}</p>}
+                {/* Checkbox for auto-populating sections */}
+                <div style={{ marginTop: '10px', marginBottom: '10px' }}>
+                  <label htmlFor="autoPopulateCheckbox" style={{ marginRight: '8px' }}>
+                    Auto-populate sections with generated content:
+                  </label>
+                  <input
+                    type="checkbox"
+                    id="autoPopulateCheckbox"
+                    checked={autoPopulateSections}
+                    onChange={(e) => setAutoPopulateSections(e.target.checked)}
+                    disabled={isSeedingSections} // Disable while seeding
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -787,6 +802,7 @@ const CampaignEditorPage: React.FC = () => {
         </Button>
       </div>
       <CampaignSectionEditor
+        campaignId={campaignId!} // campaignId is checked at the start of CampaignEditorPage
         sections={sections}
         setSections={setSections}
         handleAddNewSection={() => setIsAddSectionCollapsed(false)}

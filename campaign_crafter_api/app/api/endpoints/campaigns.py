@@ -197,6 +197,7 @@ async def generate_campaign_titles_endpoint(
 )
 async def seed_sections_from_toc_endpoint(
     campaign_id: int,
+    auto_populate: bool = False, # Added auto_populate parameter
     db: Session = Depends(get_db)
 ):
     db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
@@ -235,14 +236,76 @@ async def seed_sections_from_toc_endpoint(
 
         # Step 3: Create new sections based on parsed_titles
         created_sections_orm = []
+        llm_service = None # Initialize LLM service variable
+
+        if auto_populate and db_campaign.selected_llm_id:
+            try:
+                # Use the campaign's selected LLM and temperature
+                provider_name, model_specific_id = _extract_provider_and_model(db_campaign.selected_llm_id)
+                llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=db_campaign.selected_llm_id)
+            except LLMServiceUnavailableError as e:
+                print(f"LLM Service unavailable for auto-population: {e}. Sections will be created with placeholders.")
+                llm_service = None # Ensure it's None if initialization failed
+            except ValueError as ve: # Catch errors from _extract_provider_and_model
+                print(f"Invalid LLM model ID format ('{db_campaign.selected_llm_id}') for auto-population: {ve}. Sections will be created with placeholders.")
+                llm_service = None
+
+
         for order, title in enumerate(parsed_titles):
-            print(f"Creating section for campaign {campaign_id}: Title='{title}', Order={order}")
+            section_content = f"Content for '{title}' to be generated." # Default placeholder
+
+            if auto_populate and llm_service and db_campaign.concept:
+                section_type = "Generic"
+                title_lower = title.lower()
+                if "npc" in title_lower or "character" in title_lower:
+                    section_type = "NPC"
+                elif "location" in title_lower or "place" in title_lower:
+                    section_type = "Location"
+                elif "chapter" in title_lower or "quest" in title_lower or "adventure" in title_lower:
+                    section_type = "Chapter/Quest"
+
+                prompt = ""
+                if section_type == "NPC":
+                    prompt = f"Generate a detailed description for an NPC named '{title}'. Include their appearance, personality, motivations, and potential plot hooks related to them."
+                elif section_type == "Location":
+                    prompt = f"Describe the location '{title}'. Include its key features, atmosphere, inhabitants (if any), and any notable points of interest or secrets."
+                elif section_type == "Chapter/Quest":
+                    prompt = f"Outline the main events and encounters for the adventure chapter titled '{title}'. Provide a brief overview of the objectives, challenges, and potential rewards."
+                else: # Generic
+                    prompt = f"Generate content for a section titled '{title}' as part of a larger campaign document."
+
+                try:
+                    print(f"Auto-populating section '{title}' using LLM: {db_campaign.selected_llm_id}")
+                    _, model_specific_id_for_call = _extract_provider_and_model(db_campaign.selected_llm_id)
+
+                    generated_content = await llm_service.generate_section_content(
+                        campaign_concept=db_campaign.concept,
+                        db=db,
+                        existing_sections_summary=None, # For now, no summary of prior sections in this batch
+                        section_creation_prompt=prompt,
+                        section_title_suggestion=title,
+                        model=model_specific_id_for_call # Pass the specific model ID
+                        # Temperature is handled by the service if it's configured to use db_campaign.temperature
+                        # Or, if generate_section_content needs it, we'd pass db_campaign.temperature
+                    )
+                    if generated_content:
+                        section_content = generated_content
+                    else:
+                        print(f"LLM generated empty content for section '{title}'. Using placeholder.")
+                except LLMServiceUnavailableError as e:
+                    print(f"LLM Service Error for section '{title}': {e}. Using placeholder.")
+                except LLMGenerationError as e:
+                    print(f"LLM Generation Error for section '{title}': {e}. Using placeholder.")
+                except Exception as e: # Catch any other unexpected errors
+                    print(f"Unexpected error during LLM generation for section '{title}': {e}. Using placeholder.")
+
+            print(f"Creating section for campaign {campaign_id}: Title='{title}', Order={order}, Content (first 50 chars)='{section_content[:50]}...'")
             created_section = crud.create_section_with_placeholder_content(
                 db=db,
                 campaign_id=campaign_id,
                 title=title,
                 order=order,
-                placeholder_content=f"Content for '{title}' to be generated."
+                placeholder_content=section_content # Pass generated content or placeholder
             )
             created_sections_orm.append(created_section)
 
@@ -467,6 +530,117 @@ async def prepare_campaign_for_homebrewery_posting(
         homebrewery_new_url=homebrewery_new_url,
         filename_suggestion=filename_suggestion
     )
+
+@router.post("/{campaign_id}/sections/{section_id}/regenerate", response_model=models.CampaignSection, tags=["Campaign Sections"])
+async def regenerate_campaign_section_endpoint(
+    campaign_id: int,
+    section_id: int,
+    section_input: models.SectionRegenerateInput, # Using the new input model
+    db: Session = Depends(get_db)
+):
+    db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
+    if db_campaign is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    db_section = crud.get_section(db=db, section_id=section_id, campaign_id=campaign_id)
+    if db_section is None:
+        raise HTTPException(status_code=404, detail="Campaign section not found")
+
+    if not db_campaign.concept:
+        raise HTTPException(status_code=400, detail="Campaign concept is missing. Section content cannot be regenerated without it.")
+
+    # Determine title for regeneration
+    current_title = section_input.new_title if section_input.new_title is not None else db_section.title
+    # Ensure current_title is a string, even if db_section.title was None and new_title wasn't provided.
+    if current_title is None:
+        current_title = "Untitled Section"
+
+
+    # Determine section type and prompt
+    final_prompt = section_input.new_prompt
+    if not final_prompt:
+        section_type = section_input.section_type
+        if not section_type: # If type not provided in input, determine from title
+            title_lower = current_title.lower()
+            if "npc" in title_lower or "character" in title_lower:
+                section_type = "NPC"
+            elif "location" in title_lower or "place" in title_lower:
+                section_type = "Location"
+            elif "chapter" in title_lower or "quest" in title_lower or "adventure" in title_lower:
+                section_type = "Chapter/Quest"
+            else:
+                section_type = "Generic"
+
+        # Construct prompt based on determined type and title
+        if section_type == "NPC":
+            final_prompt = f"Generate a detailed description for an NPC named '{current_title}'. Include their appearance, personality, motivations, and potential plot hooks related to them."
+        elif section_type == "Location":
+            final_prompt = f"Describe the location '{current_title}'. Include its key features, atmosphere, inhabitants (if any), and any notable points of interest or secrets."
+        elif section_type == "Chapter/Quest":
+            final_prompt = f"Outline the main events and encounters for the adventure chapter titled '{current_title}'. Provide a brief overview of the objectives, challenges, and potential rewards."
+        else: # Generic
+            final_prompt = f"Generate content for a section titled '{current_title}' as part of a larger campaign document."
+
+    # Initialize LLM Service
+    llm_model_to_use = section_input.model_id_with_prefix if section_input.model_id_with_prefix else db_campaign.selected_llm_id
+    if not llm_model_to_use:
+        # Fallback if no model is specified in input or campaign defaults
+        raise HTTPException(status_code=400, detail="LLM model ID not specified in request or campaign settings. Cannot regenerate section.")
+
+    try:
+        provider_name, model_specific_id = _extract_provider_and_model(llm_model_to_use)
+        llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=llm_model_to_use)
+    except LLMServiceUnavailableError as e:
+        raise HTTPException(status_code=503, detail=f"LLM Service unavailable: {str(e)}")
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=f"Invalid LLM model ID format ('{llm_model_to_use}'): {ve}")
+
+    # Fetch existing sections summary for context
+    all_campaign_sections = crud.get_campaign_sections(db=db, campaign_id=campaign_id, limit=None)
+    other_sections_summary = "; ".join(
+        [s.title for s in all_campaign_sections if s.id != section_id and s.title]
+    ) if all_campaign_sections else None
+
+    # Call LLM Service
+    try:
+        print(f"Regenerating section '{current_title}' (ID: {section_id}) using LLM: {llm_model_to_use}")
+        generated_content = await llm_service.generate_section_content(
+            campaign_concept=db_campaign.concept,
+            db=db,
+            existing_sections_summary=other_sections_summary,
+            section_creation_prompt=final_prompt,
+            section_title_suggestion=current_title,
+            model=model_specific_id
+        )
+        if not generated_content:
+            raise HTTPException(status_code=500, detail="LLM generated empty content during regeneration.")
+
+    except LLMGenerationError as e:
+        raise HTTPException(status_code=500, detail=f"LLM Generation Error during regeneration: {str(e)}")
+    except Exception as e:
+        print(f"Unexpected error during LLM regeneration for section ID {section_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error during section regeneration: {str(e)}")
+
+    # Prepare data for update
+    section_update_payload = models.CampaignSectionUpdateInput(content=generated_content)
+    if section_input.new_title is not None:
+        section_update_payload.title = section_input.new_title
+
+    # Update Section using CRUD
+    updated_section = crud.update_campaign_section(
+        db=db,
+        section_id=section_id,
+        campaign_id=campaign_id,
+        section_update_data=section_update_payload
+    )
+
+    if updated_section is None:
+        # This case implies section was not found by crud.update_campaign_section, which is unlikely
+        # if crud.get_section succeeded earlier and IDs are correct.
+        # Could also mean an issue within the update logic itself.
+        raise HTTPException(status_code=500, detail="Failed to update section after regeneration. Section may have been deleted.")
+
+    return updated_section
 
 # The Config class should be at the module level if it's meant for Pydantic model configuration,
 # or within each Pydantic model that needs it.
