@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CampaignSection } from '../services/campaignService';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
-import ReactQuill, { Quill } from 'react-quill';
+import ReactQuill from 'react-quill'; // Removed Quill from import
 import 'react-quill/dist/quill.snow.css'; // Import Quill's snow theme CSS
 import Button from './common/Button'; // Added Button import
 import RandomTableRoller from './RandomTableRoller';
@@ -219,10 +219,10 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                   Delete Section
                 </Button>
                 <Button
-                  size="sm" // Using "sm" to match delete button style if desired
-                  variant="outlined" // Example: "outlined" or "secondary"
+                  size="sm"
+                  variant="text" // Changed from "outlined"
                   onClick={handleRegenerateClick}
-                  disabled={isSaving || isRegenerating || isEditing} // Disable if saving, already regenerating, or editing
+                  disabled={isSaving || isRegenerating || isEditing}
                   style={{ marginLeft: '10px' }}
                 >
                   {isRegenerating ? 'Regenerating...' : 'Regenerate'}

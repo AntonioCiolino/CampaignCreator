@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Button,
-  Grid,
+  // Grid, // Removed Grid
   Typography,
   Card,
   CardContent,
@@ -93,8 +93,10 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
   };
 
   const handleSectionUpdated = (updatedSection: CampaignSection) => {
-    setSections(prevSections =>
-      prevSections.map(s => (s.id === updatedSection.id ? updatedSection : s))
+    setSections((prevSections: CampaignSection[]) => // Add type for prevSections
+      prevSections.map((s: CampaignSection) => // Add type for s
+        s.id === updatedSection.id ? updatedSection : s
+      )
     );
   };
 

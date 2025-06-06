@@ -14,7 +14,7 @@ import './CampaignEditorPage.css';
 import Button from '../components/common/Button'; // Ensure common Button is imported
 
 // MUI Icons (attempt to import, will use text/emoji if fails)
-import SaveIcon from '@mui/icons-material/Save';
+// import SaveIcon from '@mui/icons-material/Save'; // Removed SaveIcon
 // AddPhotoAlternateIcon, EditIcon, DeleteOutlineIcon are moved to CampaignDetailsEditor
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
@@ -31,7 +31,7 @@ import CampaignLLMSettings from '../components/campaign_editor/CampaignLLMSettin
 import CampaignSectionEditor from '../components/campaign_editor/CampaignSectionEditor';
 import { LLMModel as LLM } from '../services/llmService'; // Corrected LLM import
 import Tabs, { TabItem } from '../components/common/Tabs'; // Import Tabs component
-import { Box, Typography } from '@mui/material'; // For layout within tabs if needed
+import { Typography } from '@mui/material'; // Removed Box, kept Typography
 
 const CampaignEditorPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -44,13 +44,13 @@ const CampaignEditorPage: React.FC = () => {
   // Editable campaign details
   const [editableTitle, setEditableTitle] = useState<string>('');
   const [editableInitialPrompt, setEditableInitialPrompt] = useState<string>('');
-  const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  // const [isSaving, setIsSaving] = useState<boolean>(false); // Removed
+  const [saveError, setSaveError] = useState<string | null>(null); // Keep for handleSaveChanges
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null); // Keep for handleSaveChanges
 
-  // Section-specific saving
-  const [savingSectionId, setSavingSectionId] = useState<number | null>(null);
-  const [sectionSaveError, setSectionSaveError] = useState<{ [key: number]: string | null }>({});
+  // Section-specific saving states removed as per plan
+  // const [savingSectionId, setSavingSectionId] = useState<number | null>(null);
+  // const [sectionSaveError, setSectionSaveError] = useState<{ [key: number]: string | null }>({});
 
   // LLM Generation states
   const [isGeneratingTOC, setIsGeneratingTOC] = useState<boolean>(false);
@@ -81,7 +81,7 @@ const CampaignEditorPage: React.FC = () => {
 
   // State for UI collapsible sections
   const [isTocCollapsed, setIsTocCollapsed] = useState<boolean>(false); // Default to expanded
-  const [isLLMSettingsCollapsed, setIsLLMSettingsCollapsed] = useState<boolean>(false);
+  // const [isLLMSettingsCollapsed, setIsLLMSettingsCollapsed] = useState<boolean>(false); // Removed
   const [isAddSectionCollapsed, setIsAddSectionCollapsed] = useState<boolean>(true);
   const [isLLMDialogOpen, setIsLLMDialogOpen] = useState<boolean>(false);
   // isCampaignDetailsCollapsed will be managed by the new component or removed if not needed at page level
@@ -340,7 +340,7 @@ const CampaignEditorPage: React.FC = () => {
             clearTimeout(newTimer);
         }
     };
-  }, [selectedLLMId, temperature, campaignId, campaign, isLoading]); // Dependencies
+  }, [selectedLLMId, temperature, campaignId, campaign, isLoading, debounceTimer]); // Added debounceTimer to deps
 
 
   const handleSaveChanges = async () => {
@@ -355,7 +355,7 @@ const CampaignEditorPage: React.FC = () => {
       return;
     }
     setIsPageLoading(true);
-    setIsSaving(true);
+    // setIsSaving(true); // Removed, isPageLoading can cover this
     setSaveError(null);
     setSaveSuccess(null);
     try {
@@ -371,7 +371,7 @@ const CampaignEditorPage: React.FC = () => {
     } catch (err) {
       setSaveError('Failed to save changes.');
     } finally {
-      setIsSaving(false);
+      // setIsSaving(false); // Removed
       setIsPageLoading(false);
     }
   };
@@ -507,23 +507,27 @@ const CampaignEditorPage: React.FC = () => {
   const handleUpdateSection = async (sectionId: number, updatedData: campaignService.CampaignSectionUpdatePayload) => {
     if (!campaignId) return;
     setIsPageLoading(true);
-    setSavingSectionId(sectionId);
-    setSectionSaveError(prev => ({ ...prev, [sectionId]: null }));
+    // setSavingSectionId(sectionId); // Removed
+    // setSectionSaveError(prev => ({ ...prev, [sectionId]: null })); // Removed
     try {
       const updatedSection = await campaignService.updateCampaignSection(campaignId, sectionId, updatedData);
       setSections(prev => prev.map(sec => sec.id === sectionId ? updatedSection : sec));
+      // Optionally, add a global success message for section updates if desired
+      // setSaveSuccess("Section updated successfully!");
+      // setTimeout(() => setSaveSuccess(null), 3000);
     } catch (err) {
-      setSectionSaveError(prev => ({ ...prev, [sectionId]: 'Failed to save section.' }));
-      // We might want to set setIsPageLoading(false) in a finally block within the try-catch if this function becomes more complex
-      // For now, if it throws, the calling function's finally block (if any) or subsequent user action will be the path to clear loading.
-      // However, it's better to handle it here.
-      setIsPageLoading(false);
-      throw err;
+      // setSectionSaveError(prev => ({ ...prev, [sectionId]: 'Failed to save section.' })); // Removed
+      // For simplicity, errors from CampaignSectionView's local save will be shown there.
+      // If a global error for section saving is needed, it could be set here.
+      console.error(`Error updating section ${sectionId}:`, err);
+      // Propagate the error if other parts of this page need to react, or handle globally:
+      setError(`Failed to save section ${sectionId}.`); // Example of setting a global error
+      setTimeout(() => setError(null), 5000);
+      setIsPageLoading(false); // Ensure loading is stopped on error
+      throw err; // Re-throw so CampaignSectionView can also catch it for local feedback
     } finally {
-      setSavingSectionId(null);
-      // If the above try block succeeded, we also need to set loading to false.
-      // If it failed and threw, this might be redundant if already set in catch, but ensures it's always set.
-      setIsPageLoading(false);
+      // setSavingSectionId(null); // Removed
+      setIsPageLoading(false); // Ensure loading is always stopped
     }
   };
 
@@ -573,7 +577,7 @@ const CampaignEditorPage: React.FC = () => {
     // setSuggestedTitles(null); // Optional: Clear suggestions after selection
   };
   
-  const hasChanges = campaign ? (editableTitle !== campaign.title || editableInitialPrompt !== (campaign.initial_user_prompt || '')) : false;
+  // const hasChanges = campaign ? (editableTitle !== campaign.title || editableInitialPrompt !== (campaign.initial_user_prompt || '')) : false; // Removed
 
   const handleExportHomebrewery = async () => {
     if (!campaignId || !campaign) return;
