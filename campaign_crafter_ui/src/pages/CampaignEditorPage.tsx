@@ -333,6 +333,17 @@ const CampaignEditorPage: React.FC = () => {
         return; // Don't run if initial load isn't complete or essential data missing
     }
 
+    console.log("LLM_AUTOSAVE_EFFECT_RUN:", {
+      selectedLLMId,
+      temperature,
+      campaignId, // from useParams
+      campaignIdFromCampaign: campaign?.id,
+      campaignSelectedLLM: campaign?.selected_llm_id,
+      campaignTemperature: campaign?.temperature,
+      isLoading,
+      debounceTimerExists: !!debounceTimer
+    });
+
     // Clear previous timer if it exists
     if (debounceTimer) {
         clearTimeout(debounceTimer);
@@ -341,27 +352,37 @@ const CampaignEditorPage: React.FC = () => {
     const newTimer = setTimeout(async () => {
         // Ensure 'campaign' is available from the outer scope of useEffect.
         if (!campaign) {
-            // This case should ideally not be hit if initialLoadCompleteRef is true,
-            // as 'campaign' should be loaded. But as a safeguard:
-            // console.warn("Auto-save LLM: Campaign object not available, skipping.");
+            console.warn("LLM_AUTOSAVE_TIMEOUT_SKIP: Campaign object not available in setTimeout, skipping.");
             return;
         }
-        // campaignId from useParams can be used for the API call path.
-        // Using campaign.id from the state object for the actual API call.
-        if (!campaign.id) { // Check if campaign.id is valid
-            // console.warn("Auto-save LLM: Campaign ID not available in campaign state, skipping.");
+        // campaignId from useParams is available in the outer scope.
+        // Using campaign.id from the state object for the actual API call for consistency.
+        if (!campaign.id) {
+            console.warn("LLM_AUTOSAVE_TIMEOUT_SKIP: Campaign ID not available in campaign state (inside setTimeout), skipping.");
             return;
         }
+
+        console.log("LLM_AUTOSAVE_CHECKING_CONDITIONS:", {
+          campaignExists: !!campaign, // Should be true here
+          selectedLLMId_state: selectedLLMId,
+          campaign_selected_llm_id: campaign?.selected_llm_id,
+          temperature_state: temperature,
+          campaign_temperature: campaign?.temperature
+        });
 
         // THE CRUCIAL CHECK:
         if (selectedLLMId === campaign.selected_llm_id &&
             temperature === campaign.temperature) {
-            // console.log("LLM settings are identical to current campaign state. Skipping auto-save.");
+            console.log("LLM_AUTOSAVE_SKIPPED: No change in settings.");
             return;
         }
 
         // If the code reaches here, it means settings have changed and a save is needed.
-        console.log("LLM settings changed. Auto-saving LLM settings...", { campaignId: campaign.id, selectedLLMId, temperature });
+        console.log("LLM_AUTOSAVE_PROCEEDING: Settings changed or initial save. Attempting save.", {
+           campaignIdToSave: campaign.id,
+           selectedLLMId,
+           temperature
+        });
         setIsAutoSavingLLMSettings(true);
         setAutoSaveLLMSettingsError(null);
         setAutoSaveLLMSettingsSuccess(null);
