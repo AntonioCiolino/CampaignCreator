@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.services.llm_service import AbstractLLMService
+from app.services.llm_service import AbstractLLMService, LLMGenerationError # Added LLMGenerationError
 from app.services.feature_prompt_service import FeaturePromptService # For specific generation tasks
 
 # Standard ignored API key for local OpenAI-compatible servers
@@ -168,10 +168,46 @@ class LocalLLMService(AbstractLLMService):
         generated_string = await self.generate_text(prompt=final_prompt, model=model)
         return [title.strip() for title in generated_string.split('\n') if title.strip()][:count]
 
-    async def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> str:
-        custom_prompt = self.feature_prompt_service.get_prompt("Table of Contents", db=db)
-        final_prompt = custom_prompt.format(campaign_concept=campaign_concept) if custom_prompt else f"Generate a table of contents for campaign: {campaign_concept}"
-        return await self.generate_text(prompt=final_prompt, model=model)
+    async def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> Dict[str, str]:
+        if not await self.is_available():
+            raise HTTPException(status_code=503, detail=f"{self.PROVIDER_NAME.title()} service is not available or configured.")
+        if not campaign_concept:
+            raise ValueError("Campaign concept cannot be empty.")
+
+        # Fetch Display TOC prompt
+        display_prompt_template = self.feature_prompt_service.get_prompt("TOC Display", db=db)
+        if not display_prompt_template:
+            raise LLMGenerationError(f"Display TOC prompt template ('TOC Display') not found for {self.PROVIDER_NAME}.")
+        display_final_prompt = display_prompt_template.format(campaign_concept=campaign_concept)
+
+        generated_display_toc = await self.generate_text(
+            prompt=display_final_prompt,
+            model=model,
+            temperature=0.5,
+            max_tokens=700
+        )
+        if not generated_display_toc:
+             raise LLMGenerationError(f"{self.PROVIDER_NAME.title()} API call for Display TOC succeeded but returned no usable content.")
+
+        # Fetch Homebrewery TOC prompt
+        homebrewery_prompt_template = self.feature_prompt_service.get_prompt("TOC Homebrewery", db=db)
+        if not homebrewery_prompt_template:
+            raise LLMGenerationError(f"Homebrewery TOC prompt template ('TOC Homebrewery') not found for {self.PROVIDER_NAME}.")
+        homebrewery_final_prompt = homebrewery_prompt_template.format(campaign_concept=campaign_concept)
+
+        generated_homebrewery_toc = await self.generate_text(
+            prompt=homebrewery_final_prompt,
+            model=model,
+            temperature=0.5,
+            max_tokens=1000
+        )
+        if not generated_homebrewery_toc:
+             raise LLMGenerationError(f"{self.PROVIDER_NAME.title()} API call for Homebrewery TOC succeeded but returned no usable content.")
+
+        return {
+            "display_toc": generated_display_toc,
+            "homebrewery_toc": generated_homebrewery_toc
+        }
 
     async def generate_section_content(
         self, campaign_concept: str, db: Session, existing_sections_summary: Optional[str],
@@ -200,4 +236,4 @@ class LocalLLMService(AbstractLLMService):
             prompt_parts.append("Generate detailed and engaging content for this new section.")
             final_prompt = "\n".join(prompt_parts)
             
-        return await self.generate_text(prompt=final_prompt, model=model)
+        return await self.generate_text(prompt=final_prompt, model=model, temperature=0.7, max_tokens=4000)

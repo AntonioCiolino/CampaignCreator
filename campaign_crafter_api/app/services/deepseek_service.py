@@ -1,7 +1,8 @@
 from typing import Optional, List, Dict
 from sqlalchemy.orm import Session
 from app.core.config import settings
-from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError # Import specific error
+from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError, LLMGenerationError # Import specific error
+from app.services.feature_prompt_service import FeaturePromptService # Added import
 # Removed import from llm_factory: from app.services.llm_factory import LLMServiceUnavailableError
 # import os # For the __main__ block, commented out
 
@@ -16,6 +17,7 @@ class DeepSeekLLMService(AbstractLLMService):
         if not (self.api_key and self.api_key not in ["YOUR_DEEPSEEK_API_KEY", "YOUR_API_KEY_HERE"]):
             print(f"Warning: {self.PROVIDER_NAME.title()} API key not configured or is a placeholder.")
 
+        self.feature_prompt_service = FeaturePromptService() # Added initialization
         # Placeholder for actual client initialization. DeepSeek often uses an OpenAI-compatible client.
         print(f"{self.PROVIDER_NAME.title()}LLMService initialized (placeholder).")
 
@@ -44,10 +46,37 @@ class DeepSeekLLMService(AbstractLLMService):
             raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available.")
         raise NotImplementedError(f"{self.PROVIDER_NAME.title()}LLMService.generate_titles not implemented.")
 
-    async def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> str:
+    async def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> Dict[str, str]:
         if not await self.is_available():
             raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available.")
-        raise NotImplementedError(f"{self.PROVIDER_NAME.title()}LLMService.generate_toc not implemented.")
+        if not campaign_concept:
+            raise ValueError("Campaign concept cannot be empty.")
+
+        # model_to_use = model or "deepseek-chat" # Or some default for DeepSeek
+
+        display_prompt_template = self.feature_prompt_service.get_prompt("TOC Display", db=db)
+        if not display_prompt_template:
+            raise LLMGenerationError(f"Display TOC prompt template ('TOC Display') not found for {self.PROVIDER_NAME}.")
+        display_final_prompt = display_prompt_template.format(campaign_concept=campaign_concept)
+
+        homebrewery_prompt_template = self.feature_prompt_service.get_prompt("TOC Homebrewery", db=db)
+        if not homebrewery_prompt_template:
+            raise LLMGenerationError(f"Homebrewery TOC prompt template ('TOC Homebrewery') not found for {self.PROVIDER_NAME}.")
+        homebrewery_final_prompt = homebrewery_prompt_template.format(campaign_concept=campaign_concept)
+
+        # These calls will fail until generate_text is implemented
+        generated_display_toc = await self.generate_text(prompt=display_final_prompt, model=model, temperature=0.5, max_tokens=700)
+        if not generated_display_toc: # This check might not be reached if generate_text raises NotImplementedError
+             raise LLMGenerationError(f"{self.PROVIDER_NAME.title()} API call for Display TOC succeeded but returned no usable content.")
+
+        generated_homebrewery_toc = await self.generate_text(prompt=homebrewery_final_prompt, model=model, temperature=0.5, max_tokens=1000)
+        if not generated_homebrewery_toc: # This check might not be reached
+             raise LLMGenerationError(f"{self.PROVIDER_NAME.title()} API call for Homebrewery TOC succeeded but returned no usable content.")
+
+        return {
+            "display_toc": generated_display_toc,
+            "homebrewery_toc": generated_homebrewery_toc
+        }
 
     async def generate_section_content(
         self, 

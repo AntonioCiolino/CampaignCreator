@@ -1,4 +1,5 @@
 from typing import Optional, List
+import re # Add import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
@@ -187,6 +188,67 @@ async def generate_campaign_titles_endpoint(
     if not generated_titles:
         raise HTTPException(status_code=500, detail="Title generation resulted in empty content.")
     return models.CampaignTitlesResponse(titles=generated_titles)
+
+
+@router.post(
+    "/{campaign_id}/seed_sections_from_toc",
+    response_model=List[models.CampaignSection], # Returns a list of the created sections
+    tags=["Campaigns", "Campaign Sections"]
+)
+async def seed_sections_from_toc_endpoint(
+    campaign_id: int,
+    db: Session = Depends(get_db)
+):
+    db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
+    if db_campaign is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    if not db_campaign.display_toc:
+        raise HTTPException(status_code=400, detail="No display_toc found for this campaign. Cannot seed sections.")
+
+    try:
+        # Step 1: Parse db_campaign.display_toc into a list of section titles
+        raw_toc_lines = db_campaign.display_toc.splitlines()
+        parsed_titles = []
+        for line in raw_toc_lines:
+            stripped_line = line.strip()
+            # Regex to match lines starting with '-', '*', or '+' followed by space and then capture the title
+            match = re.match(r"^(?:-|\*|\+)\s+(.+)", stripped_line)
+            if match:
+                title = match.group(1).strip()
+                if title: # Ensure title is not empty after stripping
+                    # Further clean title: remove potential markdown links like [Title](...)
+                    title = re.sub(r"\[(.*?)\]\(.*?\)", r"\1", title).strip()
+                    parsed_titles.append(title)
+
+        # If TOC is present but no list items were parsed, it's not an error for the endpoint,
+        # just means no sections will be created. UI will show an empty list.
+        # (Handled by returning empty list if parsed_titles is empty)
+
+        # Step 2: Delete existing sections for this campaign
+        deleted_count = crud.delete_sections_for_campaign(db=db, campaign_id=campaign_id)
+        print(f"Deleted {deleted_count} existing sections for campaign {campaign_id} before seeding from TOC.")
+
+        # Step 3: Create new sections based on parsed_titles
+        created_sections_orm = []
+        for order, title in enumerate(parsed_titles):
+            created_section = crud.create_section_with_placeholder_content(
+                db=db,
+                campaign_id=campaign_id,
+                title=title,
+                order=order,
+                placeholder_content=f"Content for '{title}' to be generated."
+            )
+            created_sections_orm.append(created_section)
+
+        return created_sections_orm
+
+    except Exception as e:
+        # Log the exception e
+        print(f"Error during seeding sections from TOC for campaign {campaign_id}: {e}")
+        # Consider if db.rollback() is needed if operations are not atomic within services/CRUD
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while seeding sections: {str(e)}")
+
 
 # --- Campaign Section Endpoints ---
 

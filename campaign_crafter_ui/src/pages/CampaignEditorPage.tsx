@@ -105,6 +105,10 @@ const CampaignEditorPage: React.FC = () => {
   // This state is initialized from `campaign.badge_image_url` in useEffect
   const [campaignBadgeImage, setCampaignBadgeImage] = useState<string>('');
 
+  // State for "Approve TOC & Create Sections" button
+  const [isSeedingSections, setIsSeedingSections] = useState<boolean>(false);
+  const [seedSectionsError, setSeedSectionsError] = useState<string | null>(null);
+
   // Helper function to get selected LLM object
   const selectedLLMObject = useMemo(() => {
     // Ensure availableLLMs is not empty and selectedLLMId is valid before finding
@@ -153,6 +157,54 @@ const CampaignEditorPage: React.FC = () => {
       return line;
     }).join('\n');
   }, [campaign?.display_toc, sections]); // Update dependency array
+
+  // Placeholder for handleSeedSectionsFromToc
+  const handleSeedSectionsFromToc = async () => {
+    if (!campaignId || !campaign?.display_toc) {
+      setSeedSectionsError("Cannot create sections: Campaign ID is missing or no Table of Contents available.");
+      return;
+    }
+
+    if (!window.confirm("This will delete all existing sections and create new ones based on the current Table of Contents. Are you sure you want to proceed?")) {
+      return;
+    }
+
+    setIsSeedingSections(true);
+    setSeedSectionsError(null);
+    // setSaveSuccess(null); // Optional: Clear other success messages
+
+    try {
+      // The campaignService.seedSectionsFromToc function will be created in the next step.
+      // For now, we'll mock a successful call and re-fetch sections.
+      // This line will be uncommented and used once the service function exists:
+      // await campaignService.seedSectionsFromToc(campaignId);
+
+      // TEMP: Simulating the call for now as service function is not yet created.
+      // In a real scenario, this await call to seedSectionsFromToc would be active.
+      // For this step, we are focusing on the UI handler logic.
+      // The actual API call will be added to campaignService in the next sub-task.
+      console.log(`Simulating call to campaignService.seedSectionsFromToc('${campaignId}')`);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
+
+      // Re-fetch sections to update the UI
+      const fetchedSections = await campaignService.getCampaignSections(campaignId);
+      setSections(fetchedSections.sort((a, b) => a.order - b.order));
+
+      alert("Sections created successfully from Table of Contents!");
+
+    } catch (err: any) {
+      console.error('Failed to seed sections from TOC:', err);
+      if (axios.isAxiosError(err) && err.response && err.response.data && typeof err.response.data.detail === 'string') {
+        setSeedSectionsError(err.response.data.detail);
+      } else if (err instanceof Error) {
+        setSeedSectionsError(err.message);
+      } else {
+        setSeedSectionsError('An unexpected error occurred while creating sections from TOC.');
+      }
+    } finally {
+      setIsSeedingSections(false);
+    }
+  };
 
   useEffect(() => {
     if (!campaignId) {
@@ -693,6 +745,21 @@ const CampaignEditorPage: React.FC = () => {
               {isGeneratingTOC ? 'Generating TOC...' : (campaign.display_toc ? 'Re-generate Table of Contents' : 'Generate Table of Contents')} {/* Use display_toc for button text */}
             </Button>
             {tocError && <p className="error-message feedback-message" style={{ marginTop: '5px' }}>{tocError}</p>}
+
+            {campaign.display_toc && ( // Only show this button if a display_toc exists
+              <div style={{ marginTop: '15px' }}> {/* Added a div for spacing */}
+                <Button
+                  onClick={handleSeedSectionsFromToc}
+                  disabled={isSeedingSections || !campaign.display_toc}
+                  className="action-button"
+                  icon={<AddCircleOutlineIcon />} // Using existing icon for now
+                  tooltip="Parse the current Table of Contents and create campaign sections based on its structure."
+                >
+                  {isSeedingSections ? 'Creating Sections...' : 'Approve TOC & Create Sections'}
+                </Button>
+                {seedSectionsError && <p className="error-message feedback-message" style={{ marginTop: '5px' }}>{seedSectionsError}</p>}
+              </div>
+            )}
           </div>
         )}
       </section>

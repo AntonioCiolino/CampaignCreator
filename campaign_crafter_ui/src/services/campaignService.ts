@@ -276,6 +276,38 @@ export const updateCampaignSectionOrder = async (
   }
 };
 
+// Add this new function:
+export const seedSectionsFromToc = async (campaignId: string | number): Promise<CampaignSection[]> => {
+  try {
+    // The backend endpoint POST /api/v1/campaigns/{campaignId}/seed_sections_from_toc
+    // is expected to perform the operation and then return the new list of sections for that campaign.
+    const response = await apiClient.post<{ sections: CampaignSection[] } | CampaignSection[]>(
+      `/api/v1/campaigns/${campaignId}/seed_sections_from_toc`
+      // No request body is needed if the backend uses the campaign's stored TOC
+    );
+
+    // The backend might return an object { sections: CampaignSection[] } or just CampaignSection[]
+    // Adjust based on the actual backend implementation.
+    // For now, let's assume it might return an object like getCampaignSections, or just the array.
+    if (response.data && Array.isArray((response.data as any).sections)) {
+      return (response.data as any).sections;
+    } else if (Array.isArray(response.data)) {
+      return response.data as CampaignSection[];
+    }
+
+    // If the response is not in the expected format, log a warning and return empty or throw.
+    console.warn('Unexpected response structure from seedSectionsFromToc:', response.data);
+    // Depending on strictness, you might throw an error here.
+    // For now, returning an empty array to prevent UI crashes if backend sends unexpected valid but different JSON.
+    return [];
+
+  } catch (error) {
+    console.error(`Error seeding sections from TOC for campaign ID ${campaignId}:`, error);
+    // In a real app, you might want to transform the error or log it to a service
+    throw error; // Re-throw to be caught by the UI component's error handler
+  }
+};
+
 // apiClient.ts should be something like:
 // import axios from 'axios';
 // const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
