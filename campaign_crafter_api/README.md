@@ -94,33 +94,52 @@ The API requires certain environment variables for configuration, such as databa
     *   `DATABASE_URL`: The connection string for your database (e.g., `sqlite:///./campaign_crafter.db` for a local SQLite DB, or connection strings for PostgreSQL, MySQL, etc.).
     *   `OPENAI_API_KEY`: Your API key for OpenAI services.
     *   `GEMINI_API_KEY`: Your API key for Google Gemini services.
-    *   `SECRET_KEY`: A secret key for signing JWTs or other security purposes.
-    *   `ALGORITHM`: The algorithm used for JWT signing (e.g., `HS256`).
-    *   `ACCESS_TOKEN_EXPIRE_MINUTES`: Expiry time for access tokens.
+    *   `LLAMA_API_KEY`, `LLAMA_API_URL`: Configuration for Llama models.
+    *   `DEEPSEEK_API_KEY`: Your API key for DeepSeek services.
+    *   `OPENAI_DALLE_MODEL_NAME`, `OPENAI_DALLE_DEFAULT_IMAGE_SIZE`, `OPENAI_DALLE_DEFAULT_IMAGE_QUALITY`: Settings for DALL-E image generation.
+    *   `LOCAL_LLM_PROVIDER_NAME`, `LOCAL_LLM_API_BASE_URL`, `LOCAL_LLM_DEFAULT_MODEL_ID`: Configuration for a generic local LLM provider.
+    *   `PORT`: The port on which the application will listen. Defaults to `8000` if not set. This is particularly important for deployment platforms like Render, which may set this variable to route traffic correctly.
+    *   `SECRET_KEY`: A secret key for signing JWTs or other security purposes. (Example, if you implement JWT)
+    *   `ALGORITHM`: The algorithm used for JWT signing (e.g., `HS256`). (Example, if you implement JWT)
+    *   `ACCESS_TOKEN_EXPIRE_MINUTES`: Expiry time for access tokens. (Example, if you implement JWT)
 
-    **Example `.env` content:**
+    Refer to the `.env.example` file for a comprehensive list of all possible environment variables.
+
+    **Example `.env` content (subset):**
     ```env
     DATABASE_URL="sqlite:///./test.db"
     OPENAI_API_KEY="your_openai_api_key_here"
     GEMINI_API_KEY="your_gemini_api_key_here"
-    SECRET_KEY="your_very_secret_key_here"
-    ALGORITHM="HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES=30
+    # ... other keys
+    PORT=8000
+    # ... other keys if using JWT
     ```
 
 ### 5. Running the Development Server
 
-Once the dependencies are installed and the `.env` file is configured, you can run the FastAPI application using Uvicorn:
+Once the dependencies are installed and the `.env` file is configured, you can run the FastAPI application:
 
+The application is configured to be started by running its main script, which programmatically launches Uvicorn:
 ```bash
-# do not run this ... uvicorn main:app --reload
+python -m app.main
+```
+This will start the server, typically on `http://127.0.0.1:8000` (or the port specified by the `PORT` environment variable).
+
+For development with auto-reload, you can still use Uvicorn directly if preferred, but ensure your environment variables (like `PORT`) are loaded or set in your shell:
+```bash
+# Ensure your virtual environment is active and .env is configured
+# The PORT variable from .env will be used by the script if you run it directly.
+# If running uvicorn directly for development, it will also pick up PORT if the script's __main__ is executed,
+# or you can specify it:
+# uvicorn app.main:app --reload --port $PORT  (Example for bash, adjust for your shell)
+# Or rely on the default 8000 if PORT is not set and not overridden in the command.
 python -m uvicorn app.main:app --reload
 ```
 
-*   `main:app`: Refers to the FastAPI application instance named `app` found in the `main.py` file. Adjust if your main file or app instance is named differently.
-*   `--reload`: Enables auto-reloading the server when code changes are detected, which is useful for development.
+*   `app.main:app`: Refers to the FastAPI application instance named `app` found in the `app/main.py` file.
+*   `--reload`: Enables auto-reloading the server when code changes are detected.
 
-The API should now be running, typically on `http://127.0.0.1:8000`. You can access the interactive API documentation (Swagger UI) at `http://127.0.0.1:8000/docs` and the alternative ReDoc documentation at `http://127.0.0.1:8000/redoc`.
+The API should now be running. You can access the interactive API documentation (Swagger UI) at `http://<host>:<port>/docs` (e.g., `http://127.0.0.1:8000/docs`) and the alternative ReDoc documentation at `http://<host>:<port>/redoc`.
 
 ## Running Tests
 

@@ -71,3 +71,9 @@ app.include_router(data_tables.router_roll_tables, prefix="/api/v1/roll_tables",
 @app.get("/", tags=["Root"])
 async def read_root():
     return {"message": "Welcome to Campaign Crafter API"}
+
+if __name__ == "__main__":
+    import uvicorn
+    import os
+    port_from_env = os.getenv("PORT", "8000")
+    uvicorn.run(app, host="0.0.0.0", port=int(port_from_env))
