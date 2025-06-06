@@ -227,3 +227,73 @@
     padding-bottom: calc(var(--global-spacing-unit) * 0.5);
     border-bottom: 1px solid var(--border-color-light);
 }
+
+/* Styles for the page-level concept display */
+.page-level-concept {
+  margin-bottom: calc(var(--global-spacing-unit) * 1.5); /* More margin for separation */
+  padding: calc(var(--global-spacing-unit) * 1.25);
+  background-color: var(--surface-color); /* Consistent with other main sections */
+  border: 1px solid var(--border-color); /* Slightly more prominent border */
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05); /* Subtle shadow */
+}
+
+.page-level-concept h2 {
+  margin-top: 0;
+  font-size: 1.6rem; /* Larger for page title context */
+  color: var(--primary-color-dark); /* Use a theme color */
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: calc(var(--global-spacing-unit) * 0.6);
+  margin-bottom: calc(var(--global-spacing-unit) * 0.8);
+}
+
+.page-level-concept .concept-content {
+  line-height: var(--line-height-base);
+  color: var(--text-color); /* Standard text color */
+  font-size: 1rem; /* Standard font size */
+}
+
+.page-level-concept .concept-content p {
+  margin-bottom: calc(var(--global-spacing-unit) * 0.75);
+}
+
+.page-level-concept .concept-content h1,
+.page-level-concept .concept-content h2,
+.page-level-concept .concept-content h3,
+.page-level-concept .concept-content h4,
+.page-level-concept .concept-content h5,
+.page-level-concept .concept-content h6 {
+  margin-top: calc(var(--global-spacing-unit) * 1.2);
+  margin-bottom: calc(var(--global-spacing-unit) * 0.4);
+  color: var(--text-color); /* Consistent heading color */
+}
+
+.page-level-concept .concept-content ul,
+.page-level-concept .concept-content ol {
+  margin-left: calc(var(--global-spacing-unit) * 1.25);
+  margin-bottom: calc(var(--global-spacing-unit) * 0.75);
+}
+
+.page-level-concept .concept-content code {
+  background-color: var(--border-color-light);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.page-level-concept .concept-content pre {
+  background-color: var(--border-color-light);
+  padding: var(--global-spacing-unit);
+  border-radius: 4px;
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+}
+
+.page-level-concept .concept-content blockquote {
+  border-left: 4px solid var(--border-color);
+  padding-left: var(--global-spacing-unit);
+  margin-left: 0;
+  color: var(--text-color-muted);
+  font-style: italic;
+}

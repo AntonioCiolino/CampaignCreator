@@ -226,16 +226,37 @@ def update_campaign(db: Session, campaign_id: int, campaign_update: models.Campa
         db.refresh(db_campaign)
     return db_campaign
 
-def update_campaign_toc(db: Session, campaign_id: int, toc_content: str) -> Optional[orm_models.Campaign]:
+def update_campaign_toc(db: Session, campaign_id: int, display_toc_content: str, homebrewery_toc_content: str) -> Optional[orm_models.Campaign]:
     db_campaign = get_campaign(db, campaign_id=campaign_id)
     if db_campaign:
-        db_campaign.toc = toc_content
-        db.add(db_campaign)
+        db_campaign.display_toc = display_toc_content
+        db_campaign.homebrewery_toc = homebrewery_toc_content
+        # db.add(db_campaign) # Not strictly necessary as SQLAlchemy tracks changes on attached objects
         db.commit()
         db.refresh(db_campaign)
     return db_campaign
 
 # CampaignSection CRUD functions
+
+def delete_sections_for_campaign(db: Session, campaign_id: int) -> int:
+    """Deletes all sections associated with a given campaign_id. Returns the number of sections deleted."""
+    num_deleted = db.query(orm_models.CampaignSection).filter(orm_models.CampaignSection.campaign_id == campaign_id).delete(synchronize_session=False)
+    db.commit() # Commit after deletion
+    return num_deleted
+
+def create_section_with_placeholder_content(db: Session, campaign_id: int, title: str, order: int, placeholder_content: str = "Content to be generated.") -> orm_models.CampaignSection:
+    """Creates a new campaign section with a title, order, and placeholder content."""
+    db_section = orm_models.CampaignSection(
+        title=title,
+        content=placeholder_content,
+        order=order,
+        campaign_id=campaign_id
+    )
+    db.add(db_section)
+    db.commit()
+    db.refresh(db_section)
+    return db_section
+
 def get_campaign_sections(db: Session, campaign_id: int, skip: int = 0, limit: int = 1000) -> list[orm_models.CampaignSection]:
     return db.query(orm_models.CampaignSection).filter(orm_models.CampaignSection.campaign_id == campaign_id).order_by(orm_models.CampaignSection.order).offset(skip).limit(limit).all()
 

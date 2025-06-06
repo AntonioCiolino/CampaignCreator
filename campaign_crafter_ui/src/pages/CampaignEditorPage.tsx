@@ -15,10 +15,7 @@ import Button from '../components/common/Button'; // Ensure common Button is imp
 
 // MUI Icons (attempt to import, will use text/emoji if fails)
 import SaveIcon from '@mui/icons-material/Save';
-import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
-import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+// AddPhotoAlternateIcon, EditIcon, DeleteOutlineIcon are moved to CampaignDetailsEditor
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
@@ -108,6 +105,10 @@ const CampaignEditorPage: React.FC = () => {
   // This state is initialized from `campaign.badge_image_url` in useEffect
   const [campaignBadgeImage, setCampaignBadgeImage] = useState<string>('');
 
+  // State for "Approve TOC & Create Sections" button
+  const [isSeedingSections, setIsSeedingSections] = useState<boolean>(false);
+  const [seedSectionsError, setSeedSectionsError] = useState<string | null>(null);
+
   // Helper function to get selected LLM object
   const selectedLLMObject = useMemo(() => {
     // Ensure availableLLMs is not empty and selectedLLMId is valid before finding
@@ -133,10 +134,11 @@ const CampaignEditorPage: React.FC = () => {
   };
 
   const processedToc = useMemo(() => {
-    if (!campaign?.toc || !sections?.length) {
-      return campaign?.toc || '';
+    // Use display_toc for rendering in the UI
+    if (!campaign?.display_toc || !sections?.length) {
+      return campaign?.display_toc || '';
     }
-    const tocLines = campaign.toc.split('\n');
+    const tocLines = campaign.display_toc.split('\n');
     const sectionTitleToIdMap = new Map(sections.filter(sec => sec.title).map(sec => [sec.title!.trim().toLowerCase(), `section-container-${sec.id}`]));
 
     return tocLines.map(line => {
@@ -154,7 +156,47 @@ const CampaignEditorPage: React.FC = () => {
       }
       return line;
     }).join('\n');
-  }, [campaign?.toc, sections]);
+  }, [campaign?.display_toc, sections]); // Update dependency array
+
+  // Placeholder for handleSeedSectionsFromToc
+  const handleSeedSectionsFromToc = async () => {
+    if (!campaignId || !campaign?.display_toc) {
+      setSeedSectionsError("Cannot create sections: Campaign ID is missing or no Table of Contents available.");
+      return;
+    }
+
+    if (!window.confirm("This will delete all existing sections and create new ones based on the current Table of Contents. Are you sure you want to proceed?")) {
+      return;
+    }
+
+    setIsSeedingSections(true);
+    setSeedSectionsError(null);
+    // setSaveSuccess(null); // Optional: Clear other success messages
+
+    try {
+      // Call the actual service function to seed sections from TOC.
+      // This function is expected to return the new list of sections.
+      const newSections = await campaignService.seedSectionsFromToc(campaignId);
+
+      // Update the local sections state with the new sections returned by the service.
+      // Ensure sections are sorted by order.
+      setSections(newSections.sort((a, b) => a.order - b.order));
+
+      alert("Sections created successfully from Table of Contents!");
+
+    } catch (err: any) {
+      console.error('Failed to seed sections from TOC:', err);
+      if (axios.isAxiosError(err) && err.response && err.response.data && typeof err.response.data.detail === 'string') {
+        setSeedSectionsError(err.response.data.detail);
+      } else if (err instanceof Error) {
+        setSeedSectionsError(err.message);
+      } else {
+        setSeedSectionsError('An unexpected error occurred while creating sections from TOC.');
+      }
+    } finally {
+      setIsSeedingSections(false);
+    }
+  };
 
   useEffect(() => {
     if (!campaignId) {
@@ -379,6 +421,9 @@ const CampaignEditorPage: React.FC = () => {
       
       if (typeof setCampaign === 'function') { // setCampaign should be available from useState [campaign, setCampaign]
           setCampaign(updatedCampaign);
+          // Explicitly update the campaignBadgeImage state variable
+          setCampaignBadgeImage(updatedCampaign.badge_image_url || '');
+
           // Optionally, show a success message for badge update
           // setSaveSuccess("Campaign badge updated successfully!");
           // setTimeout(() => setSaveSuccess(null), 3000);
@@ -589,6 +634,8 @@ const CampaignEditorPage: React.FC = () => {
       
       if (typeof setCampaign === 'function') { 
           setCampaign(updatedCampaign);
+          // Explicitly update the campaignBadgeImage state variable as well for immediate UI refresh
+          setCampaignBadgeImage(updatedCampaign.badge_image_url || '');
       } else {
           console.warn("setCampaign function is not available to update local state.");
       }
@@ -617,6 +664,8 @@ const CampaignEditorPage: React.FC = () => {
       
       if (typeof setCampaign === 'function') {
           setCampaign(updatedCampaign);
+          // Explicitly update the campaignBadgeImage state variable when removing
+          setCampaignBadgeImage(''); // Set to empty string as URL is removed
       } else {
            console.log("Campaign badge URL removed. Parent component should re-fetch or update state.");
       }
@@ -649,100 +698,67 @@ const CampaignEditorPage: React.FC = () => {
           setCampaignBadgeImage(value);
         }}
         handleSaveCampaignDetails={handleSaveChanges}
+        // Pass new props for title generation
+        onSuggestTitles={handleGenerateTitles}
+        isGeneratingTitles={isGeneratingTitles}
+        titlesError={titlesError}
+        selectedLLMId={selectedLLMId}
+        // Pass original values for enabling/disabling save button
+        originalTitle={campaign.title}
+        originalInitialPrompt={campaign.initial_user_prompt || ''}
+        // Pass props for badge actions
+        originalBadgeImageUrl={campaign.badge_image_url || ''}
+        onOpenBadgeImageModal={handleOpenBadgeImageModal}
+        onEditBadgeImageUrl={handleEditBadgeImageUrl}
+        onRemoveBadgeImage={handleRemoveBadgeImage}
+        badgeUpdateLoading={badgeUpdateLoading}
+        badgeUpdateError={badgeUpdateError}
       />
       {/* Global save error/success can be shown here or above tabs */}
       {saveError && <p className="error-message save-feedback">{saveError}</p>}
       {saveSuccess && <p className="success-message save-feedback">{saveSuccess}</p>}
 
-      <div className="editor-section title-generation-section">
-        <Button
-          onClick={handleGenerateTitles}
-          disabled={isGeneratingTitles || !selectedLLMId}
-          className="action-button"
-          icon={<LightbulbOutlinedIcon />}
-          tooltip="Suggest alternative titles for your campaign based on the concept"
-        >
-          {isGeneratingTitles ? 'Generating...' : 'Suggest Titles'}
-        </Button>
-        {titlesError && <p className="error-message feedback-message">{titlesError}</p>}
-      </div>
+      {/* The title-generation-section div has been removed */}
+      {/* The campaign-badge-area editor-section div has been removed and its functionality moved to CampaignDetailsEditor */}
 
-      <div className="campaign-badge-area editor-section">
-        <h3>Campaign Badge Actions</h3>
-        {campaign.badge_image_url && (
-          <Box sx={{ mt: 1, mb: 1, textAlign: 'center' }}>
-            <Typography variant="caption" display="block" gutterBottom>
-              Current Badge:
-            </Typography>
-            <img
-              src={campaign.badge_image_url}
-              alt="Campaign Badge"
-              style={{ maxWidth: '100px', maxHeight: '100px', border: '1px solid #ccc' }}
-            />
-          </Box>
-        )}
-        <div className="campaign-badge-actions">
-          <Button
-            onClick={handleOpenBadgeImageModal}
-            disabled={badgeUpdateLoading}
-            className="action-button"
-            icon={<AddPhotoAlternateIcon />}
-            tooltip="Generate a new badge image for your campaign"
-          >
-            {badgeUpdateLoading ? "Processing..." : "Generate New Badge"}
-          </Button>
-          <Button
-            onClick={handleEditBadgeImageUrl}
-            disabled={badgeUpdateLoading}
-            className="action-button secondary-action-button"
-            icon={<EditIcon />}
-            tooltip="Manually set or change the URL for the campaign badge"
-          >
-            {badgeUpdateLoading ? "Processing..." : "Edit Badge URL"}
-          </Button>
-          {campaign?.badge_image_url && (
-            <Button
-              onClick={handleRemoveBadgeImage}
-              disabled={badgeUpdateLoading || !campaign?.badge_image_url}
-              className="action-button remove-button"
-              icon={<DeleteOutlineIcon />}
-              tooltip="Remove the current campaign badge image"
-            >
-              {badgeUpdateLoading ? "Removing..." : "Remove Badge"}
-            </Button>
-          )}
-        </div>
-        {badgeUpdateError && <p className="error-message feedback-message">{badgeUpdateError}</p>}
-      </div>
-
-      {campaign.concept && (
-        <section className="campaign-detail-section read-only-section editor-section">
-          <h2>Campaign Concept (Read-Only)</h2>
-          <div className="concept-content"><ReactMarkdown>{campaign.concept}</ReactMarkdown></div>
-        </section>
-      )}
+      {/* Campaign Concept section is MOVED from here to above tabs */}
       {/* TOC Section */}
       <section className="campaign-detail-section editor-section">
-        {campaign.toc && ( // Only show header if TOC exists to be collapsed/expanded
+        {campaign.display_toc && ( // Use display_toc: Only show header if TOC exists to be collapsed/expanded
           <h2 onClick={() => setIsTocCollapsed(!isTocCollapsed)} style={{ cursor: 'pointer' }}>
             {isTocCollapsed ? '▶' : '▼'} Table of Contents
           </h2>
         )}
         {/* Content: TOC display and/or Generate button */}
-        {(!campaign.toc || !isTocCollapsed) && ( // Show if no TOC, or if TOC exists and is not collapsed
+        {(!campaign.display_toc || !isTocCollapsed) && ( // Use display_toc: Show if no TOC, or if TOC exists and is not collapsed
           <div className="toc-controls-and-display" style={{ marginTop: '10px' }}>
-            {campaign.toc && <ReactMarkdown>{processedToc}</ReactMarkdown>}
+            {campaign.display_toc && <ReactMarkdown>{processedToc}</ReactMarkdown>} {/* Use display_toc for conditional rendering */}
             <Button
               onClick={handleGenerateTOC}
               disabled={isGeneratingTOC || !selectedLLMId}
               className="action-button"
-              style={{ marginTop: campaign.toc ? '10px' : '0' }}
+              style={{ marginTop: campaign.display_toc ? '10px' : '0' }} // Use display_toc for style condition
               icon={<ListAltIcon />}
               tooltip={!selectedLLMId ? "Select an LLM model from the Settings tab first" : "Generate or re-generate the Table of Contents based on the campaign concept and sections"}
             >
-              {isGeneratingTOC ? 'Generating TOC...' : (campaign.toc ? 'Re-generate Table of Contents' : 'Generate Table of Contents')}
+              {isGeneratingTOC ? 'Generating TOC...' : (campaign.display_toc ? 'Re-generate Table of Contents' : 'Generate Table of Contents')} {/* Use display_toc for button text */}
             </Button>
             {tocError && <p className="error-message feedback-message" style={{ marginTop: '5px' }}>{tocError}</p>}
+
+            {campaign.display_toc && ( // Only show this button if a display_toc exists
+              <div style={{ marginTop: '15px' }}> {/* Added a div for spacing */}
+                <Button
+                  onClick={handleSeedSectionsFromToc}
+                  disabled={isSeedingSections || !campaign.display_toc}
+                  className="action-button"
+                  icon={<AddCircleOutlineIcon />} // Using existing icon for now
+                  tooltip="Parse the current Table of Contents and create campaign sections based on its structure."
+                >
+                  {isSeedingSections ? 'Creating Sections...' : 'Approve TOC & Create Sections'}
+                </Button>
+                {seedSectionsError && <p className="error-message feedback-message" style={{ marginTop: '5px' }}>{seedSectionsError}</p>}
+              </div>
+            )}
           </div>
         )}
       </section>
@@ -863,8 +879,7 @@ const CampaignEditorPage: React.FC = () => {
       </div>
       {/* LLM related errors can be shown within this tab or globally */}
       {tocError && <p className="error-message llm-feedback editor-section">{tocError}</p>}
-      {/* titlesError is now shown in the details tab near the button, so we can remove it from here if it's redundant */}
-      {/* {titlesError && <p className="error-message llm-feedback editor-section">{titlesError}</p>} */}
+      {/* titlesError is now handled by CampaignDetailsEditor */}
 
       {/* The old suggested titles display is removed from here. It's now handled by the modal. */}
 
@@ -892,6 +907,16 @@ const CampaignEditorPage: React.FC = () => {
   return (
     <div className="campaign-editor-page">
       {isPageLoading && <LoadingSpinner />}
+
+      {/* === Campaign Concept Display === */}
+      {campaign && campaign.concept && (
+        <section className="campaign-detail-section read-only-section editor-section page-level-concept">
+          <h2>Campaign Concept</h2>
+          <div className="concept-content"><ReactMarkdown>{campaign.concept}</ReactMarkdown></div>
+        </section>
+      )}
+      {/* === End of Campaign Concept Display === */}
+
       <Tabs tabs={tabItems} />
 
       {/* Modals remain at the top level */}

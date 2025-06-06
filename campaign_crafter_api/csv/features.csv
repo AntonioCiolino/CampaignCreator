@@ -1,7 +1,5 @@
-Campaign,Create a campaign based on the following concepts: {user_prompt}###
-
-
-Table of Contents,"Based on the campaign concept provided below, generate a detailed Table of Contents suitable for an RPG campaign book.
+Campaign,"Create a campaign based on the following concepts: {user_prompt}###"
+TOC Homebrewery,"Based on the campaign concept provided below, generate a detailed Table of Contents suitable for an RPG campaign book.
 The Table of Contents must strictly follow Homebrewery Markdown formatting.
 Use 'PAGENUM' as a placeholder for all page numbers, like '{{PAGENUM}}' and '(#pPAGENUM)'.
 
@@ -22,54 +20,46 @@ End the Table of Contents with }}}}
 
 Campaign Concept:
 {campaign_concept}"
-Campaign Names,Based on the campaign concept: {campaign_concept}, generate {count} alternative, catchy campaign titles. Use sensory language and hyperbole and metaphor. List each title on a new line.
-Unused, -- All of these following are currently unused --
-Simile, create a Simile from the following sentence:
+TOC Display,"Based on the campaign concept provided below, generate a user-friendly Table of Contents for on-screen display. Use Markdown. Focus on clear section titles that can be linked. Example format:
+
+- Main Section 1
+  - Subsection 1.1
+  - Subsection 1.2
+- Main Section 2
+  - Subsection 2.1
+
+Campaign Concept:
+{campaign_concept}"
+Campaign Names,"Based on the campaign concept: {campaign_concept}, generate {count} alternative, catchy campaign titles. Use sensory language and hyperbole and metaphor. List each title on a new line."
+Unused, "-- All of these following are currently unused --"
+Simile,"create a Simile from the following sentence:
+{}"
+---
+Metaphor,"create a Metaphor from the following sentence:
+{}"
+---
+Hyperbole,"create a Hyperbole from the following sentence:
+{}"
+---
+Summarize,"Summarize the following:
+---
 {}
 ---
-
-
-Metaphor, create a Metaphor from the following sentence:
-{}
+Rewritten as a summary:"
+Allegory,"create a Allegory from the following sentence:
+{}"
 ---
-
-
-Hyperbole, create a Hyperbole from the following sentence:
-{}
+Stanza,"create a stanza from the following sentence:
+{}"
 ---
-
-
-Summarize, Summarize the following:
+Thought,"create a thought from the following sentence:
+{}"
 ---
-{}
+Idea,"create a idea from the following sentence:
+{}"
 ---
-Rewritten as a summary:
-
-
-Allegory, create a Allegory from the following sentence:
-{}
+Proposal,"create a proposal from the following sentence:
+{}"
 ---
-
-
-Stanza, create a stanza from the following sentence:
-{}
----
-
-
-Thought, create a thought from the following sentence:
-{}
----
-
-
-Idea, create a idea from the following sentence:
-{}
----
-
-
-Proposal, create a proposal from the following sentence:
-{}
----
-
-
-Dialogue, Generate a dialogue between characters.
-{}
+Dialogue,"Generate a dialogue between characters.
+{}"

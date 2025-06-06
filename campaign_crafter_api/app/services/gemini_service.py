@@ -2,7 +2,7 @@ import google.generativeai as genai # type: ignore
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
 from app.core.config import settings
-from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError # Import specific error
+from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError, LLMGenerationError # Import specific error
 from app.services.feature_prompt_service import FeaturePromptService
 # Removed import from llm_factory: from app.services.llm_factory import LLMServiceUnavailableError
 from pathlib import Path # For the __main__ block
@@ -116,18 +116,48 @@ class GeminiLLMService(AbstractLLMService):
         return await self.generate_text(prompt=final_prompt, model=model_instance.model_name, temperature=0.7, max_tokens=1000)
 
 
-    async def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> str:
+    async def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> Dict[str, str]:
         if not await self.is_available():
             raise LLMServiceUnavailableError("Gemini service is not available.")
         if not campaign_concept:
             raise ValueError("Campaign concept cannot be empty.")
-        model_instance = self._get_model_instance(model)
         
-        custom_prompt_template = self.feature_prompt_service.get_prompt("Table of Contents", db=db)
-        final_prompt = custom_prompt_template.format(campaign_concept=campaign_concept) if custom_prompt_template else \
-                       f"Based on the following RPG campaign concept: '{campaign_concept}', generate a hierarchical Table of Contents suitable for an RPG campaign book. Include main chapters and potential sub-sections with brief descriptions for each."
+        model_instance = self._get_model_instance(model) # Determine model instance once
+
+        # Fetch Display TOC prompt
+        display_prompt_template_str = self.feature_prompt_service.get_prompt("TOC Display", db=db)
+        if not display_prompt_template_str:
+            raise LLMGenerationError("Display TOC prompt template ('TOC Display') not found in database for Gemini.")
+        display_final_prompt = display_prompt_template_str.format(campaign_concept=campaign_concept)
         
-        return await self.generate_text(prompt=final_prompt, model=model_instance.model_name, temperature=0.5, max_tokens=700)
+        generated_display_toc = await self.generate_text(
+            prompt=display_final_prompt,
+            model=model_instance.model_name,
+            temperature=0.5,
+            max_tokens=700
+        )
+        if not generated_display_toc:
+             raise LLMGenerationError(f"Gemini API call for Display TOC (model: {model_instance.model_name}) succeeded but returned no usable content.")
+
+        # Fetch Homebrewery TOC prompt
+        homebrewery_prompt_template_str = self.feature_prompt_service.get_prompt("TOC Homebrewery", db=db)
+        if not homebrewery_prompt_template_str:
+            raise LLMGenerationError("Homebrewery TOC prompt template ('TOC Homebrewery') not found in database for Gemini.")
+        homebrewery_final_prompt = homebrewery_prompt_template_str.format(campaign_concept=campaign_concept)
+
+        generated_homebrewery_toc = await self.generate_text(
+            prompt=homebrewery_final_prompt,
+            model=model_instance.model_name,
+            temperature=0.5,
+            max_tokens=1000 # Potentially more tokens for complex Homebrewery format
+        )
+        if not generated_homebrewery_toc:
+             raise LLMGenerationError(f"Gemini API call for Homebrewery TOC (model: {model_instance.model_name}) succeeded but returned no usable content.")
+
+        return {
+            "display_toc": generated_display_toc,
+            "homebrewery_toc": generated_homebrewery_toc
+        }
 
     async def generate_titles(self, campaign_concept: str, db: Session, count: int = 5, model: Optional[str] = None) -> List[str]:
         if not await self.is_available():
@@ -168,7 +198,7 @@ class GeminiLLMService(AbstractLLMService):
                 final_prompt += f"Summary of existing sections: {existing_sections_summary}\n"
             final_prompt += f"Instruction for new section (titled '{section_title_suggestion or 'Next Part'}'): {section_creation_prompt or 'Develop the next part of the campaign story.'}"
         
-        return await self.generate_text(prompt=final_prompt, model=model_instance.model_name, temperature=0.7, max_tokens=1500)
+        return await self.generate_text(prompt=final_prompt, model=model_instance.model_name, temperature=0.7, max_tokens=4000) # Increased max_tokens
 
     async def list_available_models(self) -> List[Dict[str, str]]:
         if not await self.is_available(): # Use async is_available
@@ -231,7 +261,7 @@ if __name__ == '__main__':
     from dotenv import load_dotenv
     import os
 
-    # Load .env from the project root or monorepo root
+    # Synchronous setup should be outside main_test but inside if __name__ == '__main__'
     env_path_api_root = Path(__file__).resolve().parent.parent.parent / ".env"
     env_path_monorepo_root = Path(__file__).resolve().parent.parent.parent.parent / ".env"
 
@@ -243,27 +273,36 @@ if __name__ == '__main__':
         print(f"Warning: .env file not found at {env_path_api_root} or {env_path_monorepo_root}. Service might not initialize correctly.")
 
     settings.GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", settings.GEMINI_API_KEY)
-    settings.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", settings.OPENAI_API_KEY) 
+    settings.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", settings.OPENAI_API_KEY)
 
-    if not GeminiLLMService().is_available(): # Check availability using the instance method
-        print("Skipping GeminiLLMService tests as GEMINI_API_KEY is not set or is a placeholder.")
-    else:
-        print(f"Attempting to initialize GeminiLLMService with key: ...{settings.GEMINI_API_KEY[-4:] if settings.GEMINI_API_KEY else 'None'}")
+    async def main_test(): # Async function definition
+        db_session_placeholder: Optional[Session] = None # Placeholder for db session
+
+        gemini_service_instance_for_check = GeminiLLMService() # Create instance for is_available check
+        is_initially_available = False
         try:
-            gemini_service = GeminiLLMService()
-            print("GeminiLLMService Initialized.")
+            is_initially_available = await gemini_service_instance_for_check.is_available()
+        finally:
+            await gemini_service_instance_for_check.close() # Ensure close is awaited
+
+        if not is_initially_available: # Check availability using the instance method
+            print("Skipping GeminiLLMService tests as GEMINI_API_KEY is not set or is a placeholder.")
+            return # Exit main_test if not available
+
+        print(f"Attempting to initialize GeminiLLMService with key: ...{settings.GEMINI_API_KEY[-4:] if settings.GEMINI_API_KEY else 'None'}")
+        gemini_service = GeminiLLMService() # Re-initialize for actual use
+        try:
+            print("GeminiLLMService Initialized for tests.") # Clarified print message
 
             print("\nAvailable Gemini Models (IDs are for service methods):")
-            models = gemini_service.list_available_models()
-            for m in models:
+            models_list = await gemini_service.list_available_models() # Use a different variable name
+            for m in models_list:
                 print(f"- {m['name']} (id: {m['id']})")
 
-            if models:
-                # Pick a model for testing - prefer non-default if available and different
+            if models_list:
                 test_model_id_for_service = gemini_service.DEFAULT_MODEL
-                if len(models) > 1:
-                    # Try to pick a different model from default for one test, if available
-                    alt_models = [m['id'] for m in models if m['id'] != gemini_service.DEFAULT_MODEL]
+                if len(models_list) > 1:
+                    alt_models = [m['id'] for m in models_list if m['id'] != gemini_service.DEFAULT_MODEL]
                     if alt_models:
                         test_model_id_for_service = alt_models[0]
                 
@@ -271,7 +310,7 @@ if __name__ == '__main__':
 
                 print("\n--- Testing Generic Text Generation ---")
                 try:
-                    generic_text = gemini_service.generate_text(
+                    generic_text = await gemini_service.generate_text(
                         prompt=f"Tell me a short story about a robot learning to paint. Use model {test_model_id_for_service}.", 
                         model=test_model_id_for_service, 
                         temperature=0.8, 
@@ -282,22 +321,28 @@ if __name__ == '__main__':
                     print(f"Error during generic text generation test: {e}")
 
                 print(f"\n--- Testing Campaign Concept Generation (using default model: {gemini_service.DEFAULT_MODEL}) ---")
+                db_session_placeholder: Optional[Session] = None
                 try:
-                    concept = gemini_service.generate_campaign_concept("A city powered by captured dreams.") # Uses default model
+                    concept = await gemini_service.generate_campaign_concept("A city powered by captured dreams.", db=db_session_placeholder)
                     print("Concept Output (first 150 chars):", concept[:150] + "..." if concept else "No concept generated.")
 
                     if concept:
                         print(f"\n--- Testing TOC Generation (using model: {test_model_id_for_service}) ---")
-                        toc = gemini_service.generate_toc(concept, model=test_model_id_for_service)
-                        print("TOC Output (first 150 chars):", toc[:150] + "..." if toc else "No TOC generated.")
+                        toc_result = await gemini_service.generate_toc(concept, db=db_session_placeholder, model=test_model_id_for_service)
+                        if toc_result:
+                            print("Display TOC Output (first 150 chars):", toc_result.get("display_toc", "")[:150] + "...")
+                            print("Homebrewery TOC Output (first 150 chars):", toc_result.get("homebrewery_toc", "")[:150] + "...")
+                        else:
+                            print("No TOC generated.")
 
                         print(f"\n--- Testing Titles Generation (using default model: {gemini_service.DEFAULT_MODEL}) ---")
-                        titles = gemini_service.generate_titles(concept, count=3) # Uses default model
+                        titles = await gemini_service.generate_titles(concept, db=db_session_placeholder, count=3)
                         print("Titles Output:", titles)
 
                         print(f"\n--- Testing Section Content Generation (using model: {test_model_id_for_service}) ---")
-                        section_content = gemini_service.generate_section_content(
+                        section_content = await gemini_service.generate_section_content(
                             campaign_concept=concept,
+                            db=db_session_placeholder,
                             existing_sections_summary="Chapter 1: The Dream Weavers. Chapter 2: The Nightmare Market.",
                             section_creation_prompt="A character discovers a way to enter the dreamscape physically.",
                             section_title_suggestion="Chapter 3: Lucid Reality",
@@ -313,3 +358,7 @@ if __name__ == '__main__':
             print(f"Error initializing or using GeminiLLMService: {ve}")
         except Exception as e:
             print(f"An unexpected error occurred during GeminiLLMService testing: {e}")
+        finally:
+            await gemini_service.close() # Ensure client is closed
+
+    asyncio.run(main_test())
