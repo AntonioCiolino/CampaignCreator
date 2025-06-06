@@ -10,12 +10,13 @@ const mockCampaignWithBadge: Campaign = {
   title: 'Test Campaign With Badge',
   initial_user_prompt: 'A grand adventure awaits!',
   concept: 'A quest to find the ancient artifact.',
-  display_toc: null, // Added
-  homebrewery_toc: 'Chapter 1: The Beginning', // Added, old toc content moved here
+  display_toc: null,
+  homebrewery_toc: [{ title: 'Chapter 1: The Beginning', type: 'chapter' }],
   badge_image_url: 'http://example.com/campaign_badge.png',
-  // owner_id and sections are not directly used by CampaignCard display but part of the interface
-  // owner_id: 1, 
-  // sections: [],
+  selected_llm_id: 'openai/gpt-3.5-turbo', // Added for interface completeness
+  temperature: 0.7, // Added for interface completeness
+  // owner_id: 1, // Not used by CampaignCard display
+  // sections: [], // Not used by CampaignCard display
 };
 
 const mockCampaignWithoutBadge: Campaign = {
@@ -23,11 +24,13 @@ const mockCampaignWithoutBadge: Campaign = {
   title: 'Test Campaign No Badge',
   initial_user_prompt: 'Another journey begins.',
   concept: 'Exploring the unknown lands.',
-  display_toc: null, // Added
-  homebrewery_toc: 'Introduction', // Added, old toc content moved here
+  display_toc: [{ title: 'Overview', type: 'generic' }, { title: 'Rules', type: 'rules' }],
+  homebrewery_toc: [{ title: 'Introduction', type: 'introduction' }],
   badge_image_url: null,
-  // owner_id: 2,
-  // sections: [],
+  selected_llm_id: 'openai/gpt-4', // Added for interface completeness
+  temperature: 0.5, // Added for interface completeness
+  // owner_id: 2, // Not used by CampaignCard display
+  // sections: [], // Not used by CampaignCard display
 };
 
 describe('CampaignCard', () => {

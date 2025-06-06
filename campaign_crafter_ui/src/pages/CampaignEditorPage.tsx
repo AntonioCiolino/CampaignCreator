@@ -6,10 +6,11 @@ import LLMSelectionDialog from '../components/modals/LLMSelectionDialog';
 import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal';
 import SuggestedTitlesModal from '../components/modals/SuggestedTitlesModal';
 import * as campaignService from '../services/campaignService';
-import { CampaignSection, SeedSectionsProgressEvent, SeedSectionsCallbacks } from '../services/campaignService'; // Added CampaignSection, SeedSectionsProgressEvent, SeedSectionsCallbacks
+// Ensure TOCEntry is imported, and other necessary types. Campaign is imported directly.
+import { Campaign, CampaignSection, TOCEntry, SeedSectionsProgressEvent, SeedSectionsCallbacks } from '../services/campaignService';
 import { getAvailableLLMs, LLMModel } from '../services/llmService';
 // CampaignSectionView will be used by CampaignSectionEditor
-// import CampaignSectionView from '../components/CampaignSectionView'; 
+// import CampaignSectionView from '../components/CampaignSectionView';
 import ReactMarkdown from 'react-markdown';
 import './CampaignEditorPage.css';
 import Button from '../components/common/Button'; // Ensure common Button is imported
@@ -37,8 +38,8 @@ import DetailedProgressDisplay from '../components/common/DetailedProgressDispla
 
 const CampaignEditorPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
-  const [campaign, setCampaign] = useState<campaignService.Campaign | null>(null);
-  const [sections, setSections] = useState<campaignService.CampaignSection[]>([]);
+  const [campaign, setCampaign] = useState<Campaign | null>(null); // Use imported Campaign type
+  const [sections, setSections] = useState<CampaignSection[]>([]); // Use imported CampaignSection type
   const [isLoading, setIsLoading] = useState<boolean>(true); // For initial page load
   const [isPageLoading, setIsPageLoading] = useState<boolean>(false); // For subsequent actions
   const [error, setError] = useState<string | null>(null);
@@ -183,29 +184,54 @@ const CampaignEditorPage: React.FC = () => {
   };
 
   const processedToc = useMemo(() => {
-    // Use display_toc for rendering in the UI
-    if (!campaign?.display_toc || !sections?.length) {
-      return campaign?.display_toc || '';
+    // Use display_toc for rendering in the UI (which is now TOCEntry[])
+    if (!campaign || !campaign.display_toc || campaign.display_toc.length === 0) { // Sections not needed for basic TOC display
+      return '';
     }
-    const tocLines = campaign.display_toc.split('\n');
-    const sectionTitleToIdMap = new Map(sections.filter(sec => sec.title).map(sec => [sec.title!.trim().toLowerCase(), `section-container-${sec.id}`]));
 
-    return tocLines.map(line => {
-      const match = line.match(/^(?:[#-*]\s*)?(.*)/);
-      if (!match || typeof match[1] !== 'string') { // Check if match is null or capture group is not a string
-        return line; // Return original line if no valid match
-      }
-      const potentialTitle = match[1].trim().toLowerCase();
+    // This map is correct for linking TOC entries to actual sections if they exist and sections are loaded
+    const sectionTitleToIdMap = new Map(
+      sections.filter(sec => sec.title).map(sec => [sec.title!.trim().toLowerCase(), `section-container-${sec.id}`])
+    );
 
-      if (potentialTitle && sectionTitleToIdMap.has(potentialTitle)) {
-        const sectionId = sectionTitleToIdMap.get(potentialTitle);
-        const prefixMatch = line.match(/^([#-*]\s*)/);
-        const prefix = prefixMatch ? prefixMatch[1] : ''; // prefixMatch can also be null
-        return `${prefix || ''}[${match[1].trim()}](#${sectionId})`;
+    return campaign.display_toc.map((tocEntry: TOCEntry) => { // Explicitly type tocEntry
+      const title = tocEntry.title || "Untitled Section";
+      const cleanedTitle = title.trim().toLowerCase();
+      const sectionId = sectionTitleToIdMap.get(cleanedTitle);
+
+      // If a corresponding section ID exists, create a markdown link
+      if (sectionId && sections?.length > 0) { // Ensure sections are loaded before trying to link
+        return `- [${title}](#${sectionId})`;
       }
-      return line;
+      // Otherwise, just list the title from TOC (it might not be a section yet)
+      return `- ${title}`;
     }).join('\n');
-  }, [campaign?.display_toc, sections]); // Update dependency array
+  }, [campaign, sections]); // campaign.display_toc is part of campaign object
+
+  // generateNavLinksFromToc function as described in the prompt for potential sidebar use
+  const generateNavLinksFromToc = () => {
+    if (!campaign || !campaign.display_toc || campaign.display_toc.length === 0) {
+      return [];
+    }
+    // campaign.display_toc is now TOCEntry[]
+    const sectionTitleToIdMap = new Map(
+      sections.filter(sec => sec.title).map(sec => [sec.title!.trim().toLowerCase(), `section-container-${sec.id}`])
+    );
+
+    return campaign.display_toc.map((tocEntry: TOCEntry) => {
+      const title = tocEntry.title || "Untitled Section";
+      const cleanedTitle = title.trim().toLowerCase();
+      const sectionIdMapped = sectionTitleToIdMap.get(cleanedTitle);
+      return {
+        // Use a generated ID for the link itself, perhaps based on index or cleaned title
+        id: `navlink-${tocEntry.type}-${title.replace(/\s+/g, '-').toLowerCase()}`,
+        label: title,
+        isTocEntry: true,
+        targetId: sectionIdMapped, // This is the ID of the section container to scroll to
+        type: tocEntry.type,
+      };
+    });
+  };
 
   // Placeholder for handleSeedSectionsFromToc
   const handleSeedSectionsFromToc = async () => {
@@ -567,8 +593,8 @@ const CampaignEditorPage: React.FC = () => {
       setTimeout(() => setSaveSuccess(null), 3000);
       return;
     }
-    if (!editableTitle.trim() || !editableInitialPrompt.trim()) {
-      setSaveError("Title and Initial Prompt cannot be empty.");
+    if (!editableTitle.trim()) {
+      setSaveError("Title cannot be empty."); // Initial prompt can be empty
       return;
     }
     setIsPageLoading(true);
@@ -752,7 +778,8 @@ const CampaignEditorPage: React.FC = () => {
     if (!campaignId) return;
 
     // Add confirmation before regenerating if TOC already exists
-    if (campaign && campaign.display_toc && typeof campaign.display_toc === 'string' && campaign.display_toc.trim() !== '') {
+    // Updated TOC existence check based on new format
+    if (campaign && campaign.display_toc && campaign.display_toc.length > 0) {
       if (!window.confirm("A Table of Contents already exists. Are you sure you want to regenerate it? This will overwrite the current TOC.")) {
         return; // User clicked "Cancel"
       }
@@ -1067,8 +1094,9 @@ const CampaignEditorPage: React.FC = () => {
         handleDeleteSection={handleDeleteSection}
         handleUpdateSectionContent={handleUpdateSectionContent}
         handleUpdateSectionTitle={handleUpdateSectionTitle}
-        onUpdateSectionOrder={handleUpdateSectionOrder} // Pass the new handler
-        forceCollapseAllSections={forceCollapseAll} // Pass the state here
+        handleUpdateSectionType={handleUpdateSectionType} // Pass the new handler
+        onUpdateSectionOrder={handleUpdateSectionOrder}
+        forceCollapseAllSections={forceCollapseAll}
       />
       {!isAddSectionCollapsed && campaign?.concept?.trim() && ( // Only show form if concept exists and not collapsed
         <div className="editor-actions add-section-area editor-section card-like" style={{ marginTop: '20px' }}>
