@@ -333,16 +333,16 @@ const CampaignEditorPage: React.FC = () => {
         return; // Don't run if initial load isn't complete or essential data missing
     }
 
-    console.log("LLM_AUTOSAVE_EFFECT_RUN:", {
-      selectedLLMId,
-      temperature,
-      campaignId, // from useParams
-      campaignIdFromCampaign: campaign?.id,
-      campaignSelectedLLM: campaign?.selected_llm_id,
-      campaignTemperature: campaign?.temperature,
-      isLoading,
-      debounceTimerExists: !!debounceTimer
-    });
+    // console.log("LLM_AUTOSAVE_EFFECT_RUN:", {
+    //   selectedLLMId,
+    //   temperature,
+    //   campaignId, // from useParams
+    //   campaignIdFromCampaign: campaign?.id,
+    //   campaignSelectedLLM: campaign?.selected_llm_id,
+    //   campaignTemperature: campaign?.temperature,
+    //   isLoading,
+    //   debounceTimerExists: !!debounceTimer
+    // });
 
     // Clear previous timer if it exists
     if (debounceTimer) {
@@ -362,27 +362,27 @@ const CampaignEditorPage: React.FC = () => {
             return;
         }
 
-        console.log("LLM_AUTOSAVE_CHECKING_CONDITIONS:", {
-          campaignExists: !!campaign, // Should be true here
-          selectedLLMId_state: selectedLLMId,
-          campaign_selected_llm_id: campaign?.selected_llm_id,
-          temperature_state: temperature,
-          campaign_temperature: campaign?.temperature
-        });
+        // console.log("LLM_AUTOSAVE_CHECKING_CONDITIONS:", {
+        //   campaignExists: !!campaign, // Should be true here
+        //   selectedLLMId_state: selectedLLMId,
+        //   campaign_selected_llm_id: campaign?.selected_llm_id,
+        //   temperature_state: temperature,
+        //   campaign_temperature: campaign?.temperature
+        // });
 
         // THE CRUCIAL CHECK:
         if (selectedLLMId === campaign.selected_llm_id &&
             temperature === campaign.temperature) {
-            console.log("LLM_AUTOSAVE_SKIPPED: No change in settings.");
+            // console.log("LLM_AUTOSAVE_SKIPPED: No change in settings.");
             return;
         }
 
         // If the code reaches here, it means settings have changed and a save is needed.
-        console.log("LLM_AUTOSAVE_PROCEEDING: Settings changed or initial save. Attempting save.", {
-           campaignIdToSave: campaign.id,
-           selectedLLMId,
-           temperature
-        });
+        // console.log("LLM_AUTOSAVE_PROCEEDING: Settings changed or initial save. Attempting save.", {
+        //    campaignIdToSave: campaign.id,
+        //    selectedLLMId,
+        //    temperature
+        // });
         setIsAutoSavingLLMSettings(true);
         setAutoSaveLLMSettingsError(null);
         setAutoSaveLLMSettingsSuccess(null);
