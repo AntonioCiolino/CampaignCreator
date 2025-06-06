@@ -2,13 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { CampaignSection } from '../services/campaignService';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
-import ReactQuill from 'react-quill'; // Removed Quill from import
+import ReactQuill, { Quill } from 'react-quill';
+import type { RangeStatic as QuillRange } from 'quill'; // Import QuillRange
 import 'react-quill/dist/quill.snow.css'; // Import Quill's snow theme CSS
 import Button from './common/Button'; // Added Button import
 import RandomTableRoller from './RandomTableRoller';
 import ImageGenerationModal from './modals/ImageGenerationModal/ImageGenerationModal'; // Import the new modal
 import './CampaignSectionView.css';
 import { CampaignSectionUpdatePayload } from '../services/campaignService';
+import { generateTextLLM, LLMTextGenerationParams } from '../services/llmService';
+import { getFeatures } from '../services/featureService'; // Added import
+import { Feature } from '../types/featureTypes'; // Added import
 import * as campaignService from '../services/campaignService'; // Moved import to top
 
 interface CampaignSectionViewProps {
@@ -40,6 +44,11 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   const [localSaveError, setLocalSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [isImageGenerationModalOpen, setIsImageGenerationModalOpen] = useState<boolean>(false);
+  const [isGeneratingContent, setIsGeneratingContent] = useState<boolean>(false);
+  const [contentGenerationError, setContentGenerationError] = useState<string | null>(null);
+  const [features, setFeatures] = useState<Feature[]>([]);
+  const [selectedFeatureId, setSelectedFeatureId] = useState<string>("");
+  const [featureFetchError, setFeatureFetchError] = useState<string | null>(null);
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [regenerateError, setRegenerateError] = useState<string | null>(null);
 
@@ -59,6 +68,25 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
       setIsCollapsed(forceCollapse);
     }
   }, [forceCollapse]);
+
+  useEffect(() => {
+    if (isEditing && features.length === 0 && !featureFetchError) {
+      const loadFeatures = async () => {
+        try {
+          setFeatureFetchError(null);
+          const fetchedFeatures = await getFeatures();
+          setFeatures(fetchedFeatures);
+        } catch (error) {
+          console.error("Failed to load features:", error);
+          setFeatureFetchError(error instanceof Error ? error.message : "An unknown error occurred while fetching features.");
+        }
+      };
+      loadFeatures();
+    } else if (!isEditing) {
+      // Optional: Clear features or selected feature when not editing
+      // setSelectedFeatureId("");
+    }
+  }, [isEditing, features.length, featureFetchError]);
   
   const handleEdit = () => {
     setIsCollapsed(false); // Expand section on edit
@@ -73,6 +101,105 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
     setEditedContent(section.content || '');
     setLocalSaveError(null);
     setSaveSuccess(false);
+    setContentGenerationError(null); // Clear content generation error on cancel
+  };
+
+  const handleGenerateContent = async () => {
+    setIsGeneratingContent(true);
+    setContentGenerationError(null);
+    let initialSelectionRange: QuillRange | null = null; // Use QuillRange
+
+    try {
+      let contextText = '';
+      if (quillInstance) {
+        initialSelectionRange = quillInstance.getSelection();
+        if (initialSelectionRange && initialSelectionRange.length > 0) {
+          contextText = quillInstance.getText(initialSelectionRange.index, initialSelectionRange.length);
+        } else {
+          // Get all text if no selection, but trim it to avoid overly long contexts.
+          // Or consider a configurable max context length.
+          const fullText = quillInstance.getText();
+          contextText = fullText.substring(0, 2000); // Limit context length
+        }
+      } else {
+        contextText = editedContent.substring(0, 2000); // Fallback and limit
+      }
+
+      let finalPrompt = "";
+      if (selectedFeatureId) {
+        const selectedFeature = features.find(f => f.id.toString() === selectedFeatureId); // Ensure ID types are compared correctly
+        if (selectedFeature) {
+          if (selectedFeature.template.includes("{}")) {
+            finalPrompt = selectedFeature.template.replace("{}", contextText);
+          } else {
+            finalPrompt = selectedFeature.template; // Context from editor is ignored
+          }
+        } else {
+          // Fallback if selectedFeatureId is somehow invalid
+          finalPrompt = `Generate content based on the following context: ${contextText}`;
+        }
+      } else {
+        finalPrompt = `Generate content based on the following context: ${contextText}`;
+      }
+
+      const params: LLMTextGenerationParams = {
+        prompt: finalPrompt,
+        model_id_with_prefix: null, // Use default model
+        // Add any other params like max_tokens, temperature if needed
+      };
+
+      const response = await generateTextLLM(params);
+      const generatedText = response.text; // Changed generated_text to text
+
+      if (quillInstance) {
+        // initialSelectionRange was captured at the beginning of the function.
+        // We use it to decide the mode of operation (insert after selection, or append to end).
+
+        if (initialSelectionRange && initialSelectionRange.length > 0) {
+          // Insert generated text AFTER the selected text
+          const insertionPoint = initialSelectionRange.index + initialSelectionRange.length;
+          const textToInsert = " " + generatedText; // Prepend with a space
+
+          quillInstance.insertText(insertionPoint, textToInsert, 'user');
+          // Set cursor to the end of the newly inserted text
+          quillInstance.setSelection(insertionPoint + textToInsert.length, 0, 'user');
+        } else {
+          // No initial selection, so insert at the current cursor position
+          const currentCursorSelection = quillInstance.getSelection(); // Get current cursor
+          let insertionPoint = currentCursorSelection ? currentCursorSelection.index : (quillInstance.getLength() -1);
+          // Ensure insertionPoint is not negative if getLength() was 0 or 1.
+          if (insertionPoint < 0) insertionPoint = 0;
+
+          // For inserting at cursor, we might not need a leading newline by default,
+          // unless cursor is at the very start of an empty line or end of doc.
+          // For simplicity now, just insert the text. User can add spaces/newlines.
+          // const textToInsert = generatedText;
+          // Consider adding a space if the preceding character isn't a space, similar to random item insertion.
+          let textToInsert = generatedText;
+          if (insertionPoint > 0) {
+            const textBefore = quillInstance.getText(insertionPoint - 1, 1);
+            if (textBefore !== ' ' && textBefore !== '\n') {
+              textToInsert = " " + generatedText;
+            }
+          }
+
+          quillInstance.insertText(insertionPoint, textToInsert, 'user');
+          // Move cursor to the end of the inserted text
+          quillInstance.setSelection(insertionPoint + textToInsert.length, 0, 'user');
+        }
+        setEditedContent(quillInstance.root.innerHTML);
+      } else {
+        // Fallback: Append to editedContent state
+        // This won't handle replacing selected text if quillInstance was initially null.
+        setEditedContent(prev => prev + "\n" + generatedText);
+      }
+
+    } catch (error) {
+      console.error("Failed to generate content:", error);
+      setContentGenerationError('Failed to generate content. An error occurred.');
+    } finally {
+      setIsGeneratingContent(false);
+    }
   };
 
   const handleInsertRandomItem = (itemText: string) => {
@@ -186,17 +313,40 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
               <RandomTableRoller onInsertItem={handleInsertRandomItem} />
               
               <div className="editor-actions">
-                <Button onClick={handleSave} className="editor-button" disabled={isSaving}>
+                <Button onClick={handleSave} className="editor-button" disabled={isSaving || isGeneratingContent}>
                   {isSaving ? 'Saving...' : 'Save Content'}
                 </Button>
-                <Button onClick={() => setIsImageGenerationModalOpen(true)} className="editor-button">
+                {isEditing && (
+                  <div className="feature-selector-group" style={{ marginRight: '10px', display: 'inline-block', verticalAlign: 'middle' }}>
+                    <select
+                      value={selectedFeatureId}
+                      onChange={(e) => setSelectedFeatureId(e.target.value)}
+                      disabled={isGeneratingContent || isSaving || features.length === 0}
+                      style={{ padding: '8px 12px', borderRadius: '4px', border: '1px solid #ccc', height: '38px', boxSizing: 'border-box' }}
+                      title={features.length === 0 && !featureFetchError ? "Loading features..." : (featureFetchError ? "Error loading features" : "Select a feature to guide content generation")}
+                    >
+                      <option value="">-- No Specific Feature --</option>
+                      {features.map(feature => (
+                        <option key={feature.id} value={feature.id}>
+                          {feature.name}
+                        </option>
+                      ))}
+                    </select>
+                    {featureFetchError && <p className="error-message" style={{fontSize: '0.8em', color: 'red', marginTop: '2px'}}>{featureFetchError}</p>}
+                  </div>
+                )}
+                <Button onClick={handleGenerateContent} className="editor-button" disabled={isGeneratingContent || isSaving}>
+                  {isGeneratingContent ? 'Generating...' : 'Generate Content'}
+                </Button>
+                <Button onClick={() => setIsImageGenerationModalOpen(true)} className="editor-button" disabled={isGeneratingContent || isSaving}>
                   Generate Image
                 </Button>
-                <Button onClick={handleCancel} className="editor-button" variant="secondary" disabled={isSaving}>
+                <Button onClick={handleCancel} className="editor-button" variant="secondary" disabled={isSaving || isGeneratingContent}>
                   Cancel
                 </Button>
                 {localSaveError && <p className="error-message editor-feedback">{localSaveError}</p>}
                 {externalSaveError && !localSaveError && <p className="error-message editor-feedback">{externalSaveError}</p>}
+                {contentGenerationError && <p className="error-message editor-feedback">{contentGenerationError}</p>}
                 {saveSuccess && <p className="success-message editor-feedback">Content saved!</p>}
               </div>
             </div>

@@ -606,6 +606,14 @@ const CampaignEditorPage: React.FC = () => {
 
   const handleGenerateTOC = async () => {
     if (!campaignId) return;
+
+    // Add confirmation before regenerating if TOC already exists
+    if (campaign && campaign.display_toc && typeof campaign.display_toc === 'string' && campaign.display_toc.trim() !== '') {
+      if (!window.confirm("A Table of Contents already exists. Are you sure you want to regenerate it? This will overwrite the current TOC.")) {
+        return; // User clicked "Cancel"
+      }
+    }
+
     setIsPageLoading(true);
     setIsGeneratingTOC(true);
     setTocError(null);
