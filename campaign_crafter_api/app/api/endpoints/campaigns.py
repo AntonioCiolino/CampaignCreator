@@ -203,8 +203,11 @@ async def seed_sections_from_toc_endpoint(
     if db_campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
 
+    print(f"--- Seeding sections for campaign {campaign_id} ---")
     if not db_campaign.display_toc:
+        print(f"Campaign {campaign_id} has no display_toc. Cannot seed sections.")
         raise HTTPException(status_code=400, detail="No display_toc found for this campaign. Cannot seed sections.")
+    print(f"Raw display_toc for campaign {campaign_id}:\n{db_campaign.display_toc}")
 
     try:
         # Step 1: Parse db_campaign.display_toc into a list of section titles
@@ -221,17 +224,19 @@ async def seed_sections_from_toc_endpoint(
                     title = re.sub(r"\[(.*?)\]\(.*?\)", r"\1", title).strip()
                     parsed_titles.append(title)
 
-        # If TOC is present but no list items were parsed, it's not an error for the endpoint,
-        # just means no sections will be created. UI will show an empty list.
-        # (Handled by returning empty list if parsed_titles is empty)
+        print(f"Parsed titles for campaign {campaign_id}: {parsed_titles}")
+        if not parsed_titles:
+            print(f"No titles were parsed from display_toc for campaign {campaign_id}. No sections will be created.")
 
         # Step 2: Delete existing sections for this campaign
+        print(f"About to delete existing sections for campaign {campaign_id}.")
         deleted_count = crud.delete_sections_for_campaign(db=db, campaign_id=campaign_id)
         print(f"Deleted {deleted_count} existing sections for campaign {campaign_id} before seeding from TOC.")
 
         # Step 3: Create new sections based on parsed_titles
         created_sections_orm = []
         for order, title in enumerate(parsed_titles):
+            print(f"Creating section for campaign {campaign_id}: Title='{title}', Order={order}")
             created_section = crud.create_section_with_placeholder_content(
                 db=db,
                 campaign_id=campaign_id,
@@ -241,6 +246,8 @@ async def seed_sections_from_toc_endpoint(
             )
             created_sections_orm.append(created_section)
 
+        print(f"Returning {len(created_sections_orm)} created sections for campaign {campaign_id}: {[s.title for s in created_sections_orm]}")
+        print(f"--- Finished seeding sections for campaign {campaign_id} ---")
         return created_sections_orm
 
     except Exception as e:
