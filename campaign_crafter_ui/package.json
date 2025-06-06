@@ -58,7 +58,7 @@
   },
   "jest": {
     "transformIgnorePatterns": [
-      "/node_modules/(?!(axios|react-markdown|devlop|unist(-.+)?|remark(-.+)?|rehype(-.+)?|mdast(-.+)?|micromark(-.+)?|vfile(-.+)?|vfile|hast(-.+)?|estree(-.+)?|estree-util(-.+)?|html-url-attributes|bail|ccount|character-entities|decode-named-character-reference|longest-streak|markdown-table|trim-lines|trough|unified|property-information|space-separated-tokens|comma-separated-tokens|web-namespaces|github-slugger|refractor|detab|inline-style-parser|style-to-object|is-plain-obj|zwitch)/)",
+      "/node_modules/(?!(axios|react-markdown|devlop|unist(-.+)?|remark(-.+)?|rehype(-.+)?|mdast(-.+)?|micromark(-.+)?|vfile(-.+)?|vfile|hast(-.+)?|hastscript|html-void-elements|estree(-.+)?|estree-util(-.+)?|html-url-attributes|bail|ccount|character-entities|decode-named-character-reference|longest-streak|markdown-table|trim-lines|trough|unified|property-information|space-separated-tokens|comma-separated-tokens|web-namespaces|github-slugger|refractor|detab|inline-style-parser|style-to-object|is-plain-obj|zwitch)/)",
       "\\.pnp\\.[^\\/]+$"
     ],
     "moduleNameMapper": {

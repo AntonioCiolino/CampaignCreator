@@ -3,6 +3,7 @@ import { CampaignSection } from '../services/campaignService';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import ReactQuill, { Quill } from 'react-quill';
+import type { RangeStatic as QuillRange } from 'quill'; // Import QuillRange
 import 'react-quill/dist/quill.snow.css'; // Import Quill's snow theme CSS
 import Button from './common/Button'; // Added Button import
 import RandomTableRoller from './RandomTableRoller';
@@ -67,7 +68,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
   const handleGenerateContent = async () => {
     setIsGeneratingContent(true);
     setContentGenerationError(null);
-    let initialSelectionRange: Quill.Range | null = null;
+    let initialSelectionRange: QuillRange | null = null; // Use QuillRange
 
     try {
       let contextText = '';
@@ -94,7 +95,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
       };
 
       const response = await generateTextLLM(params);
-      const generatedText = response.generated_text;
+      const generatedText = response.text; // Changed generated_text to text
 
       if (quillInstance) {
         // It's good practice to get the selection again right before an operation,
