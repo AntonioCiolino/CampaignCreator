@@ -9,6 +9,7 @@ import RandomTableRoller from './RandomTableRoller';
 import ImageGenerationModal from './modals/ImageGenerationModal/ImageGenerationModal'; // Import the new modal
 import './CampaignSectionView.css';
 import { CampaignSectionUpdatePayload } from '../services/campaignService';
+import { generateTextLLM, LLMTextGenerationParams } from '../services/llmService'; // Added import
 
 interface CampaignSectionViewProps {
   section: CampaignSection;
@@ -27,6 +28,8 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
   const [localSaveError, setLocalSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [isImageGenerationModalOpen, setIsImageGenerationModalOpen] = useState<boolean>(false);
+  const [isGeneratingContent, setIsGeneratingContent] = useState<boolean>(false);
+  const [contentGenerationError, setContentGenerationError] = useState<string | null>(null);
 
 
   // Ensure editedContent is updated if the section prop changes externally
@@ -58,6 +61,72 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
     setEditedContent(section.content || '');
     setLocalSaveError(null);
     setSaveSuccess(false);
+    setContentGenerationError(null); // Clear content generation error on cancel
+  };
+
+  const handleGenerateContent = async () => {
+    setIsGeneratingContent(true);
+    setContentGenerationError(null);
+    let initialSelectionRange: Quill.Range | null = null;
+
+    try {
+      let contextText = '';
+      if (quillInstance) {
+        initialSelectionRange = quillInstance.getSelection();
+        if (initialSelectionRange && initialSelectionRange.length > 0) {
+          contextText = quillInstance.getText(initialSelectionRange.index, initialSelectionRange.length);
+        } else {
+          // Get all text if no selection, but trim it to avoid overly long contexts.
+          // Or consider a configurable max context length.
+          const fullText = quillInstance.getText();
+          contextText = fullText.substring(0, 2000); // Limit context length
+        }
+      } else {
+        contextText = editedContent.substring(0, 2000); // Fallback and limit
+      }
+
+      const prompt = `Based on the following context, generate additional relevant content. If the context is a question, answer it. If it's a statement, expand on it or provide related information. Context: ${contextText}`;
+
+      const params: LLMTextGenerationParams = {
+        prompt: prompt,
+        model_id_with_prefix: null, // Use default model
+        // Add any other params like max_tokens, temperature if needed
+      };
+
+      const response = await generateTextLLM(params);
+      const generatedText = response.generated_text;
+
+      if (quillInstance) {
+        // It's good practice to get the selection again right before an operation,
+        // as focus might have shifted, though less likely in this specific async flow.
+        const currentSelection = initialSelectionRange || quillInstance.getSelection();
+
+        if (currentSelection && currentSelection.length > 0) {
+          // Replace selected text
+          quillInstance.deleteText(currentSelection.index, currentSelection.length, 'user');
+          quillInstance.insertText(currentSelection.index, generatedText, 'user');
+          // Move cursor to the end of the inserted text
+          quillInstance.setSelection(currentSelection.index + generatedText.length, 0, 'user');
+        } else {
+          // Append to the end of the editor
+          const endPosition = quillInstance.getLength() > 1 ? quillInstance.getLength() -1 : 0; // Quill has a default newline
+          quillInstance.insertText(endPosition, (endPosition > 0 ? "\n" : "") + generatedText, 'user');
+           // Move cursor to the end of the inserted text
+          quillInstance.setSelection(endPosition + (endPosition > 0 ? 1 : 0) + generatedText.length, 0, 'user');
+        }
+        setEditedContent(quillInstance.root.innerHTML);
+      } else {
+        // Fallback: Append to editedContent state
+        // This won't handle replacing selected text if quillInstance was initially null.
+        setEditedContent(prev => prev + "\n" + generatedText);
+      }
+
+    } catch (error) {
+      console.error("Failed to generate content:", error);
+      setContentGenerationError('Failed to generate content. An error occurred.');
+    } finally {
+      setIsGeneratingContent(false);
+    }
   };
 
   const handleInsertRandomItem = (itemText: string) => {
@@ -148,17 +217,21 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
               <RandomTableRoller onInsertItem={handleInsertRandomItem} />
               
               <div className="editor-actions">
-                <Button onClick={handleSave} className="editor-button" disabled={isSaving}>
+                <Button onClick={handleSave} className="editor-button" disabled={isSaving || isGeneratingContent}>
                   {isSaving ? 'Saving...' : 'Save Content'}
                 </Button>
-                <Button onClick={() => setIsImageGenerationModalOpen(true)} className="editor-button">
+                <Button onClick={handleGenerateContent} className="editor-button" disabled={isGeneratingContent || isSaving}>
+                  {isGeneratingContent ? 'Generating...' : 'Generate Content'}
+                </Button>
+                <Button onClick={() => setIsImageGenerationModalOpen(true)} className="editor-button" disabled={isGeneratingContent || isSaving}>
                   Generate Image
                 </Button>
-                <Button onClick={handleCancel} className="editor-button" variant="secondary" disabled={isSaving}>
+                <Button onClick={handleCancel} className="editor-button" variant="secondary" disabled={isSaving || isGeneratingContent}>
                   Cancel
                 </Button>
                 {localSaveError && <p className="error-message editor-feedback">{localSaveError}</p>}
                 {externalSaveError && !localSaveError && <p className="error-message editor-feedback">{externalSaveError}</p>}
+                {contentGenerationError && <p className="error-message editor-feedback">{contentGenerationError}</p>}
                 {saveSuccess && <p className="success-message editor-feedback">Content saved!</p>}
               </div>
             </div>
