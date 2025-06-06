@@ -511,6 +511,32 @@ const CampaignEditorPage: React.FC = () => {
     };
   }, [selectedLLMId, temperature, campaignId, campaign, isLoading, debounceTimer]);
 
+  // useEffect for immediate save on selectedLLMId change by user
+  useEffect(() => {
+    if (!initialLoadCompleteRef.current || !campaign) {
+      return; // Don't run on initial load or if campaign isn't ready
+    }
+    // Only trigger if the new selectedLLMId is different from what's already in campaign
+    // and selectedLLMId is not empty (which could happen transiently or if no models are available)
+    if (selectedLLMId && selectedLLMId !== campaign.selected_llm_id) {
+      // console.log("IMMEDIATE_SAVE_LLM_ID: Triggering save for LLM ID change:", selectedLLMId);
+      ensureLLMSettingsSaved();
+    }
+  }, [selectedLLMId, campaign]); // initialLoadCompleteRef is a ref, not needed in deps. campaign is for comparison.
+
+  // useEffect for immediate save on temperature change by user
+  useEffect(() => {
+    if (!initialLoadCompleteRef.current || !campaign) {
+      return; // Don't run on initial load or if campaign isn't ready
+    }
+    // Only trigger if the new temperature is different from what's already in campaign
+    // and temperature is not null (though it's typed as number, good to be safe)
+    if (temperature !== null && temperature !== campaign.temperature) {
+      // console.log("IMMEDIATE_SAVE_TEMP: Triggering save for temperature change:", temperature);
+      ensureLLMSettingsSaved();
+    }
+  }, [temperature, campaign]); // initialLoadCompleteRef is a ref, not needed in deps. campaign is for comparison.
+
 
   const handleSaveChanges = async () => {
     if (!campaignId || !campaign) return;
