@@ -1009,23 +1009,24 @@ const CampaignEditorPage: React.FC = () => {
                     </div>
                   </>
                 ) : (
-                  <DetailedProgressDisplay
-                    percent={detailedProgressPercent}
-                    currentTitle={detailedProgressCurrentTitle}
-                    error={seedSectionsError} // Pass the error to the component
-                    title="Seeding Sections from Table of Contents..." // Optional: override default title
-                  />
-                  <Button
-                    onClick={handleCancelSeeding}
-                    className="action-button secondary-action-button" // Using secondary style for cancel
-                    style={{ marginTop: '10px' }}
-                    icon={<CancelIcon />}
-                    tooltip="Stop the section seeding process"
-                    disabled={!isSeedingSections} // Disable if not actively seeding (e.g., already completed/errored out but progress still visible briefly)
-                  >
-                    Cancel Seeding
-                  </Button>
-                </>
+                  <>
+                    <DetailedProgressDisplay
+                      percent={detailedProgressPercent}
+                      currentTitle={detailedProgressCurrentTitle}
+                      error={seedSectionsError} // Pass the error to the component
+                      title="Seeding Sections from Table of Contents..." // Optional: override default title
+                    />
+                    <Button
+                      onClick={handleCancelSeeding}
+                      className="action-button secondary-action-button" // Using secondary style for cancel
+                      style={{ marginTop: '10px' }}
+                      icon={<CancelIcon />}
+                      tooltip="Stop the section seeding process"
+                      disabled={!isSeedingSections} // Disable if not actively seeding (e.g., already completed/errored out but progress still visible briefly)
+                    >
+                      Cancel Seeding
+                    </Button>
+                  </>
                 )}
               </div>
             )}
