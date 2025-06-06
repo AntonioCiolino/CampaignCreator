@@ -104,15 +104,16 @@ async def generate_campaign_toc_endpoint(
     try:
         provider_name, model_specific_id = _extract_provider_and_model(request_body.model_id_with_prefix)
         llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=request_body.model_id_with_prefix)
-        generated_toc = await llm_service.generate_toc( # Added await
+
+        generated_tocs_dict = await llm_service.generate_toc( # Returns a dict now
             campaign_concept=db_campaign.concept,
             db=db,
             model=model_specific_id
         )
     except LLMServiceUnavailableError as e:
         raise HTTPException(status_code=503, detail=f"LLM Service Error for TOC generation: {str(e)}")
-    except LLMGenerationError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except LLMGenerationError as e: # This will catch errors from LLM service if content is empty or template not found
+        raise HTTPException(status_code=500, detail=f"LLM Generation Error for TOC: {str(e)}")
     except ValueError as ve: 
         raise HTTPException(status_code=400, detail=str(ve))
     except NotImplementedError:
@@ -121,12 +122,33 @@ async def generate_campaign_toc_endpoint(
         print(f"Error during TOC generation for campaign {campaign_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to generate Table of Contents: {str(e)}")
 
-    if not generated_toc:
-        raise HTTPException(status_code=500, detail="TOC generation resulted in empty content.")
+    display_toc_content = generated_tocs_dict.get("display_toc")
+    homebrewery_toc_content = generated_tocs_dict.get("homebrewery_toc")
 
-    updated_campaign_with_toc = crud.update_campaign_toc(db=db, campaign_id=campaign_id, toc_content=generated_toc)
+    # The LLM service (e.g. OpenAIService) now raises an error if content is empty or keys are missing.
+    # So, we can assume if we reach here, both display_toc_content and homebrewery_toc_content are valid strings.
+    # A paranoid check for key existence could be:
+    if display_toc_content is None or homebrewery_toc_content is None: # Check if .get returned None (key missing)
+        # This should ideally be caught by the LLM service's contract or its own error handling.
+        # If LLMGenerationError from the service guarantees content, this might be redundant.
+        # However, it's a safeguard against unexpected return structures.
+        error_detail = "TOC generation did not return the expected structure (missing display_toc or homebrewery_toc key, or value is null)."
+        if "display_toc" not in generated_tocs_dict or "homebrewery_toc" not in generated_tocs_dict:
+             error_detail = "TOC generation did not return the expected structure (missing display_toc or homebrewery_toc key)."
+
+        print(f"Error: {error_detail} - Dict received: {generated_tocs_dict}") # Log for debugging
+        raise HTTPException(status_code=500, detail=error_detail)
+
+    updated_campaign_with_toc = crud.update_campaign_toc(
+        db=db,
+        campaign_id=campaign_id,
+        display_toc_content=display_toc_content,
+        homebrewery_toc_content=homebrewery_toc_content
+    )
     if updated_campaign_with_toc is None:
-        raise HTTPException(status_code=404, detail="Campaign not found when attempting to update TOC.")
+        # This specific check for campaign existence after update might be redundant if get_campaign above already confirmed it.
+        # However, it ensures that crud.update_campaign_toc didn't unexpectedly fail to return the campaign.
+        raise HTTPException(status_code=404, detail="Campaign not found when attempting to update TOC after generation.")
     return updated_campaign_with_toc
 
 @router.post("/{campaign_id}/titles", response_model=models.CampaignTitlesResponse, tags=["Campaigns"])

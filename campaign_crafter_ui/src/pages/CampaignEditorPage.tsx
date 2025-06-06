@@ -130,10 +130,11 @@ const CampaignEditorPage: React.FC = () => {
   };
 
   const processedToc = useMemo(() => {
-    if (!campaign?.toc || !sections?.length) {
-      return campaign?.toc || '';
+    // Use display_toc for rendering in the UI
+    if (!campaign?.display_toc || !sections?.length) {
+      return campaign?.display_toc || '';
     }
-    const tocLines = campaign.toc.split('\n');
+    const tocLines = campaign.display_toc.split('\n');
     const sectionTitleToIdMap = new Map(sections.filter(sec => sec.title).map(sec => [sec.title!.trim().toLowerCase(), `section-container-${sec.id}`]));
 
     return tocLines.map(line => {
@@ -151,7 +152,7 @@ const CampaignEditorPage: React.FC = () => {
       }
       return line;
     }).join('\n');
-  }, [campaign?.toc, sections]);
+  }, [campaign?.display_toc, sections]); // Update dependency array
 
   useEffect(() => {
     if (!campaignId) {
@@ -672,24 +673,24 @@ const CampaignEditorPage: React.FC = () => {
       {/* Campaign Concept section is MOVED from here to above tabs */}
       {/* TOC Section */}
       <section className="campaign-detail-section editor-section">
-        {campaign.toc && ( // Only show header if TOC exists to be collapsed/expanded
+        {campaign.display_toc && ( // Use display_toc: Only show header if TOC exists to be collapsed/expanded
           <h2 onClick={() => setIsTocCollapsed(!isTocCollapsed)} style={{ cursor: 'pointer' }}>
             {isTocCollapsed ? '▶' : '▼'} Table of Contents
           </h2>
         )}
         {/* Content: TOC display and/or Generate button */}
-        {(!campaign.toc || !isTocCollapsed) && ( // Show if no TOC, or if TOC exists and is not collapsed
+        {(!campaign.display_toc || !isTocCollapsed) && ( // Use display_toc: Show if no TOC, or if TOC exists and is not collapsed
           <div className="toc-controls-and-display" style={{ marginTop: '10px' }}>
-            {campaign.toc && <ReactMarkdown>{processedToc}</ReactMarkdown>}
+            {campaign.display_toc && <ReactMarkdown>{processedToc}</ReactMarkdown>} {/* Use display_toc for conditional rendering */}
             <Button
               onClick={handleGenerateTOC}
               disabled={isGeneratingTOC || !selectedLLMId}
               className="action-button"
-              style={{ marginTop: campaign.toc ? '10px' : '0' }}
+              style={{ marginTop: campaign.display_toc ? '10px' : '0' }} // Use display_toc for style condition
               icon={<ListAltIcon />}
               tooltip={!selectedLLMId ? "Select an LLM model from the Settings tab first" : "Generate or re-generate the Table of Contents based on the campaign concept and sections"}
             >
-              {isGeneratingTOC ? 'Generating TOC...' : (campaign.toc ? 'Re-generate Table of Contents' : 'Generate Table of Contents')}
+              {isGeneratingTOC ? 'Generating TOC...' : (campaign.display_toc ? 'Re-generate Table of Contents' : 'Generate Table of Contents')} {/* Use display_toc for button text */}
             </Button>
             {tocError && <p className="error-message feedback-message" style={{ marginTop: '5px' }}>{tocError}</p>}
           </div>

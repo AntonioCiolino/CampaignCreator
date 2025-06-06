@@ -23,7 +23,8 @@ export interface Campaign {
   title: string;
   initial_user_prompt: string | null; 
   concept: string | null;
-  toc: string | null;
+  homebrewery_toc: string | null; // Renamed from toc
+  display_toc: string | null; // New field
   badge_image_url?: string | null; // Added
   selected_llm_id?: string | null;
   temperature?: number | null;

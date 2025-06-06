@@ -73,11 +73,11 @@ class HomebreweryExportService:
         homebrewery_content.append("\\page\n") # Page break after concept/title page
 
         # Table of Contents
-        # The campaign.toc field is expected to be a block of text that process_block can handle.
+        # The campaign.homebrewery_toc field is expected to be a block of text that process_block can handle.
         # Users can manually create this, or it can be LLM-generated.
-        if campaign.toc:
+        if campaign.homebrewery_toc: # Use the new field name
             # process_block is designed for TOC-like structures.
-            processed_toc = self.process_block(campaign.toc) 
+            processed_toc = self.process_block(campaign.homebrewery_toc) # Use the new field name
             homebrewery_content.append(f"{processed_toc.strip()}\n")
             homebrewery_content.append("\\page\n") # Page break after TOC
         

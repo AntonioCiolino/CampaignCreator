@@ -87,7 +87,8 @@ class Campaign(CampaignBase):
     id: int
     owner_id: int # In a real app, this would be properly linked
     concept: Optional[str] = None # LLM-generated campaign overview
-    toc: Optional[str] = None # LLM-generated table of contents
+    homebrewery_toc: Optional[str] = None # Renamed from toc
+    display_toc: Optional[str] = None # New field for display TOC
     homebrewery_export: Optional[str] = None # Stores the homebrewery export
     sections: List['CampaignSection'] = [] # Assuming CampaignSection is defined elsewhere or properly forward referenced
 
@@ -124,7 +125,8 @@ class CampaignUpdate(BaseModel): # Assuming CampaignUpdate is for PATCH, all fie
     title: Optional[str] = None
     initial_user_prompt: Optional[str] = None
     concept: Optional[str] = None
-    toc: Optional[str] = None
+    homebrewery_toc: Optional[str] = None # Renamed from toc
+    display_toc: Optional[str] = None # New field for display TOC
     homebrewery_export: Optional[str] = None
     badge_image_url: Optional[str] = None
     selected_llm_id: Optional[str] = None # Ensure it's part of CampaignUpdate for PATCH

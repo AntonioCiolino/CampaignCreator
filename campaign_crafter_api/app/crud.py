@@ -226,11 +226,12 @@ def update_campaign(db: Session, campaign_id: int, campaign_update: models.Campa
         db.refresh(db_campaign)
     return db_campaign
 
-def update_campaign_toc(db: Session, campaign_id: int, toc_content: str) -> Optional[orm_models.Campaign]:
+def update_campaign_toc(db: Session, campaign_id: int, display_toc_content: str, homebrewery_toc_content: str) -> Optional[orm_models.Campaign]:
     db_campaign = get_campaign(db, campaign_id=campaign_id)
     if db_campaign:
-        db_campaign.toc = toc_content
-        db.add(db_campaign)
+        db_campaign.display_toc = display_toc_content
+        db_campaign.homebrewery_toc = homebrewery_toc_content
+        # db.add(db_campaign) # Not strictly necessary as SQLAlchemy tracks changes on attached objects
         db.commit()
         db.refresh(db_campaign)
     return db_campaign

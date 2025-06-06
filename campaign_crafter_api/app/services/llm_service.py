@@ -37,12 +37,14 @@ class AbstractLLMService(ABC):
         pass
 
     @abstractmethod
-    def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> str:
-        """
-        Generates a Table of Contents for a campaign based on its concept.
-        The 'model' parameter is the specific model ID for the provider.
-        """
-        pass
+    def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> Dict[str, str]:
+            # Docstring should be updated to reflect it returns a dict with "display_toc" and "homebrewery_toc"
+            """
+            Generates both a display-friendly and a Homebrewery-formatted Table of Contents
+            for a campaign based on its concept.
+            Returns a dictionary with keys "display_toc" and "homebrewery_toc".
+            """
+            pass
 
     @abstractmethod
     def generate_section_content(
@@ -89,8 +91,11 @@ class LLMService(AbstractLLMService):
     def generate_titles(self, campaign_concept: str, db: Session, count: int = 5, model: Optional[str] = None) -> list[str]:
         return [f"Title {i+1} for {campaign_concept}" for i in range(count)]
 
-    def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> str:
-        return f"Table of Contents for: {campaign_concept}"
+    def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> Dict[str, str]:
+            return {
+                "display_toc": f"Display Table of Contents for: {campaign_concept}",
+                "homebrewery_toc": f"Homebrewery Table of Contents for: {campaign_concept}"
+            }
 
     def generate_section_content(
         self,

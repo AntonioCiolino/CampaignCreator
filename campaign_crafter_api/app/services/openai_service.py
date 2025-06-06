@@ -144,22 +144,46 @@ class OpenAILLMService(AbstractLLMService):
         ]
         return await self._perform_chat_completion(selected_model, messages, temperature=0.7, max_tokens=1000)
 
-    async def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> str:
+    async def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> Dict[str, str]:
         if not await self.is_available():
             raise LLMServiceUnavailableError("OpenAI service is not available.")
         if not campaign_concept:
             raise ValueError("Campaign concept cannot be empty.")
 
         selected_model = self._get_model(model, use_chat_model=True)
-        custom_prompt_template = self.feature_prompt_service.get_prompt("Table of Contents", db=db)
-        final_prompt = custom_prompt_template.format(campaign_concept=campaign_concept) if custom_prompt_template else \
-                       f"Based on the campaign concept: '{campaign_concept}', generate a hierarchical Table of Contents suitable for an RPG campaign book. Include main chapters and potential sub-sections."
+
+        # Fetch Display TOC prompt
+        display_prompt_template_str = self.feature_prompt_service.get_prompt("TOC Display", db=db)
+        if not display_prompt_template_str:
+            raise LLMGenerationError("Display TOC prompt template ('TOC Display') not found in database.")
+        display_final_prompt = display_prompt_template_str.format(campaign_concept=campaign_concept)
         
-        messages = [
-            {"role": "system", "content": "You are an assistant skilled in structuring RPG campaign narratives and creating detailed Table of Contents."},
-            {"role": "user", "content": final_prompt}
+        display_messages = [
+            {"role": "system", "content": "You are an assistant skilled in structuring RPG campaign narratives and creating user-friendly Table of Contents for on-screen display."},
+            {"role": "user", "content": display_final_prompt}
         ]
-        return await self._perform_chat_completion(selected_model, messages, temperature=0.5, max_tokens=700)
+        generated_display_toc = await self._perform_chat_completion(selected_model, display_messages, temperature=0.5, max_tokens=700)
+        if not generated_display_toc:
+            raise LLMGenerationError("OpenAI API call for Display TOC succeeded but returned no usable content.")
+
+        # Fetch Homebrewery TOC prompt
+        homebrewery_prompt_template_str = self.feature_prompt_service.get_prompt("TOC Homebrewery", db=db)
+        if not homebrewery_prompt_template_str:
+            raise LLMGenerationError("Homebrewery TOC prompt template ('TOC Homebrewery') not found in database.")
+        homebrewery_final_prompt = homebrewery_prompt_template_str.format(campaign_concept=campaign_concept)
+
+        homebrewery_messages = [
+            {"role": "system", "content": "You are an assistant skilled in creating RPG Table of Contents strictly following Homebrewery Markdown formatting."},
+            {"role": "user", "content": homebrewery_final_prompt}
+        ]
+        generated_homebrewery_toc = await self._perform_chat_completion(selected_model, homebrewery_messages, temperature=0.5, max_tokens=700)
+        if not generated_homebrewery_toc:
+            raise LLMGenerationError("OpenAI API call for Homebrewery TOC succeeded but returned no usable content.")
+
+        return {
+            "display_toc": generated_display_toc,
+            "homebrewery_toc": generated_homebrewery_toc
+        }
 
     async def generate_titles(self, campaign_concept: str, db: Session, count: int = 5, model: Optional[str] = None) -> list[str]:
         if not await self.is_available():
