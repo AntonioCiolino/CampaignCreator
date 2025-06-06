@@ -261,8 +261,9 @@ if __name__ == '__main__':
     from dotenv import load_dotenv
     import os
 
-    # Load .env from the project root or monorepo root
-    env_path_api_root = Path(__file__).resolve().parent.parent.parent / ".env"
+    async def main_test(): # Wrap existing logic in an async function
+        # Load .env from the project root or monorepo root
+        env_path_api_root = Path(__file__).resolve().parent.parent.parent / ".env"
     env_path_monorepo_root = Path(__file__).resolve().parent.parent.parent.parent / ".env"
 
     if env_path_api_root.exists():
@@ -272,28 +273,30 @@ if __name__ == '__main__':
     else:
         print(f"Warning: .env file not found at {env_path_api_root} or {env_path_monorepo_root}. Service might not initialize correctly.")
 
-    settings.GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", settings.GEMINI_API_KEY)
-    settings.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", settings.OPENAI_API_KEY) 
+        settings.GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", settings.GEMINI_API_KEY)
+        settings.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", settings.OPENAI_API_KEY)
 
-    if not GeminiLLMService().is_available(): # Check availability using the instance method
-        print("Skipping GeminiLLMService tests as GEMINI_API_KEY is not set or is a placeholder.")
-    else:
+        gemini_service_instance_for_check = GeminiLLMService() # Create instance for is_available check
+        if not await gemini_service_instance_for_check.is_available(): # Check availability using the instance method
+            print("Skipping GeminiLLMService tests as GEMINI_API_KEY is not set or is a placeholder.")
+            await gemini_service_instance_for_check.close() # Close the temporary instance
+            return # Exit main_test if not available
+        await gemini_service_instance_for_check.close() # Close the temporary instance if it was available
+
         print(f"Attempting to initialize GeminiLLMService with key: ...{settings.GEMINI_API_KEY[-4:] if settings.GEMINI_API_KEY else 'None'}")
+        gemini_service = GeminiLLMService() # Re-initialize for actual use
         try:
-            gemini_service = GeminiLLMService()
             print("GeminiLLMService Initialized.")
 
             print("\nAvailable Gemini Models (IDs are for service methods):")
-            models = gemini_service.list_available_models()
-            for m in models:
+            models_list = await gemini_service.list_available_models() # Use a different variable name
+            for m in models_list:
                 print(f"- {m['name']} (id: {m['id']})")
 
-            if models:
-                # Pick a model for testing - prefer non-default if available and different
+            if models_list:
                 test_model_id_for_service = gemini_service.DEFAULT_MODEL
-                if len(models) > 1:
-                    # Try to pick a different model from default for one test, if available
-                    alt_models = [m['id'] for m in models if m['id'] != gemini_service.DEFAULT_MODEL]
+                if len(models_list) > 1:
+                    alt_models = [m['id'] for m in models_list if m['id'] != gemini_service.DEFAULT_MODEL]
                     if alt_models:
                         test_model_id_for_service = alt_models[0]
                 
@@ -301,7 +304,7 @@ if __name__ == '__main__':
 
                 print("\n--- Testing Generic Text Generation ---")
                 try:
-                    generic_text = gemini_service.generate_text(
+                    generic_text = await gemini_service.generate_text(
                         prompt=f"Tell me a short story about a robot learning to paint. Use model {test_model_id_for_service}.", 
                         model=test_model_id_for_service, 
                         temperature=0.8, 
@@ -312,9 +315,9 @@ if __name__ == '__main__':
                     print(f"Error during generic text generation test: {e}")
 
                 print(f"\n--- Testing Campaign Concept Generation (using default model: {gemini_service.DEFAULT_MODEL}) ---")
-                db_session_placeholder: Optional[Session] = None # Placeholder for db session
+                db_session_placeholder: Optional[Session] = None
                 try:
-                    concept = await gemini_service.generate_campaign_concept("A city powered by captured dreams.", db=db_session_placeholder) # Uses default model
+                    concept = await gemini_service.generate_campaign_concept("A city powered by captured dreams.", db=db_session_placeholder)
                     print("Concept Output (first 150 chars):", concept[:150] + "..." if concept else "No concept generated.")
 
                     if concept:
@@ -327,7 +330,7 @@ if __name__ == '__main__':
                             print("No TOC generated.")
 
                         print(f"\n--- Testing Titles Generation (using default model: {gemini_service.DEFAULT_MODEL}) ---")
-                        titles = await gemini_service.generate_titles(concept, db=db_session_placeholder, count=3) # Uses default model
+                        titles = await gemini_service.generate_titles(concept, db=db_session_placeholder, count=3)
                         print("Titles Output:", titles)
 
                         print(f"\n--- Testing Section Content Generation (using model: {test_model_id_for_service}) ---")
@@ -349,3 +352,7 @@ if __name__ == '__main__':
             print(f"Error initializing or using GeminiLLMService: {ve}")
         except Exception as e:
             print(f"An unexpected error occurred during GeminiLLMService testing: {e}")
+        finally:
+            await gemini_service.close() # Ensure client is closed
+
+    asyncio.run(main_test())

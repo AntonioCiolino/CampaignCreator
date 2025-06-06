@@ -1,0 +1,23 @@
+.image-preview-modal-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  max-height: 80vh; /* Limit height to allow scrolling if image is too tall */
+  overflow-y: auto;
+}
+
+.image-preview-modal-image {
+  max-width: 100%;
+  max-height: 75vh; /* Slightly less than content area to ensure visibility */
+  object-fit: contain; /* Scale down to fit, preserving aspect ratio */
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.image-preview-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 20px;
+  border-top: 1px solid #eee; /* Optional: separator line */
+}

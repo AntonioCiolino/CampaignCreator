@@ -9,6 +9,7 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'; // Import Vis
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate'; // Import AddPhotoAlternateIcon
 import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'; // Import DeleteOutlineIcon
+import ImagePreviewModal from '../modals/ImagePreviewModal'; // Import ImagePreviewModal
 
 interface CampaignDetailsEditorProps {
   editableTitle: string;
@@ -56,11 +57,13 @@ const CampaignDetailsEditor: React.FC<CampaignDetailsEditorProps> = ({
   const [isCollapsed, setIsCollapsed] = useState(false); // Add state for collapse
   const [isInitialPromptVisible, setIsInitialPromptVisible] = useState(false); // State for prompt visibility
   const [isBadgeActionsVisible, setIsBadgeActionsVisible] = useState(false); // State for badge actions visibility
+  const [isBadgePreviewModalOpen, setIsBadgePreviewModalOpen] = useState(false); // State for badge preview modal
 
   const hasUnsavedChanges = editableTitle !== originalTitle || initialPrompt !== originalInitialPrompt;
   // Note: campaignBadgeImage changes are not currently part of hasUnsavedChanges logic for the main save button.
 
   return (
+    <> {/* Changed to Fragment to allow multiple top-level elements including Modal */}
     <Card sx={{ mb: 3 }}>
       <Box
         sx={{
@@ -136,14 +139,18 @@ const CampaignDetailsEditor: React.FC<CampaignDetailsEditorProps> = ({
             {isBadgeActionsVisible && (
               <Box className="campaign-badge-area-internal" sx={{ mt: 1 }}>
                 {campaignBadgeImage && (
-                  <Box sx={{ mt: 1, mb: 1, textAlign: 'center' }}>
+                  <Box
+                    sx={{ mt: 1, mb: 1, textAlign: 'center', cursor: 'pointer' }}
+                    onClick={() => setIsBadgePreviewModalOpen(true)}
+                    title="Click to preview badge image"
+                  >
                     <Typography variant="caption" display="block" gutterBottom>
-                      Current Badge:
+                      Current Badge (click to enlarge):
                     </Typography>
                     <img
                       src={campaignBadgeImage}
-                      alt="Campaign Badge"
-                      style={{ maxWidth: '100px', maxHeight: '100px', border: '1px solid #ccc' }}
+                      alt="Campaign Badge Preview" // Updated alt text
+                      style={{ maxWidth: '100px', maxHeight: '100px', border: '1px solid #ccc', borderRadius: '4px' }}
                     />
                   </Box>
                 )}
@@ -203,6 +210,13 @@ const CampaignDetailsEditor: React.FC<CampaignDetailsEditorProps> = ({
       </CardContent>
       )}
     </Card>
+    <ImagePreviewModal
+      isOpen={isBadgePreviewModalOpen}
+      onClose={() => setIsBadgePreviewModalOpen(false)}
+      imageUrl={campaignBadgeImage}
+      imageAlt={`${editableTitle} Campaign Badge`}
+    />
+    </>
   );
 };
 

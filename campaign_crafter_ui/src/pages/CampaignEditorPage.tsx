@@ -429,6 +429,9 @@ const CampaignEditorPage: React.FC = () => {
       
       if (typeof setCampaign === 'function') { // setCampaign should be available from useState [campaign, setCampaign]
           setCampaign(updatedCampaign);
+          // Explicitly update the campaignBadgeImage state variable
+          setCampaignBadgeImage(updatedCampaign.badge_image_url || '');
+
           // Optionally, show a success message for badge update
           // setSaveSuccess("Campaign badge updated successfully!");
           // setTimeout(() => setSaveSuccess(null), 3000);
@@ -639,6 +642,8 @@ const CampaignEditorPage: React.FC = () => {
       
       if (typeof setCampaign === 'function') { 
           setCampaign(updatedCampaign);
+          // Explicitly update the campaignBadgeImage state variable as well for immediate UI refresh
+          setCampaignBadgeImage(updatedCampaign.badge_image_url || '');
       } else {
           console.warn("setCampaign function is not available to update local state.");
       }
@@ -667,6 +672,8 @@ const CampaignEditorPage: React.FC = () => {
       
       if (typeof setCampaign === 'function') {
           setCampaign(updatedCampaign);
+          // Explicitly update the campaignBadgeImage state variable when removing
+          setCampaignBadgeImage(''); // Set to empty string as URL is removed
       } else {
            console.log("Campaign badge URL removed. Parent component should re-fetch or update state.");
       }
