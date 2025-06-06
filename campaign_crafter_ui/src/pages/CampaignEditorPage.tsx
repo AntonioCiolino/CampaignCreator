@@ -143,6 +143,45 @@ const CampaignEditorPage: React.FC = () => {
     handleUpdateSection(sectionId, { title: newTitle });
   };
 
+  // Function to ensure LLM settings are saved before an action
+  const ensureLLMSettingsSaved = async (): Promise<boolean> => {
+    if (!campaign || !campaignId) {
+      setAutoSaveLLMSettingsError("Campaign data is not available to save LLM settings.");
+      return false;
+    }
+
+    const llmSettingsChanged = selectedLLMId !== campaign.selected_llm_id || temperature !== campaign.temperature;
+
+    if (llmSettingsChanged) {
+      setIsPageLoading(true); // Use general page loading or a specific one like setIsSavingLLMSettings(true)
+      setAutoSaveLLMSettingsError(null);
+      setAutoSaveLLMSettingsSuccess(null);
+      // console.log("ENSURE_LLM_SAVE: Attempting to save LLM settings before proceeding.", { selectedLLMId, temperature });
+
+      try {
+        const payload: campaignService.CampaignUpdatePayload = {
+          selected_llm_id: selectedLLMId || null,
+          temperature: temperature,
+        };
+        const updatedCampaign = await campaignService.updateCampaign(campaign.id, payload);
+        setCampaign(updatedCampaign); // Update local campaign state
+        setAutoSaveLLMSettingsSuccess("LLM settings saved successfully.");
+        // console.log("ENSURE_LLM_SAVE: LLM settings saved successfully.");
+        setTimeout(() => setAutoSaveLLMSettingsSuccess(null), 3000);
+        return true;
+      } catch (err) {
+        console.error("Failed to save LLM settings:", err);
+        setAutoSaveLLMSettingsError("Failed to save LLM settings. Please try again.");
+        setTimeout(() => setAutoSaveLLMSettingsError(null), 5000);
+        return false;
+      } finally {
+        setIsPageLoading(false); // Clear loading state
+      }
+    }
+    // console.log("ENSURE_LLM_SAVE: No changes in LLM settings needed.");
+    return true; // No changes needed, proceed
+  };
+
   const processedToc = useMemo(() => {
     // Use display_toc for rendering in the UI
     if (!campaign?.display_toc || !sections?.length) {
@@ -170,6 +209,14 @@ const CampaignEditorPage: React.FC = () => {
 
   // Placeholder for handleSeedSectionsFromToc
   const handleSeedSectionsFromToc = async () => {
+    // First, ensure LLM settings are saved
+    const llmSettingsSaved = await ensureLLMSettingsSaved();
+    if (!llmSettingsSaved) {
+      setSeedSectionsError("Failed to save LLM settings before seeding. Please review settings and try again.");
+      // Optionally, scroll to LLM settings or highlight them
+      return; // Abort seeding if LLM settings save failed
+    }
+
     if (!campaignId || !campaign?.display_toc) {
       setSeedSectionsError("Cannot create sections: Campaign ID is missing or no Table of Contents available.");
       return;
@@ -183,7 +230,7 @@ const CampaignEditorPage: React.FC = () => {
     setSections([]);
     setSeedSectionsError(null);
     setIsSeedingSections(true); // Keeps button disabled and text updated
-    // setIsPageLoading(true); // REMOVED - let detailed progress control primary feedback
+    // setIsPageLoading(true); // REMOVED - ensureLLMSettingsSaved handles its own loading
     setIsDetailedProgressVisible(true);
     setDetailedProgressPercent(0);
     setDetailedProgressCurrentTitle('');
@@ -292,11 +339,13 @@ const CampaignEditorPage: React.FC = () => {
 
         setAvailableLLMs(fetchedLLMs);
 
+        let newSelectedLLMIdToSave: string | null = null; // For saving a newly chosen default
+
         if (campaignDetails.selected_llm_id) {
             setSelectedLLMId(campaignDetails.selected_llm_id);
         } else {
             const preferredModelIds = [
-                "openai/gpt-4.1-nano",
+                "openai/gpt-4.1-nano", // Prioritize smaller, faster, cheaper models for default
                 "openai/gpt-3.5-turbo",
                 "openai/gpt-4",
                 "gemini/gemini-pro",
@@ -318,10 +367,8 @@ const CampaignEditorPage: React.FC = () => {
                     model.capabilities && (model.capabilities.includes("chat") || model.capabilities.includes("chat-adaptable"))
                 );
                 if (potentialChatModels.length > 0) {
-                    // Try to find preferred models among chat-capable ones first (already covered by above loop, but good for clarity if used independently)
-                    // For this logic, we just take the first one if no specific preferred model was found yet.
                     const firstChatModel = potentialChatModels[0];
-                    if (firstChatModel) { // Check if firstChatModel is not undefined
+                    if (firstChatModel) {
                          newSelectedLLMId = firstChatModel.id;
                     }
                 }
@@ -332,7 +379,38 @@ const CampaignEditorPage: React.FC = () => {
                 newSelectedLLMId = fetchedLLMs[0].id;
             }
 
-            setSelectedLLMId(newSelectedLLMId); // This will be '' if fetchedLLMs is empty
+            if (newSelectedLLMId) { // If a default model was determined
+                setSelectedLLMId(newSelectedLLMId);
+                // Only mark for saving if campaignDetails.selected_llm_id was originally null/empty
+                if (!campaignDetails.selected_llm_id) {
+                    newSelectedLLMIdToSave = newSelectedLLMId;
+                }
+            }
+        }
+
+        // If a new default LLM was selected for a campaign that initially had none, save it.
+        if (newSelectedLLMIdToSave && campaignDetails.id) {
+            // console.log(`INITIAL_LOAD_SAVE: Campaign ${campaignDetails.id} had no LLM. Saving new default: ${newSelectedLLMIdToSave} with temp: ${temperature}`);
+            setIsPageLoading(true); // Use general page loading
+            setAutoSaveLLMSettingsError(null);
+            setAutoSaveLLMSettingsSuccess(null);
+            try {
+                // Use the current temperature from state, as it would have been set to default or loaded.
+                const updatedCampaign = await campaignService.updateCampaign(campaignDetails.id, {
+                    selected_llm_id: newSelectedLLMIdToSave,
+                    temperature: temperature, // Current temperature state
+                });
+                setCampaign(updatedCampaign); // IMPORTANT: Update campaign state with the new reality
+                setAutoSaveLLMSettingsSuccess("Default LLM setting automatically saved.");
+                setTimeout(() => setAutoSaveLLMSettingsSuccess(null), 3000);
+            } catch (err) {
+                console.error("Failed to save default LLM settings on initial load:", err);
+                setAutoSaveLLMSettingsError("Failed to save default LLM choice. You may need to set it manually in Settings.");
+                // Don't clear this error immediately, let user see it
+                // setTimeout(() => setAutoSaveLLMSettingsError(null), 5000);
+            } finally {
+                setIsPageLoading(false);
+            }
         }
         initialLoadCompleteRef.current = true; // Mark initial load of settings as complete
       } catch (err) {
@@ -343,7 +421,7 @@ const CampaignEditorPage: React.FC = () => {
       }
     };
     fetchInitialData();
-  }, [campaignId]);
+  }, [campaignId]); // Note: `temperature` is not in dependency array, which is correct for this specific save-on-load logic.
 
   // Auto-save LLM settings
   useEffect(() => {
