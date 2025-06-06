@@ -15,10 +15,7 @@ import Button from '../components/common/Button'; // Ensure common Button is imp
 
 // MUI Icons (attempt to import, will use text/emoji if fails)
 import SaveIcon from '@mui/icons-material/Save';
-import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
-import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+// AddPhotoAlternateIcon, EditIcon, DeleteOutlineIcon are moved to CampaignDetailsEditor
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
@@ -649,78 +646,30 @@ const CampaignEditorPage: React.FC = () => {
           setCampaignBadgeImage(value);
         }}
         handleSaveCampaignDetails={handleSaveChanges}
+        // Pass new props for title generation
+        onSuggestTitles={handleGenerateTitles}
+        isGeneratingTitles={isGeneratingTitles}
+        titlesError={titlesError}
+        selectedLLMId={selectedLLMId}
+        // Pass original values for enabling/disabling save button
+        originalTitle={campaign.title}
+        originalInitialPrompt={campaign.initial_user_prompt || ''}
+        // Pass props for badge actions
+        originalBadgeImageUrl={campaign.badge_image_url || ''}
+        onOpenBadgeImageModal={handleOpenBadgeImageModal}
+        onEditBadgeImageUrl={handleEditBadgeImageUrl}
+        onRemoveBadgeImage={handleRemoveBadgeImage}
+        badgeUpdateLoading={badgeUpdateLoading}
+        badgeUpdateError={badgeUpdateError}
       />
       {/* Global save error/success can be shown here or above tabs */}
       {saveError && <p className="error-message save-feedback">{saveError}</p>}
       {saveSuccess && <p className="success-message save-feedback">{saveSuccess}</p>}
 
-      <div className="editor-section title-generation-section">
-        <Button
-          onClick={handleGenerateTitles}
-          disabled={isGeneratingTitles || !selectedLLMId}
-          className="action-button"
-          icon={<LightbulbOutlinedIcon />}
-          tooltip="Suggest alternative titles for your campaign based on the concept"
-        >
-          {isGeneratingTitles ? 'Generating...' : 'Suggest Titles'}
-        </Button>
-        {titlesError && <p className="error-message feedback-message">{titlesError}</p>}
-      </div>
+      {/* The title-generation-section div has been removed */}
+      {/* The campaign-badge-area editor-section div has been removed and its functionality moved to CampaignDetailsEditor */}
 
-      <div className="campaign-badge-area editor-section">
-        <h3>Campaign Badge Actions</h3>
-        {campaign.badge_image_url && (
-          <Box sx={{ mt: 1, mb: 1, textAlign: 'center' }}>
-            <Typography variant="caption" display="block" gutterBottom>
-              Current Badge:
-            </Typography>
-            <img
-              src={campaign.badge_image_url}
-              alt="Campaign Badge"
-              style={{ maxWidth: '100px', maxHeight: '100px', border: '1px solid #ccc' }}
-            />
-          </Box>
-        )}
-        <div className="campaign-badge-actions">
-          <Button
-            onClick={handleOpenBadgeImageModal}
-            disabled={badgeUpdateLoading}
-            className="action-button"
-            icon={<AddPhotoAlternateIcon />}
-            tooltip="Generate a new badge image for your campaign"
-          >
-            {badgeUpdateLoading ? "Processing..." : "Generate New Badge"}
-          </Button>
-          <Button
-            onClick={handleEditBadgeImageUrl}
-            disabled={badgeUpdateLoading}
-            className="action-button secondary-action-button"
-            icon={<EditIcon />}
-            tooltip="Manually set or change the URL for the campaign badge"
-          >
-            {badgeUpdateLoading ? "Processing..." : "Edit Badge URL"}
-          </Button>
-          {campaign?.badge_image_url && (
-            <Button
-              onClick={handleRemoveBadgeImage}
-              disabled={badgeUpdateLoading || !campaign?.badge_image_url}
-              className="action-button remove-button"
-              icon={<DeleteOutlineIcon />}
-              tooltip="Remove the current campaign badge image"
-            >
-              {badgeUpdateLoading ? "Removing..." : "Remove Badge"}
-            </Button>
-          )}
-        </div>
-        {badgeUpdateError && <p className="error-message feedback-message">{badgeUpdateError}</p>}
-      </div>
-
-      {campaign.concept && (
-        <section className="campaign-detail-section read-only-section editor-section">
-          <h2>Campaign Concept (Read-Only)</h2>
-          <div className="concept-content"><ReactMarkdown>{campaign.concept}</ReactMarkdown></div>
-        </section>
-      )}
+      {/* Campaign Concept section is MOVED from here to above tabs */}
       {/* TOC Section */}
       <section className="campaign-detail-section editor-section">
         {campaign.toc && ( // Only show header if TOC exists to be collapsed/expanded
@@ -863,8 +812,7 @@ const CampaignEditorPage: React.FC = () => {
       </div>
       {/* LLM related errors can be shown within this tab or globally */}
       {tocError && <p className="error-message llm-feedback editor-section">{tocError}</p>}
-      {/* titlesError is now shown in the details tab near the button, so we can remove it from here if it's redundant */}
-      {/* {titlesError && <p className="error-message llm-feedback editor-section">{titlesError}</p>} */}
+      {/* titlesError is now handled by CampaignDetailsEditor */}
 
       {/* The old suggested titles display is removed from here. It's now handled by the modal. */}
 
@@ -892,6 +840,16 @@ const CampaignEditorPage: React.FC = () => {
   return (
     <div className="campaign-editor-page">
       {isPageLoading && <LoadingSpinner />}
+
+      {/* === Campaign Concept Display === */}
+      {campaign && campaign.concept && (
+        <section className="campaign-detail-section read-only-section editor-section page-level-concept">
+          <h2>Campaign Concept</h2>
+          <div className="concept-content"><ReactMarkdown>{campaign.concept}</ReactMarkdown></div>
+        </section>
+      )}
+      {/* === End of Campaign Concept Display === */}
+
       <Tabs tabs={tabItems} />
 
       {/* Modals remain at the top level */}
