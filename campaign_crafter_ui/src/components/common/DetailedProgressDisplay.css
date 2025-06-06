@@ -1,0 +1,51 @@
+.detailed-progress-display {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+  text-align: center;
+}
+
+.detailed-progress-display h4 {
+  margin-top: 0;
+  color: #333;
+}
+
+.detailed-progress-display progress {
+  appearance: none; /* Needed for custom styling in some browsers */
+  width: 100%;
+  height: 20px;
+  border-radius: 10px;
+  overflow: hidden; /* Ensures the fill stays within the bounds */
+}
+
+/* For Webkit browsers (Chrome, Safari) */
+.detailed-progress-display progress::-webkit-progress-bar {
+  background-color: #e0e0e0;
+  border-radius: 10px;
+}
+
+.detailed-progress-display progress::-webkit-progress-value {
+  background-color: #4caf50; /* Green for progress */
+  border-radius: 10px;
+  transition: width 0.2s ease-in-out;
+}
+
+/* For Firefox */
+.detailed-progress-display progress::-moz-progress-bar {
+  background-color: #4caf50; /* Green for progress */
+  border-radius: 10px;
+  transition: width 0.2s ease-in-out;
+}
+
+.detailed-progress-display p {
+  color: #555;
+  font-size: 0.9em;
+}
+
+.detailed-progress-display .error-message {
+  color: #D8000C; /* Standard error red */
+  background-color: #FFD2D2; /* Light red background */
+  border: 1px solid #D8000C;
+  padding: 10px;
+  border-radius: 4px;
+}

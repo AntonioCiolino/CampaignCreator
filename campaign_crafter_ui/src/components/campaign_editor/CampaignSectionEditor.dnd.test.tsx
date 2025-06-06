@@ -49,6 +49,7 @@ describe('CampaignSectionEditor Drag and Drop', () => {
         handleUpdateSectionContent={mockHandleUpdateSectionContent}
         handleUpdateSectionTitle={mockHandleUpdateSectionTitle}
         onUpdateSectionOrder={mockOnUpdateSectionOrder}
+        campaignId="test-dnd-campaign-id" // Added campaignId
       />
     );
   };

@@ -9,7 +9,7 @@ import {
   FormControl,
   InputLabel,
   Slider,
-  Box,
+  // Box, // Removed Box
   SelectChangeEvent, // Import SelectChangeEvent
 } from '@mui/material';
 import { LLMModel as LLM } from '../../services/llmService'; // Corrected import path and type

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import apiClient from './apiClient';
+import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-source';
 
 // Types matching backend Pydantic models
 export interface CampaignSection {
@@ -276,35 +277,154 @@ export const updateCampaignSectionOrder = async (
   }
 };
 
-// Add this new function:
-export const seedSectionsFromToc = async (campaignId: string | number): Promise<CampaignSection[]> => {
-  try {
-    // The backend endpoint POST /api/v1/campaigns/{campaignId}/seed_sections_from_toc
-    // is expected to perform the operation and then return the new list of sections for that campaign.
-    const response = await apiClient.post<{ sections: CampaignSection[] } | CampaignSection[]>(
-      `/api/v1/campaigns/${campaignId}/seed_sections_from_toc`
-      // No request body is needed if the backend uses the campaign's stored TOC
-    );
+// --- Server-Sent Events (SSE) for Seeding Sections ---
 
-    // The backend might return an object { sections: CampaignSection[] } or just CampaignSection[]
-    // Adjust based on the actual backend implementation.
-    // For now, let's assume it might return an object like getCampaignSections, or just the array.
-    if (response.data && Array.isArray((response.data as any).sections)) {
-      return (response.data as any).sections;
-    } else if (Array.isArray(response.data)) {
-      return response.data as CampaignSection[];
+export interface SeedSectionsProgressEvent {
+  event_type: "section_update";
+  progress_percent: number;
+  current_section_title: string;
+  section_data: CampaignSection;
+}
+
+export interface SeedSectionsCompleteEvent {
+  event_type: "complete";
+  message: string;
+  total_sections_processed: number; // Added to match backend
+}
+
+export type SeedSectionsEvent = SeedSectionsProgressEvent | SeedSectionsCompleteEvent;
+
+export interface SeedSectionsCallbacks {
+  onOpen?: (event: Event) => void;
+  onProgress?: (data: SeedSectionsProgressEvent) => void;
+  onSectionComplete?: (data: CampaignSection) => void; // For convenience
+  onDone?: (message: string, totalProcessed: number) => void;
+  onError?: (error: Event | { message: string }) => void;
+}
+
+export const seedSectionsFromToc = (
+  campaignId: string | number,
+  autoPopulate: boolean,
+  callbacks: SeedSectionsCallbacks
+): (() => void) => { // Returns an abort function
+  const baseUrl = (process.env.REACT_APP_API_BASE_URL || apiClient.defaults.baseURL || window.location.origin).replace(/\/$/, '');
+  const endpointPath = `/api/v1/campaigns/${campaignId}/seed_sections_from_toc?auto_populate=${autoPopulate}`;
+  const url = `${baseUrl}${endpointPath}`;
+
+  const controller = new AbortController();
+
+  fetchEventSource(url, {
+    method: 'POST', // Changed to POST as per backend
+    headers: {
+      'Accept': 'text/event-stream',
+      // Add any other necessary headers, e.g., CSRF token if your app uses them for POST
+      // 'X-CSRF-Token': 'your_token_here', // Example
+    },
+    body: JSON.stringify({}), // Send an empty JSON body for POST
+    signal: controller.signal,
+
+    onopen: async (response) => {
+      if (response.ok) {
+        console.log("SSE Connection Opened (fetchEventSource) for seedSectionsFromToc to URL:", url);
+        callbacks.onOpen?.(new Event('open'));
+      } else {
+        const errorPayload = { message: `Failed to open SSE connection: ${response.status} ${response.statusText}` };
+        try {
+             const errorBody = await response.json();
+             if (errorBody && errorBody.detail) {
+                 errorPayload.message = typeof errorBody.detail === 'string' ? errorBody.detail : JSON.stringify(errorBody.detail);
+             }
+        } catch(e) { /* ignore if body isn't json */ }
+        callbacks.onError?.(errorPayload);
+      }
+    },
+    onmessage: (event: EventSourceMessage) => {
+      if (event.event === 'error') {
+         callbacks.onError?.({ message: event.data || "An error event was received from server."});
+         return;
+      }
+      if (!event.data) {
+         console.warn("Received SSE message with no data:", event);
+         return;
+      }
+
+      let jsonData = event.data;
+      const prefix = "data: "; // Standard SSE prefix, though fetchEventSource usually strips it.
+                              // This is a safeguard or for servers that might double-prefix.
+      if (jsonData.startsWith(prefix)) {
+        jsonData = jsonData.substring(prefix.length);
+      }
+
+      try {
+        const parsedData = JSON.parse(jsonData) as SeedSectionsEvent; // Use cleaned jsonData
+
+        if (parsedData.event_type === "section_update") {
+          const progressEvent = parsedData as SeedSectionsProgressEvent;
+          callbacks.onProgress?.(progressEvent);
+          if (progressEvent.section_data) {
+            callbacks.onSectionComplete?.(progressEvent.section_data);
+          }
+        } else if (parsedData.event_type === "complete") {
+          const completeEvent = parsedData as SeedSectionsCompleteEvent;
+          callbacks.onDone?.(completeEvent.message, completeEvent.total_sections_processed);
+          // controller.abort(); // Optional: fetchEventSource might close automatically on server close.
+        } else {
+          console.warn("Received unknown SSE event type via fetchEventSource:", parsedData);
+        }
+      } catch (e) {
+        console.error("Failed to parse SSE event data (fetchEventSource):", jsonData, e); // Log cleaned jsonData
+        callbacks.onError?.({ message: "Failed to parse event data: " + String(jsonData) });
+      }
+    },
+    onclose: () => {
+      console.log("SSE Connection Closed (fetchEventSource) for seedSectionsFromToc.");
+      // This is called when the connection is definitively closed.
+      // Consider if onDone should be called here if not already by a "complete" event.
+      // For example, if the server just closes the connection without a final "complete" message.
+      // However, the current backend sends "complete", so this might be mostly for logging.
+    },
+    onerror: (err: any) => {
+      console.error("SSE Error (fetchEventSource) for seedSectionsFromToc:", err);
+      callbacks.onError?.({ message: err.message || "An unknown error occurred with SSE connection." });
+      // fetchEventSource will retry on some errors. To stop retries, re-throw the error.
+      // For this application, if an error occurs, we probably want to stop.
+      throw err;
     }
+  });
 
-    // If the response is not in the expected format, log a warning and return empty or throw.
-    console.warn('Unexpected response structure from seedSectionsFromToc:', response.data);
-    // Depending on strictness, you might throw an error here.
-    // For now, returning an empty array to prevent UI crashes if backend sends unexpected valid but different JSON.
-    return [];
+  return () => {
+    console.log("Aborting SSE connection for seedSectionsFromToc.");
+    controller.abort();
+  };
+};
 
+// Payload for regenerating a section (matches backend SectionRegenerateInput)
+export interface SectionRegeneratePayload {
+  new_prompt?: string;
+  new_title?: string;
+  section_type?: string; // E.g., "NPC", "Location", "Chapter/Quest", "Generic"
+  model_id_with_prefix?: string;
+}
+
+// Regenerate a specific campaign section
+export const regenerateCampaignSection = async (
+  campaignId: string | number,
+  sectionId: number, // sectionId is a number
+  payload?: SectionRegeneratePayload
+): Promise<CampaignSection> => {
+  try {
+    const response = await apiClient.post<CampaignSection>(
+      `/api/v1/campaigns/${campaignId}/sections/${sectionId}/regenerate`,
+      payload || {} // Send payload or an empty object if undefined
+    );
+    return response.data;
   } catch (error) {
-    console.error(`Error seeding sections from TOC for campaign ID ${campaignId}:`, error);
-    // In a real app, you might want to transform the error or log it to a service
-    throw error; // Re-throw to be caught by the UI component's error handler
+    console.error(`Error regenerating section ID ${sectionId} for campaign ID ${campaignId}:`, error);
+    if (axios.isAxiosError(error) && error.response) {
+      // Rethrow with more specific error message if available from backend
+      throw new Error(error.response.data.detail || `Failed to regenerate section: ${error.message}`);
+    }
+    throw error; // Re-throw original error if not AxiosError or no response detail
   }
 };
 

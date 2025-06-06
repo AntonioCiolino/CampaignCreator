@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Button,
-  Grid,
+  // Grid, // Removed Grid
   Typography,
   Card,
   CardContent,
@@ -30,7 +30,7 @@ import {
 
 interface CampaignSectionEditorProps {
   sections: CampaignSection[];
-  setSections: (sections: CampaignSection[]) => void; 
+  setSections: React.Dispatch<React.SetStateAction<CampaignSection[]>>;
   handleAddNewSection: () => void;
   handleDeleteSection: (sectionId: number) => void; // Changed sectionId to number
   // These direct handlers might be replaced if onSave handles all updates
@@ -39,6 +39,7 @@ interface CampaignSectionEditorProps {
   onUpdateSectionOrder: (orderedSectionIds: number[]) => Promise<void>;
   forceCollapseAllSections?: boolean; // Added new prop
   isAddSectionDisabled?: boolean; // Prop to disable the "Add New Section" button
+  campaignId: string | number; // Added campaignId prop
 }
 
 const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
@@ -51,6 +52,7 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
   onUpdateSectionOrder,
   forceCollapseAllSections, // Destructure the new prop
   isAddSectionDisabled = false, // Destructure and default to false
+  campaignId, // Destructure campaignId
 }) => {
   const onDragEnd = (result: DropResult) => { // Removed ResponderProvided as it's not typically used in onDragEnd
     const { source, destination } = result;
@@ -90,6 +92,13 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
     // }
   };
 
+  const handleSectionUpdated = (updatedSection: CampaignSection) => {
+    setSections((prevSections: CampaignSection[]) => // Add type for prevSections
+      prevSections.map((s: CampaignSection) => // Add type for s
+        s.id === updatedSection.id ? updatedSection : s
+      )
+    );
+  };
 
   return (
     <Card sx={{ mb: 3 }}>
@@ -146,6 +155,8 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
                           <Box sx={{ width: '100%', p: 1 }}>
                             <CampaignSectionView
                               section={section}
+                              campaignId={campaignId} // Pass campaignId
+                              onSectionUpdated={handleSectionUpdated} // Pass the new handler
                               onSave={(sectionIdFromView, data) => handleSectionViewSave(sectionIdFromView, data)}
                               isSaving={false} // TODO: Manage individual section saving state
                               saveError={null} // TODO: Manage individual section error state

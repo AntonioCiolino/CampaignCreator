@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react'; // Removed useCallback
 import { getAllRandomTableNames, getRandomItemFromTable, RandomItemResponse } from '../services/randomTableService';
 import Button from './common/Button'; // Assuming Button component exists and is styled
 import './RandomTableRoller.css'; // For styling

@@ -13,6 +13,7 @@ import { CampaignSectionUpdatePayload } from '../services/campaignService';
 import { generateTextLLM, LLMTextGenerationParams } from '../services/llmService';
 import { getFeatures } from '../services/featureService'; // Added import
 import { Feature } from '../types/featureTypes'; // Added import
+import * as campaignService from '../services/campaignService'; // Moved import to top
 
 interface CampaignSectionViewProps {
   section: CampaignSection;
@@ -21,9 +22,21 @@ interface CampaignSectionViewProps {
   saveError: string | null; // Prop to display save error for this section
   onDelete: (sectionId: number) => void; // Added onDelete prop
   forceCollapse?: boolean; // Optional prop to force collapse state
+  // Props for regeneration
+  campaignId: string | number; // Campaign ID to make the API call
+  onSectionUpdated: (updatedSection: CampaignSection) => void; // Callback to update parent state
 }
 
-const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSave, isSaving, saveError: externalSaveError, onDelete, forceCollapse }) => {
+const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
+  section,
+  onSave,
+  isSaving,
+  saveError: externalSaveError,
+  onDelete,
+  forceCollapse,
+  campaignId,
+  onSectionUpdated,
+}) => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(true);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editedContent, setEditedContent] = useState<string>(section.content || '');
@@ -36,6 +49,8 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
   const [features, setFeatures] = useState<Feature[]>([]);
   const [selectedFeatureId, setSelectedFeatureId] = useState<string>("");
   const [featureFetchError, setFeatureFetchError] = useState<string | null>(null);
+  const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
+  const [regenerateError, setRegenerateError] = useState<string | null>(null);
 
 
   // Ensure editedContent is updated if the section prop changes externally
@@ -248,6 +263,29 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
     }
   };
 
+  const handleRegenerateClick = async () => {
+    if (!campaignId || !section?.id) {
+      setRegenerateError("Missing campaign or section ID for regeneration.");
+      return;
+    }
+    setIsRegenerating(true);
+    setRegenerateError(null);
+    try {
+      // Using an empty payload for now, as per plan
+      const updatedSection = await campaignService.regenerateCampaignSection(campaignId, section.id, {});
+      onSectionUpdated(updatedSection); // Notify parent of the update
+      // Update local state as well, e.g., editedContent if it was based on section.content
+      setEditedContent(updatedSection.content || '');
+      // If title can be regenerated and shown in this component directly:
+      // setSectionTitle(updatedSection.title); // Assuming you add local state for title if it's editable here
+    } catch (error: any) {
+      console.error("Failed to regenerate section:", error);
+      setRegenerateError(error.message || 'An unexpected error occurred during regeneration.');
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
   return (
     <div className="campaign-section-view">
       {section.title && (
@@ -330,7 +368,17 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
                 >
                   Delete Section
                 </Button>
+                <Button
+                  size="sm"
+                  variant="secondary" // Changed from "text" to "secondary"
+                  onClick={handleRegenerateClick}
+                  disabled={isSaving || isRegenerating || isEditing}
+                  style={{ marginLeft: '10px' }}
+                >
+                  {isRegenerating ? 'Regenerating...' : 'Regenerate'}
+                </Button>
               </div>
+              {regenerateError && <p className="error-message editor-feedback" style={{ marginTop: '5px' }}>{regenerateError}</p>}
             </>
           )}
         </>
@@ -371,4 +419,9 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
   );
 };
 
+// Helper function (or move to service if used elsewhere)
+// For now, keeping it here for simplicity as it's only used by handleRegenerateClick
+// No, this should be in campaignService.ts. The call will be made there.
+// CampaignSectionView will call onRegenerate which is handleRegenerateSection in CampaignSectionEditor,
+// which then calls the service.
 export default CampaignSectionView;
