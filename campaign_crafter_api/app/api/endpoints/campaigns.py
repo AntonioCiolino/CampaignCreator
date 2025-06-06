@@ -201,10 +201,25 @@ async def seed_sections_from_toc_endpoint(
     db: Session = Depends(get_db)
 ):
     db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
+
+    # --- Start of new DEBUG_INIT logging ---
+    print(f"DEBUG_INIT: Entered seed_sections_from_toc_endpoint for campaign_id: {campaign_id}")
+    print(f"DEBUG_INIT: auto_populate parameter value: {auto_populate} (type: {type(auto_populate)})")
+    if db_campaign:
+        print(f"DEBUG_INIT: db_campaign.selected_llm_id: {db_campaign.selected_llm_id}")
+        print(f"DEBUG_INIT: db_campaign.concept available: {bool(db_campaign.concept)}")
+    else:
+        # This case should ideally be caught by the HTTPException below if db_campaign is None
+        print("DEBUG_INIT: db_campaign object is None")
+    # --- End of new DEBUG_INIT logging ---
+
     if db_campaign is None:
+        # This check is technically redundant if the one above in DEBUG_INIT leads to an error,
+        # but it's good practice to keep FastAPI's error handling for non-existent resources.
+        print("DEBUG_INIT: db_campaign is None, raising HTTPException 404.") # Added for clarity
         raise HTTPException(status_code=404, detail="Campaign not found")
 
-    print(f"--- Seeding sections for campaign {campaign_id} ---")
+    print(f"--- Seeding sections for campaign {campaign_id} ---") # Existing log
     if not db_campaign.display_toc:
         print(f"Campaign {campaign_id} has no display_toc. Cannot seed sections.")
         raise HTTPException(status_code=400, detail="No display_toc found for this campaign. Cannot seed sections.")
@@ -239,22 +254,28 @@ async def seed_sections_from_toc_endpoint(
         llm_service = None # Initialize LLM service variable
 
         if auto_populate and db_campaign.selected_llm_id:
+            print(f"DEBUG: Auto-population requested. Campaign LLM ID: {db_campaign.selected_llm_id}")
+            print(f"DEBUG: Campaign Concept available: {bool(db_campaign.concept)}. Concept (excerpt): '{db_campaign.concept[:100] if db_campaign.concept else 'N/A'}'")
             try:
                 # Use the campaign's selected LLM and temperature
                 provider_name, model_specific_id = _extract_provider_and_model(db_campaign.selected_llm_id)
                 llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=db_campaign.selected_llm_id)
+                print(f"DEBUG: LLM Service initialized: {bool(llm_service)}")
             except LLMServiceUnavailableError as e:
-                print(f"LLM Service unavailable for auto-population: {e}. Sections will be created with placeholders.")
+                print(f"DEBUG: LLM Service unavailable for auto-population: {e}. Sections will be created with placeholders.")
                 llm_service = None # Ensure it's None if initialization failed
             except ValueError as ve: # Catch errors from _extract_provider_and_model
-                print(f"Invalid LLM model ID format ('{db_campaign.selected_llm_id}') for auto-population: {ve}. Sections will be created with placeholders.")
+                print(f"DEBUG: Invalid LLM model ID format ('{db_campaign.selected_llm_id}') for auto-population: {ve}. Sections will be created with placeholders.")
                 llm_service = None
+        elif auto_populate:
+            print(f"DEBUG: Auto-population requested but campaign.selected_llm_id is not set. Skipping LLM generation.")
 
 
         for order, title in enumerate(parsed_titles):
             section_content = f"Content for '{title}' to be generated." # Default placeholder
 
             if auto_populate and llm_service and db_campaign.concept:
+                print(f"DEBUG: Processing section title for auto-population: '{title}'")
                 section_type = "Generic"
                 title_lower = title.lower()
                 if "npc" in title_lower or "character" in title_lower:
@@ -263,6 +284,7 @@ async def seed_sections_from_toc_endpoint(
                     section_type = "Location"
                 elif "chapter" in title_lower or "quest" in title_lower or "adventure" in title_lower:
                     section_type = "Chapter/Quest"
+                print(f"DEBUG: Determined section type: {section_type}")
 
                 prompt = ""
                 if section_type == "NPC":
@@ -273,9 +295,10 @@ async def seed_sections_from_toc_endpoint(
                     prompt = f"Outline the main events and encounters for the adventure chapter titled '{title}'. Provide a brief overview of the objectives, challenges, and potential rewards."
                 else: # Generic
                     prompt = f"Generate content for a section titled '{title}' as part of a larger campaign document."
+                print(f"DEBUG: Constructed LLM prompt (excerpt): {prompt[:200]}...") # Log excerpt of prompt
 
                 try:
-                    print(f"Auto-populating section '{title}' using LLM: {db_campaign.selected_llm_id}")
+                    print(f"DEBUG: Attempting LLM generation for: '{title}' using LLM: {db_campaign.selected_llm_id}")
                     _, model_specific_id_for_call = _extract_provider_and_model(db_campaign.selected_llm_id)
 
                     generated_content = await llm_service.generate_section_content(
@@ -288,17 +311,20 @@ async def seed_sections_from_toc_endpoint(
                         # Temperature is handled by the service if it's configured to use db_campaign.temperature
                         # Or, if generate_section_content needs it, we'd pass db_campaign.temperature
                     )
+                    print(f"DEBUG: LLM generated_content (excerpt) for '{title}': '{generated_content[:100] if generated_content else 'None or Empty'}'")
                     if generated_content:
                         section_content = generated_content
                     else:
-                        print(f"LLM generated empty content for section '{title}'. Using placeholder.")
+                        print(f"DEBUG: LLM generated empty content for section '{title}'. Using placeholder.")
                 except LLMServiceUnavailableError as e:
-                    print(f"LLM Service Error for section '{title}': {e}. Using placeholder.")
+                    print(f"DEBUG: Exception during LLM call for '{title}': {type(e).__name__} - {e}. Using placeholder.")
                 except LLMGenerationError as e:
-                    print(f"LLM Generation Error for section '{title}': {e}. Using placeholder.")
+                    print(f"DEBUG: Exception during LLM call for '{title}': {type(e).__name__} - {e}. Using placeholder.")
                 except Exception as e: # Catch any other unexpected errors
-                    print(f"Unexpected error during LLM generation for section '{title}': {e}. Using placeholder.")
+                    print(f"DEBUG: Unexpected exception during LLM generation for section '{title}': {type(e).__name__} - {e}. Using placeholder.")
 
+            print(f"DEBUG: Final section_content for CRUD (excerpt) for title '{title}': '{section_content[:100]}...'")
+            # Original print statement kept for general progress logging, debug prints are more specific
             print(f"Creating section for campaign {campaign_id}: Title='{title}', Order={order}, Content (first 50 chars)='{section_content[:50]}...'")
             created_section = crud.create_section_with_placeholder_content(
                 db=db,
