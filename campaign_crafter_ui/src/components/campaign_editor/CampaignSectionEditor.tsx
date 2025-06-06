@@ -30,7 +30,7 @@ import {
 
 interface CampaignSectionEditorProps {
   sections: CampaignSection[];
-  setSections: (sections: CampaignSection[]) => void; 
+  setSections: React.Dispatch<React.SetStateAction<CampaignSection[]>>;
   handleAddNewSection: () => void;
   handleDeleteSection: (sectionId: number) => void; // Changed sectionId to number
   // These direct handlers might be replaced if onSave handles all updates

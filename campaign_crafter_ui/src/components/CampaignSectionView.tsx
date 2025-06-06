@@ -220,7 +220,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                 </Button>
                 <Button
                   size="sm"
-                  variant="text" // Changed from "outlined"
+                  variant="secondary" // Changed from "text" to "secondary"
                   onClick={handleRegenerateClick}
                   disabled={isSaving || isRegenerating || isEditing}
                   style={{ marginLeft: '10px' }}
