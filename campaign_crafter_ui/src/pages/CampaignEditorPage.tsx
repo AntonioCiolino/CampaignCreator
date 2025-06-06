@@ -619,7 +619,9 @@ const CampaignEditorPage: React.FC = () => {
     setTocError(null);
     setSaveSuccess(null);
     try {
-      const updatedCampaign = await campaignService.generateCampaignTOC(campaignId, {});
+      const updatedCampaign = await campaignService.generateCampaignTOC(campaignId, {
+        prompt: "Generate a table of contents for the campaign based on its concept."
+      });
       setCampaign(updatedCampaign);
       setSaveSuccess("Table of Contents generated successfully!");
       setTimeout(() => setSaveSuccess(null), 3000);
