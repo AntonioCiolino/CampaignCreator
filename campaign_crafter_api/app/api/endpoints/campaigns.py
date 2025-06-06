@@ -193,7 +193,7 @@ async def generate_campaign_titles_endpoint(
     return models.CampaignTitlesResponse(titles=generated_titles)
 
 
-@router.post(
+@router.get(
     "/{campaign_id}/seed_sections_from_toc",
     # response_model=List[models.CampaignSection], # Removed for SSE
     tags=["Campaigns", "Campaign Sections"]

@@ -11,3 +11,4 @@ pytest
 httpx
 passlib[bcrypt]
 python-multipart
+sse-starlette
