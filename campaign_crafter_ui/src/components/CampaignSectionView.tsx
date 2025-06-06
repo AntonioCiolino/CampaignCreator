@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CampaignSection } from '../services/campaignService';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
-import ReactQuill, { Quill } from 'react-quill';
+import ReactQuill from 'react-quill';
 import type { RangeStatic as QuillRange } from 'quill'; // Import QuillRange
 import 'react-quill/dist/quill.snow.css'; // Import Quill's snow theme CSS
 import Button from './common/Button'; // Added Button import

@@ -126,6 +126,8 @@ const defaultProps: React.ComponentProps<typeof CampaignSectionView> = {
   saveError: null,
   onDelete: jest.fn(),
   forceCollapse: false,
+  campaignId: 1,
+  onSectionUpdated: jest.fn(),
 };
 
 describe('CampaignSectionView', () => {

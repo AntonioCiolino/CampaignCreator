@@ -413,7 +413,7 @@ const CampaignEditorPage: React.FC = () => {
             clearTimeout(newTimer);
         }
     };
-  }, [selectedLLMId, temperature, campaignId, campaign?.selected_llm_id, campaign?.temperature, isLoading, debounceTimer]);
+  }, [selectedLLMId, temperature, campaignId, campaign, isLoading, debounceTimer]);
 
 
   const handleSaveChanges = async () => {
@@ -641,7 +641,9 @@ const CampaignEditorPage: React.FC = () => {
     setSuggestedTitles(null);
     setSaveSuccess(null);
     try {
-      const response = await campaignService.generateCampaignTitles(campaignId, {}, 5);
+      const response = await campaignService.generateCampaignTitles(campaignId, {
+        prompt: "Generate alternative titles for the campaign."
+      }, 5);
       setSuggestedTitles(response.titles);
       // setSaveSuccess("Suggested titles generated successfully!"); // Optional: keep or remove
       // setTimeout(() => setSaveSuccess(null), 3000);
