@@ -174,21 +174,13 @@ const CampaignEditorPage: React.FC = () => {
     // setSaveSuccess(null); // Optional: Clear other success messages
 
     try {
-      // The campaignService.seedSectionsFromToc function will be created in the next step.
-      // For now, we'll mock a successful call and re-fetch sections.
-      // This line will be uncommented and used once the service function exists:
-      // await campaignService.seedSectionsFromToc(campaignId);
+      // Call the actual service function to seed sections from TOC.
+      // This function is expected to return the new list of sections.
+      const newSections = await campaignService.seedSectionsFromToc(campaignId);
 
-      // TEMP: Simulating the call for now as service function is not yet created.
-      // In a real scenario, this await call to seedSectionsFromToc would be active.
-      // For this step, we are focusing on the UI handler logic.
-      // The actual API call will be added to campaignService in the next sub-task.
-      console.log(`Simulating call to campaignService.seedSectionsFromToc('${campaignId}')`);
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
-
-      // Re-fetch sections to update the UI
-      const fetchedSections = await campaignService.getCampaignSections(campaignId);
-      setSections(fetchedSections.sort((a, b) => a.order - b.order));
+      // Update the local sections state with the new sections returned by the service.
+      // Ensure sections are sorted by order.
+      setSections(newSections.sort((a, b) => a.order - b.order));
 
       alert("Sections created successfully from Table of Contents!");
 
