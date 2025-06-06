@@ -33,7 +33,14 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   campaignId,
   onSectionUpdated,
 }) => {
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(true);
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
+    // If section.title is "Campaign Concept", it's collapsed.
+    // Otherwise, it retains its current default behavior (true).
+    if (section.title === "Campaign Concept") {
+      return true;
+    }
+    return true; // Default for other sections
+  });
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editedContent, setEditedContent] = useState<string>(section.content || '');
   const [quillInstance, setQuillInstance] = useState<any>(null); // Enabled to store Quill instance

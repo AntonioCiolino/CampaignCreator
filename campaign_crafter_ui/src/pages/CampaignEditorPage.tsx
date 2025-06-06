@@ -294,27 +294,44 @@ const CampaignEditorPage: React.FC = () => {
         if (campaignDetails.selected_llm_id) {
             setSelectedLLMId(campaignDetails.selected_llm_id);
         } else {
-            // Existing logic to set a default LLM if none is saved for the campaign
-            const potentialChatModels = fetchedLLMs.filter(model =>
-                model.capabilities && (model.capabilities.includes("chat") || model.capabilities.includes("chat-adaptable"))
-            );
-            if (potentialChatModels.length > 0) {
-                let defaultChatModel = potentialChatModels.find(m => m.id === "openai/gpt-3.5-turbo");
-                if (!defaultChatModel) {
-                    defaultChatModel = potentialChatModels.find(m => m.id === "openai/gpt-4");
+            const preferredModelIds = [
+                "openai/gpt-4.1-nano",
+                "openai/gpt-3.5-turbo",
+                "openai/gpt-4",
+                "gemini/gemini-pro",
+            ];
+            let newSelectedLLMId = '';
+
+            // 1. Check preferred models in order
+            for (const preferredId of preferredModelIds) {
+                const foundModel = fetchedLLMs.find(m => m.id === preferredId);
+                if (foundModel) {
+                    newSelectedLLMId = foundModel.id;
+                    break;
                 }
-                if (!defaultChatModel) {
-                    defaultChatModel = potentialChatModels.find(m => m.id === "gemini/gemini-pro");
-                }
-                if (!defaultChatModel) {
-                    defaultChatModel = potentialChatModels[0];
-                }
-                setSelectedLLMId(defaultChatModel.id);
-            } else if (fetchedLLMs.length > 0) {
-                setSelectedLLMId(fetchedLLMs[0].id);
-            } else {
-                setSelectedLLMId('');
             }
+
+            // 2. If no preferred model found, find the first chat-capable model
+            if (!newSelectedLLMId) {
+                const potentialChatModels = fetchedLLMs.filter(model =>
+                    model.capabilities && (model.capabilities.includes("chat") || model.capabilities.includes("chat-adaptable"))
+                );
+                if (potentialChatModels.length > 0) {
+                    // Try to find preferred models among chat-capable ones first (already covered by above loop, but good for clarity if used independently)
+                    // For this logic, we just take the first one if no specific preferred model was found yet.
+                    const firstChatModel = potentialChatModels[0];
+                    if (firstChatModel) { // Check if firstChatModel is not undefined
+                         newSelectedLLMId = firstChatModel.id;
+                    }
+                }
+            }
+
+            // 3. If still no model, take the first from the fetched list
+            if (!newSelectedLLMId && fetchedLLMs.length > 0) {
+                newSelectedLLMId = fetchedLLMs[0].id;
+            }
+
+            setSelectedLLMId(newSelectedLLMId); // This will be '' if fetchedLLMs is empty
         }
         initialLoadCompleteRef.current = true; // Mark initial load of settings as complete
       } catch (err) {
