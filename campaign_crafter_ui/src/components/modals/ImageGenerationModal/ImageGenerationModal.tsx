@@ -249,17 +249,6 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
         {isLoading && <div className="loading-indicator">Generating image...</div>}
         {error && <div className="error-message">{error}</div>}
 
-        <div className="image-preview">
-          {isLoading && <div className="image-preview-placeholder">Generating image...</div>}
-          {!isLoading && error && <div className="image-preview-placeholder error-message">{error}</div>}
-          {!isLoading && !error && generatedImageUrl && (
-            <img src={generatedImageUrl} alt="Generated" />
-          )}
-          {!isLoading && !error && !generatedImageUrl && (
-            <div className="image-preview-placeholder">Image will appear here</div>
-          )}
-        </div>
-        
         {/* {generatedImageUrl && !isLoading && !error && (
           <div className="image-url-display">
             <span>{generatedImageUrl}</span>
