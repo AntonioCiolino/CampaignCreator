@@ -10,7 +10,9 @@ import RandomTableRoller from './RandomTableRoller';
 import ImageGenerationModal from './modals/ImageGenerationModal/ImageGenerationModal'; // Import the new modal
 import './CampaignSectionView.css';
 import { CampaignSectionUpdatePayload } from '../services/campaignService';
-import { generateTextLLM, LLMTextGenerationParams } from '../services/llmService'; // Added import
+import { generateTextLLM, LLMTextGenerationParams } from '../services/llmService';
+import { getFeatures } from '../services/featureService'; // Added import
+import { Feature } from '../types/featureTypes'; // Added import
 
 interface CampaignSectionViewProps {
   section: CampaignSection;
@@ -31,6 +33,9 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
   const [isImageGenerationModalOpen, setIsImageGenerationModalOpen] = useState<boolean>(false);
   const [isGeneratingContent, setIsGeneratingContent] = useState<boolean>(false);
   const [contentGenerationError, setContentGenerationError] = useState<string | null>(null);
+  const [features, setFeatures] = useState<Feature[]>([]);
+  const [selectedFeatureId, setSelectedFeatureId] = useState<string>("");
+  const [featureFetchError, setFeatureFetchError] = useState<string | null>(null);
 
 
   // Ensure editedContent is updated if the section prop changes externally
@@ -48,6 +53,25 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
       setIsCollapsed(forceCollapse);
     }
   }, [forceCollapse]);
+
+  useEffect(() => {
+    if (isEditing && features.length === 0 && !featureFetchError) {
+      const loadFeatures = async () => {
+        try {
+          setFeatureFetchError(null);
+          const fetchedFeatures = await getFeatures();
+          setFeatures(fetchedFeatures);
+        } catch (error) {
+          console.error("Failed to load features:", error);
+          setFeatureFetchError(error instanceof Error ? error.message : "An unknown error occurred while fetching features.");
+        }
+      };
+      loadFeatures();
+    } else if (!isEditing) {
+      // Optional: Clear features or selected feature when not editing
+      // setSelectedFeatureId("");
+    }
+  }, [isEditing, features.length, featureFetchError]);
   
   const handleEdit = () => {
     setIsCollapsed(false); // Expand section on edit
@@ -86,10 +110,25 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
         contextText = editedContent.substring(0, 2000); // Fallback and limit
       }
 
-      const prompt = `Based on the following context, generate additional relevant content. If the context is a question, answer it. If it's a statement, expand on it or provide related information. Context: ${contextText}`;
+      let finalPrompt = "";
+      if (selectedFeatureId) {
+        const selectedFeature = features.find(f => f.id.toString() === selectedFeatureId); // Ensure ID types are compared correctly
+        if (selectedFeature) {
+          if (selectedFeature.template.includes("{}")) {
+            finalPrompt = selectedFeature.template.replace("{}", contextText);
+          } else {
+            finalPrompt = selectedFeature.template; // Context from editor is ignored
+          }
+        } else {
+          // Fallback if selectedFeatureId is somehow invalid
+          finalPrompt = `Generate content based on the following context: ${contextText}`;
+        }
+      } else {
+        finalPrompt = `Generate content based on the following context: ${contextText}`;
+      }
 
       const params: LLMTextGenerationParams = {
-        prompt: prompt,
+        prompt: finalPrompt,
         model_id_with_prefix: null, // Use default model
         // Add any other params like max_tokens, temperature if needed
       };
@@ -98,22 +137,40 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
       const generatedText = response.text; // Changed generated_text to text
 
       if (quillInstance) {
-        // It's good practice to get the selection again right before an operation,
-        // as focus might have shifted, though less likely in this specific async flow.
-        const currentSelection = initialSelectionRange || quillInstance.getSelection();
+        // initialSelectionRange was captured at the beginning of the function.
+        // We use it to decide the mode of operation (insert after selection, or append to end).
 
-        if (currentSelection && currentSelection.length > 0) {
-          // Replace selected text
-          quillInstance.deleteText(currentSelection.index, currentSelection.length, 'user');
-          quillInstance.insertText(currentSelection.index, generatedText, 'user');
-          // Move cursor to the end of the inserted text
-          quillInstance.setSelection(currentSelection.index + generatedText.length, 0, 'user');
+        if (initialSelectionRange && initialSelectionRange.length > 0) {
+          // Insert generated text AFTER the selected text
+          const insertionPoint = initialSelectionRange.index + initialSelectionRange.length;
+          const textToInsert = " " + generatedText; // Prepend with a space
+
+          quillInstance.insertText(insertionPoint, textToInsert, 'user');
+          // Set cursor to the end of the newly inserted text
+          quillInstance.setSelection(insertionPoint + textToInsert.length, 0, 'user');
         } else {
-          // Append to the end of the editor
-          const endPosition = quillInstance.getLength() > 1 ? quillInstance.getLength() -1 : 0; // Quill has a default newline
-          quillInstance.insertText(endPosition, (endPosition > 0 ? "\n" : "") + generatedText, 'user');
-           // Move cursor to the end of the inserted text
-          quillInstance.setSelection(endPosition + (endPosition > 0 ? 1 : 0) + generatedText.length, 0, 'user');
+          // No initial selection, so insert at the current cursor position
+          const currentCursorSelection = quillInstance.getSelection(); // Get current cursor
+          let insertionPoint = currentCursorSelection ? currentCursorSelection.index : (quillInstance.getLength() -1);
+          // Ensure insertionPoint is not negative if getLength() was 0 or 1.
+          if (insertionPoint < 0) insertionPoint = 0;
+
+          // For inserting at cursor, we might not need a leading newline by default,
+          // unless cursor is at the very start of an empty line or end of doc.
+          // For simplicity now, just insert the text. User can add spaces/newlines.
+          // const textToInsert = generatedText;
+          // Consider adding a space if the preceding character isn't a space, similar to random item insertion.
+          let textToInsert = generatedText;
+          if (insertionPoint > 0) {
+            const textBefore = quillInstance.getText(insertionPoint - 1, 1);
+            if (textBefore !== ' ' && textBefore !== '\n') {
+              textToInsert = " " + generatedText;
+            }
+          }
+
+          quillInstance.insertText(insertionPoint, textToInsert, 'user');
+          // Move cursor to the end of the inserted text
+          quillInstance.setSelection(insertionPoint + textToInsert.length, 0, 'user');
         }
         setEditedContent(quillInstance.root.innerHTML);
       } else {
@@ -221,6 +278,25 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({ section, onSa
                 <Button onClick={handleSave} className="editor-button" disabled={isSaving || isGeneratingContent}>
                   {isSaving ? 'Saving...' : 'Save Content'}
                 </Button>
+                {isEditing && (
+                  <div className="feature-selector-group" style={{ marginRight: '10px', display: 'inline-block', verticalAlign: 'middle' }}>
+                    <select
+                      value={selectedFeatureId}
+                      onChange={(e) => setSelectedFeatureId(e.target.value)}
+                      disabled={isGeneratingContent || isSaving || features.length === 0}
+                      style={{ padding: '8px 12px', borderRadius: '4px', border: '1px solid #ccc', height: '38px', boxSizing: 'border-box' }}
+                      title={features.length === 0 && !featureFetchError ? "Loading features..." : (featureFetchError ? "Error loading features" : "Select a feature to guide content generation")}
+                    >
+                      <option value="">-- No Specific Feature --</option>
+                      {features.map(feature => (
+                        <option key={feature.id} value={feature.id}>
+                          {feature.name}
+                        </option>
+                      ))}
+                    </select>
+                    {featureFetchError && <p className="error-message" style={{fontSize: '0.8em', color: 'red', marginTop: '2px'}}>{featureFetchError}</p>}
+                  </div>
+                )}
                 <Button onClick={handleGenerateContent} className="editor-button" disabled={isGeneratingContent || isSaving}>
                   {isGeneratingContent ? 'Generating...' : 'Generate Content'}
                 </Button>

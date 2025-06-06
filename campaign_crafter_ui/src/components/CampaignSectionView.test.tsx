@@ -107,13 +107,20 @@ jest.mock('react-quill', () => {
 
 // Import ReactQuill after the mock setup to get the mocked version
 import ReactQuill from 'react-quill';
+import * as featureService from '../services/featureService';
+import { Feature } from '../types/featureTypes';
+
+// Mock featureService
+jest.mock('../services/featureService');
 
 const mockedGenerateTextLLM = generateTextLLM as jest.MockedFunction<typeof generateTextLLM>;
+const mockedGetFeatures = featureService.getFeatures as jest.MockedFunction<typeof featureService.getFeatures>;
+
 // Helper to get the mocked Quill instance
-const getMockedQuillInstance = () => (ReactQuill as any).getMostRecentQuillInstance() as MockQuillInstance | undefined; // Added type cast
+const getMockedQuillInstance = () => (ReactQuill as any).getMostRecentQuillInstance() as MockQuillInstance | undefined;
 
 const defaultProps: React.ComponentProps<typeof CampaignSectionView> = {
-  section: { id: 1, title: 'Test Section', content: 'Initial content', order: 0, campaign_id: 1 }, // Removed type property
+  section: { id: 1, title: 'Test Section', content: 'Initial content', order: 0, campaign_id: 1 },
   onSave: jest.fn().mockResolvedValue(undefined),
   isSaving: false,
   saveError: null,
@@ -126,7 +133,8 @@ describe('CampaignSectionView', () => {
 
   beforeEach(() => {
     mockedGenerateTextLLM.mockClear();
-    mockLastQuillInstance = undefined; // Explicitly reset the shared mock instance storage for each test
+    mockedGetFeatures.mockClear(); // Clear features mock
+    mockLastQuillInstance = undefined;
   });
 
   const renderAndEdit = (props = defaultProps) => {
@@ -191,57 +199,200 @@ describe('CampaignSectionView', () => {
     expect(generateButton).toBeDisabled();
   });
 
-  describe('API Calls and Context', () => {
-    test('should call generateTextLLM with selected text as context and replace selection', async () => {
+  describe('API Calls, Context, and Text Insertion Logic', () => {
+    test('inserts generated text after selection (no deletion)', async () => {
       renderAndEdit();
       const currentMockInstance = getMockedQuillInstance();
-
-      const selectedText = "content";
-      const selectionRange = { index: 8, length: selectedText.length }; // "Initial content"
-
       expect(currentMockInstance).toBeDefined();
-      currentMockInstance!.getSelection.mockReturnValue(selectionRange);
 
+      const initialContent = defaultProps.section.content; // "Initial content"
+      const selectedText = "content";
+      const selectionStartIndex = initialContent.indexOf(selectedText);
+      const selectionRange = { index: selectionStartIndex, length: selectedText.length };
 
-      const generatedText = "Generated based on selection.";
-      mockedGenerateTextLLM.mockResolvedValueOnce({ text: generatedText, model_used: 'test-model' }); // Changed generated_text to text
+      currentMockInstance!.getSelection.mockReturnValue(selectionRange); // Simulate this was the selection when "Generate" was clicked
+      currentMockInstance!.getText // Simulate getText for context
+        .mockImplementation((index?: number, length?: number) => {
+          if (index === selectionRange.index && length === selectionRange.length) return selectedText;
+          return initialContent;
+        });
 
-      const generateButton = screen.getByRole('button', { name: /Generate Content/i });
-      fireEvent.click(generateButton);
+      const generatedText = "newly generated ideas";
+      mockedGenerateTextLLM.mockResolvedValueOnce({ text: generatedText, model_used: 'test-model' });
 
-      await waitFor(() => {
-        expect(mockedGenerateTextLLM).toHaveBeenCalledWith(expect.objectContaining({
-          prompt: expect.stringContaining(`Context: ${selectedText}`)
-        }));
-      });
+      fireEvent.click(screen.getByRole('button', { name: /Generate Content/i }));
 
-      expect(currentMockInstance!.deleteText).toHaveBeenCalledWith(selectionRange.index, selectionRange.length, 'user');
-      expect(currentMockInstance!.insertText).toHaveBeenCalledWith(selectionRange.index, generatedText, 'user');
+      await waitFor(() => expect(mockedGenerateTextLLM).toHaveBeenCalled());
+
+      expect(currentMockInstance!.deleteText).not.toHaveBeenCalled(); // Key assertion: no deletion
+
+      const expectedInsertionPoint = selectionRange.index + selectionRange.length;
+      const expectedTextToInsert = " " + generatedText;
+      expect(currentMockInstance!.insertText).toHaveBeenCalledWith(
+        expectedInsertionPoint,
+        expectedTextToInsert,
+        'user'
+      );
+      expect(currentMockInstance!.setSelection).toHaveBeenCalledWith(
+        expectedInsertionPoint + expectedTextToInsert.length,
+        0,
+        'user'
+      );
     });
 
-    test('should call generateTextLLM with full editor content if no text is selected and append', async () => {
-      renderAndEdit({ ...defaultProps, section: { ...defaultProps.section, content: "Full text."}});
+    test('inserts text at current cursor if no initial selection (with space heuristic)', async () => {
+      const initialFullContent = "Some initial text.";
+      renderAndEdit({ ...defaultProps, section: { ...defaultProps.section, content: initialFullContent }});
       const currentMockInstance = getMockedQuillInstance();
-
       expect(currentMockInstance).toBeDefined();
-      currentMockInstance!.getSelection.mockReturnValue(null); // No selection
-      currentMockInstance!.getLength.mockReturnValue("Full text.".length + 1); // Quill adds a newline
 
+      // Simulate no initial selection when "Generate" was clicked (for context gathering)
+      currentMockInstance!.getSelection.mockReturnValueOnce(null);
+      currentMockInstance!.getText.mockReturnValueOnce(initialFullContent); // For context
 
-      const generatedText = "Generated based on full content.";
-      mockedGenerateTextLLM.mockResolvedValueOnce({ text: generatedText, model_used: 'test-model' }); // Changed generated_text to text
-
-      const generateButton = screen.getByRole('button', { name: /Generate Content/i });
-      fireEvent.click(generateButton);
-
-      await waitFor(() => {
-        expect(mockedGenerateTextLLM).toHaveBeenCalledWith(expect.objectContaining({
-          prompt: expect.stringContaining("Context: Full text.")
-        }));
+      // Simulate current cursor position for insertion
+      const cursorPosition = 5; // e.g., after "Some "
+      currentMockInstance!.getSelection.mockReturnValueOnce({ index: cursorPosition, length: 0 });
+      // For the space heuristic (getText(insertionPoint - 1, 1))
+      currentMockInstance!.getText.mockImplementation((index?: number, length?: number) => {
+        if (index === cursorPosition -1 && length === 1) return initialFullContent.charAt(cursorPosition -1); // char before cursor
+        return initialFullContent;
       });
 
-      const expectedInsertPosition = "Full text.".length;
-      expect(currentMockInstance!.insertText).toHaveBeenCalledWith(expectedInsertPosition, "\n" + generatedText, 'user');
+
+      const generatedText = "inserted stuff";
+      mockedGenerateTextLLM.mockResolvedValueOnce({ text: generatedText, model_used: 'test-model' });
+
+      fireEvent.click(screen.getByRole('button', { name: /Generate Content/i }));
+
+      await waitFor(() => expect(mockedGenerateTextLLM).toHaveBeenCalled());
+
+      // Heuristic: if char before cursor is not space, prepend space. 'e' is not a space.
+      const expectedTextWithSpace = " " + generatedText;
+      expect(currentMockInstance!.insertText).toHaveBeenCalledWith(
+        cursorPosition,
+        expectedTextWithSpace,
+        'user'
+      );
+      expect(currentMockInstance!.setSelection).toHaveBeenCalledWith(
+        cursorPosition + expectedTextWithSpace.length,
+        0,
+        'user'
+      );
+    });
+  });
+
+  describe('Feature Integration', () => {
+    const mockFeatures: Feature[] = [
+      { id: 1, name: 'Summarize', template: 'Summarize this: {}' },
+      { id: 2, name: 'Explain', template: 'Explain this simply: {}' },
+      { id: 3, name: 'Brainstorm Ideas (No Placeholder)', template: 'Brainstorm some cool ideas.' },
+    ];
+
+    test('feature dropdown is visible and loads features in edit mode', async () => {
+      mockedGetFeatures.mockResolvedValueOnce([]);
+      render(<CampaignSectionView {...defaultProps} />);
+
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument(); // Using a generic role for select
+
+      fireEvent.click(screen.getByRole('button', { name: /Edit Section Content/i }));
+
+      await waitFor(() => expect(mockedGetFeatures).toHaveBeenCalledTimes(1));
+
+      const featureSelect = screen.getByRole('combobox'); // More specific after edit mode
+      expect(featureSelect).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: /-- No Specific Feature --/i })).toBeInTheDocument();
+    });
+
+    test('feature dropdown populates and allows selection', async () => {
+      mockedGetFeatures.mockResolvedValueOnce(mockFeatures);
+      renderAndEdit(); // Enters edit mode and calls getFeatures via useEffect
+
+      await waitFor(() => expect(screen.getByRole('option', { name: 'Summarize' })).toBeInTheDocument());
+      expect(screen.getByRole('option', { name: 'Explain' })).toBeInTheDocument();
+
+      const featureSelect = screen.getByRole('combobox');
+      fireEvent.change(featureSelect, { target: { value: '1' } }); // Select "Summarize" by its ID
+
+      // Check if selectedFeatureId state updated (indirectly by checking select's value)
+      expect((featureSelect as HTMLSelectElement).value).toBe('1');
+    });
+
+    test('displays error if feature fetching fails', async () => {
+      mockedGetFeatures.mockRejectedValueOnce(new Error('Failed to fetch features'));
+      renderAndEdit();
+
+      await waitFor(() => expect(screen.getByText(/An unknown error occurred while fetching features./i)).toBeInTheDocument());
+    });
+  });
+
+  describe('Prompt Construction with Features', () => {
+    const mockFeatures: Feature[] = [
+      { id: 1, name: 'Summarize', template: 'Summarize: {}' },
+      { id: 2, name: 'Brainstorm Ideas', template: 'Brainstorm some ideas about dragons.' },
+    ];
+
+    beforeEach(() => {
+        mockedGetFeatures.mockResolvedValue(mockFeatures); // Provide features for all tests in this suite
+    });
+
+    test('uses feature template with placeholder and context text', async () => {
+        renderAndEdit();
+        const currentMockInstance = getMockedQuillInstance();
+        expect(currentMockInstance).toBeDefined();
+
+        await waitFor(() => expect(screen.getByRole('option', { name: 'Summarize' })).toBeInTheDocument());
+        fireEvent.change(screen.getByRole('combobox'), { target: { value: '1' } }); // Select "Summarize"
+
+        const selectedText = "some context to summarize";
+        currentMockInstance!.getSelection.mockReturnValue({ index: 0, length: selectedText.length });
+        currentMockInstance!.getText.mockReturnValue(selectedText);
+        mockedGenerateTextLLM.mockResolvedValueOnce({ text: 'Generated summary.', model_used: 'test' });
+
+        fireEvent.click(screen.getByRole('button', { name: /Generate Content/i }));
+
+        await waitFor(() => expect(mockedGenerateTextLLM).toHaveBeenCalledWith(expect.objectContaining({
+            prompt: "Summarize: some context to summarize"
+        })));
+    });
+
+    test('uses feature template without placeholder (ignores context text)', async () => {
+        renderAndEdit();
+        const currentMockInstance = getMockedQuillInstance();
+        expect(currentMockInstance).toBeDefined();
+
+        await waitFor(() => expect(screen.getByRole('option', { name: 'Brainstorm Ideas' })).toBeInTheDocument());
+        fireEvent.change(screen.getByRole('combobox'), { target: { value: '2' } });
+
+        currentMockInstance!.getSelection.mockReturnValue({ index: 0, length: 10 }); // Some selection
+        currentMockInstance!.getText.mockReturnValue("this should be ignored"); // This text will be ignored
+        mockedGenerateTextLLM.mockResolvedValueOnce({ text: 'Dragon ideas.', model_used: 'test' });
+
+        fireEvent.click(screen.getByRole('button', { name: /Generate Content/i }));
+
+        await waitFor(() => expect(mockedGenerateTextLLM).toHaveBeenCalledWith(expect.objectContaining({
+            prompt: "Brainstorm some ideas about dragons."
+        })));
+    });
+
+    test('uses default prompt if no feature selected', async () => {
+        renderAndEdit(); // Features will be loaded, but none selected by default
+        const currentMockInstance = getMockedQuillInstance();
+        expect(currentMockInstance).toBeDefined();
+
+        const contextText = "some context";
+        currentMockInstance!.getSelection.mockReturnValue(null); // No selection, use full text
+        currentMockInstance!.getText.mockReturnValue(contextText); // Full text is "some context"
+        mockedGenerateTextLLM.mockResolvedValueOnce({ text: 'Generated.', model_used: 'test' });
+
+        // Ensure no feature is selected (value should be "")
+        expect((screen.getByRole('combobox') as HTMLSelectElement).value).toBe("");
+
+        fireEvent.click(screen.getByRole('button', { name: /Generate Content/i }));
+
+        await waitFor(() => expect(mockedGenerateTextLLM).toHaveBeenCalledWith(expect.objectContaining({
+            prompt: `Generate content based on the following context: ${contextText}`
+        })));
     });
   });
 
