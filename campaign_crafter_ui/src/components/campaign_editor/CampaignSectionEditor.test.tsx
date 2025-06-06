@@ -60,6 +60,7 @@ describe('CampaignSectionEditor', () => {
     handleUpdateSectionContent: mockHandleUpdateSectionContent,
     handleUpdateSectionTitle: mockHandleUpdateSectionTitle,
     onUpdateSectionOrder: mockOnUpdateSectionOrder, // Added
+    campaignId: 'test-campaign-id-default', // Added campaignId to defaultProps
   };
 
   test('renders correctly with no sections', () => {
