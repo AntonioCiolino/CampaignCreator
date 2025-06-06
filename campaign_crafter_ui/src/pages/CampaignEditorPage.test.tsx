@@ -30,6 +30,7 @@ jest.mock('../components/modals/ImageGenerationModal/ImageGenerationModal', () =
 const mockGetCampaignById = campaignService.getCampaignById as jest.Mock;
 const mockGetCampaignSections = campaignService.getCampaignSections as jest.Mock;
 const mockUpdateCampaign = campaignService.updateCampaign as jest.Mock;
+const mockGenerateCampaignTOC = campaignService.generateCampaignTOC as jest.Mock; // Added for TOC tests
 const mockGetAvailableLLMs = llmService.getAvailableLLMs as jest.Mock;
 
 // Mock window.prompt and window.confirm
@@ -88,12 +89,13 @@ describe('CampaignEditorPage - Badge Image Functionality', () => {
     mockGetCampaignSections.mockReset();
     mockUpdateCampaign.mockReset();
     mockGetAvailableLLMs.mockReset();
-    mockPrompt.mockReset(); // Re-added
+    mockGenerateCampaignTOC.mockReset(); // Reset TOC mock
+    mockPrompt.mockReset();
     mockConfirm.mockReset();
 
     // Default mocks for services called on page load
     mockGetAvailableLLMs.mockResolvedValue(mockLLMs);
-    mockGetCampaignSections.mockResolvedValue(mockSections); // Provide a default to avoid issues
+    mockGetCampaignSections.mockResolvedValue(mockSections);
   });
 
   test('displays badge image and correct buttons when badge_image_url exists', async () => {
@@ -309,5 +311,120 @@ describe('CampaignEditorPage - Badge Image Functionality', () => {
       const badgeImage = screen.getByRole('img', { name: /badge/i });
       expect(badgeImage).toHaveAttribute('src', mockCampaignWithBadge.badge_image_url);
     });
+  });
+});
+
+describe('CampaignEditorPage - Regenerate TOC Warning', () => {
+  beforeEach(() => {
+    // Clear mocks before each test in this suite
+    mockGetCampaignById.mockReset();
+    mockGetCampaignSections.mockReset();
+    mockGetAvailableLLMs.mockReset();
+    mockGenerateCampaignTOC.mockReset();
+    mockConfirm.mockReset();
+
+    // Default mocks for services called on page load for this suite
+    mockGetAvailableLLMs.mockResolvedValue(mockLLMs);
+    mockGetCampaignSections.mockResolvedValue(mockSections); // Default sections
+  });
+
+  test('shows warning if TOC exists and regenerates if user confirms', async () => {
+    const campaignWithExistingTOC = {
+      ...mockCampaignWithBadge, // Use a base campaign
+      id: 'toc-test-1',
+      display_toc: "## Chapter 1\n- Section A\n- Section B",
+      selected_llm_id: 'openai/gpt-3.5-turbo', // Ensure an LLM is selected for button to be enabled
+    };
+    mockGetCampaignById.mockResolvedValue(campaignWithExistingTOC);
+    mockConfirm.mockReturnValue(true); // User confirms
+    mockGenerateCampaignTOC.mockResolvedValue({ ...campaignWithExistingTOC, display_toc: "New TOC" });
+
+    renderPage(campaignWithExistingTOC.id);
+
+    // Wait for page to load and button to be available
+    const regenerateButton = await screen.findByRole('button', { name: /Re-generate Table of Contents/i });
+    expect(regenerateButton).toBeEnabled(); // Check if LLM is selected
+
+    fireEvent.click(regenerateButton);
+
+    await waitFor(() => {
+      expect(mockConfirm).toHaveBeenCalledWith("A Table of Contents already exists. Are you sure you want to regenerate it? This will overwrite the current TOC.");
+    });
+    await waitFor(() => {
+      expect(mockGenerateCampaignTOC).toHaveBeenCalledWith(campaignWithExistingTOC.id, {});
+    });
+    // Optionally, check for success message or updated TOC if needed
+    expect(await screen.findByText(/Table of Contents generated successfully!/i)).toBeInTheDocument();
+  });
+
+  test('does not regenerate if user cancels warning', async () => {
+    const campaignWithExistingTOC = {
+      ...mockCampaignWithBadge,
+      id: 'toc-test-2',
+      display_toc: "## Chapter 1\n- Section A",
+      selected_llm_id: 'openai/gpt-3.5-turbo',
+    };
+    mockGetCampaignById.mockResolvedValue(campaignWithExistingTOC);
+    mockConfirm.mockReturnValue(false); // User cancels
+    // mockGenerateCampaignTOC is not expected to be called, so no specific mock return value needed for it.
+
+    renderPage(campaignWithExistingTOC.id);
+
+    const regenerateButton = await screen.findByRole('button', { name: /Re-generate Table of Contents/i });
+    expect(regenerateButton).toBeEnabled();
+    fireEvent.click(regenerateButton);
+
+    await waitFor(() => {
+      expect(mockConfirm).toHaveBeenCalledWith("A Table of Contents already exists. Are you sure you want to regenerate it? This will overwrite the current TOC.");
+    });
+    expect(mockGenerateCampaignTOC).not.toHaveBeenCalled();
+  });
+
+  test('no warning if TOC does not exist and generates TOC', async () => {
+    const campaignWithoutTOC = {
+      ...mockCampaignWithoutBadge, // Use a base campaign
+      id: 'toc-test-3',
+      display_toc: null, // No TOC
+      selected_llm_id: 'openai/gpt-3.5-turbo',
+    };
+    mockGetCampaignById.mockResolvedValue(campaignWithoutTOC);
+    // window.confirm should not be called, so no need to mock its return for this path.
+    mockGenerateCampaignTOC.mockResolvedValue({ ...campaignWithoutTOC, display_toc: "Generated TOC" });
+
+    renderPage(campaignWithoutTOC.id);
+
+    const generateButton = await screen.findByRole('button', { name: /Generate Table of Contents/i });
+    expect(generateButton).toBeEnabled();
+    fireEvent.click(generateButton);
+
+    expect(mockConfirm).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockGenerateCampaignTOC).toHaveBeenCalledWith(campaignWithoutTOC.id, {});
+    });
+    expect(await screen.findByText(/Table of Contents generated successfully!/i)).toBeInTheDocument();
+  });
+
+  test('no warning if TOC is an empty string and generates TOC', async () => {
+    const campaignWithEmptyTOC = {
+      ...mockCampaignWithoutBadge,
+      id: 'toc-test-4',
+      display_toc: "   ", // TOC with only whitespace
+      selected_llm_id: 'openai/gpt-3.5-turbo',
+    };
+    mockGetCampaignById.mockResolvedValue(campaignWithEmptyTOC);
+    mockGenerateCampaignTOC.mockResolvedValue({ ...campaignWithEmptyTOC, display_toc: "Generated TOC from empty" });
+
+    renderPage(campaignWithEmptyTOC.id);
+
+    // Button text should be "Generate..." if TOC is effectively empty
+    const generateButton = await screen.findByRole('button', { name: /Generate Table of Contents/i });
+    expect(generateButton).toBeEnabled();
+    fireEvent.click(generateButton);
+
+    expect(mockConfirm).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockGenerateCampaignTOC).toHaveBeenCalledWith(campaignWithEmptyTOC.id, {});
+    });
+     expect(await screen.findByText(/Table of Contents generated successfully!/i)).toBeInTheDocument();
   });
 });
