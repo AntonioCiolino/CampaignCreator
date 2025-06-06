@@ -339,46 +339,48 @@ const CampaignEditorPage: React.FC = () => {
     }
 
     const newTimer = setTimeout(async () => {
-        if (!campaignId) return;
-
-        // Prevent saving if settings haven't changed from the loaded campaign state
-        // This check is crucial to avoid saving right after initial load if values happened to be different from defaults
-        // but were just set from campaignDetails.
-        // However, if the user interacts and changes them, campaign.selected_llm_id will be the *previous* saved state.
-        if (selectedLLMId === campaign.selected_llm_id && temperature === campaign.temperature) {
-            // If selectedLLMId is falsey (empty or null) and it was also falsey in campaign, and temp matches, do nothing.
-            // This handles the case where a campaign is loaded with no LLM selected yet.
-            if (!selectedLLMId && !campaign.selected_llm_id && temperature === (campaign.temperature ?? 0.7)) {
-                 return;
-            }
-            // If values are truly unchanged from the *current* campaign state, don't save.
-            // This condition might need to be more robust if campaign object itself is a dependency and changes often.
-            // For now, this is a reasonable check.
-             if(selectedLLMId === campaign.selected_llm_id && temperature === campaign.temperature) return;
+        // Ensure 'campaign' is available from the outer scope of useEffect.
+        if (!campaign) {
+            // This case should ideally not be hit if initialLoadCompleteRef is true,
+            // as 'campaign' should be loaded. But as a safeguard:
+            // console.warn("Auto-save LLM: Campaign object not available, skipping.");
+            return;
+        }
+        // campaignId from useParams can be used for the API call path.
+        // Using campaign.id from the state object for the actual API call.
+        if (!campaign.id) { // Check if campaign.id is valid
+            // console.warn("Auto-save LLM: Campaign ID not available in campaign state, skipping.");
+            return;
         }
 
+        // THE CRUCIAL CHECK:
+        if (selectedLLMId === campaign.selected_llm_id &&
+            temperature === campaign.temperature) {
+            // console.log("LLM settings are identical to current campaign state. Skipping auto-save.");
+            return;
+        }
 
-        console.log("Auto-saving LLM settings...", { selectedLLMId, temperature });
+        // If the code reaches here, it means settings have changed and a save is needed.
+        console.log("LLM settings changed. Auto-saving LLM settings...", { campaignId: campaign.id, selectedLLMId, temperature });
         setIsAutoSavingLLMSettings(true);
         setAutoSaveLLMSettingsError(null);
         setAutoSaveLLMSettingsSuccess(null);
 
         try {
-            const payload: campaignService.CampaignUpdatePayload = {
-                selected_llm_id: selectedLLMId || null, // Send null if empty string
-                temperature: temperature,
-            };
-
-            const updatedCampaign = await campaignService.updateCampaign(campaignId, payload);
-            setCampaign(updatedCampaign); // Update local campaign state with the full response
-            setAutoSaveLLMSettingsSuccess("LLM settings auto-saved!");
-            setTimeout(() => setAutoSaveLLMSettingsSuccess(null), 3000);
+          const payload: campaignService.CampaignUpdatePayload = {
+            selected_llm_id: selectedLLMId || null,
+            temperature: temperature,
+          };
+          const updatedCampaign = await campaignService.updateCampaign(campaign.id, payload);
+          setCampaign(updatedCampaign);
+          setAutoSaveLLMSettingsSuccess("LLM settings auto-saved!");
+          setTimeout(() => setAutoSaveLLMSettingsSuccess(null), 3000);
         } catch (err) {
-            console.error("Failed to auto-save LLM settings:", err);
-            setAutoSaveLLMSettingsError("Failed to auto-save LLM settings.");
-            setTimeout(() => setAutoSaveLLMSettingsError(null), 5000);
+          console.error("Failed to auto-save LLM settings:", err);
+          setAutoSaveLLMSettingsError("Failed to auto-save LLM settings.");
+          setTimeout(() => setAutoSaveLLMSettingsError(null), 5000);
         } finally {
-            setIsAutoSavingLLMSettings(false);
+          setIsAutoSavingLLMSettings(false);
         }
     }, 1500); // Debounce period (e.g., 1.5 seconds)
 
