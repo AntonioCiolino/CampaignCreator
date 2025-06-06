@@ -116,7 +116,7 @@ const CampaignEditorPage: React.FC = () => {
   const [detailedProgressPercent, setDetailedProgressPercent] = useState<number>(0);
   const [detailedProgressCurrentTitle, setDetailedProgressCurrentTitle] = useState<string>('');
   const [isDetailedProgressVisible, setIsDetailedProgressVisible] = useState<boolean>(false);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const eventSourceRef = useRef<(() => void) | null>(null); // Changed type to store abort function
 
   // Helper function to get selected LLM object
   const selectedLLMObject = useMemo(() => {
@@ -208,10 +208,10 @@ const CampaignEditorPage: React.FC = () => {
         setSaveSuccess(message || `Sections created successfully! Processed: ${totalProcessed}`);
         setTimeout(() => setSaveSuccess(null), 5000); // Clear after 5s
 
-        if (eventSourceRef.current) {
-          eventSourceRef.current.close();
-          eventSourceRef.current = null;
-        }
+        // if (eventSourceRef.current) { // No longer need to call .close() here
+        //   // eventSourceRef.current.close(); // REMOVED
+        // }
+        eventSourceRef.current = null; // Clear the ref
       },
       onError: (error) => {
         console.error("SSE Error:", error);
@@ -220,10 +220,10 @@ const CampaignEditorPage: React.FC = () => {
         setIsPageLoading(false);
         const errorMessage = (error as any)?.message || "An error occurred during section creation.";
         setSeedSectionsError(`SSE Error: ${errorMessage}`);
-        if (eventSourceRef.current) {
-          eventSourceRef.current.close();
-          eventSourceRef.current = null;
-        }
+        // if (eventSourceRef.current) { // No longer need to call .close() here
+        //   // eventSourceRef.current.close(); // REMOVED
+        // }
+        eventSourceRef.current = null; // Clear the ref
       }
     };
 
@@ -240,11 +240,11 @@ const CampaignEditorPage: React.FC = () => {
   };
 
   useEffect(() => {
-    // Cleanup function to close EventSource if component unmounts
+    // Cleanup function to call abort if component unmounts
     return () => {
       if (eventSourceRef.current) {
-        console.log("Closing EventSource on component unmount.");
-        eventSourceRef.current.close();
+        console.log("Aborting SSE connection on component unmount.");
+        eventSourceRef.current(); // Call the abort function
         eventSourceRef.current = null;
       }
     };
