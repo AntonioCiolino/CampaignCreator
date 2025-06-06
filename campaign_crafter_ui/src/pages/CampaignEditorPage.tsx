@@ -537,6 +537,28 @@ const CampaignEditorPage: React.FC = () => {
     }
   }, [temperature, campaign]); // initialLoadCompleteRef is a ref, not needed in deps. campaign is for comparison.
 
+  const handleCancelSeeding = async () => {
+    if (eventSourceRef.current) {
+      console.log("User cancelled section seeding. Aborting SSE.");
+      eventSourceRef.current(); // Call the abort function
+      eventSourceRef.current = null;
+    }
+    setIsSeedingSections(false);
+    setIsDetailedProgressVisible(false);
+    setDetailedProgressPercent(0);
+    setDetailedProgressCurrentTitle('');
+    // It's possible seedSectionsError might have an error from a previous failed attempt.
+    // Clearing it here unless we want to preserve an error that occurred *before* cancellation.
+    // For a clean cancel, clearing it seems appropriate.
+    setSeedSectionsError(null);
+    setSaveSuccess("Section seeding cancelled by user.");
+    setTimeout(() => setSaveSuccess(null), 3000);
+    // setIsPageLoading(false); // Ensure global page loader is also turned off if it was on.
+                             // This is typically handled by onDone/onError in SSE, but good for explicit cancel.
+                             // However, seedSectionsFromToc itself sets it to true and onOpen/onError set it to false.
+                             // If cancel happens before onOpen, it might need to be handled.
+                             // For now, assume onOpen/onError will manage isPageLoading.
+  };
 
   const handleSaveChanges = async () => {
     if (!campaignId || !campaign) return;
@@ -993,6 +1015,17 @@ const CampaignEditorPage: React.FC = () => {
                     error={seedSectionsError} // Pass the error to the component
                     title="Seeding Sections from Table of Contents..." // Optional: override default title
                   />
+                  <Button
+                    onClick={handleCancelSeeding}
+                    className="action-button secondary-action-button" // Using secondary style for cancel
+                    style={{ marginTop: '10px' }}
+                    icon={<CancelIcon />}
+                    tooltip="Stop the section seeding process"
+                    disabled={!isSeedingSections} // Disable if not actively seeding (e.g., already completed/errored out but progress still visible briefly)
+                  >
+                    Cancel Seeding
+                  </Button>
+                </>
                 )}
               </div>
             )}
