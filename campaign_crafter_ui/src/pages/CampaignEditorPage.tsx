@@ -1,4 +1,4 @@
-import React, { useState, useEffect, FormEvent, useMemo, useRef, useCallback } from 'react'; // Added useCallback
+import React, { useState, useEffect, FormEvent, useMemo, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -6,16 +6,12 @@ import LLMSelectionDialog from '../components/modals/LLMSelectionDialog';
 import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal';
 import SuggestedTitlesModal from '../components/modals/SuggestedTitlesModal';
 import * as campaignService from '../services/campaignService';
-// Ensure TOCEntry is imported, and other necessary types. Campaign is imported directly.
 import { Campaign, CampaignSection, TOCEntry, SeedSectionsProgressEvent, SeedSectionsCallbacks } from '../services/campaignService';
 import { getAvailableLLMs, LLMModel } from '../services/llmService';
-// CampaignSectionView will be used by CampaignSectionEditor
-// import CampaignSectionView from '../components/CampaignSectionView';
 import ReactMarkdown from 'react-markdown';
 import './CampaignEditorPage.css';
-import Button from '../components/common/Button'; // Ensure common Button is imported
+import Button from '../components/common/Button';
 
-// MUI Icons (attempt to import, will use text/emoji if fails)
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
@@ -24,8 +20,6 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import PublishIcon from '@mui/icons-material/Publish';
 
-
-// New Component Imports
 import CampaignDetailsEditor from '../components/campaign_editor/CampaignDetailsEditor';
 import CampaignLLMSettings from '../components/campaign_editor/CampaignLLMSettings';
 import CampaignSectionEditor from '../components/campaign_editor/CampaignSectionEditor';
@@ -33,11 +27,12 @@ import { LLMModel as LLM } from '../services/llmService';
 import Tabs, { TabItem } from '../components/common/Tabs';
 import { Typography } from '@mui/material';
 import DetailedProgressDisplay from '../components/common/DetailedProgressDisplay';
+import TOCEditor from '../components/campaign_editor/TOCEditor'; // Import TOCEditor
 
 const CampaignEditorPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
-  const [campaign, setCampaign] = useState<campaignService.Campaign | null>(null);
-  const [sections, setSections] = useState<campaignService.CampaignSection[]>([]);
+  const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [sections, setSections] = useState<CampaignSection[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isPageLoading, setIsPageLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +89,12 @@ const CampaignEditorPage: React.FC = () => {
   const [isDetailedProgressVisible, setIsDetailedProgressVisible] = useState<boolean>(false);
   const eventSourceRef = useRef<(() => void) | null>(null);
 
+  // State for TOCEditor
+  const [editableDisplayTOC, setEditableDisplayTOC] = useState<TOCEntry[]>([]);
+  const [isSavingTOC, setIsSavingTOC] = useState<boolean>(false);
+  const [tocSaveError, setTocSaveError] = useState<string | null>(null);
+  const [tocSaveSuccess, setTocSaveSuccess] = useState<string | null>(null);
+
   const selectedLLMObject = useMemo(() => {
     if (availableLLMs.length > 0 && selectedLLMId) {
       return availableLLMs.find(llm => llm.id === selectedLLMId) as LLM | undefined;
@@ -143,7 +144,7 @@ const CampaignEditorPage: React.FC = () => {
       }
     }
     return true;
-  }, [campaign, campaignId, selectedLLMId, temperature]); // Added dependencies
+  }, [campaign, campaignId, selectedLLMId, temperature]);
 
   const processedToc = useMemo(() => {
     if (!campaign || !campaign.display_toc || campaign.display_toc.length === 0) {
@@ -163,8 +164,6 @@ const CampaignEditorPage: React.FC = () => {
     }).join('\n');
   }, [campaign, sections]);
 
-  // Removed generateNavLinksFromToc function
-
   const handleSeedSectionsFromToc = async () => {
     const llmSettingsSaved = await ensureLLMSettingsSaved();
     if (!llmSettingsSaved) {
@@ -175,7 +174,7 @@ const CampaignEditorPage: React.FC = () => {
       setSeedSectionsError("Cannot create sections: Campaign ID is missing or no Table of Contents available.");
       return;
     }
-    if (campaign.display_toc.length === 0) { // Check if TOC is empty
+    if (campaign.display_toc.length === 0) {
         setSeedSectionsError("Cannot seed sections from an empty Table of Contents.");
         return;
     }
@@ -256,6 +255,7 @@ const CampaignEditorPage: React.FC = () => {
           getAvailableLLMs(),
         ]);
         setCampaign(campaignDetails);
+        setEditableDisplayTOC(campaignDetails.display_toc || []); // Initialize editableDisplayTOC
         if (Array.isArray(campaignSectionsResponse)) {
             setSections(campaignSectionsResponse.sort((a, b) => a.order - b.order));
         } else {
@@ -354,21 +354,21 @@ const CampaignEditorPage: React.FC = () => {
     }, 1500);
     setDebounceTimer(newTimer);
     return () => { if (newTimer) { clearTimeout(newTimer); } };
-  }, [selectedLLMId, temperature, campaignId, campaign, isLoading, debounceTimer]); // ensureLLMSettingsSaved is not called here directly
+  }, [selectedLLMId, temperature, campaignId, campaign, isLoading, debounceTimer, ensureLLMSettingsSaved]); // Added ensureLLMSettingsSaved to satisfy linter if it's used inside (though current logic doesn't directly)
 
   useEffect(() => {
     if (!initialLoadCompleteRef.current || !campaign) { return; }
     if (selectedLLMId && selectedLLMId !== campaign.selected_llm_id) {
       ensureLLMSettingsSaved();
     }
-  }, [selectedLLMId, campaign, ensureLLMSettingsSaved]); // Added ensureLLMSettingsSaved
+  }, [selectedLLMId, campaign, ensureLLMSettingsSaved]);
 
   useEffect(() => {
     if (!initialLoadCompleteRef.current || !campaign) { return; }
     if (temperature !== null && temperature !== campaign.temperature) {
       ensureLLMSettingsSaved();
     }
-  }, [temperature, campaign, ensureLLMSettingsSaved]); // Added ensureLLMSettingsSaved
+  }, [temperature, campaign, ensureLLMSettingsSaved]);
 
   const handleCancelSeeding = async () => {
     if (eventSourceRef.current) {
@@ -579,6 +579,7 @@ const CampaignEditorPage: React.FC = () => {
         prompt: "Generate a table of contents for the campaign based on its concept."
       });
       setCampaign(updatedCampaign);
+      setEditableDisplayTOC(updatedCampaign.display_toc || []); // Update editableDisplayTOC
       setSaveSuccess("Table of Contents generated successfully!");
       setTimeout(() => setSaveSuccess(null), 3000);
     } catch (err) {
@@ -586,6 +587,34 @@ const CampaignEditorPage: React.FC = () => {
     } finally {
       setIsGeneratingTOC(false);
       setIsPageLoading(false);
+    }
+  };
+
+  const handleTOCEditorChange = (newTOC: TOCEntry[]) => {
+    setEditableDisplayTOC(newTOC);
+  };
+
+  const handleTOCSaveChanges = async () => {
+    if (!campaignId || !campaign) return;
+    setIsSavingTOC(true);
+    setTocSaveError(null);
+    setTocSaveSuccess(null);
+    try {
+      const payload: campaignService.CampaignUpdatePayload = {
+        display_toc: editableDisplayTOC,
+        homebrewery_toc: editableDisplayTOC, // Mirror display_toc for now
+      };
+      const updatedCampaign = await campaignService.updateCampaign(campaignId, payload);
+      setCampaign(updatedCampaign);
+      setEditableDisplayTOC(updatedCampaign.display_toc || []);
+      setTocSaveSuccess('Table of Contents saved successfully!');
+      setTimeout(() => setTocSaveSuccess(null), 3000);
+    } catch (err) {
+      console.error("Failed to save TOC:", err);
+      setTocSaveError('Failed to save Table of Contents.');
+      setTimeout(() => setTocSaveError(null), 5000);
+    } finally {
+      setIsSavingTOC(false);
     }
   };
 
@@ -742,30 +771,31 @@ const CampaignEditorPage: React.FC = () => {
       <section className="campaign-detail-section editor-section">
         {campaign.display_toc && (
           <h2 onClick={() => setIsTocCollapsed(!isTocCollapsed)} style={{ cursor: 'pointer' }}>
-            {isTocCollapsed ? '▶' : '▼'} Table of Contents
+            {isTocCollapsed ? '▶' : '▼'} Table of Contents Display
           </h2>
         )}
         {(!campaign.display_toc || !isTocCollapsed) && (
           <div className="toc-controls-and-display" style={{ marginTop: '10px' }}>
-            {campaign.display_toc && <ReactMarkdown>{processedToc}</ReactMarkdown>}
+            {campaign.display_toc && campaign.display_toc.length > 0 && <ReactMarkdown>{processedToc}</ReactMarkdown>}
+            {(!campaign.display_toc || campaign.display_toc.length === 0) && <p>No Table of Contents generated yet.</p>}
             <Button
               onClick={handleGenerateTOC}
               disabled={isGeneratingTOC || !selectedLLMId}
               className="action-button"
-              style={{ marginTop: campaign.display_toc ? '10px' : '0' }}
+              style={{ marginTop: (campaign.display_toc && campaign.display_toc.length > 0) ? '10px' : '0' }}
               icon={<ListAltIcon />}
               tooltip={!selectedLLMId ? "Select an LLM model from the Settings tab first" : "Generate or re-generate the Table of Contents based on the campaign concept and sections"}
             >
-              {isGeneratingTOC ? 'Generating TOC...' : (campaign.display_toc ? 'Re-generate Table of Contents' : 'Generate Table of Contents')}
+              {isGeneratingTOC ? 'Generating TOC...' : ((campaign.display_toc && campaign.display_toc.length > 0) ? 'Re-generate Table of Contents' : 'Generate Table of Contents')}
             </Button>
             {tocError && <p className="error-message feedback-message" style={{ marginTop: '5px' }}>{tocError}</p>}
-            {campaign.display_toc && (
+            {(campaign.display_toc && campaign.display_toc.length > 0) && (
               <div style={{ marginTop: '15px' }}>
                 {!isDetailedProgressVisible ? (
                   <>
                     <Button
                       onClick={handleSeedSectionsFromToc}
-                      disabled={isSeedingSections || !campaign.display_toc}
+                      disabled={isSeedingSections || !(campaign.display_toc && campaign.display_toc.length > 0) }
                       className="action-button"
                       icon={<AddCircleOutlineIcon />}
                       tooltip="Parse the current Table of Contents and create campaign sections based on its structure. Optionally auto-populate content."
@@ -810,6 +840,22 @@ const CampaignEditorPage: React.FC = () => {
             )}
           </div>
         )}
+      </section>
+      <section className="campaign-detail-section editor-section" style={{ marginTop: '20px' }}>
+        <TOCEditor
+          toc={editableDisplayTOC}
+          onTOCChange={handleTOCEditorChange}
+        />
+        <Button
+          onClick={handleTOCSaveChanges}
+          disabled={isSavingTOC}
+          variant="contained"
+          style={{ marginTop: '10px' }}
+        >
+          {isSavingTOC ? 'Saving TOC...' : 'Save Table of Contents Changes'}
+        </Button>
+        {tocSaveError && <p className="error-message feedback-message">{tocSaveError}</p>}
+        {tocSaveSuccess && <p className="success-message feedback-message">{tocSaveSuccess}</p>}
       </section>
     </>
   );
@@ -956,4 +1002,13 @@ const CampaignEditorPage: React.FC = () => {
   );
 };
 export default CampaignEditorPage;
+
 // Note: The redundant LLMModel type alias (campaignService.ModelInfo) was already addressed by using LLMModel from llmService.
+// Removed generateNavLinksFromToc function
+// Ensured handleUpdateSectionType is defined and passed correctly
+// Ensured TOC existence check in handleGenerateTOC uses .length
+// Ensured ensureLLMSettingsSaved is wrapped in useCallback and dependencies are correct for useEffects calling it.
+// Corrected error message in handleSaveChanges.
+// Added TOCEditor and related state/handlers.
+// Initialized editableDisplayTOC in useEffect and handleGenerateTOC.
+// Changed type of campaign and sections state variables to use direct imports.
