@@ -3,9 +3,11 @@ import apiClient from './apiClient';
 // Interface for User data (matching backend Pydantic User response model)
 export interface User {
   id: number;
-  email: string;
+  email: string; // This will need to be optional, and username added, if aligning with new User type
+  username?: string; // Added to align with new User type, make optional if not always present
   full_name: string | null;
-  is_active: boolean;
+  disabled?: boolean; // Changed from is_active
+  is_active?: boolean; // To be removed if fully switching to 'disabled'
   is_superuser: boolean;
   // Note: 'campaigns' and 'llm_configs' are not included here for now,
   // as they might not be needed for basic user management listings.
@@ -53,6 +55,34 @@ export const getUserById = async (userId: number): Promise<User> => {
     throw error;
   }
 };
+
+// --- Auth related functions ---
+
+interface TokenResponse {
+  access_token: string;
+  token_type: string;
+}
+
+export const loginUser = async (username_or_email: string, password: string): Promise<TokenResponse> => {
+  const formData = new URLSearchParams();
+  formData.append('username', username_or_email);
+  formData.append('password', password);
+
+  // apiClient should have its baseURL configured to include /api/v1 or similar prefix
+  const response = await apiClient.post<TokenResponse>('/auth/token', formData, {
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+  });
+  return response.data;
+};
+
+// Placeholder for fetching current user details after login
+// import { User } from '../types/userTypes'; // This User type would be from a central userTypes.ts
+// export const getMe = async (): Promise<User> => {
+//   const response = await apiClient.get<User>('/users/me'); // Assuming /users/me endpoint
+//   return response.data;
+// };
 
 // Create a new user
 export const createUser = async (userData: UserCreatePayload): Promise<User> => {

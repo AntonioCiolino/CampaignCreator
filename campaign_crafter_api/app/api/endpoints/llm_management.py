@@ -1,12 +1,13 @@
-from typing import List, Dict, Optional # Dict might not be needed anymore, Optional added
-from fastapi import APIRouter, HTTPException, Depends # Added Depends
-from pydantic import BaseModel # Added BaseModel for LLMConfigStatus
-from sqlalchemy.orm import Session # Added Session for get_db
-from app import models as pydantic_models # Renamed to avoid confusion with service model dicts
-from app.db import get_db # Added get_db
-from app.services.llm_service import LLMServiceUnavailableError, LLMGenerationError # Updated import
+from typing import List, Dict, Optional, Annotated # Dict might not be needed anymore, Optional added, Annotated added
+from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from app import models as pydantic_models
+from app.db import get_db
+from app.services.llm_service import LLMServiceUnavailableError, LLMGenerationError
 from app.services.llm_factory import get_llm_service, get_available_models_info
-from app.core.config import settings # For direct key checks if needed, though factory handles it
+from app.core.config import settings
+from app.services.auth_service import get_current_active_user # Import for auth
 
 router = APIRouter()
 
@@ -38,7 +39,10 @@ async def list_llm_models():
         raise HTTPException(status_code=500, detail="Failed to retrieve list of LLM models due to an internal server error.")
 
 @router.post("/generate-text", response_model=pydantic_models.LLMTextGenerationResponse, tags=["LLM Management"])
-async def generate_text_endpoint(request: pydantic_models.LLMGenerationRequest):
+async def generate_text_endpoint(
+    request: pydantic_models.LLMGenerationRequest,
+    current_user: Annotated[pydantic_models.User, Depends(get_current_active_user)]
+):
     """
     Generates text using the specified LLM provider and model.
     """
@@ -100,28 +104,11 @@ async def generate_text_endpoint(request: pydantic_models.LLMGenerationRequest):
         print(f"Unexpected error during text generation: {type(e).__name__} - {e}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred while generating text.")
 
-# Ensure Pydantic models are defined for the new endpoint
-# In app/models/llm_models.py (or similar):
-# class LLMTextGenerationRequest(BaseModel):
-#     prompt: str
-#     model_id_with_prefix: Optional[str] = None # e.g., "openai/gpt-3.5-turbo"
-#     temperature: float = 0.7
-#     max_tokens: int = 500
-
-# class LLMTextGenerationResponse(BaseModel):
-#     text: str
-#     model_used: Optional[str] = None
-#
-# And ModelInfo, ModelListResponse should already exist.
-# class ModelInfo(BaseModel):
-#     id: str
-#     name: str
-#
-# class ModelListResponse(BaseModel):
-#     models: List[ModelInfo]
-
 @router.get("/openai/test-config", response_model=LLMConfigStatus, tags=["LLM Management"])
-async def test_openai_config(db: Session = Depends(get_db)): # db might not be used but kept for consistency
+async def test_openai_config(
+    db: Annotated[Session, Depends(get_db)], # db might not be used but kept for consistency
+    current_user: Annotated[pydantic_models.User, Depends(get_current_active_user)]
+):
     """
     Tests the OpenAI LLM service configuration and availability.
     """
@@ -177,7 +164,10 @@ async def test_openai_config(db: Session = Depends(get_db)): # db might not be u
     # Let's refine the except block to raise HTTPException.
 
 @router.get("/openai/test-config-v2", response_model=LLMConfigStatus, tags=["LLM Management"])
-async def test_openai_config_v2(db: Session = Depends(get_db)): # db might not be used but kept for consistency
+async def test_openai_config_v2(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[pydantic_models.User, Depends(get_current_active_user)]
+):
     """
     Tests the OpenAI LLM service configuration and availability. (V2 with HTTPException for errors)
     """

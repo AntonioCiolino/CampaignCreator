@@ -1,15 +1,16 @@
-from typing import Optional, List
-import re # Add import re
-import json # Added for SSE
-import asyncio # Added for SSE
+from typing import Optional, List, Annotated # Added Annotated
+import re
+import json
+import asyncio
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
-from pydantic import BaseModel # Added BaseModel import
+from pydantic import BaseModel
 
 from app import external_models, crud, orm_models, models
 from app.db import get_db
+from app.services.auth_service import get_current_active_user # Import for auth
 from sse_starlette.sse import EventSourceResponse # Added for SSE
 from app.services.llm_service import LLMServiceUnavailableError, LLMGenerationError # Updated import
 from app.services.llm_factory import get_llm_service
@@ -36,20 +37,19 @@ def _extract_provider_and_model(model_id_with_prefix: Optional[str]) -> tuple[Op
 
 @router.post("/", response_model=models.Campaign)
 async def create_new_campaign(
-    campaign_input: models.CampaignCreate, # <--- Changed
-    db: Session = Depends(get_db)
+    campaign_input: models.CampaignCreate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
-    owner_id = 1  # Placeholder
+    owner_id = current_user.id # Use authenticated user's ID
     try:
-        # Note: campaign_input is passed as the 'campaign' argument to crud.create_campaign
-        # This is valid because CampaignCreate is a subclass of CampaignBase.
         db_campaign = await crud.create_campaign(
             db=db, 
             campaign_payload=campaign_input,
             owner_id=owner_id
         )
-        if db_campaign.concept is None and campaign_input.initial_user_prompt: # <--- Changed
-            print(f"Campaign {db_campaign.id} created, but concept generation might have failed or was skipped (e.g. LLM unavailable/error).")
+        if db_campaign.concept is None and campaign_input.initial_user_prompt:
+            print(f"Campaign {db_campaign.id} created for user {owner_id}, but concept generation might have failed or was skipped.")
     # Note: crud.create_campaign now internally handles LLMServiceUnavailableError and LLMGenerationError
     # by logging them and returning a campaign without a concept.
     # The endpoint will only catch errors if crud.create_campaign re-raises them, or for other ValueErrors.
@@ -64,31 +64,44 @@ async def create_new_campaign(
 
 @router.get("/", response_model=List[models.Campaign])
 async def list_campaigns(
-    db: Session = Depends(get_db)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+    # TODO: Modify crud.get_all_campaigns to filter by current_user.id
 ):
-    campaigns = crud.get_all_campaigns(db=db)
-    # No HTTPException is raised if campaigns is empty
-    return campaigns
+    campaigns = crud.get_all_campaigns(db=db) # This currently gets ALL campaigns
+    # Filter campaigns for the current user (temporary fix until CRUD is updated)
+    user_campaigns = [c for c in campaigns if c.owner_id == current_user.id]
+    return user_campaigns
 
 @router.get("/{campaign_id}", response_model=models.Campaign)
 async def read_campaign(
     campaign_id: int, 
-    db: Session = Depends(get_db)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
     db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
     if db_campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
+    if db_campaign.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this campaign")
     return db_campaign
 
 @router.put("/{campaign_id}", response_model=models.Campaign)
 async def update_existing_campaign(
     campaign_id: int,
-    campaign_update: models.CampaignUpdate, # Changed from CampaignBase to CampaignUpdate
-    db: Session = Depends(get_db)
+    campaign_update: models.CampaignUpdate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
-    updated_campaign = crud.update_campaign(db=db, campaign_id=campaign_id, campaign_update=campaign_update)
-    if updated_campaign is None:
+    db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
+    if db_campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
+    if db_campaign.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this campaign")
+
+    updated_campaign = crud.update_campaign(db=db, campaign_id=campaign_id, campaign_update=campaign_update)
+    # crud.update_campaign itself doesn't check ownership, so the check above is important.
+    # updated_campaign will be None if not found by crud.update_campaign, already handled by initial get.
     return updated_campaign
 
 # --- LLM-Related Endpoints ---
@@ -97,11 +110,14 @@ async def update_existing_campaign(
 async def generate_campaign_toc_endpoint(
     campaign_id: int,
     request_body: models.LLMGenerationRequest, 
-    db: Session = Depends(get_db)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
     db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
     if db_campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
+    if db_campaign.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized for this campaign")
     if not db_campaign.concept:
         raise HTTPException(status_code=400, detail="Campaign concept is missing. TOC cannot be generated.")
 
@@ -160,11 +176,14 @@ async def generate_campaign_titles_endpoint(
     campaign_id: int,
     request_body: models.LLMGenerationRequest, 
     count: int = Query(5, ge=1, le=10), 
-    db: Session = Depends(get_db)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
     db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
     if db_campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
+    if db_campaign.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized for this campaign")
     if not db_campaign.concept:
         raise HTTPException(status_code=400, detail="Campaign concept is missing. Titles cannot be generated.")
     try:
@@ -201,11 +220,14 @@ async def generate_campaign_titles_endpoint(
 async def seed_sections_from_toc_endpoint(
     campaign_id: int,
     auto_populate: bool = False,
-    db: Session = Depends(get_db)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
     db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
     if db_campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
+    if db_campaign.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized for this campaign")
 
     print(f"--- Seeding sections for campaign {campaign_id} (SSE) ---")
     if not db_campaign.display_toc:
@@ -355,7 +377,8 @@ class SectionOrderUpdate(BaseModel): # Changed to use pydantic.BaseModel
 async def update_section_order_endpoint(
     campaign_id: int,
     order_update: SectionOrderUpdate,
-    db: Session = Depends(get_db)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
     """
     Updates the order of sections within a campaign.
@@ -364,6 +387,8 @@ async def update_section_order_endpoint(
     db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
     if db_campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
+    if db_campaign.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized for this campaign")
 
     # Fetch all sections for the campaign to ensure all IDs are valid and belong to this campaign
     existing_sections = crud.get_campaign_sections(db=db, campaign_id=campaign_id, limit=None) # Get all
@@ -389,11 +414,14 @@ async def update_section_order_endpoint(
 async def create_new_campaign_section_endpoint(
     campaign_id: int,
     section_input: models.CampaignSectionCreateInput,
-    db: Session = Depends(get_db)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
     db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
     if db_campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
+    if db_campaign.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized for this campaign")
     if not db_campaign.concept and not section_input.prompt:
         raise HTTPException(status_code=400, detail="Campaign concept is missing and no specific prompt for section. Section content cannot be generated.")
 
@@ -445,14 +473,22 @@ async def update_campaign_section_endpoint(
     campaign_id: int,
     section_id: int,
     section_data: models.CampaignSectionUpdateInput,
-    db: Session = Depends(get_db)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
+    # First, check if the campaign itself belongs to the user
+    db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
+    if db_campaign is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    if db_campaign.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to modify sections for this campaign")
+
     updated_section = crud.update_campaign_section(
         db=db, 
         section_id=section_id, 
         campaign_id=campaign_id, 
         section_update_data=section_data
-    )
+    ) # This CRUD already checks if section belongs to campaign
     if updated_section is None:
         raise HTTPException(status_code=404, detail="Campaign section not found or does not belong to the specified campaign.")
     return updated_section
@@ -460,11 +496,14 @@ async def update_campaign_section_endpoint(
 @router.get("/{campaign_id}/sections", response_model=models.CampaignSectionListResponse, tags=["Campaign Sections"])
 async def list_campaign_sections(
     campaign_id: int,
-    db: Session = Depends(get_db)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
     db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
     if db_campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
+    if db_campaign.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view sections for this campaign")
     sections = crud.get_campaign_sections(db=db, campaign_id=campaign_id)
     return {"sections": sections}
 
@@ -472,9 +511,18 @@ async def list_campaign_sections(
 async def delete_campaign_section_endpoint(
     campaign_id: int,
     section_id: int,
-    db: Session = Depends(get_db)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
+    # First, check if the campaign itself belongs to the user
+    db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
+    if db_campaign is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    if db_campaign.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete sections for this campaign")
+
     deleted_section = crud.delete_campaign_section(db=db, section_id=section_id, campaign_id=campaign_id)
+    # This CRUD already checks if section belongs to campaign
     if deleted_section is None:
         raise HTTPException(status_code=404, detail="Campaign section not found or does not belong to this campaign.")
     return deleted_section
@@ -484,11 +532,14 @@ async def delete_campaign_section_endpoint(
 @router.get("/{campaign_id}/export/homebrewery", tags=["Campaigns", "Export"])
 async def export_campaign_homebrewery(
     campaign_id: int,
-    db: Session = Depends(get_db)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
     db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
     if db_campaign is None:
-        raise HTTPException(status_code=404, detail="Campaign notfound")
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    if db_campaign.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized for this campaign")
     sections = crud.get_campaign_sections(db=db, campaign_id=campaign_id, limit=1000) 
     export_service = HomebreweryExportService()
     try:
@@ -507,11 +558,14 @@ async def export_campaign_homebrewery(
 @router.get("/{campaign_id}/full_content", response_model=models.CampaignFullContentResponse, tags=["Campaigns"])
 async def get_campaign_full_content_endpoint(
     campaign_id: int,
-    db: Session = Depends(get_db)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
     db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
     if db_campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
+    if db_campaign.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized for this campaign")
     sections = crud.get_campaign_sections(db=db, campaign_id=campaign_id, limit=1000)
     all_content_parts = []
     if db_campaign.concept:
@@ -535,11 +589,14 @@ async def get_campaign_full_content_endpoint(
 @router.get("/{campaign_id}/prepare_for_homebrewery", response_model=PrepareHomebreweryPostResponse, tags=["Campaigns", "Export"])
 async def prepare_campaign_for_homebrewery_posting(
     campaign_id: int,
-    db: Session = Depends(get_db)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
     db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
     if db_campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
+    if db_campaign.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized for this campaign")
     sections = crud.get_campaign_sections(db=db, campaign_id=campaign_id, limit=1000)
     export_service = HomebreweryExportService()
     try:
@@ -560,12 +617,15 @@ async def prepare_campaign_for_homebrewery_posting(
 async def regenerate_campaign_section_endpoint(
     campaign_id: int,
     section_id: int,
-    section_input: models.SectionRegenerateInput, # Using the new input model
-    db: Session = Depends(get_db)
+    section_input: models.SectionRegenerateInput,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
     db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
     if db_campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
+    if db_campaign.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized for this campaign")
 
     db_section = crud.get_section(db=db, section_id=section_id, campaign_id=campaign_id)
     if db_section is None:

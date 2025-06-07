@@ -45,10 +45,10 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = "sqlite:///./campaign_crafter_default.db"
 
-    # JWT Settings (example, if you had them)
-    # SECRET_KEY: str = "your_super_secret_key"
-    # ALGORITHM: str = "HS256"
-    # ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    # JWT Settings
+    SECRET_KEY: str = "your-secret-key"  # TODO: Load from environment variable for production
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     class Config:
         env_file = ".env"
