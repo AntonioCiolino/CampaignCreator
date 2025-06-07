@@ -1,4 +1,9 @@
 /* campaign_crafter_ui/src/components/common/Layout.css */
+/* Default styles for hamburger menu (hidden on desktop) */
+.hamburger-menu {
+  display: none;
+}
+
 .app-layout {
   display: flex;
   flex-direction: column;
@@ -78,4 +83,64 @@
   text-align: center;
   padding: 1rem;
   border-top: 1px solid #e7e7e7;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+  .app-header {
+    padding: 0.75rem 1rem; /* Slightly reduce padding for smaller screens */
+    position: relative; /* For positioning the mobile nav menu if it's absolute */
+  }
+
+  .app-nav ul {
+    display: none; /* Hide nav by default on mobile */
+    position: absolute; /* Take nav out of flow */
+    top: 100%; /* Position below the header */
+    left: 0;
+    right: 0;
+    background-color: #333; /* Same as header */
+    z-index: 1000; /* Ensure it's above other content */
+    border-top: 1px solid #444; /* Separator from header */
+  }
+
+  .app-nav.mobile-nav-active ul {
+    display: flex;
+    flex-direction: column;
+    width: 100%; /* Ensure it takes full width */
+  }
+
+  .app-nav.mobile-nav-active ul li {
+    width: 100%;
+  }
+
+  .app-nav.mobile-nav-active ul li a {
+    display: block; /* Make links take full width */
+    width: 100%;    /* Explicitly set width */
+    text-align: left;
+    padding: 1rem 1.5rem; /* Comfortable padding for touch */
+    border-bottom: 1px solid #444; /* Separator for items */
+  }
+
+  .app-nav.mobile-nav-active ul li:last-child a {
+    border-bottom: none; /* No border for the last item */
+  }
+
+  .app-nav a {
+     font-size: 1.1rem; /* Slightly larger font for mobile nav items */
+  }
+
+  /* Hamburger Menu Button Styles */
+  .hamburger-menu {
+    display: block; /* Show hamburger on mobile */
+    color: white;
+    font-size: 1.8rem; /* Adjust size as needed */
+    cursor: pointer;
+    background-color: transparent;
+    border: none;
+    padding: 0.25rem; /* Small padding for touch target */
+    order: -1; /* Ensure it can be positioned if header items are reordered, e.g. title centered */
+  }
+  /* Hide on larger screens - this should be paired with a .tsx change
+     where the button is not rendered or hidden with a class */
+  /* .hamburger-menu { display: none; } /* Default to hide, then override above */
 }
