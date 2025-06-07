@@ -849,7 +849,7 @@ const CampaignEditorPage: React.FC = () => {
         <Button
           onClick={handleTOCSaveChanges}
           disabled={isSavingTOC}
-          variant="contained"
+          variant="primary" // Changed to "primary"
           style={{ marginTop: '10px' }}
         >
           {isSavingTOC ? 'Saving TOC...' : 'Save Table of Contents Changes'}

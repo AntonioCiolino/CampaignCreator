@@ -21,10 +21,12 @@ const mockToc: TOCEntry[] = [
 ];
 
 describe('TOCEditor', () => {
-  let mockOnTOCChange: jest.Mock;
+  // Let TypeScript infer the type from jest.fn() directly, with generic for the mocked function signature
+  const mockOnTOCChange = jest.fn<(newTOC: TOCEntry[]) => void>();
 
   beforeEach(() => {
-    mockOnTOCChange = jest.fn();
+    // Clear mock history before each test
+    mockOnTOCChange.mockClear();
   });
 
   test('renders initial TOC entries correctly', () => {

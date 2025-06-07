@@ -51,7 +51,9 @@ export interface CampaignUpdatePayload {
   badge_image_url?: string | null; // Added
   selected_llm_id?: string | null;
   temperature?: number | null;
-  // Concept & TOC are typically updated via specific generation endpoints, not direct PUT
+  display_toc?: TOCEntry[] | null; // Added
+  homebrewery_toc?: TOCEntry[] | null; // Added
+  // Concept is typically updated via specific generation endpoints
 }
 
 // For LLM Generation requests common to TOC, Titles, etc.
