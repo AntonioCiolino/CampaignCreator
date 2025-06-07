@@ -1,32 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { FaEdit, FaTrash } from 'react-icons/fa';
-import { User, getUsers, deleteUser, createUser, updateUser, UserCreatePayload, UserUpdatePayload } from '../services/userService';
-// import { Link } from 'react-router-dom';
+// Use AppUser from userTypes as the canonical User type for frontend
+import { AppUser } from '../../types/userTypes';
+import { getUsers, deleteUser, createUser, updateUser, UserCreatePayload, UserUpdatePayload } from '../services/userService';
 import Button from '../components/common/Button';
-import Modal from '../components/common/Modal'; // Added Modal import
-import UserForm from '../components/UserForm'; // Added UserForm import
-import LoadingSpinner from '../components/common/LoadingSpinner'; // Import LoadingSpinner
+import Modal from '../components/common/Modal';
+import UserForm from '../components/UserForm';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 import './UserManagementPage.css';
+import { useAuth } from '../../contexts/AuthContext'; // For token check
 
 const UserManagementPage: React.FC = () => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true); // For initial fetch
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false); // For CUD operations
+  const { token } = useAuth(); // Get token for defensive check
+  const [users, setUsers] = useState<AppUser[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingUser, setEditingUser] = useState<AppUser | null>(null);
   const [userFormError, setUserFormError] = useState<string | null>(null);
 
   const fetchUsers = async () => {
+    if (!token) { // Defensive check, ProtectedRoute should handle this
+      setError("Authentication token not found. Please login.");
+      setIsLoading(false);
+      return;
+    }
     try {
       setIsLoading(true);
       setError(null);
-      const fetchedUsers = await getUsers();
+      const fetchedUsers = await getUsers(); // userService.getUsers now returns AppUser[]
       setUsers(fetchedUsers);
-    } catch (err) {
+    } catch (err: any) { // More specific error typing
       console.error('Failed to fetch users:', err);
-      setError('Failed to load users. Please try again later.');
+      const errorMessage = err.response?.data?.detail || err.message || 'Failed to load users. Please try again later.';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -34,7 +43,7 @@ const UserManagementPage: React.FC = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [token]); // Re-fetch if token changes (e.g. login/logout cycle if page wasn't left)
 
   const handleOpenCreateModal = () => {
     setEditingUser(null);
@@ -42,7 +51,7 @@ const UserManagementPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleOpenEditModal = (user: User) => {
+  const handleOpenEditModal = (user: AppUser) => { // Parameter type updated
     setEditingUser(user);
     setUserFormError(null);
     setIsModalOpen(true);
@@ -126,9 +135,10 @@ const UserManagementPage: React.FC = () => {
           <thead>
             <tr>
               <th>ID</th>
+              <th>Username</th>
               <th>Email</th>
               <th>Full Name</th>
-              <th>Active</th>
+              <th>Disabled</th>
               <th>Superuser</th>
               <th>Actions</th>
             </tr>
@@ -137,9 +147,10 @@ const UserManagementPage: React.FC = () => {
             {users.map((user) => (
               <tr key={user.id}>
                 <td>{user.id}</td>
-                <td>{user.email}</td>
+                <td>{user.username}</td>
+                <td>{user.email || 'N/A'}</td>
                 <td>{user.full_name || 'N/A'}</td>
-                <td>{user.is_active ? 'Yes' : 'No'}</td>
+                <td>{user.disabled ? 'Yes' : 'No'}</td>
                 <td>{user.is_superuser ? 'Yes' : 'No'}</td>
                 <td className="user-actions">
                   <Button onClick={() => handleOpenEditModal(user)} variant="secondary" size="sm">

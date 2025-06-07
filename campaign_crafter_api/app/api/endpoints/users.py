@@ -3,11 +3,22 @@ from typing import List, Optional, Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app import crud, models # Removed orm_models import as it's not directly used here
+from app import crud, models
 from app.db import get_db
-from app.services.auth_service import get_current_active_superuser
+from app.services.auth_service import get_current_active_superuser, get_current_active_user # Added get_current_active_user
 
 router = APIRouter()
+
+# Order matters for /me vs /{user_id} if /me could be misinterpreted as a user_id.
+# Placing /me first ensures it's matched correctly.
+@router.get("/me", response_model=models.User)
+async def read_users_me(
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+):
+    """
+    Get current logged-in user.
+    """
+    return current_user
 
 @router.post("/", response_model=models.User, status_code=status.HTTP_201_CREATED)
 def create_user_endpoint(

@@ -1,41 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Add useEffect
 import './LoginPage.css'; // Import CSS
 import LoginForm from '../components/auth/LoginForm';
-import { useNavigate } from 'react-router-dom';
-// import { useAuth } from '../contexts/AuthContext'; // Assuming an AuthContext will be created later
-import apiClient from '../services/apiClient'; // Or a dedicated authService
+import { useNavigate, useLocation } from 'react-router-dom'; // Add useLocation
+import { useAuth } from '../contexts/AuthContext'; // Import useAuth
 import { AxiosError } from 'axios';
-import { loginUser } from '../services/userService'; // Or authService
+
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  // const { login } = useAuth(); // Placeholder for AuthContext
+  const location = useLocation(); // For redirecting after login
+  const { login, user, isLoading, token } = useAuth(); // Get user, isLoading, token from AuthContext
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // If user is already logged in (and not loading), redirect from login page
+    if (!isLoading && token && user) {
+      const from = location.state?.from?.pathname || '/';
+      navigate(from, { replace: true });
+    }
+  }, [user, token, isLoading, navigate, location.state]);
 
   const handleLogin = async (username_or_email: string, password: string) => {
     setError(null);
     try {
-      const tokenData = await loginUser(username_or_email, password);
-
-      localStorage.setItem('token', tokenData.access_token);
-      // Update apiClient defaults AFTER successful login & token storage
-      if (apiClient.defaults.headers) {
-           apiClient.defaults.headers.common['Authorization'] = `Bearer ${tokenData.access_token}`;
-      } else {
-           apiClient.defaults.headers = { common: {'Authorization': `Bearer ${tokenData.access_token}`} };
-      }
-
-      // TODO: Fetch user details and set them in AuthContext
-      // const userResponse = await apiClient.get('/users/me'); // Assuming a /users/me endpoint
-      // login(userResponse.data, tokenData.access_token);
-
-      navigate('/'); // Redirect to dashboard or home page
+      await login(username_or_email, password); // Call context login
+      // Redirect to the page they were trying to access, or dashboard
+      const from = location.state?.from?.pathname || '/';
+      navigate(from, { replace: true });
     } catch (err) {
       const axiosError = err as AxiosError<any>;
       if (axiosError.response && axiosError.response.data && axiosError.response.data.detail) {
         setError(axiosError.response.data.detail);
-      } else if (axiosError.message) {
-        setError(axiosError.message);
+      } else if (err instanceof Error) { // More specific error type check
+        setError(err.message || 'Login failed. Please try again.');
       }
       else {
         setError('Login failed. Please try again.');
@@ -43,6 +40,11 @@ const LoginPage: React.FC = () => {
       console.error("Login error:", err);
     }
   };
+
+  // If still loading auth status or already logged in and about to redirect, don't show form yet.
+  if (isLoading || (token && user)) {
+    return <div>Loading...</div>; // Or a blank screen, or a spinner
+  }
 
   return (
     <div>

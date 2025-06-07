@@ -1,22 +1,65 @@
 import apiClient from './apiClient';
+import { User as AppUser } from '../types/userTypes'; // Use AppUser to avoid conflict or rename local
 
-// Interface for User data (matching backend Pydantic User response model)
-export interface User {
+// Interface for User data - This should align with AppUser from userTypes.ts
+// For now, functions like getUsers might return this local User type.
+// Ideally, all user service functions should consistently return AppUser.
+export interface User { // Local User type, potentially to be deprecated/aligned
   id: number;
-  email: string; // This will need to be optional, and username added, if aligning with new User type
-  username?: string; // Added to align with new User type, make optional if not always present
-  full_name: string | null;
-  disabled?: boolean; // Changed from is_active
-  is_active?: boolean; // To be removed if fully switching to 'disabled'
+  username: string;
+  email?: string | null;
+  full_name?: string | null;
+  disabled: boolean;
   is_superuser: boolean;
-  // Note: 'campaigns' and 'llm_configs' are not included here for now,
-  // as they might not be needed for basic user management listings.
-  // They can be added if a detailed user view requires them.
+  // is_active field is deprecated in favor of disabled
 }
 
 // Interface for creating a new user (matching backend UserCreate)
+// Backend UserCreate: username, password, email (optional), full_name (optional), is_superuser (optional)
 export interface UserCreatePayload {
-  email: string;
+  username: string; // Added username
+  email?: string | null; // Made email optional
+  password: string;
+  full_name?: string | null;
+  // is_active?: boolean; // Field removed from backend UserCreate model
+  is_superuser?: boolean;
+}
+
+// Interface for updating an existing user (matching backend UserUpdate)
+// Backend UserUpdate: inherits UserBase (username, email, full_name) + password, disabled, is_superuser
+export interface UserUpdatePayload {
+  username?: string; // Added username
+  email?: string | null; // Made email optional
+  password?: string;
+  full_name?: string | null;
+  // is_active?: boolean; // Field removed, use disabled
+  disabled?: boolean; // Added disabled
+  is_superuser?: boolean;
+}
+
+// Fetch all users (with optional pagination) - Should return AppUser[]
+export const getUsers = async (skip: number = 0, limit: number = 100): Promise<AppUser[]> => {
+  try {
+    const response = await apiClient.get<AppUser[]>('/users/', { // Assuming /users/ path, needs /api/v1 if not in base
+      params: { skip, limit },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    throw error;
+  }
+};
+
+// Fetch a single user by ID - Should return AppUser
+export const getUserById = async (userId: number): Promise<AppUser> => {
+  try {
+    const response = await apiClient.get<AppUser>(`/users/${userId}`); // Assuming /users/ path
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching user with ID ${userId}:`, error);
+    throw error;
+  }
+};
   password: string; // Corrected to string
   full_name?: string | null;
   is_active?: boolean;
@@ -68,8 +111,7 @@ export const loginUser = async (username_or_email: string, password: string): Pr
   formData.append('username', username_or_email);
   formData.append('password', password);
 
-  // apiClient should have its baseURL configured to include /api/v1 or similar prefix
-  const response = await apiClient.post<TokenResponse>('/auth/token', formData, {
+  const response = await apiClient.post<TokenResponse>('/auth/token', formData, { // API path for token
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
     },
@@ -77,17 +119,16 @@ export const loginUser = async (username_or_email: string, password: string): Pr
   return response.data;
 };
 
-// Placeholder for fetching current user details after login
-// import { User } from '../types/userTypes'; // This User type would be from a central userTypes.ts
-// export const getMe = async (): Promise<User> => {
-//   const response = await apiClient.get<User>('/users/me'); // Assuming /users/me endpoint
-//   return response.data;
-// };
+// Fetch current user details
+export const getMe = async (): Promise<AppUser> => {
+  const response = await apiClient.get<AppUser>('/users/me'); // API path for /me
+  return response.data;
+};
 
-// Create a new user
-export const createUser = async (userData: UserCreatePayload): Promise<User> => {
+// Create a new user - Should return AppUser
+export const createUser = async (userData: UserCreatePayload): Promise<AppUser> => {
   try {
-    const response = await apiClient.post<User>('/api/v1/users/', userData);
+    const response = await apiClient.post<AppUser>('/users/', userData); // Assuming /users/ path
     return response.data;
   } catch (error) {
     console.error('Error creating user:', error);
@@ -95,10 +136,10 @@ export const createUser = async (userData: UserCreatePayload): Promise<User> => 
   }
 };
 
-// Update an existing user
-export const updateUser = async (userId: number, userData: UserUpdatePayload): Promise<User> => {
+// Update an existing user - Should return AppUser
+export const updateUser = async (userId: number, userData: UserUpdatePayload): Promise<AppUser> => {
   try {
-    const response = await apiClient.put<User>(`/api/v1/users/${userId}`, userData);
+    const response = await apiClient.put<AppUser>(`/users/${userId}`, userData); // Assuming /users/ path
     return response.data;
   } catch (error) {
     console.error(`Error updating user with ID ${userId}:`, error);
@@ -106,13 +147,11 @@ export const updateUser = async (userId: number, userData: UserUpdatePayload): P
   }
 };
 
-// Delete a user by ID
-// The backend currently returns the deleted user object.
-// If it were to return HTTP 204 No Content, this function signature would be Promise<void>.
-export const deleteUser = async (userId: number): Promise<User> => {
+// Delete a user by ID - Should return AppUser
+export const deleteUser = async (userId: number): Promise<AppUser> => {
   try {
-    const response = await apiClient.delete<User>(`/api/v1/users/${userId}`);
-    return response.data; // Assuming backend returns the deleted user
+    const response = await apiClient.delete<AppUser>(`/users/${userId}`); // Assuming /users/ path
+    return response.data;
   } catch (error) {
     console.error(`Error deleting user with ID ${userId}:`, error);
     throw error;
