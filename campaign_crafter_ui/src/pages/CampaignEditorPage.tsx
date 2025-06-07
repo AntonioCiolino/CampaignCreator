@@ -19,6 +19,7 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CancelIcon from '@mui/icons-material/Cancel';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import PublishIcon from '@mui/icons-material/Publish';
+import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
 
 import CampaignDetailsEditor from '../components/campaign_editor/CampaignDetailsEditor';
 import CampaignLLMSettings from '../components/campaign_editor/CampaignLLMSettings';
@@ -27,7 +28,7 @@ import { LLMModel as LLM } from '../services/llmService';
 import Tabs, { TabItem } from '../components/common/Tabs';
 import { Typography } from '@mui/material';
 import DetailedProgressDisplay from '../components/common/DetailedProgressDisplay';
-import TOCEditor from '../components/campaign_editor/TOCEditor'; // Import TOCEditor
+import TOCEditor from '../components/campaign_editor/TOCEditor';
 
 const CampaignEditorPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -89,11 +90,11 @@ const CampaignEditorPage: React.FC = () => {
   const [isDetailedProgressVisible, setIsDetailedProgressVisible] = useState<boolean>(false);
   const eventSourceRef = useRef<(() => void) | null>(null);
 
-  // State for TOCEditor
   const [editableDisplayTOC, setEditableDisplayTOC] = useState<TOCEntry[]>([]);
   const [isSavingTOC, setIsSavingTOC] = useState<boolean>(false);
   const [tocSaveError, setTocSaveError] = useState<string | null>(null);
   const [tocSaveSuccess, setTocSaveSuccess] = useState<string | null>(null);
+  const [isTOCEditorVisible, setIsTOCEditorVisible] = useState<boolean>(false);
 
   const selectedLLMObject = useMemo(() => {
     if (availableLLMs.length > 0 && selectedLLMId) {
@@ -255,7 +256,7 @@ const CampaignEditorPage: React.FC = () => {
           getAvailableLLMs(),
         ]);
         setCampaign(campaignDetails);
-        setEditableDisplayTOC(campaignDetails.display_toc || []); // Initialize editableDisplayTOC
+        setEditableDisplayTOC(campaignDetails.display_toc || []);
         if (Array.isArray(campaignSectionsResponse)) {
             setSections(campaignSectionsResponse.sort((a, b) => a.order - b.order));
         } else {
@@ -354,7 +355,7 @@ const CampaignEditorPage: React.FC = () => {
     }, 1500);
     setDebounceTimer(newTimer);
     return () => { if (newTimer) { clearTimeout(newTimer); } };
-  }, [selectedLLMId, temperature, campaignId, campaign, isLoading, debounceTimer, ensureLLMSettingsSaved]); // Added ensureLLMSettingsSaved to satisfy linter if it's used inside (though current logic doesn't directly)
+  }, [selectedLLMId, temperature, campaignId, campaign, isLoading, debounceTimer, ensureLLMSettingsSaved]);
 
   useEffect(() => {
     if (!initialLoadCompleteRef.current || !campaign) { return; }
@@ -579,7 +580,7 @@ const CampaignEditorPage: React.FC = () => {
         prompt: "Generate a table of contents for the campaign based on its concept."
       });
       setCampaign(updatedCampaign);
-      setEditableDisplayTOC(updatedCampaign.display_toc || []); // Update editableDisplayTOC
+      setEditableDisplayTOC(updatedCampaign.display_toc || []);
       setSaveSuccess("Table of Contents generated successfully!");
       setTimeout(() => setSaveSuccess(null), 3000);
     } catch (err) {
@@ -602,13 +603,14 @@ const CampaignEditorPage: React.FC = () => {
     try {
       const payload: campaignService.CampaignUpdatePayload = {
         display_toc: editableDisplayTOC,
-        homebrewery_toc: editableDisplayTOC, // Mirror display_toc for now
+        homebrewery_toc: editableDisplayTOC,
       };
       const updatedCampaign = await campaignService.updateCampaign(campaignId, payload);
       setCampaign(updatedCampaign);
       setEditableDisplayTOC(updatedCampaign.display_toc || []);
       setTocSaveSuccess('Table of Contents saved successfully!');
       setTimeout(() => setTocSaveSuccess(null), 3000);
+      setIsTOCEditorVisible(false); // Hide editor on successful save
     } catch (err) {
       console.error("Failed to save TOC:", err);
       setTocSaveError('Failed to save Table of Contents.');
@@ -704,7 +706,7 @@ const CampaignEditorPage: React.FC = () => {
       console.error("Failed to update badge image URL via edit:", error);
       const detail = error.response?.data?.detail || error.message || "Failed to update badge image URL.";
       setBadgeUpdateError(detail);
-      alert(`Error: ${detail}`);
+      alert(`Error setting badge: ${detail}`);
     } finally {
       setBadgeUpdateLoading(false);
       setIsPageLoading(false);
@@ -789,6 +791,20 @@ const CampaignEditorPage: React.FC = () => {
               {isGeneratingTOC ? 'Generating TOC...' : ((campaign.display_toc && campaign.display_toc.length > 0) ? 'Re-generate Table of Contents' : 'Generate Table of Contents')}
             </Button>
             {tocError && <p className="error-message feedback-message" style={{ marginTop: '5px' }}>{tocError}</p>}
+
+            {/* NEW "Edit Table of Contents" button */}
+            {campaign.display_toc && campaign.display_toc.length > 0 && !isTOCEditorVisible && (
+              <Button
+                onClick={() => setIsTOCEditorVisible(true)}
+                className="action-button"
+                icon={<EditIcon />}
+                style={{ marginTop: '10px', display: 'block', marginBottom: '15px' }}
+                tooltip="Edit the Table of Contents entries"
+              >
+                Edit Table of Contents
+              </Button>
+            )}
+
             {(campaign.display_toc && campaign.display_toc.length > 0) && (
               <div style={{ marginTop: '15px' }}>
                 {!isDetailedProgressVisible ? (
@@ -841,22 +857,31 @@ const CampaignEditorPage: React.FC = () => {
           </div>
         )}
       </section>
-      <section className="campaign-detail-section editor-section" style={{ marginTop: '20px' }}>
-        <TOCEditor
-          toc={editableDisplayTOC}
-          onTOCChange={handleTOCEditorChange}
-        />
-        <Button
-          onClick={handleTOCSaveChanges}
-          disabled={isSavingTOC}
-          variant="primary" // Changed to "primary"
-          style={{ marginTop: '10px' }}
-        >
-          {isSavingTOC ? 'Saving TOC...' : 'Save Table of Contents Changes'}
-        </Button>
-        {tocSaveError && <p className="error-message feedback-message">{tocSaveError}</p>}
-        {tocSaveSuccess && <p className="success-message feedback-message">{tocSaveSuccess}</p>}
-      </section>
+      {isTOCEditorVisible && (
+        <section className="campaign-detail-section editor-section" style={{ marginTop: '20px' }}>
+          <TOCEditor
+            toc={editableDisplayTOC}
+            onTOCChange={handleTOCEditorChange}
+          />
+          <Button
+            onClick={handleTOCSaveChanges}
+            disabled={isSavingTOC}
+            variant="primary"
+            style={{ marginTop: '10px' }}
+          >
+            {isSavingTOC ? 'Saving TOC...' : 'Save Table of Contents Changes'}
+          </Button>
+          <Button
+              onClick={() => setIsTOCEditorVisible(false)}
+              variant="outlined"
+              style={{ marginTop: '10px', marginLeft: '10px' }}
+          >
+              Done Editing TOC
+          </Button>
+          {tocSaveError && <p className="error-message feedback-message">{tocSaveError}</p>}
+          {tocSaveSuccess && <p className="success-message feedback-message">{tocSaveSuccess}</p>}
+        </section>
+      )}
     </>
   );
 
@@ -1012,3 +1037,7 @@ export default CampaignEditorPage;
 // Added TOCEditor and related state/handlers.
 // Initialized editableDisplayTOC in useEffect and handleGenerateTOC.
 // Changed type of campaign and sections state variables to use direct imports.
+// Added EditIcon import and "Edit Table of Contents" button with conditional rendering.
+// Conditionally render TOCEditor section and added "Done Editing TOC" button.
+
+[end of campaign_crafter_ui/src/pages/CampaignEditorPage.tsx]
