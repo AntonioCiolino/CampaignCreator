@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as Logo } from '../../logo_cc.svg';
 import './Layout.css';
@@ -14,6 +14,12 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
   return (
     <div className="app-layout">
       <header className="app-header">
@@ -21,7 +27,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <Logo className="app-logo" title="Campaign Crafter Logo" />
           <h1>Campaign Crafter</h1>
         </Link>
-        <nav className="app-nav">
+        <button className="hamburger-menu" onClick={toggleMobileMenu} aria-label="Toggle navigation" aria-expanded={isMobileMenuOpen}>
+          &#9776; {/* Hamburger icon */}
+        </button>
+        <nav className={`app-nav ${isMobileMenuOpen ? 'mobile-nav-active' : ''}`}>
           <ul>
             <li>
               <Link to="/">Campaigns</Link> {/* Renamed */}
