@@ -1,4 +1,4 @@
-import React, { useState, useEffect, FormEvent, useMemo, useRef } from 'react';
+import React, { useState, useEffect, FormEvent, useMemo, useRef, useCallback } from 'react'; // Added useCallback
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -16,8 +16,6 @@ import './CampaignEditorPage.css';
 import Button from '../components/common/Button'; // Ensure common Button is imported
 
 // MUI Icons (attempt to import, will use text/emoji if fails)
-// import SaveIcon from '@mui/icons-material/Save'; // Removed SaveIcon
-// AddPhotoAlternateIcon, EditIcon, DeleteOutlineIcon are moved to CampaignDetailsEditor
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
@@ -31,143 +29,108 @@ import PublishIcon from '@mui/icons-material/Publish';
 import CampaignDetailsEditor from '../components/campaign_editor/CampaignDetailsEditor';
 import CampaignLLMSettings from '../components/campaign_editor/CampaignLLMSettings';
 import CampaignSectionEditor from '../components/campaign_editor/CampaignSectionEditor';
-import { LLMModel as LLM } from '../services/llmService'; // Corrected LLM import
-import Tabs, { TabItem } from '../components/common/Tabs'; // Import Tabs component
-import { Typography } from '@mui/material'; // Removed Box, kept Typography
-import DetailedProgressDisplay from '../components/common/DetailedProgressDisplay'; // Import the new component
+import { LLMModel as LLM } from '../services/llmService';
+import Tabs, { TabItem } from '../components/common/Tabs';
+import { Typography } from '@mui/material';
+import DetailedProgressDisplay from '../components/common/DetailedProgressDisplay';
 
 const CampaignEditorPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
-  const [campaign, setCampaign] = useState<Campaign | null>(null); // Use imported Campaign type
-  const [sections, setSections] = useState<CampaignSection[]>([]); // Use imported CampaignSection type
-  const [isLoading, setIsLoading] = useState<boolean>(true); // For initial page load
-  const [isPageLoading, setIsPageLoading] = useState<boolean>(false); // For subsequent actions
+  const [campaign, setCampaign] = useState<campaignService.Campaign | null>(null);
+  const [sections, setSections] = useState<campaignService.CampaignSection[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isPageLoading, setIsPageLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Editable campaign details
   const [editableTitle, setEditableTitle] = useState<string>('');
   const [editableInitialPrompt, setEditableInitialPrompt] = useState<string>('');
-  // const [isSaving, setIsSaving] = useState<boolean>(false); // Removed
-  const [saveError, setSaveError] = useState<string | null>(null); // Keep for handleSaveChanges
-  const [saveSuccess, setSaveSuccess] = useState<string | null>(null); // Keep for handleSaveChanges
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
-  // Section-specific saving states removed as per plan
-  // const [savingSectionId, setSavingSectionId] = useState<number | null>(null);
-  // const [sectionSaveError, setSectionSaveError] = useState<{ [key: number]: string | null }>({});
-
-  // LLM Generation states
   const [isGeneratingTOC, setIsGeneratingTOC] = useState<boolean>(false);
   const [tocError, setTocError] = useState<string | null>(null);
   const [isGeneratingTitles, setIsGeneratingTitles] = useState<boolean>(false);
   const [titlesError, setTitlesError] = useState<string | null>(null);
   const [suggestedTitles, setSuggestedTitles] = useState<string[] | null>(null);
 
-  // Add New Section states
   const [newSectionTitle, setNewSectionTitle] = useState<string>('');
   const [newSectionPrompt, setNewSectionPrompt] = useState<string>('');
   const [isAddingSection, setIsAddingSection] = useState<boolean>(false);
   const [addSectionError, setAddSectionError] = useState<string | null>(null);
   const [addSectionSuccess, setAddSectionSuccess] = useState<string | null>(null);
 
-  // LLM Settings State
-  const [availableLLMs, setAvailableLLMs] = useState<LLMModel[]>([]); // Corrected type
+  const [availableLLMs, setAvailableLLMs] = useState<LLMModel[]>([]);
   const [selectedLLMId, setSelectedLLMId] = useState<string>('');
   const [temperature, setTemperature] = useState<number>(0.7);
 
-  // Export State
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportError, setExportError] = useState<string | null>(null);
-  // Re-using saveSuccess for general positive feedback for simplicity
 
-  // State for "Collapse All" / "Expand All" functionality
   const [forceCollapseAll, setForceCollapseAll] = useState<boolean | undefined>(undefined);
 
-  // State for UI collapsible sections
   const [isCampaignConceptCollapsed, setIsCampaignConceptCollapsed] = useState<boolean>(true);
-  const [isTocCollapsed, setIsTocCollapsed] = useState<boolean>(false); // Default to expanded
-  // const [isLLMSettingsCollapsed, setIsLLMSettingsCollapsed] = useState<boolean>(false); // Removed
+  const [isTocCollapsed, setIsTocCollapsed] = useState<boolean>(false);
   const [isAddSectionCollapsed, setIsAddSectionCollapsed] = useState<boolean>(true);
   const [isLLMDialogOpen, setIsLLMDialogOpen] = useState<boolean>(false);
-  // isCampaignDetailsCollapsed will be managed by the new component or removed if not needed at page level
-  const [isBadgeImageModalOpen, setIsBadgeImageModalOpen] = useState(false); // Added for modal
+  const [isBadgeImageModalOpen, setIsBadgeImageModalOpen] = useState(false);
   const [isSuggestedTitlesModalOpen, setIsSuggestedTitlesModalOpen] = useState<boolean>(false);
 
-  // Auto-save LLM settings state
   const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
   const [isAutoSavingLLMSettings, setIsAutoSavingLLMSettings] = useState<boolean>(false);
   const [autoSaveLLMSettingsError, setAutoSaveLLMSettingsError] = useState<string | null>(null);
   const [autoSaveLLMSettingsSuccess, setAutoSaveLLMSettingsSuccess] = useState<string | null>(null);
   const initialLoadCompleteRef = useRef(false);
 
-  // State for badge image updates
-  // badgeUpdateLoading, setBadgeUpdateLoading, badgeUpdateError, setBadgeUpdateError will be managed by CampaignDetailsEditor (or passed to it)
-  // For now, we keep them here if they are used by functions like handleBadgeImageGenerated that remain in this file.
   const [badgeUpdateLoading, setBadgeUpdateLoading] = useState(false);
   const [badgeUpdateError, setBadgeUpdateError] = useState<string | null>(null);
-
-  // campaignBadgeImage and setCampaignBadgeImage for CampaignDetailsEditor
-  // This state is initialized from `campaign.badge_image_url` in useEffect
   const [campaignBadgeImage, setCampaignBadgeImage] = useState<string>('');
 
-  // State for "Approve TOC & Create Sections" button
   const [isSeedingSections, setIsSeedingSections] = useState<boolean>(false);
   const [seedSectionsError, setSeedSectionsError] = useState<string | null>(null);
   const [autoPopulateSections, setAutoPopulateSections] = useState<boolean>(false);
 
-  // New SSE State Variables
   const [detailedProgressPercent, setDetailedProgressPercent] = useState<number>(0);
   const [detailedProgressCurrentTitle, setDetailedProgressCurrentTitle] = useState<string>('');
   const [isDetailedProgressVisible, setIsDetailedProgressVisible] = useState<boolean>(false);
-  const eventSourceRef = useRef<(() => void) | null>(null); // Changed type to store abort function
+  const eventSourceRef = useRef<(() => void) | null>(null);
 
-  // Helper function to get selected LLM object
   const selectedLLMObject = useMemo(() => {
-    // Ensure availableLLMs is not empty and selectedLLMId is valid before finding
     if (availableLLMs.length > 0 && selectedLLMId) {
       return availableLLMs.find(llm => llm.id === selectedLLMId) as LLM | undefined;
     }
     return undefined;
   }, [selectedLLMId, availableLLMs]);
 
-  // Handler to set selected LLM (object) for the new component
   const handleSetSelectedLLM = (llm: LLM) => {
     setSelectedLLMId(llm.id);
   };
   
-  // Handler for updating section content (to be passed to CampaignSectionEditor)
   const handleUpdateSectionContent = (sectionId: number, newContent: string) => {
     handleUpdateSection(sectionId, { content: newContent });
   };
 
-  // Handler for updating section title (to be passed to CampaignSectionEditor)
   const handleUpdateSectionTitle = (sectionId: number, newTitle: string) => {
     handleUpdateSection(sectionId, { title: newTitle });
   };
 
-  // Function to ensure LLM settings are saved before an action
-  const ensureLLMSettingsSaved = async (): Promise<boolean> => {
+  const ensureLLMSettingsSaved = useCallback(async (): Promise<boolean> => {
     if (!campaign || !campaignId) {
       setAutoSaveLLMSettingsError("Campaign data is not available to save LLM settings.");
       return false;
     }
-
     const llmSettingsChanged = selectedLLMId !== campaign.selected_llm_id || temperature !== campaign.temperature;
-
     if (llmSettingsChanged) {
-      setIsPageLoading(true); // Use general page loading or a specific one like setIsSavingLLMSettings(true)
+      setIsPageLoading(true);
       setAutoSaveLLMSettingsError(null);
       setAutoSaveLLMSettingsSuccess(null);
-      // console.log("ENSURE_LLM_SAVE: Attempting to save LLM settings before proceeding.", { selectedLLMId, temperature });
-
       try {
         const payload: campaignService.CampaignUpdatePayload = {
           selected_llm_id: selectedLLMId || null,
           temperature: temperature,
         };
         const updatedCampaign = await campaignService.updateCampaign(campaign.id, payload);
-        setCampaign(updatedCampaign); // Update local campaign state
+        setCampaign(updatedCampaign);
         setAutoSaveLLMSettingsSuccess("LLM settings saved successfully.");
-        // console.log("ENSURE_LLM_SAVE: LLM settings saved successfully.");
         setTimeout(() => setAutoSaveLLMSettingsSuccess(null), 3000);
         return true;
       } catch (err) {
@@ -176,95 +139,59 @@ const CampaignEditorPage: React.FC = () => {
         setTimeout(() => setAutoSaveLLMSettingsError(null), 5000);
         return false;
       } finally {
-        setIsPageLoading(false); // Clear loading state
+        setIsPageLoading(false);
       }
     }
-    // console.log("ENSURE_LLM_SAVE: No changes in LLM settings needed.");
-    return true; // No changes needed, proceed
-  };
+    return true;
+  }, [campaign, campaignId, selectedLLMId, temperature]); // Added dependencies
 
   const processedToc = useMemo(() => {
-    // Use display_toc for rendering in the UI (which is now TOCEntry[])
-    if (!campaign || !campaign.display_toc || campaign.display_toc.length === 0) { // Sections not needed for basic TOC display
+    if (!campaign || !campaign.display_toc || campaign.display_toc.length === 0) {
       return '';
     }
-
-    // This map is correct for linking TOC entries to actual sections if they exist and sections are loaded
     const sectionTitleToIdMap = new Map(
       sections.filter(sec => sec.title).map(sec => [sec.title!.trim().toLowerCase(), `section-container-${sec.id}`])
     );
-
-    return campaign.display_toc.map((tocEntry: TOCEntry) => { // Explicitly type tocEntry
-      const title = tocEntry.title || "Untitled Section";
-      const cleanedTitle = title.trim().toLowerCase();
-      const sectionId = sectionTitleToIdMap.get(cleanedTitle);
-
-      // If a corresponding section ID exists, create a markdown link
-      if (sectionId && sections?.length > 0) { // Ensure sections are loaded before trying to link
-        return `- [${title}](#${sectionId})`;
-      }
-      // Otherwise, just list the title from TOC (it might not be a section yet)
-      return `- ${title}`;
-    }).join('\n');
-  }, [campaign, sections]); // campaign.display_toc is part of campaign object
-
-  // generateNavLinksFromToc function as described in the prompt for potential sidebar use
-  const generateNavLinksFromToc = () => {
-    if (!campaign || !campaign.display_toc || campaign.display_toc.length === 0) {
-      return [];
-    }
-    // campaign.display_toc is now TOCEntry[]
-    const sectionTitleToIdMap = new Map(
-      sections.filter(sec => sec.title).map(sec => [sec.title!.trim().toLowerCase(), `section-container-${sec.id}`])
-    );
-
     return campaign.display_toc.map((tocEntry: TOCEntry) => {
       const title = tocEntry.title || "Untitled Section";
       const cleanedTitle = title.trim().toLowerCase();
-      const sectionIdMapped = sectionTitleToIdMap.get(cleanedTitle);
-      return {
-        // Use a generated ID for the link itself, perhaps based on index or cleaned title
-        id: `navlink-${tocEntry.type}-${title.replace(/\s+/g, '-').toLowerCase()}`,
-        label: title,
-        isTocEntry: true,
-        targetId: sectionIdMapped, // This is the ID of the section container to scroll to
-        type: tocEntry.type,
-      };
-    });
-  };
+      const sectionId = sectionTitleToIdMap.get(cleanedTitle);
+      if (sectionId && sections?.length > 0) {
+        return `- [${title}](#${sectionId})`;
+      }
+      return `- ${title}`;
+    }).join('\n');
+  }, [campaign, sections]);
 
-  // Placeholder for handleSeedSectionsFromToc
+  // Removed generateNavLinksFromToc function
+
   const handleSeedSectionsFromToc = async () => {
-    // First, ensure LLM settings are saved
     const llmSettingsSaved = await ensureLLMSettingsSaved();
     if (!llmSettingsSaved) {
       setSeedSectionsError("Failed to save LLM settings before seeding. Please review settings and try again.");
-      // Optionally, scroll to LLM settings or highlight them
-      return; // Abort seeding if LLM settings save failed
+      return;
     }
-
     if (!campaignId || !campaign?.display_toc) {
       setSeedSectionsError("Cannot create sections: Campaign ID is missing or no Table of Contents available.");
       return;
     }
-
+    if (campaign.display_toc.length === 0) { // Check if TOC is empty
+        setSeedSectionsError("Cannot seed sections from an empty Table of Contents.");
+        return;
+    }
     if (!window.confirm("This will delete all existing sections and create new ones based on the current Table of Contents. Are you sure you want to proceed?")) {
       return;
     }
-
-    // Clear existing sections as they will be streamed in
     setSections([]);
     setSeedSectionsError(null);
-    setIsSeedingSections(true); // Keeps button disabled and text updated
-    // setIsPageLoading(true); // REMOVED - ensureLLMSettingsSaved handles its own loading
+    setIsSeedingSections(true);
     setIsDetailedProgressVisible(true);
     setDetailedProgressPercent(0);
     setDetailedProgressCurrentTitle('');
-
     const callbacks: SeedSectionsCallbacks = {
       onOpen: (event) => {
         console.log("SSE connection opened for seeding sections.", event);
-        setIsPageLoading(false); // Turn off global spinner once SSE is established
+        setIsPageLoading(false);
       },
       onProgress: (data: SeedSectionsProgressEvent) => {
         setDetailedProgressPercent(data.progress_percent);
@@ -278,14 +205,9 @@ const CampaignEditorPage: React.FC = () => {
         setIsDetailedProgressVisible(false);
         setIsSeedingSections(false);
         setIsPageLoading(false);
-        // Using setSaveSuccess for user feedback instead of alert
         setSaveSuccess(message || `Sections created successfully! Processed: ${totalProcessed}`);
-        setTimeout(() => setSaveSuccess(null), 5000); // Clear after 5s
-
-        // if (eventSourceRef.current) { // No longer need to call .close() here
-        //   // eventSourceRef.current.close(); // REMOVED
-        // }
-        eventSourceRef.current = null; // Clear the ref
+        setTimeout(() => setSaveSuccess(null), 5000);
+        eventSourceRef.current = null;
       },
       onError: (error) => {
         console.error("SSE Error:", error);
@@ -294,15 +216,10 @@ const CampaignEditorPage: React.FC = () => {
         setIsPageLoading(false);
         const errorMessage = (error as any)?.message || "An error occurred during section creation.";
         setSeedSectionsError(`SSE Error: ${errorMessage}`);
-        // if (eventSourceRef.current) { // No longer need to call .close() here
-        //   // eventSourceRef.current.close(); // REMOVED
-        // }
-        eventSourceRef.current = null; // Clear the ref
+        eventSourceRef.current = null;
       }
     };
-
     if (campaignId) {
-      // Start with page loading true, will be turned off by onOpen or onError
       setIsPageLoading(true);
       eventSourceRef.current = campaignService.seedSectionsFromToc(campaignId, autoPopulateSections, callbacks);
     } else {
@@ -314,15 +231,14 @@ const CampaignEditorPage: React.FC = () => {
   };
 
   useEffect(() => {
-    // Cleanup function to call abort if component unmounts
     return () => {
       if (eventSourceRef.current) {
         console.log("Aborting SSE connection on component unmount.");
-        eventSourceRef.current(); // Call the abort function
+        eventSourceRef.current();
         eventSourceRef.current = null;
       }
     };
-  }, []); // Empty dependency array means this runs once on mount and cleanup on unmount
+  }, []);
 
   useEffect(() => {
     if (!campaignId) {
@@ -330,185 +246,95 @@ const CampaignEditorPage: React.FC = () => {
       setIsLoading(false);
       return;
     }
-
     const fetchInitialData = async () => {
-      setIsLoading(true); // This is for the initial load indication
+      setIsLoading(true);
       setError(null);
       try {
-        // Use getAvailableLLMs from llmService
         const [campaignDetails, campaignSectionsResponse, fetchedLLMs] = await Promise.all([
           campaignService.getCampaignById(campaignId),
-          campaignService.getCampaignSections(campaignId), // This returns { sections: CampaignSection[] }
+          campaignService.getCampaignSections(campaignId),
           getAvailableLLMs(),
         ]);
         setCampaign(campaignDetails);
-        // campaignService.getCampaignSections is now expected to return CampaignSection[] directly
-        // campaignSectionsResult is named campaignSectionsResponse in the existing code
         if (Array.isArray(campaignSectionsResponse)) {
             setSections(campaignSectionsResponse.sort((a, b) => a.order - b.order));
         } else {
-            // This block handles cases where the result might unexpectedly not be an array.
             console.warn("Campaign sections data (campaignSectionsResponse) was not an array as expected:", campaignSectionsResponse);
-            setSections([]); // Default to an empty array to prevent further errors.
+            setSections([]);
         }
-
         setEditableTitle(campaignDetails.title);
         setEditableInitialPrompt(campaignDetails.initial_user_prompt || '');
-        setCampaignBadgeImage(campaignDetails.badge_image_url || ''); // Initialize badge image state
-
-        // Load LLM settings from fetched campaign data
+        setCampaignBadgeImage(campaignDetails.badge_image_url || '');
         if (campaignDetails.temperature !== null && campaignDetails.temperature !== undefined) {
             setTemperature(campaignDetails.temperature);
         } else {
-            setTemperature(0.7); // Default if not set
+            setTemperature(0.7);
         }
-
         setAvailableLLMs(fetchedLLMs);
-
-        let newSelectedLLMIdToSave: string | null = null; // For saving a newly chosen default
-
+        let newSelectedLLMIdToSave: string | null = null;
         if (campaignDetails.selected_llm_id) {
             setSelectedLLMId(campaignDetails.selected_llm_id);
         } else {
-            const preferredModelIds = [
-                "openai/gpt-4.1-nano", // Prioritize smaller, faster, cheaper models for default
-                "openai/gpt-3.5-turbo",
-                "openai/gpt-4",
-                "gemini/gemini-pro",
-            ];
+            const preferredModelIds = ["openai/gpt-4.1-nano", "openai/gpt-3.5-turbo", "openai/gpt-4", "gemini/gemini-pro"];
             let newSelectedLLMId = '';
-
-            // 1. Check preferred models in order
             for (const preferredId of preferredModelIds) {
                 const foundModel = fetchedLLMs.find(m => m.id === preferredId);
-                if (foundModel) {
-                    newSelectedLLMId = foundModel.id;
-                    break;
-                }
+                if (foundModel) { newSelectedLLMId = foundModel.id; break; }
             }
-
-            // 2. If no preferred model found, find the first chat-capable model
             if (!newSelectedLLMId) {
-                const potentialChatModels = fetchedLLMs.filter(model =>
-                    model.capabilities && (model.capabilities.includes("chat") || model.capabilities.includes("chat-adaptable"))
-                );
+                const potentialChatModels = fetchedLLMs.filter(model => model.capabilities && (model.capabilities.includes("chat") || model.capabilities.includes("chat-adaptable")));
                 if (potentialChatModels.length > 0) {
                     const firstChatModel = potentialChatModels[0];
-                    if (firstChatModel) {
-                         newSelectedLLMId = firstChatModel.id;
-                    }
+                    if (firstChatModel) { newSelectedLLMId = firstChatModel.id; }
                 }
             }
-
-            // 3. If still no model, take the first from the fetched list
-            if (!newSelectedLLMId && fetchedLLMs.length > 0) {
-                newSelectedLLMId = fetchedLLMs[0].id;
-            }
-
-            if (newSelectedLLMId) { // If a default model was determined
+            if (!newSelectedLLMId && fetchedLLMs.length > 0) { newSelectedLLMId = fetchedLLMs[0].id; }
+            if (newSelectedLLMId) {
                 setSelectedLLMId(newSelectedLLMId);
-                // Only mark for saving if campaignDetails.selected_llm_id was originally null/empty
-                if (!campaignDetails.selected_llm_id) {
-                    newSelectedLLMIdToSave = newSelectedLLMId;
-                }
+                if (!campaignDetails.selected_llm_id) { newSelectedLLMIdToSave = newSelectedLLMId; }
             }
         }
-
-        // If a new default LLM was selected for a campaign that initially had none, save it.
         if (newSelectedLLMIdToSave && campaignDetails.id) {
-            // console.log(`INITIAL_LOAD_SAVE: Campaign ${campaignDetails.id} had no LLM. Saving new default: ${newSelectedLLMIdToSave} with temp: ${temperature}`);
-            setIsPageLoading(true); // Use general page loading
+            setIsPageLoading(true);
             setAutoSaveLLMSettingsError(null);
             setAutoSaveLLMSettingsSuccess(null);
             try {
-                // Use the current temperature from state, as it would have been set to default or loaded.
                 const updatedCampaign = await campaignService.updateCampaign(campaignDetails.id, {
                     selected_llm_id: newSelectedLLMIdToSave,
-                    temperature: temperature, // Current temperature state
+                    temperature: temperature,
                 });
-                setCampaign(updatedCampaign); // IMPORTANT: Update campaign state with the new reality
+                setCampaign(updatedCampaign);
                 setAutoSaveLLMSettingsSuccess("Default LLM setting automatically saved.");
                 setTimeout(() => setAutoSaveLLMSettingsSuccess(null), 3000);
             } catch (err) {
                 console.error("Failed to save default LLM settings on initial load:", err);
                 setAutoSaveLLMSettingsError("Failed to save default LLM choice. You may need to set it manually in Settings.");
-                // Don't clear this error immediately, let user see it
-                // setTimeout(() => setAutoSaveLLMSettingsError(null), 5000);
             } finally {
                 setIsPageLoading(false);
             }
         }
-        initialLoadCompleteRef.current = true; // Mark initial load of settings as complete
+        initialLoadCompleteRef.current = true;
       } catch (err) {
         console.error('Failed to fetch initial campaign or LLM data:', err);
         setError('Failed to load initial data. Please try again later.');
       } finally {
-        setIsLoading(false); // Initial load finished
+        setIsLoading(false);
       }
     };
     fetchInitialData();
-  }, [campaignId]); // Note: `temperature` is not in dependency array, which is correct for this specific save-on-load logic.
+  }, [campaignId]);
 
-  // Auto-save LLM settings
   useEffect(() => {
     if (!initialLoadCompleteRef.current || !campaignId || !campaign || isLoading) {
-        return; // Don't run if initial load isn't complete or essential data missing
+        return;
     }
-
-    // console.log("LLM_AUTOSAVE_EFFECT_RUN:", {
-    //   selectedLLMId,
-    //   temperature,
-    //   campaignId, // from useParams
-    //   campaignIdFromCampaign: campaign?.id,
-    //   campaignSelectedLLM: campaign?.selected_llm_id,
-    //   campaignTemperature: campaign?.temperature,
-    //   isLoading,
-    //   debounceTimerExists: !!debounceTimer
-    // });
-
-    // Clear previous timer if it exists
-    if (debounceTimer) {
-        clearTimeout(debounceTimer);
-    }
-
+    if (debounceTimer) { clearTimeout(debounceTimer); }
     const newTimer = setTimeout(async () => {
-        // Ensure 'campaign' is available from the outer scope of useEffect.
-        if (!campaign) {
-            console.warn("LLM_AUTOSAVE_TIMEOUT_SKIP: Campaign object not available in setTimeout, skipping.");
-            return;
-        }
-        // campaignId from useParams is available in the outer scope.
-        // Using campaign.id from the state object for the actual API call for consistency.
-        if (!campaign.id) {
-            console.warn("LLM_AUTOSAVE_TIMEOUT_SKIP: Campaign ID not available in campaign state (inside setTimeout), skipping.");
-            return;
-        }
-
-        // console.log("LLM_AUTOSAVE_CHECKING_CONDITIONS:", {
-        //   campaignExists: !!campaign, // Should be true here
-        //   selectedLLMId_state: selectedLLMId,
-        //   campaign_selected_llm_id: campaign?.selected_llm_id,
-        //   temperature_state: temperature,
-        //   campaign_temperature: campaign?.temperature
-        // });
-
-        // THE CRUCIAL CHECK:
-        if (selectedLLMId === campaign.selected_llm_id &&
-            temperature === campaign.temperature) {
-            // console.log("LLM_AUTOSAVE_SKIPPED: No change in settings.");
-            return;
-        }
-
-        // If the code reaches here, it means settings have changed and a save is needed.
-        // console.log("LLM_AUTOSAVE_PROCEEDING: Settings changed or initial save. Attempting save.", {
-        //    campaignIdToSave: campaign.id,
-        //    selectedLLMId,
-        //    temperature
-        // });
+        if (!campaign || !campaign.id) { return; }
+        if (selectedLLMId === campaign.selected_llm_id && temperature === campaign.temperature) { return; }
         setIsAutoSavingLLMSettings(true);
         setAutoSaveLLMSettingsError(null);
         setAutoSaveLLMSettingsSuccess(null);
-
         try {
           const payload: campaignService.CampaignUpdatePayload = {
             selected_llm_id: selectedLLMId || null,
@@ -525,65 +351,38 @@ const CampaignEditorPage: React.FC = () => {
         } finally {
           setIsAutoSavingLLMSettings(false);
         }
-    }, 1500); // Debounce period (e.g., 1.5 seconds)
-
+    }, 1500);
     setDebounceTimer(newTimer);
+    return () => { if (newTimer) { clearTimeout(newTimer); } };
+  }, [selectedLLMId, temperature, campaignId, campaign, isLoading, debounceTimer]); // ensureLLMSettingsSaved is not called here directly
 
-    // Cleanup timer on component unmount or before next effect run
-    return () => {
-        if (newTimer) {
-            clearTimeout(newTimer);
-        }
-    };
-  }, [selectedLLMId, temperature, campaignId, campaign, isLoading, debounceTimer]);
-
-  // useEffect for immediate save on selectedLLMId change by user
   useEffect(() => {
-    if (!initialLoadCompleteRef.current || !campaign) {
-      return; // Don't run on initial load or if campaign isn't ready
-    }
-    // Only trigger if the new selectedLLMId is different from what's already in campaign
-    // and selectedLLMId is not empty (which could happen transiently or if no models are available)
+    if (!initialLoadCompleteRef.current || !campaign) { return; }
     if (selectedLLMId && selectedLLMId !== campaign.selected_llm_id) {
-      // console.log("IMMEDIATE_SAVE_LLM_ID: Triggering save for LLM ID change:", selectedLLMId);
       ensureLLMSettingsSaved();
     }
-  }, [selectedLLMId, campaign]); // initialLoadCompleteRef is a ref, not needed in deps. campaign is for comparison.
+  }, [selectedLLMId, campaign, ensureLLMSettingsSaved]); // Added ensureLLMSettingsSaved
 
-  // useEffect for immediate save on temperature change by user
   useEffect(() => {
-    if (!initialLoadCompleteRef.current || !campaign) {
-      return; // Don't run on initial load or if campaign isn't ready
-    }
-    // Only trigger if the new temperature is different from what's already in campaign
-    // and temperature is not null (though it's typed as number, good to be safe)
+    if (!initialLoadCompleteRef.current || !campaign) { return; }
     if (temperature !== null && temperature !== campaign.temperature) {
-      // console.log("IMMEDIATE_SAVE_TEMP: Triggering save for temperature change:", temperature);
       ensureLLMSettingsSaved();
     }
-  }, [temperature, campaign]); // initialLoadCompleteRef is a ref, not needed in deps. campaign is for comparison.
+  }, [temperature, campaign, ensureLLMSettingsSaved]); // Added ensureLLMSettingsSaved
 
   const handleCancelSeeding = async () => {
     if (eventSourceRef.current) {
       console.log("User cancelled section seeding. Aborting SSE.");
-      eventSourceRef.current(); // Call the abort function
+      eventSourceRef.current();
       eventSourceRef.current = null;
     }
     setIsSeedingSections(false);
     setIsDetailedProgressVisible(false);
     setDetailedProgressPercent(0);
     setDetailedProgressCurrentTitle('');
-    // It's possible seedSectionsError might have an error from a previous failed attempt.
-    // Clearing it here unless we want to preserve an error that occurred *before* cancellation.
-    // For a clean cancel, clearing it seems appropriate.
     setSeedSectionsError(null);
     setSaveSuccess("Section seeding cancelled by user.");
     setTimeout(() => setSaveSuccess(null), 3000);
-    // setIsPageLoading(false); // Ensure global page loader is also turned off if it was on.
-                             // This is typically handled by onDone/onError in SSE, but good for explicit cancel.
-                             // However, seedSectionsFromToc itself sets it to true and onOpen/onError set it to false.
-                             // If cancel happens before onOpen, it might need to be handled.
-                             // For now, assume onOpen/onError will manage isPageLoading.
   };
 
   const handleSaveChanges = async () => {
@@ -594,11 +393,10 @@ const CampaignEditorPage: React.FC = () => {
       return;
     }
     if (!editableTitle.trim()) {
-      setSaveError("Title cannot be empty."); // Initial prompt can be empty
+      setSaveError("Title cannot be empty.");
       return;
     }
     setIsPageLoading(true);
-    // setIsSaving(true); // Removed, isPageLoading can cover this
     setSaveError(null);
     setSaveSuccess(null);
     try {
@@ -614,30 +412,28 @@ const CampaignEditorPage: React.FC = () => {
     } catch (err) {
       setSaveError('Failed to save changes.');
     } finally {
-      // setIsSaving(false); // Removed
       setIsPageLoading(false);
     }
   };
 
   const handleUpdateSectionOrder = async (orderedSectionIds: number[]) => {
     if (!campaignId) return;
-    // Optimistically update the UI
     const oldSections = [...sections];
     const newSections = orderedSectionIds.map((id, index) => {
       const section = sections.find(s => s.id === id);
-      if (!section) throw new Error(`Section with id ${id} not found for reordering.`); // Should not happen
+      if (!section) throw new Error(`Section with id ${id} not found for reordering.`);
       return { ...section, order: index };
-    }).sort((a,b) => a.order - b.order); // Ensure sorted by new order for local state
+    }).sort((a,b) => a.order - b.order);
     setSections(newSections);
     setIsPageLoading(true);
     try {
       await campaignService.updateCampaignSectionOrder(campaignId, orderedSectionIds);
-      setSaveSuccess("Section order saved successfully!"); // Provide feedback
+      setSaveSuccess("Section order saved successfully!");
       setTimeout(() => setSaveSuccess(null), 3000);
     } catch (error) {
       console.error("Failed to update section order:", error);
-      setError("Failed to save section order. Please try again."); // Show error feedback
-      setSections(oldSections); // Revert optimistic update on error
+      setError("Failed to save section order. Please try again.");
+      setSections(oldSections);
     } finally {
       setIsPageLoading(false);
     }
@@ -645,44 +441,32 @@ const CampaignEditorPage: React.FC = () => {
 
   const handleBadgeImageGenerated = async (imageUrl: string) => {
     if (!campaign) {
-      setBadgeUpdateError("No active campaign to update."); // Or handle more gracefully
+      setBadgeUpdateError("No active campaign to update.");
       return;
     }
-
     if (!imageUrl || typeof imageUrl !== 'string') {
       setBadgeUpdateError("Invalid image URL received from generation modal.");
-      setIsBadgeImageModalOpen(false); // Close modal even if URL is bad
+      setIsBadgeImageModalOpen(false);
       return;
     }
-
     setIsPageLoading(true);
     setBadgeUpdateLoading(true);
     setBadgeUpdateError(null);
-    setIsBadgeImageModalOpen(false); // Close modal immediately
-
+    setIsBadgeImageModalOpen(false);
     try {
       const updatedCampaignData = { badge_image_url: imageUrl };
       const updatedCampaign = await campaignService.updateCampaign(campaign.id, updatedCampaignData);
-      
-      if (typeof setCampaign === 'function') { // setCampaign should be available from useState [campaign, setCampaign]
+      if (typeof setCampaign === 'function') {
           setCampaign(updatedCampaign);
-          // Explicitly update the campaignBadgeImage state variable
           setCampaignBadgeImage(updatedCampaign.badge_image_url || '');
-
-          // Optionally, show a success message for badge update
-          // setSaveSuccess("Campaign badge updated successfully!");
-          // setTimeout(() => setSaveSuccess(null), 3000);
       } else {
           console.warn("setCampaign function is not available to update local state.");
-          // Consider a page reload or other mechanism if direct state update isn't possible
-          // For now, rely on next full fetch or manual refresh by user.
       }
-
     } catch (error: any) {
       console.error("Failed to update badge image URL from modal:", error);
       const detail = error.response?.data?.detail || error.message || "Failed to update badge image from modal.";
       setBadgeUpdateError(detail);
-      alert(`Error setting badge: ${detail}`); // Alert for immediate user feedback
+      alert(`Error setting badge: ${detail}`);
     } finally {
       setBadgeUpdateLoading(false);
       setIsPageLoading(false);
@@ -691,7 +475,6 @@ const CampaignEditorPage: React.FC = () => {
 
   const handleDeleteSection = async (sectionId: number) => {
     if (!campaignId) return;
-
     if (window.confirm(`Are you sure you want to delete section ${sectionId}? This action cannot be undone.`)) {
       setIsPageLoading(true);
       try {
@@ -725,15 +508,15 @@ const CampaignEditorPage: React.FC = () => {
       const newSection = await campaignService.addCampaignSection(campaignId, {
         title: newSectionTitle.trim() || undefined,
         prompt: newSectionPrompt.trim() || undefined,
-        model_id_with_prefix: selectedLLMId || undefined, // Corrected line
+        model_id_with_prefix: selectedLLMId || undefined,
       });
       setSections(prev => [...prev, newSection].sort((a, b) => a.order - b.order));
       setNewSectionTitle('');
       setNewSectionPrompt('');
       setAddSectionSuccess("New section added successfully!");
       setTimeout(() => setAddSectionSuccess(null), 3000);
-    } catch (err: any) { // Use 'err: any' for easier access to response properties initially
-      console.error('Failed to add new section:', err); // Keep console log for full error
+    } catch (err: any) {
+      console.error('Failed to add new section:', err);
       if (axios.isAxiosError(err) && err.response && err.response.data && typeof err.response.data.detail === 'string') {
         setAddSectionError(err.response.data.detail);
       } else if (err instanceof Error) {
@@ -750,41 +533,43 @@ const CampaignEditorPage: React.FC = () => {
   const handleUpdateSection = async (sectionId: number, updatedData: campaignService.CampaignSectionUpdatePayload) => {
     if (!campaignId) return;
     setIsPageLoading(true);
-    // setSavingSectionId(sectionId); // Removed
-    // setSectionSaveError(prev => ({ ...prev, [sectionId]: null })); // Removed
     try {
       const updatedSection = await campaignService.updateCampaignSection(campaignId, sectionId, updatedData);
       setSections(prev => prev.map(sec => sec.id === sectionId ? updatedSection : sec));
-      // Optionally, add a global success message for section updates if desired
-      // setSaveSuccess("Section updated successfully!");
-      // setTimeout(() => setSaveSuccess(null), 3000);
     } catch (err) {
-      // setSectionSaveError(prev => ({ ...prev, [sectionId]: 'Failed to save section.' })); // Removed
-      // For simplicity, errors from CampaignSectionView's local save will be shown there.
-      // If a global error for section saving is needed, it could be set here.
       console.error(`Error updating section ${sectionId}:`, err);
-      // Propagate the error if other parts of this page need to react, or handle globally:
-      setError(`Failed to save section ${sectionId}.`); // Example of setting a global error
+      setError(`Failed to save section ${sectionId}.`);
       setTimeout(() => setError(null), 5000);
-      setIsPageLoading(false); // Ensure loading is stopped on error
-      throw err; // Re-throw so CampaignSectionView can also catch it for local feedback
+      setIsPageLoading(false);
+      throw err;
     } finally {
-      // setSavingSectionId(null); // Removed
-      setIsPageLoading(false); // Ensure loading is always stopped
+      setIsPageLoading(false);
+    }
+  };
+
+  const handleUpdateSectionType = async (sectionId: number, newType: string) => {
+    const originalSections = [...sections];
+    setSections(prevSections =>
+      prevSections.map(s => (s.id === sectionId ? { ...s, type: newType } : s))
+    );
+    try {
+      if (!campaignId) throw new Error("Campaign ID not found");
+      await campaignService.updateCampaignSection(campaignId, sectionId, { type: newType });
+    } catch (error) {
+      console.error("Failed to update section type:", error);
+      setSections(originalSections);
+      setError(`Failed to update type for section ${sectionId}. Please refresh or try again.`);
+      setTimeout(() => setError(null), 5000);
     }
   };
 
   const handleGenerateTOC = async () => {
     if (!campaignId) return;
-
-    // Add confirmation before regenerating if TOC already exists
-    // Updated TOC existence check based on new format
     if (campaign && campaign.display_toc && campaign.display_toc.length > 0) {
       if (!window.confirm("A Table of Contents already exists. Are you sure you want to regenerate it? This will overwrite the current TOC.")) {
-        return; // User clicked "Cancel"
+        return;
       }
     }
-
     setIsPageLoading(true);
     setIsGeneratingTOC(true);
     setTocError(null);
@@ -816,9 +601,7 @@ const CampaignEditorPage: React.FC = () => {
         prompt: "Generate alternative titles for the campaign."
       }, 5);
       setSuggestedTitles(response.titles);
-      // setSaveSuccess("Suggested titles generated successfully!"); // Optional: keep or remove
-      // setTimeout(() => setSaveSuccess(null), 3000);
-      setIsSuggestedTitlesModalOpen(true); // Open the modal
+      setIsSuggestedTitlesModalOpen(true);
     } catch (err) {
       setTitlesError('Failed to generate titles.');
     } finally {
@@ -830,22 +613,16 @@ const CampaignEditorPage: React.FC = () => {
   const handleTitleSelected = (selectedTitle: string) => {
     setEditableTitle(selectedTitle);
     setIsSuggestedTitlesModalOpen(false);
-    // setSuggestedTitles(null); // Optional: Clear suggestions after selection
   };
   
-  // const hasChanges = campaign ? (editableTitle !== campaign.title || editableInitialPrompt !== (campaign.initial_user_prompt || '')) : false; // Removed
-
   const handleExportHomebrewery = async () => {
     if (!campaignId || !campaign) return;
-
     setIsPageLoading(true);
     setIsExporting(true);
     setExportError(null);
-    setSaveSuccess(null); // Clear other messages
-
+    setSaveSuccess(null);
     try {
       const markdownString = await campaignService.exportCampaignToHomebrewery(campaignId);
-      
       const filename = `campaign_${campaign.title?.replace(/\s+/g, '_') || campaignId}_homebrewery.md`;
       const blob = new Blob([markdownString], { type: 'text/markdown;charset=utf-8,' });
       const url = URL.createObjectURL(blob);
@@ -856,21 +633,19 @@ const CampaignEditorPage: React.FC = () => {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-
       setSaveSuccess("Campaign exported successfully!"); 
       setTimeout(() => setSaveSuccess(null), 3000);
-
     } catch (err) {
       console.error('Failed to export campaign to Homebrewery:', err);
       setExportError('Failed to export campaign. Please try again.');
-      setTimeout(() => setExportError(null), 5000); // Clear error after 5s
+      setTimeout(() => setExportError(null), 5000);
     } finally {
       setIsExporting(false);
       setIsPageLoading(false);
     }
   };
 
-  const handleOpenBadgeImageModal = async () => { // Renamed from handleSetOrChangeBadgeImage
+  const handleOpenBadgeImageModal = async () => {
     if (!campaign) return;
     setIsBadgeImageModalOpen(true); 
   };
@@ -879,24 +654,19 @@ const CampaignEditorPage: React.FC = () => {
     if (!campaign) return;
     const currentUrl = campaign.badge_image_url || "";
     const imageUrl = window.prompt("Enter or edit the image URL for the campaign badge:", currentUrl);
-
-    if (imageUrl === null) return; // User cancelled prompt
-
+    if (imageUrl === null) return;
     if (imageUrl.trim() !== "" && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
        alert("Please enter a valid HTTP/HTTPS URL or a Data URL.");
        return;
     }
-    
     setIsPageLoading(true);
     setBadgeUpdateLoading(true);
     setBadgeUpdateError(null);
     try {
       const updatedCampaignData = { badge_image_url: imageUrl.trim() === "" ? null : imageUrl.trim() };
       const updatedCampaign = await campaignService.updateCampaign(campaign.id, updatedCampaignData);
-      
       if (typeof setCampaign === 'function') { 
           setCampaign(updatedCampaign);
-          // Explicitly update the campaignBadgeImage state variable as well for immediate UI refresh
           setCampaignBadgeImage(updatedCampaign.badge_image_url || '');
       } else {
           console.warn("setCampaign function is not available to update local state.");
@@ -914,24 +684,19 @@ const CampaignEditorPage: React.FC = () => {
 
   const handleRemoveBadgeImage = async () => {
     if (!campaign || !campaign.badge_image_url) return;
-
     if (!window.confirm("Are you sure you want to remove the campaign badge image?")) return;
-
     setIsPageLoading(true);
     setBadgeUpdateLoading(true);
     setBadgeUpdateError(null);
     try {
-      const updatedCampaignData = { badge_image_url: null }; // Set to null to remove
+      const updatedCampaignData = { badge_image_url: null };
       const updatedCampaign = await campaignService.updateCampaign(campaign.id, updatedCampaignData);
-      
       if (typeof setCampaign === 'function') {
           setCampaign(updatedCampaign);
-          // Explicitly update the campaignBadgeImage state variable when removing
-          setCampaignBadgeImage(''); // Set to empty string as URL is removed
+          setCampaignBadgeImage('');
       } else {
            console.log("Campaign badge URL removed. Parent component should re-fetch or update state.");
       }
-
     } catch (error: any) {
       console.error("Failed to remove badge image URL:", error);
       const detail = error.response?.data?.detail || error.message || "Failed to remove badge image.";
@@ -943,8 +708,7 @@ const CampaignEditorPage: React.FC = () => {
     }
   };
 
-
-  if (isLoading) return <LoadingSpinner />; // Use spinner for initial load
+  if (isLoading) return <LoadingSpinner />;
   if (error) return <p className="error-message">{error}</p>;
   if (!campaign) return <p className="error-message">Campaign not found.</p>;
 
@@ -960,15 +724,12 @@ const CampaignEditorPage: React.FC = () => {
           setCampaignBadgeImage(value);
         }}
         handleSaveCampaignDetails={handleSaveChanges}
-        // Pass new props for title generation
         onSuggestTitles={handleGenerateTitles}
         isGeneratingTitles={isGeneratingTitles}
         titlesError={titlesError}
         selectedLLMId={selectedLLMId}
-        // Pass original values for enabling/disabling save button
         originalTitle={campaign.title}
         originalInitialPrompt={campaign.initial_user_prompt || ''}
-        // Pass props for badge actions
         originalBadgeImageUrl={campaign.badge_image_url || ''}
         onOpenBadgeImageModal={handleOpenBadgeImageModal}
         onEditBadgeImageUrl={handleEditBadgeImageUrl}
@@ -976,37 +737,28 @@ const CampaignEditorPage: React.FC = () => {
         badgeUpdateLoading={badgeUpdateLoading}
         badgeUpdateError={badgeUpdateError}
       />
-      {/* Global save error/success can be shown here or above tabs */}
       {saveError && <p className="error-message save-feedback">{saveError}</p>}
       {saveSuccess && <p className="success-message save-feedback">{saveSuccess}</p>}
-
-      {/* The title-generation-section div has been removed */}
-      {/* The campaign-badge-area editor-section div has been removed and its functionality moved to CampaignDetailsEditor */}
-
-      {/* Campaign Concept section is MOVED from here to above tabs */}
-      {/* TOC Section */}
       <section className="campaign-detail-section editor-section">
-        {campaign.display_toc && ( // Use display_toc: Only show header if TOC exists to be collapsed/expanded
+        {campaign.display_toc && (
           <h2 onClick={() => setIsTocCollapsed(!isTocCollapsed)} style={{ cursor: 'pointer' }}>
             {isTocCollapsed ? '▶' : '▼'} Table of Contents
           </h2>
         )}
-        {/* Content: TOC display and/or Generate button */}
-        {(!campaign.display_toc || !isTocCollapsed) && ( // Use display_toc: Show if no TOC, or if TOC exists and is not collapsed
+        {(!campaign.display_toc || !isTocCollapsed) && (
           <div className="toc-controls-and-display" style={{ marginTop: '10px' }}>
-            {campaign.display_toc && <ReactMarkdown>{processedToc}</ReactMarkdown>} {/* Use display_toc for conditional rendering */}
+            {campaign.display_toc && <ReactMarkdown>{processedToc}</ReactMarkdown>}
             <Button
               onClick={handleGenerateTOC}
               disabled={isGeneratingTOC || !selectedLLMId}
               className="action-button"
-              style={{ marginTop: campaign.display_toc ? '10px' : '0' }} // Use display_toc for style condition
+              style={{ marginTop: campaign.display_toc ? '10px' : '0' }}
               icon={<ListAltIcon />}
               tooltip={!selectedLLMId ? "Select an LLM model from the Settings tab first" : "Generate or re-generate the Table of Contents based on the campaign concept and sections"}
             >
-              {isGeneratingTOC ? 'Generating TOC...' : (campaign.display_toc ? 'Re-generate Table of Contents' : 'Generate Table of Contents')} {/* Use display_toc for button text */}
+              {isGeneratingTOC ? 'Generating TOC...' : (campaign.display_toc ? 'Re-generate Table of Contents' : 'Generate Table of Contents')}
             </Button>
             {tocError && <p className="error-message feedback-message" style={{ marginTop: '5px' }}>{tocError}</p>}
-
             {campaign.display_toc && (
               <div style={{ marginTop: '15px' }}>
                 {!isDetailedProgressVisible ? (
@@ -1020,7 +772,6 @@ const CampaignEditorPage: React.FC = () => {
                     >
                       {isSeedingSections ? (autoPopulateSections ? 'Creating & Populating Sections...' : 'Creating Sections...') : 'Approve TOC & Create Sections'}
                     </Button>
-                    {/* seedSectionsError is now displayed by DetailedProgressDisplay if isDetailedProgressVisible, or here if not */}
                     {!isDetailedProgressVisible && seedSectionsError && <p className="error-message feedback-message" style={{ marginTop: '5px' }}>{seedSectionsError}</p>}
                     <div style={{ marginTop: '10px', marginBottom: '10px' }}>
                       <label htmlFor="autoPopulateCheckbox" style={{ marginRight: '8px' }}>
@@ -1040,16 +791,16 @@ const CampaignEditorPage: React.FC = () => {
                     <DetailedProgressDisplay
                       percent={detailedProgressPercent}
                       currentTitle={detailedProgressCurrentTitle}
-                      error={seedSectionsError} // Pass the error to the component
-                      title="Seeding Sections from Table of Contents..." // Optional: override default title
+                      error={seedSectionsError}
+                      title="Seeding Sections from Table of Contents..."
                     />
                     <Button
                       onClick={handleCancelSeeding}
-                      className="action-button secondary-action-button" // Using secondary style for cancel
+                      className="action-button secondary-action-button"
                       style={{ marginTop: '10px' }}
                       icon={<CancelIcon />}
                       tooltip="Stop the section seeding process"
-                      disabled={!isSeedingSections} // Disable if not actively seeding (e.g., already completed/errored out but progress still visible briefly)
+                      disabled={!isSeedingSections}
                     >
                       Cancel Seeding
                     </Button>
@@ -1067,38 +818,27 @@ const CampaignEditorPage: React.FC = () => {
     <>
       <div className="section-display-controls editor-section">
         <h3>Section Display</h3>
-        <Button
-          onClick={() => setForceCollapseAll(true)}
-          className="action-button"
-          icon={<UnfoldLessIcon />}
-          tooltip="Collapse all campaign sections"
-        >
+        <Button onClick={() => setForceCollapseAll(true)} className="action-button" icon={<UnfoldLessIcon />} tooltip="Collapse all campaign sections">
           Collapse All Sections
         </Button>
-        <Button
-          onClick={() => setForceCollapseAll(false)}
-          className="action-button"
-          icon={<UnfoldMoreIcon />}
-          tooltip="Expand all campaign sections"
-        >
+        <Button onClick={() => setForceCollapseAll(false)} className="action-button" icon={<UnfoldMoreIcon />} tooltip="Expand all campaign sections">
           Expand All Sections
         </Button>
       </div>
       <CampaignSectionEditor
-        campaignId={campaignId!} // campaignId is checked at the start of CampaignEditorPage
+        campaignId={campaignId!}
         sections={sections}
         setSections={setSections}
         handleAddNewSection={() => setIsAddSectionCollapsed(false)}
-        // Disable "Add New Section" button if concept is not defined
         isAddSectionDisabled={!campaign?.concept?.trim()}
         handleDeleteSection={handleDeleteSection}
         handleUpdateSectionContent={handleUpdateSectionContent}
         handleUpdateSectionTitle={handleUpdateSectionTitle}
-        handleUpdateSectionType={handleUpdateSectionType} // Pass the new handler
+        handleUpdateSectionType={handleUpdateSectionType}
         onUpdateSectionOrder={handleUpdateSectionOrder}
         forceCollapseAllSections={forceCollapseAll}
       />
-      {!isAddSectionCollapsed && campaign?.concept?.trim() && ( // Only show form if concept exists and not collapsed
+      {!isAddSectionCollapsed && campaign?.concept?.trim() && (
         <div className="editor-actions add-section-area editor-section card-like" style={{ marginTop: '20px' }}>
           <h3>Add New Section</h3>
           <form onSubmit={handleAddSection} className="add-section-form">
@@ -1115,23 +855,10 @@ const CampaignEditorPage: React.FC = () => {
             )}
             {addSectionError && <p className="error-message feedback-message">{addSectionError}</p>}
             {addSectionSuccess && <p className="success-message feedback-message">{addSectionSuccess}</p>}
-            <Button
-              type="submit"
-              disabled={isAddingSection || !selectedLLMId || !campaign?.concept?.trim()}
-              className="action-button add-section-button"
-              icon={<AddCircleOutlineIcon />}
-              tooltip={!campaign?.concept?.trim() ? "Please define and save a campaign concept first." : (!selectedLLMId ? "Please select an LLM in settings." : "Add this new section to the campaign")}
-            >
+            <Button type="submit" disabled={isAddingSection || !selectedLLMId || !campaign?.concept?.trim()} className="action-button add-section-button" icon={<AddCircleOutlineIcon />} tooltip={!campaign?.concept?.trim() ? "Please define and save a campaign concept first." : (!selectedLLMId ? "Please select an LLM in settings." : "Add this new section to the campaign")}>
               {isAddingSection ? 'Adding Section...' : 'Confirm & Add Section'}
             </Button>
-            <Button
-              type="button"
-              onClick={() => setIsAddSectionCollapsed(true)}
-              className="action-button secondary-action-button"
-              style={{marginLeft: '10px'}}
-              icon={<CancelIcon />}
-              tooltip="Cancel adding a new section"
-            >
+            <Button type="button" onClick={() => setIsAddSectionCollapsed(true)} className="action-button secondary-action-button" style={{marginLeft: '10px'}} icon={<CancelIcon />} tooltip="Cancel adding a new section">
               Cancel
             </Button>
           </form>
@@ -1161,12 +888,7 @@ const CampaignEditorPage: React.FC = () => {
         <div className="editor-section">
           <p>Loading LLM settings or no LLMs available...</p>
           {!selectedLLMId && availableLLMs.length > 0 && (
-            <Button
-              onClick={() => setIsLLMDialogOpen(true)}
-              className="action-button"
-              icon={<SettingsSuggestIcon />}
-              tooltip="Select the primary Language Model for campaign generation tasks"
-            >
+            <Button onClick={() => setIsLLMDialogOpen(true)} className="action-button" icon={<SettingsSuggestIcon />} tooltip="Select the primary Language Model for campaign generation tasks">
               Select Initial LLM Model
             </Button>
           )}
@@ -1177,20 +899,9 @@ const CampaignEditorPage: React.FC = () => {
         {autoSaveLLMSettingsError && <p className="error-message feedback-message">{autoSaveLLMSettingsError}</p>}
         {autoSaveLLMSettingsSuccess && <p className="success-message feedback-message">{autoSaveLLMSettingsSuccess}</p>}
       </div>
-      {/* LLM related errors can be shown within this tab or globally */}
       {tocError && <p className="error-message llm-feedback editor-section">{tocError}</p>}
-      {/* titlesError is now handled by CampaignDetailsEditor */}
-
-      {/* The old suggested titles display is removed from here. It's now handled by the modal. */}
-
       <div className="action-group export-action-group editor-section">
-        <Button
-          onClick={handleExportHomebrewery}
-          disabled={isExporting}
-          className="llm-button export-button" // Assuming llm-button is a valid class for Button or should be action-button
-          icon={<PublishIcon />}
-          tooltip="Export the campaign content as Markdown formatted for Homebrewery"
-        >
+        <Button onClick={handleExportHomebrewery} disabled={isExporting} className="llm-button export-button" icon={<PublishIcon />} tooltip="Export the campaign content as Markdown formatted for Homebrewery">
           {isExporting ? 'Exporting...' : 'Export to Homebrewery'}
         </Button>
         {exportError && <p className="error-message llm-feedback">{exportError}</p>}
@@ -1207,12 +918,9 @@ const CampaignEditorPage: React.FC = () => {
   return (
     <div className="campaign-editor-page">
       {isPageLoading && <LoadingSpinner />}
-
       {campaign && campaign.title && (
         <h1 className="campaign-main-title">{campaign.title}</h1>
       )}
-
-      {/* === Campaign Concept Display === */}
       {campaign && campaign.concept && (
         <section className="campaign-detail-section read-only-section editor-section page-level-concept">
           <h2 onClick={() => setIsCampaignConceptCollapsed(!isCampaignConceptCollapsed)} style={{ cursor: 'pointer' }}>
@@ -1223,18 +931,12 @@ const CampaignEditorPage: React.FC = () => {
           )}
         </section>
       )}
-      {/* === End of Campaign Concept Display === */}
-
       <Tabs tabs={tabItems} />
-
-      {/* Modals remain at the top level */}
       <LLMSelectionDialog
         isOpen={isLLMDialogOpen}
         currentModelId={selectedLLMId}
         onModelSelect={(modelId) => {
-          if (modelId !== null) {
-            setSelectedLLMId(modelId);
-          }
+          if (modelId !== null) { setSelectedLLMId(modelId); }
           setIsLLMDialogOpen(false);
         }}
         onClose={() => setIsLLMDialogOpen(false)}
@@ -1246,17 +948,12 @@ const CampaignEditorPage: React.FC = () => {
       />
       <SuggestedTitlesModal
         isOpen={isSuggestedTitlesModalOpen}
-        onClose={() => {
-          setIsSuggestedTitlesModalOpen(false);
-          // setSuggestedTitles(null); // Optional: Clear suggestions when modal is closed without selection
-        }}
+        onClose={() => { setIsSuggestedTitlesModalOpen(false); }}
         titles={suggestedTitles || []}
         onSelectTitle={handleTitleSelected}
       />
     </div>
   );
 };
-
 export default CampaignEditorPage;
-
 // Note: The redundant LLMModel type alias (campaignService.ModelInfo) was already addressed by using LLMModel from llmService.

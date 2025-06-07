@@ -96,18 +96,6 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
     }
   };
 
-  const handleLocalSectionTypeChange = (sectionId: number, newType: string) => {
-    setSections(prevSections =>
-      prevSections.map(s =>
-        s.id === sectionId ? { ...s, type: newType } : s
-      )
-    );
-    // Debounce or save on blur/enter might be good here, for now, direct call
-    // This specific local handler might not be needed if CampaignSectionView calls the prop directly.
-    // However, if local state update AND prop call is desired:
-    // handleUpdateSectionType(sectionId, newType);
-  };
-
   const handleSectionUpdated = (updatedSection: CampaignSection) => {
     setSections((prevSections: CampaignSection[]) => // Add type for prevSections
       prevSections.map((s: CampaignSection) => // Add type for s
