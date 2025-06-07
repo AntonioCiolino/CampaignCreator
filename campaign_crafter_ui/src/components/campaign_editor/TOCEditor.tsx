@@ -154,6 +154,7 @@ const TOCEditor: React.FC<TOCEditorProps> = ({ toc, onTOCChange }) => {
         Add TOC Entry
       </Button>
     </Box>
+    </DragDropContext> // Added the closing tag here
   );
 };
 
