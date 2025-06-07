@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime, Float
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime, Float, JSON
 from sqlalchemy.orm import relationship, Mapped, mapped_column # Ensure Mapped and mapped_column are imported
 from sqlalchemy.sql import func # For default datetime
 from typing import Optional # For Mapped[Optional[...]]
@@ -25,8 +25,8 @@ class Campaign(Base):
     title = Column(String, index=True, nullable=False)
     initial_user_prompt = Column(Text, nullable=True)
     concept = Column(Text, nullable=True) # LLM-generated campaign overview
-    homebrewery_toc = Column(Text, nullable=True) # Renamed from toc
-    display_toc = Column(Text, nullable=True) # New field for display TOC
+    homebrewery_toc = Column(JSON, nullable=True) # Changed from Text to JSON
+    display_toc = Column(JSON, nullable=True) # Changed from Text to JSON
     homebrewery_export = Column(Text, nullable=True)
     badge_image_url = Column(String, nullable=True) # New field for campaign badge
     selected_llm_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
