@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import React, { useState, useEffect } from 'react'; // Ensure React is imported
 import { TOCEntry } from '../../services/campaignService';
 import { TextField, Button, IconButton, List, Box, Typography, Select, MenuItem, FormControl, InputLabel, SelectChangeEvent, Paper } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
