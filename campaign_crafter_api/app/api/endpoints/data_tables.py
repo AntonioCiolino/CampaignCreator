@@ -33,7 +33,7 @@ def read_feature(feature_id: int, db: Annotated[Session, Depends(get_db)]):
 
 @router_features.get("/", response_model=List[models.Feature])
 def read_features(
-    skip: int = 0, limit: int = 100, db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)], skip: int = 0, limit: int = 100
 ):
     features = crud.get_features(db, skip=skip, limit=limit)
     return features
@@ -107,7 +107,7 @@ def read_roll_table(roll_table_id: int, db: Annotated[Session, Depends(get_db)])
 
 @router_roll_tables.get("/", response_model=List[models.RollTable])
 def read_roll_tables(
-    skip: int = 0, limit: int = 100, db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)], skip: int = 0, limit: int = 100
 ):
     roll_tables = crud.get_roll_tables(db, skip=skip, limit=limit)
     return roll_tables
