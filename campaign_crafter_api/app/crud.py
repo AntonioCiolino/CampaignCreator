@@ -78,14 +78,34 @@ def delete_user(db: Session, user_id: int) -> Optional[orm_models.User]:
 def get_feature(db: Session, feature_id: int) -> Optional[orm_models.Feature]:
     return db.query(orm_models.Feature).filter(orm_models.Feature.id == feature_id).first()
 
-def get_feature_by_name(db: Session, name: str) -> Optional[orm_models.Feature]:
-    return db.query(orm_models.Feature).filter(orm_models.Feature.name == name).first()
+def get_feature_by_name(db: Session, name: str, user_id: Optional[int] = None) -> Optional[orm_models.Feature]:
+    if user_id is not None:
+        db_feature = db.query(orm_models.Feature).filter(
+            orm_models.Feature.name == name,
+            orm_models.Feature.user_id == user_id
+        ).first()
+        if db_feature:
+            return db_feature
+    # If not found for the user or no user_id provided, try to find a system feature
+    return db.query(orm_models.Feature).filter(
+        orm_models.Feature.name == name,
+        orm_models.Feature.user_id == None
+    ).first()
 
-def get_features(db: Session, skip: int = 0, limit: int = 100) -> List[orm_models.Feature]:
-    return db.query(orm_models.Feature).offset(skip).limit(limit).all()
+def get_features(db: Session, skip: int = 0, limit: int = 100, user_id: Optional[int] = None) -> List[orm_models.Feature]:
+    query = db.query(orm_models.Feature)
+    if user_id is not None:
+        query = query.filter(
+            (orm_models.Feature.user_id == user_id) | (orm_models.Feature.user_id == None)
+        )
+    else: # Only system features if no specific user_id
+        query = query.filter(orm_models.Feature.user_id == None)
+    return query.offset(skip).limit(limit).all()
 
-def create_feature(db: Session, feature: models.FeatureCreate) -> orm_models.Feature:
-    db_feature = orm_models.Feature(**feature.dict())
+def create_feature(db: Session, feature: models.FeatureCreate, user_id: int) -> orm_models.Feature:
+    feature_data = feature.model_dump()
+    # user_id from the feature model (if present) is ignored, user_id parameter (from current_user) is used.
+    db_feature = orm_models.Feature(**feature_data, user_id=user_id)
     db.add(db_feature)
     db.commit()
     db.refresh(db_feature)

@@ -3,6 +3,7 @@ export interface Feature {
   id: number;
   name: string;
   template: string;
+  userId?: number;
 }
 
 export interface FeatureCreate {

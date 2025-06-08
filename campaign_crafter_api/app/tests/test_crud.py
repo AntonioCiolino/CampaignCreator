@@ -250,6 +250,145 @@ def test_get_roll_table_by_name_not_found(db_session: Session, test_user: ORMUse
     fetched_table_sys = crud.get_roll_table_by_name(db=db_session, name="NonExistent TableSys", user_id=None)
     assert fetched_table_sys is None
 
+# --- Feature CRUD Tests ---
+
+# Helper function to create FeatureCreate data for testing
+def create_test_feature_data(name: str, template: str = "Test Template {{placeholder}}") -> crud.models.FeatureCreate:
+    return crud.models.FeatureCreate(name=name, template=template)
+
+def test_create_feature_with_user(db_session: Session, test_user: ORMUser):
+    feature_data = create_test_feature_data(name="User Feature")
+    db_feature = crud.create_feature(db=db_session, feature=feature_data, user_id=test_user.id)
+
+    assert db_feature.id is not None
+    assert db_feature.name == "User Feature"
+    assert db_feature.user_id == test_user.id
+    assert db_feature.template == "Test Template {{placeholder}}"
+
+def test_create_feature_system(db_session: Session):
+    feature_data = create_test_feature_data(name="System Feature")
+    # Pass user_id as int, but it's cast from None in the actual ORM model creation if not provided or None.
+    # The crud function is defined as create_feature(db: Session, feature: models.FeatureCreate, user_id: int)
+    # This means user_id=None is not directly possible for create_feature.
+    # However, the ORM model itself has user_id: Mapped[Optional[int]]
+    # The previous changes to crud.create_feature expect an integer user_id.
+    # For system features, we might need a different approach or adjust create_feature.
+    # The ORM model Feature has user_id = Column(Integer, ForeignKey('users.id'), nullable=True, index=True)
+    # So, user_id=None IS valid at the DB level.
+    # The crud.create_feature was changed to (db: Session, feature: models.FeatureCreate, user_id: int)
+    # This implies system features cannot be made via this specific CRUD function if it strictly type checks user_id as int.
+    # Let's re-check crud.py: `db_feature = orm_models.Feature(**feature_data, user_id=user_id)`
+    # If user_id is None, this would be `user_id=None`. This is fine.
+    # The type hint `user_id: int` in `create_feature`'s signature is the issue for system features.
+    # It should be `user_id: Optional[int] = None` in `crud.create_feature` for consistency.
+    # Assuming for now that the test setup might need to bypass this or that the type hint will be relaxed.
+    # For the purpose of this test, let's assume we can pass user_id=None to crud.create_feature
+    # or there's another mechanism.
+    # Based on the plan, user_id for create_feature is `int`. This means system features (user_id=None)
+    # are likely created manually or via a different path, not `crud.create_feature`.
+    #
+    # Re-evaluating: The task for crud.py was "Change signature to `create_feature(db: Session, feature: models.FeatureCreate, user_id: int)`"
+    # This means `crud.create_feature` as modified cannot create system features.
+    # System features would need to be seeded or created by a superuser through a different mechanism
+    # if `user_id` is strictly `int`.
+    # For testing `get_features` etc., we need system features. Let's create them directly using ORM.
+    system_feature_orm = crud.orm_models.Feature(name="System Feature Directly", template="Sys Template", user_id=None)
+    db_session.add(system_feature_orm)
+    db_session.commit()
+    db_session.refresh(system_feature_orm)
+
+    assert system_feature_orm.id is not None
+    assert system_feature_orm.name == "System Feature Directly"
+    assert system_feature_orm.user_id is None
+    assert system_feature_orm.template == "Sys Template"
+
+def test_get_features_as_user(db_session: Session, test_user: ORMUser, another_test_user: ORMUser):
+    # System feature
+    sys_feature = crud.orm_models.Feature(name="SysFeature1", template="Sys", user_id=None)
+    db_session.add(sys_feature)
+    # User1's feature
+    user1_feature_data = create_test_feature_data(name="User1Feature")
+    crud.create_feature(db=db_session, feature=user1_feature_data, user_id=test_user.id)
+    # User2's feature
+    user2_feature_data = create_test_feature_data(name="User2Feature")
+    crud.create_feature(db=db_session, feature=user2_feature_data, user_id=another_test_user.id)
+    db_session.commit()
+
+    features_for_user1 = crud.get_features(db=db_session, user_id=test_user.id)
+
+    feature_names_for_user1 = {feature.name for feature in features_for_user1}
+    assert "SysFeature1" in feature_names_for_user1
+    assert "User1Feature" in feature_names_for_user1
+    assert "User2Feature" not in feature_names_for_user1
+    assert len(features_for_user1) == 2
+
+def test_get_features_as_anonymous_or_no_user_id(db_session: Session, test_user: ORMUser):
+    # System feature
+    sys_feature = crud.orm_models.Feature(name="SysFeatureForAnon", template="Sys", user_id=None)
+    db_session.add(sys_feature)
+    # User's feature
+    user_feature_data = create_test_feature_data(name="UserFeatureForAnonTest")
+    crud.create_feature(db=db_session, feature=user_feature_data, user_id=test_user.id)
+    db_session.commit()
+
+    features_for_anonymous = crud.get_features(db=db_session, user_id=None)
+
+    feature_names_for_anonymous = {feature.name for feature in features_for_anonymous}
+    assert "SysFeatureForAnon" in feature_names_for_anonymous
+    assert "UserFeatureForAnonTest" not in feature_names_for_anonymous
+    assert len(features_for_anonymous) == 1
+
+def test_get_feature_by_name_user_priority(db_session: Session, test_user: ORMUser):
+    # System feature
+    sys_feature_data = create_test_feature_data(name="Priority Feature", template="System Version")
+    sys_feature = crud.orm_models.Feature(**sys_feature_data.model_dump(), user_id=None)
+    db_session.add(sys_feature)
+    # User's feature with the same name
+    user_feature_data = create_test_feature_data(name="Priority Feature", template="User Version")
+    user_specific_feature = crud.create_feature(db=db_session, feature=user_feature_data, user_id=test_user.id)
+    db_session.commit()
+
+    fetched_feature = crud.get_feature_by_name(db=db_session, name="Priority Feature", user_id=test_user.id)
+    assert fetched_feature is not None
+    assert fetched_feature.id == user_specific_feature.id
+    assert fetched_feature.template == "User Version"
+    assert fetched_feature.user_id == test_user.id
+
+def test_get_feature_by_name_system_fallback(db_session: Session, test_user: ORMUser):
+    # System feature
+    sys_feature_data = create_test_feature_data(name="System Fallback Feature", template="System Version")
+    system_feature = crud.orm_models.Feature(**sys_feature_data.model_dump(), user_id=None)
+    db_session.add(system_feature)
+    db_session.commit()
+    db_session.refresh(system_feature)
+
+
+    fetched_feature = crud.get_feature_by_name(db=db_session, name="System Fallback Feature", user_id=test_user.id)
+    assert fetched_feature is not None
+    assert fetched_feature.id == system_feature.id
+    assert fetched_feature.template == "System Version"
+    assert fetched_feature.user_id is None
+
+def test_get_feature_by_name_only_system_exists_no_user_id(db_session: Session):
+    # System feature
+    sys_feature_data = create_test_feature_data(name="Only System Feature", template="System Version")
+    system_feature = crud.orm_models.Feature(**sys_feature_data.model_dump(), user_id=None)
+    db_session.add(system_feature)
+    db_session.commit()
+    db_session.refresh(system_feature)
+
+    fetched_feature = crud.get_feature_by_name(db=db_session, name="Only System Feature", user_id=None)
+    assert fetched_feature is not None
+    assert fetched_feature.id == system_feature.id
+    assert fetched_feature.template == "System Version"
+    assert fetched_feature.user_id is None
+
+def test_get_feature_by_name_not_found(db_session: Session, test_user: ORMUser):
+    fetched_feature = crud.get_feature_by_name(db=db_session, name="NonExistent Feature", user_id=test_user.id)
+    assert fetched_feature is None
+
+    fetched_feature_sys = crud.get_feature_by_name(db=db_session, name="NonExistent System Feature", user_id=None)
+    assert fetched_feature_sys is None
 
 def test_copy_system_roll_table_to_user(db_session: Session, test_user: ORMUser):
     system_items_data = [
