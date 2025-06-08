@@ -1,8 +1,8 @@
 from typing import Optional, List # Added List
 from sqlalchemy.orm import Session
-from passlib.context import CryptContext # Added
+from passlib.context import CryptContext
 
-from . import models, orm_models # Corrected external_models to models
+from app import models, orm_models # Standardized
 
 # --- Password Hashing Utilities ---
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -14,14 +14,15 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 # --- User CRUD Functions ---
-def create_user(db: Session, user: models.UserCreate) -> orm_models.User:
+def create_user(db: Session, user: models.UserCreate) -> orm_models.User: # pwd_context is global
     hashed_password = get_password_hash(user.password)
     db_user = orm_models.User(
+        username=user.username,
         email=user.email,
         full_name=user.full_name,
         hashed_password=hashed_password,
-        is_active=user.is_active,
         is_superuser=user.is_superuser
+        # 'disabled' defaults to False in the ORM, which is correct for a new user.
     )
     db.add(db_user)
     db.commit()
@@ -31,23 +32,33 @@ def create_user(db: Session, user: models.UserCreate) -> orm_models.User:
 def get_user(db: Session, user_id: int) -> Optional[orm_models.User]:
     return db.query(orm_models.User).filter(orm_models.User.id == user_id).first()
 
+def get_user_by_username(db: Session, username: str) -> Optional[orm_models.User]:
+    return db.query(orm_models.User).filter(orm_models.User.username == username).first()
+
 def get_user_by_email(db: Session, email: str) -> Optional[orm_models.User]:
     return db.query(orm_models.User).filter(orm_models.User.email == email).first()
 
 def get_users(db: Session, skip: int = 0, limit: int = 100) -> List[orm_models.User]:
     return db.query(orm_models.User).offset(skip).limit(limit).all()
 
-def update_user(db: Session, user_id: int, user_update: models.UserUpdate) -> Optional[orm_models.User]:
-    db_user = get_user(db, user_id=user_id)
-    if not db_user:
-        return None
+def update_user(db: Session, db_user: orm_models.User, user_in: models.UserUpdate) -> orm_models.User: # pwd_context is global
+    update_data = user_in.model_dump(exclude_unset=True) # Use model_dump for Pydantic v2
 
-    update_data = user_update.dict(exclude_unset=True)
-    for key, value in update_data.items():
-        if key == "password": # Handle password update specifically
-            setattr(db_user, "hashed_password", get_password_hash(value))
-        else:
-            setattr(db_user, key, value)
+    if "password" in update_data and update_data["password"] is not None:
+        hashed_password = get_password_hash(update_data["password"])
+        db_user.hashed_password = hashed_password
+
+    # Explicitly handle other fields from UserUpdate model
+    if user_in.username is not None: # Though username is usually not updatable or handled carefully
+        db_user.username = user_in.username
+    if user_in.email is not None:
+        db_user.email = user_in.email
+    if user_in.full_name is not None:
+        db_user.full_name = user_in.full_name
+    if user_in.is_superuser is not None:
+        db_user.is_superuser = user_in.is_superuser
+    if user_in.disabled is not None:
+        db_user.disabled = user_in.disabled
 
     db.add(db_user)
     db.commit()
@@ -170,10 +181,10 @@ def delete_roll_table(db: Session, roll_table_id: int) -> Optional[orm_models.Ro
     return db_roll_table
 
 
-# from app.services.openai_service import OpenAILLMService # No longer needed for direct import
-from app.services.llm_service import LLMService # For type hinting if needed
-from app.services.llm_factory import get_llm_service, LLMServiceUnavailableError # Import the factory
-# from app import models # This is already imported via "from . import models, orm_models"
+# from app.services.openai_service import OpenAILLMService
+from app.services.llm_service import LLMService # Standardized
+from app.services.llm_factory import get_llm_service, LLMServiceUnavailableError # Standardized
+# from app import models # This is already imported via "from app import models, orm_models"
 
 # --- Campaign CRUD functions ---
 async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, owner_id: int) -> orm_models.Campaign:

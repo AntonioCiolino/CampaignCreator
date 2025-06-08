@@ -1,15 +1,16 @@
 from enum import Enum
 from enum import Enum
+from typing import Optional, Annotated # Added Annotated
+
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, HttpUrl, Field
-from typing import Optional
+from pydantic import BaseModel, Field # HttpUrl removed as image_url is str
 from sqlalchemy.orm import Session
 
-from app.services.image_generation_service import ImageGenerationService # STABLE_DIFFUSION_API_URL removed
+from app.services.image_generation_service import ImageGenerationService
 from app.core.config import settings
 from app.db import get_db
-# from app.models import User # If you were to use current_user for user_id
-# from app.api.dependencies import get_current_user # If you have a current user dependency
+from app.models import User as UserModel # For current_user type hint
+from app.services.auth_service import get_current_active_user # For auth dependency
 
 router = APIRouter()
 
@@ -64,9 +65,9 @@ def get_image_generation_service():
 )
 async def generate_image_endpoint(
     request: ImageGenerationRequest,
-    service: ImageGenerationService = Depends(get_image_generation_service),
-    db: Session = Depends(get_db),
-    # current_user: User = Depends(get_current_user) # Example if using authenticated user
+    service: Annotated[ImageGenerationService, Depends(get_image_generation_service)],
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[UserModel, Depends(get_current_active_user)]
 ):
     """
     Generates an image based on a text prompt using either DALL-E or Stable Diffusion.
@@ -114,10 +115,9 @@ async def generate_image_endpoint(
             elif dalle_model_name == "dall-e-2":
                 if final_size not in ["256x256", "512x512", "1024x1024"]:
                     raise HTTPException(status_code=400, detail=f"Invalid size for DALL-E 2. Supported: 256x256, 512x512, 1024x1024. Got: {final_size}")
-                final_quality = "n/a (dall-e-2)" # Quality param not used by DALL-E 2 in the same way
+                final_quality = "n/a (dall-e-2)"
 
-            # user_id_to_pass = current_user.id if current_user else None # Example
-            user_id_to_pass = None # For now, as user auth is not confirmed for this step
+            user_id_to_pass = current_user.id
 
             image_url = await service.generate_image_dalle(
                 prompt=request.prompt,
@@ -127,11 +127,10 @@ async def generate_image_endpoint(
                 quality=final_quality if dalle_model_name == "dall-e-3" else None,
                 user_id=user_id_to_pass
             )
-            model_used_for_response = f"{request.model.value} ({dalle_model_name})"
+            model_used_for_response = f"{request.model.value} ({dalle_model_name})" # Not used in response model directly
 
         elif request.model == ImageModelName.STABLE_DIFFUSION:
-            # user_id_to_pass = current_user.id if current_user else None # Example
-            user_id_to_pass = None # For now
+            user_id_to_pass = current_user.id
 
             # Use Stable Diffusion specific defaults from settings if not provided in request,
             # or pass None to let the service layer handle defaults.

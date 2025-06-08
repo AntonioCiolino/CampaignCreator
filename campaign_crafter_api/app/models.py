@@ -115,13 +115,13 @@ class Campaign(CampaignBase):
 #         orm_mode = True
 
 class UserBase(BaseModel):
-    email: str
+    username: str
+    email: Optional[str] = None
     full_name: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str
-    is_active: Optional[bool] = True # Default to True
-    is_superuser: Optional[bool] = False # Default to False
+    is_superuser: bool = False
 
 class CampaignUpdate(BaseModel): # Assuming CampaignUpdate is for PATCH, all fields optional
     title: Optional[str] = None
@@ -135,17 +135,15 @@ class CampaignUpdate(BaseModel): # Assuming CampaignUpdate is for PATCH, all fie
     temperature: Optional[float] = None   # Ensure it's part of CampaignUpdate for PATCH
 
 
-class UserUpdate(BaseModel):
-    email: Optional[str] = None
-    full_name: Optional[str] = None
+class UserUpdate(UserBase):
     password: Optional[str] = None # For setting a new password
-    is_active: Optional[bool] = None
+    disabled: Optional[bool] = None
     is_superuser: Optional[bool] = None
 
 class User(UserBase): # For responses
     id: int
-    is_active: bool
-    is_superuser: bool = False # Assuming ORM default or set value
+    disabled: bool
+    is_superuser: bool
 
     campaigns: List[Campaign] = []
     llm_configs: List[LLMConfig] = []
@@ -228,3 +226,12 @@ class SectionRegenerateInput(BaseModel):
     new_title: Optional[str] = None
     section_type: Optional[str] = None # E.g., "NPC", "Location", "Chapter/Quest", "Generic"
     model_id_with_prefix: Optional[str] = None
+
+
+# Token models for authentication
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: Optional[str] = None

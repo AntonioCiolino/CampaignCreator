@@ -1,12 +1,15 @@
 import json
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Any, Union, Annotated # Added Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.services.import_service import ImportService, DEFAULT_OWNER_ID
+from app.services.import_service import ImportService # DEFAULT_OWNER_ID removed from here
 from app.external_models.import_models import ImportSummaryResponse, ImportErrorDetail
+from app.models import User as UserModel # For current_user type hint
+from app.services.auth_service import get_current_active_user # For auth dependency
+
 
 router = APIRouter()
 
@@ -21,10 +24,11 @@ def get_import_service():
     summary="Import campaign data from a JSON file."
 )
 async def import_json_file_endpoint(
-    target_campaign_id: Optional[int] = Form(None, description="Optional ID of an existing campaign to add sections to. If not provided, a new campaign may be created based on JSON content."),
-    file: UploadFile = File(..., description="JSON file to import. Should contain either a single Campaign object (with title and sections) or a list of Section objects."),
-    db: Session = Depends(get_db),
-    import_service: ImportService = Depends(get_import_service)
+    file: UploadFile = File(..., description="JSON file containing campaign data, potentially exported from another Campaign Crafter instance or compatible system."),
+    db: Annotated[Session, Depends(get_db)],
+    import_service: Annotated[ImportService, Depends(get_import_service)],
+    current_user: Annotated[UserModel, Depends(get_current_active_user)],
+    target_campaign_id: Optional[int] = Form(None, description="If provided, import data into this existing campaign ID. Otherwise, a new campaign is created.")
 ):
     """
     Imports campaign data from a JSON file.
@@ -54,10 +58,9 @@ async def import_json_file_endpoint(
         await file.close()
 
     try:
-        # TODO: Replace DEFAULT_OWNER_ID with actual authenticated user ID
         summary = import_service.import_from_json_content(
             parsed_json_data=parsed_json_data,
-            owner_id=DEFAULT_OWNER_ID, 
+            owner_id=current_user.id,
             db=db,
             target_campaign_id=target_campaign_id
         )
@@ -80,11 +83,12 @@ async def import_json_file_endpoint(
     summary="Import campaign data from a Zip archive."
 )
 async def import_zip_file_endpoint(
-    target_campaign_id: Optional[int] = Form(None, description="Optional ID of an existing campaign to add content to. If not provided, new campaigns may be created based on Zip structure."),
-    process_folders_as_structure: bool = Form(False, description="If true, interpret top-level folders in the Zip as separate campaigns (if no target_campaign_id) or major sections (if target_campaign_id is set)."),
-    file: UploadFile = File(..., description="Zip file containing .txt and/or .json files."),
-    db: Session = Depends(get_db),
-    import_service: ImportService = Depends(get_import_service)
+    file: UploadFile = File(..., description="ZIP file containing campaign data, typically exported from Homebrewery or a similar Markdown-based format."),
+    db: Annotated[Session, Depends(get_db)],
+    import_service: Annotated[ImportService, Depends(get_import_service)],
+    current_user: Annotated[UserModel, Depends(get_current_active_user)],
+    target_campaign_id: Optional[int] = Form(None, description="If provided, import data into this existing campaign ID. Otherwise, a new campaign is created."),
+    process_folders_as_structure: bool = Form(False, description="If true, interpret folder structure within the ZIP as campaign sections and sub-sections.")
 ):
     """
     Imports campaign data from a Zip archive containing .txt and/or .json files.
@@ -115,10 +119,9 @@ async def import_zip_file_endpoint(
         await file.close()
 
     try:
-        # TODO: Replace DEFAULT_OWNER_ID with actual authenticated user ID
         summary = import_service.import_from_zip_file(
             file_bytes=file_content_bytes,
-            owner_id=DEFAULT_OWNER_ID,
+            owner_id=current_user.id,
             db=db,
             target_campaign_id=target_campaign_id,
             process_folders_as_structure=process_folders_as_structure
