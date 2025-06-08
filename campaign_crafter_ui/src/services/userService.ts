@@ -27,8 +27,7 @@ export interface UserUpdatePayload {
 // Fetch all users (with optional pagination) - Returns AppUser[]
 export const getUsers = async (skip: number = 0, limit: number = 100): Promise<AppUser[]> => {
   try {
-    // apiClient base URL should include /api/v1 if that's the common prefix
-    const response = await apiClient.get<AppUser[]>('/users/', {
+    const response = await apiClient.get<AppUser[]>('/api/v1/users/', {
       params: { skip, limit },
     });
     return response.data;
@@ -41,7 +40,7 @@ export const getUsers = async (skip: number = 0, limit: number = 100): Promise<A
 // Fetch a single user by ID - Returns AppUser
 export const getUserById = async (userId: number): Promise<AppUser> => {
   try {
-    const response = await apiClient.get<AppUser>(`/users/${userId}`);
+    const response = await apiClient.get<AppUser>(`/api/v1/users/${userId}`);
     return response.data;
   } catch (error) {
     console.error(`Error fetching user with ID ${userId}:`, error);
@@ -62,7 +61,7 @@ export const loginUser = async (username_or_email: string, password: string): Pr
   formData.append('username', username_or_email);
   formData.append('password', password);
 
-  const response = await apiClient.post<TokenResponse>('/auth/token', formData, { // API path for token
+  const response = await apiClient.post<TokenResponse>('/api/v1/auth/token', formData, {
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
     },
@@ -72,14 +71,14 @@ export const loginUser = async (username_or_email: string, password: string): Pr
 
 // Fetch current user details
 export const getMe = async (): Promise<AppUser> => {
-  const response = await apiClient.get<AppUser>('/users/me'); // API path for /me
+  const response = await apiClient.get<AppUser>('/api/v1/users/me');
   return response.data;
 };
 
 // Create a new user - Should return AppUser
 export const createUser = async (userData: UserCreatePayload): Promise<AppUser> => {
   try {
-    const response = await apiClient.post<AppUser>('/users/', userData); // Assuming /users/ path
+    const response = await apiClient.post<AppUser>('/api/v1/users/', userData);
     return response.data;
   } catch (error) {
     console.error('Error creating user:', error);
@@ -90,7 +89,7 @@ export const createUser = async (userData: UserCreatePayload): Promise<AppUser> 
 // Update an existing user - Should return AppUser
 export const updateUser = async (userId: number, userData: UserUpdatePayload): Promise<AppUser> => {
   try {
-    const response = await apiClient.put<AppUser>(`/users/${userId}`, userData); // Assuming /users/ path
+    const response = await apiClient.put<AppUser>(`/api/v1/users/${userId}`, userData);
     return response.data;
   } catch (error) {
     console.error(`Error updating user with ID ${userId}:`, error);
@@ -101,7 +100,7 @@ export const updateUser = async (userId: number, userData: UserUpdatePayload): P
 // Delete a user by ID - Should return AppUser
 export const deleteUser = async (userId: number): Promise<AppUser> => {
   try {
-    const response = await apiClient.delete<AppUser>(`/users/${userId}`); // Assuming /users/ path
+    const response = await apiClient.delete<AppUser>(`/api/v1/users/${userId}`);
     return response.data;
   } catch (error) {
     console.error(`Error deleting user with ID ${userId}:`, error);
