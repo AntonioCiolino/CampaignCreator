@@ -1,5 +1,5 @@
 import React, { useState, useEffect, FormEvent } from 'react';
-import { AppUser } from '../types/userTypes'; // Corrected path
+import { User as AppUser } from '../types/userTypes'; // Aliased import
 // Payloads can still come from userService as they are specific to service calls
 import { UserCreatePayload, UserUpdatePayload } from '../services/userService';
 import Input from './common/Input';

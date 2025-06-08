@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // Import useCallback
 import { FaEdit, FaTrash } from 'react-icons/fa';
-import { AppUser } from '../types/userTypes'; // Corrected path
+import { User as AppUser } from '../types/userTypes';
 import { getUsers, deleteUser, createUser, updateUser, UserCreatePayload, UserUpdatePayload } from '../services/userService';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
@@ -20,29 +20,32 @@ const UserManagementPage: React.FC = () => {
   const [editingUser, setEditingUser] = useState<AppUser | null>(null);
   const [userFormError, setUserFormError] = useState<string | null>(null);
 
-  const fetchUsers = async () => {
-    if (!token) { // Defensive check, ProtectedRoute should handle this
+  // Wrap fetchUsers in useCallback
+  const fetchUsers = useCallback(async () => {
+    if (!token) {
       setError("Authentication token not found. Please login.");
+      setUsers([]); // Clear users if no token
       setIsLoading(false);
       return;
     }
     try {
       setIsLoading(true);
       setError(null);
-      const fetchedUsers = await getUsers(); // userService.getUsers now returns AppUser[]
+      const fetchedUsers = await getUsers();
       setUsers(fetchedUsers);
-    } catch (err: any) { // More specific error typing
+    } catch (err: any) {
       console.error('Failed to fetch users:', err);
       const errorMessage = err.response?.data?.detail || err.message || 'Failed to load users. Please try again later.';
       setError(errorMessage);
+      setUsers([]); // Clear users on error
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token]); // Dependency: token. State setters (setError, setUsers, setIsLoading) are stable.
 
   useEffect(() => {
     fetchUsers();
-  }, [token]); // Re-fetch if token changes (e.g. login/logout cycle if page wasn't left)
+  }, [fetchUsers]); // Now fetchUsers is a stable dependency
 
   const handleOpenCreateModal = () => {
     setEditingUser(null);
