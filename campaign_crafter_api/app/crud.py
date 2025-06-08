@@ -181,10 +181,10 @@ def delete_roll_table(db: Session, roll_table_id: int) -> Optional[orm_models.Ro
     return db_roll_table
 
 
-# from app.services.openai_service import OpenAILLMService # No longer needed for direct import
-from app.services.llm_service import LLMService # For type hinting if needed
-from app.services.llm_factory import get_llm_service, LLMServiceUnavailableError # Import the factory
-# from app import models # This is already imported via "from . import models, orm_models"
+# from app.services.openai_service import OpenAILLMService
+from .services.llm_service import LLMService # Corrected
+from .services.llm_factory import get_llm_service, LLMServiceUnavailableError # Corrected
+# from . import models # This is already imported via "from . import models, orm_models"
 
 # --- Campaign CRUD functions ---
 async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, owner_id: int) -> orm_models.Campaign:
