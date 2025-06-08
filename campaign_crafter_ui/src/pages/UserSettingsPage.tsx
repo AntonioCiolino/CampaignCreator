@@ -84,6 +84,7 @@ const UserSettingsPage: React.FC = () => {
           label="Username:"
           value={currentUser.username}
           disabled // Username display only
+          onChange={() => {}} // Added dummy onChange
         />
         <Input
           id="email"
@@ -92,6 +93,7 @@ const UserSettingsPage: React.FC = () => {
           label="Email:"
           value={currentUser.email || ''}
           disabled // Email display only
+          onChange={() => {}} // Added dummy onChange
         />
         {/*
           Current Password field is good UI practice, but the current API does not enforce it for self-update.
