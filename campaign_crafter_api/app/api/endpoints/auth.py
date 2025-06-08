@@ -5,11 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from campaign_crafter_api.app import models # For models.Token
-from campaign_crafter_api.app.services.auth_service import authenticate_user
-from campaign_crafter_api.app.core.security import create_access_token
-from campaign_crafter_api.app.core.config import settings
-from campaign_crafter_api.app.db import get_db # Assuming get_db is in app.db
+from app import models # Standardized
+from app.services.auth_service import authenticate_user # Standardized
+from app.core.security import create_access_token # Standardized
+from app.core.config import settings # Standardized
+from app.db import get_db # Standardized
 
 router = APIRouter()
 

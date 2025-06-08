@@ -3,9 +3,9 @@ from typing import Optional, Annotated
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from .. import crud, models # models for User response type hint
-from ..core.security import decode_access_token, oauth2_scheme # Corrected path
-from ..db import get_db # Corrected path
+from app import crud, models # Standardized
+from app.core.security import decode_access_token, oauth2_scheme # Standardized
+from app.db import get_db # Standardized
 # Assuming verify_password is in crud.py as confirmed earlier
 
 async def get_current_user(

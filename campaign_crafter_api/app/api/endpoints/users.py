@@ -3,9 +3,9 @@ from typing import List, Optional, Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from ... import crud, models # Corrected relative import
-from ...db import get_db # Corrected relative import
-from ...services.auth_service import get_current_active_superuser, get_current_active_user # Corrected relative import
+from app import crud, models # Standardized import
+from app.db import get_db # Standardized import
+from app.services.auth_service import get_current_active_superuser, get_current_active_user # Standardized import
 
 router = APIRouter()
 

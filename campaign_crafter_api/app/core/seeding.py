@@ -1,9 +1,9 @@
 import csv
 from pathlib import Path
-from typing import List # For type hinting if needed, though current functions don't explicitly use it in signature beyond Session
+from typing import List
 from sqlalchemy.orm import Session
 
-from .. import crud, models # Adjusted imports for app structure
+from app import crud, models # Standardized import
 
 # Base path for CSV files relative to this file (app/core/seeding.py)
 # project_root is app/core/seeding.py -> app/core -> app -> campaign_crafter_api
