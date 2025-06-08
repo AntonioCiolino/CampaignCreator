@@ -47,10 +47,12 @@ const LoginPage: React.FC = () => {
   }
 
   return (
-    <div>
-      <h2>Login</h2>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      <LoginForm onSubmit={handleLogin} />
+    <div className="login-page-container">
+      <div className="login-card">
+        <h2>Login</h2>
+        {error && <p className="login-error-message">{error}</p>}
+        <LoginForm onSubmit={handleLogin} />
+      </div>
     </div>
   );
 };

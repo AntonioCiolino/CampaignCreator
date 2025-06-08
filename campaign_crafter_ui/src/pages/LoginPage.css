@@ -1,7 +1,37 @@
-/* Basic styling for LoginPage */
-/* div {
+.login-page-container {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px;
-} */
+  justify-content: center; /* Center horizontally */
+  align-items: center; /* Center vertically */
+  min-height: 100vh; /* Full viewport height */
+  background-color: #f0f2f5; /* A light, neutral background */
+  padding: 20px; /* Add some padding for smaller screens */
+  box-sizing: border-box;
+}
+
+.login-card {
+  background-color: #ffffff;
+  padding: 30px 40px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px; /* Max width of the login card */
+  text-align: center; /* Center h2 and potentially other elements */
+}
+
+.login-card h2 {
+  margin-top: 0;
+  margin-bottom: 24px;
+  font-size: 24px;
+  color: #333;
+}
+
+.login-error-message {
+  color: #d93025; /* A common error red color */
+  background-color: #f8d7da; /* Light red background for visibility */
+  border: 1px solid #f5c6cb;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  text-align: left; /* Align error text to the left for readability */
+}

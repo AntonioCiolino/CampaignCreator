@@ -1,38 +1,57 @@
-/* Basic styling for LoginForm */
-/* form {
+.login-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  width: 300px;
-  padding: 20px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
+  gap: 18px; /* Space between form groups */
 }
 
-div {
+.login-form div { /* Targets the divs wrapping label and input */
   display: flex;
   flex-direction: column;
+  text-align: left; /* Align labels to the left */
 }
 
-label {
-  margin-bottom: 5px;
+.login-form label {
+  margin-bottom: 6px;
+  font-weight: 500; /* Slightly bolder labels */
+  font-size: 14px;
+  color: #495057; /* Dark grey for label text */
 }
 
-input {
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 3px;
+.login-form input[type="text"],
+.login-form input[type="password"] {
+  padding: 10px 12px;
+  border: 1px solid #ced4da; /* Standard input border */
+  border-radius: 4px;
+  font-size: 16px;
+  box-sizing: border-box; /* Ensure padding doesn't expand width */
+  width: 100%;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 
-button {
-  padding: 10px;
-  background-color: #007bff;
-  color: white;
+.login-form input[type="text"]:focus,
+.login-form input[type="password"]:focus {
+  border-color: #80bdff; /* Highlight color on focus */
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); /* Bootstrap-like focus shadow */
+}
+
+.login-form button[type="submit"] {
+  padding: 10px 15px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #ffffff;
+  background-color: #007bff; /* Primary button color (e.g., blue) */
   border: none;
-  border-radius: 3px;
+  border-radius: 4px;
   cursor: pointer;
+  transition: background-color 0.15s ease-in-out;
+  margin-top: 10px; /* Add some space above the button */
 }
 
-button:hover {
-  background-color: #0056b3;
-} */
+.login-form button[type="submit"]:hover {
+  background-color: #0056b3; /* Darker shade on hover */
+}
+
+.login-form button[type="submit"]:active {
+  background-color: #004085; /* Even darker on active/click */
+}
