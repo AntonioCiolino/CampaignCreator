@@ -1,15 +1,18 @@
 import React from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import AppRoutes from './routes/AppRoutes';
-import Layout from './components/common/Layout'; // Assuming Layout will be created
-import './App.css'; // Keep basic App.css for now, can be cleaned later
+import Layout from './components/common/Layout';
+import './App.css';
+import { AuthProvider } from './contexts/AuthContext';
 
 function App() {
   return (
     <Router>
-      <Layout>
-        <AppRoutes />
-      </Layout>
+      <AuthProvider>
+        <Layout>
+          <AppRoutes />
+        </Layout>
+      </AuthProvider>
     </Router>
   );
 }

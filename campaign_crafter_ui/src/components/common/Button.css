@@ -169,3 +169,15 @@
 /* Ensure .btn itself handles alignment well with its children (icon and text) */
 /* .btn already has display: inline-flex; align-items: center; justify-content: center; */
 /* so specific .btn-icon styling is minimal and mostly for the dynamic margin. */
+
+/* Responsive adjustments for small buttons on mobile */
+@media (max-width: 768px) {
+  .btn-sm {
+    --btn-padding-y: 0.4rem; /* Increased padding for better touch target */
+    --btn-padding-x: 0.8rem; /* Increased padding for better touch target */
+    /* --btn-font-size: 0.875rem; /* Font size can remain the same or be slightly adjusted if needed */
+                                 /* Re-declaring it here would override the existing .btn-sm if needed, */
+                                 /* but if it's the same, it's not strictly necessary to repeat. */
+                                 /* For clarity, we can state it if it's a conscious decision for it to remain. */
+  }
+}

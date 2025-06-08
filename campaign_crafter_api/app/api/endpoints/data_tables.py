@@ -1,10 +1,11 @@
-from typing import List, Optional
+from typing import List, Optional, Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app import crud, models, orm_models
+from app import crud, models # Removed orm_models as not directly used
 from app.db import get_db
+from app.services.auth_service import get_current_active_user # Import for auth
 
 router_features = APIRouter()
 router_roll_tables = APIRouter()
@@ -12,7 +13,9 @@ router_roll_tables = APIRouter()
 # --- Feature Endpoints ---
 @router_features.post("/", response_model=models.Feature)
 def create_feature(
-    feature: models.FeatureCreate, db: Session = Depends(get_db)
+    feature: models.FeatureCreate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
     db_feature_by_name = crud.get_feature_by_name(db, name=feature.name)
     if db_feature_by_name:
@@ -22,7 +25,7 @@ def create_feature(
     return crud.create_feature(db=db, feature=feature)
 
 @router_features.get("/{feature_id}", response_model=models.Feature)
-def read_feature(feature_id: int, db: Session = Depends(get_db)):
+def read_feature(feature_id: int, db: Annotated[Session, Depends(get_db)]):
     db_feature = crud.get_feature(db, feature_id=feature_id)
     if db_feature is None:
         raise HTTPException(status_code=404, detail="Feature not found")
@@ -30,7 +33,7 @@ def read_feature(feature_id: int, db: Session = Depends(get_db)):
 
 @router_features.get("/", response_model=List[models.Feature])
 def read_features(
-    skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
+    db: Annotated[Session, Depends(get_db)], skip: int = 0, limit: int = 100
 ):
     features = crud.get_features(db, skip=skip, limit=limit)
     return features
@@ -39,7 +42,8 @@ def read_features(
 def update_feature(
     feature_id: int,
     feature_update: models.FeatureUpdate,
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
     db_feature = crud.get_feature(db, feature_id=feature_id)
     if not db_feature:
@@ -55,33 +59,37 @@ def update_feature(
     updated_feature = crud.update_feature(
         db=db, feature_id=feature_id, feature_update=feature_update
     )
-    # crud.update_feature itself should handle the case where feature_id doesn't exist,
-    # but the check above is good for immediate feedback and name check.
-    # If updated_feature is None, it means the feature was not found by crud.update_feature,
-    # which should ideally be caught by the initial check.
     if updated_feature is None:
-         raise HTTPException(status_code=404, detail="Feature not found during update") # Should not happen if initial check is done
+         raise HTTPException(status_code=404, detail="Feature not found during update")
     return updated_feature
 
 @router_features.delete("/{feature_id}", response_model=models.Feature)
-def delete_feature(feature_id: int, db: Session = Depends(get_db)):
-    db_feature = crud.delete_feature(db, feature_id=feature_id)
-    if db_feature is None:
-        raise HTTPException(status_code=404, detail="Feature not found")
-    return db_feature
+def delete_feature(
+    feature_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+):
+    db_feature_to_delete = crud.get_feature(db, feature_id=feature_id)
+    if db_feature_to_delete is None:
+        raise HTTPException(status_code=404, detail="Feature not found to delete")
+
+    deleted_feature = crud.delete_feature(db, feature_id=feature_id)
+    if deleted_feature is None: # Should not happen if previous check passed
+        raise HTTPException(status_code=404, detail="Feature not found during deletion process")
+    return deleted_feature
 
 # --- Rolltable Endpoints ---
 @router_roll_tables.post("/", response_model=models.RollTable)
 def create_roll_table(
-    roll_table: models.RollTableCreate, db: Session = Depends(get_db)
+    roll_table: models.RollTableCreate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
     db_roll_table_by_name = crud.get_roll_table_by_name(db, name=roll_table.name)
     if db_roll_table_by_name:
         raise HTTPException(
             status_code=400, detail="Rolltable with this name already exists"
         )
-    # Additional validation for items if necessary (e.g., min_roll <= max_roll)
-    # This could also be done in Pydantic models with validators
     for item in roll_table.items:
         if item.min_roll > item.max_roll:
             raise HTTPException(
@@ -91,7 +99,7 @@ def create_roll_table(
     return crud.create_roll_table(db=db, roll_table=roll_table)
 
 @router_roll_tables.get("/{roll_table_id}", response_model=models.RollTable)
-def read_roll_table(roll_table_id: int, db: Session = Depends(get_db)):
+def read_roll_table(roll_table_id: int, db: Annotated[Session, Depends(get_db)]):
     db_roll_table = crud.get_roll_table(db, roll_table_id=roll_table_id)
     if db_roll_table is None:
         raise HTTPException(status_code=404, detail="Rolltable not found")
@@ -99,7 +107,7 @@ def read_roll_table(roll_table_id: int, db: Session = Depends(get_db)):
 
 @router_roll_tables.get("/", response_model=List[models.RollTable])
 def read_roll_tables(
-    skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
+    db: Annotated[Session, Depends(get_db)], skip: int = 0, limit: int = 100
 ):
     roll_tables = crud.get_roll_tables(db, skip=skip, limit=limit)
     return roll_tables
@@ -108,7 +116,8 @@ def read_roll_tables(
 def update_roll_table(
     roll_table_id: int,
     roll_table_update: models.RollTableUpdate,
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
     db_roll_table = crud.get_roll_table(db, roll_table_id=roll_table_id)
     if not db_roll_table:
@@ -132,13 +141,21 @@ def update_roll_table(
     updated_roll_table = crud.update_roll_table(
         db=db, roll_table_id=roll_table_id, roll_table_update=roll_table_update
     )
-    if updated_roll_table is None: # Should be caught by the initial check
+    if updated_roll_table is None:
         raise HTTPException(status_code=404, detail="Rolltable not found during update")
     return updated_roll_table
 
 @router_roll_tables.delete("/{roll_table_id}", response_model=models.RollTable)
-def delete_roll_table(roll_table_id: int, db: Session = Depends(get_db)):
-    db_roll_table = crud.delete_roll_table(db, roll_table_id=roll_table_id)
-    if db_roll_table is None:
-        raise HTTPException(status_code=404, detail="Rolltable not found")
-    return db_roll_table
+def delete_roll_table(
+    roll_table_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+):
+    db_roll_table_to_delete = crud.get_roll_table(db, roll_table_id=roll_table_id)
+    if db_roll_table_to_delete is None:
+        raise HTTPException(status_code=404, detail="Rolltable not found to delete")
+
+    deleted_roll_table = crud.delete_roll_table(db, roll_table_id=roll_table_id)
+    if deleted_roll_table is None: # Should not happen
+        raise HTTPException(status_code=404, detail="Rolltable not found during deletion")
+    return deleted_roll_table

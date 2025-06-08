@@ -1,9 +1,9 @@
 import csv
 from pathlib import Path
-from typing import List # For type hinting if needed, though current functions don't explicitly use it in signature beyond Session
+from typing import List
 from sqlalchemy.orm import Session
 
-from .. import crud, models # Adjusted imports for app structure
+from app import crud, models # Standardized import
 
 # Base path for CSV files relative to this file (app/core/seeding.py)
 # project_root is app/core/seeding.py -> app/core -> app -> campaign_crafter_api
@@ -171,4 +171,34 @@ def seed_all_csv_data(db: Session):
     print("\n--- Starting All CSV Data Seeding (from app.core.seeding) ---")
     seed_features(db)
     seed_roll_tables(db)
+    seed_initial_superuser(db) # Add call to seed superuser
     print("\n--- All CSV Data Seeding Finished (from app.core.seeding) ---")
+
+def seed_initial_superuser(db: Session):
+    print("\n--- Seeding Initial Superuser ---")
+    try:
+        users = crud.get_users(db, limit=1)
+        if not users:
+            default_username = "admin"
+            default_password = "changeme" # TODO: Make this configurable via environment variables for production
+            default_email = "admin@example.com"
+
+            print(f"No users found in the database. Creating default superuser '{default_username}' with email '{default_email}'.")
+            print("IMPORTANT: Default password is 'changeme'. Please change it immediately after first login.")
+
+            superuser_in = models.UserCreate(
+                username=default_username,
+                password=default_password, # crud.create_user will hash this
+                email=default_email,
+                is_superuser=True
+                # Pydantic model UserCreate does not have 'disabled', ORM model handles default
+            )
+            crud.create_user(db=db, user=superuser_in)
+            print(f"Default superuser '{default_username}' created successfully.")
+        else:
+            print("Users already exist in the database. Skipping default superuser creation.")
+        print("--- Initial Superuser Seeding Finished ---")
+    except Exception as e:
+        print(f"An error occurred during initial superuser seeding: {e}")
+        # Optionally, re-raise if this is critical and should halt startup,
+        # or handle more gracefully depending on application requirements.

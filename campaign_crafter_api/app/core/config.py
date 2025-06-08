@@ -1,7 +1,15 @@
 from pydantic_settings import BaseSettings
-from typing import Optional
+from typing import Optional, List
 
 class Settings(BaseSettings):
+    BACKEND_CORS_ORIGINS_CSV: Optional[str] = None
+
+    @property
+    def BACKEND_CORS_ORIGINS(self) -> list[str]:
+        if self.BACKEND_CORS_ORIGINS_CSV:
+            return [origin.strip() for origin in self.BACKEND_CORS_ORIGINS_CSV.split(',')]
+        return ["http://localhost:3000"] # Default if the env var is not set
+
     # Existing keys
     OPENAI_API_KEY: str = "YOUR_OPENAI_API_KEY" 
     GEMINI_API_KEY: Optional[str] = "YOUR_GEMINI_API_KEY" 
@@ -35,13 +43,12 @@ class Settings(BaseSettings):
     LOCAL_LLM_API_BASE_URL: Optional[str] = None # e.g., "http://localhost:11434/v1" for Ollama's OpenAI compat endpoint
     LOCAL_LLM_DEFAULT_MODEL_ID: Optional[str] = None # e.g., "mistral:latest" or just "mistral"
 
-    # Database URL (example, if you had one)
-    # DATABASE_URL: str = "sqlite:///./test.db"
+    DATABASE_URL: str = "sqlite:///./campaign_crafter_default.db"
 
-    # JWT Settings (example, if you had them)
-    # SECRET_KEY: str = "your_super_secret_key"
-    # ALGORITHM: str = "HS256"
-    # ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    # JWT Settings
+    SECRET_KEY: str = "your-secret-key"  # TODO: Load from environment variable for production
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     class Config:
         env_file = ".env"

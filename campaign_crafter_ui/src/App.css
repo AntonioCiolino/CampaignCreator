@@ -197,3 +197,31 @@ h4 { font-size: 1.25rem; }
 .app-layout, .app-header, .app-main-content {
   /* These will be defined in Layout.css */
 }
+
+/* Media Queries for Responsive Design */
+@media (max-width: 768px) {
+  body {
+    font-size: 15px; /* Slightly smaller base font for mobile */
+  }
+
+  h1 { font-size: 2rem; }    /* Adjusted for mobile */
+  h2 { font-size: 1.6rem; }  /* Adjusted for mobile */
+  h3 { font-size: 1.3rem; }  /* Adjusted for mobile */
+  h4 { font-size: 1.1rem; }  /* Adjusted for mobile */
+
+  .container {
+    padding-left: 10px;  /* Reduced padding for mobile */
+    padding-right: 10px; /* Reduced padding for mobile */
+  }
+
+  .form-input,
+  .form-textarea,
+  .form-select {
+    padding: 0.75rem 1rem; /* Larger touch targets for form inputs */
+  }
+
+  button, .button {
+    padding: 0.75rem 1rem; /* Larger touch targets for buttons */
+    font-size: 1rem; /* Ensure font size is not too small */
+  }
+}

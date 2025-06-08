@@ -3,9 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware # Added import
 
 # sys.path manipulation for 'utils' is no longer needed here.
 # We will use a relative import for the seeding module.
-
-from .core.seeding import seed_all_csv_data # Updated import
-from .db import init_db, SessionLocal, engine, Base 
+from app.core.config import settings # Corrected
+from app.core.seeding import seed_all_csv_data # Corrected
+from app.db import init_db, SessionLocal, engine, Base # Corrected
 from app import crud 
 from app.api.endpoints import campaigns as campaigns_router
 from app.api.endpoints import llm_management as llm_management_router
@@ -14,18 +14,15 @@ from app.api.endpoints import image_generation as image_generation_router
 from app.api.endpoints import import_data as import_data_router
 from app.api.endpoints import users as users_router # New import for users
 from app.api.endpoints import data_tables # New import for data_tables
+from app.api.endpoints import auth as auth_router # Import for auth
 
 app = FastAPI(title="Campaign Crafter API", version="0.1.0")
 
-origins = [
-    "http://localhost",
-    "http://localhost:3000",
-    # Potentially add your deployed frontend URL here in the future
-]
+# origins = ["*"] # Removed this line
 
 app.add_middleware( # Added middleware
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=settings.BACKEND_CORS_ORIGINS, # Use the new setting
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -65,9 +62,16 @@ app.include_router(utility_router.router, prefix="/api/v1", tags=["Utilities"])
 app.include_router(image_generation_router.router, prefix="/api/v1", tags=["Image Generation"]) 
 app.include_router(import_data_router.router, prefix="/api/v1/import", tags=["Import"])
 app.include_router(users_router.router, prefix="/api/v1/users", tags=["Users"]) # Added users router
+app.include_router(auth_router.router, prefix="/api/v1/auth", tags=["Authentication"]) # Added auth router
 app.include_router(data_tables.router_features, prefix="/api/v1/features", tags=["Features"])
 app.include_router(data_tables.router_roll_tables, prefix="/api/v1/roll_tables", tags=["Rolltables"])
 
 @app.get("/", tags=["Root"])
 async def read_root():
     return {"message": "Welcome to Campaign Crafter API"}
+
+if __name__ == "__main__":
+    import uvicorn
+    import os
+    port_from_env = os.getenv("PORT", "8000")
+    uvicorn.run(app, host="0.0.0.0", port=int(port_from_env))
