@@ -227,7 +227,7 @@ const DataManagementPage: React.FC = () => {
                     <td>{feature.template.substring(0, 100)}{feature.template.length > 100 ? '...' : ''}</td>
                     <td className="actions-cell">
                       {(() => {
-                        const isSystemFeature = feature.userId === null || feature.userId === undefined;
+                        const isSystemFeature = feature.user_id === null || feature.user_id === undefined;
                         const canManageFeature = !isSystemFeature || (isSystemFeature && user?.is_superuser);
                         if (canManageFeature) {
                           return (
