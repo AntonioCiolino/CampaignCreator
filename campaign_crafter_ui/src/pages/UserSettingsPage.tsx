@@ -59,8 +59,31 @@ const UserSettingsPage: React.FC = () => {
       setConfirmPassword('');
       setCurrentPassword(''); // Clear current password field as well
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to update password.');
-      console.error(err);
+      console.error(err); // Log the full error for debugging
+      let errorMessage = 'Failed to update password.'; // Default message
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        if (typeof detail === 'string') {
+          errorMessage = detail;
+        } else if (Array.isArray(detail) && detail.length > 0 && typeof detail[0].msg === 'string' && Array.isArray(detail[0].loc)) {
+          // If detail is an array of validation errors (FastAPI style), take the first message.
+          errorMessage = `Validation Error: ${detail[0].msg} (field: ${detail[0].loc.join(' > ')})`;
+        } else if (typeof detail === 'object' && detail !== null && typeof (detail as any).message === 'string') {
+          // If detail is an object with a message property
+          errorMessage = (detail as any).message;
+        } else if (typeof detail === 'object' && detail !== null) {
+          // Fallback for other object structures, convert to string
+          try {
+            errorMessage = JSON.stringify(detail);
+          } catch (stringifyError) {
+            console.error("Failed to stringify error detail:", stringifyError);
+            // Keep default error message if stringification fails
+          }
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
