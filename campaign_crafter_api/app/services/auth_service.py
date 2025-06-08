@@ -3,7 +3,7 @@ from typing import Optional, Annotated
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from campaign_crafter_api.app import crud, models # models for User response type hint
+from .. import crud, models # models for User response type hint
 from campaign_crafter_api.app.core.security import decode_access_token, oauth2_scheme
 from campaign_crafter_api.app.db import get_db
 # Assuming verify_password is in crud.py as confirmed earlier
