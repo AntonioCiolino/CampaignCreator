@@ -3,35 +3,58 @@ from typing import Optional, Annotated
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app import crud, models # Standardized
-from app.core.security import decode_access_token, oauth2_scheme # Standardized
-from app.db import get_db # Standardized
+from app import crud, models
+from app.core.security import decode_access_token, oauth2_scheme
+from app.db import get_db
+from jose import JWTError # Import JWTError
+
 # Assuming verify_password is in crud.py as confirmed earlier
 
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
     db: Annotated[Session, Depends(get_db)]
-) -> models.User:
+) -> models.User: # Return Pydantic model
+    print(f"[AUTH_DEBUG] get_current_user called. Received token: {token[:30]}...")
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    payload = decode_access_token(token)
-    if payload is None:
-        raise credentials_exception
-    username: Optional[str] = payload.get("sub")
-    if username is None:
+    try:
+        payload = decode_access_token(token)
+        print(f"[AUTH_DEBUG] Decoded payload: {payload}")
+
+        if payload is None:
+            print("[AUTH_DEBUG] Payload is None after decoding.")
+            raise credentials_exception
+
+        username: Optional[str] = payload.get("sub")
+        if username is None:
+            print("[AUTH_DEBUG] Username (sub) not in payload.")
+            raise credentials_exception
+
+        print(f"[AUTH_DEBUG] Username from token: {username}")
+
+        # Create TokenData Pydantic model instance - already present in original code, good for validation.
+        # token_data = models.TokenData(username=username)
+        # No, token_data was used for crud.get_user_by_username(db, username=token_data.username),
+        # we can directly use 'username' string.
+
+    except JWTError as e:
+        print(f"[AUTH_DEBUG] JWTError during token decoding: {str(e)}")
         raise credentials_exception
 
-    # Create TokenData model to validate username structure if needed, though here it's simple
-    token_data = models.TokenData(username=username)
+    db_user_orm = crud.get_user_by_username(db, username=username)
 
-    user = crud.get_user_by_username(db, username=token_data.username)
-    if user is None:
+    if db_user_orm is None:
+        print(f"[AUTH_DEBUG] User '{username}' not found in database.")
         raise credentials_exception
-    # Convert ORM user to Pydantic model User for return type consistency
-    return models.User.from_orm(user)
+
+    print(f"[AUTH_DEBUG] User '{username}' found in database. Disabled status: {db_user_orm.disabled}")
+
+    user_pydantic = models.User.from_orm(db_user_orm)
+    return user_pydantic
 
 async def get_current_active_user(
     current_user: Annotated[models.User, Depends(get_current_user)]

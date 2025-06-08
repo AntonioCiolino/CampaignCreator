@@ -314,14 +314,24 @@ export const seedSectionsFromToc = (
 
   const controller = new AbortController();
 
+  // Prepare headers
+  const requestHeaders: Record<string, string> = {
+    'Accept': 'text/event-stream',
+    'Content-Type': 'application/json', // Added as body is now JSON
+  };
+
+  // Get token from localStorage
+  const token = localStorage.getItem('token');
+  if (token) {
+    requestHeaders['Authorization'] = `Bearer ${token}`;
+  } else {
+    console.warn("No auth token found in localStorage for SSE request. Request will likely fail if endpoint is protected.");
+  }
+
   fetchEventSource(url, {
-    method: 'POST', // Changed to POST as per backend
-    headers: {
-      'Accept': 'text/event-stream',
-      // Add any other necessary headers, e.g., CSRF token if your app uses them for POST
-      // 'X-CSRF-Token': 'your_token_here', // Example
-    },
-    body: JSON.stringify({}), // Send an empty JSON body for POST
+    method: 'POST',
+    headers: requestHeaders, // Use the prepared headers
+    body: JSON.stringify({}), // Send an empty JSON body for POST, Content-Type is application/json
     signal: controller.signal,
 
     onopen: async (response) => {
