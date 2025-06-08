@@ -118,24 +118,40 @@ def delete_feature(db: Session, feature_id: int) -> Optional[orm_models.Feature]
 def get_roll_table(db: Session, roll_table_id: int) -> Optional[orm_models.RollTable]:
     return db.query(orm_models.RollTable).filter(orm_models.RollTable.id == roll_table_id).first()
 
-def get_roll_table_by_name(db: Session, name: str) -> Optional[orm_models.RollTable]:
-    return db.query(orm_models.RollTable).filter(orm_models.RollTable.name == name).first()
+def get_roll_table_by_name(db: Session, name: str, user_id: Optional[int] = None) -> Optional[orm_models.RollTable]:
+    # Try to find a table owned by the user first
+    if user_id is not None:
+        db_roll_table = db.query(orm_models.RollTable).filter(
+            orm_models.RollTable.name == name,
+            orm_models.RollTable.user_id == user_id
+        ).first()
+        if db_roll_table:
+            return db_roll_table
 
-def get_roll_tables(db: Session, skip: int = 0, limit: int = 100) -> List[orm_models.RollTable]:
-    return db.query(orm_models.RollTable).offset(skip).limit(limit).all()
+    # If not found or no user_id provided, try to find a system table (user_id is None)
+    return db.query(orm_models.RollTable).filter(
+        orm_models.RollTable.name == name,
+        orm_models.RollTable.user_id == None
+    ).first()
 
-def create_roll_table(db: Session, roll_table: models.RollTableCreate) -> orm_models.RollTable:
+def get_roll_tables(db: Session, skip: int = 0, limit: int = 100, user_id: Optional[int] = None) -> List[orm_models.RollTable]:
+    query = db.query(orm_models.RollTable)
+    if user_id is not None:
+        query = query.filter(
+            (orm_models.RollTable.user_id == user_id) | (orm_models.RollTable.user_id == None)
+        )
+    else:
+        query = query.filter(orm_models.RollTable.user_id == None)
+    return query.offset(skip).limit(limit).all()
+
+def create_roll_table(db: Session, roll_table: models.RollTableCreate, user_id: Optional[int] = None) -> orm_models.RollTable:
     db_roll_table = orm_models.RollTable(
         name=roll_table.name,
-        description=roll_table.description
+        description=roll_table.description,
+        user_id=user_id
     )
-    for item_data in roll_table.items:
-        db_item = orm_models.RollTableItem(**item_data.dict(), roll_table=db_roll_table)
-        # db_roll_table.items.append(db_item) # SQLAlchemy handles this via backref or we add manually
-        # Actually, it's better to add to the session if not using cascade for item creation through table.
-        # However, since items are part of the table creation, linking them as below is common.
     # Add them to the table's collection. SQLAlchemy will handle associating them.
-    db_roll_table.items = [orm_models.RollTableItem(**item.dict()) for item in roll_table.items]
+    db_roll_table.items = [orm_models.RollTableItem(**item.model_dump()) for item in roll_table.items]
 
     db.add(db_roll_table)
     db.commit()
@@ -159,7 +175,7 @@ def update_roll_table(db: Session, roll_table_id: int, roll_table_update: models
         # Create new items
         new_items = []
         for item_data in roll_table_update.items:
-            new_item = orm_models.RollTableItem(**item_data.dict(), roll_table_id=roll_table_id)
+            new_item = orm_models.RollTableItem(**item_data.model_dump(), roll_table_id=roll_table_id)
             new_items.append(new_item)
         db_roll_table.items = new_items # Assign new list of items
 
@@ -179,6 +195,38 @@ def delete_roll_table(db: Session, roll_table_id: int) -> Optional[orm_models.Ro
     # or None if we want to indicate it's no longer in DB.
     # For consistency with other delete functions, returning the object.
     return db_roll_table
+
+def copy_system_roll_table_to_user(db: Session, system_table: orm_models.RollTable, user_id: int) -> orm_models.RollTable:
+    """
+    Copies a system roll table (where user_id is None) to a specific user.
+    The new table will have the same name, description, and items as the system table,
+    but will be associated with the given user_id.
+    """
+    # Create a new RollTable object for the user
+    user_roll_table = orm_models.RollTable(
+        name=system_table.name,
+        description=system_table.description,
+        user_id=user_id
+    )
+
+    # Copy items from the system table to the new user table
+    user_roll_table.items = [
+        orm_models.RollTableItem(
+            min_roll=item.min_roll,
+            max_roll=item.max_roll,
+            description=item.description
+            # roll_table_id will be set automatically when the user_roll_table is added to session and committed,
+            # or by relationship back-population if items are directly appended to user_roll_table.items collection
+            # and the relationship is configured correctly.
+            # Explicitly setting roll_table=user_roll_table in constructor is safer if cascade isn't perfect.
+            # However, since we build the list and assign to .items, SQLAlchemy should handle it.
+        ) for item in system_table.items
+    ]
+
+    db.add(user_roll_table)
+    db.commit()
+    db.refresh(user_roll_table)
+    return user_roll_table
 
 
 # from app.services.openai_service import OpenAILLMService

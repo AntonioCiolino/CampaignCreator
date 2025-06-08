@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react'; // Removed useCallback
-import { getAllRandomTableNames, getRandomItemFromTable, RandomItemResponse } from '../services/randomTableService';
-import Button from './common/Button'; // Assuming Button component exists and is styled
-import './RandomTableRoller.css'; // For styling
+import React, { useState, useEffect } from 'react';
+import { getAllRandomTableNames, getRandomItemFromTable, RandomItemResponse, copySystemTables } from '../services/randomTableService';
+import Button from './common/Button';
+import './RandomTableRoller.css';
+import { useAuth } from '../contexts/AuthContext'; // Assuming a useAuth hook for token
 
 interface RandomTableRollerProps {
   onInsertItem: (itemText: string) => void;
@@ -16,26 +17,51 @@ const RandomTableRoller: React.FC<RandomTableRollerProps> = ({ onInsertItem }) =
   const [isLoadingTables, setIsLoadingTables] = useState<boolean>(false);
   const [isLoadingItem, setIsLoadingItem] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCopying, setIsCopying] = useState<boolean>(false);
+  const [copyMessage, setCopyMessage] = useState<string | null>(null);
+  const { token } = useAuth(); // Get token from AuthContext
+
+  // Encapsulate loadTableNames to be callable
+  const loadTableNames = async () => {
+    setIsLoadingTables(true);
+    setError(null); // Clear main error
+    try {
+      const names = await getAllRandomTableNames(); // This will now fetch user-specific + system if token is available via apiService
+      setRandomTableNames(names);
+      if (names.length > 0) {
+        // setSelectedRandomTable(names[0]); // Optionally pre-select first table
+      }
+    } catch (err) {
+      console.error("Failed to load random table names:", err);
+      setError(err instanceof Error ? err.message : "Failed to load random tables.");
+    } finally {
+      setIsLoadingTables(false);
+    }
+  };
 
   useEffect(() => {
-    const loadTableNames = async () => {
-      setIsLoadingTables(true);
-      setError(null);
-      try {
-        const names = await getAllRandomTableNames();
-        setRandomTableNames(names);
-        if (names.length > 0) {
-          // setSelectedRandomTable(names[0]); // Optionally pre-select first table
-        }
-      } catch (err) {
-        console.error("Failed to load random table names:", err);
-        setError(err instanceof Error ? err.message : "Failed to load random tables.");
-      } finally {
-        setIsLoadingTables(false);
-      }
-    };
     loadTableNames();
-  }, []);
+  }, [token]); // Rerun if token changes, e.g. user logs in.
+
+  const handleCopySystemTables = async () => {
+    if (!token) {
+      setCopyMessage("You must be logged in to copy tables.");
+      return;
+    }
+    setIsCopying(true);
+    setCopyMessage(null);
+    setError(null); // Clear main error as this is a separate operation
+    try {
+      const copied = await copySystemTables(token);
+      setCopyMessage(copied.length > 0 ? `Successfully copied ${copied.length} system table(s) to your account.` : "System tables already up-to-date in your account.");
+      await loadTableNames(); // Refresh the table list
+    } catch (err) {
+      console.error("Failed to copy system tables:", err);
+      setCopyMessage(err instanceof Error ? err.message : "Failed to copy system tables.");
+    } finally {
+      setIsCopying(false);
+    }
+  };
 
   const handleRollOnTable = async () => {
     if (!selectedRandomTable) {
@@ -69,11 +95,24 @@ const RandomTableRoller: React.FC<RandomTableRollerProps> = ({ onInsertItem }) =
   return (
     <div className="rtr-wrapper">
       <h4 className="rtr-title">Random Table Roller</h4>
-      {isLoadingTables && <p>Loading tables...</p>}
       {error && <p className="rtr-error-message">{error}</p>}
+      {copyMessage && <p className={copyMessage.includes("Failed") || copyMessage.includes("must be logged in") ? "rtr-error-message" : "rtr-success-message"}>{copyMessage}</p>}
+
+      <div className="rtr-system-table-actions">
+        <Button
+          onClick={handleCopySystemTables}
+          disabled={isCopying || isLoadingTables}
+          variant="outline-secondary"
+          className="rtr-button-copy-system"
+        >
+          {isCopying ? 'Copying...' : 'Copy System Tables to My Account'}
+        </Button>
+      </div>
+
+      {isLoadingTables && <p>Loading tables...</p>}
 
       {!isLoadingTables && randomTableNames.length === 0 && !error && (
-        <p>No random tables available.</p>
+        <p>No random tables available. Try copying system tables.</p>
       )}
 
       {!isLoadingTables && randomTableNames.length > 0 && (

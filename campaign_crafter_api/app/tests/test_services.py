@@ -110,5 +110,92 @@ async def test_generate_toc_prompt_formatting():
         expected_final_user_prompt = expected_toc_template_from_fps.format(campaign_concept=campaign_concept_test)
         assert user_message["content"] == expected_final_user_prompt
 
-if __name__ == '__main__':
-    unittest.main()
+# --- RandomTableService Tests ---
+
+@pytest.fixture
+def db_mock() -> MagicMock:
+    return MagicMock(spec=Session)
+
+@pytest.fixture
+def random_table_service() -> RandomTableService:
+    return RandomTableService() # Instantiate the service
+
+def test_service_get_available_table_names_user_priority(random_table_service: RandomTableService, db_mock: MagicMock):
+    # Arrange
+    user_id = 1
+    system_table_same_name = MagicMock(spec=models.RollTable) # Using models.RollTable as per service type hint
+    system_table_same_name.name = "Duplicate Name Table"
+    system_table_same_name.user_id = None
+
+    user_table_same_name = MagicMock(spec=models.RollTable)
+    user_table_same_name.name = "Duplicate Name Table"
+    user_table_same_name.user_id = user_id
+
+    another_system_table = MagicMock(spec=models.RollTable)
+    another_system_table.name = "Unique System Table"
+    another_system_table.user_id = None
+
+    # Mock crud.get_roll_tables to return these tables
+    # The service sorts, so the order here shouldn't strictly matter for the test outcome,
+    # but good to have user table after system table with same name to test prioritization.
+    mock_tables_from_crud = [system_table_same_name, user_table_same_name, another_system_table]
+
+    with patch('app.crud.get_roll_tables', return_value=mock_tables_from_crud) as mock_crud_get_tables:
+        # Act
+        available_names = random_table_service.get_available_table_names(db=db_mock, user_id=user_id)
+
+        # Assert
+        mock_crud_get_tables.assert_called_once_with(db=db_mock, limit=1000, user_id=user_id)
+
+        # Check that "Duplicate Name Table" appears only once
+        assert available_names.count("Duplicate Name Table") == 1
+        # Check that "Unique System Table" is also present
+        assert "Unique System Table" in available_names
+        # Total unique names
+        assert len(available_names) == 2
+        # Ensure the order is not implicitly tested if not guaranteed by the function
+        assert set(available_names) == {"Duplicate Name Table", "Unique System Table"}
+
+
+def test_service_get_random_item_from_table_user_priority(random_table_service: RandomTableService, db_mock: MagicMock):
+    # Arrange
+    user_id = 1
+    table_name = "TestTable"
+
+    # This mock will simulate that the user's table is found and returned by CRUD
+    mock_user_table = MagicMock(spec=models.RollTable) # Assuming crud returns ORM model, service handles it
+    mock_user_table.name = table_name
+    mock_user_table.user_id = user_id
+    mock_user_table.description = "d10" # Example for dice roll logic
+
+    # Define some items for the mock table
+    item1 = MagicMock()
+    item1.min_roll = 1
+    item1.max_roll = 5
+    item1.description = "User Item A"
+
+    item2 = MagicMock()
+    item2.min_roll = 6
+    item2.max_roll = 10
+    item2.description = "User Item B"
+    mock_user_table.items = [item1, item2]
+
+    with patch('app.crud.get_roll_table_by_name', return_value=mock_user_table) as mock_crud_get_by_name:
+        # Act
+        # We don't need to check the random selection logic here, just that it called the right crud method
+        # and would operate on the user's table.
+        # To make the test deterministic for item selection, we could mock random.randint
+        with patch('random.randint', return_value=3) as mock_randint: # Simulate rolling a 3
+            item_description = random_table_service.get_random_item_from_table(
+                table_name=table_name, db=db_mock, user_id=user_id
+            )
+
+            # Assert
+            # Check that crud.get_roll_table_by_name was called with user_id
+            mock_crud_get_by_name.assert_called_once_with(db=db_mock, name=table_name, user_id=user_id)
+            mock_randint.assert_called_once_with(1, 10) # Based on "d10" description
+            assert item_description == "User Item A" # Item for roll 3
+
+# if __name__ == '__main__':
+#     unittest.main() # Keep if other unittest tests are still relevant
+# Pytest will discover tests without this, so it can be removed if fully on pytest

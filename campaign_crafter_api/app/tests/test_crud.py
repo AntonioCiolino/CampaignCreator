@@ -153,3 +153,131 @@ async def test_update_campaign_section_updates_type(db_session: Session, test_ca
     assert further_updated_section is not None
     assert further_updated_section.content == "Updated content here."
     assert further_updated_section.type == "main_quest" # Type should remain unchanged
+
+# --- RollTable CRUD Tests ---
+
+# Helper function to create a RollTable for testing
+def create_test_roll_table_data(name: str, description: Optional[str] = "Test Description", items_data: Optional[List[Dict]] = None) -> crud.models.RollTableCreate:
+    if items_data is None:
+        items_data = [
+            {"min_roll": 1, "max_roll": 5, "description": "Item 1-5"},
+            {"min_roll": 6, "max_roll": 10, "description": "Item 6-10"},
+        ]
+
+    # Ensure items_data are valid RollTableItemCreate models
+    items = [crud.models.RollTableItemCreate(**item) for item in items_data]
+    return crud.models.RollTableCreate(name=name, description=description, items=items)
+
+def test_create_roll_table_with_user(db_session: Session, test_user: ORMUser):
+    roll_table_data = create_test_roll_table_data(name="User Table")
+    db_roll_table = crud.create_roll_table(db=db_session, roll_table=roll_table_data, user_id=test_user.id)
+
+    assert db_roll_table.id is not None
+    assert db_roll_table.name == "User Table"
+    assert db_roll_table.user_id == test_user.id
+    assert len(db_roll_table.items) == 2
+    assert db_roll_table.items[0].description == "Item 1-5"
+
+def test_create_roll_table_system(db_session: Session):
+    roll_table_data = create_test_roll_table_data(name="System Table")
+    db_roll_table = crud.create_roll_table(db=db_session, roll_table=roll_table_data, user_id=None)
+
+    assert db_roll_table.id is not None
+    assert db_roll_table.name == "System Table"
+    assert db_roll_table.user_id is None
+    assert len(db_roll_table.items) == 2
+
+@pytest.fixture
+def another_test_user(db_session: Session) -> ORMUser: # Renamed to avoid conflict if run in same scope
+    user_create_data = {"email": "test2@example.com", "password": "password123"}
+    return crud.create_user(db=db_session, user=crud.models.UserCreate(**user_create_data))
+
+def test_get_roll_tables_as_user(db_session: Session, test_user: ORMUser, another_test_user: ORMUser):
+    # System table
+    crud.create_roll_table(db=db_session, roll_table=create_test_roll_table_data(name="SysTable1"), user_id=None)
+    # User1's table
+    crud.create_roll_table(db=db_session, roll_table=create_test_roll_table_data(name="User1Table"), user_id=test_user.id)
+    # User2's table
+    crud.create_roll_table(db=db_session, roll_table=create_test_roll_table_data(name="User2Table"), user_id=another_test_user.id)
+
+    tables_for_user1 = crud.get_roll_tables(db=db_session, user_id=test_user.id)
+
+    table_names_for_user1 = {table.name for table in tables_for_user1}
+    assert "SysTable1" in table_names_for_user1
+    assert "User1Table" in table_names_for_user1
+    assert "User2Table" not in table_names_for_user1
+    assert len(tables_for_user1) == 2
+
+def test_get_roll_tables_as_anonymous(db_session: Session, test_user: ORMUser):
+    crud.create_roll_table(db=db_session, roll_table=create_test_roll_table_data(name="SysTableForAnon"), user_id=None)
+    crud.create_roll_table(db=db_session, roll_table=create_test_roll_table_data(name="UserTableForAnonTest"), user_id=test_user.id)
+
+    tables_for_anonymous = crud.get_roll_tables(db=db_session, user_id=None)
+
+    table_names_for_anonymous = {table.name for table in tables_for_anonymous}
+    assert "SysTableForAnon" in table_names_for_anonymous
+    assert "UserTableForAnonTest" not in table_names_for_anonymous
+    assert len(tables_for_anonymous) == 1
+
+def test_get_roll_table_by_name_user_priority(db_session: Session, test_user: ORMUser):
+    crud.create_roll_table(db=db_session, roll_table=create_test_roll_table_data(name="Priority Test"), user_id=None)
+    user_table_data = create_test_roll_table_data(name="Priority Test", description="User Version")
+    user_specific_table = crud.create_roll_table(db=db_session, roll_table=user_table_data, user_id=test_user.id)
+
+    fetched_table = crud.get_roll_table_by_name(db=db_session, name="Priority Test", user_id=test_user.id)
+    assert fetched_table is not None
+    assert fetched_table.id == user_specific_table.id
+    assert fetched_table.description == "User Version"
+    assert fetched_table.user_id == test_user.id
+
+def test_get_roll_table_by_name_system_fallback(db_session: Session, test_user: ORMUser):
+    system_table_data = create_test_roll_table_data(name="System Fallback Table", description="System Version")
+    system_table = crud.create_roll_table(db=db_session, roll_table=system_table_data, user_id=None)
+
+    # Ensure user does not have a table with this name
+    # (implicitly true by not creating one for this test_user with this name)
+
+    fetched_table = crud.get_roll_table_by_name(db=db_session, name="System Fallback Table", user_id=test_user.id)
+    assert fetched_table is not None
+    assert fetched_table.id == system_table.id
+    assert fetched_table.description == "System Version"
+    assert fetched_table.user_id is None
+
+def test_get_roll_table_by_name_not_found(db_session: Session, test_user: ORMUser):
+    fetched_table = crud.get_roll_table_by_name(db=db_session, name="NonExistent Table", user_id=test_user.id)
+    assert fetched_table is None
+
+    fetched_table_sys = crud.get_roll_table_by_name(db=db_session, name="NonExistent TableSys", user_id=None)
+    assert fetched_table_sys is None
+
+
+def test_copy_system_roll_table_to_user(db_session: Session, test_user: ORMUser):
+    system_items_data = [
+        {"min_roll": 1, "max_roll": 1, "description": "Sys Item 1"},
+        {"min_roll": 2, "max_roll": 2, "description": "Sys Item 2"},
+    ]
+    system_table_data = create_test_roll_table_data(name="CopyMe System Table", items_data=system_items_data)
+    system_table = crud.create_roll_table(db=db_session, roll_table=system_table_data, user_id=None)
+
+    copied_table = crud.copy_system_roll_table_to_user(db=db_session, system_table=system_table, user_id=test_user.id)
+
+    assert copied_table.id is not None
+    assert copied_table.id != system_table.id # Must be a new table
+    assert copied_table.name == "CopyMe System Table"
+    assert copied_table.user_id == test_user.id
+    assert copied_table.description == system_table.description
+
+    assert len(copied_table.items) == len(system_table.items)
+    for i, copied_item in enumerate(copied_table.items):
+        original_item = system_table.items[i]
+        assert copied_item.id is not None
+        assert copied_item.id != original_item.id
+        assert copied_item.min_roll == original_item.min_roll
+        assert copied_item.max_roll == original_item.max_roll
+        assert copied_item.description == original_item.description
+        assert copied_item.roll_table_id == copied_table.id
+
+    # Verify the original system table still exists and is unchanged
+    original_system_table_check = db_session.query(ORMUser.RollTable).filter_by(id=system_table.id).first()
+    assert original_system_table_check is not None
+    assert original_system_table_check.user_id is None
