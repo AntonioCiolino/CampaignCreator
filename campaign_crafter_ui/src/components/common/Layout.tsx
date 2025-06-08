@@ -39,6 +39,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <>
                 <li><span className="welcome-message">Welcome, {user.username}!</span></li>
                 <li><Link to="/" onClick={() => setIsMobileMenuOpen(false)}>Dashboard</Link></li>
+                <li><Link to="/user-settings" onClick={() => setIsMobileMenuOpen(false)}>User Settings</Link></li> {/* New Link */}
                 {/* Add more authenticated user links here */}
                 {user.is_superuser && (
                   <li><Link to="/users" onClick={() => setIsMobileMenuOpen(false)}>User Management</Link></li>

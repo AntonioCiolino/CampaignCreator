@@ -126,6 +126,15 @@ class UserCreate(UserBase):
     password: str
     is_superuser: bool = False
 
+
+class UserUpdate(BaseModel): # Changed from inheriting UserBase
+    username: Optional[str] = None
+    email: Optional[str] = None
+    full_name: Optional[str] = None
+    password: Optional[str] = None
+    disabled: Optional[bool] = None
+    is_superuser: Optional[bool] = None
+
 class CampaignUpdate(BaseModel): # Assuming CampaignUpdate is for PATCH, all fields optional
     title: Optional[str] = None
     initial_user_prompt: Optional[str] = None
@@ -137,11 +146,7 @@ class CampaignUpdate(BaseModel): # Assuming CampaignUpdate is for PATCH, all fie
     selected_llm_id: Optional[str] = None # Ensure it's part of CampaignUpdate for PATCH
     temperature: Optional[float] = None   # Ensure it's part of CampaignUpdate for PATCH
 
-
-class UserUpdate(UserBase):
-    password: Optional[str] = None # For setting a new password
-    disabled: Optional[bool] = None
-    is_superuser: Optional[bool] = None
+# UserUpdate is now defined above CampaignUpdate
 
 class User(UserBase): # For responses
     id: int
