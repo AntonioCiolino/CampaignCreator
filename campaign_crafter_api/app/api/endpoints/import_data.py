@@ -24,11 +24,11 @@ def get_import_service():
     summary="Import campaign data from a JSON file."
 )
 async def import_json_file_endpoint(
-    target_campaign_id: Optional[int] = Form(None, description="Optional ID of an existing campaign to add sections to. If not provided, a new campaign may be created based on JSON content."),
     file: UploadFile = File(..., description="JSON file to import. Should contain either a single Campaign object (with title and sections) or a list of Section objects."),
     db: Annotated[Session, Depends(get_db)],
     import_service: Annotated[ImportService, Depends(get_import_service)],
-    current_user: Annotated[UserModel, Depends(get_current_active_user)]
+    current_user: Annotated[UserModel, Depends(get_current_active_user)],
+    target_campaign_id: Optional[int] = Form(None, description="Optional ID of an existing campaign to add sections to. If not provided, a new campaign may be created based on JSON content.")
 ):
     """
     Imports campaign data from a JSON file.
@@ -83,12 +83,12 @@ async def import_json_file_endpoint(
     summary="Import campaign data from a Zip archive."
 )
 async def import_zip_file_endpoint(
-    target_campaign_id: Optional[int] = Form(None, description="Optional ID of an existing campaign to add content to. If not provided, new campaigns may be created based on Zip structure."),
-    process_folders_as_structure: bool = Form(False, description="If true, interpret top-level folders in the Zip as separate campaigns (if no target_campaign_id) or major sections (if target_campaign_id is set)."),
     file: UploadFile = File(..., description="Zip file containing .txt and/or .json files."),
     db: Annotated[Session, Depends(get_db)],
     import_service: Annotated[ImportService, Depends(get_import_service)],
-    current_user: Annotated[UserModel, Depends(get_current_active_user)]
+    current_user: Annotated[UserModel, Depends(get_current_active_user)],
+    target_campaign_id: Optional[int] = Form(None, description="Optional ID of an existing campaign to add content to. If not provided, new campaigns may be created based on Zip structure."),
+    process_folders_as_structure: bool = Form(False, description="If true, interpret top-level folders in the Zip as separate campaigns (if no target_campaign_id) or major sections (if target_campaign_id is set).")
 ):
     """
     Imports campaign data from a Zip archive containing .txt and/or .json files.
