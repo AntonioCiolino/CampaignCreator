@@ -28,6 +28,7 @@ describe('CampaignSectionEditor Drag and Drop', () => {
   const mockHandleUpdateSectionContent = jest.fn();
   const mockHandleUpdateSectionTitle = jest.fn();
   const mockOnUpdateSectionOrder = jest.fn().mockResolvedValue(undefined); // Mock as a resolved promise
+  const mockHandleUpdateSectionType = jest.fn(); // Added mock for the new prop
 
   const renderEditor = (sections: CampaignSection[]) => {
     // The DragDropContext needs to be outside the component that calls useDragDropContext
@@ -49,7 +50,8 @@ describe('CampaignSectionEditor Drag and Drop', () => {
         handleUpdateSectionContent={mockHandleUpdateSectionContent}
         handleUpdateSectionTitle={mockHandleUpdateSectionTitle}
         onUpdateSectionOrder={mockOnUpdateSectionOrder}
-        campaignId="test-dnd-campaign-id" // Added campaignId
+        handleUpdateSectionType={mockHandleUpdateSectionType} // Pass the new mock prop
+        campaignId="test-dnd-campaign-id"
       />
     );
   };

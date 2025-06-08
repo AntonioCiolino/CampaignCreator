@@ -85,11 +85,15 @@ class DeepSeekLLMService(AbstractLLMService):
         existing_sections_summary: Optional[str], 
         section_creation_prompt: Optional[str], 
         section_title_suggestion: Optional[str], 
-        model: Optional[str] = None
+        model: Optional[str] = None,
+        section_type: Optional[str] = None # New parameter
     ) -> str:
         if not await self.is_available():
             raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available.")
-        raise NotImplementedError(f"{self.PROVIDER_NAME.title()}LLMService.generate_section_content not implemented.")
+        raise NotImplementedError(
+            f"{self.PROVIDER_NAME.title()}LLMService.generate_section_content not implemented. "
+            f"Received section_type: {section_type}"
+        )
 
     async def list_available_models(self) -> List[Dict[str, str]]:
         if not await self.is_available():

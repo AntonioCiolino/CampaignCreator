@@ -36,6 +36,7 @@ interface CampaignSectionEditorProps {
   // These direct handlers might be replaced if onSave handles all updates
   handleUpdateSectionContent: (sectionId: number, newContent: string) => void; // Changed sectionId to number
   handleUpdateSectionTitle: (sectionId: number, newTitle: string) => void; // Changed sectionId to number
+  handleUpdateSectionType: (sectionId: number, newType: string) => void; // Added for type updates
   onUpdateSectionOrder: (orderedSectionIds: number[]) => Promise<void>;
   forceCollapseAllSections?: boolean; // Added new prop
   isAddSectionDisabled?: boolean; // Prop to disable the "Add New Section" button
@@ -49,6 +50,7 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
   handleDeleteSection,
   handleUpdateSectionContent, // Keep this prop
   handleUpdateSectionTitle,   // Keep this prop for now, though CampaignSectionView might not edit title
+  handleUpdateSectionType,  // Destructure new prop
   onUpdateSectionOrder,
   forceCollapseAllSections, // Destructure the new prop
   isAddSectionDisabled = false, // Destructure and default to false
@@ -86,10 +88,12 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
     if (updatedData.content !== undefined) {
       await handleUpdateSectionContent(sectionId, updatedData.content);
     }
-    // If CampaignSectionView were to also handle title, it would be:
-    // if (updatedData.title !== undefined) {
-    //   await handleUpdateSectionTitle(sectionId, updatedData.title);
-    // }
+    if (updatedData.title !== undefined) { // Assuming CampaignSectionView might also update title via its own mechanism
+      await handleUpdateSectionTitle(sectionId, updatedData.title);
+    }
+    if (updatedData.type !== undefined) { // Handle type update
+      await handleUpdateSectionType(sectionId, updatedData.type);
+    }
   };
 
   const handleSectionUpdated = (updatedSection: CampaignSection) => {
@@ -162,6 +166,17 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
                               saveError={null} // TODO: Manage individual section error state
                               onDelete={() => handleDeleteSection(typeof section.id === 'string' ? parseInt(section.id, 10) : section.id)}
                               forceCollapse={forceCollapseAllSections} // Pass the prop here
+                              // Pass the type update handler to CampaignSectionView
+                              onSectionTypeUpdate={(sectionId, newType) => {
+                                // Update local state first for responsiveness
+                                setSections(prevSections =>
+                                  prevSections.map(s =>
+                                    s.id === sectionId ? { ...s, type: newType } : s
+                                  )
+                                );
+                                // Then call the actual update handler passed from parent
+                                handleUpdateSectionType(sectionId, newType);
+                              }}
                             />
                           </Box>
                           <IconButton

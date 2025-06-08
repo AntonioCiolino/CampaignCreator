@@ -3,12 +3,18 @@ import apiClient from './apiClient';
 import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-source';
 
 // Types matching backend Pydantic models
+export interface TOCEntry {
+  title: string;
+  type: string; // Could be 'unknown' or a specific type like 'NPC', 'Location'
+}
+
 export interface CampaignSection {
   id: number;
   title: string | null;
   content: string;
   order: number;
   campaign_id: number;
+  type?: string; // Added type field, optional as it might not be present in all contexts initially
 }
 
 // Model information type from the backend /llm/models endpoint
@@ -24,8 +30,8 @@ export interface Campaign {
   title: string;
   initial_user_prompt: string | null; 
   concept: string | null;
-  homebrewery_toc: string | null; // Renamed from toc
-  display_toc: string | null; // New field
+  homebrewery_toc: TOCEntry[] | null; // Changed from string | null
+  display_toc: TOCEntry[] | null; // Changed from string | null
   badge_image_url?: string | null; // Added
   selected_llm_id?: string | null;
   temperature?: number | null;
@@ -45,7 +51,9 @@ export interface CampaignUpdatePayload {
   badge_image_url?: string | null; // Added
   selected_llm_id?: string | null;
   temperature?: number | null;
-  // Concept & TOC are typically updated via specific generation endpoints, not direct PUT
+  display_toc?: TOCEntry[] | null; // Added
+  homebrewery_toc?: TOCEntry[] | null; // Added
+  // Concept is typically updated via specific generation endpoints
 }
 
 // For LLM Generation requests common to TOC, Titles, etc.
@@ -110,6 +118,7 @@ export interface CampaignSectionUpdatePayload {
   title?: string;
   content?: string;
   order?: number;
+  type?: string; // Added type field
 }
 
 // Update a specific campaign section

@@ -54,10 +54,12 @@ class AbstractLLMService(ABC):
         existing_sections_summary: Optional[str], 
         section_creation_prompt: Optional[str], 
         section_title_suggestion: Optional[str], 
-        model: Optional[str] = None
+        model: Optional[str] = None,
+        section_type: Optional[str] = None # New parameter
     ) -> str:
         """
         Generates content for a new campaign section.
+        'section_type' can be used to tailor the generation (e.g., "NPC", "Location").
         The 'model' parameter is the specific model ID for the provider.
         """
         pass
@@ -104,9 +106,14 @@ class LLMService(AbstractLLMService):
         existing_sections_summary: Optional[str],
         section_creation_prompt: Optional[str],
         section_title_suggestion: Optional[str],
-        model: Optional[str] = None
+        model: Optional[str] = None,
+        section_type: Optional[str] = None # New parameter
     ) -> str:
-        return f"Section content for: {campaign_concept}"
+        # Basic demonstration of using section_type.
+        # In a real implementation, this would involve more sophisticated prompt engineering.
+        if section_type:
+            return f"Section content for: {campaign_concept} (Type: {section_type}) - Title: {section_title_suggestion}"
+        return f"Section content for: {campaign_concept} - Title: {section_title_suggestion}"
 
     def list_available_models(self) -> List[Dict[str, str]]:
         return [

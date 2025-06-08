@@ -25,6 +25,8 @@ interface CampaignSectionViewProps {
   // Props for regeneration
   campaignId: string | number; // Campaign ID to make the API call
   onSectionUpdated: (updatedSection: CampaignSection) => void; // Callback to update parent state
+  // Prop for updating section type
+  onSectionTypeUpdate?: (sectionId: number, newType: string) => void; // Optional for now
 }
 
 const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
@@ -36,6 +38,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   forceCollapse,
   campaignId,
   onSectionUpdated,
+  onSectionTypeUpdate, // Destructure the new prop
 }) => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     // If section.title is "Campaign Concept", it's collapsed.
@@ -300,11 +303,38 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
           <h3 className="section-title">
             {isCollapsed ? '▶' : '▼'} {section.title}
           </h3>
+          {/* Display Section Type if not editing title area */}
+          {!isEditing && section.type && (
+            <span style={{ marginLeft: '10px', fontSize: '0.8em', color: '#666', fontStyle: 'italic' }}>
+              ({section.type})
+            </span>
+          )}
         </div>
       )}
 
       {!isCollapsed && (
         <>
+          {/* Section Type Input - Placed here for better visibility and context */}
+          {onSectionTypeUpdate && ( // Only show if handler is provided
+            <div style={{ padding: '5px 10px', display: 'flex', alignItems: 'center', backgroundColor: '#f9f9f9' }}>
+              <label htmlFor={`section-type-${section.id}`} style={{ marginRight: '8px', fontSize: '0.9em', fontWeight: 'bold' }}>Type:</label>
+              <input
+                id={`section-type-${section.id}`}
+                type="text"
+                value={section.type || ''}
+                onChange={(e) => onSectionTypeUpdate(section.id, e.target.value)}
+                placeholder="e.g., NPC, Location, Quest"
+                style={{
+                  flexGrow: 1,
+                  padding: '6px 10px',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  fontSize: '0.9em'
+                }}
+              />
+            </div>
+          )}
+
           {isEditing ? (
             <div className="section-editor">
               <ReactQuill

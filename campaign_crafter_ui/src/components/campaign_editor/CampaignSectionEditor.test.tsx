@@ -34,6 +34,7 @@ describe('CampaignSectionEditor', () => {
   const mockHandleUpdateSectionContent = jest.fn();
   const mockHandleUpdateSectionTitle = jest.fn();
   const mockOnUpdateSectionOrder = jest.fn().mockResolvedValue(undefined); // Added from dnd test
+  const mockHandleUpdateSectionType = jest.fn(); // Added for the new prop
 
   // Clear mocks before each test
   beforeEach(() => {
@@ -43,14 +44,15 @@ describe('CampaignSectionEditor', () => {
     mockHandleUpdateSectionContent.mockClear();
     mockHandleUpdateSectionTitle.mockClear();
     mockOnUpdateSectionOrder.mockClear();
+    mockHandleUpdateSectionType.mockClear(); // Clear the new mock
     // Clear mock for CampaignSectionView if it's a jest.fn() and you want to check calls on it
     if (jest.isMockFunction(require('../CampaignSectionView').default)) {
       require('../CampaignSectionView').default.mockClear();
     }
   });
 
-  const section1: CampaignSection = { id: 1, title: 'Section One', content: 'Content One', order: 0, campaign_id: 1 };
-  const section2: CampaignSection = { id: 2, title: 'Section Two', content: 'Content Two', order: 1, campaign_id: 1 };
+  const section1: CampaignSection = { id: 1, title: 'Section One', content: 'Content One', order: 0, campaign_id: 1, type: 'generic' }; // Added type
+  const section2: CampaignSection = { id: 2, title: 'Section Two', content: 'Content Two', order: 1, campaign_id: 1, type: 'npc' }; // Added type
 
   const defaultProps = {
     sections: [],
@@ -59,8 +61,9 @@ describe('CampaignSectionEditor', () => {
     handleDeleteSection: mockHandleDeleteSection,
     handleUpdateSectionContent: mockHandleUpdateSectionContent,
     handleUpdateSectionTitle: mockHandleUpdateSectionTitle,
-    onUpdateSectionOrder: mockOnUpdateSectionOrder, // Added
-    campaignId: 'test-campaign-id-default', // Added campaignId to defaultProps
+    onUpdateSectionOrder: mockOnUpdateSectionOrder,
+    handleUpdateSectionType: mockHandleUpdateSectionType, // Add new prop to defaultProps
+    campaignId: 'test-campaign-id-default',
   };
 
   test('renders correctly with no sections', () => {

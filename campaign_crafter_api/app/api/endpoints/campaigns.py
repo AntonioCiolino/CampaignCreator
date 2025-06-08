@@ -1,4 +1,4 @@
-from typing import Optional, List, Annotated # Added Annotated
+from typing import Optional, List, Dict, Annotated # Added Annotated
 import re
 import json
 import asyncio
@@ -145,25 +145,44 @@ async def generate_campaign_toc_endpoint(
     display_toc_content = generated_tocs_dict.get("display_toc")
     homebrewery_toc_content = generated_tocs_dict.get("homebrewery_toc")
 
-    # The LLM service (e.g. OpenAIService) now raises an error if content is empty or keys are missing.
-    # So, we can assume if we reach here, both display_toc_content and homebrewery_toc_content are valid strings.
-    # A paranoid check for key existence could be:
-    if display_toc_content is None or homebrewery_toc_content is None: # Check if .get returned None (key missing)
-        # This should ideally be caught by the LLM service's contract or its own error handling.
-        # If LLMGenerationError from the service guarantees content, this might be redundant.
-        # However, it's a safeguard against unexpected return structures.
+    if display_toc_content is None or homebrewery_toc_content is None:
         error_detail = "TOC generation did not return the expected structure (missing display_toc or homebrewery_toc key, or value is null)."
-        if "display_toc" not in generated_tocs_dict or "homebrewery_toc" not in generated_tocs_dict:
-             error_detail = "TOC generation did not return the expected structure (missing display_toc or homebrewery_toc key)."
-
-        print(f"Error: {error_detail} - Dict received: {generated_tocs_dict}") # Log for debugging
+        print(f"Error: {error_detail} - Dict received: {generated_tocs_dict}")
         raise HTTPException(status_code=500, detail=error_detail)
+
+    def parse_toc_string_to_list(toc_str: str) -> List[Dict[str, str]]:
+        items = []
+        for line in toc_str.splitlines():
+            stripped_line = line.strip()
+            if not stripped_line:
+                continue
+            # Try to match lines like "- Title" or "* Title" or "+ Title"
+            match = re.match(r"^(?:-|\*|\+)\s+(.+)", stripped_line)
+            title = match.group(1).strip() if match else stripped_line
+            # Remove potential markdown links like [text](url) from title
+            title = re.sub(r"\[(.*?)\]\(.*?\)", r"\1", title).strip()
+            if title: # Ensure title is not empty after stripping/regex
+                items.append({"title": title, "type": "unknown"})
+        return items
+
+    display_toc_list = parse_toc_string_to_list(display_toc_content)
+    homebrewery_toc_list = parse_toc_string_to_list(homebrewery_toc_content)
+
+    if not display_toc_list and display_toc_content: # If parsing resulted in empty list but original string was not empty
+        print(f"Warning: display_toc_list is empty after parsing non-empty string: '{display_toc_content}'")
+        # Potentially use the raw string as a single item if parsing fails completely
+        # display_toc_list = [{"title": "Failed to parse Display TOC", "type": "error"}]
+
+    if not homebrewery_toc_list and homebrewery_toc_content:
+        print(f"Warning: homebrewery_toc_list is empty after parsing non-empty string: '{homebrewery_toc_content}'")
+        # homebrewery_toc_list = [{"title": "Failed to parse Homebrewery TOC", "type": "error"}]
+
 
     updated_campaign_with_toc = crud.update_campaign_toc(
         db=db,
         campaign_id=campaign_id,
-        display_toc_content=display_toc_content,
-        homebrewery_toc_content=homebrewery_toc_content
+        display_toc_content=display_toc_list,
+        homebrewery_toc_content=homebrewery_toc_list
     )
     if updated_campaign_with_toc is None:
         # This specific check for campaign existence after update might be redundant if get_campaign above already confirmed it.
@@ -234,26 +253,28 @@ async def seed_sections_from_toc_endpoint(
         print(f"Campaign {campaign_id} has no display_toc. Cannot seed sections.")
         raise HTTPException(status_code=400, detail="No display_toc found for this campaign. Cannot seed sections.")
 
-    # Step 1: Parse TOC (outside the generator, so it's done once)
-    raw_toc_lines = db_campaign.display_toc.splitlines()
-    parsed_titles = []
-    for line in raw_toc_lines:
-        stripped_line = line.strip()
-        match = re.match(r"^(?:-|\*|\+)\s+(.+)", stripped_line)
-        if match:
-            title = match.group(1).strip()
-            if title:
-                title = re.sub(r"\[(.*?)\]\(.*?\)", r"\1", title).strip()
-                parsed_titles.append(title)
+    # Step 1: Parse TOC (which is now List[Dict[str, str]])
+    if not db_campaign.display_toc: # display_toc is List[Dict[str, str]] or None
+        print(f"Campaign {campaign_id} display_toc is empty or None. Cannot seed sections.")
+        async def empty_toc_generator():
+            yield json.dumps({"event_type": "complete", "message": "Display TOC is empty. No sections created."}) + "\n\n"
+        return EventSourceResponse(empty_toc_generator())
 
-    if not parsed_titles:
-        print(f"No titles were parsed from display_toc for campaign {campaign_id}. No sections will be created.")
-        # For SSE, we should still return an EventSourceResponse, perhaps with a completion event.
-        async def empty_generator():
-            yield json.dumps({"event_type": "complete", "message": "No titles found in TOC. No sections created."}) + "\n\n"
-        return EventSourceResponse(empty_generator())
+    # Extract title and type from each TOC entry
+    parsed_toc_entries = []
+    for toc_entry in db_campaign.display_toc:
+        title = toc_entry.get("title", "").strip()
+        if title: # Ensure title exists and is not just whitespace
+            type_from_toc = toc_entry.get("type", "generic") or "generic" # Default to "generic" if type is None or empty
+            parsed_toc_entries.append({"title": title, "type": type_from_toc})
 
-    print(f"Parsed {len(parsed_titles)} titles for campaign {campaign_id}: {parsed_titles}")
+    if not parsed_toc_entries:
+        print(f"No valid titles found in display_toc for campaign {campaign_id}. TOC content: {db_campaign.display_toc}. No sections will be created.")
+        async def no_titles_generator():
+            yield json.dumps({"event_type": "complete", "message": "No valid titles found in TOC. No sections created."}) + "\n\n"
+        return EventSourceResponse(no_titles_generator())
+
+    print(f"Extracted {len(parsed_toc_entries)} TOC entries for campaign {campaign_id}: {parsed_toc_entries}")
 
     # Step 2: Delete existing sections (outside the generator)
     print(f"About to delete existing sections for campaign {campaign_id}.")
@@ -275,40 +296,47 @@ async def seed_sections_from_toc_endpoint(
 
 
     async def event_generator():
-        total_sections = len(parsed_titles)
-        if total_sections == 0: # Should be caught above, but as a safeguard
+        total_sections = len(parsed_toc_entries) # Use parsed_toc_entries
+        if total_sections == 0:
             yield json.dumps({"event_type": "complete", "message": "No sections to process."}) + "\n\n"
             return
 
-        for order, title in enumerate(parsed_titles):
-            section_content_for_crud = f"Content for '{title}' to be generated." # Default placeholder
+        for order, toc_item in enumerate(parsed_toc_entries): # Iterate over toc_item
+            title = toc_item["title"]
+            type_from_toc = toc_item["type"]
+            section_content_for_crud = f"Content for '{title}' to be generated."
+            section_type_for_llm = type_from_toc # Base type for LLM
 
             if auto_populate and llm_service_instance and db_campaign.concept:
-                section_type = "Generic"
-                title_lower = title.lower()
-                if "npc" in title_lower or "character" in title_lower: section_type = "NPC"
-                elif "location" in title_lower or "place" in title_lower: section_type = "Location"
-                elif "chapter" in title_lower or "quest" in title_lower or "adventure" in title_lower: section_type = "Chapter/Quest"
+                # Refine section_type_for_llm if type_from_toc is generic/unknown
+                if type_from_toc.lower() in ["unknown", "generic", "other", ""]:
+                    title_lower = title.lower()
+                    if "npc" in title_lower or "character" in title_lower: section_type_for_llm = "NPC"
+                    elif "location" in title_lower or "place" in title_lower: section_type_for_llm = "Location"
+                    elif "chapter" in title_lower or "quest" in title_lower or "adventure" in title_lower: section_type_for_llm = "Chapter/Quest"
+                    # else: section_type_for_llm remains the (generic) type_from_toc
 
+                # Construct prompt based on refined section_type_for_llm
                 prompt = ""
-                if section_type == "NPC":
+                if section_type_for_llm == "NPC":
                     prompt = f"Generate a detailed description for an NPC named '{title}'. Include their appearance, personality, motivations, and potential plot hooks related to them."
-                elif section_type == "Location":
+                elif section_type_for_llm == "Location":
                     prompt = f"Describe the location '{title}'. Include its key features, atmosphere, inhabitants (if any), and any notable points of interest or secrets."
-                elif section_type == "Chapter/Quest":
+                elif section_type_for_llm == "Chapter/Quest":
                     prompt = f"Outline the main events and encounters for the adventure chapter titled '{title}'. Provide a brief overview of the objectives, challenges, and potential rewards."
-                else: # Generic
-                    prompt = f"Generate content for a section titled '{title}' as part of a larger campaign document."
+                else: # Generic or other specific types from TOC
+                    prompt = f"Generate content for a section titled '{title}' of type '{section_type_for_llm}' as part of a larger campaign document."
 
                 try:
-                    print(f"Attempting LLM generation for section: '{title}' (Type: {section_type})")
+                    print(f"Attempting LLM generation for section: '{title}' (Type for LLM: {section_type_for_llm})")
                     _, model_specific_id_for_call = _extract_provider_and_model(db_campaign.selected_llm_id)
                     generated_llm_content = await llm_service_instance.generate_section_content(
                         campaign_concept=db_campaign.concept,
-                        db=db, # Pass the db session
+                        db=db,
                         existing_sections_summary=None,
                         section_creation_prompt=prompt,
                         section_title_suggestion=title,
+                        section_type=section_type_for_llm,
                         model=model_specific_id_for_call
                     )
                     if generated_llm_content:
@@ -319,15 +347,15 @@ async def seed_sections_from_toc_endpoint(
                 except Exception as e_llm:
                     print(f"LLM generation failed for section '{title}': {type(e_llm).__name__} - {e_llm}. Using placeholder.")
 
-            # Create section in DB
+            # Create section in DB, passing the original type from TOC
             created_section_orm = crud.create_section_with_placeholder_content(
                 db=db,
                 campaign_id=campaign_id,
                 title=title,
                 order=order,
-                placeholder_content=section_content_for_crud
+                placeholder_content=section_content_for_crud,
+                type=type_from_toc # Pass the type from the TOC to be saved in DB
             )
-            # Convert to Pydantic model for serialization
             pydantic_section = models.CampaignSection.from_orm(created_section_orm)
 
             current_progress = round(((order + 1) / total_sections) * 100, 2)
@@ -335,12 +363,12 @@ async def seed_sections_from_toc_endpoint(
                 "event_type": "section_update",
                 "progress_percent": current_progress,
                 "current_section_title": title,
-                "section_data": pydantic_section.model_dump() # Use model_dump for Pydantic v2
+                "section_data": pydantic_section.model_dump()
             }
 
             try:
                 yield f"data: {json.dumps(event_payload)}\n\n"
-                await asyncio.sleep(0.01) # Small sleep to allow message to be sent
+                await asyncio.sleep(0.01)
             except Exception as e_yield:
                 print(f"Error yielding SSE event for section '{title}': {type(e_yield).__name__} - {e_yield}. Stopping.")
                 # Optionally, send one last error event to the client if possible
@@ -428,6 +456,8 @@ async def create_new_campaign_section_endpoint(
     existing_sections = crud.get_campaign_sections(db=db, campaign_id=campaign_id)
     existing_sections_summary = "; ".join([s.title for s in existing_sections if s.title]) if existing_sections else None
 
+    type_from_input = section_input.type or "generic" # Default to "generic" if not provided
+
     try:
         provider_name, model_specific_id = _extract_provider_and_model(section_input.model_id_with_prefix)
         llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=section_input.model_id_with_prefix)
@@ -437,6 +467,7 @@ async def create_new_campaign_section_endpoint(
             existing_sections_summary=existing_sections_summary,
             section_creation_prompt=section_input.prompt,
             section_title_suggestion=section_input.title,
+            section_type=type_from_input,
             model=model_specific_id
         )
     except LLMServiceUnavailableError as e:
@@ -460,10 +491,11 @@ async def create_new_campaign_section_endpoint(
         db_section = crud.create_campaign_section(
             db=db,
             campaign_id=campaign_id,
-            section_title=new_section_title, 
-            section_content=generated_content
+            section_title=new_section_title,
+            section_content=generated_content,
+            section_type=type_from_input # Pass the type to CRUD
         )
-    except Exception as e: 
+    except Exception as e:
         print(f"Error saving new section for campaign {campaign_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to save the new campaign section.")
     return db_section
@@ -571,8 +603,17 @@ async def get_campaign_full_content_endpoint(
     if db_campaign.concept:
         concept_title = db_campaign.title if db_campaign.title else "Campaign Concept"
         all_content_parts.append(f"# {concept_title}\n\n{db_campaign.concept}\n\n")
-    if db_campaign.toc:
-        all_content_parts.append(f"## Table of Contents\n\n{db_campaign.toc}\n\n")
+
+    # Use display_toc (which is List[Dict[str, str]]) and format it
+    if db_campaign.display_toc:
+        toc_str_parts = []
+        for entry in db_campaign.display_toc:
+            title = entry.get('title', 'Untitled')
+            # type_info = f" (Type: {entry.get('type', 'unknown')})" # Optionally include type
+            toc_str_parts.append(f"- {title}") # Simple list format
+        if toc_str_parts:
+            all_content_parts.append(f"## Table of Contents\n\n{chr(10).join(toc_str_parts)}\n\n")
+
     for section in sections:
         if section.title:
             all_content_parts.append(f"## {section.title}\n\n{section.content}\n\n")
@@ -643,28 +684,30 @@ async def regenerate_campaign_section_endpoint(
 
     # Determine section type and prompt
     final_prompt = section_input.new_prompt
+    determined_section_type_for_llm = section_input.section_type # Use type from input if provided
+
     if not final_prompt:
-        section_type = section_input.section_type
-        if not section_type: # If type not provided in input, determine from title
+        if not determined_section_type_for_llm: # If type not provided in input, try to infer from title or use existing DB type
+            determined_section_type_for_llm = db_section.type or "generic" # Fallback to existing type or generic
             title_lower = current_title.lower()
-            if "npc" in title_lower or "character" in title_lower:
-                section_type = "NPC"
-            elif "location" in title_lower or "place" in title_lower:
-                section_type = "Location"
-            elif "chapter" in title_lower or "quest" in title_lower or "adventure" in title_lower:
-                section_type = "Chapter/Quest"
-            else:
-                section_type = "Generic"
+            # Only infer from title if current type is generic/unknown
+            if determined_section_type_for_llm.lower() in ["unknown", "generic", "other", ""]:
+                if "npc" in title_lower or "character" in title_lower:
+                    determined_section_type_for_llm = "NPC"
+                elif "location" in title_lower or "place" in title_lower:
+                    determined_section_type_for_llm = "Location"
+                elif "chapter" in title_lower or "quest" in title_lower or "adventure" in title_lower:
+                    determined_section_type_for_llm = "Chapter/Quest"
 
         # Construct prompt based on determined type and title
-        if section_type == "NPC":
+        if determined_section_type_for_llm == "NPC":
             final_prompt = f"Generate a detailed description for an NPC named '{current_title}'. Include their appearance, personality, motivations, and potential plot hooks related to them."
-        elif section_type == "Location":
+        elif determined_section_type_for_llm == "Location":
             final_prompt = f"Describe the location '{current_title}'. Include its key features, atmosphere, inhabitants (if any), and any notable points of interest or secrets."
-        elif section_type == "Chapter/Quest":
+        elif determined_section_type_for_llm == "Chapter/Quest":
             final_prompt = f"Outline the main events and encounters for the adventure chapter titled '{current_title}'. Provide a brief overview of the objectives, challenges, and potential rewards."
-        else: # Generic
-            final_prompt = f"Generate content for a section titled '{current_title}' as part of a larger campaign document."
+        else: # Generic or other specific types
+            final_prompt = f"Generate content for a section titled '{current_title}' of type '{determined_section_type_for_llm}' as part of a larger campaign document."
 
     # Initialize LLM Service
     llm_model_to_use = section_input.model_id_with_prefix if section_input.model_id_with_prefix else db_campaign.selected_llm_id
@@ -695,6 +738,7 @@ async def regenerate_campaign_section_endpoint(
             existing_sections_summary=other_sections_summary,
             section_creation_prompt=final_prompt,
             section_title_suggestion=current_title,
+            section_type=determined_section_type_for_llm,
             model=model_specific_id
         )
         if not generated_content:
@@ -710,6 +754,9 @@ async def regenerate_campaign_section_endpoint(
     section_update_payload = models.CampaignSectionUpdateInput(content=generated_content)
     if section_input.new_title is not None:
         section_update_payload.title = section_input.new_title
+    # Update the type field only if it was explicitly provided in the input
+    if section_input.section_type is not None:
+        section_update_payload.type = section_input.section_type
 
     # Update Section using CRUD
     updated_section = crud.update_campaign_section(

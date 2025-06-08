@@ -210,16 +210,43 @@ class LocalLLMService(AbstractLLMService):
         }
 
     async def generate_section_content(
-        self, campaign_concept: str, db: Session, existing_sections_summary: Optional[str],
-        section_creation_prompt: Optional[str], section_title_suggestion: Optional[str], 
-        model: Optional[str] = None
+        self,
+        campaign_concept: str,
+        db: Session,
+        existing_sections_summary: Optional[str],
+        section_creation_prompt: Optional[str],
+        section_title_suggestion: Optional[str],
+        model: Optional[str] = None,
+        section_type: Optional[str] = None # New parameter
     ) -> str:
+        effective_section_prompt = section_creation_prompt
+        type_based_instruction = ""
+
+        if section_type and section_type.lower() not in ["generic", "unknown", "", None]:
+            title_str = section_title_suggestion or "the current section"
+            if section_type.lower() == "npc" or section_type.lower() == "character":
+                type_based_instruction = f"This section is about an NPC or character named '{title_str}'. Generate a detailed description including appearance, personality, motivations, potential plot hooks, and if appropriate, a basic stat block suitable for a tabletop RPG."
+            elif section_type.lower() == "location":
+                type_based_instruction = f"This section describes a location: '{title_str}'. Detail its key features, atmosphere, inhabitants (if any), notable points of interest, secrets, and potential encounters."
+            elif section_type.lower() == "chapter" or section_type.lower() == "quest":
+                type_based_instruction = f"This section outlines a chapter or quest titled '{title_str}'. Describe the main events, objectives, challenges, potential rewards, and any key NPCs or locations involved."
+            else: # Other specific types
+                type_based_instruction = f"This section is specifically about '{title_str}' which is a '{section_type}'. Generate detailed content appropriate for this type."
+
+        if not effective_section_prompt and type_based_instruction:
+            effective_section_prompt = type_based_instruction
+        elif effective_section_prompt and type_based_instruction:
+            effective_section_prompt = f"{type_based_instruction}\n\nFurther specific instructions for this section: {section_creation_prompt}"
+        elif not effective_section_prompt:
+            effective_section_prompt = "Continue the story logically, introducing new elements or developing existing ones."
+
         custom_prompt_template = self.feature_prompt_service.get_prompt("Section Content", db=db)
+        final_prompt_for_generation: str
         if custom_prompt_template:
-            final_prompt = custom_prompt_template.format(
+            final_prompt_for_generation = custom_prompt_template.format(
                 campaign_concept=campaign_concept,
                 existing_sections_summary=existing_sections_summary or "N/A",
-                section_creation_prompt=section_creation_prompt or "Continue the story logically.",
+                section_creation_prompt=effective_section_prompt, # Use the refined prompt
                 section_title_suggestion=section_title_suggestion or "Untitled Section"
             )
         else: # Fallback default prompt construction
@@ -227,13 +254,13 @@ class LocalLLMService(AbstractLLMService):
             prompt_parts.append(f"The overall campaign concept is:\n{campaign_concept}\n")
             if existing_sections_summary:
                 prompt_parts.append(f"So far, the campaign includes these sections (titles or brief summaries):\n{existing_sections_summary}\n")
-            if section_title_suggestion:
-                prompt_parts.append(f"The suggested title for this new section is: {section_title_suggestion}\n")
-            if section_creation_prompt:
-                prompt_parts.append(f"The specific instructions or starting prompt for this section are: {section_creation_prompt}\n")
-            else:
-                prompt_parts.append("Please write the next logical section for this campaign.\n")
+
+            title_display = section_title_suggestion or "Untitled Section"
+            type_display = section_type or "Generic"
+            prompt_parts.append(f"This new section is titled '{title_display}' and is of type '{type_display}'.\n")
+
+            prompt_parts.append(f"The specific instructions or starting prompt for this section are: {effective_section_prompt}\n")
             prompt_parts.append("Generate detailed and engaging content for this new section.")
-            final_prompt = "\n".join(prompt_parts)
+            final_prompt_for_generation = "\n".join(prompt_parts)
             
-        return await self.generate_text(prompt=final_prompt, model=model, temperature=0.7, max_tokens=4000)
+        return await self.generate_text(prompt=final_prompt_for_generation, model=model, temperature=0.7, max_tokens=4000)
