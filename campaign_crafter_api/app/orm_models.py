@@ -19,6 +19,7 @@ class User(Base):
     campaigns = relationship("Campaign", back_populates="owner")
     llm_configs = relationship("LLMConfig", back_populates="owner")
     roll_tables = relationship("RollTable", back_populates="owner")
+    features = relationship("Feature", back_populates="owner")
 
 class Campaign(Base):
     __tablename__ = "campaigns"
@@ -83,6 +84,9 @@ class Feature(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
     template = Column(Text, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+
+    owner = relationship("User", back_populates="features")
 
 
 class RollTable(Base):

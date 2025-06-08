@@ -278,6 +278,106 @@ def test_copy_system_roll_table_to_user(db_session: Session, test_user: ORMUser)
         assert copied_item.roll_table_id == copied_table.id
 
     # Verify the original system table still exists and is unchanged
-    original_system_table_check = db_session.query(ORMUser.RollTable).filter_by(id=system_table.id).first()
+    original_system_table_check = db_session.query(crud.orm_models.RollTable).filter_by(id=system_table.id).first()
     assert original_system_table_check is not None
     assert original_system_table_check.user_id is None
+
+# --- Feature CRUD Tests ---
+
+# Helper function to create FeatureCreate Pydantic model for testing
+def create_test_feature_data(name: str, template: str = "Feature template for {name}") -> crud.models.FeatureCreate:
+    return crud.models.FeatureCreate(name=name, template=template.format(name=name))
+
+def test_create_feature_with_user(db_session: Session, test_user: ORMUser):
+    feature_data = create_test_feature_data(name="User Feature")
+    db_feature = crud.create_feature(db=db_session, feature=feature_data, user_id=test_user.id)
+
+    assert db_feature.id is not None
+    assert db_feature.name == "User Feature"
+    assert db_feature.user_id == test_user.id
+    assert "User Feature" in db_feature.template
+
+def test_create_feature_system(db_session: Session):
+    feature_data = create_test_feature_data(name="System Feature")
+    db_feature = crud.create_feature(db=db_session, feature=feature_data, user_id=None)
+
+    assert db_feature.id is not None
+    assert db_feature.name == "System Feature"
+    assert db_feature.user_id is None
+
+def test_get_features_as_user(db_session: Session, test_user: ORMUser, another_test_user: ORMUser):
+    # System feature
+    crud.create_feature(db=db_session, feature=create_test_feature_data(name="SysFeature1"), user_id=None)
+    # User1's feature
+    crud.create_feature(db=db_session, feature=create_test_feature_data(name="User1Feature"), user_id=test_user.id)
+    # User2's feature
+    crud.create_feature(db=db_session, feature=create_test_feature_data(name="User2Feature"), user_id=another_test_user.id)
+
+    features_for_user1 = crud.get_features(db=db_session, user_id=test_user.id)
+
+    feature_names_for_user1 = {f.name for f in features_for_user1}
+    assert "SysFeature1" in feature_names_for_user1
+    assert "User1Feature" in feature_names_for_user1
+    assert "User2Feature" not in feature_names_for_user1
+    assert len(features_for_user1) == 2
+
+def test_get_features_system_only(db_session: Session, test_user: ORMUser):
+    crud.create_feature(db=db_session, feature=create_test_feature_data(name="SysFeatureForAnon"), user_id=None)
+    crud.create_feature(db=db_session, feature=create_test_feature_data(name="UserFeatureForAnonTest"), user_id=test_user.id)
+
+    features_for_anonymous = crud.get_features(db=db_session, user_id=None) # Pass user_id=None
+
+    feature_names_for_anonymous = {f.name for f in features_for_anonymous}
+    assert "SysFeatureForAnon" in feature_names_for_anonymous
+    assert "UserFeatureForAnonTest" not in feature_names_for_anonymous
+    assert len(features_for_anonymous) == 1
+
+def test_get_feature_by_name_user_priority(db_session: Session, test_user: ORMUser):
+    crud.create_feature(db=db_session, feature=create_test_feature_data(name="Priority Feature Test"), user_id=None)
+    user_feature_data = create_test_feature_data(name="Priority Feature Test", template="User Version")
+    user_specific_feature = crud.create_feature(db=db_session, feature=user_feature_data, user_id=test_user.id)
+
+    fetched_feature = crud.get_feature_by_name(db=db_session, name="Priority Feature Test", user_id=test_user.id)
+    assert fetched_feature is not None
+    assert fetched_feature.id == user_specific_feature.id
+    assert fetched_feature.template == "User Version"
+    assert fetched_feature.user_id == test_user.id
+
+def test_get_feature_by_name_system_fallback(db_session: Session, test_user: ORMUser):
+    system_feature_data = create_test_feature_data(name="System Fallback Feature", template="System Version")
+    system_feature = crud.create_feature(db=db_session, feature=system_feature_data, user_id=None)
+
+    fetched_feature = crud.get_feature_by_name(db=db_session, name="System Fallback Feature", user_id=test_user.id)
+    assert fetched_feature is not None
+    assert fetched_feature.id == system_feature.id
+    assert fetched_feature.template == "System Version"
+    assert fetched_feature.user_id is None
+
+def test_get_feature_by_name_not_found(db_session: Session, test_user: ORMUser):
+    fetched_feature = crud.get_feature_by_name(db=db_session, name="NonExistent Feature", user_id=test_user.id)
+    assert fetched_feature is None
+
+    fetched_feature_sys = crud.get_feature_by_name(db=db_session, name="NonExistent System Feature", user_id=None)
+    assert fetched_feature_sys is None
+
+def test_update_feature_prevent_user_id_change(db_session: Session, test_user: ORMUser, another_test_user: ORMUser):
+    feature_data = create_test_feature_data(name="FeatureToUpdate")
+    db_feature = crud.create_feature(db=db_session, feature=feature_data, user_id=test_user.id)
+    original_user_id = db_feature.user_id
+
+    # Attempt to update user_id along with other fields
+    # models.FeatureUpdate inherits user_id from FeatureBase
+    feature_update_payload = crud.models.FeatureUpdate(
+        name="Updated Feature Name",
+        template="Updated template",
+        user_id=another_test_user.id # Attempting to change user_id
+    )
+
+    updated_db_feature = crud.update_feature(db=db_session, feature_id=db_feature.id, feature_update=feature_update_payload)
+
+    assert updated_db_feature is not None
+    assert updated_db_feature.name == "Updated Feature Name"
+    assert updated_db_feature.template == "Updated template"
+    # Crucially, user_id should NOT have changed
+    assert updated_db_feature.user_id == original_user_id
+    assert updated_db_feature.user_id != another_test_user.id

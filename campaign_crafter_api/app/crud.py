@@ -78,14 +78,37 @@ def delete_user(db: Session, user_id: int) -> Optional[orm_models.User]:
 def get_feature(db: Session, feature_id: int) -> Optional[orm_models.Feature]:
     return db.query(orm_models.Feature).filter(orm_models.Feature.id == feature_id).first()
 
-def get_feature_by_name(db: Session, name: str) -> Optional[orm_models.Feature]:
-    return db.query(orm_models.Feature).filter(orm_models.Feature.name == name).first()
+def get_feature_by_name(db: Session, name: str, user_id: Optional[int] = None) -> Optional[orm_models.Feature]:
+    # If user_id is provided, try to find a feature owned by the user first
+    if user_id is not None:
+        db_feature = db.query(orm_models.Feature).filter(
+            orm_models.Feature.name == name,
+            orm_models.Feature.user_id == user_id
+        ).first()
+        if db_feature:
+            return db_feature
 
-def get_features(db: Session, skip: int = 0, limit: int = 100) -> List[orm_models.Feature]:
-    return db.query(orm_models.Feature).offset(skip).limit(limit).all()
+    # If not found (or user_id was None, or user_id was provided but no user-specific feature found),
+    # try to find a system feature (user_id is None)
+    return db.query(orm_models.Feature).filter(
+        orm_models.Feature.name == name,
+        orm_models.Feature.user_id == None
+    ).first()
 
-def create_feature(db: Session, feature: models.FeatureCreate) -> orm_models.Feature:
-    db_feature = orm_models.Feature(**feature.dict())
+def get_features(db: Session, skip: int = 0, limit: int = 100, user_id: Optional[int] = None) -> List[orm_models.Feature]:
+    query = db.query(orm_models.Feature)
+    if user_id is not None:
+        # If a user_id is provided, return features for that user OR system features
+        query = query.filter(
+            (orm_models.Feature.user_id == user_id) | (orm_models.Feature.user_id == None)
+        )
+    else:
+        # If no user_id is provided (e.g., an unauthenticated system call), return only system features
+        query = query.filter(orm_models.Feature.user_id == None)
+    return query.offset(skip).limit(limit).all()
+
+def create_feature(db: Session, feature: models.FeatureCreate, user_id: Optional[int] = None) -> orm_models.Feature:
+    db_feature = orm_models.Feature(**feature.model_dump(), user_id=user_id)
     db.add(db_feature)
     db.commit()
     db.refresh(db_feature)
@@ -96,8 +119,14 @@ def update_feature(db: Session, feature_id: int, feature_update: models.FeatureU
     if not db_feature:
         return None
 
-    update_data = feature_update.dict(exclude_unset=True)
+    update_data = feature_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
+        # Ensure user_id is not updated through this generic loop
+        if key == "user_id" and value != db_feature.user_id:
+            # Optionally log a warning or raise an error if user_id modification is attempted
+            # For now, we'll just skip setting it if it's different, preventing accidental changes.
+            # The API layer should be the primary guard against unauthorized attempts to change ownership.
+            continue
         setattr(db_feature, key, value)
 
     db.add(db_feature)

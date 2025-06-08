@@ -17,12 +17,16 @@ def create_feature(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
-    db_feature_by_name = crud.get_feature_by_name(db, name=feature.name)
-    if db_feature_by_name:
+    # Check if the current user already owns a feature with this name.
+    # crud.get_feature_by_name will first look for user-owned, then system-owned.
+    # We only care if the user themselves already owns it.
+    existing_feature = crud.get_feature_by_name(db, name=feature.name, user_id=current_user.id)
+    if existing_feature and existing_feature.user_id == current_user.id:
         raise HTTPException(
-            status_code=400, detail="Feature with this name already exists"
+            status_code=400, detail="You already have a feature with this name."
         )
-    return crud.create_feature(db=db, feature=feature)
+    # If existing_feature is a system feature (user_id is None), or no feature found, creation is allowed.
+    return crud.create_feature(db=db, feature=feature, user_id=current_user.id)
 
 @router_features.get("/{feature_id}", response_model=models.Feature)
 def read_feature(feature_id: int, db: Annotated[Session, Depends(get_db)]):
@@ -33,9 +37,13 @@ def read_feature(feature_id: int, db: Annotated[Session, Depends(get_db)]):
 
 @router_features.get("/", response_model=List[models.Feature])
 def read_features(
-    db: Annotated[Session, Depends(get_db)], skip: int = 0, limit: int = 100
+    db: Annotated[Session, Depends(get_db)],
+    skip: int = 0,
+    limit: int = 100,
+    current_user: Annotated[models.User, Depends(get_current_active_user)] # Requires auth to list features
 ):
-    features = crud.get_features(db, skip=skip, limit=limit)
+    # Pass current_user.id to CRUD to fetch user-specific + system features
+    features = crud.get_features(db, skip=skip, limit=limit, user_id=current_user.id)
     return features
 
 @router_features.put("/{feature_id}", response_model=models.Feature)
@@ -48,6 +56,9 @@ def update_feature(
     db_feature = crud.get_feature(db, feature_id=feature_id)
     if not db_feature:
         raise HTTPException(status_code=404, detail="Feature not found")
+
+    if not current_user.is_superuser and db_feature.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this feature")
 
     if feature_update.name is not None and feature_update.name != db_feature.name:
         existing_feature_with_name = crud.get_feature_by_name(db, name=feature_update.name)
@@ -72,6 +83,9 @@ def delete_feature(
     db_feature_to_delete = crud.get_feature(db, feature_id=feature_id)
     if db_feature_to_delete is None:
         raise HTTPException(status_code=404, detail="Feature not found to delete")
+
+    if not current_user.is_superuser and db_feature_to_delete.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this feature")
 
     deleted_feature = crud.delete_feature(db, feature_id=feature_id)
     if deleted_feature is None: # Should not happen if previous check passed

@@ -6,9 +6,11 @@ from typing import Generator, List as TypingList, Optional, Dict
 
 from app.main import app
 from app.db import Base, get_db
-from app.models import RollTableCreate, RollTableItemCreate, UserCreate # Pydantic models
-from app.orm_models import User as ORMUser, RollTable as ORMRollTable, RollTableItem as ORMRollTableItem # SQLAlchemy models
-from app.crud import get_password_hash, create_roll_table as crud_create_roll_table # For test setup
+from app.models import RollTableCreate, RollTableItemCreate, UserCreate, FeatureCreate # Pydantic models
+from app.orm_models import User as ORMUser, RollTable as ORMRollTable, RollTableItem as ORMRollTableItem, Feature as ORMFeature # SQLAlchemy models
+from app.crud import get_password_hash
+from app.crud import create_roll_table as crud_create_roll_table
+from app.crud import create_feature as crud_create_feature # For test setup
 
 DATABASE_URL = "sqlite:///:memory:"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
@@ -77,6 +79,12 @@ def create_db_roll_table(db: SQLAlchemySession, name: str, user_id: Optional[int
 
     # Use the CRUD function to ensure consistency, though it means this helper isn't purely DB layer
     return crud_create_roll_table(db=db, roll_table=roll_table_create, user_id=user_id)
+
+# Helper to create Feature directly in DB for setup
+def create_db_feature(db: SQLAlchemySession, name: str, template: str, user_id: Optional[int] = None) -> ORMFeature:
+    feature_create = FeatureCreate(name=name, template=template)
+    # Use the CRUD function for consistency
+    return crud_create_feature(db=db, feature=feature_create, user_id=user_id)
 
 
 @pytest.fixture
@@ -384,3 +392,164 @@ async def test_api_create_roll_table_name_conflict_user_and_system(test_client: 
 # TODO: Test updating a user table to a name that conflicts with another of *their own* tables.
 # TODO: Test updating a user table to a name that conflicts with a *system* table (should be allowed).
 # TODO: Test updating a system table (if allowed, and how name conflicts are handled).
+
+
+# --- API Tests for Features ---
+
+@pytest.mark.asyncio
+async def test_api_create_feature_authenticated(test_client: AsyncClient, db_session_for_setup: SQLAlchemySession):
+    user_headers = await get_normal_user_token_headers(test_client, db_session_for_setup, username="featurecreator")
+    user = db_session_for_setup.query(ORMUser).filter(ORMUser.username == "featurecreator").first()
+
+    feature_data = {"name": "My API Feature", "template": "Template for {name}"}
+    response = await test_client.post("/api/v1/features/", json=feature_data, headers=user_headers)
+
+    assert response.status_code == 200, response.text # Endpoint returns 200 on create
+    data = response.json()
+    assert data["name"] == "My API Feature"
+    assert data["user_id"] == user.id
+    assert data["template"] == "Template for My API Feature"
+
+    # Verify in DB
+    db_feature = db_session_for_setup.query(ORMFeature).filter(ORMFeature.name == "My API Feature").first()
+    assert db_feature is not None
+    assert db_feature.user_id == user.id
+
+@pytest.mark.asyncio
+async def test_api_create_feature_name_conflict_same_user(test_client: AsyncClient, db_session_for_setup: SQLAlchemySession):
+    user_headers = await get_normal_user_token_headers(test_client, db_session_for_setup, username="featureconflictuser")
+    user = db_session_for_setup.query(ORMUser).filter(ORMUser.username == "featureconflictuser").first()
+
+    create_db_feature(db_session_for_setup, name="Conflict Feature", template="Original", user_id=user.id)
+
+    feature_data = {"name": "Conflict Feature", "template": "Attempted duplicate"}
+    response = await test_client.post("/api/v1/features/", json=feature_data, headers=user_headers)
+
+    assert response.status_code == 400, response.text
+    assert response.json()["detail"] == "You already have a feature with this name."
+
+@pytest.mark.asyncio
+async def test_api_create_feature_name_conflict_system_override(test_client: AsyncClient, db_session_for_setup: SQLAlchemySession):
+    user_headers = await get_normal_user_token_headers(test_client, db_session_for_setup, username="featureoverrideuser")
+    user = db_session_for_setup.query(ORMUser).filter(ORMUser.username == "featureoverrideuser").first()
+
+    create_db_feature(db_session_for_setup, name="System Feature To Override", template="System Version", user_id=None)
+
+    feature_data = {"name": "System Feature To Override", "template": "User Version"}
+    response = await test_client.post("/api/v1/features/", json=feature_data, headers=user_headers)
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["name"] == "System Feature To Override"
+    assert data["template"] == "User Version"
+    assert data["user_id"] == user.id
+
+    # Verify user has their own version
+    user_feature = db_session_for_setup.query(ORMFeature).filter(ORMFeature.name == "System Feature To Override", ORMFeature.user_id == user.id).first()
+    assert user_feature is not None
+    assert user_feature.template == "User Version"
+
+@pytest.mark.asyncio
+async def test_api_read_features_authenticated(test_client: AsyncClient, db_session_for_setup: SQLAlchemySession):
+    user_headers = await get_normal_user_token_headers(test_client, db_session_for_setup, username="featurereader")
+    user = db_session_for_setup.query(ORMUser).filter(ORMUser.username == "featurereader").first()
+
+    create_db_feature(db_session_for_setup, name="SysFeature Read Test", template="Sys", user_id=None)
+    create_db_feature(db_session_for_setup, name="MyFeature Read Test", template="User", user_id=user.id)
+
+    other_user = create_user_in_db(db_session_for_setup, {"username": "otherfeaturereader", "password": "op"})
+    create_db_feature(db_session_for_setup, name="OtherUserFeature Read Test", template="Other", user_id=other_user.id)
+
+    response = await test_client.get("/api/v1/features/", headers=user_headers)
+    assert response.status_code == 200, response.text
+    data = response.json()
+
+    names = {f["name"] for f in data}
+    assert "SysFeature Read Test" in names
+    assert "MyFeature Read Test" in names
+    assert "OtherUserFeature Read Test" not in names
+    assert len(data) == 2
+
+# test_api_read_features_unauthenticated: Not applicable as endpoint requires auth by default.
+
+@pytest.mark.asyncio
+async def test_api_update_feature_owner(test_client: AsyncClient, db_session_for_setup: SQLAlchemySession):
+    user_headers = await get_normal_user_token_headers(test_client, db_session_for_setup, username="featureownerupdate")
+    user = db_session_for_setup.query(ORMUser).filter(ORMUser.username == "featureownerupdate").first()
+
+    feature_to_update = create_db_feature(db_session_for_setup, name="Owned Feature", template="Original Template", user_id=user.id)
+
+    update_data = {"template": "Updated Template by Owner"}
+    response = await test_client.put(f"/api/v1/features/{feature_to_update.id}", json=update_data, headers=user_headers)
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["template"] == "Updated Template by Owner"
+
+@pytest.mark.asyncio
+async def test_api_update_feature_not_owner(test_client: AsyncClient, db_session_for_setup: SQLAlchemySession):
+    owner_user = create_user_in_db(db_session_for_setup, {"username": "actualfeatureowner", "password": "p"})
+    feature_to_update = create_db_feature(db_session_for_setup, name="Another Owner's Feature", template="Belongs to actualfeatureowner", user_id=owner_user.id)
+
+    attacker_headers = await get_normal_user_token_headers(test_client, db_session_for_setup, username="featureattacker")
+
+    update_data = {"template": "Attempted Update by Attacker on Feature"}
+    response = await test_client.put(f"/api/v1/features/{feature_to_update.id}", json=update_data, headers=attacker_headers)
+
+    assert response.status_code == 403, response.text
+
+@pytest.mark.asyncio
+async def test_api_update_feature_admin_can_update_others(test_client: AsyncClient, db_session_for_setup: SQLAlchemySession):
+    owner_user = create_user_in_db(db_session_for_setup, {"username": "regularfeatureowner", "password": "p"})
+    feature_to_update = create_db_feature(db_session_for_setup, name="Regular User Feature", template="Original", user_id=owner_user.id)
+
+    su_headers = await get_superuser_token_headers(test_client, db_session_for_setup)
+
+    update_data = {"template": "Updated by Superuser Feature"}
+    response = await test_client.put(f"/api/v1/features/{feature_to_update.id}", json=update_data, headers=su_headers)
+
+    assert response.status_code == 200, response.text
+    assert response.json()["template"] == "Updated by Superuser Feature"
+
+@pytest.mark.asyncio
+async def test_api_delete_feature_owner(test_client: AsyncClient, db_session_for_setup: SQLAlchemySession):
+    user_headers = await get_normal_user_token_headers(test_client, db_session_for_setup, username="featureownerdelete")
+    user = db_session_for_setup.query(ORMUser).filter(ORMUser.username == "featureownerdelete").first()
+
+    feature_to_delete = create_db_feature(db_session_for_setup, name="Feature To Delete By Owner", template="delete me", user_id=user.id)
+
+    response = await test_client.delete(f"/api/v1/features/{feature_to_delete.id}", headers=user_headers)
+
+    assert response.status_code == 200, response.text
+    assert response.json()["name"] == "Feature To Delete By Owner"
+
+    # Verify in DB
+    deleted_feature_check = db_session_for_setup.query(ORMFeature).filter(ORMFeature.id == feature_to_delete.id).first()
+    assert deleted_feature_check is None
+
+@pytest.mark.asyncio
+async def test_api_delete_feature_not_owner(test_client: AsyncClient, db_session_for_setup: SQLAlchemySession):
+    owner_user = create_user_in_db(db_session_for_setup, {"username": "actualfeatureownerfordelete", "password": "p"})
+    feature_to_delete = create_db_feature(db_session_for_setup, name="Actual Owner's Feature For Delete", template="don't delete me", user_id=owner_user.id)
+
+    attacker_headers = await get_normal_user_token_headers(test_client, db_session_for_setup, username="featureattackerfordelete")
+
+    response = await test_client.delete(f"/api/v1/features/{feature_to_delete.id}", headers=attacker_headers)
+
+    assert response.status_code == 403, response.text
+
+@pytest.mark.asyncio
+async def test_api_delete_feature_admin_can_delete_others(test_client: AsyncClient, db_session_for_setup: SQLAlchemySession):
+    owner_user = create_user_in_db(db_session_for_setup, {"username": "regularfeatureownerfordelete", "password": "p"})
+    feature_to_delete = create_db_feature(db_session_for_setup, name="Regular User Feature to be Deleted by Admin", template="admin delete", user_id=owner_user.id)
+
+    su_headers = await get_superuser_token_headers(test_client, db_session_for_setup)
+
+    response = await test_client.delete(f"/api/v1/features/{feature_to_delete.id}", headers=su_headers)
+
+    assert response.status_code == 200, response.text
+    assert response.json()["name"] == "Regular User Feature to be Deleted by Admin"
+
+    # Verify in DB
+    deleted_feature_check = db_session_for_setup.query(ORMFeature).filter(ORMFeature.id == feature_to_delete.id).first()
+    assert deleted_feature_check is None
