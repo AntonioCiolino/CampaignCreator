@@ -175,9 +175,9 @@ async def generate_campaign_toc_endpoint(
 async def generate_campaign_titles_endpoint(
     campaign_id: int,
     request_body: models.LLMGenerationRequest, 
-    count: int = Query(5, ge=1, le=10), 
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[models.User, Depends(get_current_active_user)]
+    current_user: Annotated[models.User, Depends(get_current_active_user)],
+    count: int = Query(5, ge=1, le=10)
 ):
     db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
     if db_campaign is None:
@@ -219,9 +219,9 @@ async def generate_campaign_titles_endpoint(
 )
 async def seed_sections_from_toc_endpoint(
     campaign_id: int,
-    auto_populate: bool = False,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[models.User, Depends(get_current_active_user)]
+    current_user: Annotated[models.User, Depends(get_current_active_user)],
+    auto_populate: bool = False
 ):
     db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
     if db_campaign is None:
