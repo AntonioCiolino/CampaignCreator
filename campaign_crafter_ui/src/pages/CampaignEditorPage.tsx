@@ -873,7 +873,7 @@ const CampaignEditorPage: React.FC = () => {
           </Button>
           <Button
               onClick={() => setIsTOCEditorVisible(false)}
-              variant="outlined"
+              variant="secondary" // Corrected variant
               style={{ marginTop: '10px', marginLeft: '10px' }}
           >
               Done Editing TOC
@@ -1039,5 +1039,3 @@ export default CampaignEditorPage;
 // Changed type of campaign and sections state variables to use direct imports.
 // Added EditIcon import and "Edit Table of Contents" button with conditional rendering.
 // Conditionally render TOCEditor section and added "Done Editing TOC" button.
-
-[end of campaign_crafter_ui/src/pages/CampaignEditorPage.tsx]
