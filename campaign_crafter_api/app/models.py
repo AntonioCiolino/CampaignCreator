@@ -197,6 +197,7 @@ class RollTableItem(RollTableItemBase):
 class RollTableBase(BaseModel):
     name: str
     description: Optional[str] = None
+    user_id: Optional[int] = None
 
 class RollTableCreate(RollTableBase):
     items: List[RollTableItemCreate]
@@ -209,6 +210,7 @@ class RollTableUpdate(RollTableBase):
 class RollTable(RollTableBase):
     id: int
     items: List[RollTableItem] = []
+    user_id: Optional[int] = None
 
     class Config:
         from_attributes = True

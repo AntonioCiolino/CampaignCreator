@@ -11,6 +11,21 @@ export interface RandomItemResponse {
   item: string | null; // Item can be null if table is empty or other server-side logic allows
 }
 
+// Assuming RollTable structure matches the Pydantic model in the backend
+export interface RandomTable {
+  id: number;
+  name: string;
+  description?: string | null;
+  user_id?: number | null;
+  items: Array<{
+    id: number;
+    min_roll: number;
+    max_roll: number;
+    description: string;
+    roll_table_id: number;
+  }>;
+}
+
 const API_BASE_URL = getApiBaseUrl();
 
 /**
@@ -66,5 +81,32 @@ export const getRandomItemFromTable = async (tableName: string): Promise<RandomI
         console.error(`Error fetching random item from table '${tableName}':`, error);
     }
     throw error; // Re-throw the error to be handled by the caller
+  }
+};
+
+/**
+ * Copies all system roll tables to the authenticated user's account.
+ * @param token The authentication token for the user.
+ * @returns A promise that resolves to an array of the copied RandomTable objects.
+ * @throws Will throw an error if the network request fails or the API returns an error.
+ */
+export const copySystemTables = async (token: string): Promise<RandomTable[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/random-tables/copy-system-tables`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json', // Though no body is sent, good practice
+      },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: 'Failed to copy system tables.' }));
+      throw new Error(errorData.detail || `Failed to copy system tables: ${response.statusText}`);
+    }
+    const copiedTables: RandomTable[] = await response.json();
+    return copiedTables;
+  } catch (error) {
+    console.error("Error copying system tables:", error);
+    throw error;
   }
 };

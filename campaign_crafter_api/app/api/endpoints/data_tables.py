@@ -96,7 +96,7 @@ def create_roll_table(
                 status_code=400,
                 detail=f"Invalid item '{item.description}': min_roll ({item.min_roll}) cannot be greater than max_roll ({item.max_roll})."
             )
-    return crud.create_roll_table(db=db, roll_table=roll_table)
+    return crud.create_roll_table(db=db, roll_table=roll_table, user_id=current_user.id)
 
 @router_roll_tables.get("/{roll_table_id}", response_model=models.RollTable)
 def read_roll_table(roll_table_id: int, db: Annotated[Session, Depends(get_db)]):
@@ -107,9 +107,12 @@ def read_roll_table(roll_table_id: int, db: Annotated[Session, Depends(get_db)])
 
 @router_roll_tables.get("/", response_model=List[models.RollTable])
 def read_roll_tables(
-    db: Annotated[Session, Depends(get_db)], skip: int = 0, limit: int = 100
+    db: Annotated[Session, Depends(get_db)],
+    skip: int = 0,
+    limit: int = 100,
+    user_id: Optional[int] = None
 ):
-    roll_tables = crud.get_roll_tables(db, skip=skip, limit=limit)
+    roll_tables = crud.get_roll_tables(db, skip=skip, limit=limit, user_id=user_id)
     return roll_tables
 
 @router_roll_tables.put("/{roll_table_id}", response_model=models.RollTable)
@@ -122,6 +125,9 @@ def update_roll_table(
     db_roll_table = crud.get_roll_table(db, roll_table_id=roll_table_id)
     if not db_roll_table:
         raise HTTPException(status_code=404, detail="Rolltable not found")
+
+    if not current_user.is_superuser and db_roll_table.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this roll table")
 
     if roll_table_update.name is not None and roll_table_update.name != db_roll_table.name:
         existing_roll_table_with_name = crud.get_roll_table_by_name(db, name=roll_table_update.name)
@@ -155,7 +161,36 @@ def delete_roll_table(
     if db_roll_table_to_delete is None:
         raise HTTPException(status_code=404, detail="Rolltable not found to delete")
 
+    if not current_user.is_superuser and db_roll_table_to_delete.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this roll table")
+
     deleted_roll_table = crud.delete_roll_table(db, roll_table_id=roll_table_id)
     if deleted_roll_table is None: # Should not happen
         raise HTTPException(status_code=404, detail="Rolltable not found during deletion")
     return deleted_roll_table
+
+@router_roll_tables.post("/copy-system-tables", response_model=List[models.RollTable])
+def copy_system_tables_to_user_account(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+):
+    """
+    Copies all system roll tables to the authenticated user's account.
+    If a table with the same name already exists for the user, it will be skipped.
+    """
+    system_tables = crud.get_roll_tables(db=db, user_id=None) # Get only system tables
+
+    copied_tables = []
+    for system_table in system_tables:
+        # Check if a table with the same name already exists for this user
+        existing_user_table = crud.get_roll_table_by_name(
+            db=db, name=system_table.name, user_id=current_user.id
+        )
+        if not existing_user_table:
+            # If it doesn't exist, copy it
+            copied_table = crud.copy_system_roll_table_to_user(
+                db=db, system_table=system_table, user_id=current_user.id
+            )
+            copied_tables.append(copied_table)
+
+    return copied_tables

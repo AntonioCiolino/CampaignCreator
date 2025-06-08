@@ -18,6 +18,7 @@ class User(Base):
 
     campaigns = relationship("Campaign", back_populates="owner")
     llm_configs = relationship("LLMConfig", back_populates="owner")
+    roll_tables = relationship("RollTable", back_populates="owner")
 
 class Campaign(Base):
     __tablename__ = "campaigns"
@@ -90,7 +91,9 @@ class RollTable(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
     description = Column(String, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
+    owner = relationship("User", back_populates="roll_tables")
     items = relationship("RollTableItem", back_populates="roll_table", cascade="all, delete-orphan")
 
 
