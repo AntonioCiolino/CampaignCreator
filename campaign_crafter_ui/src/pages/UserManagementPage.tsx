@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { FaEdit, FaTrash } from 'react-icons/fa';
-// Use AppUser from userTypes as the canonical User type for frontend
-import { AppUser } from '../../types/userTypes';
+import { AppUser } from '../types/userTypes'; // Corrected path
 import { getUsers, deleteUser, createUser, updateUser, UserCreatePayload, UserUpdatePayload } from '../services/userService';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import UserForm from '../components/UserForm';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import './UserManagementPage.css';
-import { useAuth } from '../../contexts/AuthContext'; // For token check
+import { useAuth } from '../contexts/AuthContext'; // Corrected path
 
 const UserManagementPage: React.FC = () => {
   const { token } = useAuth(); // Get token for defensive check

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, FormEvent } from 'react';
-// Use AppUser from userTypes for userToEdit prop
-import { AppUser } from '../../types/userTypes';
+import { AppUser } from '../types/userTypes'; // Corrected path
 // Payloads can still come from userService as they are specific to service calls
 import { UserCreatePayload, UserUpdatePayload } from '../services/userService';
 import Input from './common/Input';

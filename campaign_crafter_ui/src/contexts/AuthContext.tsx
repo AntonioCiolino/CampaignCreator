@@ -25,12 +25,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const storedToken = localStorage.getItem('token');
       if (storedToken) {
         setToken(storedToken);
-        // Ensure apiClient headers are set correctly
-        if (apiClient.defaults.headers) {
-            apiClient.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-        } else {
-            apiClient.defaults.headers = { common: {'Authorization': `Bearer ${storedToken}`} };
-        }
+        // Axios initializes defaults.headers and defaults.headers.common
+        apiClient.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
         try {
           const userData = await apiGetMe();
           setUser(userData);
@@ -53,12 +49,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const tokenData = await apiLoginUser(username_or_email, password);
     localStorage.setItem('token', tokenData.access_token);
     setToken(tokenData.access_token);
-    // Ensure apiClient headers are set correctly
-    if (apiClient.defaults.headers) {
-        apiClient.defaults.headers.common['Authorization'] = `Bearer ${tokenData.access_token}`;
-    } else {
-        apiClient.defaults.headers = { common: {'Authorization': `Bearer ${tokenData.access_token}`} };
-    }
+    // Axios initializes defaults.headers and defaults.headers.common
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${tokenData.access_token}`;
     const userData = await apiGetMe();
     setUser(userData);
   };

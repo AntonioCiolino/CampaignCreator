@@ -1,12 +1,14 @@
 import React from 'react';
 import { render, screen, act, waitFor } from '@testing-library/react';
 import { AuthProvider, useAuth } from './AuthContext';
-import * as userService from '../services/userService'; // To mock getMe and loginUser
-import apiClient from '../services/apiClient'; // To check Authorization header
+// Import specific functions to mock their implementations
+import { loginUser, getMe } from '../services/userService';
+import apiClient from '../services/apiClient';
 
-// Mock userService
+// Mock userService and typecast the specific functions
 jest.mock('../services/userService');
-const mockedUserService = userService as jest.Mocked<typeof userService>;
+const mockedLoginUser = loginUser as jest.MockedFunction<typeof loginUser>;
+const mockedGetMe = getMe as jest.MockedFunction<typeof getMe>;
 
 // Mock localStorage
 const localStorageMock = (() => {
@@ -44,9 +46,9 @@ const TestConsumerComponent: React.FC = () => {
 describe('AuthContext', () => {
   beforeEach(() => {
     localStorageMock.clear();
-    mockedUserService.apiLoginUser.mockClear();
-    mockedUserService.apiGetMe.mockClear();
-    delete apiClient.defaults.headers.common['Authorization']; // Clear apiClient header
+    mockedLoginUser.mockClear(); // Use corrected mock name
+    mockedGetMe.mockClear();   // Use corrected mock name
+    delete apiClient.defaults.headers.common['Authorization'];
   });
 
   test('initial state when no token in localStorage', async () => {
@@ -64,7 +66,7 @@ describe('AuthContext', () => {
 
   test('initializes from localStorage and fetches user', async () => {
     localStorageMock.setItem('token', 'test-token');
-    mockedUserService.apiGetMe.mockResolvedValueOnce({
+    mockedGetMe.mockResolvedValueOnce({ // Use corrected mock name
       id: 1, username: 'localuser', email: 'local@example.com', disabled: false, is_superuser: true,
     });
 
@@ -78,12 +80,12 @@ describe('AuthContext', () => {
     await waitFor(() => expect(screen.getByText('User: localuser')).toBeInTheDocument());
     expect(screen.getByText('Is Superuser: true')).toBeInTheDocument();
     expect(apiClient.defaults.headers.common['Authorization']).toBe('Bearer test-token');
-    expect(mockedUserService.apiGetMe).toHaveBeenCalledTimes(1);
+    expect(mockedGetMe).toHaveBeenCalledTimes(1); // Use corrected mock name
   });
 
   test('handles failed user fetch on init by clearing token', async () => {
     localStorageMock.setItem('token', 'test-token-fail-fetch');
-    mockedUserService.apiGetMe.mockRejectedValueOnce(new Error("Failed to fetch user"));
+    mockedGetMe.mockRejectedValueOnce(new Error("Failed to fetch user")); // Use corrected mock name
 
     render(
       <AuthProvider>
@@ -101,8 +103,8 @@ describe('AuthContext', () => {
 
 
   test('login function sets user, token, and localStorage', async () => {
-    mockedUserService.apiLoginUser.mockResolvedValueOnce({ access_token: 'new-login-token', token_type: 'bearer' });
-    mockedUserService.apiGetMe.mockResolvedValueOnce({
+    mockedLoginUser.mockResolvedValueOnce({ access_token: 'new-login-token', token_type: 'bearer' }); // Use corrected mock name
+    mockedGetMe.mockResolvedValueOnce({ // Use corrected mock name
       id: 2, username: 'loggedinuser', email: 'loggedin@example.com', disabled: false, is_superuser: false,
     });
 
@@ -119,8 +121,8 @@ describe('AuthContext', () => {
       screen.getByRole('button', { name: /login/i }).click();
     });
 
-    await waitFor(() => expect(mockedUserService.apiLoginUser).toHaveBeenCalledWith('testuser', 'password'));
-    await waitFor(() => expect(mockedUserService.apiGetMe).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockedLoginUser).toHaveBeenCalledWith('testuser', 'password')); // Use corrected mock name
+    await waitFor(() => expect(mockedGetMe).toHaveBeenCalledTimes(1)); // Use corrected mock name
 
     await waitFor(() => expect(screen.getByText('Token: new-login-token')).toBeInTheDocument());
     await waitFor(() => expect(screen.getByText('User: loggedinuser')).toBeInTheDocument());
@@ -132,7 +134,7 @@ describe('AuthContext', () => {
   test('logout function clears user, token, and localStorage', async () => {
     // Setup initial logged-in state
     localStorageMock.setItem('token', 'initial-token-for-logout');
-    mockedUserService.apiGetMe.mockResolvedValueOnce({
+    mockedGetMe.mockResolvedValueOnce({ // Use corrected mock name
       id: 3, username: 'logoutuser', email: 'logout@example.com', disabled: false, is_superuser: false,
     });
 
