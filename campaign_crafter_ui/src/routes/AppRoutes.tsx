@@ -4,6 +4,7 @@ import DashboardPage from '../pages/DashboardPage';
 import CampaignEditorPage from '../pages/CampaignEditorPage';
 import UserManagementPage from '../pages/UserManagementPage';
 import DataManagementPage from '../pages/DataManagementPage';
+import UserSettingsPage from '../pages/UserSettingsPage'; // Added import
 import NotFoundPage from '../pages/NotFoundPage';
 import LoginPage from '../pages/LoginPage';
 import ProtectedRoute from './ProtectedRoute';
@@ -32,6 +33,7 @@ const AppRoutes: React.FC = () => {
       */}
       <Route element={<ProtectedRoute allowedRoles={['user']} />}>
         <Route path="/data-management" element={<DataManagementPage />} />
+        <Route path="/user-settings" element={<UserSettingsPage />} /> {/* New Route */}
       </Route>
 
       {/* Protected Routes - Superuser only */}

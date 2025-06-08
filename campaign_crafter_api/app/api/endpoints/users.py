@@ -64,28 +64,31 @@ def update_user_endpoint(
     user_id: int,
     user_in: models.UserUpdate,
     db: Annotated[Session, Depends(get_db)],
-    current_admin_user: Annotated[models.User, Depends(get_current_active_superuser)]
+    current_user: Annotated[models.User, Depends(get_current_active_user)] # Changed dependency
 ):
     db_user = crud.get_user(db, user_id=user_id)
     if db_user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found to update")
 
+    # Check if the current user is the one being updated or is a superuser
+    if db_user.id != current_user.id and not current_user.is_superuser:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this user")
+
     # If email is being updated, check if the new email is already taken by another user
-    if user_in.email:
+    if user_in.email and user_in.email != db_user.email: # check if email is actually changing
         existing_user_with_new_email = crud.get_user_by_email(db, email=user_in.email)
         if existing_user_with_new_email and existing_user_with_new_email.id != user_id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="New email already registered by another user")
 
     # If username is being updated, check if the new username is already taken
-    # (UserUpdate inherits from UserBase which has username)
-    if user_in.username:
+    if user_in.username and user_in.username != db_user.username: # check if username is actually changing
         existing_user_with_new_username = crud.get_user_by_username(db, username=user_in.username)
         if existing_user_with_new_username and existing_user_with_new_username.id != user_id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="New username already registered by another user")
 
+    # The crud.update_user function handles password hashing and selective updates
+    # based on user_in fields that are not None.
     updated_user = crud.update_user(db=db, db_user=db_user, user_in=user_in)
-    # The crud.update_user now returns the updated user ORM object.
-    # FastAPI will automatically convert it to the response_model (models.User)
     return updated_user
 
 @router.delete("/{user_id}", response_model=models.User)
