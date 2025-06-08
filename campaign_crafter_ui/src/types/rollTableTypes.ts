@@ -21,6 +21,7 @@ export interface RollTable {
   name: string;
   description?: string | null;
   items: RollTableItem[];
+  user_id?: number; // Added field
 }
 
 export interface RollTableCreate {
