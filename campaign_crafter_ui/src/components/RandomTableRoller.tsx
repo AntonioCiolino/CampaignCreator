@@ -102,7 +102,7 @@ const RandomTableRoller: React.FC<RandomTableRollerProps> = ({ onInsertItem }) =
         <Button
           onClick={handleCopySystemTables}
           disabled={isCopying || isLoadingTables}
-          variant="outline"
+          variant="outline-secondary"
           className="rtr-button-copy-system"
         >
           {isCopying ? 'Copying...' : 'Copy System Tables to My Account'}
