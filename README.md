@@ -2,25 +2,28 @@
 
 ## Project Overview
 
-This repository contains the "CampaignCreator" suite of tools, designed to assist creative writers, authors, and world-builders. The "CampaignCreator" project includes:
+This repository hosts the "CampaignCreator" suite of tools, designed to assist creative writers, authors, and world-builders.
+The primary focus of current and future development is on:
 
-*   **CampaignCreator (iOS App)**: The original iOS application for document editing and LLM-assisted content generation. (See section below for more details).
-*   **campaign_crafter_api**: A Python-based backend API that provides LLM integrations, data management, and other services for the CampaignCreator ecosystem. This is a core focus for future development.
-*   **campaign_crafter_ui**: A React-based web interface that will interact with the `campaign_crafter_api` to offer a web-based experience for some of the CampaignCreator functionalities.
+*   **`campaign_crafter_api`**: A Python-based backend API using FastAPI. It handles LLM integrations, data persistence, and core business logic.
+*   **`campaign_crafter_ui`**: A React-based web interface that interacts with the `campaign_crafter_api` to provide a rich, web-based user experience.
+
+The project originated with an iOS application, **CampaignCreator (iOS App)**, which is now a secondary component with its development de-prioritized in favor of the API and Web UI.
+
+### Root `requirements.txt`
+The `requirements.txt` file in the root directory contains dependencies for separate utility scripts or an internal dashboard (e.g., using Streamlit, Pandas). These are not part of the main API (`campaign_crafter_api`) or UI (`campaign_crafter_ui`) application stacks.
 
 ## CampaignCreator (iOS App)
 
-The CampaignCreator iOS application was the original project under this name, providing a document editor for story crafting with LLM assistance. While it remains part of the ecosystem, the broader "CampaignCreator" project is now expanding to focus more on the backend API (`campaign_crafter_api`) and web interface (`campaign_crafter_ui`).
+The CampaignCreator iOS application was the initial component of this project, offering local document editing and LLM-assisted content generation. While it remains a part of the ecosystem, its development is currently secondary to the API and web UI.
 
-The iOS app offers local document management and direct integration with LLMs (OpenAI GPT, Google Gemini) via API keys configured in a local `Secrets.swift` file. It also includes features for content import (JSON, Zip, local directories) and Homebrewery export.
-
-For setup, see the "Setup for Developers" section. Future development of the iOS app will be coordinated with the overall project direction, which prioritizes the API and web components.
+The iOS app features local document management and direct LLM integration (OpenAI GPT, Google Gemini) via API keys in a `Secrets.swift` file. It also supports content import/export. Setup details are in the "Setup for Developers" section.
 
 ## campaign_crafter_api (Backend API)
 
 ### Purpose
 
-The `campaign_crafter_api` is a Python-based backend service built with Flask. It is designed to:
+The `campaign_crafter_api` is a Python-based backend service built with **FastAPI**. It is designed to:
 *   Provide a centralized API for LLM interactions (OpenAI, Gemini, and potentially others).
 *   Manage user accounts and authentication (planned).
 *   Handle data storage and synchronization for web-based features (planned).
@@ -29,20 +32,23 @@ The `campaign_crafter_api` is a Python-based backend service built with Flask. I
 ### Tech Stack
 
 *   **Python**: Core programming language.
-*   **Flask**: Web framework for building the API.
-*   **Poetry**: For dependency management and packaging.
+*   **FastAPI**: Web framework for building the API.
+*   **pip & `requirements.txt`**: For dependency management (as per `campaign_crafter_api/README.md`).
 *   **(Planned) Docker**: For containerization and deployment.
 
 ### Setup and Run
 
-Detailed setup and run instructions can be found in `campaign_crafter_api/README.md`.
+**Detailed setup and run instructions are in `campaign_crafter_api/README.md`.**
 A quick start is typically:
 ```bash
 cd campaign_crafter_api
-poetry install
-poetry run flask run
+pip install -r requirements.txt
+# To run the development server (with auto-reload):
+python -m uvicorn app.main:app --reload
+# Or, to run using the programmatic Uvicorn configuration in app/main.py:
+# python -m app.main
 ```
-Ensure you have Python and Poetry installed. API keys for LLM services need to be configured as per the API's specific instructions (usually via environment variables or a `.env` file).
+Ensure you have Python installed. API keys for LLM services need to be configured as per the API's specific instructions (usually via a `.env` file).
 
 ## campaign_crafter_ui (Web Interface)
 
@@ -62,7 +68,7 @@ The `campaign_crafter_ui` is a React-based web application that will provide a u
 
 ### Setup and Run
 
-Detailed setup and run instructions can be found in `campaign_crafter_ui/README.md`.
+**Detailed setup and run instructions are in `campaign_crafter_ui/README.md`.**
 A quick start is typically:
 ```bash
 cd campaign_crafter_ui
@@ -73,9 +79,9 @@ Ensure you have Node.js and npm (or yarn) installed.
 
 ## Project Status
 
-*   **CampaignCreator (iOS App)**: Core local editing features, direct LLM integration, import/export, and basic theming are functional. Future development will be aligned with the broader project goals, which prioritize the API and web UI.
-*   **campaign_crafter_api**: Under active development. This Python-based API is central to the project's strategy, providing LLM integration and backend services.
-*   **campaign_crafter_ui**: Under active development. This React-based web interface will be the primary client for the `campaign_crafter_api`.
+*   **`campaign_crafter_api`**: Under active development. This Python (FastAPI)-based API is central to the project's strategy.
+*   **`campaign_crafter_ui`**: Under active development. This React-based web interface is the primary client for the `campaign_crafter_api`.
+*   **CampaignCreator (iOS App)**: Core local editing features are functional. Future development is de-prioritized in favor of the API and web UI.
 
 ## Setup for Developers
 
@@ -84,7 +90,13 @@ Ensure you have Node.js and npm (or yarn) installed.
     git clone <repository_url> # Replace <repository_url> with the actual URL
     cd <repository_directory_name> # Replace <repository_directory_name> with your chosen directory name
     ```
-2.  **iOS App (CampaignCreator)**:
+2.  **Backend API (`campaign_crafter_api`)**:
+    *   Navigate to `campaign_crafter_api/`.
+    *   **Primary setup instructions are in `campaign_crafter_api/README.md`.** This includes Python environment setup and installing dependencies from `requirements.txt`.
+3.  **Web UI (`campaign_crafter_ui`)**:
+    *   Navigate to `campaign_crafter_ui/`.
+    *   **Primary setup instructions are in `campaign_crafter_ui/README.md`.** This includes Node.js environment setup and installing dependencies with `npm` or `yarn`.
+4.  **iOS App (CampaignCreator)** (Secondary Focus):
     *   Navigate to the `CampaignCreator` directory (contains the Xcode project).
     *   Open the `CampaignCreator.xcworkspace` file in Xcode.
     *   Recommended: Xcode 14.0 or later.
@@ -101,10 +113,7 @@ Ensure you have Node.js and npm (or yarn) installed.
         ```
     *   **Third-Party Libraries (iOS App)**:
         *   **ZipFoundation**: Used for some import features. If formally adding or updating, use Swift Package Manager in Xcode.
-3.  **Backend API (campaign_crafter_api)**:
-    *   Navigate to `campaign_crafter_api/`. See its `README.md` for detailed setup (requires Python and Poetry).
-4.  **Web UI (campaign_crafter_ui)**:
-    *   Navigate to `campaign_crafter_ui/`. See its `README.md` for detailed setup (requires Node.js and npm/yarn).
+
 
 ## Future Goals (Overall Project)
 
