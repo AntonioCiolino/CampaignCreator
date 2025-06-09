@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     IMAGE_STORAGE_PATH: str = "/app/static/generated_images/"
     IMAGE_BASE_URL: str = "/static/generated_images/" # URL path to access stored images
 
+    # Azure Blob Storage Settings
+    AZURE_STORAGE_ACCOUNT_NAME: Optional[str] = None
+    AZURE_STORAGE_CONTAINER_NAME: Optional[str] = "campaignimages" # Default container name
+    AZURE_STORAGE_CONNECTION_STRING: Optional[str] = None
+
     # Stable Diffusion Image Generation Settings
     STABLE_DIFFUSION_API_KEY: Optional[str] = "YOUR_STABLE_DIFFUSION_API_KEY_HERE"
     STABLE_DIFFUSION_API_URL: Optional[str] = "YOUR_STABLE_DIFFUSION_API_URL_HERE" # e.g. http://localhost:7860/sdapi/v1/txt2img for Auto1111

@@ -1,13 +1,17 @@
 from typing import Optional
 import openai # Direct import of the openai library
 import requests
-import os
+# import os # No longer needed for Azure saving
 import base64 # Added base64 import
 import uuid
-import shutil
+# import shutil # No longer needed for Azure saving
 from pathlib import Path
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
+from io import BytesIO # Restored for Azure
+from azure.storage.blob import BlobServiceClient # Restored for Azure
+from azure.identity import DefaultAzureCredential # Restored for Azure
+
 
 from app.core.config import settings
 from app.orm_models import GeneratedImage
@@ -42,87 +46,135 @@ class ImageGenerationService:
 
     async def _save_image_and_log_db(
         self,
-        temporary_url: str,
         prompt: str,
-        model_used: str, # Specific model string, e.g. "dall-e-3" or "stable-diffusion-xl"
+        model_used: str,
         size_used: str,
         db: Session,
+        temporary_url: Optional[str] = None,
+        image_bytes: Optional[bytes] = None,
         user_id: Optional[int] = None,
-        original_filename_from_api: Optional[str] = None # If API provides a filename
+        original_filename_from_api: Optional[str] = None
     ) -> str:
         """
-        Downloads an image from a temporary URL, saves it locally,
-        logs it in the database, and returns the permanent URL.
+        Downloads an image from a temporary URL or uses provided bytes,
+        uploads to Azure Blob Storage, logs it in the database,
+        and returns the permanent URL.
         """
+        blob_service_client = None
+        account_url = None # Will be set if using account name + credential
+
+        if settings.AZURE_STORAGE_CONNECTION_STRING:
+            try:
+                blob_service_client = BlobServiceClient.from_connection_string(settings.AZURE_STORAGE_CONNECTION_STRING)
+                # Try to determine account name from connection string for URL construction
+                # This is a bit fragile; ideally, AZURE_STORAGE_ACCOUNT_NAME is also set.
+                conn_parts = {part.split('=', 1)[0]: part.split('=', 1)[1] for part in settings.AZURE_STORAGE_CONNECTION_STRING.split(';') if '=' in part}
+                account_name_from_conn_str = conn_parts.get('AccountName')
+                if account_name_from_conn_str:
+                    account_url = f"https://{account_name_from_conn_str}.blob.core.windows.net"
+                # If account_url is still None here, permanent_image_url construction might fail later if AZURE_STORAGE_ACCOUNT_NAME is also not set.
+            except Exception as e:
+                print(f"Failed to connect to Azure Storage with connection string: {e}")
+                raise HTTPException(status_code=500, detail="Azure Storage configuration error (connection string).")
+        elif settings.AZURE_STORAGE_ACCOUNT_NAME:
+            try:
+                account_url = f"https://{settings.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net"
+                default_credential = DefaultAzureCredential()
+                blob_service_client = BlobServiceClient(account_url, credential=default_credential)
+            except Exception as e:
+                print(f"Failed to connect to Azure Storage with DefaultAzureCredential: {e}")
+                raise HTTPException(status_code=500, detail="Azure Storage configuration error (account name/auth).")
+        else:
+            raise HTTPException(status_code=500, detail="Azure Storage is not configured (missing account name or connection string).")
+
+        if not blob_service_client:
+             raise HTTPException(status_code=500, detail="Failed to initialize Azure BlobServiceClient.")
+
+        file_extension = ".png" # Default
+        if original_filename_from_api:
+            original_path = Path(original_filename_from_api)
+            if original_path.suffix:
+                file_extension = original_path.suffix
+        elif temporary_url and not image_bytes: # Infer from URL if no bytes provided
+            temp_path = Path(temporary_url.split('?')[0])
+            if temp_path.suffix and len(temp_path.suffix) > 1:
+                file_extension = temp_path.suffix
+
+        if not file_extension.startswith(".") or len(file_extension) > 5: # Sanitize
+            file_extension = ".png"
+
+        blob_name = f"{uuid.uuid4().hex}{file_extension}"
+        actual_image_bytes = None
+        content_type = 'application/octet-stream' # Default
+
+        if image_bytes:
+            actual_image_bytes = image_bytes
+            if file_extension == ".png": content_type = "image/png"
+            elif file_extension in [".jpg", ".jpeg"]: content_type = "image/jpeg"
+            elif file_extension == ".webp": content_type = "image/webp"
+        elif temporary_url:
+            try:
+                response = requests.get(temporary_url, stream=True)
+                response.raise_for_status()
+                actual_image_bytes = response.content
+
+                ct_from_header = response.headers.get('Content-Type')
+                if ct_from_header:
+                    content_type = ct_from_header
+                    # Potentially refine file_extension based on content_type if it was default
+                    if file_extension == ".png": # Only if it was default
+                        if "image/jpeg" in content_type: file_extension = ".jpg"
+                        elif "image/webp" in content_type: file_extension = ".webp"
+                        elif "image/png" in content_type: file_extension = ".png"
+                        # ... any other common types
+                        blob_name = f"{uuid.uuid4().hex}{file_extension}" # Re-generate blob_name if extension changed
+            except requests.exceptions.RequestException as e:
+                print(f"Failed to download image from temporary URL {temporary_url}: {e}")
+                raise HTTPException(status_code=502, detail=f"Failed to download image from source: {e}")
+        else:
+            raise HTTPException(status_code=400, detail="No image source provided (neither temporary_url nor image_bytes).")
+
+        if not actual_image_bytes:
+            raise HTTPException(status_code=500, detail="Failed to retrieve image bytes.")
+
+        permanent_image_url = ""
         try:
-            # Ensure storage path exists
-            storage_path = Path(settings.IMAGE_STORAGE_PATH)
-            storage_path.mkdir(parents=True, exist_ok=True)
-
-            # Generate a unique filename
-            # Try to get extension from temp_url or original_filename, default to .png
-            file_extension = ".png" # Default
-            if original_filename_from_api:
-                file_extension = Path(original_filename_from_api).suffix
-            elif temporary_url:
-                temp_path = Path(temporary_url.split('?')[0]) # Remove query params for suffix
-                if temp_path.suffix and len(temp_path.suffix) > 1: # Ensure suffix is meaningful
-                    file_extension = temp_path.suffix
+            blob_client = blob_service_client.get_blob_client(container=settings.AZURE_STORAGE_CONTAINER_NAME, blob=blob_name)
+            with BytesIO(actual_image_bytes) as stream:
+                blob_client.upload_blob(stream, overwrite=True, headers={'Content-Type': content_type})
             
-            # Sanitize extension to ensure it starts with a dot and is reasonable
-            if not file_extension.startswith(".") or len(file_extension) > 5:
-                file_extension = ".png"
+            print(f"Image uploaded to Azure Blob Storage: {blob_name} in container {settings.AZURE_STORAGE_CONTAINER_NAME}")
 
-
-            filename = f"{uuid.uuid4().hex}{file_extension}"
-            file_path = storage_path / filename
-            permanent_image_url = f"{settings.IMAGE_BASE_URL.strip('/')}/{filename}"
-
-            # Download the image
-            # Note: for a truly async download with 'requests', it should be run in a thread pool.
-            # httpx would be a better choice for native async.
-            response = requests.get(temporary_url, stream=True)
-            response.raise_for_status() # Check for download errors
-
-            with open(file_path, 'wb') as f:
-                shutil.copyfileobj(response.raw, f)
+            # Construct permanent URL
+            # Priority: 1. account_url (if derived from AZURE_STORAGE_ACCOUNT_NAME), 2. parsed from conn string, 3. settings.AZURE_STORAGE_ACCOUNT_NAME directly
+            final_account_url_base = None
+            if account_url: # This would be set if AZURE_STORAGE_ACCOUNT_NAME was used for DefaultAzureCredential or parsed from conn string.
+                final_account_url_base = account_url.strip('/')
+            elif settings.AZURE_STORAGE_ACCOUNT_NAME: # Fallback if not using conn string and account_url wasn't set by it.
+                 final_account_url_base = f"https://{settings.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net"
             
-            print(f"Image saved to: {file_path}")
+            if not final_account_url_base:
+                raise HTTPException(status_code=500, detail="Cannot determine Azure account URL for image link. Ensure AZURE_STORAGE_ACCOUNT_NAME is set.")
 
-            # Create database record
-            db_image = GeneratedImage(
-                filename=filename,
-                image_url=permanent_image_url,
-                prompt=prompt,
-                model_used=model_used,
-                size=size_used,
-                user_id=user_id
-            )
-            db.add(db_image)
-            db.commit()
-            db.refresh(db_image)
-            
-            return permanent_image_url
+            permanent_image_url = f"{final_account_url_base}/{settings.AZURE_STORAGE_CONTAINER_NAME.strip('/')}/{blob_name}"
 
-        except requests.exceptions.RequestException as e:
-            print(f"Failed to download image from temporary URL {temporary_url}: {e}")
-            # Potentially delete partially downloaded file if any
-            if file_path.exists():
-                try:
-                    os.remove(file_path)
-                except OSError as ose:
-                    print(f"Error removing partial file {file_path}: {ose}")
-            raise HTTPException(status_code=502, detail=f"Failed to download image from source: {e}")
         except Exception as e:
-            # Catch any other error during file save or DB operation
-            print(f"Error saving image or logging to DB: {e}")
-            # Potentially delete partially downloaded file if any
-            if 'file_path' in locals() and file_path.exists(): # Check if file_path was defined
-                try:
-                    os.remove(file_path)
-                except OSError as ose:
-                    print(f"Error removing file {file_path} after error: {ose}")
-            raise HTTPException(status_code=500, detail=f"Failed to save image or log to database: {str(e)}")
+            print(f"Failed to upload image to Azure Blob Storage: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to upload image to cloud storage: {str(e)}")
+
+        db_image = GeneratedImage(
+            filename=blob_name,
+            image_url=permanent_image_url,
+            prompt=prompt,
+            model_used=model_used,
+            size=size_used,
+            user_id=user_id
+        )
+        db.add(db_image)
+        db.commit()
+        db.refresh(db_image)
+
+        return permanent_image_url
 
     async def generate_image_dalle(
         self,
@@ -276,18 +328,26 @@ class ImageGenerationService:
             )
 
             if api_response.status_code == 200:
-                image_bytes = api_response.content
+                image_bytes_sd = api_response.content
                 mime_type = api_response.headers.get("content-type", "image/webp") # Default to webp if not specified
-                base64_encoded_string = base64.b64encode(image_bytes).decode("utf-8")
-                temporary_url = f"data:{mime_type};base64,{base64_encoded_string}"
                 
-                # Logging (even if not saving to DB via _save_image_and_log_db)
-                print(f"Successfully received image bytes from Stable Diffusion API for prompt: '{prompt}'. Size: approx {len(image_bytes)} bytes. Mime: {mime_type}")
+                print(f"Successfully received image bytes from Stable Diffusion API for prompt: '{prompt}'. Size: approx {len(image_bytes_sd)} bytes. Mime: {mime_type}")
 
-                # The call to _save_image_and_log_db is currently commented out as per previous changes.
-                # If it were to be used, it would need to handle data URLs or raw bytes.
-                # For now, returning the data URL.
-                return temporary_url
+                sd_filename_hint = "stable_diffusion_image.png" # Default hint
+                if "image/webp" in mime_type: sd_filename_hint = "stable_diffusion_image.webp"
+                elif "image/jpeg" in mime_type: sd_filename_hint = "stable_diffusion_image.jpg"
+                elif "image/png" in mime_type: sd_filename_hint = "stable_diffusion_image.png"
+
+                permanent_url = await self._save_image_and_log_db(
+                    prompt=prompt,
+                    model_used=final_sd_model_name,
+                    size_used=final_size,
+                    db=db,
+                    image_bytes=image_bytes_sd, # Pass the raw bytes
+                    user_id=user_id,
+                    original_filename_from_api=sd_filename_hint
+                )
+                return permanent_url
             else:
                 # Handle API errors
                 try:
