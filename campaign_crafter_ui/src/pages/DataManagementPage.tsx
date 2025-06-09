@@ -9,10 +9,14 @@ import * as rollTableService from '../services/rollTableService';
 import RollTableForm from '../components/datamanagement/RollTableForm';
 import CollapsibleSection from '../components/common/CollapsibleSection'; // Import CollapsibleSection
 import Button from '../components/common/Button'; // Import Button component
+import { useAuth } from '../contexts/AuthContext'; // Import useAuth
+import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa'; // Import icons
 
 import './DataManagementPage.css';
 
 const DataManagementPage: React.FC = () => {
+  const { user } = useAuth(); // Get the user object which contains is_superuser
+
   // --- Feature States ---
   const [features, setFeatures] = useState<Feature[]>([]);
   const [isLoadingFeatures, setIsLoadingFeatures] = useState<boolean>(false);
@@ -189,7 +193,7 @@ const DataManagementPage: React.FC = () => {
 
           {!showFeatureForm && (
             <Button onClick={handleCreateNewFeatureClick} variant="primary">
-              Create New Feature
+              <FaPlus style={{ marginRight: '5px' }} /> Create New Feature
             </Button>
           )}
 
@@ -222,8 +226,19 @@ const DataManagementPage: React.FC = () => {
                     <td>{feature.name}</td>
                     <td>{feature.template.substring(0, 100)}{feature.template.length > 100 ? '...' : ''}</td>
                     <td className="actions-cell">
-                      <Button onClick={() => handleEditFeatureClick(feature)} variant="secondary" size="sm">Edit</Button>
-                      <Button onClick={() => handleDeleteFeatureClick(feature.id)} variant="danger" size="sm" style={{ marginLeft: '5px' }}>Delete</Button>
+                      {(() => {
+                        const isSystemFeature = feature.user_id === null || feature.user_id === undefined;
+                        const canManageFeature = !isSystemFeature || (isSystemFeature && user?.is_superuser);
+                        if (canManageFeature) {
+                          return (
+                            <>
+                              <Button onClick={() => handleEditFeatureClick(feature)} variant="secondary" size="sm"><FaEdit style={{ marginRight: '5px' }} /> Edit</Button>
+                              <Button onClick={() => handleDeleteFeatureClick(feature.id)} variant="danger" size="sm" style={{ marginLeft: '5px' }}><FaTrash style={{ marginRight: '5px' }} /> Delete</Button>
+                            </>
+                          );
+                        }
+                        return <span title="System items can only be managed by superusers.">-</span>; // Or some placeholder
+                      })()}
                     </td>
                   </tr>
                 ))}
@@ -239,7 +254,7 @@ const DataManagementPage: React.FC = () => {
 
           {!showRollTableForm && (
             <Button onClick={handleCreateNewRollTableClick} variant="primary">
-              Create New Rolltable
+              <FaPlus style={{ marginRight: '5px' }} /> Create New Rolltable
             </Button>
           )}
 
@@ -274,8 +289,19 @@ const DataManagementPage: React.FC = () => {
                     <td>{rollTable.description || '-'}</td>
                     <td>{rollTable.items.length}</td>
                     <td className="actions-cell">
-                      <Button onClick={() => handleEditRollTableClick(rollTable)} variant="secondary" size="sm">Edit</Button>
-                      <Button onClick={() => handleDeleteRollTableClick(rollTable.id)} variant="danger" size="sm" style={{ marginLeft: '5px' }}>Delete</Button>
+                      {(() => {
+                        const isSystemRollTable = rollTable.user_id === null || rollTable.user_id === undefined;
+                        const canManageRollTable = !isSystemRollTable || (isSystemRollTable && user?.is_superuser);
+                        if (canManageRollTable) {
+                          return (
+                            <>
+                              <Button onClick={() => handleEditRollTableClick(rollTable)} variant="secondary" size="sm"><FaEdit style={{ marginRight: '5px' }} /> Edit</Button>
+                              <Button onClick={() => handleDeleteRollTableClick(rollTable.id)} variant="danger" size="sm" style={{ marginLeft: '5px' }}><FaTrash style={{ marginRight: '5px' }} /> Delete</Button>
+                            </>
+                          );
+                        }
+                        return <span title="System items can only be managed by superusers.">-</span>; // Or some placeholder
+                      })()}
                     </td>
                   </tr>
                 ))}

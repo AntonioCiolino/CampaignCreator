@@ -163,6 +163,7 @@ class User(UserBase): # For responses
 class FeatureBase(BaseModel):
     name: str
     template: str
+    user_id: Optional[int] = None
 
 class FeatureCreate(FeatureBase):
     pass

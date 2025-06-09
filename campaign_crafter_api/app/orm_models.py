@@ -83,6 +83,8 @@ class Feature(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
     template = Column(Text, nullable=False)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=True, index=True)
+    owner = relationship('User', backref='features')
 
 
 class RollTable(Base):

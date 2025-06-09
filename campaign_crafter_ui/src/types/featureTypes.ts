@@ -3,6 +3,7 @@ export interface Feature {
   id: number;
   name: string;
   template: string;
+  user_id?: number; // Changed to snake_case
 }
 
 export interface FeatureCreate {
