@@ -181,16 +181,16 @@ class ImageGenerationService:
                 # revised_prompt = api_response.data[0].revised_prompt 
                 
                 # Save image and log to DB
-                # permanent_url = await self._save_image_and_log_db(
-                #     temporary_url=temporary_url,
-                #     prompt=prompt, # Or revised_prompt if available and desired
-                #     model_used=final_model_name,
-                #     size_used=final_size,
-                #     db=db,
-                #     user_id=user_id
-                # )
-                # return permanent_url
-                return temporary_url # Return temporary URL directly
+                permanent_url = await self._save_image_and_log_db(
+                    temporary_url=temporary_url,
+                    prompt=prompt, # Or revised_prompt if available and desired
+                    model_used=final_model_name,
+                    size_used=final_size,
+                    db=db,
+                    user_id=user_id
+                )
+                return permanent_url
+                # return temporary_url # Return temporary URL directly
             else:
                 # This case should ideally not be reached if API call was successful and n=1
                 print(f"DALL-E API response did not contain expected data structure: {api_response}")
