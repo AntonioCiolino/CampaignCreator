@@ -74,11 +74,6 @@ pip install -r requirements.txt
 ```
 *(Note: If a `poetry.lock` and `pyproject.toml` are present and you prefer Poetry, you can use `poetry install` instead, after installing Poetry itself.)*
 
-We also may need to isntall:
-```bash
-pip install python-multipart
-```
-
 ### 4. Configure Environment Variables
 
 The API requires certain environment variables for configuration, such as database connection strings and LLM API keys.
@@ -115,31 +110,103 @@ The API requires certain environment variables for configuration, such as databa
     # ... other keys if using JWT
     ```
 
-### 5. Running the Development Server
+### 5. Database Migrations with Alembic
 
-Once the dependencies are installed and the `.env` file is configured, you can run the FastAPI application:
+This project uses Alembic to manage database schema migrations. Alembic allows for versioning of your database schema, making it easier to evolve your database structure as your application changes.
 
-The application is configured to be started by running its main script, which programmatically launches Uvicorn:
+**a. Configure Alembic:**
+
+Ensure the `sqlalchemy.url` in your `alembic.ini` file matches the `DATABASE_URL` in your `.env` file. This is crucial for Alembic to connect to the correct database.
+
+*   **`alembic.ini`:**
+    ```ini
+    [alembic]
+    # ... other alembic configurations
+    sqlalchemy.url = postgresql://user:password@host:port/dbname
+    ```
+
+*   **`.env`:**
+    ```env
+    DATABASE_URL="postgresql://user:password@host:port/dbname"
+    ```
+
+If you are using a different database system (e.g., SQLite for local development and PostgreSQL for production), you will need to update `sqlalchemy.url` in `alembic.ini` accordingly or manage different `alembic.ini` configurations for different environments. Often, the `env.py` script within your Alembic migration environment can be customized to read the `DATABASE_URL` from your environment variables (e.g., via `os.getenv('DATABASE_URL')`), making it more flexible.
+
+**b. Generating a New Migration Script:**
+
+To create a new, empty migration script, use the following command. You will then manually edit this script to define the schema changes.
 ```bash
-python -m app.main
+alembic revision -m "create_some_table"
 ```
-This will start the server, typically on `http://127.0.0.1:8000` (or the port specified by the `PORT` environment variable).
+Replace `"create_some_table"` with a descriptive name for your migration (e.g., `"add_user_email_column"`).
 
-For development with auto-reload, you can still use Uvicorn directly if preferred, but ensure your environment variables (like `PORT`) are loaded or set in your shell:
+**c. Auto-generating Migrations (Experimental - Review Carefully):**
+
+Alembic can attempt to automatically generate a migration script based on the differences between your current database schema and your SQLAlchemy models.
 ```bash
-# Ensure your virtual environment is active and .env is configured
-# The PORT variable from .env will be used by the script if you run it directly.
-# If running uvicorn directly for development, it will also pick up PORT if the script's __main__ is executed,
-# or you can specify it:
-# uvicorn app.main:app --reload --port $PORT  (Example for bash, adjust for your shell)
-# Or rely on the default 8000 if PORT is not set and not overridden in the command.
-python -m uvicorn app.main:app --reload
+alembic revision -m "add_new_column_to_user" --autogenerate
+```
+**Important:** Always review auto-generated migration scripts thoroughly. They might not always capture your intentions perfectly, especially with complex changes, new table creations, or type changes.
+
+**d. Applying Migrations:**
+
+To apply all pending migrations and bring the database to the latest version:
+```bash
+alembic upgrade head
+```
+You can also upgrade to a specific revision:
+```bash
+alembic upgrade <revision_id>
 ```
 
-*   `app.main:app`: Refers to the FastAPI application instance named `app` found in the `app/main.py` file.
-*   `--reload`: Enables auto-reloading the server when code changes are detected.
+**e. Downgrading Migrations:**
 
-The API should now be running. You can access the interactive API documentation (Swagger UI) at `http://<host>:<port>/docs` (e.g., `http://127.0.0.1:8000/docs`) and the alternative ReDoc documentation at `http://<host>:<port>/redoc`.
+To revert the last applied migration:
+```bash
+alembic downgrade -1
+```
+To downgrade to a specific revision:
+```bash
+alembic downgrade <revision_id>
+```
+Or to a specific relative number of revisions:
+```bash
+alembic downgrade -<number> # e.g., alembic downgrade -2
+```
+
+**f. Checking Current Migration Status:**
+
+To see the current revision of the database and identify any pending migrations:
+```bash
+alembic current
+```
+To see the history of migrations:
+```bash
+alembic history
+```
+
+### 6. Running the Development Server
+
+Once the dependencies are installed and the `.env` file is configured, you have a couple of ways to run the FastAPI application:
+
+1.  **Via Programmatic Uvicorn (inside `app/main.py`):**
+    ```bash
+    python -m app.main
+    ```
+    This command executes the `if __name__ == "__main__":` block in `app/main.py`, which programmatically starts Uvicorn. This method is often suitable for production-like execution or when deploying with a process manager that expects your application to manage the server startup. It respects the `PORT` environment variable defined in your `.env` file.
+
+2.  **Directly with Uvicorn CLI (for development):**
+    ```bash
+    python -m uvicorn app.main:app --reload
+    ```
+    This command is typically preferred for development because of the `--reload` flag, which automatically restarts the server when code changes are detected.
+    *   `app.main:app`: Refers to the FastAPI application instance named `app` found in the `app/main.py` file.
+    *   `--reload`: Enables auto-reloading.
+    *   This method also respects the `PORT` environment variable if `app.main` is structured to read it when `app` is imported, or Uvicorn's `--port` option can be used explicitly (e.g., `uvicorn app.main:app --reload --port 8001`). By default, Uvicorn uses port 8000.
+
+The server will typically be available on `http://127.0.0.1:8000` (or the port specified by the `PORT` environment variable if configured and respected by the chosen run method).
+
+You can access the interactive API documentation (Swagger UI) at `http://<host>:<port>/docs` (e.g., `http://127.0.0.1:8000/docs`) and the alternative ReDoc documentation at `http://<host>:<port>/redoc`.
 
 ## Running Tests
 

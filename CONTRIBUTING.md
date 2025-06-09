@@ -23,16 +23,21 @@ We are always looking for ways to improve CampaignCreator:
     *   Explain the feature and why you think it would be beneficial.
     *   Provide as much detail as possible about how you envision the feature working.
 
-## Pull Requests (Placeholder)
+## Pull Requests
 
 We welcome contributions in the form of Pull Requests. If you're planning to contribute code, please consider the following:
 
-*   **Discuss First:** For significant changes, it's often best to open an issue first to discuss your ideas and ensure they align with the project's goals.
-*   **Coding Style:** Please try to adhere to the existing coding style and conventions used in the project (primarily Swift).
-*   **Testing:** Include tests for new features or bug fixes where applicable. (More detailed testing guidelines will be provided as the project matures).
-*   **Commit Messages:** Write clear and concise commit messages.
-*   **Documentation:** Update any relevant documentation if your changes impact it.
+*   **Discuss First:** For significant changes (e.g., new features, major refactoring), it's often best to open an issue first to discuss your ideas and ensure they align with the project's goals. This can save effort and ensure your contribution is likely to be merged.
+*   **Coding Style:** Please try to adhere to the existing coding style and conventions relevant to the part of the project you are contributing to (e.g., Python/FastAPI for the `campaign_crafter_api`, TypeScript/React for the `campaign_crafter_ui`, or Swift for the iOS app). Consistent code style helps maintain readability and makes collaboration easier.
+*   **Testing:**
+    *   Include tests for new features or bug fixes where applicable.
+    *   Ensure existing tests pass with your changes.
+    *   (More detailed testing guidelines may be provided in the respective component READMEs, e.g., `campaign_crafter_api/README.md` or `campaign_crafter_ui/README.md`).
+*   **Commit Messages:** Write clear, concise, and descriptive commit messages. A good commit message explains the "what" and "why" of the change.
+*   **Documentation:** Update any relevant documentation (e.g., README files, code comments) if your changes impact it.
+*   **Branching:** Create your changes in a feature branch from the `main` or `develop` branch (or as specified by project maintainers).
+*   **Keep it Focused:** Try to keep pull requests focused on a single issue or feature. Smaller, well-defined PRs are easier to review and merge.
 
-*(More detailed guidelines for pull requests, development setup, and coding standards will be provided as the project grows.)*
+*(As the project grows, more detailed guidelines for development setup and coding standards for each component may be found in their respective directories.)*
 
 Thank you for helping make CampaignCreator better!
