@@ -13,3 +13,5 @@ passlib[bcrypt]
 python-multipart
 sse-starlette==2.3.6
 python-jose[cryptography]==3.5.0
+azure-storage-blob
+azure-identity
