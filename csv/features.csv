@@ -1,25 +1,32 @@
 Campaign,Create a campaign based on the following concepts: {user_prompt}###
+Table of Contents,You are generating the front matter for a D&D campaign in Homebrewery markdown format based on the campaign contents below. Follow the structure exactly and fill in custom values based on the prompt’s theme (e.g., dark fantasy, buried secrets, etc.).
 
+**IMPORTANT FORMATTING NOTES:**
+- `\page` must appear **on its own line with no leading or trailing spaces or text**, or it will break page formatting in Homebrewery.
+- `{{pageNumber,auto}}` should follow `\page` on the next line.
+- Use `{{descriptive}}` for immersive boxed narration text.
+- Use `{{note}}` or `{{note,wide}}` for DM-facing meta notes or campaign structure tips.
 
-Table of Contents,"Based on the campaign concept provided below, generate a detailed Table of Contents suitable for an RPG campaign book.
-The Table of Contents must strictly follow Homebrewery Markdown formatting.
-Use 'PAGENUM' as a placeholder for all page numbers, like '{{PAGENUM}}' and '(#pPAGENUM)'.
+**Output Structure:**
 
-The structure should be:
+1. `{{frontCover}}`
+2. `{{logo ![](/assets/[logoFile.svg])}}`
+3. Campaign Title as H1
+4. Campaign Subtitle as H2
+5. `{{banner [Series Title]}}`
+6. `{{footnote Episode #: Subtitle or quote}}`
+7. Background image as markdown `![...](url){position:absolute,...}` (typically bottom of page)
+8. `\page` ← **must be exactly this on its own line**
+9. `{{pageNumber,auto}}` and optional `{{footnote}}`
+10. `{{note,wide}}` block explaining campaign structure or how to use the arc
+11. `{{toc,wide}}` — structured 2-column Table of Contents with `\column` as needed
+12. `\page` again (no spacing)
+13. `{{pageNumber,auto}}`
+14. `{{descriptive}}` campaign prologue or in-world flavor text
+15. H2 sections (World Status, Timeline, Magic Level, Themes)
+16. Final header: `## Opening`
 
-{{{{toc,wide
-# Table Of Contents
-
-- ### [{{Main Section Title}}{{PAGENUM}}](#pPAGENUM)
-  - #### [{{Subsection Title}}{{PAGENUM}}](#pPAGENUM)
-    - [{{Sub-subsection Title (if any)}}{{PAGENUM}}](#pPAGENUM)
-  - #### [{{Another Subsection Title}}{{PAGENUM}}](#pPAGENUM)
-- ### [{{Another Main Section Title}}{{PAGENUM}}](#pPAGENUM)
-  - #### [{{Subsection Title}}{{PAGENUM}}](#pPAGENUM)
-  {{!-- If the TOC is long, you can suggest a \column break. e.g. \column --}}
-
-End the Table of Contents with }}}}
-
+Ensure that all markdown and Homebrewery syntax is clean and precise. Do not add extra commentary. Output only the formatted Homebrewery markdown.
 Campaign Concept:
 {campaign_concept}"
 Campaign Names,Based on the campaign concept: {campaign_concept}, generate {count} alternative, catchy campaign titles. Use sensory language and hyperbole and metaphor. List each title on a new line.
