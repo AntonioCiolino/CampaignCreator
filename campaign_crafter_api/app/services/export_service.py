@@ -89,6 +89,7 @@ class HomebreweryExportService:
             homebrewery_content.append(f"{campaign.concept.strip()}\n") # Strip to remove leading/trailing whitespace from the concept itself
         
         homebrewery_content.append("\\page\n") # Page break after concept/title page
+        homebrewery_content.append("{{pageNumber,auto}}\n")
 
         # Table of Contents
         # The campaign.homebrewery_toc field is expected to be a block of text that process_block can handle.
@@ -98,6 +99,7 @@ class HomebreweryExportService:
             processed_toc = self.process_block(campaign.homebrewery_toc) # Use the new field name
             homebrewery_content.append(f"{processed_toc.strip()}\n")
             homebrewery_content.append("\\page\n") # Page break after TOC
+            homebrewery_content.append("{{pageNumber,auto}}\n")
         
         # Main Content - Sections
         # Sections are iterated in their given order.
@@ -116,6 +118,7 @@ class HomebreweryExportService:
             # Add a Homebrewery page break after each section.
             # If users include \page within their section content for finer control, that will also take effect.
             homebrewery_content.append("\\page\n") 
+            homebrewery_content.append("{{pageNumber,auto}}\n")
 
         # Add decorative stains (example implementation)
         # This part can be made more sophisticated, e.g., user-selectable stains, random placement, etc.
