@@ -219,10 +219,17 @@ class TestHomebreweryExportService(unittest.TestCase):
             concept="A grand adventure.",
             # status="draft", # Removed, as 'status' is not a direct ORM column
             homebrewery_toc=[
-                "Table of Contents:",
-                "- Chapter 1: The Beginning",
-                "  - Section 1.1: Awakening", # Test indentation processing
-                "- Appendix A: Maps"
+                {'title': 'Table of Contents:', 'type': 'toc_header'},
+                {'title': '- Chapter 1: The Great Journey', 'type': 'chapter_title'},
+                {'title': '- Section 1.1: First Steps', 'type': 'section_detail'},
+                # This next one tests if H2 conversion happens *after* title extraction
+                # if the title itself matches the "Chapter X:" pattern.
+                {'title': 'Chapter 2: The Dark Forest', 'type': 'chapter_title_no_markdown_prefix'},
+                {'title': 'Random Text Line', 'type': 'misc_line'}, # Should be included as is
+                # Test case for non-dict item in the list
+                "Just a string item",
+                # Test case for dict item without 'title'
+                {'other_key': 'some value', 'type': 'no_title_dict'}
             ]
         )
 
@@ -234,20 +241,60 @@ class TestHomebreweryExportService(unittest.TestCase):
         except AttributeError as e:
             self.fail(f"format_campaign_for_homebrewery raised an AttributeError: {e}")
 
-        # Assert TOC tag is present
+        # Assert TOC tag is present (assuming "Table of Contents:" is the first title)
         self.assertIn("{{toc,wide,frame,box}}", output, "Homebrewery TOC tag not found in output.")
 
-        # Assert list items are formatted correctly
-        # The process_block method should convert the list items.
-        # Given the current process_block logic, it specifically looks for "* ", "- ", "+ " at the start of lines
-        # *after* "Table of Contents:" is processed and replaced.
-        # The initial list from `homebrewery_toc` is joined by '\n'.
-        # Then, `process_block` splits it again and processes lines.
-        self.assertIn("- Chapter 1: The Beginning", output, "Formatted list item 'Chapter 1' not found.")
-        self.assertIn("- Section 1.1: Awakening", output, "Formatted list item 'Section 1.1' not found. Check indentation handling.")
-        self.assertIn("- Appendix A: Maps", output, "Formatted list item 'Appendix A' not found.")
+        # Assert list items are formatted correctly from titles
+        # The process_block method joins titles, then processes this joined string.
+        # If a title starts with "- ", it should be treated as a list item.
+        self.assertIn("- Chapter 1: The Great Journey", output, "Formatted list item 'Chapter 1' not found.")
+        self.assertIn("- Section 1.1: First Steps", output, "Formatted list item 'Section 1.1' not found.")
 
-        # Assert that chapter/section headers within the TOC are correctly formatted
+        # Assert that chapter/section headers *within the TOC content itself* are correctly formatted.
+        # The `process_block` method, after joining titles, will apply H2 formatting
+        # to lines that start with "Chapter X:" etc.
+        # This should apply to 'Chapter 2: The Dark Forest' because its *title value* starts that way.
+        # It will NOT apply to "- Chapter 1: The Great Journey" because after list processing,
+        # that line becomes "- Chapter 1: The Great Journey", not "Chapter 1: The Great Journey".
+        # The TOC processing part of `process_block` returns early.
+
+        # Let's analyze `process_block` again with the new list of dicts logic:
+        # 1. `block_content` is list of dicts. `isinstance(block_content[0], dict)` is true.
+        # 2. Titles are extracted: "Table of Contents:", "- Chapter 1: The Great Journey",
+        #    "- Section 1.1: First Steps", "Chapter 2: The Dark Forest", "Random Text Line",
+        #    "Just a string item", "" (from dict without title).
+        # 3. These are joined by "\n" into `block_content` string.
+        # 4. `processed_content = block_content.strip()`.
+        # 5. `processed_content.strip().startswith("Table of Contents:")` is true.
+        #    - `processed_content` gets "{{toc,..." prepended to the rest of the joined titles.
+        #    - Lines are split.
+        #    - For lines from titles like "- Chapter 1: ...":
+        #        - `cleaned_line = re.sub(r"^\s*[\*\-\+]\s*", "", line).strip()`  -> "Chapter 1: The Great Journey"
+        #        - `processed_lines.append(f"- {cleaned_line}")` -> "- Chapter 1: The Great Journey"
+        #    - For "Chapter 2: The Dark Forest":
+        #        - It does not start with "*/-/+". `processed_lines.append(line)` -> "Chapter 2: The Dark Forest"
+        #    - For "Random Text Line": Appended as is.
+        #    - For "Just a string item": Appended as is.
+        #    - For "" (empty string from no_title_dict): Appended as is.
+        # 6. `processed_content = "\n".join(processed_lines)`.
+        # 7. Returns early.
+        #
+        # Conclusion: The H2 markdown conversion `re.sub(r"^(Chapter\s*\d+|Section\s*\d+):", ...)`
+        # will NOT run on TOC content because the function returns early after TOC processing.
+        # So, "Chapter 2: The Dark Forest" will appear as is, not as "## Chapter 2: The Dark Forest".
+
+        self.assertIn("\nChapter 2: The Dark Forest\n", output, "Plain 'Chapter 2' title not found as expected in TOC.")
+        self.assertNotIn("\n## Chapter 2: The Dark Forest\n", output, "H2 formatted 'Chapter 2' unexpectedly found in TOC.")
+        self.assertIn("\nRandom Text Line\n", output, "Random text line not found.")
+        self.assertIn("\nJust a string item\n", output, "Plain string item from list not found.")
+        # The dict without 'title' results in an empty string, which means effectively a blank line if surrounded.
+        # Depending on stripping, it might just be `\n\n`.
+        # Let's check for the presence of other lines around it to infer.
+        # If "Just a string item" is followed by an empty line from the no_title_dict, then by next content.
+        # For this test, the important parts are the title extraction and the TOC-specific processing.
+        # An empty string from a title-less dict is fine.
+
+        # Assert that chapter/section headers within the TOC are correctly formatted if applicable
         # Based on process_block, "Chapter X:" or "Section X:" at the start of a line
         # (after the list marker removal) should become "## Chapter X"
         # However, the current process_block logic for TOCs re-adds a "-" prefix.

@@ -11,7 +11,19 @@ class HomebreweryExportService:
             return ""
 
         if isinstance(block_content, list):
-            block_content = "\n".join(str(item) for item in block_content)
+            if block_content and isinstance(block_content[0], dict):
+                # It's a list of dictionaries, extract titles
+                processed_titles = []
+                for item in block_content:
+                    if isinstance(item, dict):
+                        processed_titles.append(str(item.get('title', '')))
+                    else:
+                        # Handle unexpected non-dict items in a list of dicts
+                        processed_titles.append(str(item))
+                block_content = "\n".join(processed_titles)
+            else:
+                # It's a list of something else (e.g., strings), join them directly
+                block_content = "\n".join(str(item) for item in block_content)
         elif isinstance(block_content, dict):
             block_content = json.dumps(block_content)
         
