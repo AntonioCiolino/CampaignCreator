@@ -199,3 +199,86 @@ def test_service_get_random_item_from_table_user_priority(random_table_service: 
 # if __name__ == '__main__':
 #     unittest.main() # Keep if other unittest tests are still relevant
 # Pytest will discover tests without this, so it can be removed if fully on pytest
+
+from app.services.export_service import HomebreweryExportService
+from app.orm_models import Campaign, CampaignSection
+
+class TestHomebreweryExportService(unittest.TestCase):
+    def test_format_campaign_for_homebrewery_with_list_toc(self):
+        """
+        Tests that format_campaign_for_homebrewery handles a list for homebrewery_toc
+        and correctly processes it into Homebrewery format.
+        """
+        service = HomebreweryExportService()
+
+        # Mock Campaign object
+        mock_campaign = Campaign(
+            id=1,
+            owner_id=1, # Corrected from user_id to owner_id
+            title="My Epic Campaign",
+            concept="A grand adventure.",
+            # status="draft", # Removed, as 'status' is not a direct ORM column
+            homebrewery_toc=[
+                "Table of Contents:",
+                "- Chapter 1: The Beginning",
+                "  - Section 1.1: Awakening", # Test indentation processing
+                "- Appendix A: Maps"
+            ]
+        )
+
+        # Mock CampaignSection list (empty for this test)
+        mock_sections: list[CampaignSection] = []
+
+        try:
+            output = service.format_campaign_for_homebrewery(mock_campaign, mock_sections)
+        except AttributeError as e:
+            self.fail(f"format_campaign_for_homebrewery raised an AttributeError: {e}")
+
+        # Assert TOC tag is present
+        self.assertIn("{{toc,wide,frame,box}}", output, "Homebrewery TOC tag not found in output.")
+
+        # Assert list items are formatted correctly
+        # The process_block method should convert the list items.
+        # Given the current process_block logic, it specifically looks for "* ", "- ", "+ " at the start of lines
+        # *after* "Table of Contents:" is processed and replaced.
+        # The initial list from `homebrewery_toc` is joined by '\n'.
+        # Then, `process_block` splits it again and processes lines.
+        self.assertIn("- Chapter 1: The Beginning", output, "Formatted list item 'Chapter 1' not found.")
+        self.assertIn("- Section 1.1: Awakening", output, "Formatted list item 'Section 1.1' not found. Check indentation handling.")
+        self.assertIn("- Appendix A: Maps", output, "Formatted list item 'Appendix A' not found.")
+
+        # Assert that chapter/section headers within the TOC are correctly formatted
+        # Based on process_block, "Chapter X:" or "Section X:" at the start of a line
+        # (after the list marker removal) should become "## Chapter X"
+        # However, the current process_block logic for TOCs re-adds a "-" prefix.
+        # Let's check for the list format, as direct H2 conversion might only apply
+        # if the line *didn't* start as a list item in the TOC context.
+        # The prompt asks to "Assert that chapter/section headers within the TOC are correctly formatted if applicable"
+        # Given the current `process_block` for TOCs, it prioritizes list formatting.
+        # If the TOC included "Chapter 1: The Beginning" not as a list item but as a standalone line,
+        # then it might become "## Chapter 1: The Beginning".
+        # But since it's part of the list, it should remain as "- Chapter 1: The Beginning"
+        # Let's refine this assertion based on expected behavior of process_block for TOCs.
+        # The `re.sub(r"^(Chapter\s*\d+|Section\s*\d+):", r"## \1", ...)`
+        # might not apply to lines already processed as list items if that check comes later or is mutually exclusive.
+
+        # Re-evaluating `process_block`:
+        # 1. `block_content` (list) becomes a string.
+        # 2. `processed_content.strip().startswith("Table of Contents:")` is true.
+        # 3. `processed_content` replaced with `{{toc,wide,frame,box}}` and original lines.
+        # 4. Lines are split.
+        # 5. Lines starting with `*`, `-`, `+` are processed: `cleaned_line = re.sub(r"^\s*[\*\-\+]\s*", "", line).strip()`
+        #    then `processed_lines.append(f"- {cleaned_line}")`
+        #    So, "- Chapter 1: The Beginning" becomes "Chapter 1: The Beginning", then "- Chapter 1: The Beginning"
+        #    "  - Section 1.1: Awakening" becomes "Section 1.1: Awakening", then "- Section 1.1: Awakening"
+        # 6. Returns early.
+        # Thus, the H2 conversion for "Chapter X:" will NOT run for TOC blocks.
+
+        # So, the assertions for list items are the primary check for TOC content.
+        # No further header conversion assertion is needed for these list items within TOC.
+
+        # Example of a non-TOC block header check (if we were testing that part of process_block)
+        # non_toc_block = "Chapter 1: The Adventure Begins"
+        # processed_non_toc = service.process_block(non_toc_block)
+        # self.assertIn("## Chapter 1: The Adventure Begins", processed_non_toc)
+        pass # Assertions are above

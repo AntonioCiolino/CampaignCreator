@@ -1,4 +1,5 @@
 import re
+import json
 from typing import List, Optional
 from app import orm_models # Assuming orm_models.py contains Campaign and CampaignSection
 
@@ -8,6 +9,11 @@ class HomebreweryExportService:
     def process_block(block_content: Optional[str]) -> str:
         if block_content is None:
             return ""
+
+        if isinstance(block_content, list):
+            block_content = "\n".join(str(item) for item in block_content)
+        elif isinstance(block_content, dict):
+            block_content = json.dumps(block_content)
         
         # Remove any leading/trailing whitespace
         processed_content = block_content.strip()
