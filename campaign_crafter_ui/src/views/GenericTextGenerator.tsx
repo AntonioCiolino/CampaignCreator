@@ -9,7 +9,7 @@ import { Feature } from '../types/featureTypes'; // Updated import
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import Input from '../components/common/Input'; // Import Input component
-import ThematicImageDisplay from '../components/common/ThematicImageDisplay'; // Import Image Display
+import MoodBoardPanel from '../components/common/MoodBoardPanel'; // Updated Import
 import './GenericTextGenerator.css';
 
 const GenericTextGenerator: React.FC = () => {
@@ -274,14 +274,14 @@ const GenericTextGenerator: React.FC = () => {
         </div>
       </section>
       
-      {/* Thematic Image Display Component - Fixed Position */}
-      <ThematicImageDisplay
-        imageUrl={generatedImageUrl}
-        promptUsed={promptUsedForImage}
+      {/* MoodBoardPanel now used for displaying the single generated image */}
+      <MoodBoardPanel
+        moodBoardUrls={generatedImageUrl ? [generatedImageUrl] : []}
         isLoading={imageIsLoading}
         error={imageError}
         isVisible={isImageDisplayVisible}
-        onClose={handleCloseImageDisplay} // Allow user to dismiss the image display
+        onClose={handleCloseImageDisplay}
+        title={promptUsedForImage ? `Generated: ${promptUsedForImage}` : "Generated Image"}
       />
 
     </div>

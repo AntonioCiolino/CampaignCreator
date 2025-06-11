@@ -246,14 +246,14 @@ const CampaignDetailsEditor: React.FC<CampaignDetailsEditorProps> = ({
                     }
                   }
                 }}
-                variant="outlined" // Using MUI Button variant
+                // variant="outlined" // Removed problematic variant for custom Button
                 className="action-button secondary-action-button" // Keep consistent button styling
               >
                 Add URL
               </Button>
             </Box>
             {editableMoodBoardUrls.length > 0 ? (
-              <Box component="ul" sx={{ listStyleType: 'none', p: 0, mt: 1, maxHeight: '200px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '4px', p:1 }}>
+              <Box component="ul" sx={{ listStyleType: 'none', mt: 1, maxHeight: '200px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '4px', p:1 }}> {/* Removed p:0 */}
                 {editableMoodBoardUrls.map((url, index) => (
                   <Box
                     component="li"

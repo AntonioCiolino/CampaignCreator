@@ -48,6 +48,9 @@ export interface Campaign {
   theme_font_family?: string | null;
   theme_background_image_url?: string | null;
   theme_background_image_opacity?: number | null;
+
+  // Mood Board URLs
+  mood_board_image_urls?: string[] | null;
 }
 
 export interface CampaignCreatePayload {
@@ -68,6 +71,9 @@ export interface CampaignCreatePayload {
   theme_font_family?: string | null;
   theme_background_image_url?: string | null;
   theme_background_image_opacity?: number | null;
+
+  // Mood Board URLs
+  mood_board_image_urls?: string[] | null;
 }
 
 export interface CampaignUpdatePayload {
@@ -90,6 +96,9 @@ export interface CampaignUpdatePayload {
   theme_font_family?: string | null;
   theme_background_image_url?: string | null;
   theme_background_image_opacity?: number | null;
+
+  // Mood Board URLs
+  mood_board_image_urls?: string[] | null;
 }
 
 // For LLM Generation requests common to TOC, Titles, etc.

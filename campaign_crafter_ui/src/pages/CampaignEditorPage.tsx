@@ -21,7 +21,8 @@ import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import PublishIcon from '@mui/icons-material/Publish';
 import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
 import ImageIcon from '@mui/icons-material/Image';
-import ThematicImageDisplay, { ThematicImageDisplayProps } from '../components/common/ThematicImageDisplay';
+// import ThematicImageDisplay, { ThematicImageDisplayProps } from '../components/common/ThematicImageDisplay'; // Old import
+import MoodBoardPanel, { MoodBoardPanelProps } from '../components/common/MoodBoardPanel'; // New import
 
 import CampaignDetailsEditor from '../components/campaign_editor/CampaignDetailsEditor';
 import CampaignLLMSettings from '../components/campaign_editor/CampaignLLMSettings';
@@ -99,14 +100,16 @@ const CampaignEditorPage: React.FC = () => {
   const [tocSaveError, setTocSaveError] = useState<string | null>(null);
   const [tocSaveSuccess, setTocSaveSuccess] = useState<string | null>(null);
   const [isTOCEditorVisible, setIsTOCEditorVisible] = useState<boolean>(false);
-  const [isThematicPanelOpen, setIsThematicPanelOpen] = useState<boolean>(false);
-  const [thematicImageData, setThematicImageData] = useState<Omit<ThematicImageDisplayProps, 'isVisible' | 'onClose'>>({
-    imageUrl: null,
-    promptUsed: null,
-    isLoading: false,
-    error: null,
-    title: "Thematic Image" // Default title
-  });
+  // Rename state for MoodBoardPanel visibility
+  const [isMoodBoardPanelOpen, setIsMoodBoardPanelOpen] = useState<boolean>(false);
+  // Remove thematicImageData state as MoodBoardPanel will use campaign.mood_board_image_urls directly
+  // const [thematicImageData, setThematicImageData] = useState<Omit<ThematicImageDisplayProps, 'isVisible' | 'onClose'>>({
+  //   imageUrl: null,
+  //   promptUsed: null,
+  //   isLoading: false,
+  //   error: null,
+  //   title: "Thematic Image" // Default title
+  // });
 
   // State for Theme Editor
   const [themeData, setThemeData] = useState<CampaignThemeData>({});
@@ -116,21 +119,15 @@ const CampaignEditorPage: React.FC = () => {
   const [themeSaveSuccess, setThemeSaveSuccess] = useState<string | null>(null);
 
   const handleSetThematicImage = async (imageUrl: string, prompt: string) => {
-    setThematicImageData({
-      imageUrl: imageUrl,
-      promptUsed: prompt,
-      isLoading: false,
-      error: null,
-      title: "Thematic Image"
-    });
-    setIsThematicPanelOpen(true); // Ensure panel opens when a new image is set
+    // This function now only handles setting the *main* thematic image for the campaign.
+    // The MoodBoardPanel will display campaign.mood_board_image_urls.
+    // The logic to auto-apply this to theme background is already within this function.
 
     if (!campaign || !campaign.id) {
       console.error("Campaign data is not available to save thematic image.");
-      setThematicImageData(prev => ({
-        ...prev,
-        error: "Campaign data not loaded, cannot save thematic image."
-      }));
+      // thematicImageData state is removed, so can't update it here.
+      // Perhaps set a general page error if needed:
+      // setError("Campaign data not loaded, cannot save thematic image.");
       return;
     }
 
@@ -140,23 +137,14 @@ const CampaignEditorPage: React.FC = () => {
     };
 
     try {
-      // Optionally set a loading state for the thematic image panel or page
-      // setThematicImageData(prev => ({ ...prev, isLoading: true }));
-      // setIsPageLoading(true); // Or use a general page loader
-
       const updatedCampaign = await campaignService.updateCampaign(campaign.id, payload);
       setCampaign(updatedCampaign); // Update main campaign state
 
-      // Update thematicImageData again to ensure it reflects the saved state, especially if backend modifies data
-      setThematicImageData(prev => ({
-        ...prev,
-        imageUrl: updatedCampaign.thematic_image_url || imageUrl, // Use value from response if available
-        promptUsed: updatedCampaign.thematic_image_prompt || prompt,
-        isLoading: false,
-        error: null
-      }));
+      // If the panel was previously showing the old thematic image,
+      // it will now be closed by default. User can reopen to see mood board.
+      // setIsMoodBoardPanelOpen(true); // Or decide if it should auto-open for the new thematic image.
 
-      setSaveSuccess("Campaign's main thematic image saved!"); // Clarified message
+      setSaveSuccess("Campaign's main thematic image saved!");
       setTimeout(() => setSaveSuccess(null), 3000);
 
       // New Logic: Auto-apply to theme background and auto-save theme
@@ -427,17 +415,14 @@ const CampaignEditorPage: React.FC = () => {
             }
         }
 
-        // Load thematic image data if available
-        if (campaignDetails.thematic_image_url) {
-          setThematicImageData(prev => ({
-            ...prev,
-            imageUrl: campaignDetails.thematic_image_url || null, // Ensure undefined becomes null
-            promptUsed: campaignDetails.thematic_image_prompt || null,
-            isLoading: false,
-            error: null
-          }));
-          setIsThematicPanelOpen(true);
-        }
+        // Load thematic image data if available - This part is removed as thematicImageData state is gone.
+        // The MoodBoardPanel will directly use campaign.mood_board_image_urls.
+        // If the panel should be open by default if there's a thematic image, that logic might need to be re-evaluated
+        // based on whether campaign.thematic_image_url itself should cause the mood board to open.
+        // For now, let's assume it opens based on user click.
+        // if (campaignDetails.thematic_image_url) {
+        //   setIsMoodBoardPanelOpen(true); // Example: open if thematic image exists, though this panel shows mood board items
+        // }
 
         // Populate themeData for CampaignThemeEditor
         let currentThemeData: CampaignThemeData = { // Changed to let
@@ -1232,12 +1217,12 @@ const CampaignEditorPage: React.FC = () => {
       {isPageLoading && <LoadingSpinner />}
       <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'flex-end', paddingRight: '1rem' }}>
         <Button
-          onClick={() => setIsThematicPanelOpen(!isThematicPanelOpen)}
+          onClick={() => setIsMoodBoardPanelOpen(!isMoodBoardPanelOpen)}
           icon={<ImageIcon />}
-          tooltip={isThematicPanelOpen ? 'Hide Thematic Image Panel' : 'Show Thematic Image Panel'}
+          tooltip={isMoodBoardPanelOpen ? 'Hide Mood Board Panel' : 'Show Mood Board Panel'}
           variant="outline-secondary"
         >
-          {isThematicPanelOpen ? 'Hide Thematic Panel' : 'Show Thematic Panel'}
+          {isMoodBoardPanelOpen ? 'Hide Mood Board' : 'Show Mood Board'}
         </Button>
       </div>
       {campaign && campaign.title && (
@@ -1254,24 +1239,17 @@ const CampaignEditorPage: React.FC = () => {
         </section>
       )}
       <Tabs tabs={tabItems} />
-      {isThematicPanelOpen && (
-        <div className="thematic-image-side-panel">
-          <Button
-            onClick={() => setIsThematicPanelOpen(false)}
-            className="close-panel-button"
-            variant="link"
-            style={{ position: 'absolute', top: '8px', right: '8px' }}
-          >
-            &times; {/* Simple X, or use a CloseIcon */}
-          </Button>
-          <ThematicImageDisplay
-            imageUrl={thematicImageData.imageUrl}
-            promptUsed={thematicImageData.promptUsed}
-            isLoading={thematicImageData.isLoading}
-            error={thematicImageData.error}
-            isVisible={isThematicPanelOpen}
-            onClose={() => setIsThematicPanelOpen(false)}
-            title={thematicImageData.title}
+      {isMoodBoardPanelOpen && (
+        <div className="mood-board-side-panel"> {/* Updated class name for consistency */}
+          {/* Close button is now part of MoodBoardPanel's internal structure if desired, or keep here */}
+          {/* For simplicity, MoodBoardPanel's onClose is used */}
+          <MoodBoardPanel
+            moodBoardUrls={campaign?.mood_board_image_urls || []}
+            isLoading={false} // Moodboard URLs are part of campaign data
+            error={null}    // Errors for mood board fetching not handled here
+            isVisible={isMoodBoardPanelOpen}
+            onClose={() => setIsMoodBoardPanelOpen(false)}
+            title="Mood Board"
           />
         </div>
       )}

@@ -10,6 +10,11 @@ describe('CampaignDetailsEditor', () => {
     mockSetInitialPrompt.mockClear();
     mockSetCampaignBadgeImage.mockClear();
     mockHandleSaveCampaignDetails.mockClear();
+    mockOnSuggestTitles.mockClear();
+    mockOnOpenBadgeImageModal.mockClear();
+    mockOnEditBadgeImageUrl.mockClear();
+    mockOnRemoveBadgeImage.mockClear();
+    mockSetEditableMoodBoardUrls.mockClear(); // Clear new mock
   });
 
   const mockSetEditableTitle = jest.fn();
@@ -20,6 +25,7 @@ describe('CampaignDetailsEditor', () => {
   const mockOnOpenBadgeImageModal = jest.fn();
   const mockOnEditBadgeImageUrl = jest.fn();
   const mockOnRemoveBadgeImage = jest.fn();
+  const mockSetEditableMoodBoardUrls = jest.fn(); // Define new mock
 
   const defaultProps = {
     editableTitle: 'Test Title',
@@ -42,6 +48,10 @@ describe('CampaignDetailsEditor', () => {
     onRemoveBadgeImage: mockOnRemoveBadgeImage,
     badgeUpdateLoading: false,
     badgeUpdateError: null,
+    // Add new mood board props
+    editableMoodBoardUrls: [],
+    setEditableMoodBoardUrls: mockSetEditableMoodBoardUrls,
+    originalMoodBoardUrls: [],
   };
 
   test('renders correctly with basic props', () => {
