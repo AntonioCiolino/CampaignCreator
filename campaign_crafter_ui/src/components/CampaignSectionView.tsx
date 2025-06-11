@@ -27,6 +27,7 @@ interface CampaignSectionViewProps {
   onSectionUpdated: (updatedSection: CampaignSection) => void; // Callback to update parent state
   // Prop for updating section type
   onSectionTypeUpdate?: (sectionId: number, newType: string) => void; // Optional for now
+  onSetThematicImageFromSection?: (imageUrl: string, promptUsed: string) => void;
 }
 
 const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
@@ -39,6 +40,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   campaignId,
   onSectionUpdated,
   onSectionTypeUpdate, // Destructure the new prop
+  onSetThematicImageFromSection,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     // If section.title is "Campaign Concept", it's collapsed.
@@ -213,19 +215,46 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   };
 
   const handleInsertRandomItem = (itemText: string) => {
-    // For now, append to the current content.
-    // A more advanced implementation would insert at the cursor in ReactQuill.
-    // This might require getting a ref to the Quill instance.
-    setEditedContent(prevContent => {
-      // Add a space if prevContent is not empty and doesn't end with a space
-      const prefix = prevContent && !prevContent.endsWith(' ') && !prevContent.endsWith('\n') ? " " : "";
-      return prevContent + prefix + itemText;
-    });
-    // If you have the Quill instance, you could do:
-    // if (quillInstance) {
-    //   const range = quillInstance.getSelection(true);
-    //   quillInstance.insertText(range.index, itemText, 'user');
-    // }
+    if (!quillInstance) {
+      console.error("Quill instance not available for inserting random item.");
+      // Fallback: append to the current content if Quill is not available
+      setEditedContent(prevContent => {
+        const prefix = prevContent && !prevContent.endsWith(' ') && !prevContent.endsWith('\n') ? " " : "";
+        return prevContent + prefix + itemText;
+      });
+      return;
+    }
+
+    const range = quillInstance.getSelection();
+    let insertionPoint;
+
+    if (range) {
+      insertionPoint = range.index;
+      // If there's a selection, we could choose to replace it or insert after.
+      // For simplicity, this example inserts at the start of the selection.
+      // To replace: quillInstance.deleteText(range.index, range.length, 'user');
+    } else {
+      // No selection, insert at current cursor position or end of document
+      insertionPoint = quillInstance.getLength(); // Defaults to end if no cursor focus
+      if (insertionPoint > 0) insertionPoint -=1; // Adjust if getLength() is used for end
+      else insertionPoint = 0; // Ensure not negative
+    }
+
+    // Ensure insertionPoint is not negative if getLength() was 0 or 1.
+    if (insertionPoint < 0) insertionPoint = 0;
+
+
+    let textToInsert = itemText;
+    if (insertionPoint > 0) {
+      const textBefore = quillInstance.getText(insertionPoint - 1, 1);
+      if (textBefore !== ' ' && textBefore !== '\n') {
+        textToInsert = " " + itemText;
+      }
+    }
+
+    quillInstance.insertText(insertionPoint, textToInsert, 'user');
+    quillInstance.setSelection(insertionPoint + textToInsert.length, 0, 'user');
+    setEditedContent(quillInstance.root.innerHTML);
   };
 
   const handleSave = async () => {
@@ -442,15 +471,57 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
         // This modal is for AI image generation, the toolbar button is for URL insertion.
         // If AI generated image URL needs to be inserted into editor, the onImageSuccessfullyGenerated
         // prop for ImageGenerationModal (if it's added) could use a similar logic to handleImageInsert.
-        onImageSuccessfullyGenerated={(imageUrl) => { // Example if you want to connect it
-          if (quillInstance) {
-            const range = quillInstance.getSelection(true) || { index: editedContent.length, length: 0 };
-            quillInstance.insertEmbed(range.index, 'image', imageUrl, 'user');
-          } else {
-            setEditedContent(prev => `${prev}\n![Generated Image](${imageUrl})\n`);
+        onImageSuccessfullyGenerated={(imageUrl, promptUsed) => {
+          if (!quillInstance) {
+            console.error("Quill instance not available for inserting image or setting alt text.");
+            setEditedContent(prev => `${prev}\n![${promptUsed || 'Generated Image'}](${imageUrl})\n`);
+            setIsImageGenerationModalOpen(false);
+            return;
           }
+
+          const range = quillInstance.getSelection(true) || { index: quillInstance.getLength() -1, length: 0 };
+          // Ensure range.index is valid if editor is empty or nearly empty
+          let safeIndex = range.index;
+          if (quillInstance.getLength() === 1 && safeIndex > 0) { // Quill starts with a newline
+             safeIndex = 0;
+          } else if (safeIndex < 0) {
+             safeIndex = 0;
+          }
+
+          quillInstance.insertEmbed(safeIndex, 'image', imageUrl, 'user');
+
+          try {
+            setTimeout(() => {
+              if (!quillInstance) return; // Check again inside timeout
+              const editorRoot = quillInstance.root;
+              // Query for the specific image. Note: src might get proxied or altered by Quill/browser.
+              // A more robust way might involve marking the image somehow before insertion if this fails.
+              const imgElements = editorRoot.querySelectorAll(`img[src="${imageUrl}"]`);
+              if (imgElements.length > 0) {
+                const imgElement = imgElements[imgElements.length - 1] as HTMLImageElement; // Assume last is newest
+                imgElement.alt = promptUsed || 'Generated image'; // Set alt text
+                // Update Quill's internal model if direct DOM manipulation isn't picked up
+                // This ensures the change is saved and part of the undo/redo stack.
+                setEditedContent(quillInstance.root.innerHTML);
+              } else {
+                console.warn("Could not find the inserted image to set alt text for src:", imageUrl);
+              }
+            }, 100); // 100ms delay to allow Quill to render the image
+          } catch (e) {
+            console.error("Error setting alt text for image:", e);
+          }
+
+          // Move cursor after the inserted image + a space for better UX
+          // Quill inserts images as 0-length embeds, cursor behavior can be tricky.
+          // This attempts to place it after.
+          quillInstance.setSelection(safeIndex + 1, 0, 'user');
+
+
           setIsImageGenerationModalOpen(false);
         }}
+        onSetAsThematic={onSetThematicImageFromSection}
+        primaryActionText="Insert into Editor"
+        autoApplyDefault={true}
       />
     </div>
   );

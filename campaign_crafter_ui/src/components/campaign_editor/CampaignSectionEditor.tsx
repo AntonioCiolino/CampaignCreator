@@ -31,7 +31,6 @@ import {
 interface CampaignSectionEditorProps {
   sections: CampaignSection[];
   setSections: React.Dispatch<React.SetStateAction<CampaignSection[]>>;
-  handleAddNewSection: () => void;
   handleDeleteSection: (sectionId: number) => void; // Changed sectionId to number
   // These direct handlers might be replaced if onSave handles all updates
   handleUpdateSectionContent: (sectionId: number, newContent: string) => void; // Changed sectionId to number
@@ -39,22 +38,21 @@ interface CampaignSectionEditorProps {
   handleUpdateSectionType: (sectionId: number, newType: string) => void; // Added for type updates
   onUpdateSectionOrder: (orderedSectionIds: number[]) => Promise<void>;
   forceCollapseAllSections?: boolean; // Added new prop
-  isAddSectionDisabled?: boolean; // Prop to disable the "Add New Section" button
   campaignId: string | number; // Added campaignId prop
+  onSetThematicImageForSection?: (imageUrl: string, promptUsed: string) => void;
 }
 
 const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
   sections,
   setSections,
-  handleAddNewSection,
   handleDeleteSection,
   handleUpdateSectionContent, // Keep this prop
   handleUpdateSectionTitle,   // Keep this prop for now, though CampaignSectionView might not edit title
   handleUpdateSectionType,  // Destructure new prop
   onUpdateSectionOrder,
   forceCollapseAllSections, // Destructure the new prop
-  isAddSectionDisabled = false, // Destructure and default to false
   campaignId, // Destructure campaignId
+  onSetThematicImageForSection,
 }) => {
   const onDragEnd = (result: DropResult) => { // Removed ResponderProvided as it's not typically used in onDragEnd
     const { source, destination } = result;
@@ -109,16 +107,6 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
       <CardContent>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h6">Campaign Sections</Typography>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AddCircleOutlineIcon />}
-            onClick={handleAddNewSection}
-            disabled={isAddSectionDisabled}
-            title={isAddSectionDisabled ? "Please define and save a campaign concept in the 'Details' tab first." : "Add a new section to the campaign"}
-          >
-            Add New Section
-          </Button>
         </Box>
         <DragDropContext onDragEnd={onDragEnd}>
           <Droppable droppableId="campaignSections">
@@ -177,6 +165,7 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
                                 // Then call the actual update handler passed from parent
                                 handleUpdateSectionType(sectionId, newType);
                               }}
+                              onSetThematicImageFromSection={onSetThematicImageForSection}
                             />
                           </Box>
                           <IconButton

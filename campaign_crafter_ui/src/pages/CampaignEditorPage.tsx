@@ -20,6 +20,8 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import PublishIcon from '@mui/icons-material/Publish';
 import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
+import ImageIcon from '@mui/icons-material/Image';
+import ThematicImageDisplay, { ThematicImageDisplayProps } from '../components/common/ThematicImageDisplay';
 
 import CampaignDetailsEditor from '../components/campaign_editor/CampaignDetailsEditor';
 import CampaignLLMSettings from '../components/campaign_editor/CampaignLLMSettings';
@@ -95,6 +97,25 @@ const CampaignEditorPage: React.FC = () => {
   const [tocSaveError, setTocSaveError] = useState<string | null>(null);
   const [tocSaveSuccess, setTocSaveSuccess] = useState<string | null>(null);
   const [isTOCEditorVisible, setIsTOCEditorVisible] = useState<boolean>(false);
+  const [isThematicPanelOpen, setIsThematicPanelOpen] = useState<boolean>(false);
+  const [thematicImageData, setThematicImageData] = useState<Omit<ThematicImageDisplayProps, 'isVisible' | 'onClose'>>({
+    imageUrl: null,
+    promptUsed: null,
+    isLoading: false,
+    error: null,
+    title: "Thematic Image" // Default title
+  });
+
+  const handleSetThematicImage = async (imageUrl: string, prompt: string) => {
+    setThematicImageData({
+      imageUrl: imageUrl,
+      promptUsed: prompt,
+      isLoading: false,
+      error: null,
+      title: "Thematic Image"
+    });
+    setIsThematicPanelOpen(true); // Ensure panel opens when a new image is set
+  };
 
   const selectedLLMObject = useMemo(() => {
     if (availableLLMs.length > 0 && selectedLLMId) {
@@ -882,6 +903,12 @@ const CampaignEditorPage: React.FC = () => {
           {tocSaveSuccess && <p className="success-message feedback-message">{tocSaveSuccess}</p>}
         </section>
       )}
+      <div className="action-group export-action-group editor-section">
+        <Button onClick={handleExportHomebrewery} disabled={isExporting} className="llm-button export-button" icon={<PublishIcon />} tooltip="Export the campaign content as Markdown formatted for Homebrewery">
+          {isExporting ? 'Exporting...' : 'Export to Homebrewery'}
+        </Button>
+        {exportError && <p className="error-message llm-feedback">{exportError}</p>}
+      </div>
     </>
   );
 
@@ -895,20 +922,16 @@ const CampaignEditorPage: React.FC = () => {
         <Button onClick={() => setForceCollapseAll(false)} className="action-button" icon={<UnfoldMoreIcon />} tooltip="Expand all campaign sections">
           Expand All Sections
         </Button>
+        <Button
+          onClick={() => setIsAddSectionCollapsed(!isAddSectionCollapsed)}
+          disabled={!campaign?.concept?.trim()}
+          className="action-button"
+          icon={<AddCircleOutlineIcon />}
+          tooltip={!campaign?.concept?.trim() ? "Please define and save a campaign concept first." : "Add a new section to the campaign"}
+        >
+          Add New Section
+        </Button>
       </div>
-      <CampaignSectionEditor
-        campaignId={campaignId!}
-        sections={sections}
-        setSections={setSections}
-        handleAddNewSection={() => setIsAddSectionCollapsed(false)}
-        isAddSectionDisabled={!campaign?.concept?.trim()}
-        handleDeleteSection={handleDeleteSection}
-        handleUpdateSectionContent={handleUpdateSectionContent}
-        handleUpdateSectionTitle={handleUpdateSectionTitle}
-        handleUpdateSectionType={handleUpdateSectionType}
-        onUpdateSectionOrder={handleUpdateSectionOrder}
-        forceCollapseAllSections={forceCollapseAll}
-      />
       {!isAddSectionCollapsed && campaign?.concept?.trim() && (
         <div className="editor-actions add-section-area editor-section card-like" style={{ marginTop: '20px' }}>
           <h3>Add New Section</h3>
@@ -935,6 +958,18 @@ const CampaignEditorPage: React.FC = () => {
           </form>
         </div>
       )}
+      <CampaignSectionEditor
+        campaignId={campaignId!}
+        sections={sections}
+        setSections={setSections}
+        handleDeleteSection={handleDeleteSection}
+        handleUpdateSectionContent={handleUpdateSectionContent}
+        handleUpdateSectionTitle={handleUpdateSectionTitle}
+        handleUpdateSectionType={handleUpdateSectionType}
+        onUpdateSectionOrder={handleUpdateSectionOrder}
+        forceCollapseAllSections={forceCollapseAll}
+        onSetThematicImageForSection={handleSetThematicImage}
+      />
       {!campaign?.concept?.trim() && (
         <div className="editor-section user-message card-like" style={{ marginTop: '20px', padding: '15px', textAlign: 'center' }}>
           <Typography variant="h6" color="textSecondary">
@@ -971,12 +1006,6 @@ const CampaignEditorPage: React.FC = () => {
         {autoSaveLLMSettingsSuccess && <p className="success-message feedback-message">{autoSaveLLMSettingsSuccess}</p>}
       </div>
       {tocError && <p className="error-message llm-feedback editor-section">{tocError}</p>}
-      <div className="action-group export-action-group editor-section">
-        <Button onClick={handleExportHomebrewery} disabled={isExporting} className="llm-button export-button" icon={<PublishIcon />} tooltip="Export the campaign content as Markdown formatted for Homebrewery">
-          {isExporting ? 'Exporting...' : 'Export to Homebrewery'}
-        </Button>
-        {exportError && <p className="error-message llm-feedback">{exportError}</p>}
-      </div>
     </>
   );
 
@@ -989,6 +1018,16 @@ const CampaignEditorPage: React.FC = () => {
   return (
     <div className="campaign-editor-page">
       {isPageLoading && <LoadingSpinner />}
+      <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'flex-end', paddingRight: '1rem' }}>
+        <Button
+          onClick={() => setIsThematicPanelOpen(!isThematicPanelOpen)}
+          icon={<ImageIcon />}
+          tooltip={isThematicPanelOpen ? 'Hide Thematic Image Panel' : 'Show Thematic Image Panel'}
+          variant="outlined"
+        >
+          {isThematicPanelOpen ? 'Hide Thematic Panel' : 'Show Thematic Panel'}
+        </Button>
+      </div>
       {campaign && campaign.title && (
         <h1 className="campaign-main-title">{campaign.title}</h1>
       )}
@@ -1003,6 +1042,27 @@ const CampaignEditorPage: React.FC = () => {
         </section>
       )}
       <Tabs tabs={tabItems} />
+      {isThematicPanelOpen && (
+        <div className="thematic-image-side-panel">
+          <Button
+            onClick={() => setIsThematicPanelOpen(false)}
+            className="close-panel-button"
+            variant="text"
+            style={{ position: 'absolute', top: '8px', right: '8px' }}
+          >
+            &times; {/* Simple X, or use a CloseIcon */}
+          </Button>
+          <ThematicImageDisplay
+            imageUrl={thematicImageData.imageUrl}
+            promptUsed={thematicImageData.promptUsed}
+            isLoading={thematicImageData.isLoading}
+            error={thematicImageData.error}
+            isVisible={isThematicPanelOpen}
+            onClose={() => setIsThematicPanelOpen(false)}
+            title={thematicImageData.title}
+          />
+        </div>
+      )}
       <LLMSelectionDialog
         isOpen={isLLMDialogOpen}
         currentModelId={selectedLLMId}
@@ -1016,6 +1076,9 @@ const CampaignEditorPage: React.FC = () => {
         isOpen={isBadgeImageModalOpen}
         onClose={() => setIsBadgeImageModalOpen(false)}
         onImageSuccessfullyGenerated={handleBadgeImageGenerated}
+        onSetAsThematic={handleSetThematicImage}
+        primaryActionText="Set as Badge Image"
+        autoApplyDefault={true}
       />
       <SuggestedTitlesModal
         isOpen={isSuggestedTitlesModalOpen}
