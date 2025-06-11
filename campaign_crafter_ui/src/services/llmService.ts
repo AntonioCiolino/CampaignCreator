@@ -10,7 +10,10 @@ interface LLMModelsResponse {
   models: LLMModel[];
 }
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
+// const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
+// API_BASE_URL will be handled by apiClient
+import apiClient from './apiClient';
+
 
 /**
  * Fetches the list of available LLM models from the backend.
@@ -19,58 +22,32 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:800
  */
 export const getAvailableLLMs = async (): Promise<LLMModel[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/llm/models`);
-    if (!response.ok) {
-      // Attempt to get more specific error information
-      const contentType = response.headers.get("content-type");
-      let errorDetail = `Failed to fetch LLM models: ${response.status} ${response.statusText}`;
-      if (contentType && contentType.includes("application/json")) {
-        try {
-          const errorData = await response.json();
-          errorDetail = errorData.detail || errorDetail;
-        } catch (jsonError) {
-          // If parsing JSON fails, stick with the status text or provide raw text
-          console.error("Failed to parse error response as JSON:", jsonError);
-          // Optionally, try to read as text if JSON parsing fails
-          // errorDetail = await response.text();
-        }
-      } else if (contentType && contentType.includes("text/html")) {
-        // If we received HTML, it's likely a misconfiguration or server error page
-        errorDetail = `Received HTML response from server (status ${response.status}). Check API proxy configuration or server logs.`;
-        // To get a snippet of the HTML for debugging, you could do:
-        // const htmlSnippet = (await response.text()).substring(0, 200);
-        // errorDetail += ` HTML Snippet: ${htmlSnippet}`;
-      }
-      throw new Error(errorDetail);
-    }
+    // Assuming /api/v1/llm/models is public and doesn't need auth,
+    // using apiClient here for consistency in base URL handling.
+    // If it strictly needs to be fetch without any auth headers apiClient might add,
+    // then the original fetch was fine, just ensure API_BASE_URL is correct.
+    // For now, let's switch to apiClient for base URL consistency.
+    const response = await apiClient.get<LLMModelsResponse>('/api/v1/llm/models');
 
-    // If response.ok is true, we still need to verify Content-Type
-    const contentType = response.headers.get("content-type");
-    if (!contentType || !contentType.includes("application/json")) {
-      // If response.ok is true but content is not JSON, this is unexpected.
-      let responseText = await response.text(); // Get the actual response text
-      throw new Error(
-        `Expected JSON response but received ${contentType || 'unknown content type'}. ` +
-        `Status: ${response.status}. Response: ${responseText.substring(0, 200)}...` // Show a snippet
-      );
-    }
+    // Axios automatically checks for response.ok and throws for non-2xx.
+    // It also parses JSON by default.
+    // We might still want to check Content-Type if strict validation is needed,
+    // but usually apiClient handles this.
 
-    const data: LLMModelsResponse = await response.json();
-    if (!data.models) {
-        console.warn('No models found in response (but was valid JSON):', data);
+    if (!response.data || !response.data.models) {
+        console.warn('No models found in response or unexpected structure:', response.data);
         return []; 
     }
-    return data.models;
+    return response.data.models;
 
-  } catch (error) {
-    // Log the full error object if it's not just a string message
-    if (error instanceof Error) {
-        console.error("Error fetching available LLM models:", error.message, error.stack);
-    } else {
-        console.error("Error fetching available LLM models (unknown type):", error);
+  } catch (error: any) {
+    console.error("Error fetching available LLM models:", error);
+    if (error.response && error.response.data && error.response.data.detail) {
+        throw new Error(error.response.data.detail);
+    } else if (error.message) {
+        throw new Error(error.message);
     }
-    // Re-throw the original error or a new one if you transformed it
-    throw error;
+    throw new Error("An unknown error occurred while fetching LLM models.");
   }
 };
 
@@ -101,23 +78,18 @@ export const generateTextLLM = async (params: LLMTextGenerationParams): Promise<
             requestBody.max_tokens = params.max_tokens;
         }
 
-        const response = await fetch(`${API_BASE_URL}/api/v1/llm/generate-text`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestBody),
-        });
+        // New apiClient call:
+        const response = await apiClient.post<LLMTextGenerationResponse>('/api/v1/llm/generate-text', requestBody);
+        return response.data; // Axios wraps the response in a `data` object
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ detail: 'Network response was not ok during text generation.' }));
-            throw new Error(errorData.detail || `Failed to generate text: ${response.statusText}`);
-        }
-        const data: LLMTextGenerationResponse = await response.json();
-        return data;
-    } catch (error) {
+    } catch (error: any) { // Axios errors can be handled more specifically if needed
         console.error("Error generating text with LLM:", error);
-        throw error;
+        if (error.response && error.response.data && error.response.data.detail) {
+            throw new Error(error.response.data.detail);
+        } else if (error.message) {
+            throw new Error(error.message);
+        }
+        throw new Error("An unknown error occurred during text generation.");
     }
 };
 
@@ -155,24 +127,18 @@ export const generateImage = async (request: ImageGenerationRequest): Promise<Im
     if (request.quality) requestBody.quality = request.quality;
     // if (request.style) requestBody.style = request.style;
 
+    // New apiClient call:
+    const response = await apiClient.post<ImageGenerationResponse>('/api/v1/images/generate', requestBody);
+    return response.data;
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/images/generate`, { // Updated endpoint path
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: 'Network response was not ok during image generation.' }));
-      throw new Error(errorData.detail || `Failed to generate image: ${response.statusText} (Status: ${response.status})`);
-    }
-    const data: ImageGenerationResponse = await response.json();
-    return data;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error generating image:", error);
-    throw error;
+    if (error.response && error.response.data && error.response.data.detail) {
+        throw new Error(error.response.data.detail);
+    } else if (error.message) {
+        throw new Error(error.message);
+    }
+    throw new Error("An unknown error occurred during image generation.");
   }
 };
 // --- End New Image Generation ---
