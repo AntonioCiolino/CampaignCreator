@@ -2,8 +2,8 @@
 .campaign-theme-editor {
   padding: 20px;
   margin-top: 20px;
-  background-color: #f9f9f9; /* Example background */
-  border-radius: 8px;
+  background-color: transparent; /* Allow parent's .card-like background to show */
+  border-radius: 8px; /* Keep border-radius if desired, or remove if .card-like handles it */
 }
 
 .campaign-theme-editor h3 {
@@ -30,7 +30,7 @@
   display: block;
   margin-bottom: 8px;
   font-weight: bold;
-  color: #333;
+  color: var(--text-color); /* This will now inherit from campaign theme via App.css */
 }
 
 .campaign-theme-editor .form-input,

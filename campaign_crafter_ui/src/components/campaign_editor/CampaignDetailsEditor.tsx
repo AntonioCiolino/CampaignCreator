@@ -64,7 +64,7 @@ const CampaignDetailsEditor: React.FC<CampaignDetailsEditorProps> = ({
 
   return (
     <> {/* Changed to Fragment to allow multiple top-level elements including Modal */}
-    <Card sx={{ mb: 3 }}>
+    <Card sx={{ mb: 3, backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
       <Box
         sx={{
           display: 'flex',

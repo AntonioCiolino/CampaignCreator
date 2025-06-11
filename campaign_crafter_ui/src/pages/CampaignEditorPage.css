@@ -4,8 +4,10 @@
   --primary-color: #007bff;
   --primary-color-light: #e0f2fe;
   --primary-color-dark: #0056b3;
-  --text-color: #333;
-  --text-color-muted: #6c757d;
+  /* Ensure this page's --text-color respects the campaign theme set on body/root from App.css/index.css */
+  /* Fallback chain: campaign specific -> campaign default (from index.css via App.css) -> local default */
+  --text-color: var(--campaign-text-color, var(--campaign-text-color-default, #333));
+  --text-color-muted: #6c757d; /* This could also be themed if desired, e.g., derived from --campaign-text-color or a secondary theme color */
   --border-color: #dee2e6;
   --border-color-light: #f1f3f5;
   --surface-color: #ffffff;
@@ -75,7 +77,7 @@
 .read-only-section {
   margin-top: var(--global-spacing-unit);
   padding: var(--global-spacing-unit);
-  background-color: var(--surface-color); /* White background to stand out a bit */
+  background-color: rgba(255, 255, 255, 0.05); /* Very subtle light overlay */
   border: 1px solid var(--border-color-light);
   border-radius: 4px;
 }
@@ -99,15 +101,15 @@
   margin-top: var(--global-spacing-unit);
   margin-bottom: var(--global-spacing-unit);
   padding: var(--global-spacing-unit);
-  background-color: var(--surface-color); /* Light background for these areas */
+  background-color: rgba(255, 255, 255, 0.05); /* Very subtle light overlay */
   border: 1px solid var(--border-color-light);
   border-radius: 4px;
 }
-.add-section-form.card-like { /* From previous step, ensure it's styled */
+.add-section-form.card-like { /* This is handled by .card-like rule below now */
   margin-top: var(--global-spacing-unit) !important; /* Ensure spacing */
   padding: var(--global-spacing-unit);
-  background-color: var(--surface-color);
-  border: 1px solid var(--border-color-light);
+  /* background-color: var(--surface-color); */ /* Governed by .card-like */
+  border: 1px solid var(--border-color-light); /* Governed by .card-like */
   border-radius: 4px;
 }
 
@@ -216,7 +218,7 @@
 /* Ensure .card-like (used for Add New Section form) has consistent styling */
 .card-like {
   padding: var(--global-spacing-unit);
-  background-color: var(--campaign-secondary-color, var(--surface-color)); /* Use campaign secondary or local surface */
+  background-color: rgba(255, 255, 255, 0.1); /* Light, slightly more opaque overlay */
   border: 1px solid var(--campaign-primary-color, var(--border-color-light)); /* Use campaign primary for border */
   border-radius: 4px;
   margin-top: var(--global-spacing-unit);
@@ -234,7 +236,7 @@
 .page-level-concept {
   margin-bottom: calc(var(--global-spacing-unit) * 1.5); /* More margin for separation */
   padding: calc(var(--global-spacing-unit) * 1.25);
-  background-color: var(--surface-color); /* Consistent with other main sections */
+  background-color: rgba(255, 255, 255, 0.05); /* Very subtle light overlay */
   border: 1px solid var(--border-color); /* Slightly more prominent border */
   border-radius: 4px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05); /* Subtle shadow */
