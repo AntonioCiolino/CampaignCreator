@@ -199,115 +199,165 @@ def test_service_get_random_item_from_table_user_priority(random_table_service: 
 # if __name__ == '__main__':
 #     unittest.main() # Keep if other unittest tests are still relevant
 # Pytest will discover tests without this, so it can be removed if fully on pytest
+import json # Added for test_process_block_dict_input
 
 from app.services.export_service import HomebreweryExportService
 from app.orm_models import Campaign, CampaignSection
 
+class TestProcessBlock(unittest.TestCase):
+    def setUp(self):
+        self.service = HomebreweryExportService()
+
+    def test_process_block_none_input(self):
+        self.assertEqual(self.service.process_block(None), "")
+
+    def test_process_block_string_input(self):
+        self.assertEqual(self.service.process_block("  Some text\n  "), "Some text") # Trailing \n is stripped
+
+    def test_process_block_preformatted_homebrewery_block(self):
+        # This test now checks if pre-formatted blocks are passed through (just stripped)
+        # The list of known_patterns in process_block includes '{{toc'
+        input_content = "  {{toc,wide\n- Chapter 1\n}}  "
+        expected_output = "{{toc,wide\n- Chapter 1\n}}"
+        self.assertEqual(self.service.process_block(input_content), expected_output)
+
+        input_content_note = "  {{note,wide\nSome note\n}}  "
+        expected_output_note = "{{note,wide\nSome note\n}}"
+        self.assertEqual(self.service.process_block(input_content_note), expected_output_note)
+
+        input_content_style = "  <style>\n.phb{color:red;}\n</style>  "
+        expected_output_style = "<style>\n.phb{color:red;}\n</style>"
+        self.assertEqual(self.service.process_block(input_content_style), expected_output_style)
+
+    def test_process_block_list_of_strings(self):
+        # String is "  Line 1  \nLine 2", then strip()
+        self.assertEqual(self.service.process_block(["  Line 1  ", "Line 2"]), "Line 1  \nLine 2")
+
+    def test_process_block_list_of_dicts_with_title(self):
+        input_list = [{'title': "  Title A  "}, {'title': "Title B"}]
+        # String is "  Title A  \nTitle B", then strip()
+        self.assertEqual(self.service.process_block(input_list), "Title A  \nTitle B")
+
+    def test_process_block_list_of_mixed_content(self):
+        input_list = [{'title': "Title X"}, "Just a string", {'other_key': "No title here"}]
+        # Titles: ["Title X", "Just a string", ""]
+        # Joined: "Title X\nJust a string\n"
+        # Stripped: "Title X\nJust a string"
+        expected = "Title X\nJust a string"
+        self.assertEqual(self.service.process_block(input_list), expected)
+
+    def test_process_block_dict_input(self):
+        input_dict = {'data': 'value', 'id': 123}
+        output_str = self.service.process_block(input_dict)
+        self.assertEqual(json.loads(output_str), input_dict)
+
+    def test_process_block_empty_list_input(self):
+        self.assertEqual(self.service.process_block([]), "")
+
 class TestHomebreweryExportService(unittest.TestCase):
     def test_format_campaign_for_homebrewery_with_list_toc(self):
         """
-        Tests that format_campaign_for_homebrewery handles a list for homebrewery_toc
-        and correctly processes it into Homebrewery format.
+        Tests how format_campaign_for_homebrewery uses the new process_block logic.
+        process_block will now just join titles from the list of dicts and strip.
+        It will NOT inject {{toc...}} unless the content itself has it.
         """
         service = HomebreweryExportService()
 
         # Mock Campaign object
+        # To test if a pre-formatted TOC block is passed through,
+        # homebrewery_toc should BE that pre-formatted block as a string.
+        # If it's a list of dicts, titles are joined.
+        toc_as_list_of_dicts = [
+            {'title': '{{toc,wide,frame,box}}'}, # Explicitly include the TOC tag now
+            {'title': '- Chapter 1: The Great Journey'},
+            {'title': '- Section 1.1: First Steps'},
+            {'title': 'Chapter 2: The Dark Forest'}, # This will NOT become ## Chapter 2...
+            {'title': 'Random Text Line'},
+            "Just a string item", # Handled by str(item) in list processing
+            {'other_key': 'some value'} # Handled by .get('title', '') -> ''
+        ]
+
+        expected_processed_toc_string = "{{toc,wide,frame,box}}\n- Chapter 1: The Great Journey\n- Section 1.1: First Steps\nChapter 2: The Dark Forest\nRandom Text Line\nJust a string item\n"
+        # The final "" from {'other_key'...} results in a trailing newline if content exists, then strip removes it if it's the very end.
+        # If it's "A\nB\n", strip() doesn't remove the last \n. If "A\nB\n\n", strip() -> "A\nB\n\n".
+        # The actual behavior of `\n`.join(["a","b",""]) is "a\nb\n"
+        # So `expected_processed_toc_string` should end with `\n` if the last element was `""`.
+        # `block_content.strip()` is the final step in `process_block`.
+        # So if `block_content` is `A\nB\n`, `strip()` makes it `A\nB`.
+
+        # Let's re-verify `process_block` for `toc_as_list_of_dicts`:
+        # Titles: "{{toc,wide,frame,box}}", "- Chapter 1: The Great Journey", ..., "Just a string item", ""
+        # Joined: "{{toc,wide,frame,box}}\n- Chapter 1...\nJust a string item\n"
+        # Stripped: "{{toc,wide,frame,box}}\n- Chapter 1...\nJust a string item" (if the final "" was the only thing on its line)
+        # If the list is `['A', 'B', '']`, `'\n'.join()` is `'A\nB\n'`. `strip()` is `'A\nB'`.
+        # So `expected_processed_toc_string` should not have a trailing newline from the empty title.
+        expected_processed_toc_string = "{{toc,wide,frame,box}}\n- Chapter 1: The Great Journey\n- Section 1.1: First Steps\nChapter 2: The Dark Forest\nRandom Text Line\nJust a string item"
+
+
         mock_campaign = Campaign(
             id=1,
-            owner_id=1, # Corrected from user_id to owner_id
+            owner_id=1,
             title="My Epic Campaign",
             concept="A grand adventure.",
-            # status="draft", # Removed, as 'status' is not a direct ORM column
-            homebrewery_toc=[
-                {'title': 'Table of Contents:', 'type': 'toc_header'},
-                {'title': '- Chapter 1: The Great Journey', 'type': 'chapter_title'},
-                {'title': '- Section 1.1: First Steps', 'type': 'section_detail'},
-                # This next one tests if H2 conversion happens *after* title extraction
-                # if the title itself matches the "Chapter X:" pattern.
-                {'title': 'Chapter 2: The Dark Forest', 'type': 'chapter_title_no_markdown_prefix'},
-                {'title': 'Random Text Line', 'type': 'misc_line'}, # Should be included as is
-                # Test case for non-dict item in the list
-                "Just a string item",
-                # Test case for dict item without 'title'
-                {'other_key': 'some value', 'type': 'no_title_dict'}
-            ]
+            homebrewery_toc=toc_as_list_of_dicts
         )
 
-        # Mock CampaignSection list (empty for this test)
         mock_sections: list[CampaignSection] = []
+        output = service.format_campaign_for_homebrewery(mock_campaign, mock_sections)
 
-        try:
-            output = service.format_campaign_for_homebrewery(mock_campaign, mock_sections)
-        except AttributeError as e:
-            self.fail(f"format_campaign_for_homebrewery raised an AttributeError: {e}")
+        # Now, check if the EXACT processed_toc_string is in the output.
+        # The `format_campaign_for_homebrewery` method calls `processed_toc.strip()` again,
+        # so the `expected_processed_toc_string` (which is already stripped by `process_block`)
+        # should be present.
+        self.assertIn(expected_processed_toc_string, output)
 
-        # Assert TOC tag is present (assuming "Table of Contents:" is the first title)
-        self.assertIn("{{toc,wide,frame,box}}", output, "Homebrewery TOC tag not found in output.")
+        # The old assertions for specific list item formatting or H2 conversion are removed,
+        # as process_block no longer does this. We rely on the input `homebrewery_toc`
+        # to be correctly formatted if it's a pre-rendered block, or we accept the joined titles.
 
-        # Assert list items are formatted correctly from titles
-        # The process_block method joins titles, then processes this joined string.
-        # If a title starts with "- ", it should be treated as a list item.
-        self.assertIn("- Chapter 1: The Great Journey", output, "Formatted list item 'Chapter 1' not found.")
-        self.assertIn("- Section 1.1: First Steps", output, "Formatted list item 'Section 1.1' not found.")
-
-        # Assert that chapter/section headers *within the TOC content itself* are correctly formatted.
-        # The `process_block` method, after joining titles, will apply H2 formatting
-        # to lines that start with "Chapter X:" etc.
-        # This should apply to 'Chapter 2: The Dark Forest' because its *title value* starts that way.
-        # It will NOT apply to "- Chapter 1: The Great Journey" because after list processing,
-        # that line becomes "- Chapter 1: The Great Journey", not "Chapter 1: The Great Journey".
-        # The TOC processing part of `process_block` returns early.
-
-        # Let's analyze `process_block` again with the new list of dicts logic:
-        # 1. `block_content` is list of dicts. `isinstance(block_content[0], dict)` is true.
-        # 2. Titles are extracted: "Table of Contents:", "- Chapter 1: The Great Journey",
-        #    "- Section 1.1: First Steps", "Chapter 2: The Dark Forest", "Random Text Line",
-        #    "Just a string item", "" (from dict without title).
-        # 3. These are joined by "\n" into `block_content` string.
-        # 4. `processed_content = block_content.strip()`.
-        # 5. `processed_content.strip().startswith("Table of Contents:")` is true.
-        #    - `processed_content` gets "{{toc,..." prepended to the rest of the joined titles.
-        #    - Lines are split.
-        #    - For lines from titles like "- Chapter 1: ...":
-        #        - `cleaned_line = re.sub(r"^\s*[\*\-\+]\s*", "", line).strip()`  -> "Chapter 1: The Great Journey"
-        #        - `processed_lines.append(f"- {cleaned_line}")` -> "- Chapter 1: The Great Journey"
-        #    - For "Chapter 2: The Dark Forest":
-        #        - It does not start with "*/-/+". `processed_lines.append(line)` -> "Chapter 2: The Dark Forest"
-        #    - For "Random Text Line": Appended as is.
-        #    - For "Just a string item": Appended as is.
-        #    - For "" (empty string from no_title_dict): Appended as is.
-        # 6. `processed_content = "\n".join(processed_lines)`.
-        # 7. Returns early.
-        #
-        # Conclusion: The H2 markdown conversion `re.sub(r"^(Chapter\s*\d+|Section\s*\d+):", ...)`
-        # will NOT run on TOC content because the function returns early after TOC processing.
-        # So, "Chapter 2: The Dark Forest" will appear as is, not as "## Chapter 2: The Dark Forest".
-
-        self.assertIn("\nChapter 2: The Dark Forest\n", output, "Plain 'Chapter 2' title not found as expected in TOC.")
-        self.assertNotIn("\n## Chapter 2: The Dark Forest\n", output, "H2 formatted 'Chapter 2' unexpectedly found in TOC.")
-        self.assertIn("\nRandom Text Line\n", output, "Random text line not found.")
-        self.assertIn("\nJust a string item\n", output, "Plain string item from list not found.")
-        # The dict without 'title' results in an empty string, which means effectively a blank line if surrounded.
-        # Depending on stripping, it might just be `\n\n`.
-        # Let's check for the presence of other lines around it to infer.
-        # If "Just a string item" is followed by an empty line from the no_title_dict, then by next content.
-        # For this test, the important parts are the title extraction and the TOC-specific processing.
-        # An empty string from a title-less dict is fine.
-
-        # Assert for page numbering tags
-        # Corrected to account for the "\n\n".join behavior
+        # Test for page numbering:
         expected_page_number_tag_sequence = "\\page\n\n\n{{pageNumber,auto}}\n"
-
         num_expected_occurrences = 1 # After concept
-        if mock_campaign.homebrewery_toc:
+        if mock_campaign.homebrewery_toc: # True in this case
             num_expected_occurrences += 1
-        num_expected_occurrences += len(mock_sections) # After each section (0 in this case)
+        num_expected_occurrences += len(mock_sections) # 0 sections
 
         self.assertEqual(output.count(expected_page_number_tag_sequence), num_expected_occurrences,
-                         f"Expected page number tag sequence to appear {num_expected_occurrences} times.")
+                         f"Expected page number tag sequence to appear {num_expected_occurrences} times. Found {output.count(expected_page_number_tag_sequence)} in: \n{output}")
 
-        # (Existing comments about H2 conversion in TOCs remain valid and are kept for clarity)
-        # Re-evaluating `process_block`:
-        # ... (rest of the comments about TOC processing) ...
-        # Thus, the H2 conversion for "Chapter X:" will NOT run for TOC blocks.
-        pass # Other assertions are above
+        # Verify that "Chapter 2: The Dark Forest" is NOT H2 formatted by our code.
+        self.assertIn("\nChapter 2: The Dark Forest\n", output) # Check it's there as plain text (within the TOC block)
+        self.assertNotIn("\n## Chapter 2: The Dark Forest\n", output) # Ensure it wasn't converted to H2
+
+        # Test with a pre-formatted string TOC
+        preformatted_toc_string = "  {{toc,custom}}\n- My Item 1\n- My Item 2\n  "
+        mock_campaign_string_toc = Campaign(
+            id=2, owner_id=1, title="String TOC Campaign", concept="Concept",
+            homebrewery_toc=preformatted_toc_string
+        )
+        output_string_toc = service.format_campaign_for_homebrewery(mock_campaign_string_toc, mock_sections)
+        # process_block will strip it, so "{{toc,custom}}\n- My Item 1\n- My Item 2"
+        self.assertIn("{{toc,custom}}\n- My Item 1\n- My Item 2", output_string_toc)
+        # Check page numbering still works
+        self.assertEqual(output_string_toc.count(expected_page_number_tag_sequence), num_expected_occurrences)
+
+    # Consider adding another test for format_campaign_for_homebrewery
+    # where homebrewery_toc is None to ensure that part of the logic is fine.
+    def test_format_campaign_for_homebrewery_no_toc(self):
+        service = HomebreweryExportService()
+        mock_campaign_no_toc = Campaign(
+            id=3, owner_id=1, title="No TOC Campaign", concept="A concept here",
+            homebrewery_toc=None # Explicitly None
+        )
+        mock_sections: list[CampaignSection] = []
+        output = service.format_campaign_for_homebrewery(mock_campaign_no_toc, mock_sections)
+
+        expected_page_number_tag_sequence = "\\page\n\n\n{{pageNumber,auto}}\n"
+        num_expected_occurrences = 1 # After concept
+        # homebrewery_toc is None, so this isn't added:
+        # if mock_campaign_no_toc.homebrewery_toc:
+        #     num_expected_occurrences += 1
+        num_expected_occurrences += len(mock_sections) # 0 sections
+
+        self.assertEqual(output.count(expected_page_number_tag_sequence), num_expected_occurrences, "Page numbering after concept failed for no-TOC case.")
+        self.assertNotIn("{{toc", output, "TOC block unexpectedly found when toc is None.")

@@ -1,5 +1,4 @@
-import re
-import json
+import json # re is no longer used in this file
 from typing import List, Optional
 from app import orm_models # Assuming orm_models.py contains Campaign and CampaignSection
 
@@ -27,39 +26,35 @@ class HomebreweryExportService:
         elif isinstance(block_content, dict):
             block_content = json.dumps(block_content)
         
-        # Remove any leading/trailing whitespace
-        processed_content = block_content.strip()
+        # At this point, block_content should be a string.
+        # Convert to string just in case it's some other scalar type (e.g. int, float)
+        if not isinstance(block_content, str):
+            block_content = str(block_content)
 
-        # Replace "Table of Contents:" with a Homebrewery TOC tag
-        # This is specific to how TOC might be stored if it's a simple text block.
-        if processed_content.strip().startswith("Table of Contents:"):
-            processed_content = processed_content.replace("Table of Contents:", "{{toc,wide,frame,box}}", 1)
-            # Further process list items if this is a TOC block
-            lines = processed_content.split('\n')
-            processed_lines = []
-            for line in lines:
-                if line.strip().startswith(("* ", "- ", "+ ")):
-                    # Remove existing list marker, add Homebrewery list item format
-                    cleaned_line = re.sub(r"^\s*[\*\-\+]\s*", "", line).strip()
-                    processed_lines.append(f"- {cleaned_line}") 
-                else:
-                    processed_lines.append(line)
-            processed_content = "\n".join(processed_lines)
-            return processed_content # Return early as TOC block is special
+        # Define known Homebrewery opening tags/patterns
+        known_patterns = [
+            '{{toc', '{{style', '{{cover', '{{frontCover',
+            '{{note', '{{descriptive', '{{wide', '{{monster',
+            '<style', '{{columnBreak', '{{pageNumber', '\\page'
+            # Added more common patterns like columnBreak, pageNumber, and \page itself
+        ]
 
-        # Replace "Chapter X:" or "Section X:" at the start of a line with Markdown H2 headings
-        # This is primarily for content that might be structured this way within the TOC block.
-        processed_content = re.sub(r"^(Chapter\s*\d+|Section\s*\d+):", r"## \1", processed_content, flags=re.IGNORECASE | re.MULTILINE)
-        
-        # Replace "Background:" or similar headers at the start of a line with Markdown H2 headings
-        # Also primarily for content within the TOC block if it includes such headers.
-        headers_to_format = ["Background", "Introduction", "Overview", "Synopsis", "Adventure Hook"] # Add more as needed
-        for header in headers_to_format:
-            processed_content = re.sub(rf"^{header}:", rf"## {header}", processed_content, flags=re.IGNORECASE | re.MULTILINE)
+        stripped_content = block_content.strip()
 
-        # Note: This process_block is mostly for basic formatting of a dedicated TOC block.
-        # It's not intended for deep processing of general Markdown or complex section content.
-        return processed_content
+        # Check if the content starts with any known Homebrewery patterns
+        is_known_block = False
+        for pattern in known_patterns:
+            if stripped_content.startswith(pattern):
+                is_known_block = True
+                break
+
+        if is_known_block:
+            # If it's a known Homebrewery block, return it stripped, but otherwise as-is.
+            return stripped_content
+        else:
+            # For any other content, just return it stripped.
+            # All previous regex replacements for lists, chapters, etc., are removed.
+            return stripped_content
 
     def format_campaign_for_homebrewery(self, campaign: orm_models.Campaign, sections: List[orm_models.CampaignSection]) -> str:
         # TODO: Make page_image_url and stain_images configurable in the future, perhaps via campaign settings or user profile.
