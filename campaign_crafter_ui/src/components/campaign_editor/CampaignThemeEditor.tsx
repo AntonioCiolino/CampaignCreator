@@ -126,7 +126,7 @@ const CampaignThemeEditor: React.FC<CampaignThemeEditorProps> = ({
               type="color"
               id="theme_text_color"
               name="theme_text_color"
-              value={defaultColor(themeData.theme_text_color, "#000000")} {/* Default text to black */}
+              value={defaultColor(themeData.theme_text_color, "#000000")}
               onChange={(e) => handleColorChange('theme_text_color', e.target.value)}
             />
           </div>
