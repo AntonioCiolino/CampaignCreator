@@ -126,3 +126,63 @@ def test_seed_features_updates_existing_correctly(
 
     # 4. db.add should have been called with the updated feature object to stage it
     db_mock.add.assert_called_once_with(mock_existing_feature_obj)
+
+
+@patch('app.core.seeding.crud.get_feature_by_name')
+@patch('app.core.seeding.crud.create_feature')
+@patch('app.core.seeding.FEATURES_CSV_PATH')
+def test_seed_features_creates_features_with_none_user_id(
+    mock_csv_path,
+    mock_create_feature,
+    mock_get_feature_by_name
+):
+    # Arrange
+    db_mock = MagicMock(spec=Session)
+    mock_get_feature_by_name.return_value = None  # Simulate no existing features
+
+    csv_content = (
+        "Feature Name,Template\n"
+        "SystemFeature1,Template for system feature 1\n"
+        "SystemFeature2,Template for system feature 2\n"
+    )
+    mock_csv_path.is_file.return_value = True
+    m_open = mock_open(read_data=csv_content)
+
+    with patch('builtins.open', m_open):
+        seed_features(db_mock)
+
+    # Assert
+    assert mock_create_feature.call_count == 2
+
+    calls = mock_create_feature.call_args_list
+
+    # Check the first call
+    args_call1, kwargs_call1 = calls[0]
+
+    # crud.create_feature is called as: crud.create_feature(db, feature=feature_data)
+    # So, db is the first positional arg, feature is a keyword arg.
+    # user_id is not passed by seed_features, so it won't be in kwargs_call1.
+
+    assert args_call1[0] == db_mock # db argument
+    actual_feature_obj_call1 = kwargs_call1.get('feature')
+    assert 'user_id' not in kwargs_call1 # Crucial: seed_features does not pass user_id
+
+    assert actual_feature_obj_call1.name == "SystemFeature1"
+    assert actual_feature_obj_call1.template == "Template for system feature 1"
+    # The FeatureCreate object itself should have user_id as None by default
+    # because seed_features creates it as FeatureCreate(name=fn, template=ft)
+    # and FeatureCreate.user_id defaults to None.
+    assert actual_feature_obj_call1.user_id is None
+
+    # Check the second call
+    args_call2, kwargs_call2 = calls[1]
+    assert args_call2[0] == db_mock # db argument
+    actual_feature_obj_call2 = kwargs_call2.get('feature')
+    assert 'user_id' not in kwargs_call2 # Crucial: seed_features does not pass user_id
+
+    assert actual_feature_obj_call2.name == "SystemFeature2"
+    assert actual_feature_obj_call2.template == "Template for system feature 2"
+    assert actual_feature_obj_call2.user_id is None
+
+    # Also ensure get_feature_by_name was called for each feature
+    assert mock_get_feature_by_name.call_count == 2

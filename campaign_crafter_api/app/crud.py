@@ -102,10 +102,10 @@ def get_features(db: Session, skip: int = 0, limit: int = 100, user_id: Optional
         query = query.filter(orm_models.Feature.user_id == None)
     return query.offset(skip).limit(limit).all()
 
-def create_feature(db: Session, feature: models.FeatureCreate, user_id: int) -> orm_models.Feature:
+def create_feature(db: Session, feature: models.FeatureCreate, user_id: Optional[int] = None) -> orm_models.Feature:
     feature_data = feature.model_dump()
-    feature_data.pop('user_id', None) # Ensure user_id from payload is removed
-    # The user_id explicitly passed to this function (from current_user) takes precedence.
+    feature_data.pop('user_id', None) # Ensure user_id from payload is removed, function arg takes precedence
+    # The user_id explicitly passed to this function (from current_user or None for system features) takes precedence.
     db_feature = orm_models.Feature(**feature_data, user_id=user_id)
     db.add(db_feature)
     db.commit()
