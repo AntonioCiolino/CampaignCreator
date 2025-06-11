@@ -20,6 +20,8 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import PublishIcon from '@mui/icons-material/Publish';
 import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
+import ImageIcon from '@mui/icons-material/Image';
+import ThematicImageDisplay, { ThematicImageDisplayProps } from '../components/common/ThematicImageDisplay';
 
 import CampaignDetailsEditor from '../components/campaign_editor/CampaignDetailsEditor';
 import CampaignLLMSettings from '../components/campaign_editor/CampaignLLMSettings';
@@ -95,6 +97,74 @@ const CampaignEditorPage: React.FC = () => {
   const [tocSaveError, setTocSaveError] = useState<string | null>(null);
   const [tocSaveSuccess, setTocSaveSuccess] = useState<string | null>(null);
   const [isTOCEditorVisible, setIsTOCEditorVisible] = useState<boolean>(false);
+  const [isThematicPanelOpen, setIsThematicPanelOpen] = useState<boolean>(false);
+  const [thematicImageData, setThematicImageData] = useState<Omit<ThematicImageDisplayProps, 'isVisible' | 'onClose'>>({
+    imageUrl: null,
+    promptUsed: null,
+    isLoading: false,
+    error: null,
+    title: "Thematic Image" // Default title
+  });
+
+  const handleSetThematicImage = async (imageUrl: string, prompt: string) => {
+    setThematicImageData({
+      imageUrl: imageUrl,
+      promptUsed: prompt,
+      isLoading: false,
+      error: null,
+      title: "Thematic Image"
+    });
+    setIsThematicPanelOpen(true); // Ensure panel opens when a new image is set
+
+    if (!campaign || !campaign.id) {
+      console.error("Campaign data is not available to save thematic image.");
+      setThematicImageData(prev => ({
+        ...prev,
+        error: "Campaign data not loaded, cannot save thematic image."
+      }));
+      return;
+    }
+
+    const payload: campaignService.CampaignUpdatePayload = {
+      thematic_image_url: imageUrl,
+      thematic_image_prompt: prompt,
+    };
+
+    try {
+      // Optionally set a loading state for the thematic image panel or page
+      // setThematicImageData(prev => ({ ...prev, isLoading: true }));
+      // setIsPageLoading(true); // Or use a general page loader
+
+      const updatedCampaign = await campaignService.updateCampaign(campaign.id, payload);
+      setCampaign(updatedCampaign); // Update main campaign state
+
+      // Update thematicImageData again to ensure it reflects the saved state, especially if backend modifies data
+      setThematicImageData(prev => ({
+        ...prev,
+        imageUrl: updatedCampaign.thematic_image_url || imageUrl, // Use value from response if available
+        promptUsed: updatedCampaign.thematic_image_prompt || prompt,
+        isLoading: false,
+        error: null
+      }));
+
+      setSaveSuccess("Thematic image saved!");
+      setTimeout(() => setSaveSuccess(null), 3000);
+
+    } catch (err) {
+      console.error("Failed to save thematic image:", err);
+      setThematicImageData(prev => ({
+        ...prev,
+        isLoading: false,
+        error: "Failed to save thematic image. Please try again."
+      }));
+      // Optionally, set a more general error message for the page using setError
+      // setError("Failed to save thematic image. Please check your connection and try again.");
+      // setTimeout(() => setError(null), 5000);
+    } finally {
+      // setIsPageLoading(false);
+      // setThematicImageData(prev => ({ ...prev, isLoading: false }));
+    }
+  };
 
   const selectedLLMObject = useMemo(() => {
     if (availableLLMs.length > 0 && selectedLLMId) {
@@ -314,6 +384,19 @@ const CampaignEditorPage: React.FC = () => {
                 setIsPageLoading(false);
             }
         }
+
+        // Load thematic image data if available
+        if (campaignDetails.thematic_image_url) {
+          setThematicImageData(prev => ({
+            ...prev,
+            imageUrl: campaignDetails.thematic_image_url || null, // Ensure undefined becomes null
+            promptUsed: campaignDetails.thematic_image_prompt || null,
+            isLoading: false,
+            error: null
+          }));
+          setIsThematicPanelOpen(true);
+        }
+
         initialLoadCompleteRef.current = true;
       } catch (err) {
         console.error('Failed to fetch initial campaign or LLM data:', err);
@@ -882,6 +965,12 @@ const CampaignEditorPage: React.FC = () => {
           {tocSaveSuccess && <p className="success-message feedback-message">{tocSaveSuccess}</p>}
         </section>
       )}
+      <div className="action-group export-action-group editor-section">
+        <Button onClick={handleExportHomebrewery} disabled={isExporting} className="llm-button export-button" icon={<PublishIcon />} tooltip="Export the campaign content as Markdown formatted for Homebrewery">
+          {isExporting ? 'Exporting...' : 'Export to Homebrewery'}
+        </Button>
+        {exportError && <p className="error-message llm-feedback">{exportError}</p>}
+      </div>
     </>
   );
 
@@ -895,20 +984,16 @@ const CampaignEditorPage: React.FC = () => {
         <Button onClick={() => setForceCollapseAll(false)} className="action-button" icon={<UnfoldMoreIcon />} tooltip="Expand all campaign sections">
           Expand All Sections
         </Button>
+        <Button
+          onClick={() => setIsAddSectionCollapsed(!isAddSectionCollapsed)}
+          disabled={!campaign?.concept?.trim()}
+          className="action-button"
+          icon={<AddCircleOutlineIcon />}
+          tooltip={!campaign?.concept?.trim() ? "Please define and save a campaign concept first." : "Add a new section to the campaign"}
+        >
+          Add New Section
+        </Button>
       </div>
-      <CampaignSectionEditor
-        campaignId={campaignId!}
-        sections={sections}
-        setSections={setSections}
-        handleAddNewSection={() => setIsAddSectionCollapsed(false)}
-        isAddSectionDisabled={!campaign?.concept?.trim()}
-        handleDeleteSection={handleDeleteSection}
-        handleUpdateSectionContent={handleUpdateSectionContent}
-        handleUpdateSectionTitle={handleUpdateSectionTitle}
-        handleUpdateSectionType={handleUpdateSectionType}
-        onUpdateSectionOrder={handleUpdateSectionOrder}
-        forceCollapseAllSections={forceCollapseAll}
-      />
       {!isAddSectionCollapsed && campaign?.concept?.trim() && (
         <div className="editor-actions add-section-area editor-section card-like" style={{ marginTop: '20px' }}>
           <h3>Add New Section</h3>
@@ -935,6 +1020,18 @@ const CampaignEditorPage: React.FC = () => {
           </form>
         </div>
       )}
+      <CampaignSectionEditor
+        campaignId={campaignId!}
+        sections={sections}
+        setSections={setSections}
+        handleDeleteSection={handleDeleteSection}
+        handleUpdateSectionContent={handleUpdateSectionContent}
+        handleUpdateSectionTitle={handleUpdateSectionTitle}
+        handleUpdateSectionType={handleUpdateSectionType}
+        onUpdateSectionOrder={handleUpdateSectionOrder}
+        forceCollapseAllSections={forceCollapseAll}
+        onSetThematicImageForSection={handleSetThematicImage}
+      />
       {!campaign?.concept?.trim() && (
         <div className="editor-section user-message card-like" style={{ marginTop: '20px', padding: '15px', textAlign: 'center' }}>
           <Typography variant="h6" color="textSecondary">
@@ -971,12 +1068,6 @@ const CampaignEditorPage: React.FC = () => {
         {autoSaveLLMSettingsSuccess && <p className="success-message feedback-message">{autoSaveLLMSettingsSuccess}</p>}
       </div>
       {tocError && <p className="error-message llm-feedback editor-section">{tocError}</p>}
-      <div className="action-group export-action-group editor-section">
-        <Button onClick={handleExportHomebrewery} disabled={isExporting} className="llm-button export-button" icon={<PublishIcon />} tooltip="Export the campaign content as Markdown formatted for Homebrewery">
-          {isExporting ? 'Exporting...' : 'Export to Homebrewery'}
-        </Button>
-        {exportError && <p className="error-message llm-feedback">{exportError}</p>}
-      </div>
     </>
   );
 
@@ -989,6 +1080,16 @@ const CampaignEditorPage: React.FC = () => {
   return (
     <div className="campaign-editor-page">
       {isPageLoading && <LoadingSpinner />}
+      <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'flex-end', paddingRight: '1rem' }}>
+        <Button
+          onClick={() => setIsThematicPanelOpen(!isThematicPanelOpen)}
+          icon={<ImageIcon />}
+          tooltip={isThematicPanelOpen ? 'Hide Thematic Image Panel' : 'Show Thematic Image Panel'}
+          variant="outline-secondary"
+        >
+          {isThematicPanelOpen ? 'Hide Thematic Panel' : 'Show Thematic Panel'}
+        </Button>
+      </div>
       {campaign && campaign.title && (
         <h1 className="campaign-main-title">{campaign.title}</h1>
       )}
@@ -1003,6 +1104,27 @@ const CampaignEditorPage: React.FC = () => {
         </section>
       )}
       <Tabs tabs={tabItems} />
+      {isThematicPanelOpen && (
+        <div className="thematic-image-side-panel">
+          <Button
+            onClick={() => setIsThematicPanelOpen(false)}
+            className="close-panel-button"
+            variant="link"
+            style={{ position: 'absolute', top: '8px', right: '8px' }}
+          >
+            &times; {/* Simple X, or use a CloseIcon */}
+          </Button>
+          <ThematicImageDisplay
+            imageUrl={thematicImageData.imageUrl}
+            promptUsed={thematicImageData.promptUsed}
+            isLoading={thematicImageData.isLoading}
+            error={thematicImageData.error}
+            isVisible={isThematicPanelOpen}
+            onClose={() => setIsThematicPanelOpen(false)}
+            title={thematicImageData.title}
+          />
+        </div>
+      )}
       <LLMSelectionDialog
         isOpen={isLLMDialogOpen}
         currentModelId={selectedLLMId}
@@ -1016,6 +1138,9 @@ const CampaignEditorPage: React.FC = () => {
         isOpen={isBadgeImageModalOpen}
         onClose={() => setIsBadgeImageModalOpen(false)}
         onImageSuccessfullyGenerated={handleBadgeImageGenerated}
+        onSetAsThematic={handleSetThematicImage}
+        primaryActionText="Set as Badge Image"
+        autoApplyDefault={true}
       />
       <SuggestedTitlesModal
         isOpen={isSuggestedTitlesModalOpen}

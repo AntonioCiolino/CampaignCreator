@@ -297,3 +297,41 @@
   color: var(--text-color-muted);
   font-style: italic;
 }
+
+.thematic-image-side-panel {
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 300px; /* Adjust width as desired */
+  height: 100vh; /* Full viewport height */
+  background-color: #fff; /* Or a suitable panel background */
+  border-left: 1px solid #ccc;
+  padding: 20px;
+  box-shadow: -2px 0 8px rgba(0,0,0,0.15);
+  z-index: 1050; /* High z-index to float above other content */
+  overflow-y: auto; /* Allow scrolling if content exceeds height */
+  /* For transition, if not using a library, conditional rendering is simpler.
+     If a transition library is used, it would handle enter/exit animations.
+     Basic CSS transition for conditional rendering (applied when element enters DOM): */
+  animation: slideInFromRight 0.3s ease-out;
+}
+
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* Styling for the close button within the panel */
+.thematic-image-side-panel .close-panel-button {
+  /* Add specific styling if the default Button component variant="text" is not enough */
+  /* Example:
+  min-width: auto;
+  padding: 4px;
+  font-size: 1.2rem;
+  line-height: 1;
+  */
+}

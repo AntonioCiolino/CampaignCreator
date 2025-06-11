@@ -23,7 +23,10 @@ const sanitizeFilename = (text: string, maxLength = 50): string => {
 interface ImageGenerationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImageSuccessfullyGenerated?: (imageUrl: string) => void; 
+  onImageSuccessfullyGenerated?: (imageUrl: string, promptUsed: string) => void;
+  onSetAsThematic?: (imageUrl: string, promptUsed: string) => void;
+  primaryActionText?: string;
+  autoApplyDefault?: boolean;
 }
 
 // Matches the backend ImageModelName enum and ImageGenerationRequest model
@@ -52,6 +55,9 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
   isOpen,
   onClose,
   onImageSuccessfullyGenerated, 
+  onSetAsThematic,
+  primaryActionText,
+  autoApplyDefault,
 }) => {
   const [prompt, setPrompt] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<ImageModel>('dall-e');
@@ -59,6 +65,8 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [generationCompleted, setGenerationCompleted] = useState<boolean>(false);
+  const [autoApplyImage, setAutoApplyImage] = useState<boolean>(autoApplyDefault !== undefined ? autoApplyDefault : true);
   // Optional: store full response details if needed for display or callback
   // const [generationDetails, setGenerationDetails] = useState<ImageGenerationResponseData | null>(null);
 
@@ -70,6 +78,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
     setIsLoading(true);
     setError(null);
     setGeneratedImageUrl(null);
+    setGenerationCompleted(false); // Reset for new generation cycle
     // setGenerationDetails(null);
 
     const payload: ImageGenerationRequestPayload = {
@@ -84,10 +93,15 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
       const response = await apiClient.post<ImageGenerationResponseData>('/api/v1/images/generate', payload);
       if (response.data && response.data.image_url) {
         setGeneratedImageUrl(response.data.image_url);
+        setGenerationCompleted(true);
         // setGenerationDetails(response.data); // Optional: if you want to store more details
-        onImageSuccessfullyGenerated?.(response.data.image_url); // Call the callback
+        if (autoApplyImage) {
+          onImageSuccessfullyGenerated?.(response.data.image_url, prompt);
+          onClose(); // Close modal after auto-applying
+        }
       } else {
         setError('Failed to generate image: Invalid response from server.');
+        setGenerationCompleted(false);
       }
     } catch (err: any) {
       console.error('Image generation error:', err);
@@ -140,6 +154,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
           a.click();
           window.URL.revokeObjectURL(url);
           document.body.removeChild(a);
+          onClose(); // Close modal after action
         }).catch(e => {
           console.error("Error creating blob from data URL:", e);
           alert("Failed to prepare image for download.");
@@ -179,6 +194,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      onClose(); // Close modal after action
     }
   };
 
@@ -188,6 +204,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
         .then(() => {
           // Optional: Show a success message
           alert('Image URL copied to clipboard!');
+          onClose(); // Close modal after action
         })
         .catch(err => {
           console.error('Failed to copy URL: ', err);
@@ -205,8 +222,49 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
       setGeneratedImageUrl(null);
       setIsLoading(false);
       setError(null);
+      setGenerationCompleted(false);
+      setAutoApplyImage(autoApplyDefault !== undefined ? autoApplyDefault : true);
     }
-  }, [isOpen]);
+  }, [isOpen, autoApplyDefault]);
+
+  let imageActionsContent = null;
+  if (generationCompleted && !autoApplyImage && generatedImageUrl && !isLoading && !error) {
+    imageActionsContent = (
+      <div className="generated-image-actions" style={{ marginTop: '10px' }}>
+        <Button
+          onClick={() => {
+            if (generatedImageUrl && prompt) {
+              onImageSuccessfullyGenerated?.(generatedImageUrl, prompt);
+            }
+            onClose(); // Close after action
+          }}
+          disabled={!generatedImageUrl}
+          variant="primary"
+        >
+          {primaryActionText || 'Use Image'}
+        </Button>
+        <Button
+          onClick={handleCopyToClipboard}
+          disabled={!generatedImageUrl || generatedImageUrl.startsWith('data:')}
+          size="sm"
+          style={{ marginLeft: '10px' }}
+        >
+          Copy URL
+        </Button>
+        <Button onClick={handleDownloadImage} size="sm" style={{ marginLeft: '10px' }}>
+          Download
+        </Button>
+        <Button
+          onClick={() => { if (generatedImageUrl && prompt) { onSetAsThematic?.(generatedImageUrl, prompt); } onClose(); }}
+          disabled={!generatedImageUrl || !onSetAsThematic}
+          size="sm"
+          style={{ marginLeft: '10px' }}
+        >
+          Set as Thematic
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Generate Image">
@@ -246,27 +304,41 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
           </select>
         </label>
 
+        <div style={{ margin: '10px 0' }}>
+          <label>
+            <input
+              type="checkbox"
+              checked={autoApplyImage}
+              onChange={(e) => setAutoApplyImage(e.target.checked)}
+              disabled={isLoading}
+            />
+            Auto-apply generated image
+          </label>
+        </div>
+
         {isLoading && <div className="loading-indicator">Generating image...</div>}
         {error && <div className="error-message">{error}</div>}
 
-        {/* {generatedImageUrl && !isLoading && !error && (
-          <div className="image-url-display">
-            <span>{generatedImageUrl}</span>
+        {generatedImageUrl && !isLoading && !error && (
+          <div className="image-preview-area" style={{ textAlign: 'center', marginBottom: '15px' }}>
+            <img
+              src={generatedImageUrl}
+              alt="Generated"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '300px',
+                marginTop: '15px',
+                marginBottom: '15px',
+                border: '1px solid #ccc'
+              }}
+            />
+            {imageActionsContent}
           </div>
-        )} */}
+        )}
 
         <div className="modal-actions">
            <Button onClick={handleGenerateImage} disabled={isLoading || !prompt.trim()}>
-            {isLoading ? 'Generating...' : 'Generate'}
-          </Button>
-          <Button 
-            onClick={handleCopyToClipboard} 
-            disabled={isLoading || !generatedImageUrl || !!error || generatedImageUrl.startsWith('data:')}
-          >
-            Copy URL
-          </Button>
-          <Button onClick={handleDownloadImage} disabled={isLoading || !generatedImageUrl || !!error}>
-            Download
+            {isLoading ? 'Generating...' : (generatedImageUrl ? 'Generate New' : 'Generate')}
           </Button>
            <Button onClick={onClose} variant="secondary" disabled={isLoading}>
             Close

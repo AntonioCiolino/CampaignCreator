@@ -82,6 +82,8 @@ class CampaignBase(BaseModel):
     title: str
     initial_user_prompt: Optional[str] = None
     badge_image_url: Optional[str] = None
+    thematic_image_url: Optional[str] = None
+    thematic_image_prompt: Optional[str] = None
     selected_llm_id: Optional[str] = None
     temperature: Optional[float] = None
 
@@ -143,6 +145,8 @@ class CampaignUpdate(BaseModel): # Assuming CampaignUpdate is for PATCH, all fie
     display_toc: Optional[List[Dict[str, str]]] = None # New field for display TOC
     homebrewery_export: Optional[str] = None
     badge_image_url: Optional[str] = None
+    thematic_image_url: Optional[str] = None
+    thematic_image_prompt: Optional[str] = None
     selected_llm_id: Optional[str] = None # Ensure it's part of CampaignUpdate for PATCH
     temperature: Optional[float] = None   # Ensure it's part of CampaignUpdate for PATCH
 

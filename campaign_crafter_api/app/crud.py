@@ -276,6 +276,8 @@ async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, 
         concept=generated_concept, # Use the (awaited) LLM-generated concept
         owner_id=owner_id,
         badge_image_url=campaign_payload.badge_image_url,
+        thematic_image_url=campaign_payload.thematic_image_url,
+        thematic_image_prompt=campaign_payload.thematic_image_prompt,
         selected_llm_id=campaign_payload.selected_llm_id, # New
         temperature=campaign_payload.temperature         # New
         # toc and homebrewery_export are not set here by default
