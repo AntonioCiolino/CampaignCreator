@@ -1023,7 +1023,7 @@ const CampaignEditorPage: React.FC = () => {
           onClick={() => setIsThematicPanelOpen(!isThematicPanelOpen)}
           icon={<ImageIcon />}
           tooltip={isThematicPanelOpen ? 'Hide Thematic Image Panel' : 'Show Thematic Image Panel'}
-          variant="outlined"
+          variant="outline-secondary"
         >
           {isThematicPanelOpen ? 'Hide Thematic Panel' : 'Show Thematic Panel'}
         </Button>
@@ -1047,7 +1047,7 @@ const CampaignEditorPage: React.FC = () => {
           <Button
             onClick={() => setIsThematicPanelOpen(false)}
             className="close-panel-button"
-            variant="text"
+            variant="link"
             style={{ position: 'absolute', top: '8px', right: '8px' }}
           >
             &times; {/* Simple X, or use a CloseIcon */}

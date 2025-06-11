@@ -227,6 +227,45 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
     }
   }, [isOpen, autoApplyDefault]);
 
+  let imageActionsContent = null;
+  if (generationCompleted && !autoApplyImage && generatedImageUrl && !isLoading && !error) {
+    imageActionsContent = (
+      <div className="generated-image-actions" style={{ marginTop: '10px' }}>
+        <Button
+          onClick={() => {
+            if (generatedImageUrl && prompt) {
+              onImageSuccessfullyGenerated?.(generatedImageUrl, prompt);
+            }
+            onClose(); // Close after action
+          }}
+          disabled={!generatedImageUrl}
+          variant="primary"
+        >
+          {primaryActionText || 'Use Image'}
+        </Button>
+        <Button
+          onClick={handleCopyToClipboard}
+          disabled={!generatedImageUrl || generatedImageUrl.startsWith('data:')}
+          size="sm"
+          style={{ marginLeft: '10px' }}
+        >
+          Copy URL
+        </Button>
+        <Button onClick={handleDownloadImage} size="sm" style={{ marginLeft: '10px' }}>
+          Download
+        </Button>
+        <Button
+          onClick={() => { if (generatedImageUrl && prompt) { onSetAsThematic?.(generatedImageUrl, prompt); } onClose(); }}
+          disabled={!generatedImageUrl || !onSetAsThematic}
+          size="sm"
+          style={{ marginLeft: '10px' }}
+        >
+          Set as Thematic
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Generate Image">
       <div className="image-generation-modal-content">
@@ -293,40 +332,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
                 border: '1px solid #ccc'
               }}
             />
-            {generationCompleted && !autoApplyImage && generatedImageUrl && !isLoading && !error && (
-            <div className="generated-image-actions" style={{ marginTop: '10px' }}>
-              <Button
-                onClick={() => {
-                  if (generatedImageUrl && prompt) {
-                    onImageSuccessfullyGenerated?.(generatedImageUrl, prompt);
-                  }
-                  onClose(); // Close after action
-                }}
-                disabled={!generatedImageUrl}
-                variant="primary"
-              >
-                {primaryActionText || 'Use Image'}
-              </Button>
-              <Button
-                onClick={handleCopyToClipboard}
-                disabled={generatedImageUrl.startsWith('data:')}
-                size="sm"
-                style={{ marginLeft: '10px' }}
-              >
-                Copy URL
-              </Button>
-              <Button onClick={handleDownloadImage} size="sm" style={{ marginLeft: '10px' }}>
-                Download
-              </Button>
-              <Button
-                onClick={() => { if (generatedImageUrl && prompt) { onSetAsThematic?.(generatedImageUrl, prompt); } onClose(); }}
-                disabled={!generatedImageUrl || !onSetAsThematic}
-                size="sm"
-                style={{ marginLeft: '10px' }}
-              >
-                Set as Thematic
-              </Button>
-            </div>
+            {imageActionsContent}
           </div>
         )}
 

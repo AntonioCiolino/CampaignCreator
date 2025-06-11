@@ -23,7 +23,6 @@ const mockSections: CampaignSection[] = [
 
 describe('CampaignSectionEditor Drag and Drop', () => {
   const mockSetSections = jest.fn();
-  const mockHandleAddNewSection = jest.fn();
   const mockHandleDeleteSection = jest.fn();
   const mockHandleUpdateSectionContent = jest.fn();
   const mockHandleUpdateSectionTitle = jest.fn();
@@ -45,7 +44,6 @@ describe('CampaignSectionEditor Drag and Drop', () => {
       <CampaignSectionEditor
         sections={sections}
         setSections={mockSetSections}
-        handleAddNewSection={mockHandleAddNewSection}
         handleDeleteSection={mockHandleDeleteSection}
         handleUpdateSectionContent={mockHandleUpdateSectionContent}
         handleUpdateSectionTitle={mockHandleUpdateSectionTitle}
