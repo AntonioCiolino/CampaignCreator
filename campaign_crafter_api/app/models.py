@@ -87,6 +87,15 @@ class CampaignBase(BaseModel):
     selected_llm_id: Optional[str] = None
     temperature: Optional[float] = None
 
+    # New Theme Properties
+    theme_primary_color: Optional[str] = None
+    theme_secondary_color: Optional[str] = None
+    theme_background_color: Optional[str] = None
+    theme_text_color: Optional[str] = None
+    theme_font_family: Optional[str] = None
+    theme_background_image_url: Optional[str] = None
+    theme_background_image_opacity: Optional[float] = None
+
 class CampaignCreate(CampaignBase):
     model_id_with_prefix_for_concept: Optional[str] = None
 
@@ -149,6 +158,15 @@ class CampaignUpdate(BaseModel): # Assuming CampaignUpdate is for PATCH, all fie
     thematic_image_prompt: Optional[str] = None
     selected_llm_id: Optional[str] = None # Ensure it's part of CampaignUpdate for PATCH
     temperature: Optional[float] = None   # Ensure it's part of CampaignUpdate for PATCH
+
+    # New Theme Properties (all optional)
+    theme_primary_color: Optional[str] = None
+    theme_secondary_color: Optional[str] = None
+    theme_background_color: Optional[str] = None
+    theme_text_color: Optional[str] = None
+    theme_font_family: Optional[str] = None
+    theme_background_image_url: Optional[str] = None
+    theme_background_image_opacity: Optional[float] = None
 
 # UserUpdate is now defined above CampaignUpdate
 

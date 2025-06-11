@@ -278,8 +278,17 @@ async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, 
         badge_image_url=campaign_payload.badge_image_url,
         thematic_image_url=campaign_payload.thematic_image_url,
         thematic_image_prompt=campaign_payload.thematic_image_prompt,
-        selected_llm_id=campaign_payload.selected_llm_id, # New
-        temperature=campaign_payload.temperature         # New
+        selected_llm_id=campaign_payload.selected_llm_id,
+        temperature=campaign_payload.temperature,
+
+        # Add new theme properties
+        theme_primary_color=campaign_payload.theme_primary_color,
+        theme_secondary_color=campaign_payload.theme_secondary_color,
+        theme_background_color=campaign_payload.theme_background_color,
+        theme_text_color=campaign_payload.theme_text_color,
+        theme_font_family=campaign_payload.theme_font_family,
+        theme_background_image_url=campaign_payload.theme_background_image_url,
+        theme_background_image_opacity=campaign_payload.theme_background_image_opacity
         # toc and homebrewery_export are not set here by default
     )
     db.add(db_campaign)

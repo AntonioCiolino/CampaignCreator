@@ -31,6 +31,8 @@ import Tabs, { TabItem } from '../components/common/Tabs';
 import { Typography } from '@mui/material';
 import DetailedProgressDisplay from '../components/common/DetailedProgressDisplay';
 import TOCEditor from '../components/campaign_editor/TOCEditor';
+import CampaignThemeEditor, { CampaignThemeData } from '../components/campaign_editor/CampaignThemeEditor';
+import { applyThemeToDocument } from '../utils/themeUtils'; // Import the function
 
 const CampaignEditorPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -105,6 +107,12 @@ const CampaignEditorPage: React.FC = () => {
     error: null,
     title: "Thematic Image" // Default title
   });
+
+  // State for Theme Editor
+  const [themeData, setThemeData] = useState<CampaignThemeData>({});
+  const [isSavingTheme, setIsSavingTheme] = useState<boolean>(false);
+  const [themeSaveError, setThemeSaveError] = useState<string | null>(null);
+  const [themeSaveSuccess, setThemeSaveSuccess] = useState<string | null>(null);
 
   const handleSetThematicImage = async (imageUrl: string, prompt: string) => {
     setThematicImageData({
@@ -397,6 +405,19 @@ const CampaignEditorPage: React.FC = () => {
           setIsThematicPanelOpen(true);
         }
 
+        // Populate themeData for CampaignThemeEditor
+        const currentThemeData: CampaignThemeData = {
+          theme_primary_color: campaignDetails.theme_primary_color,
+          theme_secondary_color: campaignDetails.theme_secondary_color,
+          theme_background_color: campaignDetails.theme_background_color,
+          theme_text_color: campaignDetails.theme_text_color,
+          theme_font_family: campaignDetails.theme_font_family,
+          theme_background_image_url: campaignDetails.theme_background_image_url,
+          theme_background_image_opacity: campaignDetails.theme_background_image_opacity,
+        };
+        setThemeData(currentThemeData);
+        applyThemeToDocument(currentThemeData); // APPLY THEME ON LOAD
+
         initialLoadCompleteRef.current = true;
       } catch (err) {
         console.error('Failed to fetch initial campaign or LLM data:', err);
@@ -406,6 +427,11 @@ const CampaignEditorPage: React.FC = () => {
       }
     };
     fetchInitialData();
+
+    // Cleanup function to remove theme when navigating away
+    return () => {
+      applyThemeToDocument(null); // Or reset to a default app theme
+    };
   }, [campaignId]);
 
   useEffect(() => {
@@ -822,6 +848,47 @@ const CampaignEditorPage: React.FC = () => {
     }
   };
 
+  const handleThemeDataChange = (newThemeData: CampaignThemeData) => {
+    setThemeData(newThemeData);
+  };
+
+  const handleSaveTheme = async () => {
+    if (!campaignId || !campaign) return;
+    setIsSavingTheme(true);
+    setThemeSaveError(null);
+    setThemeSaveSuccess(null);
+    try {
+      const themePayloadToSave: Partial<campaignService.CampaignUpdatePayload> = {};
+      (Object.keys(themeData) as Array<keyof CampaignThemeData>).forEach(key => {
+        if (themeData[key] !== undefined) {
+          (themePayloadToSave as any)[key] = themeData[key];
+        }
+      });
+
+      const updatedCampaign = await campaignService.updateCampaign(campaignId, themePayloadToSave);
+      setCampaign(updatedCampaign); // Update the main campaign state
+      const newThemeData: CampaignThemeData = { // Re-set themeData from the response
+          theme_primary_color: updatedCampaign.theme_primary_color,
+          theme_secondary_color: updatedCampaign.theme_secondary_color,
+          theme_background_color: updatedCampaign.theme_background_color,
+          theme_text_color: updatedCampaign.theme_text_color,
+          theme_font_family: updatedCampaign.theme_font_family,
+          theme_background_image_url: updatedCampaign.theme_background_image_url,
+          theme_background_image_opacity: updatedCampaign.theme_background_image_opacity,
+      };
+      setThemeData(newThemeData);
+      applyThemeToDocument(newThemeData); // APPLY THEME ON SAVE
+      setThemeSaveSuccess('Theme settings saved successfully!');
+      setTimeout(() => setThemeSaveSuccess(null), 3000);
+    } catch (err) {
+      setThemeSaveError('Failed to save theme settings.');
+      console.error("Failed to save theme:", err);
+      setTimeout(() => setThemeSaveError(null), 5000);
+    } finally {
+      setIsSavingTheme(false);
+    }
+  };
+
   if (isLoading) return <LoadingSpinner />;
   if (error) return <p className="error-message">{error}</p>;
   if (!campaign) return <p className="error-message">Campaign not found.</p>;
@@ -1074,6 +1141,20 @@ const CampaignEditorPage: React.FC = () => {
   const tabItems: TabItem[] = [
     { name: 'Details', content: detailsTabContent },
     { name: 'Sections', content: sectionsTabContent, disabled: !campaign?.concept?.trim() },
+    {
+      name: 'Theme',
+      content: (
+        <CampaignThemeEditor
+          themeData={themeData}
+          onThemeDataChange={handleThemeDataChange}
+          onSaveTheme={handleSaveTheme}
+          isSaving={isSavingTheme}
+          saveError={themeSaveError}
+          saveSuccess={themeSaveSuccess}
+          currentThematicImageUrl={campaign?.thematic_image_url} // Pass it here
+        />
+      )
+    },
     { name: 'Settings', content: settingsTabContent },
   ];
 

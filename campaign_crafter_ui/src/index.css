@@ -3,12 +3,69 @@ html {
 }
 
 body {
+  /* Define default fallbacks for when CSS variables are not set */
+  --campaign-primary-color-default: #007bff;
+  --campaign-secondary-color-default: #6c757d;
+  --campaign-background-color-default: #ffffff;
+  --campaign-text-color-default: #212529;
+  --campaign-font-family-default: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  --campaign-background-image-opacity-default: 1;
+  /* Default for text on primary background */
+  --campaign-text-color-on-primary-default: #ffffff;
+
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--campaign-font-family, var(--campaign-font-family-default));
+  background-color: var(--campaign-background-color, var(--campaign-background-color-default));
+  color: var(--campaign-text-color, var(--campaign-text-color-default));
+
+  position: relative; /* Needed for pseudo-element positioning */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh; /* Ensure body takes at least full viewport height for background */
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  background-image: var(--campaign-background-image-url); /* JS will set this */
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  opacity: var(--campaign-background-image-opacity, var(--campaign-background-image-opacity-default));
+}
+
+/* Global link styling */
+a {
+  color: var(--campaign-primary-color, var(--campaign-primary-color-default));
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Example of using primary color for a generic primary button class */
+/* This assumes a global style. Specific components might override or have their own theming. */
+.button-primary {
+  background-color: var(--campaign-primary-color, var(--campaign-primary-color-default));
+  color: var(--campaign-text-color-on-primary, var(--campaign-text-color-on-primary-default));
+  border-color: var(--campaign-primary-color, var(--campaign-primary-color-default));
+  /* Add other button properties like padding, border-radius if this is a base style */
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  border-width: 1px;
+  border-style: solid;
+  cursor: pointer;
+  transition: opacity 0.15s ease-in-out;
+}
+
+.button-primary:hover {
+  opacity: 0.85;
 }
 
 code {

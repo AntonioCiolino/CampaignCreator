@@ -420,3 +420,161 @@ def test_copy_system_roll_table_to_user(db_session: Session, test_user: ORMUser)
     original_system_table_check = db_session.query(ORMUser.RollTable).filter_by(id=system_table.id).first()
     assert original_system_table_check is not None
     assert original_system_table_check.user_id is None
+
+# --- Campaign Theme CRUD Tests ---
+
+TEST_THEME_DATA = {
+    "theme_primary_color": "#123456",
+    "theme_secondary_color": "#abcdef",
+    "theme_background_color": "#fedcba",
+    "theme_text_color": "#654321",
+    "theme_font_family": "Test Font, sans-serif",
+    "theme_background_image_url": "https://example.com/testbg.png",
+    "theme_background_image_opacity": 0.5
+}
+
+TEST_THEME_DATA_ALTERNATIVE = {
+    "theme_primary_color": "#ff0000",
+    "theme_secondary_color": "#00ff00",
+    "theme_background_color": "#0000ff",
+    "theme_text_color": "#ffff00",
+    "theme_font_family": "Impact, fantasy",
+    "theme_background_image_url": "https://example.com/anotherbg.jpg",
+    "theme_background_image_opacity": 0.25
+}
+
+@pytest.mark.asyncio
+async def test_create_campaign_with_theme(db_session: Session, test_user: ORMUser):
+    campaign_payload_dict = {
+        "title": "Themed Campaign",
+        "initial_user_prompt": "A campaign with a cool theme.",
+        **TEST_THEME_DATA
+    }
+    campaign_create = crud.models.CampaignCreate(**campaign_payload_dict)
+
+    created_campaign = await crud.create_campaign(db=db_session, campaign_payload=campaign_create, owner_id=test_user.id)
+
+    assert created_campaign.title == campaign_payload_dict["title"]
+    for key, value in TEST_THEME_DATA.items():
+        assert getattr(created_campaign, key) == value
+
+    # Verify in DB
+    db_campaign = db_session.query(ORMCampaign).filter(ORMCampaign.id == created_campaign.id).first()
+    assert db_campaign is not None
+    for key, value in TEST_THEME_DATA.items():
+        assert getattr(db_campaign, key) == value
+    assert db_campaign.owner_id == test_user.id
+
+@pytest.mark.asyncio
+async def test_update_campaign_with_full_theme(db_session: Session, test_user: ORMUser):
+    # 1. Create an initial campaign (without specific theme)
+    initial_payload = crud.models.CampaignCreate(title="Campaign For Full Theme Update")
+    campaign_to_update = await crud.create_campaign(db=db_session, campaign_payload=initial_payload, owner_id=test_user.id)
+
+    # 2. Prepare update data with new theme properties
+    campaign_update_payload = crud.models.CampaignUpdate(**TEST_THEME_DATA)
+
+    # 3. Call update_campaign
+    updated_campaign = crud.update_campaign(db=db_session, campaign_id=campaign_to_update.id, campaign_update=campaign_update_payload)
+    assert updated_campaign is not None
+
+    # 4. Verify updated fields
+    for key, value in TEST_THEME_DATA.items():
+        assert getattr(updated_campaign, key) == value
+    assert updated_campaign.title == "Campaign For Full Theme Update" # Title should be unchanged
+
+@pytest.mark.asyncio
+async def test_update_campaign_with_partial_theme(db_session: Session, test_user: ORMUser):
+    # 1. Create an initial campaign with some theme data
+    initial_campaign_dict = {
+        "title": "Campaign For Partial Theme Update",
+        **TEST_THEME_DATA
+    }
+    initial_campaign_create = crud.models.CampaignCreate(**initial_campaign_dict)
+    campaign_to_update = await crud.create_campaign(db=db_session, campaign_payload=initial_campaign_create, owner_id=test_user.id)
+
+    # 2. Prepare partial update data
+    partial_update_data = {
+        "theme_primary_color": "#000001",
+        "theme_font_family": "Arial Black, sans-serif",
+        # Also update a non-theme field to ensure it works too
+        "title": "Partially Updated Title"
+    }
+    campaign_update_payload = crud.models.CampaignUpdate(**partial_update_data)
+
+    # 3. Call update_campaign
+    updated_campaign = crud.update_campaign(db=db_session, campaign_id=campaign_to_update.id, campaign_update=campaign_update_payload)
+    assert updated_campaign is not None
+
+    # 4. Verify updated fields
+    assert updated_campaign.title == partial_update_data["title"]
+    assert updated_campaign.theme_primary_color == partial_update_data["theme_primary_color"]
+    assert updated_campaign.theme_font_family == partial_update_data["theme_font_family"]
+
+    # 5. Verify unchanged theme fields from original TEST_THEME_DATA (excluding those updated)
+    assert updated_campaign.theme_secondary_color == TEST_THEME_DATA["theme_secondary_color"]
+    assert updated_campaign.theme_background_color == TEST_THEME_DATA["theme_background_color"]
+    assert updated_campaign.theme_text_color == TEST_THEME_DATA["theme_text_color"]
+    assert updated_campaign.theme_background_image_url == TEST_THEME_DATA["theme_background_image_url"]
+    assert updated_campaign.theme_background_image_opacity == TEST_THEME_DATA["theme_background_image_opacity"]
+
+@pytest.mark.asyncio
+async def test_update_campaign_clearing_theme_fields(db_session: Session, test_user: ORMUser):
+    # 1. Create an initial campaign with full theme data
+    initial_campaign_dict = {
+        "title": "Campaign For Clearing Theme Fields",
+        **TEST_THEME_DATA_ALTERNATIVE # Use alternative to ensure fields are set
+    }
+    initial_campaign_create = crud.models.CampaignCreate(**initial_campaign_dict)
+    campaign_to_update = await crud.create_campaign(db=db_session, campaign_payload=initial_campaign_create, owner_id=test_user.id)
+
+    # Ensure fields were set
+    for key, value in TEST_THEME_DATA_ALTERNATIVE.items():
+        assert getattr(campaign_to_update, key) == value
+
+    # 2. Prepare update data to clear some theme fields (set them to None)
+    clearing_update_data = {
+        "theme_primary_color": None,
+        "theme_font_family": None,
+        "theme_background_image_url": None,
+        # theme_background_image_opacity is float, so None is valid.
+        # If "" was sent for a String field from API, Pydantic might convert to None if Optional[str]=None
+        # Here we explicitly use None.
+        "theme_background_image_opacity": None
+    }
+    campaign_update_payload = crud.models.CampaignUpdate(**clearing_update_data)
+
+    # 3. Call update_campaign
+    updated_campaign = crud.update_campaign(db=db_session, campaign_id=campaign_to_update.id, campaign_update=campaign_update_payload)
+    assert updated_campaign is not None
+
+    # 4. Verify cleared fields are None
+    assert updated_campaign.theme_primary_color is None
+    assert updated_campaign.theme_font_family is None
+    assert updated_campaign.theme_background_image_url is None
+    assert updated_campaign.theme_background_image_opacity is None
+
+    # 5. Verify other theme fields remain unchanged from TEST_THEME_DATA_ALTERNATIVE
+    assert updated_campaign.theme_secondary_color == TEST_THEME_DATA_ALTERNATIVE["theme_secondary_color"]
+    assert updated_campaign.theme_background_color == TEST_THEME_DATA_ALTERNATIVE["theme_background_color"]
+    assert updated_campaign.theme_text_color == TEST_THEME_DATA_ALTERNATIVE["theme_text_color"]
+    assert updated_campaign.title == initial_campaign_dict["title"] # Title unchanged
+
+@pytest.mark.asyncio
+async def test_get_campaign_retrieves_theme_data(db_session: Session, test_user: ORMUser):
+    # 1. Create campaign with theme data
+    campaign_payload_dict = {
+        "title": "Campaign For Get Test",
+        **TEST_THEME_DATA
+    }
+    campaign_create = crud.models.CampaignCreate(**campaign_payload_dict)
+    created_campaign = await crud.create_campaign(db=db_session, campaign_payload=campaign_create, owner_id=test_user.id)
+
+    # 2. Retrieve campaign using crud.get_campaign
+    retrieved_campaign = crud.get_campaign(db=db_session, campaign_id=created_campaign.id)
+    assert retrieved_campaign is not None
+
+    # 3. Assert theme properties
+    for key, value in TEST_THEME_DATA.items():
+        assert getattr(retrieved_campaign, key) == value
+    assert retrieved_campaign.owner_id == test_user.id

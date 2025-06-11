@@ -9,7 +9,7 @@
   --border-color: #dee2e6;
   --border-color-light: #f1f3f5;
   --surface-color: #ffffff;
-  --background-color: #f8f9fa;
+  --background-color: #f8f9fa; /* This is a local default, campaign theme will override body */
   --danger-color: #dc3545;
   --danger-color-dark: #c82333;
   --line-height-base: 1.6;
@@ -19,7 +19,9 @@
 .campaign-editor-page {
   padding: var(--global-spacing-unit);
   margin: 0 auto;
-  background-color: var(--background-color); /* Give the page a light background */
+  /* The main page background will be controlled by body's --campaign-background-color */
+  /* If a specific container within the page needs a different background from the campaign theme: */
+  /* background-color: var(--campaign-secondary-color, var(--background-color)); */
 }
 
 /* Styles for content *within* tabs. The .tab-content class from Tabs.css already provides padding. */
@@ -214,14 +216,14 @@
 /* Ensure .card-like (used for Add New Section form) has consistent styling */
 .card-like {
   padding: var(--global-spacing-unit);
-  background-color: var(--surface-color);
-  border: 1px solid var(--border-color-light);
+  background-color: var(--campaign-secondary-color, var(--surface-color)); /* Use campaign secondary or local surface */
+  border: 1px solid var(--campaign-primary-color, var(--border-color-light)); /* Use campaign primary for border */
   border-radius: 4px;
   margin-top: var(--global-spacing-unit);
 }
 .card-like h3 { /* For "Add New Section" title */
     font-size: 1.25rem;
-    color: var(--text-color);
+    color: var(--campaign-text-color, var(--text-color)); /* Use campaign text color */
     margin-top: 0;
     margin-bottom: var(--global-spacing-unit);
     padding-bottom: calc(var(--global-spacing-unit) * 0.5);
@@ -241,7 +243,7 @@
 .page-level-concept h2 {
   margin-top: 0;
   font-size: 1.6rem; /* Larger for page title context */
-  color: var(--primary-color-dark); /* Use a theme color */
+  color: var(--campaign-primary-color, var(--primary-color-dark)); /* Use campaign primary color */
   border-bottom: 1px solid var(--border-color);
   padding-bottom: calc(var(--global-spacing-unit) * 0.6);
   margin-bottom: calc(var(--global-spacing-unit) * 0.8);
