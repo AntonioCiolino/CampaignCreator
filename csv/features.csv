@@ -1,27 +1,27 @@
 Campaign,Create a campaign based on the following concepts: {user_prompt}###
-
-
-Table of Contents,"Based on the campaign concept provided below, generate a detailed Table of Contents suitable for an RPG campaign book.
+Table of Contents,"
+Based on the campaign concept provided below, generate a detailed Table of Contents suitable for an RPG campaign book.
 The Table of Contents must strictly follow Homebrewery Markdown formatting.
-Use 'PAGENUM' as a placeholder for all page numbers, like '{{PAGENUM}}' and '(#pPAGENUM)'.
+Use 'PAGENUM' as a placeholder for all page numbers, like '{{PAGENUM}}' and '(#pPAGENUM)'. If the TOC is long, you can suggest a \column break, similar to \page.
 
 The structure should be:
 
 {{{{toc,wide
-# Table Of Contents
+# Table Of Contents --
 
-- ### [{{Main Section Title}}{{PAGENUM}}](#pPAGENUM)
-  - #### [{{Subsection Title}}{{PAGENUM}}](#pPAGENUM)
-    - [{{Sub-subsection Title (if any)}}{{PAGENUM}}](#pPAGENUM)
-  - #### [{{Another Subsection Title}}{{PAGENUM}}](#pPAGENUM)
-- ### [{{Another Main Section Title}}{{PAGENUM}}](#pPAGENUM)
-  - #### [{{Subsection Title}}{{PAGENUM}}](#pPAGENUM)
-  {{!-- If the TOC is long, you can suggest a \column break. e.g. \column --}}
 
-End the Table of Contents with }}}}
+{{toc,wide
+- ### [{{Main Section Title}}{{ 1}}](#p1)
+  - #### [{{Subsection Title}}{{ X}}](#px)
+    - [{{Sub-subsection Title (if any)}}{{ X}}](#px)
+  - #### [{{Another Subsection Title}}{{ X}}](#px)
+- ### [{{Another Main Section Title}}{{ X}}](#px)
+  - #### [{{Subsection Title}}{{ X}}](#px)
+}}}}
 
 Campaign Concept:
-{campaign_concept}"
+{campaign_concept}
+"
 Campaign Names,Based on the campaign concept: {campaign_concept}, generate {count} alternative, catchy campaign titles. Use sensory language and hyperbole and metaphor. List each title on a new line.
 Unused, -- All of these following are currently unused --
 Simile, create a Simile from the following sentence:
