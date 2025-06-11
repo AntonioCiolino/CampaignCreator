@@ -1,0 +1,119 @@
+/* src/components/common/MoodBoardPanel.css */
+
+.mood-board-panel { /* Renamed from .thematic-image-display-wrapper */
+  position: fixed;
+  /* Positioning will be handled by parent in CampaignEditorPage.tsx for .thematic-image-side-panel */
+  /* bottom: 20px;
+  right: 20px; */
+  width: 100%; /* Take full width of its container (.thematic-image-side-panel) */
+  height: 100%; /* Take full height of its container */
+  background-color: var(--surface-color, #fff);
+  /* border: 1px solid var(--border-color, #dee2e6); */ /* Border handled by parent panel */
+  /* border-radius: var(--border-radius-lg, 0.5rem); */ /* Radius handled by parent panel */
+  /* box-shadow: var(--box-shadow-lg, 0 0.5rem 1rem rgba(0,0,0,0.15)); */ /* Shadow handled by parent panel */
+  z-index: 1; /* Local stacking context if needed, parent panel has higher z-index */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: opacity 0.3s ease-in-out; /* Keep transition for visibility */
+  opacity: 1;
+}
+
+.mood-board-panel.hidden { /* For potential direct visibility control, though parent usually handles this */
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Added wrapper for better structure inside the panel */
+.mood-board-panel-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.mood-board-header { /* Renamed from .thematic-image-header */
+  padding: 0.75rem 1rem; /* Adjusted padding */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color, #dee2e6);
+  background-color: var(--background-color, #f8f9fa);
+}
+
+.mood-board-title { /* Renamed from .thematic-image-title */
+  font-size: 1rem; /* Slightly larger title */
+  font-weight: 600; /* Bolder title */
+  color: var(--text-color, #212529);
+  margin: 0;
+}
+
+.mood-board-close-button { /* Renamed from .thematic-image-close-button */
+  background: transparent;
+  border: none;
+  font-size: 1.5rem; /* Larger close button */
+  font-weight: bold;
+  color: var(--text-color-muted, #6c757d);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  line-height: 1; /* Ensure proper vertical alignment */
+}
+.mood-board-close-button:hover {
+  color: var(--text-color, #212529);
+}
+
+.mood-board-content-area { /* Renamed for clarity, was .thematic-image-content */
+  padding: 1rem;
+  overflow-y: auto;
+  flex-grow: 1; /* Allows this area to take available space and scroll */
+  text-align: center;
+}
+
+.mood-board-loader, .mood-board-empty { /* Combined loader and empty message styling */
+  font-size: 0.9em;
+  color: var(--text-color-muted, #6c757d);
+  padding: 2rem 0;
+  text-align: center;
+}
+
+.mood-board-error { /* Renamed from .thematic-image-error */
+  font-size: 0.9em;
+  color: var(--danger-color, #dc3545);
+  padding: 1rem;
+  background-color: rgba(220, 53, 69, 0.05);
+  border: 1px solid rgba(220, 53, 69, 0.2);
+  border-radius: var(--border-radius, 0.3rem);
+  word-wrap: break-word;
+  text-align: left;
+}
+
+/* New styles for mood board image list */
+.mood-board-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem; /* Spacing between images */
+}
+
+.mood-board-item-link {
+  display: block; /* Ensure link takes full width for clickability */
+  text-decoration: none;
+  border: 2px solid transparent; /* For optional focus/hover effect */
+  border-radius: var(--border-radius, 0.3rem);
+  transition: border-color 0.2s ease-in-out;
+}
+
+.mood-board-item-link:hover,
+.mood-board-item-link:focus {
+  border-color: var(--primary-color, #007bff); /* Highlight on hover/focus */
+  outline: none;
+}
+
+.mood-board-image {
+  width: 100%; /* Make image responsive to link width */
+  max-width: 100%; /* Ensure it doesn't overflow its container */
+  height: auto; /* Maintain aspect ratio */
+  border-radius: calc(var(--border-radius, 0.3rem) - 2px); /* Adjust for link border */
+  display: block;
+  background-color: #eee; /* Placeholder background */
+}
+
+/* Removed .thematic-image-container and .thematic-image-caption as they are not used */

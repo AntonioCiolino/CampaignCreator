@@ -39,6 +39,18 @@ export interface Campaign {
   temperature?: number | null;
   // owner_id: number; 
   // sections: CampaignSection[]; // Backend doesn't nest this in the Campaign Pydantic model by default
+
+  // New Theme Properties
+  theme_primary_color?: string | null;
+  theme_secondary_color?: string | null;
+  theme_background_color?: string | null;
+  theme_text_color?: string | null;
+  theme_font_family?: string | null;
+  theme_background_image_url?: string | null;
+  theme_background_image_opacity?: number | null;
+
+  // Mood Board URLs
+  mood_board_image_urls?: string[] | null;
 }
 
 export interface CampaignCreatePayload {
@@ -50,6 +62,18 @@ export interface CampaignCreatePayload {
   temperature?: number | null;
   thematic_image_url?: string | null;
   thematic_image_prompt?: string | null;
+
+  // New Theme Properties
+  theme_primary_color?: string | null;
+  theme_secondary_color?: string | null;
+  theme_background_color?: string | null;
+  theme_text_color?: string | null;
+  theme_font_family?: string | null;
+  theme_background_image_url?: string | null;
+  theme_background_image_opacity?: number | null;
+
+  // Mood Board URLs
+  mood_board_image_urls?: string[] | null;
 }
 
 export interface CampaignUpdatePayload {
@@ -63,6 +87,18 @@ export interface CampaignUpdatePayload {
   display_toc?: TOCEntry[] | null; // Added
   homebrewery_toc?: TOCEntry[] | null; // Added
   // Concept is typically updated via specific generation endpoints
+
+  // New Theme Properties
+  theme_primary_color?: string | null;
+  theme_secondary_color?: string | null;
+  theme_background_color?: string | null;
+  theme_text_color?: string | null;
+  theme_font_family?: string | null;
+  theme_background_image_url?: string | null;
+  theme_background_image_opacity?: number | null;
+
+  // Mood Board URLs
+  mood_board_image_urls?: string[] | null;
 }
 
 // For LLM Generation requests common to TOC, Titles, etc.

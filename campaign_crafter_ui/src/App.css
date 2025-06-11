@@ -11,7 +11,9 @@
 
   --background-color: #f8f9fa; /* Lighter grey for overall background */
   --surface-color: #ffffff; /* White for cards, modals, etc. */
-  --text-color: #212529;    /* Dark grey for text */
+  /* --campaign-text-color-default is defined in index.css as #212529 (or another default) */
+  /* Fallback chain: campaign specific -> campaign default (from index.css) -> hardcoded default */
+  --text-color: var(--campaign-text-color, var(--campaign-text-color-default, #212529));
   --text-color-muted: #6c757d; /* Muted grey for secondary text */
   --border-color: #dee2e6;   /* Light grey for borders */
 

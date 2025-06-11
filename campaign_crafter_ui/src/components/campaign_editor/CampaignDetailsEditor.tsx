@@ -31,6 +31,10 @@ interface CampaignDetailsEditorProps {
   onRemoveBadgeImage: () => void; // New prop
   badgeUpdateLoading: boolean; // New prop
   badgeUpdateError: string | null; // New prop
+  // Mood Board Props
+  editableMoodBoardUrls: string[];
+  setEditableMoodBoardUrls: (urls: string[]) => void;
+  originalMoodBoardUrls: string[];
 }
 
 const CampaignDetailsEditor: React.FC<CampaignDetailsEditorProps> = ({
@@ -53,18 +57,27 @@ const CampaignDetailsEditor: React.FC<CampaignDetailsEditorProps> = ({
   onRemoveBadgeImage, // New prop
   badgeUpdateLoading, // New prop
   badgeUpdateError, // New prop
+  // Mood Board Props
+  editableMoodBoardUrls,
+  setEditableMoodBoardUrls,
+  originalMoodBoardUrls,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false); // Add state for collapse
   const [isInitialPromptVisible, setIsInitialPromptVisible] = useState(false); // State for prompt visibility
   const [isBadgeActionsVisible, setIsBadgeActionsVisible] = useState(false); // State for badge actions visibility
   const [isBadgePreviewModalOpen, setIsBadgePreviewModalOpen] = useState(false); // State for badge preview modal
+  const [newMoodBoardUrl, setNewMoodBoardUrl] = useState<string>(''); // State for new mood board URL input
 
-  const hasUnsavedChanges = editableTitle !== originalTitle || initialPrompt !== originalInitialPrompt;
-  // Note: campaignBadgeImage changes are not currently part of hasUnsavedChanges logic for the main save button.
+  const moodBoardChanged = JSON.stringify(editableMoodBoardUrls.slice().sort()) !== JSON.stringify(originalMoodBoardUrls.slice().sort());
+  const detailsChanged = editableTitle !== originalTitle || initialPrompt !== originalInitialPrompt;
+  // Consider adding badge image changes to hasUnsavedChanges if badge_image_url is part of the main save payload for this component
+  // const badgeChanged = campaignBadgeImage !== originalBadgeImageUrl;
+
+  const hasUnsavedChanges = detailsChanged || moodBoardChanged; // Updated logic
 
   return (
     <> {/* Changed to Fragment to allow multiple top-level elements including Modal */}
-    <Card sx={{ mb: 3 }}>
+    <Card sx={{ mb: 3, backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
       <Box
         sx={{
           display: 'flex',
@@ -205,6 +218,73 @@ const CampaignDetailsEditor: React.FC<CampaignDetailsEditorProps> = ({
             >
               Save Details
             </Button>
+          </Grid>
+
+          {/* Mood Board Section */}
+          <Grid item xs={12} sx={{ mt: 3 }}>
+            <Typography variant="subtitle1" gutterBottom>Mood Board Image URLs</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <TextField
+                label="New Image URL"
+                value={newMoodBoardUrl}
+                onChange={(e) => setNewMoodBoardUrl(e.target.value)}
+                variant="outlined"
+                size="small"
+                fullWidth
+                sx={{ mr: 1 }}
+                placeholder="Enter image URL and click Add"
+              />
+              <Button
+                onClick={() => {
+                  if (newMoodBoardUrl.trim()) {
+                    try {
+                      new URL(newMoodBoardUrl); // Basic URL validation
+                      setEditableMoodBoardUrls([...editableMoodBoardUrls, newMoodBoardUrl.trim()]);
+                      setNewMoodBoardUrl('');
+                    } catch (_) {
+                      alert("Please enter a valid URL."); // Simple alert, could be an error state
+                    }
+                  }
+                }}
+                // variant="outlined" // Removed problematic variant for custom Button
+                className="action-button secondary-action-button" // Keep consistent button styling
+              >
+                Add URL
+              </Button>
+            </Box>
+            {editableMoodBoardUrls.length > 0 ? (
+              <Box component="ul" sx={{ listStyleType: 'none', mt: 1, maxHeight: '200px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '4px', p:1 }}> {/* Removed p:0 */}
+                {editableMoodBoardUrls.map((url, index) => (
+                  <Box
+                    component="li"
+                    key={index}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      mb: 0.5,
+                      p: 0.5,
+                      borderBottom: '1px solid #f0f0f0',
+                      '&:last-child': { borderBottom: 'none' }
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ wordBreak: 'break-all', flexGrow: 1, mr:1 }}>{url}</Typography>
+                    <IconButton
+                      onClick={() => {
+                        setEditableMoodBoardUrls(editableMoodBoardUrls.filter((_, i) => i !== index));
+                      }}
+                      size="small"
+                      aria-label="Remove URL"
+                      color="error"
+                    >
+                      <DeleteOutlineIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                ))}
+              </Box>
+            ) : (
+              <Typography variant="body2" color="textSecondary" sx={{mt:1}}>No mood board images added yet.</Typography>
+            )}
           </Grid>
         </Grid>
       </CardContent>

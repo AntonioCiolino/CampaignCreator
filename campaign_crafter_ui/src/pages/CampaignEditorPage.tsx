@@ -21,7 +21,8 @@ import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import PublishIcon from '@mui/icons-material/Publish';
 import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
 import ImageIcon from '@mui/icons-material/Image';
-import ThematicImageDisplay, { ThematicImageDisplayProps } from '../components/common/ThematicImageDisplay';
+// import ThematicImageDisplay, { ThematicImageDisplayProps } from '../components/common/ThematicImageDisplay'; // Old import
+import MoodBoardPanel, { MoodBoardPanelProps } from '../components/common/MoodBoardPanel'; // New import
 
 import CampaignDetailsEditor from '../components/campaign_editor/CampaignDetailsEditor';
 import CampaignLLMSettings from '../components/campaign_editor/CampaignLLMSettings';
@@ -31,6 +32,8 @@ import Tabs, { TabItem } from '../components/common/Tabs';
 import { Typography } from '@mui/material';
 import DetailedProgressDisplay from '../components/common/DetailedProgressDisplay';
 import TOCEditor from '../components/campaign_editor/TOCEditor';
+import CampaignThemeEditor, { CampaignThemeData } from '../components/campaign_editor/CampaignThemeEditor';
+import { applyThemeToDocument } from '../utils/themeUtils'; // Import the function
 
 const CampaignEditorPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -97,31 +100,34 @@ const CampaignEditorPage: React.FC = () => {
   const [tocSaveError, setTocSaveError] = useState<string | null>(null);
   const [tocSaveSuccess, setTocSaveSuccess] = useState<string | null>(null);
   const [isTOCEditorVisible, setIsTOCEditorVisible] = useState<boolean>(false);
-  const [isThematicPanelOpen, setIsThematicPanelOpen] = useState<boolean>(false);
-  const [thematicImageData, setThematicImageData] = useState<Omit<ThematicImageDisplayProps, 'isVisible' | 'onClose'>>({
-    imageUrl: null,
-    promptUsed: null,
-    isLoading: false,
-    error: null,
-    title: "Thematic Image" // Default title
-  });
+  // Rename state for MoodBoardPanel visibility
+  const [isMoodBoardPanelOpen, setIsMoodBoardPanelOpen] = useState<boolean>(false);
+  // Remove thematicImageData state as MoodBoardPanel will use campaign.mood_board_image_urls directly
+  // const [thematicImageData, setThematicImageData] = useState<Omit<ThematicImageDisplayProps, 'isVisible' | 'onClose'>>({
+  //   imageUrl: null,
+  //   promptUsed: null,
+  //   isLoading: false,
+  //   error: null,
+  //   title: "Thematic Image" // Default title
+  // });
+
+  // State for Theme Editor
+  const [themeData, setThemeData] = useState<CampaignThemeData>({});
+  const [isSavingTheme, setIsSavingTheme] = useState<boolean>(false);
+  const [editableMoodBoardUrls, setEditableMoodBoardUrls] = useState<string[]>([]);
+  const [themeSaveError, setThemeSaveError] = useState<string | null>(null);
+  const [themeSaveSuccess, setThemeSaveSuccess] = useState<string | null>(null);
 
   const handleSetThematicImage = async (imageUrl: string, prompt: string) => {
-    setThematicImageData({
-      imageUrl: imageUrl,
-      promptUsed: prompt,
-      isLoading: false,
-      error: null,
-      title: "Thematic Image"
-    });
-    setIsThematicPanelOpen(true); // Ensure panel opens when a new image is set
+    // This function now only handles setting the *main* thematic image for the campaign.
+    // The MoodBoardPanel will display campaign.mood_board_image_urls.
+    // The logic to auto-apply this to theme background is already within this function.
 
     if (!campaign || !campaign.id) {
       console.error("Campaign data is not available to save thematic image.");
-      setThematicImageData(prev => ({
-        ...prev,
-        error: "Campaign data not loaded, cannot save thematic image."
-      }));
+      // thematicImageData state is removed, so can't update it here.
+      // Perhaps set a general page error if needed:
+      // setError("Campaign data not loaded, cannot save thematic image.");
       return;
     }
 
@@ -131,38 +137,57 @@ const CampaignEditorPage: React.FC = () => {
     };
 
     try {
-      // Optionally set a loading state for the thematic image panel or page
-      // setThematicImageData(prev => ({ ...prev, isLoading: true }));
-      // setIsPageLoading(true); // Or use a general page loader
-
       const updatedCampaign = await campaignService.updateCampaign(campaign.id, payload);
       setCampaign(updatedCampaign); // Update main campaign state
 
-      // Update thematicImageData again to ensure it reflects the saved state, especially if backend modifies data
-      setThematicImageData(prev => ({
-        ...prev,
-        imageUrl: updatedCampaign.thematic_image_url || imageUrl, // Use value from response if available
-        promptUsed: updatedCampaign.thematic_image_prompt || prompt,
-        isLoading: false,
-        error: null
-      }));
+      // If the panel was previously showing the old thematic image,
+      // it will now be closed by default. User can reopen to see mood board.
+      // setIsMoodBoardPanelOpen(true); // Or decide if it should auto-open for the new thematic image.
 
-      setSaveSuccess("Thematic image saved!");
+      setSaveSuccess("Campaign's main thematic image saved!");
       setTimeout(() => setSaveSuccess(null), 3000);
+
+      // New Logic: Auto-apply to theme background and auto-save theme
+      const newThematicImageUrl = updatedCampaign.thematic_image_url;
+      if (newThematicImageUrl && campaign.id) { // Ensure campaign.id is available for the theme save
+        const newThemeSettings = {
+          ...themeData, // Current themeData state
+          theme_background_image_url: newThematicImageUrl,
+          theme_background_image_opacity: (themeData.theme_background_image_opacity === null || themeData.theme_background_image_opacity === undefined)
+                                         ? 0.5 // Default opacity if not previously set for a background image
+                                         : themeData.theme_background_image_opacity,
+        };
+        setThemeData(newThemeSettings); // Update local theme state
+        applyThemeToDocument(newThemeSettings); // Apply visually
+
+        // Auto-save this specific theme update to the backend
+        const themeUpdatePayload: campaignService.CampaignUpdatePayload = {
+             theme_background_image_url: newThemeSettings.theme_background_image_url,
+             theme_background_image_opacity: newThemeSettings.theme_background_image_opacity,
+        };
+        try {
+             await campaignService.updateCampaign(campaign.id, themeUpdatePayload); // Use campaign.id
+             console.log("Theme background automatically updated and saved after main thematic image change.");
+             // Optionally show a transient success message for this auto-save
+             // setThemeSaveSuccess("Theme background updated with campaign image!");
+             // setTimeout(() => setThemeSaveSuccess(null), 3000);
+        } catch (themeSaveError) {
+             console.error("Failed to auto-save theme background after main thematic image change:", themeSaveError);
+             // setError("Failed to auto-save theme background. You may need to save manually via Theme tab.");
+             // setTimeout(() => setError(null), 5000);
+        }
+      } else if (!newThematicImageUrl) {
+        console.log("Campaign thematic image was cleared. Theme background image remains unchanged.");
+      }
 
     } catch (err) {
       console.error("Failed to save thematic image:", err);
-      setThematicImageData(prev => ({
-        ...prev,
-        isLoading: false,
-        error: "Failed to save thematic image. Please try again."
-      }));
-      // Optionally, set a more general error message for the page using setError
-      // setError("Failed to save thematic image. Please check your connection and try again.");
+      setError("Failed to save campaign's main thematic image. Please check your connection and try again.");
+      // Optional: Clear the error after some time
       // setTimeout(() => setError(null), 5000);
     } finally {
       // setIsPageLoading(false);
-      // setThematicImageData(prev => ({ ...prev, isLoading: false }));
+      // thematicImageData state was removed, so no cleanup needed for it here
     }
   };
 
@@ -385,17 +410,42 @@ const CampaignEditorPage: React.FC = () => {
             }
         }
 
-        // Load thematic image data if available
-        if (campaignDetails.thematic_image_url) {
-          setThematicImageData(prev => ({
-            ...prev,
-            imageUrl: campaignDetails.thematic_image_url || null, // Ensure undefined becomes null
-            promptUsed: campaignDetails.thematic_image_prompt || null,
-            isLoading: false,
-            error: null
-          }));
-          setIsThematicPanelOpen(true);
+        // Load thematic image data if available - This part is removed as thematicImageData state is gone.
+        // The MoodBoardPanel will directly use campaign.mood_board_image_urls.
+        // If the panel should be open by default if there's a thematic image, that logic might need to be re-evaluated
+        // based on whether campaign.thematic_image_url itself should cause the mood board to open.
+        // For now, let's assume it opens based on user click.
+        // if (campaignDetails.thematic_image_url) {
+        //   setIsMoodBoardPanelOpen(true); // Example: open if thematic image exists, though this panel shows mood board items
+        // }
+
+        // Populate themeData for CampaignThemeEditor
+        let currentThemeData: CampaignThemeData = { // Changed to let
+          theme_primary_color: campaignDetails.theme_primary_color,
+          theme_secondary_color: campaignDetails.theme_secondary_color,
+          theme_background_color: campaignDetails.theme_background_color,
+          theme_text_color: campaignDetails.theme_text_color,
+          theme_font_family: campaignDetails.theme_font_family,
+          theme_background_image_url: campaignDetails.theme_background_image_url,
+          theme_background_image_opacity: campaignDetails.theme_background_image_opacity,
+        };
+
+        // Auto-apply campaign's thematic image to theme background if no theme background is set
+        if (campaignDetails.thematic_image_url &&
+            (currentThemeData.theme_background_image_url === null ||
+             currentThemeData.theme_background_image_url === undefined ||
+             currentThemeData.theme_background_image_url === '')) {
+          currentThemeData.theme_background_image_url = campaignDetails.thematic_image_url;
+          if (currentThemeData.theme_background_image_opacity === null || currentThemeData.theme_background_image_opacity === undefined) {
+             currentThemeData.theme_background_image_opacity = 0.5; // Default opacity
+          }
         }
+
+        setThemeData(currentThemeData);
+        applyThemeToDocument(currentThemeData); // Apply the potentially updated theme
+
+        // Initialize MoodBoard URLs
+        setEditableMoodBoardUrls(campaignDetails.mood_board_image_urls || []);
 
         initialLoadCompleteRef.current = true;
       } catch (err) {
@@ -406,6 +456,11 @@ const CampaignEditorPage: React.FC = () => {
       }
     };
     fetchInitialData();
+
+    // Cleanup function to remove theme when navigating away
+    return () => {
+      applyThemeToDocument(null); // Or reset to a default app theme
+    };
   }, [campaignId]);
 
   useEffect(() => {
@@ -471,11 +526,19 @@ const CampaignEditorPage: React.FC = () => {
 
   const handleSaveChanges = async () => {
     if (!campaignId || !campaign) return;
-    if (editableTitle === campaign.title && editableInitialPrompt === (campaign.initial_user_prompt || '')) {
-      setSaveSuccess("No changes to save.");
+
+    const moodBoardChanged = JSON.stringify(editableMoodBoardUrls.slice().sort()) !== JSON.stringify((campaign.mood_board_image_urls || []).slice().sort());
+    const detailsChanged = editableTitle !== campaign.title ||
+                           editableInitialPrompt !== (campaign.initial_user_prompt || '');
+    // Include other fields if they are part of this save action, e.g., badge image
+    // const badgeChanged = campaignBadgeImage !== (campaign.badge_image_url || '');
+
+    if (!detailsChanged && !moodBoardChanged) { // Adjusted condition
+      setSaveSuccess("No changes to save in details or mood board.");
       setTimeout(() => setSaveSuccess(null), 3000);
       return;
     }
+
     if (!editableTitle.trim()) {
       setSaveError("Title cannot be empty.");
       return;
@@ -484,13 +547,21 @@ const CampaignEditorPage: React.FC = () => {
     setSaveError(null);
     setSaveSuccess(null);
     try {
-      const updatedCampaign = await campaignService.updateCampaign(campaignId, {
+      const payload: campaignService.CampaignUpdatePayload = {
         title: editableTitle,
         initial_user_prompt: editableInitialPrompt,
-      });
+        mood_board_image_urls: editableMoodBoardUrls,
+        // Include other updatable fields from CampaignDetailsEditor if necessary
+        // For example, if badge_image_url is managed here directly:
+        // badge_image_url: campaignBadgeImage || null,
+      };
+      const updatedCampaign = await campaignService.updateCampaign(campaignId, payload);
       setCampaign(updatedCampaign);
       setEditableTitle(updatedCampaign.title);
       setEditableInitialPrompt(updatedCampaign.initial_user_prompt || '');
+      setEditableMoodBoardUrls(updatedCampaign.mood_board_image_urls || []); // Update from response
+      // If badge image was part of payload, update its state too:
+      // setCampaignBadgeImage(updatedCampaign.badge_image_url || '');
       setSaveSuccess('Campaign details saved successfully!');
       setTimeout(() => setSaveSuccess(null), 3000);
     } catch (err) {
@@ -822,6 +893,47 @@ const CampaignEditorPage: React.FC = () => {
     }
   };
 
+  const handleThemeDataChange = (newThemeData: CampaignThemeData) => {
+    setThemeData(newThemeData);
+  };
+
+  const handleSaveTheme = async () => {
+    if (!campaignId || !campaign) return;
+    setIsSavingTheme(true);
+    setThemeSaveError(null);
+    setThemeSaveSuccess(null);
+    try {
+      const themePayloadToSave: Partial<campaignService.CampaignUpdatePayload> = {};
+      (Object.keys(themeData) as Array<keyof CampaignThemeData>).forEach(key => {
+        if (themeData[key] !== undefined) {
+          (themePayloadToSave as any)[key] = themeData[key];
+        }
+      });
+
+      const updatedCampaign = await campaignService.updateCampaign(campaignId, themePayloadToSave);
+      setCampaign(updatedCampaign); // Update the main campaign state
+      const newThemeData: CampaignThemeData = { // Re-set themeData from the response
+          theme_primary_color: updatedCampaign.theme_primary_color,
+          theme_secondary_color: updatedCampaign.theme_secondary_color,
+          theme_background_color: updatedCampaign.theme_background_color,
+          theme_text_color: updatedCampaign.theme_text_color,
+          theme_font_family: updatedCampaign.theme_font_family,
+          theme_background_image_url: updatedCampaign.theme_background_image_url,
+          theme_background_image_opacity: updatedCampaign.theme_background_image_opacity,
+      };
+      setThemeData(newThemeData);
+      applyThemeToDocument(newThemeData); // APPLY THEME ON SAVE
+      setThemeSaveSuccess('Theme settings saved successfully!');
+      setTimeout(() => setThemeSaveSuccess(null), 3000);
+    } catch (err) {
+      setThemeSaveError('Failed to save theme settings.');
+      console.error("Failed to save theme:", err);
+      setTimeout(() => setThemeSaveError(null), 5000);
+    } finally {
+      setIsSavingTheme(false);
+    }
+  };
+
   if (isLoading) return <LoadingSpinner />;
   if (error) return <p className="error-message">{error}</p>;
   if (!campaign) return <p className="error-message">Campaign not found.</p>;
@@ -850,6 +962,10 @@ const CampaignEditorPage: React.FC = () => {
         onRemoveBadgeImage={handleRemoveBadgeImage}
         badgeUpdateLoading={badgeUpdateLoading}
         badgeUpdateError={badgeUpdateError}
+        // Mood Board Props
+        editableMoodBoardUrls={editableMoodBoardUrls}
+        setEditableMoodBoardUrls={setEditableMoodBoardUrls}
+        originalMoodBoardUrls={campaign?.mood_board_image_urls || []}
       />
       {saveError && <p className="error-message save-feedback">{saveError}</p>}
       {saveSuccess && <p className="success-message save-feedback">{saveSuccess}</p>}
@@ -1074,6 +1190,20 @@ const CampaignEditorPage: React.FC = () => {
   const tabItems: TabItem[] = [
     { name: 'Details', content: detailsTabContent },
     { name: 'Sections', content: sectionsTabContent, disabled: !campaign?.concept?.trim() },
+    {
+      name: 'Theme',
+      content: (
+        <CampaignThemeEditor
+          themeData={themeData}
+          onThemeDataChange={handleThemeDataChange}
+          onSaveTheme={handleSaveTheme}
+          isSaving={isSavingTheme}
+          saveError={themeSaveError}
+          saveSuccess={themeSaveSuccess}
+          currentThematicImageUrl={campaign?.thematic_image_url} // Pass it here
+        />
+      )
+    },
     { name: 'Settings', content: settingsTabContent },
   ];
 
@@ -1082,12 +1212,12 @@ const CampaignEditorPage: React.FC = () => {
       {isPageLoading && <LoadingSpinner />}
       <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'flex-end', paddingRight: '1rem' }}>
         <Button
-          onClick={() => setIsThematicPanelOpen(!isThematicPanelOpen)}
+          onClick={() => setIsMoodBoardPanelOpen(!isMoodBoardPanelOpen)}
           icon={<ImageIcon />}
-          tooltip={isThematicPanelOpen ? 'Hide Thematic Image Panel' : 'Show Thematic Image Panel'}
+          tooltip={isMoodBoardPanelOpen ? 'Hide Mood Board Panel' : 'Show Mood Board Panel'}
           variant="outline-secondary"
         >
-          {isThematicPanelOpen ? 'Hide Thematic Panel' : 'Show Thematic Panel'}
+          {isMoodBoardPanelOpen ? 'Hide Mood Board' : 'Show Mood Board'}
         </Button>
       </div>
       {campaign && campaign.title && (
@@ -1104,24 +1234,17 @@ const CampaignEditorPage: React.FC = () => {
         </section>
       )}
       <Tabs tabs={tabItems} />
-      {isThematicPanelOpen && (
-        <div className="thematic-image-side-panel">
-          <Button
-            onClick={() => setIsThematicPanelOpen(false)}
-            className="close-panel-button"
-            variant="link"
-            style={{ position: 'absolute', top: '8px', right: '8px' }}
-          >
-            &times; {/* Simple X, or use a CloseIcon */}
-          </Button>
-          <ThematicImageDisplay
-            imageUrl={thematicImageData.imageUrl}
-            promptUsed={thematicImageData.promptUsed}
-            isLoading={thematicImageData.isLoading}
-            error={thematicImageData.error}
-            isVisible={isThematicPanelOpen}
-            onClose={() => setIsThematicPanelOpen(false)}
-            title={thematicImageData.title}
+      {isMoodBoardPanelOpen && (
+        <div className="mood-board-side-panel"> {/* Updated class name for consistency */}
+          {/* Close button is now part of MoodBoardPanel's internal structure if desired, or keep here */}
+          {/* For simplicity, MoodBoardPanel's onClose is used */}
+          <MoodBoardPanel
+            moodBoardUrls={campaign?.mood_board_image_urls || []}
+            isLoading={false} // Moodboard URLs are part of campaign data
+            error={null}    // Errors for mood board fetching not handled here
+            isVisible={isMoodBoardPanelOpen}
+            onClose={() => setIsMoodBoardPanelOpen(false)}
+            title="Mood Board"
           />
         </div>
       )}

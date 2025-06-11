@@ -102,10 +102,10 @@ def get_features(db: Session, skip: int = 0, limit: int = 100, user_id: Optional
         query = query.filter(orm_models.Feature.user_id == None)
     return query.offset(skip).limit(limit).all()
 
-def create_feature(db: Session, feature: models.FeatureCreate, user_id: int) -> orm_models.Feature:
+def create_feature(db: Session, feature: models.FeatureCreate, user_id: Optional[int] = None) -> orm_models.Feature:
     feature_data = feature.model_dump()
-    feature_data.pop('user_id', None) # Ensure user_id from payload is removed
-    # The user_id explicitly passed to this function (from current_user) takes precedence.
+    feature_data.pop('user_id', None) # Ensure user_id from payload is removed, function arg takes precedence
+    # The user_id explicitly passed to this function (from current_user or None for system features) takes precedence.
     db_feature = orm_models.Feature(**feature_data, user_id=user_id)
     db.add(db_feature)
     db.commit()
@@ -278,8 +278,20 @@ async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, 
         badge_image_url=campaign_payload.badge_image_url,
         thematic_image_url=campaign_payload.thematic_image_url,
         thematic_image_prompt=campaign_payload.thematic_image_prompt,
-        selected_llm_id=campaign_payload.selected_llm_id, # New
-        temperature=campaign_payload.temperature         # New
+        selected_llm_id=campaign_payload.selected_llm_id,
+        temperature=campaign_payload.temperature,
+
+        # Add new theme properties
+        theme_primary_color=campaign_payload.theme_primary_color,
+        theme_secondary_color=campaign_payload.theme_secondary_color,
+        theme_background_color=campaign_payload.theme_background_color,
+        theme_text_color=campaign_payload.theme_text_color,
+        theme_font_family=campaign_payload.theme_font_family,
+        theme_background_image_url=campaign_payload.theme_background_image_url,
+        theme_background_image_opacity=campaign_payload.theme_background_image_opacity,
+
+        # New field for Mood Board
+        mood_board_image_urls=campaign_payload.mood_board_image_urls
         # toc and homebrewery_export are not set here by default
     )
     db.add(db_campaign)
