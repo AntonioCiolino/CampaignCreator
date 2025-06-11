@@ -112,9 +112,7 @@ const CampaignEditorPage: React.FC = () => {
       promptUsed: prompt,
       isLoading: false,
       error: null,
-      title: "Thematic Image" , // Keep existing title or update if needed
-      isLoading: false, // Explicitly set isLoading to false before potential API call
-      error: null // Clear previous errors
+      title: "Thematic Image"
     });
     setIsThematicPanelOpen(true); // Ensure panel opens when a new image is set
 
@@ -391,7 +389,7 @@ const CampaignEditorPage: React.FC = () => {
         if (campaignDetails.thematic_image_url) {
           setThematicImageData(prev => ({
             ...prev,
-            imageUrl: campaignDetails.thematic_image_url,
+            imageUrl: campaignDetails.thematic_image_url || null, // Ensure undefined becomes null
             promptUsed: campaignDetails.thematic_image_prompt || null,
             isLoading: false,
             error: null
