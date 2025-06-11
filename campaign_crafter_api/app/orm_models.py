@@ -31,6 +31,8 @@ class Campaign(Base):
     display_toc = Column(JSON, nullable=True) # Changed from Text to JSON
     homebrewery_export = Column(Text, nullable=True)
     badge_image_url = Column(String, nullable=True) # New field for campaign badge
+    thematic_image_url = Column(String, nullable=True)
+    thematic_image_prompt = Column(Text, nullable=True)
     selected_llm_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     temperature: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id"))

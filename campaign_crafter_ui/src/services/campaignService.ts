@@ -33,6 +33,8 @@ export interface Campaign {
   homebrewery_toc: TOCEntry[] | null; // Changed from string | null
   display_toc: TOCEntry[] | null; // Changed from string | null
   badge_image_url?: string | null; // Added
+  thematic_image_url?: string | null;
+  thematic_image_prompt?: string | null;
   selected_llm_id?: string | null;
   temperature?: number | null;
   // owner_id: number; 
@@ -43,12 +45,19 @@ export interface CampaignCreatePayload {
   title: string;
   initial_user_prompt: string;
   model_id_with_prefix_for_concept?: string | null; // Added based on backend changes
+  badge_image_url?: string | null;
+  selected_llm_id?: string | null;
+  temperature?: number | null;
+  thematic_image_url?: string | null;
+  thematic_image_prompt?: string | null;
 }
 
 export interface CampaignUpdatePayload {
   title?: string;
   initial_user_prompt?: string;
   badge_image_url?: string | null; // Added
+  thematic_image_url?: string | null;
+  thematic_image_prompt?: string | null;
   selected_llm_id?: string | null;
   temperature?: number | null;
   display_toc?: TOCEntry[] | null; // Added

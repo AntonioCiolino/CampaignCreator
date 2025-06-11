@@ -112,9 +112,60 @@ const CampaignEditorPage: React.FC = () => {
       promptUsed: prompt,
       isLoading: false,
       error: null,
-      title: "Thematic Image"
+      title: "Thematic Image" , // Keep existing title or update if needed
+      isLoading: false, // Explicitly set isLoading to false before potential API call
+      error: null // Clear previous errors
     });
     setIsThematicPanelOpen(true); // Ensure panel opens when a new image is set
+
+    if (!campaign || !campaign.id) {
+      console.error("Campaign data is not available to save thematic image.");
+      setThematicImageData(prev => ({
+        ...prev,
+        error: "Campaign data not loaded, cannot save thematic image."
+      }));
+      return;
+    }
+
+    const payload: campaignService.CampaignUpdatePayload = {
+      thematic_image_url: imageUrl,
+      thematic_image_prompt: prompt,
+    };
+
+    try {
+      // Optionally set a loading state for the thematic image panel or page
+      // setThematicImageData(prev => ({ ...prev, isLoading: true }));
+      // setIsPageLoading(true); // Or use a general page loader
+
+      const updatedCampaign = await campaignService.updateCampaign(campaign.id, payload);
+      setCampaign(updatedCampaign); // Update main campaign state
+
+      // Update thematicImageData again to ensure it reflects the saved state, especially if backend modifies data
+      setThematicImageData(prev => ({
+        ...prev,
+        imageUrl: updatedCampaign.thematic_image_url || imageUrl, // Use value from response if available
+        promptUsed: updatedCampaign.thematic_image_prompt || prompt,
+        isLoading: false,
+        error: null
+      }));
+
+      setSaveSuccess("Thematic image saved!");
+      setTimeout(() => setSaveSuccess(null), 3000);
+
+    } catch (err) {
+      console.error("Failed to save thematic image:", err);
+      setThematicImageData(prev => ({
+        ...prev,
+        isLoading: false,
+        error: "Failed to save thematic image. Please try again."
+      }));
+      // Optionally, set a more general error message for the page using setError
+      // setError("Failed to save thematic image. Please check your connection and try again.");
+      // setTimeout(() => setError(null), 5000);
+    } finally {
+      // setIsPageLoading(false);
+      // setThematicImageData(prev => ({ ...prev, isLoading: false }));
+    }
   };
 
   const selectedLLMObject = useMemo(() => {
@@ -335,6 +386,19 @@ const CampaignEditorPage: React.FC = () => {
                 setIsPageLoading(false);
             }
         }
+
+        // Load thematic image data if available
+        if (campaignDetails.thematic_image_url) {
+          setThematicImageData(prev => ({
+            ...prev,
+            imageUrl: campaignDetails.thematic_image_url,
+            promptUsed: campaignDetails.thematic_image_prompt || null,
+            isLoading: false,
+            error: null
+          }));
+          setIsThematicPanelOpen(true);
+        }
+
         initialLoadCompleteRef.current = true;
       } catch (err) {
         console.error('Failed to fetch initial campaign or LLM data:', err);
