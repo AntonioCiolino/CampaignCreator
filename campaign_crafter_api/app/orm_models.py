@@ -46,6 +46,9 @@ class Campaign(Base):
     theme_background_image_url = Column(String, nullable=True)
     theme_background_image_opacity = Column(Float, nullable=True) # Store as float (e.g., 0.0 to 1.0)
 
+    # New field for Mood Board
+    mood_board_image_urls = Column(JSON, nullable=True)
+
     owner = relationship("User", back_populates="campaigns")
     sections = relationship("CampaignSection", back_populates="campaign", cascade="all, delete-orphan")
 

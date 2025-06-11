@@ -96,6 +96,9 @@ class CampaignBase(BaseModel):
     theme_background_image_url: Optional[str] = None
     theme_background_image_opacity: Optional[float] = None
 
+    # New field for Mood Board
+    mood_board_image_urls: Optional[List[str]] = None
+
 class CampaignCreate(CampaignBase):
     model_id_with_prefix_for_concept: Optional[str] = None
 
@@ -167,6 +170,9 @@ class CampaignUpdate(BaseModel): # Assuming CampaignUpdate is for PATCH, all fie
     theme_font_family: Optional[str] = None
     theme_background_image_url: Optional[str] = None
     theme_background_image_opacity: Optional[float] = None
+
+    # New field for Mood Board (optional)
+    mood_board_image_urls: Optional[List[str]] = None
 
 # UserUpdate is now defined above CampaignUpdate
 

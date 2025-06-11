@@ -288,7 +288,10 @@ async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, 
         theme_text_color=campaign_payload.theme_text_color,
         theme_font_family=campaign_payload.theme_font_family,
         theme_background_image_url=campaign_payload.theme_background_image_url,
-        theme_background_image_opacity=campaign_payload.theme_background_image_opacity
+        theme_background_image_opacity=campaign_payload.theme_background_image_opacity,
+
+        # New field for Mood Board
+        mood_board_image_urls=campaign_payload.mood_board_image_urls
         # toc and homebrewery_export are not set here by default
     )
     db.add(db_campaign)

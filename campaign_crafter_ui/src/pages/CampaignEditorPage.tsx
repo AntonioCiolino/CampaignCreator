@@ -111,6 +111,7 @@ const CampaignEditorPage: React.FC = () => {
   // State for Theme Editor
   const [themeData, setThemeData] = useState<CampaignThemeData>({});
   const [isSavingTheme, setIsSavingTheme] = useState<boolean>(false);
+  const [editableMoodBoardUrls, setEditableMoodBoardUrls] = useState<string[]>([]);
   const [themeSaveError, setThemeSaveError] = useState<string | null>(null);
   const [themeSaveSuccess, setThemeSaveSuccess] = useState<string | null>(null);
 
@@ -155,8 +156,41 @@ const CampaignEditorPage: React.FC = () => {
         error: null
       }));
 
-      setSaveSuccess("Thematic image saved!");
+      setSaveSuccess("Campaign's main thematic image saved!"); // Clarified message
       setTimeout(() => setSaveSuccess(null), 3000);
+
+      // New Logic: Auto-apply to theme background and auto-save theme
+      const newThematicImageUrl = updatedCampaign.thematic_image_url;
+      if (newThematicImageUrl && campaign.id) { // Ensure campaign.id is available for the theme save
+        const newThemeSettings = {
+          ...themeData, // Current themeData state
+          theme_background_image_url: newThematicImageUrl,
+          theme_background_image_opacity: (themeData.theme_background_image_opacity === null || themeData.theme_background_image_opacity === undefined)
+                                         ? 0.5 // Default opacity if not previously set for a background image
+                                         : themeData.theme_background_image_opacity,
+        };
+        setThemeData(newThemeSettings); // Update local theme state
+        applyThemeToDocument(newThemeSettings); // Apply visually
+
+        // Auto-save this specific theme update to the backend
+        const themeUpdatePayload: campaignService.CampaignUpdatePayload = {
+             theme_background_image_url: newThemeSettings.theme_background_image_url,
+             theme_background_image_opacity: newThemeSettings.theme_background_image_opacity,
+        };
+        try {
+             await campaignService.updateCampaign(campaign.id, themeUpdatePayload); // Use campaign.id
+             console.log("Theme background automatically updated and saved after main thematic image change.");
+             // Optionally show a transient success message for this auto-save
+             // setThemeSaveSuccess("Theme background updated with campaign image!");
+             // setTimeout(() => setThemeSaveSuccess(null), 3000);
+        } catch (themeSaveError) {
+             console.error("Failed to auto-save theme background after main thematic image change:", themeSaveError);
+             // setError("Failed to auto-save theme background. You may need to save manually via Theme tab.");
+             // setTimeout(() => setError(null), 5000);
+        }
+      } else if (!newThematicImageUrl) {
+        console.log("Campaign thematic image was cleared. Theme background image remains unchanged.");
+      }
 
     } catch (err) {
       console.error("Failed to save thematic image:", err);
@@ -406,7 +440,7 @@ const CampaignEditorPage: React.FC = () => {
         }
 
         // Populate themeData for CampaignThemeEditor
-        const currentThemeData: CampaignThemeData = {
+        let currentThemeData: CampaignThemeData = { // Changed to let
           theme_primary_color: campaignDetails.theme_primary_color,
           theme_secondary_color: campaignDetails.theme_secondary_color,
           theme_background_color: campaignDetails.theme_background_color,
@@ -415,8 +449,23 @@ const CampaignEditorPage: React.FC = () => {
           theme_background_image_url: campaignDetails.theme_background_image_url,
           theme_background_image_opacity: campaignDetails.theme_background_image_opacity,
         };
+
+        // Auto-apply campaign's thematic image to theme background if no theme background is set
+        if (campaignDetails.thematic_image_url &&
+            (currentThemeData.theme_background_image_url === null ||
+             currentThemeData.theme_background_image_url === undefined ||
+             currentThemeData.theme_background_image_url === '')) {
+          currentThemeData.theme_background_image_url = campaignDetails.thematic_image_url;
+          if (currentThemeData.theme_background_image_opacity === null || currentThemeData.theme_background_image_opacity === undefined) {
+             currentThemeData.theme_background_image_opacity = 0.5; // Default opacity
+          }
+        }
+
         setThemeData(currentThemeData);
-        applyThemeToDocument(currentThemeData); // APPLY THEME ON LOAD
+        applyThemeToDocument(currentThemeData); // Apply the potentially updated theme
+
+        // Initialize MoodBoard URLs
+        setEditableMoodBoardUrls(campaignDetails.mood_board_image_urls || []);
 
         initialLoadCompleteRef.current = true;
       } catch (err) {
@@ -497,11 +546,19 @@ const CampaignEditorPage: React.FC = () => {
 
   const handleSaveChanges = async () => {
     if (!campaignId || !campaign) return;
-    if (editableTitle === campaign.title && editableInitialPrompt === (campaign.initial_user_prompt || '')) {
-      setSaveSuccess("No changes to save.");
+
+    const moodBoardChanged = JSON.stringify(editableMoodBoardUrls.slice().sort()) !== JSON.stringify((campaign.mood_board_image_urls || []).slice().sort());
+    const detailsChanged = editableTitle !== campaign.title ||
+                           editableInitialPrompt !== (campaign.initial_user_prompt || '');
+    // Include other fields if they are part of this save action, e.g., badge image
+    // const badgeChanged = campaignBadgeImage !== (campaign.badge_image_url || '');
+
+    if (!detailsChanged && !moodBoardChanged) { // Adjusted condition
+      setSaveSuccess("No changes to save in details or mood board.");
       setTimeout(() => setSaveSuccess(null), 3000);
       return;
     }
+
     if (!editableTitle.trim()) {
       setSaveError("Title cannot be empty.");
       return;
@@ -510,13 +567,21 @@ const CampaignEditorPage: React.FC = () => {
     setSaveError(null);
     setSaveSuccess(null);
     try {
-      const updatedCampaign = await campaignService.updateCampaign(campaignId, {
+      const payload: campaignService.CampaignUpdatePayload = {
         title: editableTitle,
         initial_user_prompt: editableInitialPrompt,
-      });
+        mood_board_image_urls: editableMoodBoardUrls,
+        // Include other updatable fields from CampaignDetailsEditor if necessary
+        // For example, if badge_image_url is managed here directly:
+        // badge_image_url: campaignBadgeImage || null,
+      };
+      const updatedCampaign = await campaignService.updateCampaign(campaignId, payload);
       setCampaign(updatedCampaign);
       setEditableTitle(updatedCampaign.title);
       setEditableInitialPrompt(updatedCampaign.initial_user_prompt || '');
+      setEditableMoodBoardUrls(updatedCampaign.mood_board_image_urls || []); // Update from response
+      // If badge image was part of payload, update its state too:
+      // setCampaignBadgeImage(updatedCampaign.badge_image_url || '');
       setSaveSuccess('Campaign details saved successfully!');
       setTimeout(() => setSaveSuccess(null), 3000);
     } catch (err) {
@@ -917,6 +982,10 @@ const CampaignEditorPage: React.FC = () => {
         onRemoveBadgeImage={handleRemoveBadgeImage}
         badgeUpdateLoading={badgeUpdateLoading}
         badgeUpdateError={badgeUpdateError}
+        // Mood Board Props
+        editableMoodBoardUrls={editableMoodBoardUrls}
+        setEditableMoodBoardUrls={setEditableMoodBoardUrls}
+        originalMoodBoardUrls={campaign?.mood_board_image_urls || []}
       />
       {saveError && <p className="error-message save-feedback">{saveError}</p>}
       {saveSuccess && <p className="success-message save-feedback">{saveSuccess}</p>}
