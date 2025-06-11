@@ -182,17 +182,12 @@ const CampaignEditorPage: React.FC = () => {
 
     } catch (err) {
       console.error("Failed to save thematic image:", err);
-      setThematicImageData(prev => ({
-        ...prev,
-        isLoading: false,
-        error: "Failed to save thematic image. Please try again."
-      }));
-      // Optionally, set a more general error message for the page using setError
-      // setError("Failed to save thematic image. Please check your connection and try again.");
+      setError("Failed to save campaign's main thematic image. Please check your connection and try again.");
+      // Optional: Clear the error after some time
       // setTimeout(() => setError(null), 5000);
     } finally {
       // setIsPageLoading(false);
-      // setThematicImageData(prev => ({ ...prev, isLoading: false }));
+      // thematicImageData state was removed, so no cleanup needed for it here
     }
   };
 
