@@ -74,12 +74,19 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = ({
     <div className={panelClasses} role="dialog" aria-labelledby="mood-board-title" aria-modal="true">
       <div className="mood-board-panel-content-wrapper"> {/* Added for better structure if needed */}
         {(onClose || title) && (
-          <div className="mood-board-header">
-            {title && <span id="mood-board-title" className="mood-board-title">{title}</span>}
-            {/* Temporarily removed onClose && to ensure button renders for debugging */}
-            <button onClick={onClose} className="mood-board-close-button" aria-label="Close mood board">
+          <div className="mood-board-header" onClick={onClose}>
+            {/* Close button moved before title and onClick updated */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose && onClose(); // Check if onClose exists before calling
+              }}
+              className="mood-board-close-button"
+              aria-label="Close mood board"
+            >
               &times;
             </button>
+            {title && <span id="mood-board-title" className="mood-board-title">{title}</span>}
           </div>
         )}
         <div className="mood-board-content-area"> {/* Renamed for clarity from mood-board-content */}
