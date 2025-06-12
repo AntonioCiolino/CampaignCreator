@@ -1239,12 +1239,13 @@ const CampaignEditorPage: React.FC = () => {
           {/* Close button is now part of MoodBoardPanel's internal structure if desired, or keep here */}
           {/* For simplicity, MoodBoardPanel's onClose is used */}
           <MoodBoardPanel
-            moodBoardUrls={campaign?.mood_board_image_urls || []}
+            moodBoardUrls={editableMoodBoardUrls} // Use the state variable
             isLoading={false} // Moodboard URLs are part of campaign data
             error={null}    // Errors for mood board fetching not handled here
             isVisible={isMoodBoardPanelOpen}
             onClose={() => setIsMoodBoardPanelOpen(false)}
             title="Mood Board"
+            onUpdateMoodBoardUrls={setEditableMoodBoardUrls} // Pass the state setter
           />
         </div>
       )}

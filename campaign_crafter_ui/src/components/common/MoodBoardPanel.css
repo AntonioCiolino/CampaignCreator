@@ -24,6 +24,12 @@
     pointer-events: none;
 }
 
+/* Style for when dragging files over the panel */
+.mood-board-panel.dragging-over {
+  border: 2px dashed var(--primary-color, #007bff);
+  background-color: rgba(0, 123, 255, 0.05); /* A light tint */
+}
+
 /* Added wrapper for better structure inside the panel */
 .mood-board-panel-content-wrapper {
   display: flex;
