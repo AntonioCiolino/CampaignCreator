@@ -32,20 +32,23 @@
 }
 
 .mood-board-header { /* Renamed from .thematic-image-header */
-  padding: 0.75rem 1rem; /* Adjusted padding */
+  /* padding: 0.75rem 1rem; */ /* Adjusted padding */
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid var(--border-color, #dee2e6);
-  background-color: var(--background-color, #f8f9fa); /* Restored original background */
+  /* background-color: var(--background-color, #f8f9fa); */ /* Restored original background */
   flex-shrink: 0; /* Prevent the header from shrinking */
+  border: 3px dotted red !important;
+  background-color: rgba(255, 100, 100, 0.1) !important;
+  padding: 0 !important; /* Temporarily remove padding to see raw element boundaries */
 }
 
 .mood-board-title { /* Renamed from .thematic-image-title */
   font-size: 1rem; /* Slightly larger title */
   font-weight: 600; /* Bolder title */
-  color: var(--text-color, #212529);
-  margin: 0;
+  /* color: var(--text-color, #212529); */
+  /* margin: 0; */
   overflow: hidden;         /* Hide overflow */
   text-overflow: ellipsis;  /* Add ellipsis for overflowed text */
   white-space: nowrap;      /* Keep title on a single line */
@@ -53,17 +56,31 @@
      adjust 50px based on button size and padding */
   max-width: calc(100% - 50px);
   display: block; /* Or inline-block, to make max-width effective */
+  border: 2px dashed blue !important;
+  background-color: rgba(100, 100, 255, 0.1) !important;
+  margin: 0 !important; /* Temporarily remove margin */
+  padding: 0 !important; /* Temporarily remove padding */
 }
 
 .mood-board-close-button { /* Renamed from .thematic-image-close-button */
-  background: transparent;
-  border: none;
-  font-size: 1.5rem; /* Larger close button */
-  font-weight: bold;
-  color: var(--text-color-muted, #6c757d);
+  /* background: transparent; */
+  /* border: none; */
+  /* font-size: 1.5rem; */ /* Larger close button */
+  /* font-weight: bold; */
+  /* color: var(--text-color-muted, #6c757d); */
   cursor: pointer;
-  padding: 0.25rem 0.5rem;
-  line-height: 1; /* Ensure proper vertical alignment */
+  /* padding: 0.25rem 0.5rem; */
+  /* line-height: 1; */ /* Ensure proper vertical alignment */
+  border: 3px solid limegreen !important;
+  background-color: rgba(100, 255, 100, 0.2) !important;
+  color: black !important; /* Ensure text color is visible */
+  font-size: 20px !important; /* Ensure font size is reasonable */
+  width: 30px !important; /* Explicit size */
+  height: 30px !important; /* Explicit size */
+  display: flex !important; /* Ensure it's a block-like element */
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important; /* Override existing padding */
 }
 .mood-board-close-button:hover {
   color: var(--text-color, #212529);
