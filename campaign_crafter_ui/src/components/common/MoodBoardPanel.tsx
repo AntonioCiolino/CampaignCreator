@@ -28,6 +28,8 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = (props) => {
 
   const [isAddImageModalOpen, setIsAddImageModalOpen] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false); // State for drag feedback
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Use a more specific main class for the panel itself, wrapper can be for visibility control
   const panelClasses = `mood-board-panel ${isVisible ? 'visible' : 'hidden'} ${isDraggingOver ? 'dragging-over' : ''}`;
@@ -50,32 +52,46 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = (props) => {
     setIsDraggingOver(false);
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => { // Make it async
     e.preventDefault();
     e.stopPropagation();
     setIsDraggingOver(false);
+    setUploadError(null); // Clear previous errors
 
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      // setIsDraggingOver(false); // Already set at the beginning of handleDrop
-      for (const file of Array.from(files)) {
+      setIsUploading(true);
+      let anErrorOccurred = false;
+
+      for (const file of Array.from(files)) { // Use Array.from for iterating FileList
         if (file.type.startsWith('image/')) {
-          console.log("Processing dropped image file:", file.name, file.type);
-          uploadImage(file)
-            .then(response => {
-              console.log(`Uploaded ${file.name}, URL: ${response.imageUrl}`);
-              onUpdateMoodBoardUrls([...moodBoardUrls, response.imageUrl]);
-            })
-            .catch(error => {
-              console.error(`Failed to upload ${file.name}:`, error);
-              // TODO: Display an error message to the user for this specific file upload failure.
-            });
+          try {
+            console.log("Processing dropped image file:", file.name, file.type);
+            const response = await uploadImage(file); // Await here for sequential processing for now
+            console.log(`Uploaded ${file.name}, URL: ${response.imageUrl}`);
+            // It's crucial that onUpdateMoodBoardUrls correctly updates the moodBoardUrls prop
+            // for the next iteration if we want to build upon the state sequentially.
+            // If onUpdateMoodBoardUrls is asynchronous or batches updates, this might not reflect immediately.
+            // For simplicity, we'll assume it updates the prop 'moodBoardUrls' effectively for the next spread.
+            // A more robust way for multiple files would be to collect all new URLs then call onUpdateMoodBoardUrls once.
+            onUpdateMoodBoardUrls([...moodBoardUrls, response.imageUrl]);
+          } catch (error: any) {
+            console.error(`Failed to upload ${file.name}:`, error);
+            setUploadError(`Failed to upload ${file.name}: ${error.message || 'Unknown error'}`);
+            anErrorOccurred = true;
+            // Decide if we should break or try other files. For now, let's try all.
+          }
         } else {
           console.log("Skipped non-image file:", file.name, file.type);
         }
       }
+      setIsUploading(false);
+      if (anErrorOccurred) {
+          // Error message is already set for the first error encountered.
+      } else if (files.length > 0) { // Check if any files were processed
+          // Optionally, set a success message or clear error if all were successful
+      }
     }
-    // Removed redundant setIsDraggingOver(false) as it's at the start of handleDrop
   };
 
   const handleAddNewImageUrl = (newUrl: string) => {
@@ -170,7 +186,10 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = (props) => {
           </div>
         )}
         <div className="mood-board-content-area"> {/* Renamed for clarity from mood-board-content */}
-          {renderContent()}
+          {isUploading && <p className="mood-board-loader">Uploading images...</p>}
+          {uploadError && <p className="mood-board-error">{uploadError}</p>}
+          {/* Do not show main loading/error if upload specific ones are shown */}
+          {!isUploading && !uploadError && renderContent()}
         </div>
       </div>
       <AddMoodBoardImageModal

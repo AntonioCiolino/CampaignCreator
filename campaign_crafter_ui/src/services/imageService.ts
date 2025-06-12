@@ -1,43 +1,40 @@
 // campaign_crafter_ui/src/services/imageService.ts
-import apiClient from './apiClient'; // Assuming a common API client setup
+import apiClient from './apiClient';
 
 export interface UploadedImageResponse {
   imageUrl: string;
-  // Potentially other metadata like filename, size, etc.
+  filename: string;
+  content_type: string;
+  size: number;
 }
 
 /**
  * Uploads an image file to the backend.
- * NOTE: The backend API endpoint for this does not exist yet.
- * This is a placeholder for the frontend integration.
  *
  * @param file The image file to upload.
  * @returns A promise that resolves to the UploadedImageResponse containing the URL of the uploaded image.
  */
 export const uploadImage = async (file: File): Promise<UploadedImageResponse> => {
   const formData = new FormData();
-  formData.append('imageFile', file); // 'imageFile' is an example key, backend will define it
+  formData.append('file', file); // FastAPI's File(...) by default expects the field name to be 'file'
+                                 // if the parameter is named 'file', unless a specific alias is given.
+                                 // In our file_uploads.py, it's `file: UploadFile = File(...)`
+                                 // So, the key here should be 'file'.
 
-  console.log(`[imageService.uploadImage] Simulating upload for: ${file.name}`);
-  // TODO: Replace with actual API call when the endpoint is available.
-  // Example using apiClient if it supports file uploads:
-  // return apiClient.post<UploadedImageResponse>('/images/upload', formData, {
-  //   headers: {
-  //     'Content-Type': 'multipart/form-data',
-  //   },
-  // });
+  console.log(`[imageService.uploadImage] Attempting to upload: ${file.name}`);
 
-  // Placeholder response:
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      // Simulate success with a placeholder URL
-      // In a real scenario, this URL would come from the backend response.
-      const placeholderUrl = `https://example.com/uploads/placeholder_${file.name}`;
-      console.log(`[imageService.uploadImage] Simulated success for ${file.name}, URL: ${placeholderUrl}`);
-      resolve({ imageUrl: placeholderUrl });
-
-      // To simulate an error:
-      // reject(new Error(`Simulated upload failed for ${file.name}`));
-    }, 1000); // Simulate network delay
-  });
+  try {
+    const response = await apiClient.post<UploadedImageResponse>('/files/upload_image', formData, {
+      headers: {
+        // 'Content-Type': 'multipart/form-data', // apiClient should set this automatically for FormData
+      },
+      // If apiClient requires explicit timeout for uploads, configure it here or in apiClient defaults
+    });
+    console.log(`[imageService.uploadImage] Successfully uploaded ${file.name}, response:`, response.data);
+    return response.data; // apiClient typically wraps response in a data object
+  } catch (error: any) {
+    console.error(`[imageService.uploadImage] Failed to upload ${file.name}:`, error.response?.data || error.message || error);
+    // Re-throw a more specific error or a generic one for the UI to handle
+    throw new Error(error.response?.data?.detail || `Failed to upload ${file.name}`);
+  }
 };

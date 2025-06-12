@@ -15,6 +15,7 @@ from app.api.endpoints import import_data as import_data_router
 from app.api.endpoints import users as users_router # New import for users
 from app.api.endpoints import data_tables # New import for data_tables
 from app.api.endpoints import auth as auth_router # Import for auth
+from app.api.endpoints import file_uploads as file_uploads_router # Import for file uploads
 
 app = FastAPI(title="Campaign Crafter API", version="0.1.0")
 
@@ -65,6 +66,7 @@ app.include_router(users_router.router, prefix="/api/v1/users", tags=["Users"]) 
 app.include_router(auth_router.router, prefix="/api/v1/auth", tags=["Authentication"]) # Added auth router
 app.include_router(data_tables.router_features, prefix="/api/v1/features", tags=["Features"])
 app.include_router(data_tables.router_roll_tables, prefix="/api/v1/roll_tables", tags=["Rolltables"])
+app.include_router(file_uploads_router.router, prefix="/api/v1", tags=["File Uploads"]) # Added file_uploads router
 
 @app.get("/", tags=["Root"])
 async def read_root():
