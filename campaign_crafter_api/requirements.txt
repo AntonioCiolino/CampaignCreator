@@ -16,3 +16,4 @@ python-jose[cryptography]==3.5.0
 azure-storage-blob
 azure-identity
 aiohttp
+certifi

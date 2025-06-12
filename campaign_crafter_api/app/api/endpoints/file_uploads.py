@@ -4,6 +4,9 @@ from sqlalchemy.orm import Session
 import uuid
 from pathlib import Path
 from io import BytesIO
+import ssl
+import certifi
+import aiohttp
 
 from app.db import get_db
 from app.models import User as UserModel
@@ -32,39 +35,48 @@ async def _upload_file_to_blob_storage(file: UploadFile, user_id: int) -> str:
 
     async_blob_service_client = None
     account_url_base = None
-    async_credential = None # Define to ensure it's in scope for finally block if needed
+    async_credential = None
+    custom_transport = None # Initialize to None
 
     try:
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        custom_transport = aiohttp.ClientSession(connector=connector)
+
         if settings.AZURE_STORAGE_CONNECTION_STRING: # Check for Connection String FIRST
-            async_blob_service_client = AsyncBlobServiceClient.from_connection_string(settings.AZURE_STORAGE_CONNECTION_STRING)
+            async_blob_service_client = AsyncBlobServiceClient.from_connection_string(
+                settings.AZURE_STORAGE_CONNECTION_STRING,
+                transport=custom_transport
+            )
             conn_parts = {part.split('=', 1)[0]: part.split('=', 1)[1] for part in settings.AZURE_STORAGE_CONNECTION_STRING.split(';') if '=' in part}
             account_name_from_conn_str = conn_parts.get('AccountName')
             if account_name_from_conn_str:
                 account_url_base = f"https://{account_name_from_conn_str}.blob.core.windows.net"
             else:
-                 # This case implies the connection string is malformed or doesn't contain AccountName,
-                 # which is unusual for standard Azure Blob Storage connection strings.
-                 # However, BlobServiceClient can still work if connection string is otherwise valid.
-                 # URL construction for the response might need a fallback or fail if AccountName isn't derivable.
-                 # For now, we'll raise if AccountName isn't found, as URL construction depends on it.
-                 # A more robust solution might try to get the account name from the client if possible, or have a separate config for public URL base.
                  print("Warning: Could not derive AccountName from connection string. AZURE_STORAGE_ACCOUNT_NAME should also be set if AccountName is not in the connection string and is needed for URL construction.")
-                 # If AZURE_STORAGE_ACCOUNT_NAME is also set, use it for URL base.
                  if settings.AZURE_STORAGE_ACCOUNT_NAME:
                      account_url_base = f"https://{settings.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net"
                  else:
+                     if custom_transport: await custom_transport.close() # Clean up transport
                      raise HTTPException(status_code=500, detail="Azure Storage AccountName missing in connection string and AZURE_STORAGE_ACCOUNT_NAME not set. Cannot construct image URL.")
 
         elif settings.AZURE_STORAGE_ACCOUNT_NAME: # Fallback to DefaultAzureCredential
             account_url_base = f"https://{settings.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net"
             async_credential = AsyncDefaultAzureCredential()
-            async_blob_service_client = AsyncBlobServiceClient(account_url_base, credential=async_credential)
+            async_blob_service_client = AsyncBlobServiceClient(
+                account_url_base,
+                credential=async_credential,
+                transport=custom_transport
+            )
         else:
+            if custom_transport: await custom_transport.close() # Clean up transport
             raise HTTPException(status_code=500, detail="Azure Storage is not configured (missing AZURE_STORAGE_CONNECTION_STRING or AZURE_STORAGE_ACCOUNT_NAME).")
 
-        if not async_blob_service_client: # Should not be reached if logic above is correct
+        if not async_blob_service_client:
+             if custom_transport: await custom_transport.close() # Clean up transport
              raise HTTPException(status_code=500, detail="Failed to initialize Azure BlobServiceClient.")
-        if not account_url_base: # Should be set if client was created and AccountName derivable/set
+        if not account_url_base:
+             if custom_transport: await custom_transport.close() # Clean up transport
              raise HTTPException(status_code=500, detail="Azure Storage account URL base could not be determined for URL construction.")
 
         file_extension = Path(file.filename).suffix.lower() if file.filename else ".bin" # Default to .bin if no extension
@@ -94,19 +106,26 @@ async def _upload_file_to_blob_storage(file: UploadFile, user_id: int) -> str:
 
         return permanent_image_url
 
-    except HTTPException: # Re-raise HTTPExceptions directly
-        raise
     except Exception as e:
+        # Ensure transport is closed if an exception occurs before client takes ownership via 'async with'
+        # or if client creation itself fails.
+        if custom_transport and not (async_blob_service_client and async_blob_service_client.transport == custom_transport):
+            await custom_transport.close()
+
+        if isinstance(e, HTTPException): # Re-raise HTTPExceptions directly
+            raise
+
         print(f"Failed to upload image to Azure Blob Storage: {type(e).__name__} - {e}")
         # Optionally log traceback.print_exc() here for more detail in server logs
         raise HTTPException(status_code=500, detail=f"Failed to upload image to cloud storage: {str(e)}")
     finally:
         if async_credential and hasattr(async_credential, 'close'):
             await async_credential.close()
-        # AsyncBlobServiceClient is closed by 'async with' if it was successfully created.
-        # If client creation failed before 'async with' and it needs explicit close, that's more complex.
-        # However, from_connection_string doesn't return a credential to close,
-        # and DefaultAzureCredential is closed.
+        # If async_blob_service_client was created, its 'async with' context manager
+        # is responsible for closing the custom_transport if it was passed.
+        # If an error occurred *before* 'async with' could run (e.g., during client instantiation
+        # after custom_transport was created but client failed), then custom_transport
+        # should be closed in the except block.
 
 # --- API Endpoint ---
 @router.post(
