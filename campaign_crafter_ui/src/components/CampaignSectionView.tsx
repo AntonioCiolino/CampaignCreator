@@ -42,6 +42,35 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   onSectionTypeUpdate, // Destructure the new prop
   onSetThematicImageFromSection,
 }) => {
+
+  // Function to get tooltip text based on section type
+  const getTooltipText = (sectionType: string | undefined): string => {
+    switch (sectionType?.toLowerCase()) {
+      case "npc":
+        return "Suggested: Name, Description, Stats, Motivations, Plot Hooks";
+      case "character":
+        return "Suggested: Name, Description, Stats, Motivations, Plot Hooks";
+      case "location":
+        return "Suggested: Description, Atmosphere, Inhabitants, Points of Interest, Secrets";
+      case "item":
+        return "Suggested: Appearance, Powers, History, How to Obtain/Use";
+      case "quest":
+        return "Suggested: Objectives, Key NPCs, Steps, Rewards, Consequences";
+      case "monster":
+        return "Suggested: Appearance, Abilities, Lair, Combat Tactics";
+      case "chapter":
+        return "Suggested: Overview, Key Events, Encounters, Challenges";
+      case "note":
+        return "General notes or ideas for this section.";
+      case "world_detail":
+        return "Detailed information about the game world, lore, history, factions, etc.";
+      case "generic":
+        return "General content for this section. Define the structure as needed.";
+      default:
+        return "Enter content for this section. You can define the structure and details as needed.";
+    }
+  };
+
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     // If section.title is "Campaign Concept", it's collapsed.
     // Otherwise, it retains its current default behavior (true).
@@ -353,6 +382,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                 value={section.type || ''}
                 onChange={(e) => onSectionTypeUpdate(section.id, e.target.value)}
                 placeholder="e.g., NPC, Location, Quest"
+                title="Defines the category of the section (e.g., NPC, Location, Quest, Item, Monster, Chapter, Note, Generic). This helps in organizing and can assist AI content generation."
                 style={{
                   flexGrow: 1,
                   padding: '6px 10px',
@@ -365,7 +395,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
           )}
 
           {isEditing ? (
-            <div className="section-editor">
+            <div className="section-editor" title={getTooltipText(section.type)}>
               <ReactQuill
                 theme="snow"
                 value={editedContent}

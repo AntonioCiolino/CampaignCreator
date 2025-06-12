@@ -307,24 +307,36 @@ async def seed_sections_from_toc_endpoint(
             section_content_for_crud = f"Content for '{title}' to be generated."
             section_type_for_llm = type_from_toc # Base type for LLM
 
-            if auto_populate and llm_service_instance and db_campaign.concept:
-                # Refine section_type_for_llm if type_from_toc is generic/unknown
-                if type_from_toc.lower() in ["unknown", "generic", "other", ""]:
-                    title_lower = title.lower()
-                    if "npc" in title_lower or "character" in title_lower: section_type_for_llm = "NPC"
-                    elif "location" in title_lower or "place" in title_lower: section_type_for_llm = "Location"
-                    elif "chapter" in title_lower or "quest" in title_lower or "adventure" in title_lower: section_type_for_llm = "Chapter/Quest"
-                    # else: section_type_for_llm remains the (generic) type_from_toc
+            # Define AVAILABLE_SECTION_TYPES - ordered by specificity (more specific first)
+            AVAILABLE_SECTION_TYPES = [
+                "monster", "character", "npc", "location", "item", "quest", "chapter", "note", "world_detail", "generic"
+            ] # "npc" is included as it was in previous logic, "generic" as a fallback
 
+            if type_from_toc.lower() in ["unknown", "generic", "other", ""]:
+                title_lower = title.lower()
+                for potential_type in AVAILABLE_SECTION_TYPES:
+                    # Use \b for whole word matching
+                    if re.search(r"\b" + re.escape(potential_type) + r"\b", title_lower):
+                        section_type_for_llm = potential_type
+                        break # Found the first, most specific match
+
+            if auto_populate and llm_service_instance and db_campaign.concept:
                 # Construct prompt based on refined section_type_for_llm
                 prompt = ""
-                if section_type_for_llm == "NPC":
-                    prompt = f"Generate a detailed description for an NPC named '{title}'. Include their appearance, personality, motivations, and potential plot hooks related to them."
-                elif section_type_for_llm == "Location":
+                if section_type_for_llm == "character" or section_type_for_llm == "npc": # Combined NPC and Character
+                    prompt = f"Generate a detailed description for a character named '{title}'. Include their appearance, personality, motivations, and potential plot hooks related to them."
+                elif section_type_for_llm == "location":
                     prompt = f"Describe the location '{title}'. Include its key features, atmosphere, inhabitants (if any), and any notable points of interest or secrets."
-                elif section_type_for_llm == "Chapter/Quest":
-                    prompt = f"Outline the main events and encounters for the adventure chapter titled '{title}'. Provide a brief overview of the objectives, challenges, and potential rewards."
-                else: # Generic or other specific types from TOC
+                elif section_type_for_llm == "monster":
+                    prompt = f"Generate a detailed description for a monster named '{title}'. Include its appearance, abilities, lair, and potential combat tactics."
+                elif section_type_for_llm == "item":
+                    prompt = f"Describe the magical item '{title}'. Include its appearance, powers, history, and how it can be obtained or used."
+                elif section_type_for_llm == "quest":
+                    prompt = f"Outline the quest '{title}'. Include the objectives, key NPCs involved, steps to complete it, and potential rewards or consequences."
+                elif section_type_for_llm == "chapter": # Added specific prompt for chapter
+                    prompt = f"Outline the main events and encounters for the chapter titled '{title}'. Provide a brief overview of the objectives, challenges, and potential rewards."
+                # Note: "note", "world_detail" will fall into the else "generic" category for now, which is acceptable.
+                else: # Generic or other specific types from TOC not explicitly handled above
                     prompt = f"Generate content for a section titled '{title}' of type '{section_type_for_llm}' as part of a larger campaign document."
 
                 try:
