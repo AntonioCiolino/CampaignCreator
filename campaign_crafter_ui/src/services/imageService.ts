@@ -26,7 +26,7 @@ export const uploadImage = async (file: File): Promise<UploadedImageResponse> =>
   try {
     const response = await apiClient.post<UploadedImageResponse>('/api/v1/files/upload_image', formData, {
       headers: {
-        // 'Content-Type': 'multipart/form-data', // apiClient should set this automatically for FormData
+        'Content-Type': undefined, // Let axios set the correct Content-Type for FormData
       },
       // If apiClient requires explicit timeout for uploads, configure it here or in apiClient defaults
     });
@@ -35,6 +35,15 @@ export const uploadImage = async (file: File): Promise<UploadedImageResponse> =>
   } catch (error: any) {
     console.error(`[imageService.uploadImage] Failed to upload ${file.name}:`, error.response?.data || error.message || error);
     // Re-throw a more specific error or a generic one for the UI to handle
-    throw new Error(error.response?.data?.detail || `Failed to upload ${file.name}`);
+    const detail = error.response?.data?.detail;
+    let errorMessage = `Failed to upload ${file.name}`;
+    if (detail) {
+      if (Array.isArray(detail) && detail.length > 0 && detail[0].msg) {
+        errorMessage = detail[0].msg;
+      } else if (typeof detail === 'string') {
+        errorMessage = detail;
+      }
+    }
+    throw new Error(errorMessage);
   }
 };
