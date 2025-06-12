@@ -68,7 +68,7 @@ const CampaignDetailsEditor: React.FC<CampaignDetailsEditorProps> = ({
   const [isBadgeActionsVisible, setIsBadgeActionsVisible] = useState(false); // State for badge actions visibility
   const [isBadgePreviewModalOpen, setIsBadgePreviewModalOpen] = useState(false); // State for badge preview modal
   const [newMoodBoardUrl, setNewMoodBoardUrl] = useState<string>(''); // State for new mood board URL input
-  const [isMoodBoardSectionOpen, setIsMoodBoardSectionOpen] = useState(true); // State for Mood Board collapse
+  // const [isMoodBoardSectionOpen, setIsMoodBoardSectionOpen] = useState(true); // Removed: CollapsibleSection will manage its own state
 
   const moodBoardChanged = JSON.stringify(editableMoodBoardUrls.slice().sort()) !== JSON.stringify(originalMoodBoardUrls.slice().sort());
   const detailsChanged = editableTitle !== originalTitle || initialPrompt !== originalInitialPrompt;
@@ -208,8 +208,7 @@ const CampaignDetailsEditor: React.FC<CampaignDetailsEditorProps> = ({
           <Grid item xs={12} sx={{ mt: 3 }}>
             <CollapsibleSection
               title="Mood Board Image URLs"
-              isOpen={isMoodBoardSectionOpen}
-              onToggle={() => setIsMoodBoardSectionOpen(!isMoodBoardSectionOpen)}
+              initialCollapsed={false} // Section will be open by default, managed internally
             >
               {/* Content of the mood board section, previously under Typography title */}
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, mt: 1 /* Space from header */ }}>
