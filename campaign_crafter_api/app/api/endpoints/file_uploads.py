@@ -35,23 +35,37 @@ async def _upload_file_to_blob_storage(file: UploadFile, user_id: int) -> str:
     async_credential = None # Define to ensure it's in scope for finally block if needed
 
     try:
-        if settings.AZURE_STORAGE_ACCOUNT_NAME:
-            account_url_base = f"https://{settings.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net"
-            async_credential = AsyncDefaultAzureCredential()
-            async_blob_service_client = AsyncBlobServiceClient(account_url_base, credential=async_credential)
-        elif settings.AZURE_STORAGE_CONNECTION_STRING:
+        if settings.AZURE_STORAGE_CONNECTION_STRING: # Check for Connection String FIRST
             async_blob_service_client = AsyncBlobServiceClient.from_connection_string(settings.AZURE_STORAGE_CONNECTION_STRING)
             conn_parts = {part.split('=', 1)[0]: part.split('=', 1)[1] for part in settings.AZURE_STORAGE_CONNECTION_STRING.split(';') if '=' in part}
             account_name_from_conn_str = conn_parts.get('AccountName')
             if account_name_from_conn_str:
                 account_url_base = f"https://{account_name_from_conn_str}.blob.core.windows.net"
-            else: # Should not happen for valid connection strings with AccountName
-                 raise HTTPException(status_code=500, detail="Azure Storage AccountName missing in connection string and AZURE_STORAGE_ACCOUNT_NAME not set.")
-        else:
-            raise HTTPException(status_code=500, detail="Azure Storage is not configured (missing AZURE_STORAGE_ACCOUNT_NAME or AZURE_STORAGE_CONNECTION_STRING).")
+            else:
+                 # This case implies the connection string is malformed or doesn't contain AccountName,
+                 # which is unusual for standard Azure Blob Storage connection strings.
+                 # However, BlobServiceClient can still work if connection string is otherwise valid.
+                 # URL construction for the response might need a fallback or fail if AccountName isn't derivable.
+                 # For now, we'll raise if AccountName isn't found, as URL construction depends on it.
+                 # A more robust solution might try to get the account name from the client if possible, or have a separate config for public URL base.
+                 print("Warning: Could not derive AccountName from connection string. AZURE_STORAGE_ACCOUNT_NAME should also be set if AccountName is not in the connection string and is needed for URL construction.")
+                 # If AZURE_STORAGE_ACCOUNT_NAME is also set, use it for URL base.
+                 if settings.AZURE_STORAGE_ACCOUNT_NAME:
+                     account_url_base = f"https://{settings.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net"
+                 else:
+                     raise HTTPException(status_code=500, detail="Azure Storage AccountName missing in connection string and AZURE_STORAGE_ACCOUNT_NAME not set. Cannot construct image URL.")
 
-        if not account_url_base: # Should be set if client was created
-             raise HTTPException(status_code=500, detail="Azure Storage account URL base could not be determined.")
+        elif settings.AZURE_STORAGE_ACCOUNT_NAME: # Fallback to DefaultAzureCredential
+            account_url_base = f"https://{settings.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net"
+            async_credential = AsyncDefaultAzureCredential()
+            async_blob_service_client = AsyncBlobServiceClient(account_url_base, credential=async_credential)
+        else:
+            raise HTTPException(status_code=500, detail="Azure Storage is not configured (missing AZURE_STORAGE_CONNECTION_STRING or AZURE_STORAGE_ACCOUNT_NAME).")
+
+        if not async_blob_service_client: # Should not be reached if logic above is correct
+             raise HTTPException(status_code=500, detail="Failed to initialize Azure BlobServiceClient.")
+        if not account_url_base: # Should be set if client was created and AccountName derivable/set
+             raise HTTPException(status_code=500, detail="Azure Storage account URL base could not be determined for URL construction.")
 
         file_extension = Path(file.filename).suffix.lower() if file.filename else ".bin" # Default to .bin if no extension
         if not file_extension or len(file_extension) > 5: # Basic sanitization
