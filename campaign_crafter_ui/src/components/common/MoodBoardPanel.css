@@ -82,6 +82,25 @@
   color: var(--text-color, #212529);
 }
 
+.mood-board-add-button {
+  background: transparent;
+  border: none;
+  margin-left: 0.5rem; /* Space between title (on left) and this button (on right) */
+  font-size: 1.5rem; /* Consistent with close button */
+  color: var(--text-color-muted, #6c757d);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem; /* Consistent with close button */
+  line-height: 1; /* Ensure proper vertical alignment */
+  flex-shrink: 0; /* Prevent the button from shrinking */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mood-board-add-button:hover {
+  color: var(--text-color, #212529); /* Consistent hover effect */
+}
+
 .mood-board-content-area { /* Renamed for clarity, was .thematic-image-content */
   padding: 1rem;
   overflow-y: auto;
