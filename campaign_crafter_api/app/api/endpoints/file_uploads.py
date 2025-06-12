@@ -15,6 +15,7 @@ from app.core.config import settings
 from azure.storage.blob.aio import BlobServiceClient as AsyncBlobServiceClient
 from azure.identity.aio import DefaultAzureCredential as AsyncDefaultAzureCredential
 from azure.storage.blob import ContentSettings
+from azure.core.pipeline.transport import AioHttpTransport # New import
 
 
 router = APIRouter()
@@ -36,47 +37,56 @@ async def _upload_file_to_blob_storage(file: UploadFile, user_id: int) -> str:
     async_blob_service_client = None
     account_url_base = None
     async_credential = None
-    custom_transport = None # Initialize to None
+    aiohttp_session = None # To manage its lifecycle
 
     try:
         ssl_context = ssl.create_default_context(cafile=certifi.where())
-        connector = aiohttp.TCPConnector(ssl=ssl_context)
-        custom_transport = aiohttp.ClientSession(connector=connector)
+        # Create the aiohttp.ClientSession with the custom SSL context via a TCPConnector
+        aiohttp_session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ssl_context))
+        # Create the Azure-specific transport wrapper
+        azure_transport = AioHttpTransport(session=aiohttp_session, session_owner=True) # session_owner=True means the transport will close the session
 
-        if settings.AZURE_STORAGE_CONNECTION_STRING: # Check for Connection String FIRST
+        if settings.AZURE_STORAGE_CONNECTION_STRING:
             async_blob_service_client = AsyncBlobServiceClient.from_connection_string(
                 settings.AZURE_STORAGE_CONNECTION_STRING,
-                transport=custom_transport
+                transport=azure_transport # Pass the Azure transport
             )
             conn_parts = {part.split('=', 1)[0]: part.split('=', 1)[1] for part in settings.AZURE_STORAGE_CONNECTION_STRING.split(';') if '=' in part}
             account_name_from_conn_str = conn_parts.get('AccountName')
             if account_name_from_conn_str:
                 account_url_base = f"https://{account_name_from_conn_str}.blob.core.windows.net"
+            elif settings.AZURE_STORAGE_ACCOUNT_NAME: # Fallback for URL construction
+                print("Warning: AccountName not found in AZURE_STORAGE_CONNECTION_STRING. Falling back to AZURE_STORAGE_ACCOUNT_NAME for URL construction.")
+                account_url_base = f"https://{settings.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net"
             else:
-                 print("Warning: Could not derive AccountName from connection string. AZURE_STORAGE_ACCOUNT_NAME should also be set if AccountName is not in the connection string and is needed for URL construction.")
-                 if settings.AZURE_STORAGE_ACCOUNT_NAME:
-                     account_url_base = f"https://{settings.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net"
-                 else:
-                     if custom_transport: await custom_transport.close() # Clean up transport
-                     raise HTTPException(status_code=500, detail="Azure Storage AccountName missing in connection string and AZURE_STORAGE_ACCOUNT_NAME not set. Cannot construct image URL.")
+                # If aiohttp_session was created, ensure it's closed before raising
+                # This specific path might be less likely if from_connection_string itself errors first
+                # but good for robustness if conn_parts logic is what fails.
+                # However, if from_connection_string fails, azure_transport might not be fully initialized
+                # or passed to a client. The broad except block handles aiohttp_session.close() generally.
+                raise HTTPException(status_code=500, detail="Azure Storage AccountName missing for URL construction (not in CString or AZURE_STORAGE_ACCOUNT_NAME).")
 
-        elif settings.AZURE_STORAGE_ACCOUNT_NAME: # Fallback to DefaultAzureCredential
+        elif settings.AZURE_STORAGE_ACCOUNT_NAME:
             account_url_base = f"https://{settings.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net"
             async_credential = AsyncDefaultAzureCredential()
             async_blob_service_client = AsyncBlobServiceClient(
                 account_url_base,
                 credential=async_credential,
-                transport=custom_transport
+                transport=azure_transport # Pass the Azure transport
             )
         else:
-            if custom_transport: await custom_transport.close() # Clean up transport
+            # If we get here, client wasn't created, so transport and session need to be closed
+            # No, azure_transport is not created yet, only aiohttp_session
+            if aiohttp_session and not aiohttp_session.closed: await aiohttp_session.close()
             raise HTTPException(status_code=500, detail="Azure Storage is not configured (missing AZURE_STORAGE_CONNECTION_STRING or AZURE_STORAGE_ACCOUNT_NAME).")
 
         if not async_blob_service_client:
-             if custom_transport: await custom_transport.close() # Clean up transport
+             # This means client creation failed after session/transport were made, but before client assigned.
+             if aiohttp_session and not aiohttp_session.closed: await aiohttp_session.close()
              raise HTTPException(status_code=500, detail="Failed to initialize Azure BlobServiceClient.")
         if not account_url_base:
-             if custom_transport: await custom_transport.close() # Clean up transport
+             # Similar to above, client might exist but URL base failed.
+             if aiohttp_session and not aiohttp_session.closed: await aiohttp_session.close()
              raise HTTPException(status_code=500, detail="Azure Storage account URL base could not be determined for URL construction.")
 
         file_extension = Path(file.filename).suffix.lower() if file.filename else ".bin" # Default to .bin if no extension
@@ -106,26 +116,41 @@ async def _upload_file_to_blob_storage(file: UploadFile, user_id: int) -> str:
 
         return permanent_image_url
 
-    except Exception as e:
-        # Ensure transport is closed if an exception occurs before client takes ownership via 'async with'
-        # or if client creation itself fails.
-        if custom_transport and not (async_blob_service_client and async_blob_service_client.transport == custom_transport):
-            await custom_transport.close()
+    except HTTPException:
+        # If an HTTPException occurs before or during client setup, and aiohttp_session was created
+        # but not yet passed to a client that would own its lifecycle via azure_transport.
+        if aiohttp_session and not aiohttp_session.closed: # Check if it exists and isn't already closed
+             # This check is tricky: if azure_transport took ownership, it should close it.
+             # This explicit close is for cases where azure_transport might not have been assigned to a client
+             # that then enters an 'async with' block.
+             is_session_owned_by_client = False
+             if async_blob_service_client and hasattr(async_blob_service_client, '_transport') and isinstance(async_blob_service_client._transport, AioHttpTransport):
+                 if async_blob_service_client._transport._session == aiohttp_session: # type: ignore
+                     is_session_owned_by_client = True
 
-        if isinstance(e, HTTPException): # Re-raise HTTPExceptions directly
-            raise
+             if not is_session_owned_by_client:
+                 await aiohttp_session.close()
+        raise
+    except Exception as e:
+        if aiohttp_session and not aiohttp_session.closed:
+            is_session_owned_by_client = False
+            if async_blob_service_client and hasattr(async_blob_service_client, '_transport') and isinstance(async_blob_service_client._transport, AioHttpTransport):
+                if async_blob_service_client._transport._session == aiohttp_session: # type: ignore
+                    is_session_owned_by_client = True
+            if not is_session_owned_by_client:
+                await aiohttp_session.close()
 
         print(f"Failed to upload image to Azure Blob Storage: {type(e).__name__} - {e}")
-        # Optionally log traceback.print_exc() here for more detail in server logs
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to upload image to cloud storage: {str(e)}")
     finally:
         if async_credential and hasattr(async_credential, 'close'):
             await async_credential.close()
-        # If async_blob_service_client was created, its 'async with' context manager
-        # is responsible for closing the custom_transport if it was passed.
-        # If an error occurred *before* 'async with' could run (e.g., during client instantiation
-        # after custom_transport was created but client failed), then custom_transport
-        # should be closed in the except block.
+        # aiohttp_session lifecycle is managed by AioHttpTransport(session_owner=True)
+        # when AsyncBlobServiceClient's context manager (`async with`) closes the client and its transport.
+        # Explicit closes in `except` blocks are for scenarios where this normal lifecycle might be interrupted
+        # before the client fully takes ownership or if an error occurs outside the client's direct operations.
 
 # --- API Endpoint ---
 @router.post(
