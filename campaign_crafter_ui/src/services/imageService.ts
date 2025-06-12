@@ -24,7 +24,7 @@ export const uploadImage = async (file: File): Promise<UploadedImageResponse> =>
   console.log(`[imageService.uploadImage] Attempting to upload: ${file.name}`);
 
   try {
-    const response = await apiClient.post<UploadedImageResponse>('/files/upload_image', formData, {
+    const response = await apiClient.post<UploadedImageResponse>('/api/v1/files/upload_image', formData, {
       headers: {
         // 'Content-Type': 'multipart/form-data', // apiClient should set this automatically for FormData
       },
