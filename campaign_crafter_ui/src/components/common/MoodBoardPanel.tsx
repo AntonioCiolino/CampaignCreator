@@ -76,11 +76,10 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = ({
         {(onClose || title) && (
           <div className="mood-board-header">
             {title && <span id="mood-board-title" className="mood-board-title">{title}</span>}
-            {onClose && (
-              <button onClick={onClose} className="mood-board-close-button" aria-label="Close mood board">
-                &times;
-              </button>
-            )}
+            {/* Temporarily removed onClose && to ensure button renders for debugging */}
+            <button onClick={onClose} className="mood-board-close-button" aria-label="Close mood board">
+              &times;
+            </button>
           </div>
         )}
         <div className="mood-board-content-area"> {/* Renamed for clarity from mood-board-content */}
