@@ -282,6 +282,7 @@ const GenericTextGenerator: React.FC = () => {
         isVisible={isImageDisplayVisible}
         onClose={handleCloseImageDisplay}
         title={promptUsedForImage ? `Generated: ${promptUsedForImage}` : "Generated Image"}
+        onUpdateMoodBoardUrls={() => console.warn("onUpdateMoodBoardUrls called from GenericTextGenerator - this should not happen for display-only panel")}
       />
 
     </div>

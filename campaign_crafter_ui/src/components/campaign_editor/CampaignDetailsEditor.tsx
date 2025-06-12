@@ -1,6 +1,7 @@
 import React, { useState } from 'react'; // Import useState
 import { TextField, Grid, Typography, Card, CardContent, Box, IconButton } from '@mui/material'; // Added IconButton
 import Button from '../common/Button'; // Import common Button
+import CollapsibleSection from '../common/CollapsibleSection'; // Import CollapsibleSection
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined'; // Import icon
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'; // Import ExpandMoreIcon
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'; // Import ChevronRightIcon
@@ -33,7 +34,7 @@ interface CampaignDetailsEditorProps {
   badgeUpdateError: string | null; // New prop
   // Mood Board Props
   editableMoodBoardUrls: string[];
-  setEditableMoodBoardUrls: (urls: string[]) => void;
+  // setEditableMoodBoardUrls: (urls: string[]) => void; // No longer used in this component
   originalMoodBoardUrls: string[];
 }
 
@@ -59,14 +60,15 @@ const CampaignDetailsEditor: React.FC<CampaignDetailsEditorProps> = ({
   badgeUpdateError, // New prop
   // Mood Board Props
   editableMoodBoardUrls,
-  setEditableMoodBoardUrls,
+  // setEditableMoodBoardUrls, // No longer used in this component
   originalMoodBoardUrls,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false); // Add state for collapse
   const [isInitialPromptVisible, setIsInitialPromptVisible] = useState(false); // State for prompt visibility
   const [isBadgeActionsVisible, setIsBadgeActionsVisible] = useState(false); // State for badge actions visibility
   const [isBadgePreviewModalOpen, setIsBadgePreviewModalOpen] = useState(false); // State for badge preview modal
-  const [newMoodBoardUrl, setNewMoodBoardUrl] = useState<string>(''); // State for new mood board URL input
+  // const [newMoodBoardUrl, setNewMoodBoardUrl] = useState<string>(''); // No longer used in this component
+  // const [isMoodBoardSectionOpen, setIsMoodBoardSectionOpen] = useState(true); // Removed: CollapsibleSection will manage its own state
 
   const moodBoardChanged = JSON.stringify(editableMoodBoardUrls.slice().sort()) !== JSON.stringify(originalMoodBoardUrls.slice().sort());
   const detailsChanged = editableTitle !== originalTitle || initialPrompt !== originalInitialPrompt;
@@ -202,32 +204,19 @@ const CampaignDetailsEditor: React.FC<CampaignDetailsEditorProps> = ({
               </Box>
             )}
           </Grid>
-          <Grid item xs={12}>
-            {/* The Save Details button was here, assuming it might be part of a larger form structure or moved elsewhere based on overall UI design.
-                If it's meant to be part of this component, it should be retained.
-                For this specific task, we are only focusing on the title suggestion button.
-                The original instructions didn't specify removing or moving the "Save Details" button,
-                so I am keeping it as it was.
-            */}
-            <Button
-              variant="primary" // Changed from "contained"
-              onClick={handleSaveCampaignDetails}
-              disabled={!hasUnsavedChanges} // Disable button if no unsaved changes
-              // color="primary" is removed as it's usually part of MUI Button, not a common custom prop combined with variant="primary"
-              style={{ marginTop: '16px' }} // Use style prop for custom styling
-            >
-              Save Details
-            </Button>
-          </Grid>
-
-          {/* Mood Board Section */}
+          {/* Mood Board Section - REMOVED from here as it's managed by MoodBoardPanel via CampaignEditorPage */}
+          {/*
           <Grid item xs={12} sx={{ mt: 3 }}>
-            <Typography variant="subtitle1" gutterBottom>Mood Board Image URLs</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <TextField
-                label="New Image URL"
-                value={newMoodBoardUrl}
-                onChange={(e) => setNewMoodBoardUrl(e.target.value)}
+            <CollapsibleSection
+              title="Mood Board Image URLs"
+              initialCollapsed={false} // Section will be open by default, managed internally
+            >
+              // Content of the mood board section, previously under Typography title
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, mt: 1 // Space from header }}>
+                <TextField
+                  label="New Image URL"
+                value={newMoodBoardUrl} // This state is removed
+                onChange={(e) => setNewMoodBoardUrl(e.target.value)} // This state is removed
                 variant="outlined"
                 size="small"
                 fullWidth
@@ -236,24 +225,15 @@ const CampaignDetailsEditor: React.FC<CampaignDetailsEditorProps> = ({
               />
               <Button
                 onClick={() => {
-                  if (newMoodBoardUrl.trim()) {
-                    try {
-                      new URL(newMoodBoardUrl); // Basic URL validation
-                      setEditableMoodBoardUrls([...editableMoodBoardUrls, newMoodBoardUrl.trim()]);
-                      setNewMoodBoardUrl('');
-                    } catch (_) {
-                      alert("Please enter a valid URL."); // Simple alert, could be an error state
-                    }
-                  }
+                  // This logic is now in MoodBoardPanel, using onUpdateMoodBoardUrls from CampaignEditorPage
                 }}
-                // variant="outlined" // Removed problematic variant for custom Button
-                className="action-button secondary-action-button" // Keep consistent button styling
+                className="action-button secondary-action-button"
               >
                 Add URL
               </Button>
             </Box>
             {editableMoodBoardUrls.length > 0 ? (
-              <Box component="ul" sx={{ listStyleType: 'none', mt: 1, maxHeight: '200px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '4px', p:1 }}> {/* Removed p:0 */}
+              <Box component="ul" sx={{ listStyleType: 'none', mt: 1, maxHeight: '200px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '4px', p:1 }}>
                 {editableMoodBoardUrls.map((url, index) => (
                   <Box
                     component="li"
@@ -271,7 +251,7 @@ const CampaignDetailsEditor: React.FC<CampaignDetailsEditorProps> = ({
                     <Typography variant="caption" sx={{ wordBreak: 'break-all', flexGrow: 1, mr:1 }}>{url}</Typography>
                     <IconButton
                       onClick={() => {
-                        setEditableMoodBoardUrls(editableMoodBoardUrls.filter((_, i) => i !== index));
+                        // This logic is now in MoodBoardPanel, using onUpdateMoodBoardUrls from CampaignEditorPage
                       }}
                       size="small"
                       aria-label="Remove URL"
@@ -285,6 +265,25 @@ const CampaignDetailsEditor: React.FC<CampaignDetailsEditorProps> = ({
             ) : (
               <Typography variant="body2" color="textSecondary" sx={{mt:1}}>No mood board images added yet.</Typography>
             )}
+            </CollapsibleSection>
+          </Grid>
+          */}
+          <Grid item xs={12}>
+            {/* The Save Details button was here, assuming it might be part of a larger form structure or moved elsewhere based on overall UI design.
+                If it's meant to be part of this component, it should be retained.
+                For this specific task, we are only focusing on the title suggestion button.
+                The original instructions didn't specify removing or moving the "Save Details" button,
+                so I am keeping it as it was.
+            */}
+            <Button
+              variant="primary" // Changed from "contained"
+              onClick={handleSaveCampaignDetails}
+              disabled={!hasUnsavedChanges} // Disable button if no unsaved changes
+              // color="primary" is removed as it's usually part of MUI Button, not a common custom prop combined with variant="primary"
+              style={{ marginTop: '16px' }} // Use style prop for custom styling
+            >
+              Save Details
+            </Button>
           </Grid>
         </Grid>
       </CardContent>
