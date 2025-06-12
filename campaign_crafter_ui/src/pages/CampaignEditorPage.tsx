@@ -964,7 +964,7 @@ const CampaignEditorPage: React.FC = () => {
         badgeUpdateError={badgeUpdateError}
         // Mood Board Props
         editableMoodBoardUrls={editableMoodBoardUrls}
-        setEditableMoodBoardUrls={setEditableMoodBoardUrls}
+        // setEditableMoodBoardUrls={setEditableMoodBoardUrls} // Removed as CampaignDetailsEditor no longer uses it directly
         originalMoodBoardUrls={campaign?.mood_board_image_urls || []}
       />
       {saveError && <p className="error-message save-feedback">{saveError}</p>}
