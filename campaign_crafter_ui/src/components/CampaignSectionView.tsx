@@ -382,6 +382,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                 value={section.type || ''}
                 onChange={(e) => onSectionTypeUpdate(section.id, e.target.value)}
                 placeholder="e.g., NPC, Location, Quest"
+                title="Defines the category of the section (e.g., NPC, Location, Quest, Item, Monster, Chapter, Note, Generic). This helps in organizing and can assist AI content generation."
                 style={{
                   flexGrow: 1,
                   padding: '6px 10px',
