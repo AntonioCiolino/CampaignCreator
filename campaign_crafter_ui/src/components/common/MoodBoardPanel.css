@@ -37,7 +37,8 @@
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid var(--border-color, #dee2e6);
-  background-color: var(--background-color, #f8f9fa);
+  background-color: var(--background-color, #f8f9fa); /* Restored original background */
+  flex-shrink: 0; /* Prevent the header from shrinking */
 }
 
 .mood-board-title { /* Renamed from .thematic-image-title */
@@ -45,6 +46,13 @@
   font-weight: 600; /* Bolder title */
   color: var(--text-color, #212529);
   margin: 0;
+  overflow: hidden;         /* Hide overflow */
+  text-overflow: ellipsis;  /* Add ellipsis for overflowed text */
+  white-space: nowrap;      /* Keep title on a single line */
+  /* Optional: Add a max-width to give explicit room for the button,
+     adjust 50px based on button size and padding */
+  max-width: calc(100% - 50px);
+  display: block; /* Or inline-block, to make max-width effective */
 }
 
 .mood-board-close-button { /* Renamed from .thematic-image-close-button */
