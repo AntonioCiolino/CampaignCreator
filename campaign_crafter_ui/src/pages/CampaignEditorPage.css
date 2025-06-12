@@ -306,11 +306,12 @@
   position: fixed;
   right: 0;
   top: 0;
-  width: 300px; /* Adjust width as desired */
+  width: 400px; /* Increased width */
   height: 100vh; /* Full viewport height */
   background-color: #fff; /* Or a suitable panel background */
   border-left: 1px solid #ccc;
-  padding: 20px;
+  /* Removing padding: 20px; as MoodBoardPanel component handles its internal padding. */
+  /* If padding is desired on the outer container, it can be kept or adjusted. For now, remove it. */
   box-shadow: -2px 0 8px rgba(0,0,0,0.15);
   z-index: 1050; /* High z-index to float above other content */
   overflow-y: auto; /* Allow scrolling if content exceeds height */

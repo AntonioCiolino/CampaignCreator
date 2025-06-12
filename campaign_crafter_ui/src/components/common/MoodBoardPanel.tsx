@@ -6,9 +6,10 @@ export interface MoodBoardPanelProps {
   moodBoardUrls: string[] | null;
   isLoading: boolean; // For loading state if URLs are fetched async, or for general panel loading
   error: string | null;
-  onClose?: () => void;
+  onClose?: () => void; // For the main panel
   isVisible: boolean;
   title?: string;
+  onRemoveImage?: (imageUrlToRemove: string) => void; // For removing a specific image tile
 }
 
 const MoodBoardPanel: React.FC<MoodBoardPanelProps> = ({
@@ -17,7 +18,8 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = ({
   error,
   onClose,
   isVisible,
-  title = "Mood Board" // Default title
+  title = "Mood Board", // Default title
+  onRemoveImage
 }) => {
   // Use a more specific main class for the panel itself, wrapper can be for visibility control
   const panelClasses = `mood-board-panel ${isVisible ? 'visible' : 'hidden'}`;
@@ -31,10 +33,24 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = ({
     }
     if (moodBoardUrls && moodBoardUrls.length > 0) {
       return (
-        <div className="mood-board-list"> {/* New class for list container */}
+        <div className="mood-board-list">
           {moodBoardUrls.map((url, index) => (
             <a key={index} href={url} target="_blank" rel="noopener noreferrer" className="mood-board-item-link">
               <img src={url} alt={`Mood board ${index + 1}`} className="mood-board-image" />
+              {onRemoveImage && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault(); // Important: Prevent link navigation
+                    e.stopPropagation(); // Stop event from bubbling up
+                    onRemoveImage(url);
+                  }}
+                  className="mood-board-tile-close-button"
+                  aria-label={`Remove image ${index + 1}`}
+                >
+                  &times;
+                </button>
+              )}
+              {/* TODO: Add drag handles and integrate with a DND library if reordering is needed */}
             </a>
           ))}
         </div>

@@ -89,8 +89,9 @@
 /* New styles for mood board image list */
 .mood-board-list {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 1rem; /* Spacing between images */
+  justify-content: flex-start; /* Align items to the start */
 }
 
 .mood-board-item-link {
@@ -99,6 +100,11 @@
   border: 2px solid transparent; /* For optional focus/hover effect */
   border-radius: var(--border-radius, 0.3rem);
   transition: border-color 0.2s ease-in-out;
+  position: relative; /* For absolute positioning of close button */
+  width: 100px; /* Example size, adjust as needed */
+  height: 100px; /* Example size, adjust as needed */
+  padding: 0; /* Remove padding if image takes full tile */
+  overflow: hidden; /* Hide parts of image that don't fit */
 }
 
 .mood-board-item-link:hover,
@@ -108,12 +114,38 @@
 }
 
 .mood-board-image {
-  width: 100%; /* Make image responsive to link width */
-  max-width: 100%; /* Ensure it doesn't overflow its container */
-  height: auto; /* Maintain aspect ratio */
-  border-radius: calc(var(--border-radius, 0.3rem) - 2px); /* Adjust for link border */
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Crop to fill if aspect ratios differ */
   display: block;
-  background-color: #eee; /* Placeholder background */
+  /* background-color: #eee; /* Optional: can be removed or kept */
+  border-radius: 0; /* Image itself doesn't need radius if tile has it and overflow:hidden */
 }
 
 /* Removed .thematic-image-container and .thematic-image-caption as they are not used */
+
+/* New styles for an individual tile's close button */
+.mood-board-tile-close-button {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px; /* Small button */
+  height: 18px; /* Small button */
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  border-radius: 50%; /* Circular button */
+  font-size: 10px; /* Small icon/text */
+  line-height: 18px; /* Center content vertically */
+  text-align: center;
+  cursor: pointer;
+  padding: 0;
+  display: flex; /* For centering content if needed */
+  align-items: center; /* For centering content if needed */
+  justify-content: center; /* For centering content if needed */
+  transition: background-color 0.2s ease;
+}
+
+.mood-board-tile-close-button:hover {
+  background-color: rgba(0, 0, 0, 0.8);
+}
