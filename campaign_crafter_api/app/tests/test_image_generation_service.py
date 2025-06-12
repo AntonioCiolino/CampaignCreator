@@ -193,3 +193,146 @@ async def test_save_image_and_log_db_download_fails(image_service, mock_db_sessi
         assert exc_info.value.status_code == 502
         assert "Failed to download image from source" in exc_info.value.detail
         mock_db_session.add.assert_not_called() # Ensure DB not touched on failure
+
+
+# --- Tests for delete_image_from_blob_storage ---
+
+class TestImageGenerationServiceDeletion:
+    def setup_method(self):
+        # Store original settings to restore them later if necessary,
+        # though for this specific setting, it's often set per test run or globally for tests.
+        self.original_conn_string = settings.AZURE_STORAGE_CONNECTION_STRING
+        settings.AZURE_STORAGE_CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=mockaccount;AccountKey=mockkey;EndpointSuffix=core.windows.net"
+        self.image_service = ImageGenerationService()
+
+    def teardown_method(self):
+        # Restore original settings
+        settings.AZURE_STORAGE_CONNECTION_STRING = self.original_conn_string
+
+    @pytest.mark.asyncio
+    @patch('app.services.image_generation_service.BlobServiceClient')
+    async def test_delete_image_successfully(self, mock_blob_service_client_constructor):
+        mock_bsc_instance = MagicMock()
+        mock_blob_client_instance = MagicMock()
+        mock_blob_client_instance.delete_blob = AsyncMock()
+
+        mock_blob_service_client_constructor.from_connection_string.return_value = mock_bsc_instance
+        mock_bsc_instance.get_blob_client.return_value = mock_blob_client_instance
+
+        blob_name = "test_blob.png"
+        await self.image_service.delete_image_from_blob_storage(blob_name)
+
+        mock_blob_service_client_constructor.from_connection_string.assert_called_once_with(settings.AZURE_STORAGE_CONNECTION_STRING)
+        mock_bsc_instance.get_blob_client.assert_called_once_with(container=settings.AZURE_STORAGE_CONTAINER_NAME, blob=blob_name)
+        mock_blob_client_instance.delete_blob.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    @patch('app.services.image_generation_service.BlobServiceClient')
+    async def test_delete_image_blob_not_found(self, mock_blob_service_client_constructor, capsys):
+        mock_bsc_instance = MagicMock()
+        mock_blob_client_instance = MagicMock()
+        # Simulate Azure's ResourceNotFoundError or similar by raising an exception with "BlobNotFound"
+        mock_blob_client_instance.delete_blob = AsyncMock(side_effect=Exception("ErrorCode:BlobNotFound"))
+
+        mock_blob_service_client_constructor.from_connection_string.return_value = mock_bsc_instance
+        mock_bsc_instance.get_blob_client.return_value = mock_blob_client_instance
+
+        blob_name = "non_existent_blob.png"
+        try:
+            await self.image_service.delete_image_from_blob_storage(blob_name)
+        except HTTPException:
+            pytest.fail("HTTPException was raised when it should have been handled as BlobNotFound.")
+
+        mock_blob_client_instance.delete_blob.assert_awaited_once()
+        captured = capsys.readouterr()
+        assert f"Warning: Blob {blob_name} not found" in captured.out
+        assert f"Nothing to delete." in captured.out
+
+
+    @pytest.mark.asyncio
+    @patch('app.services.image_generation_service.BlobServiceClient')
+    async def test_delete_image_azure_error(self, mock_blob_service_client_constructor):
+        mock_bsc_instance = MagicMock()
+        mock_blob_client_instance = MagicMock()
+        mock_blob_client_instance.delete_blob = AsyncMock(side_effect=Exception("AzureConnectionError"))
+
+        mock_blob_service_client_constructor.from_connection_string.return_value = mock_bsc_instance
+        mock_bsc_instance.get_blob_client.return_value = mock_blob_client_instance
+
+        blob_name = "error_blob.png"
+        with pytest.raises(HTTPException) as exc_info:
+            await self.image_service.delete_image_from_blob_storage(blob_name)
+
+        assert exc_info.value.status_code == 500
+        assert "Failed to delete image from cloud storage" in exc_info.value.detail
+        mock_blob_client_instance.delete_blob.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_delete_image_no_blob_name(self):
+        with pytest.raises(HTTPException) as exc_info:
+            await self.image_service.delete_image_from_blob_storage("")
+        assert exc_info.value.status_code == 400
+        assert "Blob name must be provided" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    @patch('app.services.image_generation_service.settings')
+    async def test_delete_image_azure_config_missing_conn_str(self, mock_settings_temp):
+        # Temporarily mock settings to simulate only account name being set, or neither
+        mock_settings_temp.AZURE_STORAGE_CONNECTION_STRING = None
+        mock_settings_temp.AZURE_STORAGE_ACCOUNT_NAME = None # Simulate neither is set
+
+        # Re-initialize service with mocked settings if __init__ depends on them,
+        # but delete_image_from_blob_storage reads them directly.
+        # No, this service reads settings within the method, so we just need to ensure settings are mocked correctly.
+
+        blob_name = "any_blob.png"
+        with pytest.raises(HTTPException) as exc_info:
+             await self.image_service.delete_image_from_blob_storage(blob_name) # service instance already created with original settings
+
+        # To test this properly, settings should be modified BEFORE service instantiation,
+        # or the service should re-evaluate settings each time, or take them as params.
+        # Given the current service structure, the image_service instance in self.image_service
+        # was created with the connection string set in setup_method.
+        # A more robust test would be to patch settings *before* ImageGenerationService() is called.
+
+        # Let's refine this test:
+        # We need to control the settings *as seen by the method when it runs*.
+        # The current self.image_service will use the conn string from setup_method.
+        # So, this test as is might not reflect "missing conn string" scenario accurately for the *method's logic*
+        # unless the method *re-reads* settings.AZURE_STORAGE_CONNECTION_STRING *every time*.
+        # The method *does* re-read settings.
+
+        # Correct approach for this specific service design:
+        original_conn_string = settings.AZURE_STORAGE_CONNECTION_STRING
+        original_account_name = settings.AZURE_STORAGE_ACCOUNT_NAME
+
+        settings.AZURE_STORAGE_CONNECTION_STRING = None
+        settings.AZURE_STORAGE_ACCOUNT_NAME = None
+
+        # ImageGenerationService() does not initialize BlobServiceClient in __init__
+        # It's initialized within the delete_image_from_blob_storage method
+        # So, modifying global settings object directly should work here.
+
+        with pytest.raises(HTTPException) as exc_info_no_config:
+            await self.image_service.delete_image_from_blob_storage(blob_name)
+
+        assert exc_info_no_config.value.status_code == 500
+        assert "Azure Storage is not configured" in exc_info_no_config.value.detail
+
+        # Restore settings
+        settings.AZURE_STORAGE_CONNECTION_STRING = original_conn_string
+        settings.AZURE_STORAGE_ACCOUNT_NAME = original_account_name
+        # The @patch for settings might not be the best way here if we need to restore.
+        # Direct modification and restoration is clearer. The patch on settings was removed for this test.
+
+    @pytest.mark.asyncio
+    @patch('app.services.image_generation_service.BlobServiceClient.from_connection_string', side_effect=Exception("Connection Invalid"))
+    async def test_delete_image_azure_conn_str_invalid(self, mock_from_conn_string):
+        # settings.AZURE_STORAGE_CONNECTION_STRING is already set by setup_method
+        blob_name = "any_blob.png"
+        with pytest.raises(HTTPException) as exc_info:
+            await self.image_service.delete_image_from_blob_storage(blob_name)
+
+        assert exc_info.value.status_code == 500
+        assert "Azure Storage configuration error (connection string)" in exc_info.value.detail
+        mock_from_conn_string.assert_called_once()

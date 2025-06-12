@@ -375,6 +375,50 @@ class ImageGenerationService:
             print(f"Unexpected error during Stable Diffusion image generation: {e}")
             raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
+    async def delete_image_from_blob_storage(self, blob_name: str):
+        """
+        Deletes an image from Azure Blob Storage.
+        """
+        blob_service_client = None
+        if not blob_name:
+            print("Blob name not provided for deletion.")
+            raise HTTPException(status_code=400, detail="Blob name must be provided for deletion.")
+
+        if settings.AZURE_STORAGE_CONNECTION_STRING:
+            try:
+                blob_service_client = BlobServiceClient.from_connection_string(settings.AZURE_STORAGE_CONNECTION_STRING)
+            except Exception as e:
+                print(f"Failed to connect to Azure Storage with connection string: {e}")
+                raise HTTPException(status_code=500, detail="Azure Storage configuration error (connection string).")
+        elif settings.AZURE_STORAGE_ACCOUNT_NAME:
+            try:
+                account_url = f"https://{settings.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net"
+                default_credential = DefaultAzureCredential()
+                blob_service_client = BlobServiceClient(account_url, credential=default_credential)
+            except Exception as e:
+                print(f"Failed to connect to Azure Storage with DefaultAzureCredential: {e}")
+                raise HTTPException(status_code=500, detail="Azure Storage configuration error (account name/auth).")
+        else:
+            raise HTTPException(status_code=500, detail="Azure Storage is not configured (missing account name or connection string).")
+
+        if not blob_service_client:
+             raise HTTPException(status_code=500, detail="Failed to initialize Azure BlobServiceClient for deletion.")
+
+        try:
+            blob_client = blob_service_client.get_blob_client(container=settings.AZURE_STORAGE_CONTAINER_NAME, blob=blob_name)
+            blob_client.delete_blob()
+            print(f"Successfully deleted blob {blob_name} from container {settings.AZURE_STORAGE_CONTAINER_NAME}")
+        except Exception as e:
+            # Check if the error is because the blob does not exist (Azure SDK typically raises ResourceNotFoundError)
+            # For simplicity, checking common error message patterns. A more robust way is to check e.error_code or specific exception type
+            # from azure.core.exceptions import ResourceNotFoundError
+            if "BlobNotFound" in str(e) or "The specified blob does not exist" in str(e):
+                print(f"Warning: Blob {blob_name} not found in container {settings.AZURE_STORAGE_CONTAINER_NAME}. Nothing to delete.")
+                # Not raising an exception as per requirements for "blob not existing"
+            else:
+                print(f"Failed to delete blob {blob_name} from container {settings.AZURE_STORAGE_CONTAINER_NAME}: {e}")
+                raise HTTPException(status_code=500, detail=f"Failed to delete image from cloud storage: {str(e)}")
+
 
 # Example Usage (for testing purposes, if run directly)
 # if __name__ == "__main__":

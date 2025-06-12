@@ -99,7 +99,7 @@ async def update_existing_campaign(
     if db_campaign.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to update this campaign")
 
-    updated_campaign = crud.update_campaign(db=db, campaign_id=campaign_id, campaign_update=campaign_update)
+    updated_campaign = await crud.update_campaign(db=db, campaign_id=campaign_id, campaign_update=campaign_update)
     # crud.update_campaign itself doesn't check ownership, so the check above is important.
     # updated_campaign will be None if not found by crud.update_campaign, already handled by initial get.
     return updated_campaign

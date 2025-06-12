@@ -406,3 +406,58 @@ async def test_regenerate_campaign_section_endpoint_uses_type(
 
     # Type should not be in the update data if not specified in input
     assert mock_crud_update_section.call_args.kwargs['section_update_data'].type is None
+
+
+@pytest.mark.asyncio
+@patch('app.crud.ImageGenerationService.delete_image_from_blob_storage', new_callable=AsyncMock)
+async def test_update_campaign_remove_moodboard_image_deletes_blob(
+    mock_delete_blob, db_campaign: ORMCampaign, async_client: AsyncClient
+):
+    # Arrange:
+    # The db_campaign fixture provides a campaign with owner_id=1.
+    # We need to set its mood_board_image_urls.
+    initial_url1 = f"https://mockaccount.blob.core.windows.net/{settings.AZURE_STORAGE_CONTAINER_NAME}/blob1.png"
+    initial_url2 = f"https://mockaccount.blob.core.windows.net/{settings.AZURE_STORAGE_CONTAINER_NAME}/blob2.jpg"
+
+    db = TestingSessionLocal()
+    try:
+        # Fetch the campaign provided by the fixture within the current session
+        campaign_to_update = db.query(ORMCampaign).filter(ORMCampaign.id == db_campaign.id).first()
+        if not campaign_to_update:
+            pytest.fail(f"Campaign with ID {db_campaign.id} not found in test setup.")
+
+        campaign_to_update.mood_board_image_urls = [initial_url1, initial_url2]
+        db.commit()
+        db.refresh(campaign_to_update)
+    finally:
+        db.close()
+
+    update_payload = {
+        "mood_board_image_urls": [initial_url1] # Remove initial_url2
+    }
+
+    # Act:
+    # Assuming owner_id=1 is the default authenticated user for these tests.
+    # The campaigns router usually checks if db_campaign.owner_id == current_user.id.
+    # The db_campaign fixture sets owner_id=1.
+    # If current_user.id is not 1 in the test context, this will fail with 403.
+    # The existing tests seem to imply current_user.id = 1 by default.
+    response = await async_client.put(
+        f"/api/v1/campaigns/{db_campaign.id}",
+        json=update_payload
+    )
+
+    # Assert:
+    assert response.status_code == 200, response.text
+
+    # Verify that delete_image_from_blob_storage was called correctly
+    mock_delete_blob.assert_called_once_with("blob2.jpg")
+
+    # Verify the campaign in the database
+    db = TestingSessionLocal()
+    try:
+        updated_db_campaign = db.query(ORMCampaign).filter(ORMCampaign.id == db_campaign.id).first()
+        assert updated_db_campaign is not None
+        assert updated_db_campaign.mood_board_image_urls == [initial_url1]
+    finally:
+        db.close()
