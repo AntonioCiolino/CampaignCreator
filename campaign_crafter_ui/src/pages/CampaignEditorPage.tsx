@@ -118,6 +118,12 @@ const CampaignEditorPage: React.FC = () => {
   const [themeSaveError, setThemeSaveError] = useState<string | null>(null);
   const [themeSaveSuccess, setThemeSaveSuccess] = useState<string | null>(null);
 
+  // State for Mood Board Auto-Save
+  const [moodBoardDebounceTimer, setMoodBoardDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  const [isAutoSavingMoodBoard, setIsAutoSavingMoodBoard] = useState(false);
+  const [autoSaveMoodBoardError, setAutoSaveMoodBoardError] = useState<string | null>(null);
+  const [autoSaveMoodBoardSuccess, setAutoSaveMoodBoardSuccess] = useState<string | null>(null);
+
   const handleSetThematicImage = async (imageUrl: string, prompt: string) => {
     // This function now only handles setting the *main* thematic image for the campaign.
     // The MoodBoardPanel will display campaign.mood_board_image_urls.
@@ -508,6 +514,59 @@ const CampaignEditorPage: React.FC = () => {
       ensureLLMSettingsSaved();
     }
   }, [temperature, campaign, ensureLLMSettingsSaved]);
+
+  // useEffect for auto-saving mood board URLs
+  useEffect(() => {
+    if (!initialLoadCompleteRef.current || !campaignId || !campaign) {
+      return;
+    }
+
+    // Prevent saving if the urls haven't actually changed from what's in the campaign state
+    if (JSON.stringify(editableMoodBoardUrls) === JSON.stringify(campaign.mood_board_image_urls || [])) {
+      return;
+    }
+
+    if (moodBoardDebounceTimer) {
+      clearTimeout(moodBoardDebounceTimer);
+    }
+
+    setIsAutoSavingMoodBoard(true);
+    setAutoSaveMoodBoardError(null);
+    setAutoSaveMoodBoardSuccess(null);
+
+    const newTimer = setTimeout(async () => {
+      if (!campaign || !campaign.id) {
+          setIsAutoSavingMoodBoard(false);
+          setAutoSaveMoodBoardError("Cannot auto-save mood board: Campaign data not available.");
+          return;
+      }
+      try {
+        console.log('Auto-saving mood board URLs:', editableMoodBoardUrls);
+        const payload: campaignService.CampaignUpdatePayload = {
+          mood_board_image_urls: editableMoodBoardUrls,
+        };
+        const updatedCampaign = await campaignService.updateCampaign(campaign.id, payload);
+        setCampaign(updatedCampaign); // Update the main campaign state
+
+        setAutoSaveMoodBoardSuccess("Mood board auto-saved!");
+        setTimeout(() => setAutoSaveMoodBoardSuccess(null), 3000);
+      } catch (err) {
+        console.error("Failed to auto-save mood board URLs:", err);
+        setAutoSaveMoodBoardError("Failed to auto-save mood board. Changes might not be persisted.");
+        // Optionally, clear error after some time: setTimeout(() => setAutoSaveMoodBoardError(null), 5000);
+      } finally {
+        setIsAutoSavingMoodBoard(false);
+      }
+    }, 1500); // 1.5-second debounce delay
+
+    setMoodBoardDebounceTimer(newTimer);
+
+    return () => {
+      if (newTimer) {
+        clearTimeout(newTimer);
+      }
+    };
+  }, [editableMoodBoardUrls, campaignId, campaign, setCampaign]); // initialLoadCompleteRef.current is not needed as a dep, effect runs when it's true. campaign contains mood_board_image_urls.
 
   const handleCancelSeeding = async () => {
     if (eventSourceRef.current) {
@@ -1219,6 +1278,10 @@ const CampaignEditorPage: React.FC = () => {
         >
           {isMoodBoardPanelOpen ? 'Hide Mood Board' : 'Show Mood Board'}
         </Button>
+        {/* Example Auto-save feedback display area */}
+        {/* {isAutoSavingMoodBoard && <p className="feedback-message saving-indicator" style={{marginRight: '10px', fontSize: '0.8em'}}>Auto-saving mood board...</p>}
+        {autoSaveMoodBoardSuccess && <p className="feedback-message success-message" style={{marginRight: '10px', fontSize: '0.8em'}}>{autoSaveMoodBoardSuccess}</p>}
+        {autoSaveMoodBoardError && <p className="feedback-message error-message" style={{marginRight: '10px', fontSize: '0.8em'}}>{autoSaveMoodBoardError}</p>} */}
       </div>
       {campaign && campaign.title && (
         <h1 className="campaign-main-title">{campaign.title}</h1>
