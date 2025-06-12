@@ -1,8 +1,8 @@
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session as SQLAlchemySession # Renamed to avoid conflict with FastAPI's Session
-from typing import Generator, List as TypingList # For fixture typing and List model
+from typing import Generator, List as TypingList, Optional # For fixture typing and List model
 
 from app.main import app
 from app.db import Base, get_db
@@ -10,7 +10,7 @@ from app.models import UserCreate, UserUpdate # Pydantic models
 from app.orm_models import User as ORMUser # SQLAlchemy model
 from app.crud import get_password_hash # For testing password update
 
-DATABASE_URL = "sqlite:///:memory:"
+DATABASE_URL = "sqlite:///file:testdb?mode=memory&cache=shared&uri=true"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -26,9 +26,11 @@ app.dependency_overrides[get_db] = override_get_db
 
 @pytest.fixture(autouse=True)
 def create_test_tables_fixture():
-    Base.metadata.create_all(bind=engine)
+    connection = engine.connect()
+    Base.metadata.create_all(bind=connection)
     yield
-    Base.metadata.drop_all(bind=engine)
+    Base.metadata.drop_all(bind=connection)
+    connection.close()
 
 # Helper to create a user directly in DB for setup
 def create_user_in_db(db: SQLAlchemySession, user_data: dict) -> ORMUser:
@@ -89,7 +91,7 @@ async def get_normal_user_token_headers(client: AsyncClient, db: SQLAlchemySessi
 @pytest.mark.asyncio
 async def test_create_user_success_as_superuser():
     db = TestingSessionLocal() # Need db session for token helper
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         su_headers = await get_superuser_token_headers(ac, db)
         user_data_create = {
             "username": "newuser",
@@ -102,7 +104,7 @@ async def test_create_user_success_as_superuser():
         # 'disabled' defaults to False in the ORM.
 
         response = await ac.post("/api/v1/users/", json=user_data_create, headers=su_headers)
-    db.close()
+    # db.close() # Removed
 
     assert response.status_code == 201, response.text
     data = response.json()
@@ -117,7 +119,7 @@ async def test_create_user_success_as_superuser():
 @pytest.mark.asyncio
 async def test_create_user_duplicate_email_as_superuser():
     db = TestingSessionLocal()
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         su_headers = await get_superuser_token_headers(ac, db)
         user_data1 = {
             "username": "testuser1",
@@ -137,12 +139,12 @@ async def test_create_user_duplicate_email_as_superuser():
         response2 = await ac.post("/api/v1/users/", json=user_data2, headers=su_headers)
         assert response2.status_code == 400
         assert "Email already registered" in response2.json()["detail"]
-    db.close()
+    # db.close() # Removed
 
 @pytest.mark.asyncio
 async def test_create_user_duplicate_username_as_superuser():
     db = TestingSessionLocal()
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         su_headers = await get_superuser_token_headers(ac, db)
         user_data1 = {
             "username": "duplicateuser", # Same username
@@ -162,24 +164,27 @@ async def test_create_user_duplicate_username_as_superuser():
         response2 = await ac.post("/api/v1/users/", json=user_data2, headers=su_headers)
         assert response2.status_code == 400, response2.text
         assert "Username already registered" in response2.json()["detail"]
-    db.close()
+    # db.close() # Removed
 
 @pytest.mark.asyncio
 async def test_create_user_missing_fields():
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    db = TestingSessionLocal() # Required for get_superuser_token_headers
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        su_headers = await get_superuser_token_headers(ac, db)
         # Missing password
-        response = await ac.post("/api/v1/users/", json={"email": "test@example.com"})
+        response = await ac.post("/api/v1/users/", json={"email": "test@example.com", "username": "missing_pw_user"}, headers=su_headers)
         assert response.status_code == 422 # Unprocessable Entity for Pydantic validation error
 
         # Missing email
-        response = await ac.post("/api/v1/users/", json={"password": "password123"})
+        response = await ac.post("/api/v1/users/", json={"password": "password123", "username": "missing_email_user"}, headers=su_headers)
         assert response.status_code == 422
+    # db.close() # Removed
 
 # --- Test List Users (Superuser Protected) ---
 @pytest.mark.asyncio
 async def test_read_users_empty_as_superuser():
     db = TestingSessionLocal()
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         su_headers = await get_superuser_token_headers(ac, db)
         # Ensure admin user itself is not counted if it was just created by get_superuser_token_headers
         # This depends on whether get_users filters out the calling user or if the DB is truly empty before this.
@@ -193,7 +198,7 @@ async def test_read_users_empty_as_superuser():
         # So, the admin user from token helper will be the only one if no other users created in this test.
 
         response = await ac.get("/api/v1/users/", headers=su_headers)
-    db.close()
+    # db.close() # Removed
     assert response.status_code == 200
     data = response.json()
     # If 'admin' user was created by get_superuser_token_headers, it will be present.
@@ -209,10 +214,10 @@ async def test_read_users_with_data_as_superuser():
     create_user_in_db(db, {"username": "user1", "email": "user1@example.com", "password": "p1"})
     create_user_in_db(db, {"username": "user2", "email": "user2@example.com", "password": "p2", "full_name": "User Two"})
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         su_headers = await get_superuser_token_headers(ac, db) # This might create 'admin' if not present
         response = await ac.get("/api/v1/users/", headers=su_headers)
-    db.close()
+    # db.close() # Removed
 
     assert response.status_code == 200
     data = response.json()
@@ -243,7 +248,7 @@ async def test_read_users_pagination_as_superuser():
     for i in range(5): # Create 5 additional users
         create_user_in_db(db, {"username": f"pageuser{i}", "email": f"pageuser{i}@example.com", "password": f"p{i}"})
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         su_headers = await get_superuser_token_headers(ac, db) # Ensures admin user exists
 
         # Test limit (total users could be 5 + admin = 6)
@@ -267,7 +272,7 @@ async def test_read_users_pagination_as_superuser():
         # This is tricky without guaranteed order from API. Let's assume pageuser0 and pageuser1 are returned if admin is skipped.
         # A better test queries all, sorts, and then compares slices.
         # For now, we'll just check length and status.
-    db.close()
+    # db.close() # Removed
 
 # --- Test Get User by ID (Superuser Protected) ---
 @pytest.mark.asyncio
@@ -276,10 +281,10 @@ async def test_read_user_success_as_superuser():
     user = create_user_in_db(db, {"username": "getme", "email": "getme@example.com", "password": "p1", "full_name": "Get Me"})
     user_id = user.id
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         su_headers = await get_superuser_token_headers(ac, db)
         response = await ac.get(f"/api/v1/users/{user_id}", headers=su_headers)
-    db.close()
+    # db.close() # Removed
 
     assert response.status_code == 200
     data = response.json()
@@ -291,10 +296,10 @@ async def test_read_user_success_as_superuser():
 @pytest.mark.asyncio
 async def test_read_user_not_found_as_superuser():
     db = TestingSessionLocal()
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         su_headers = await get_superuser_token_headers(ac, db)
         response = await ac.get("/api/v1/users/99999", headers=su_headers) # Non-existent ID
-    db.close()
+    # db.close() # Removed
     assert response.status_code == 404
     assert "User not found" in response.json()["detail"]
 
@@ -306,10 +311,10 @@ async def test_update_user_success_as_superuser():
     user_id = user.id
 
     update_payload = {"full_name": "Updated Name", "disabled": True} # Using 'disabled'
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         su_headers = await get_superuser_token_headers(ac, db)
         response = await ac.put(f"/api/v1/users/{user_id}", json=update_payload, headers=su_headers)
-    db.close()
+    # db.close() # Removed
 
     assert response.status_code == 200, response.text
     data = response.json()
@@ -324,16 +329,16 @@ async def test_update_user_password_as_superuser():
     user = create_user_in_db(db, {"username": "pwupdateuser", "email": "pwupdate@example.com", "password": "oldpassword"})
     user_id = user.id
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         su_headers = await get_superuser_token_headers(ac, db)
         response = await ac.put(f"/api/v1/users/{user_id}", json={"password": "newpassword"}, headers=su_headers)
-    db.close()
+    # db.close() # Removed
     assert response.status_code == 200
 
     # Verify password
     db_verify = TestingSessionLocal()
     updated_db_user = db_verify.query(ORMUser).filter(ORMUser.id == user_id).first()
-    db_verify.close()
+    # db_verify.close() # Removed - this session is read-only, let fixture handle main connection
     assert updated_db_user is not None
     from app.crud import verify_password
     assert verify_password("newpassword", updated_db_user.hashed_password)
@@ -346,10 +351,10 @@ async def test_update_user_email_conflict_as_superuser():
     user2 = create_user_in_db(db, {"username": "user2conflict", "email": "user2.conflict@example.com", "password": "p2"})
     user1_id_to_update = db.query(ORMUser).filter(ORMUser.username == "user1conflict").first().id
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         su_headers = await get_superuser_token_headers(ac, db)
         response = await ac.put(f"/api/v1/users/{user1_id_to_update}", json={"email": "user2.conflict@example.com"}, headers=su_headers)
-    db.close()
+    # db.close() # Removed
     assert response.status_code == 400
     assert "New email already registered by another user" in response.json()["detail"]
 
@@ -360,10 +365,10 @@ async def test_update_user_username_conflict_as_superuser():
     create_user_in_db(db, {"username": "userB_conflict_uname", "email": "userb@example.com", "password": "p2"})
     userA_id_to_update = db.query(ORMUser).filter(ORMUser.username == "userA_orig_uname").first().id
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         su_headers = await get_superuser_token_headers(ac, db)
         response = await ac.put(f"/api/v1/users/{userA_id_to_update}", json={"username": "userB_conflict_uname"}, headers=su_headers)
-    db.close()
+    # db.close() # Removed
     assert response.status_code == 400, response.text
     assert "New username already registered by another user" in response.json()["detail"]
 
@@ -371,10 +376,10 @@ async def test_update_user_username_conflict_as_superuser():
 @pytest.mark.asyncio
 async def test_update_user_not_found_as_superuser():
     db = TestingSessionLocal()
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         su_headers = await get_superuser_token_headers(ac, db)
         response = await ac.put("/api/v1/users/99999", json={"full_name": "Ghost User"}, headers=su_headers)
-    db.close()
+    # db.close() # Removed
     assert response.status_code == 404
     assert "User not found to update" in response.json()["detail"]
 
@@ -385,10 +390,10 @@ async def test_delete_user_success_as_superuser():
     user = create_user_in_db(db, {"username": "deleteuser", "email": "delete@example.com", "password": "p1"})
     user_id = user.id
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         su_headers = await get_superuser_token_headers(ac, db)
         response_delete = await ac.delete(f"/api/v1/users/{user_id}", headers=su_headers)
-    db.close() # Close session used for token helper if user was created by it
+    # db.close() # Removed
 
     assert response_delete.status_code == 200
     deleted_data = response_delete.json()
@@ -397,19 +402,19 @@ async def test_delete_user_success_as_superuser():
 
     # Verify user is actually deleted by trying to fetch (as superuser)
     db_verify = TestingSessionLocal()
-    async with AsyncClient(app=app, base_url="http://test") as ac_verify:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac_verify:
         su_headers_verify = await get_superuser_token_headers(ac_verify, db_verify)
         response_get = await ac_verify.get(f"/api/v1/users/{user_id}", headers=su_headers_verify)
-    db_verify.close()
+    # db_verify.close() # Removed
     assert response_get.status_code == 404
 
 @pytest.mark.asyncio
 async def test_delete_user_not_found_as_superuser():
     db = TestingSessionLocal()
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         su_headers = await get_superuser_token_headers(ac, db)
         response = await ac.delete("/api/v1/users/99999", headers=su_headers)
-    db.close()
+    # db.close() # Removed
     assert response.status_code == 404
     assert "User not found to delete" in response.json()["detail"]
 
@@ -418,7 +423,7 @@ async def test_delete_user_not_found_as_superuser():
 async def test_create_user_as_superuser_explicitly_superuser_flag():
     # This tests creating another superuser by a superuser
     db = TestingSessionLocal()
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         su_headers = await get_superuser_token_headers(ac, db)
         user_data = {
             "username": "newsuper",
@@ -428,7 +433,7 @@ async def test_create_user_as_superuser_explicitly_superuser_flag():
             "is_superuser": True
         }
         response = await ac.post("/api/v1/users/", json=user_data, headers=su_headers)
-    db.close()
+    # db.close() # Removed
     assert response.status_code == 201
     data = response.json()
     assert data["email"] == "newsuper@example.com"
@@ -441,10 +446,10 @@ async def test_update_user_to_superuser_as_superuser():
     user = create_user_in_db(db, {"username": "make_super", "email": "make_super@example.com", "password": "p1", "is_superuser": False})
     user_id = user.id
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         su_headers = await get_superuser_token_headers(ac, db)
         response = await ac.put(f"/api/v1/users/{user_id}", json={"is_superuser": True}, headers=su_headers)
-    db.close()
+    # db.close() # Removed
     assert response.status_code == 200
     data = response.json()
     assert data["is_superuser"] is True
@@ -456,7 +461,7 @@ async def test_update_user_disabled_status_as_superuser():
     user = create_user_in_db(db, {"username": "disableme", "email": "disableme@example.com", "password": "p1", "disabled": False})
     user_id = user.id
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         su_headers = await get_superuser_token_headers(ac, db)
         # Disable the user
         response_disable = await ac.put(f"/api/v1/users/{user_id}", json={"disabled": True}, headers=su_headers)
@@ -467,7 +472,7 @@ async def test_update_user_disabled_status_as_superuser():
         response_enable = await ac.put(f"/api/v1/users/{user_id}", json={"disabled": False}, headers=su_headers)
         assert response_enable.status_code == 200
         assert response_enable.json()["disabled"] is False
-    db.close()
+    # db.close() # Removed
 
 # --- Test Authentication Logic ---
 
@@ -485,7 +490,7 @@ async def test_authenticate_user_service_valid():
     create_user_in_db(db, {"username": valid_username, "password": valid_password, "email": "auth@example.com"})
 
     authenticated_user: Optional[PydanticUser] = authenticate_user(db, username=valid_username, password=valid_password)
-    db.close()
+    # db.close() # Removed
 
     assert authenticated_user is not None
     assert authenticated_user.username == valid_username
@@ -495,7 +500,7 @@ async def test_authenticate_user_service_valid():
 async def test_authenticate_user_service_invalid_username():
     db = TestingSessionLocal()
     authenticated_user = authenticate_user(db, username="nonexistentuser", password="password")
-    db.close()
+    # db.close() # Removed
     assert authenticated_user is None
 
 # Test JWT token creation and decoding (security functions)
@@ -552,9 +557,9 @@ async def test_login_for_access_token_success():
     valid_password = "login_password"
     # Ensure user exists and is not disabled
     create_user_in_db(db, {"username": valid_username, "password": valid_password, "email": "login@example.com", "disabled": False})
-    db.close() # Close session used for setup
+    # db.close() # Close session used for setup
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         login_data = {"username": valid_username, "password": valid_password}
         response = await ac.post("/api/v1/auth/token", data=login_data)
 
@@ -570,7 +575,7 @@ async def test_login_for_access_token_success():
 
 @pytest.mark.asyncio
 async def test_login_for_access_token_incorrect_username():
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         login_data = {"username": "wronguser", "password": "password"}
         response = await ac.post("/api/v1/auth/token", data=login_data)
     assert response.status_code == 401
@@ -581,9 +586,9 @@ async def test_login_for_access_token_incorrect_password():
     db = TestingSessionLocal()
     username = "login_badpass_user"
     create_user_in_db(db, {"username": username, "password": "correctpassword", "email": "login_badpass@example.com"})
-    db.close()
+    # db.close() # Removed
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         login_data = {"username": username, "password": "wrongpassword"}
         response = await ac.post("/api/v1/auth/token", data=login_data)
     assert response.status_code == 401
@@ -595,9 +600,9 @@ async def test_login_for_access_token_disabled_user():
     username = "login_disabled_user"
     password = "password"
     create_user_in_db(db, {"username": username, "password": password, "email": "login_disabled@example.com", "disabled": True})
-    db.close()
+    # db.close() # Removed
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         login_data = {"username": username, "password": password}
         response = await ac.post("/api/v1/auth/token", data=login_data)
     # The authenticate_user service function returns None for disabled users,
@@ -610,14 +615,14 @@ async def test_login_for_access_token_disabled_user():
 
 @pytest.mark.asyncio
 async def test_read_users_no_token():
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         response = await ac.get("/api/v1/users/")
     assert response.status_code == 401 # Expecting 401 Unauthorized from oauth2_scheme
     assert response.json()["detail"] == "Not authenticated" # Default detail for Depends(oauth2_scheme)
 
 @pytest.mark.asyncio
 async def test_read_users_invalid_token():
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         headers = {"Authorization": "Bearer invalidtoken"}
         response = await ac.get("/api/v1/users/", headers=headers)
     assert response.status_code == 401 # Expecting 401 from get_current_user due to decode failure
@@ -629,11 +634,11 @@ async def test_read_users_invalid_token():
 @pytest.mark.asyncio
 async def test_read_users_as_normal_user_forbidden():
     db = TestingSessionLocal()
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         # Create a normal user and get their token
         normal_user_headers = await get_normal_user_token_headers(ac, db, username="normaluser", password="password")
         response = await ac.get("/api/v1/users/", headers=normal_user_headers)
-    db.close()
+    # db.close() # Removed
     assert response.status_code == 403 # Expecting 403 Forbidden from get_current_active_superuser
     assert "The user doesn't have enough privileges" in response.json()["detail"]
 
@@ -643,10 +648,10 @@ async def test_read_users_as_normal_user_forbidden():
 @pytest.mark.asyncio
 async def test_read_users_as_superuser_explicit_protection_test():
     db = TestingSessionLocal()
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         su_headers = await get_superuser_token_headers(ac, db)
         response = await ac.get("/api/v1/users/", headers=su_headers)
-    db.close()
+    # db.close() # Removed
     assert response.status_code == 200
     # Further data assertions are covered by other tests like test_read_users_with_data_as_superuser
 
@@ -664,8 +669,9 @@ async def test_access_with_disabled_user():
         "email": "disabled@example.com",
         "disabled": True # User is disabled
     })
+    # db.close() # This db session was used by create_user_in_db, let's see if not closing it helps
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         # Attempt to get a token for the disabled user
         # The login endpoint itself might deny token generation if authenticate_user checks for disabled status
         # and returns None. Let's check the login behavior first.
@@ -683,7 +689,6 @@ async def test_access_with_disabled_user():
         # If we wanted to test get_current_active_user in isolation with a token for a disabled user,
         # we'd need to manually craft a token or temporarily alter auth logic.
         # Given current behavior, the check at login is sufficient for this scenario.
-    db.close()
+    # db.close() # Removed, the one above was also removed for this test
 
 # Test for regular user trying superuser endpoint is covered by test_read_users_as_normal_user_forbidden
-```

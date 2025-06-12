@@ -9,7 +9,8 @@ pydantic-settings
 google-generativeai
 pytest
 httpx
-passlib[bcrypt]
+passlib[bcrypt]>=1.7.4
+bcrypt>=4.1.1
 python-multipart
 sse-starlette==2.3.6
 python-jose[cryptography]==3.5.0

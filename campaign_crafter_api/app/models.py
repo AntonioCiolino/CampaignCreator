@@ -133,7 +133,7 @@ class Campaign(CampaignBase):
 
 class UserBase(BaseModel):
     username: str
-    email: Optional[str] = None
+    email: str # Made email required
     full_name: Optional[str] = None
 
 class UserCreate(UserBase):
