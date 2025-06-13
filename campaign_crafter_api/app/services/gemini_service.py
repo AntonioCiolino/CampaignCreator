@@ -10,7 +10,7 @@ import asyncio # For testing async methods in __main__
 
 class GeminiLLMService(AbstractLLMService):
     PROVIDER_NAME = "gemini" # Class variable for provider name
-    DEFAULT_MODEL = "gemini-pro" 
+    DEFAULT_MODEL = "gemini-1.5-flash"
 
     def __init__(self):
         self.api_key = settings.GEMINI_API_KEY
