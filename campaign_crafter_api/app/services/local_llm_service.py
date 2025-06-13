@@ -53,7 +53,7 @@ class LocalLLMService(AbstractLLMService):
         temperature: float = 0.7,
         max_tokens: int = 1024
     ) -> str:
-        if not await self.is_available(current_user=_current_user, db=\1): # Pass args
+        if not await self.is_available(current_user=current_user, db=\1): # Pass args
             raise HTTPException(status_code=503, detail=f"{self.PROVIDER_NAME.title()} service is not available or configured.")
 
         selected_model = model or self.default_model_id
@@ -112,7 +112,7 @@ class LocalLLMService(AbstractLLMService):
 
 
     async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, str]]: # Added _current_user, _db
-        if not await self.is_available(current_user=_current_user, db=\1): # Pass args
+        if not await self.is_available(current_user=current_user, db=\1): # Pass args
             return []
 
         try:

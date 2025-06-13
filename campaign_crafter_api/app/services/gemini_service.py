@@ -65,7 +65,7 @@ class GeminiLLMService(AbstractLLMService):
 
 
     async def generate_text(self, prompt: str, current_user: UserModel, db: Session, model: Optional[str] = None, temperature: float = 0.7, max_tokens: Optional[int] = None) -> str: # Added _current_user, db
-        if not await self.is_available(current_user=_current_user, db=db): # Pass args
+        if not await self.is_available(current_user=current_user, db=db): # Pass args
             raise LLMServiceUnavailableError("Gemini service is not available.")
         if not prompt:
             raise ValueError("Prompt cannot be empty.")
@@ -243,7 +243,7 @@ class GeminiLLMService(AbstractLLMService):
         return await self.generate_text(prompt=final_prompt_for_generation, current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=4000) # Pass args
 
     async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, str]]: # Added _current_user, _db
-        if not await self.is_available(current_user=_current_user, db=\1): # Pass args
+        if not await self.is_available(current_user=current_user, db=\1): # Pass args
             print("Warning: Gemini API key not configured or service unavailable. Cannot fetch models.")
             return [
                 {"id": "gemini-pro", "name": "Gemini Pro (Unavailable/Fallback)"},
