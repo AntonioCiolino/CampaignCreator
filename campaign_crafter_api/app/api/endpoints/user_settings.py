@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Any
 
-from campaign_crafter_api.app import models, crud # Removed schemas as it's not used
+from app import models, crud # Changed import path
 from campaign_crafter_api.app.api import deps
 from campaign_crafter_api.app.core.security import encrypt_key # decrypt_key removed as it's not used
 from campaign_crafter_api.app.models import UserAPIKeyUpdate
