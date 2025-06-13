@@ -22,7 +22,7 @@ import PublishIcon from '@mui/icons-material/Publish';
 import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
 import ImageIcon from '@mui/icons-material/Image';
 // import ThematicImageDisplay, { ThematicImageDisplayProps } from '../components/common/ThematicImageDisplay'; // Old import
-import MoodBoardPanel, { MoodBoardPanelProps } from '../components/common/MoodBoardPanel'; // New import
+import MoodBoardPanel from '../components/common/MoodBoardPanel'; // New import
 
 import CampaignDetailsEditor from '../components/campaign_editor/CampaignDetailsEditor';
 import CampaignLLMSettings from '../components/campaign_editor/CampaignLLMSettings';
@@ -123,6 +123,9 @@ const CampaignEditorPage: React.FC = () => {
   const [isAutoSavingMoodBoard, setIsAutoSavingMoodBoard] = useState(false);
   const [autoSaveMoodBoardError, setAutoSaveMoodBoardError] = useState<string | null>(null);
   const [autoSaveMoodBoardSuccess, setAutoSaveMoodBoardSuccess] = useState<string | null>(null);
+
+  // State for generating image for mood board
+  const [isGeneratingForMoodBoard, setIsGeneratingForMoodBoard] = useState<boolean>(false);
 
   const handleSetThematicImage = async (imageUrl: string, prompt: string) => {
     // This function now only handles setting the *main* thematic image for the campaign.
@@ -1279,9 +1282,9 @@ const CampaignEditorPage: React.FC = () => {
           {isMoodBoardPanelOpen ? 'Hide Mood Board' : 'Show Mood Board'}
         </Button>
         {/* Example Auto-save feedback display area */}
-        {/* {isAutoSavingMoodBoard && <p className="feedback-message saving-indicator" style={{marginRight: '10px', fontSize: '0.8em'}}>Auto-saving mood board...</p>}
+        {isAutoSavingMoodBoard && <p className="feedback-message saving-indicator" style={{marginRight: '10px', fontSize: '0.8em'}}>Auto-saving mood board...</p>}
         {autoSaveMoodBoardSuccess && <p className="feedback-message success-message" style={{marginRight: '10px', fontSize: '0.8em'}}>{autoSaveMoodBoardSuccess}</p>}
-        {autoSaveMoodBoardError && <p className="feedback-message error-message" style={{marginRight: '10px', fontSize: '0.8em'}}>{autoSaveMoodBoardError}</p>} */}
+        {autoSaveMoodBoardError && <p className="feedback-message error-message" style={{marginRight: '10px', fontSize: '0.8em'}}>{autoSaveMoodBoardError}</p>}
       </div>
       {campaign && campaign.title && (
         <h1 className="campaign-main-title">{campaign.title}</h1>
@@ -1309,6 +1312,8 @@ const CampaignEditorPage: React.FC = () => {
             onClose={() => setIsMoodBoardPanelOpen(false)}
             title="Mood Board"
             onUpdateMoodBoardUrls={setEditableMoodBoardUrls} // Pass the state setter
+            campaignId={campaignId!} // Pass campaignId to MoodBoardPanel
+            onRequestOpenGenerateImageModal={() => setIsGeneratingForMoodBoard(true)} // New callback
           />
         </div>
       )}
@@ -1334,6 +1339,27 @@ const CampaignEditorPage: React.FC = () => {
         onClose={() => { setIsSuggestedTitlesModalOpen(false); }}
         titles={suggestedTitles || []}
         onSelectTitle={handleTitleSelected}
+      />
+      {/* New ImageGenerationModal for MoodBoard */}
+      <ImageGenerationModal
+        isOpen={isGeneratingForMoodBoard}
+        onClose={() => setIsGeneratingForMoodBoard(false)}
+        onImageSuccessfullyGenerated={(imageUrl, promptUsed) => {
+          setEditableMoodBoardUrls(prevUrls => [...prevUrls, imageUrl]);
+          // Optionally, log or show success for adding to mood board
+          console.log("Image generated and added to mood board:", imageUrl, "Prompt used:", promptUsed);
+          setIsGeneratingForMoodBoard(false); // Close this modal
+        }}
+        onSetAsThematic={() => {
+          // This modal instance is for mood board, not main thematic image.
+          // Could potentially offer to set as thematic as a secondary action,
+          // but for now, it's a no-op in this context.
+          console.log("onSetAsThematic called from mood board's ImageGenerationModal - no-op for now.");
+        }}
+        primaryActionText="Add to Mood Board" // Customize text for this instance
+        autoApplyDefault={true} // Assume adding to mood board is the default desired action
+        // campaignId={campaignId} // If the modal needs campaignId for generation context (check modal props)
+        // selectedLLMId={selectedLLMId} // If the modal needs LLM context (check modal props)
       />
     </div>
   );

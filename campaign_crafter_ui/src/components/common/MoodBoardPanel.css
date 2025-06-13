@@ -56,8 +56,8 @@
   overflow: hidden;         /* Hide overflow */
   text-overflow: ellipsis;  /* Add ellipsis for overflowed text */
   white-space: nowrap;      /* Keep title on a single line */
-  flex-grow: 1; /* Allow title to take available space */
-  flex-shrink: 1; /* Allow title to shrink if necessary */
+  flex: 1; /* Shorthand for flex-grow: 1, flex-shrink: 1, flex-basis: 0% */
+  min-width: 0;
   /* display: block; */ /* Not needed with flex, flex items are blockified */
   /* margin-right: 0.5rem; */ /* Removed, space is now on button's right */
 }
@@ -65,7 +65,7 @@
 .mood-board-close-button { /* Renamed from .thematic-image-close-button */
   background: transparent;
   border: none;
-  margin-right: 0.5rem; /* Space between button (on left) and title (on right) */
+  margin-right: 0.25rem; /* Adjusted for new button order */
   font-size: 1.5rem; /* Larger close button */
   /* font-weight: bold; */ /* Original was not bold, let's keep it that way */
   color: var(--text-color-muted, #6c757d);
@@ -85,7 +85,8 @@
 .mood-board-add-button {
   background: transparent;
   border: none;
-  margin-left: 0.5rem; /* Space between title (on left) and this button (on right) */
+  margin-left: 0.25rem; /* Space from close button */
+  margin-right: 0.5rem; /* Space to title */
   font-size: 1.5rem; /* Consistent with close button */
   color: var(--text-color-muted, #6c757d);
   cursor: pointer;

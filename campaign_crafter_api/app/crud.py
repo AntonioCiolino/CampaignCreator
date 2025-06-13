@@ -3,6 +3,9 @@ from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 
 from app import models, orm_models # Standardized
+from app.services.image_generation_service import ImageGenerationService
+# import asyncio # No longer needed here
+from urllib.parse import urlparse
 
 # --- Password Hashing Utilities ---
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -309,18 +312,45 @@ def get_campaign(db: Session, campaign_id: int) -> Optional[orm_models.Campaign]
             db_campaign.homebrewery_toc = [{"title": db_campaign.homebrewery_toc, "type": "unknown"}] if db_campaign.homebrewery_toc else []
     return db_campaign
 
-def update_campaign(db: Session, campaign_id: int, campaign_update: models.CampaignUpdate) -> Optional[orm_models.Campaign]:
+async def update_campaign(db: Session, campaign_id: int, campaign_update: models.CampaignUpdate) -> Optional[orm_models.Campaign]:
     db_campaign = get_campaign(db, campaign_id=campaign_id) # get_campaign will now handle potential TOC conversion if data was old
     if db_campaign:
-        # Use model_dump with exclude_unset=True for partial updates
+        old_image_urls = []
+        if hasattr(db_campaign, 'mood_board_image_urls') and db_campaign.mood_board_image_urls is not None:
+            old_image_urls = list(db_campaign.mood_board_image_urls)
+
         update_data = campaign_update.model_dump(exclude_unset=True)
         
+        mood_board_updated = 'mood_board_image_urls' in update_data
+
         for key, value in update_data.items():
             if hasattr(db_campaign, key):
                 setattr(db_campaign, key, value)
             # else:
                 # Optionally log or handle fields in payload that are not in ORM model
                 # print(f"Warning: Field '{key}' not in Campaign ORM model.")
+
+        if mood_board_updated:
+            new_image_urls = set(db_campaign.mood_board_image_urls if db_campaign.mood_board_image_urls else [])
+            deleted_urls = [url for url in old_image_urls if url not in new_image_urls]
+
+            if deleted_urls:
+                image_service = ImageGenerationService()
+                for url_to_delete in deleted_urls:
+                    try:
+                        parsed_url = urlparse(url_to_delete)
+                        # Assuming blob name is the last part of the path
+                        # e.g., https://<account>.blob.core.windows.net/<container>/<blob_name>
+                        blob_name = parsed_url.path.split('/')[-1]
+                        if blob_name:
+                            print(f"Attempting to delete blob: {blob_name} from URL: {url_to_delete}")
+                            await image_service.delete_image_from_blob_storage(blob_name)
+                        else:
+                            print(f"Warning: Could not extract blob name from URL: {url_to_delete}")
+                    except Exception as e:
+                        # Catch errors during parsing or deletion call setup
+                        print(f"Error processing URL for deletion {url_to_delete}: {e}")
+                        # Depending on policy, you might want to collect these errors rather than just print
 
         db.add(db_campaign) # Add to session, SQLAlchemy tracks changes
         db.commit()

@@ -10,6 +10,7 @@ import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import Input from '../components/common/Input'; // Import Input component
 import MoodBoardPanel from '../components/common/MoodBoardPanel'; // Updated Import
+import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal'; // Import ImageGenerationModal
 import './GenericTextGenerator.css';
 
 const GenericTextGenerator: React.FC = () => {
@@ -34,6 +35,7 @@ const GenericTextGenerator: React.FC = () => {
   const [imageError, setImageError] = useState<string | null>(null);
   const [promptUsedForImage, setPromptUsedForImage] = useState<string | null>(null);
   const [isImageDisplayVisible, setIsImageDisplayVisible] = useState<boolean>(false);
+  const [isGeneratingForGenericDisplay, setIsGeneratingForGenericDisplay] = useState<boolean>(false);
   // Optional: If you want to allow selecting specific DALL-E model, size, quality via UI
   // const [dalleModel, setDalleModel] = useState<string | null>(null); // e.g., "dall-e-3"
   // const [imageSize, setImageSize] = useState<string | null>(null); // e.g., "1024x1024"
@@ -162,6 +164,23 @@ const GenericTextGenerator: React.FC = () => {
     // setPromptUsedForImage(null);
   };
 
+  const handleMoodBoardUrlAdded = (newUrls: string[]) => {
+    if (newUrls && newUrls.length > 0) {
+      const newUrl = newUrls[newUrls.length - 1]; // Assume the last one is the newly added one
+      setGeneratedImageUrl(newUrl);
+      setPromptUsedForImage("Image added by URL"); // Or derive from URL if possible
+      setImageError(null); // Clear any previous image errors
+      setIsImageDisplayVisible(true);
+    }
+  };
+
+  const handleImageGeneratedForGenericDisplay = (imageUrl: string, prompt?: string) => {
+    setGeneratedImageUrl(imageUrl);
+    setPromptUsedForImage(prompt || "Generated Image");
+    setImageError(null);
+    setIsImageDisplayVisible(true);
+    setIsGeneratingForGenericDisplay(false); // Close the modal
+  };
 
   return (
     <div className="gt-wrapper container"> {/* Added .container for consistent padding/max-width */}
@@ -282,9 +301,20 @@ const GenericTextGenerator: React.FC = () => {
         isVisible={isImageDisplayVisible}
         onClose={handleCloseImageDisplay}
         title={promptUsedForImage ? `Generated: ${promptUsedForImage}` : "Generated Image"}
-        onUpdateMoodBoardUrls={() => console.warn("onUpdateMoodBoardUrls called from GenericTextGenerator - this should not happen for display-only panel")}
+        onUpdateMoodBoardUrls={handleMoodBoardUrlAdded} // Updated prop
+        onRequestOpenGenerateImageModal={() => setIsGeneratingForGenericDisplay(true)} // New prop
       />
 
+      <ImageGenerationModal
+        isOpen={isGeneratingForGenericDisplay}
+        onClose={() => setIsGeneratingForGenericDisplay(false)}
+        onImageSuccessfullyGenerated={handleImageGeneratedForGenericDisplay}
+        onSetAsThematic={() => { /* No-op in this context */ }}
+        primaryActionText="Display This Image"
+        autoApplyDefault={true}
+        // campaignId={undefined} // Explicitly undefined or omit if not needed by modal for basic generation
+        // selectedLLMId={selectedLLMModelId} // Pass if modal needs LLM context for generation
+      />
     </div>
   );
 };

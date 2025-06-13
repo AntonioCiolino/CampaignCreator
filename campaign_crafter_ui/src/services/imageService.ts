@@ -47,3 +47,54 @@ export const uploadImage = async (file: File): Promise<UploadedImageResponse> =>
     throw new Error(errorMessage);
   }
 };
+
+export interface MoodboardUploadResponse {
+  imageUrl: string;
+  campaign: any; // Define a proper Campaign type if available and needed for frontend state
+}
+
+/**
+ * Uploads an image file to a specific campaign's moodboard.
+ *
+ * @param campaignId The ID of the campaign.
+ * @param file The image file to upload.
+ * @returns A promise that resolves to the MoodboardUploadResponse.
+ */
+export const uploadMoodboardImageApi = async (
+  campaignId: string,
+  file: File
+): Promise<MoodboardUploadResponse> => {
+  const formData = new FormData();
+  formData.append('file', file, file.name);
+
+  console.log(`[imageService.uploadMoodboardImageApi] Attempting to upload: ${file.name} to campaign ${campaignId}`);
+
+  try {
+    // The URL should match the new API endpoint
+    const response = await apiClient.post<MoodboardUploadResponse>(
+      `/api/v1/campaigns/${campaignId}/moodboard/upload`,
+      formData,
+      {
+        headers: {
+          // Axios typically sets Content-Type automatically for FormData.
+          // 'Content-Type': 'multipart/form-data', // Explicitly setting might be needed if apiClient doesn't default correctly
+          'Content-Type': undefined, // Or let axios handle it by setting it to undefined
+        },
+      }
+    );
+    console.log(`[imageService.uploadMoodboardImageApi] Successfully uploaded ${file.name} to campaign ${campaignId}, response:`, response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error(`[imageService.uploadMoodboardImageApi] Failed to upload ${file.name} to campaign ${campaignId}:`, error.response?.data || error.message || error);
+    const detail = error.response?.data?.detail;
+    let errorMessage = `Failed to upload ${file.name} to moodboard.`;
+    if (detail) {
+      if (Array.isArray(detail) && detail.length > 0 && detail[0].msg) {
+        errorMessage = detail[0].msg;
+      } else if (typeof detail === 'string') {
+        errorMessage = detail;
+      }
+    }
+    throw new Error(errorMessage);
+  }
+};

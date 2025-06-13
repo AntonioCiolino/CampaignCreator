@@ -3,13 +3,14 @@ import re
 import json
 import asyncio
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app import external_models, crud, orm_models, models # Standardized
 from app.db import get_db # Standardized
+from app.services.image_generation_service import ImageGenerationService
 from app.services.auth_service import get_current_active_user # Standardized
 from sse_starlette.sse import EventSourceResponse
 from app.services.llm_service import LLMServiceUnavailableError, LLMGenerationError # Standardized
@@ -99,7 +100,7 @@ async def update_existing_campaign(
     if db_campaign.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to update this campaign")
 
-    updated_campaign = crud.update_campaign(db=db, campaign_id=campaign_id, campaign_update=campaign_update)
+    updated_campaign = await crud.update_campaign(db=db, campaign_id=campaign_id, campaign_update=campaign_update)
     # crud.update_campaign itself doesn't check ownership, so the check above is important.
     # updated_campaign will be None if not found by crud.update_campaign, already handled by initial get.
     return updated_campaign
@@ -799,3 +800,75 @@ async def regenerate_campaign_section_endpoint(
 # For now, I'll assume it's not needed here or handled by BaseModel.
 # class Config:
 #     from_attributes = True
+
+
+# --- Moodboard Image Upload Endpoint ---
+
+class MoodboardImageUploadResponse(BaseModel):
+    image_url: str
+    campaign: models.Campaign # Use the existing Pydantic model for Campaign
+
+@router.post(
+    "/{campaign_id}/moodboard/upload",
+    response_model=MoodboardImageUploadResponse,
+    tags=["Campaigns", "Mood Board"]
+)
+async def upload_moodboard_image_for_campaign(
+    campaign_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    # Authentication & Authorization
+    db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
+    if not db_campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    if db_campaign.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to upload images to this campaign")
+
+    # Image Processing & Storage
+    image_service = ImageGenerationService()
+    image_bytes = await file.read()
+
+    prompt_text = f"Uploaded moodboard image for campaign {campaign_id}: {file.filename}"
+    model_used = "direct_upload"
+    size_used = "original" # Placeholder as actual size might vary
+
+    try:
+        permanent_image_url = await image_service._save_image_and_log_db(
+            prompt=prompt_text,
+            model_used=model_used,
+            size_used=size_used,
+            db=db,
+            image_bytes=image_bytes,
+            user_id=current_user.id,
+            original_filename_from_api=file.filename
+        )
+    except HTTPException as e:
+        # If _save_image_and_log_db raises an HTTPException (e.g. Azure config issue), re-raise it
+        raise e
+    except Exception as e:
+        # Catch any other unexpected errors during image saving
+        print(f"Error saving uploaded moodboard image: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save uploaded image: {str(e)}")
+
+    if not permanent_image_url:
+        raise HTTPException(status_code=500, detail="Image URL was not generated after saving.")
+
+    # Update Campaign
+    current_mood_board_urls = list(db_campaign.mood_board_image_urls) if db_campaign.mood_board_image_urls else []
+    current_mood_board_urls.append(permanent_image_url)
+
+    campaign_update_payload = models.CampaignUpdate(mood_board_image_urls=current_mood_board_urls)
+
+    updated_campaign = await crud.update_campaign(
+        db=db,
+        campaign_id=campaign_id,
+        campaign_update=campaign_update_payload
+    )
+
+    if not updated_campaign:
+        # This should ideally not happen if the campaign existed and update logic is sound
+        raise HTTPException(status_code=500, detail="Failed to update campaign with new moodboard image.")
+
+    return MoodboardImageUploadResponse(image_url=permanent_image_url, campaign=updated_campaign)
