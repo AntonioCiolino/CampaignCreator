@@ -111,7 +111,7 @@ describe('AddMoodBoardImageModal', () => {
       renderComponent();
       await userEvent.click(screen.getByText('Upload Image from Computer'));
 
-      const fileInput = screen.getByRole('button', {name: /upload image from computer/i}).parentElement?.querySelector('input[type="file"]');
+      const fileInput = screen.getByRole('button', {name: /upload image from computer/i}).parentElement?.querySelector('input[type="file"]') as HTMLInputElement;
       expect(fileInput).toBeInTheDocument(); // More robust way to find the input if no label
       if (!fileInput) throw new Error("File input not found");
 
@@ -139,7 +139,7 @@ describe('AddMoodBoardImageModal', () => {
       renderComponent();
       await userEvent.click(screen.getByText('Upload Image from Computer'));
 
-      const fileInput = screen.getByRole('button', {name: /upload image from computer/i}).parentElement?.querySelector('input[type="file"]');
+      const fileInput = screen.getByRole('button', {name: /upload image from computer/i}).parentElement?.querySelector('input[type="file"]') as HTMLInputElement;
       if (!fileInput) throw new Error("File input not found");
 
       const testFile = new File(['hello'], 'hello.png', { type: 'image/png' });

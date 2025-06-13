@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import React, { useState, useEffect } from 'react';
 import Modal from '../common/Modal';
 import TextField from '@mui/material/TextField';
@@ -9,7 +8,7 @@ export interface AddMoodBoardImageModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddUrl: (url: string) => void;
-  campaignId: string; // Added campaignId prop
+  campaignId?: string; // Made campaignId optional
   onInitiateGenerateImage?: () => void; // New optional prop
   title?: string;
 }
@@ -106,6 +105,7 @@ const AddMoodBoardImageModal: React.FC<AddMoodBoardImageModalProps> = ({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <Button
         onClick={() => {
+          if (!campaignId) return; // Should ideally not be reachable if button is disabled
           // Reset states for other views before switching
           setImageUrl('');
           setError('');
@@ -114,6 +114,8 @@ const AddMoodBoardImageModal: React.FC<AddMoodBoardImageModalProps> = ({
           setCurrentView('upload');
         }}
         variant="secondary"
+        disabled={!campaignId} // Disable if no campaignId
+        title={!campaignId ? "Campaign context required for upload" : "Upload an image from your computer"} // Tooltip
       >
         Upload Image from Computer
       </Button>
@@ -185,7 +187,7 @@ const AddMoodBoardImageModal: React.FC<AddMoodBoardImageModalProps> = ({
         <Button
           onClick={handleUploadClick}
           variant="primary"
-          disabled={!selectedFile || isUploading}
+          disabled={!selectedFile || isUploading || !campaignId} // Also disable if no campaignId
         >
           {isUploading ? 'Uploading...' : 'Upload'}
         </Button>

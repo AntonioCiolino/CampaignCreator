@@ -36,9 +36,8 @@ const mockUpdateCampaign = campaignService.updateCampaign as jest.Mock;
 const mockGenerateCampaignTOC = campaignService.generateCampaignTOC as jest.Mock; // Added for TOC tests
 const mockGetAvailableLLMs = llmService.getAvailableLLMs as jest.Mock;
 const mockUploadMoodboardImageApi = imageService.uploadMoodboardImageApi as jest.Mock;
-// Assuming ImageGenerationModal uses a specific generation function from imageService, e.g., generateImageDalle
-// If it's a generic generateImage, then that. For now, let's assume a generic one or that the modal mock handles it.
-const mockGenerateImageService = imageService.generateImageDalle as jest.Mock; // Or appropriate function used by ImageGenerationModal
+// The global mock for ImageGenerationModal handles simulation of image generation directly.
+// So, no need to mock a specific image generation function from imageService here for that modal.
 
 // Mock window.prompt and window.confirm
 const mockPrompt = jest.fn(); // Re-adding for 'Edit URL'
@@ -115,7 +114,7 @@ describe('CampaignEditorPage - Badge Image Functionality', () => {
     mockPrompt.mockReset();
     mockConfirm.mockReset();
     mockUploadMoodboardImageApi.mockReset();
-    if (mockGenerateImageService) mockGenerateImageService.mockReset();
+    // No longer need to reset mockGenerateImageService as it's removed
 
 
     // Default mocks for services called on page load
@@ -463,7 +462,7 @@ describe('CampaignEditorPage - Mood Board Image Addition', () => {
     mockGetAvailableLLMs.mockResolvedValue(mockLLMs); // Default LLMs
     mockUpdateCampaign.mockReset();
     mockUploadMoodboardImageApi.mockReset();
-    if (mockGenerateImageService) mockGenerateImageService.mockReset(); // If used
+    // mockGenerateImageService was removed, so no reset needed here either.
 
     // Setup a consistent campaign state for mood board tests
     mockGetCampaignById.mockResolvedValue(mockCampaignForMoodboard);
