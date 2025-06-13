@@ -56,9 +56,8 @@
   overflow: hidden;         /* Hide overflow */
   text-overflow: ellipsis;  /* Add ellipsis for overflowed text */
   white-space: nowrap;      /* Keep title on a single line */
-  flex-grow: 1; /* Allow title to take available space */
-  flex-shrink: 1; /* Allow title to shrink if necessary */
-  min-width: 0; /* Add this line */
+  flex: 1; /* Shorthand for flex-grow: 1, flex-shrink: 1, flex-basis: 0% */
+  min-width: 0;
   /* display: block; */ /* Not needed with flex, flex items are blockified */
   /* margin-right: 0.5rem; */ /* Removed, space is now on button's right */
 }

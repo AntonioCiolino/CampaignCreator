@@ -22,7 +22,7 @@ import PublishIcon from '@mui/icons-material/Publish';
 import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
 import ImageIcon from '@mui/icons-material/Image';
 // import ThematicImageDisplay, { ThematicImageDisplayProps } from '../components/common/ThematicImageDisplay'; // Old import
-import MoodBoardPanel, { MoodBoardPanelProps } from '../components/common/MoodBoardPanel'; // New import
+import MoodBoardPanel from '../components/common/MoodBoardPanel'; // New import
 
 import CampaignDetailsEditor from '../components/campaign_editor/CampaignDetailsEditor';
 import CampaignLLMSettings from '../components/campaign_editor/CampaignLLMSettings';
@@ -1282,9 +1282,9 @@ const CampaignEditorPage: React.FC = () => {
           {isMoodBoardPanelOpen ? 'Hide Mood Board' : 'Show Mood Board'}
         </Button>
         {/* Example Auto-save feedback display area */}
-        {/* {isAutoSavingMoodBoard && <p className="feedback-message saving-indicator" style={{marginRight: '10px', fontSize: '0.8em'}}>Auto-saving mood board...</p>}
+        {isAutoSavingMoodBoard && <p className="feedback-message saving-indicator" style={{marginRight: '10px', fontSize: '0.8em'}}>Auto-saving mood board...</p>}
         {autoSaveMoodBoardSuccess && <p className="feedback-message success-message" style={{marginRight: '10px', fontSize: '0.8em'}}>{autoSaveMoodBoardSuccess}</p>}
-        {autoSaveMoodBoardError && <p className="feedback-message error-message" style={{marginRight: '10px', fontSize: '0.8em'}}>{autoSaveMoodBoardError}</p>} */}
+        {autoSaveMoodBoardError && <p className="feedback-message error-message" style={{marginRight: '10px', fontSize: '0.8em'}}>{autoSaveMoodBoardError}</p>}
       </div>
       {campaign && campaign.title && (
         <h1 className="campaign-main-title">{campaign.title}</h1>
