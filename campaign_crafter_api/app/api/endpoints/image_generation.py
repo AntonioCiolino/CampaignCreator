@@ -117,7 +117,7 @@ async def generate_image_endpoint(
                     raise HTTPException(status_code=400, detail=f"Invalid size for DALL-E 2. Supported: 256x256, 512x512, 1024x1024. Got: {final_size}")
                 final_quality = "n/a (dall-e-2)"
 
-            user_id_to_pass = current_user.id
+            # user_id_to_pass = current_user.id # Removed
 
             image_url = await service.generate_image_dalle(
                 prompt=request.prompt,
@@ -125,12 +125,12 @@ async def generate_image_endpoint(
                 model=dalle_model_name,
                 size=final_size,
                 quality=final_quality if dalle_model_name == "dall-e-3" else None,
-                user_id=user_id_to_pass
+                current_user=current_user # Changed from user_id
             )
             model_used_for_response = f"{request.model.value} ({dalle_model_name})" # Not used in response model directly
 
         elif request.model == ImageModelName.STABLE_DIFFUSION:
-            user_id_to_pass = current_user.id
+            # user_id_to_pass = current_user.id # Removed
 
             # Use Stable Diffusion specific defaults from settings if not provided in request,
             # or pass None to let the service layer handle defaults.
@@ -149,7 +149,7 @@ async def generate_image_endpoint(
                 size=final_size, # Pass the determined size (request or default)
                 steps=final_steps, # Pass request value (can be None)
                 cfg_scale=final_cfg_scale, # Pass request value (can be None)
-                user_id=user_id_to_pass
+                current_user=current_user # Changed from user_id
                 # sd_model_checkpoint=sd_model_checkpoint_to_pass # If allowing selection
             )
             model_used_for_response = request.model.value # This is 'stable-diffusion'

@@ -259,13 +259,17 @@ from app.services.llm_factory import get_llm_service, LLMServiceUnavailableError
 # from app import models # This is already imported via "from app import models, orm_models"
 
 # --- Campaign CRUD functions ---
-async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, owner_id: int) -> orm_models.Campaign:
+async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, current_user_obj: models.User) -> orm_models.Campaign: # Changed owner_id to current_user_obj
     generated_concept = None
     # Only attempt to generate a concept if there's an initial prompt
     if campaign_payload.initial_user_prompt:
         try:
             llm_service: LLMService = get_llm_service(campaign_payload.model_id_with_prefix_for_concept)
-            generated_concept = await llm_service.generate_campaign_concept(user_prompt=campaign_payload.initial_user_prompt, db=db)
+            generated_concept = await llm_service.generate_campaign_concept(
+                user_prompt=campaign_payload.initial_user_prompt,
+                db=db,
+                current_user=current_user_obj # Pass current_user object
+            )
         except LLMServiceUnavailableError as e:
             print(f"LLM service unavailable for concept generation: {e}")
             # Campaign will be created without a concept.
@@ -277,7 +281,7 @@ async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, 
         title=campaign_payload.title,
         initial_user_prompt=campaign_payload.initial_user_prompt,
         concept=generated_concept, # Use the (awaited) LLM-generated concept
-        owner_id=owner_id,
+        owner_id=current_user_obj.id, # Use id from the passed user object
         badge_image_url=campaign_payload.badge_image_url,
         thematic_image_url=campaign_payload.thematic_image_url,
         thematic_image_prompt=campaign_payload.thematic_image_prompt,

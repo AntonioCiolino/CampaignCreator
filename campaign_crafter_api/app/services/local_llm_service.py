@@ -2,10 +2,10 @@ import httpx # For making async HTTP requests
 from typing import Optional, List, Dict, Any, AsyncGenerator
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-
+from app.models import User as UserModel # Added UserModel import
 from app.core.config import settings
-from app.services.llm_service import AbstractLLMService, LLMGenerationError # Added LLMGenerationError
-from app.services.feature_prompt_service import FeaturePromptService # For specific generation tasks
+from app.services.llm_service import AbstractLLMService, LLMGenerationError
+from app.services.feature_prompt_service import FeaturePromptService
 
 # Standard ignored API key for local OpenAI-compatible servers
 LOCAL_LLM_DUMMY_API_KEY = "ollama" 
@@ -31,7 +31,7 @@ class LocalLLMService(AbstractLLMService):
         """Closes the HTTP client session."""
         await self.client.aclose()
 
-    async def is_available(self) -> bool:
+    async def is_available(self, _current_user: UserModel, _db: Session) -> bool: # Added _current_user, _db
         if not self.api_base_url:
             return False
         try:
@@ -46,11 +46,13 @@ class LocalLLMService(AbstractLLMService):
     async def generate_text(
         self, 
         prompt: str, 
+        _current_user: UserModel, # Added _current_user
+        _db: Session,             # Added _db (may not be used directly here but good for consistency)
         model: Optional[str] = None, 
-        temperature: float = 0.7, # Default temperature
-        max_tokens: int = 1024 # Default max_tokens
+        temperature: float = 0.7,
+        max_tokens: int = 1024
     ) -> str:
-        if not await self.is_available(): # Added await
+        if not await self.is_available(_current_user=_current_user, _db=_db): # Pass args
             raise HTTPException(status_code=503, detail=f"{self.PROVIDER_NAME.title()} service is not available or configured.")
 
         selected_model = model or self.default_model_id
@@ -108,9 +110,9 @@ class LocalLLMService(AbstractLLMService):
             raise HTTPException(status_code=500, detail=error_detail)
 
 
-    async def list_available_models(self) -> List[Dict[str, str]]:
-        if not await self.is_available(): # Added await
-            return [] # Or raise an error, but factory might just skip if unavailable
+    async def list_available_models(self, _current_user: UserModel, _db: Session) -> List[Dict[str, str]]: # Added _current_user, _db
+        if not await self.is_available(_current_user=_current_user, _db=_db): # Pass args
+            return []
 
         try:
             response = await self.client.get("models", headers={"Authorization": f"Bearer {LOCAL_LLM_DUMMY_API_KEY}"})
@@ -157,19 +159,19 @@ class LocalLLMService(AbstractLLMService):
 
 
     # Implement other abstract methods by calling self.generate_text
-    async def generate_campaign_concept(self, user_prompt: str, db: Session, model: Optional[str] = None) -> str:
+    async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str: # Added current_user
         custom_prompt = self.feature_prompt_service.get_prompt("Campaign", db=db)
         final_prompt = custom_prompt.format(user_prompt=user_prompt) if custom_prompt else f"Generate a detailed RPG campaign concept: {user_prompt}"
-        return await self.generate_text(prompt=final_prompt, model=model)
+        return await self.generate_text(prompt=final_prompt, _current_user=current_user, _db=db, model=model) # Pass args
 
-    async def generate_titles(self, campaign_concept: str, db: Session, count: int = 5, model: Optional[str] = None) -> list[str]:
+    async def generate_titles(self, campaign_concept: str, db: Session, current_user: UserModel, count: int = 5, model: Optional[str] = None) -> list[str]: # Added current_user
         custom_prompt = self.feature_prompt_service.get_prompt("Campaign Names", db=db)
         final_prompt = custom_prompt.format(campaign_concept=campaign_concept, count=count) if custom_prompt else f"Generate {count} campaign titles for: {campaign_concept}. Each on a new line."
-        generated_string = await self.generate_text(prompt=final_prompt, model=model)
+        generated_string = await self.generate_text(prompt=final_prompt, _current_user=current_user, _db=db, model=model) # Pass args
         return [title.strip() for title in generated_string.split('\n') if title.strip()][:count]
 
-    async def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> Dict[str, str]:
-        if not await self.is_available():
+    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]: # Added current_user
+        if not await self.is_available(_current_user=current_user, _db=db): # Pass args
             raise HTTPException(status_code=503, detail=f"{self.PROVIDER_NAME.title()} service is not available or configured.")
         if not campaign_concept:
             raise ValueError("Campaign concept cannot be empty.")
@@ -182,6 +184,7 @@ class LocalLLMService(AbstractLLMService):
 
         generated_display_toc = await self.generate_text(
             prompt=display_final_prompt,
+            _current_user=current_user, _db=db, # Pass args
             model=model,
             temperature=0.5,
             max_tokens=700
@@ -197,6 +200,7 @@ class LocalLLMService(AbstractLLMService):
 
         generated_homebrewery_toc = await self.generate_text(
             prompt=homebrewery_final_prompt,
+            _current_user=current_user, _db=db, # Pass args
             model=model,
             temperature=0.5,
             max_tokens=1000
@@ -213,11 +217,12 @@ class LocalLLMService(AbstractLLMService):
         self,
         campaign_concept: str,
         db: Session,
+        current_user: UserModel, # Added current_user
         existing_sections_summary: Optional[str],
         section_creation_prompt: Optional[str],
         section_title_suggestion: Optional[str],
         model: Optional[str] = None,
-        section_type: Optional[str] = None # New parameter
+        section_type: Optional[str] = None
     ) -> str:
         effective_section_prompt = section_creation_prompt
         type_based_instruction = ""
@@ -263,4 +268,4 @@ class LocalLLMService(AbstractLLMService):
             prompt_parts.append("Generate detailed and engaging content for this new section.")
             final_prompt_for_generation = "\n".join(prompt_parts)
             
-        return await self.generate_text(prompt=final_prompt_for_generation, model=model, temperature=0.7, max_tokens=4000)
+        return await self.generate_text(prompt=final_prompt_for_generation, _current_user=current_user, _db=db, model=model, temperature=0.7, max_tokens=4000) # Pass args

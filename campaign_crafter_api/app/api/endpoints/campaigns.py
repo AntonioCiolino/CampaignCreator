@@ -47,7 +47,7 @@ async def create_new_campaign(
         db_campaign = await crud.create_campaign(
             db=db, 
             campaign_payload=campaign_input,
-            owner_id=owner_id
+            current_user_obj=current_user # Pass the full current_user object
         )
         if db_campaign.concept is None and campaign_input.initial_user_prompt:
             print(f"Campaign {db_campaign.id} created for user {owner_id}, but concept generation might have failed or was skipped.")
@@ -129,7 +129,8 @@ async def generate_campaign_toc_endpoint(
         generated_tocs_dict = await llm_service.generate_toc( # Returns a dict now
             campaign_concept=db_campaign.concept,
             db=db,
-            model=model_specific_id
+            model=model_specific_id,
+            current_user=current_user # Add this
         )
     except LLMServiceUnavailableError as e:
         raise HTTPException(status_code=503, detail=f"LLM Service Error for TOC generation: {str(e)}")
@@ -213,7 +214,8 @@ async def generate_campaign_titles_endpoint(
             campaign_concept=db_campaign.concept,
             db=db,
             count=count, 
-            model=model_specific_id
+            model=model_specific_id,
+            current_user=current_user # Add this
         )
     except LLMServiceUnavailableError as e:
         raise HTTPException(status_code=503, detail=f"LLM Service Error for title generation: {str(e)}")
@@ -481,7 +483,8 @@ async def create_new_campaign_section_endpoint(
             section_creation_prompt=section_input.prompt,
             section_title_suggestion=section_input.title,
             section_type=type_from_input,
-            model=model_specific_id
+            model=model_specific_id,
+            current_user=current_user # Add this
         )
     except LLMServiceUnavailableError as e:
         raise HTTPException(status_code=503, detail=f"LLM Service Error for section content generation: {str(e)}")
@@ -752,7 +755,8 @@ async def regenerate_campaign_section_endpoint(
             section_creation_prompt=final_prompt,
             section_title_suggestion=current_title,
             section_type=determined_section_type_for_llm,
-            model=model_specific_id
+            model=model_specific_id,
+            current_user=current_user # Add this
         )
         if not generated_content:
             raise HTTPException(status_code=500, detail="LLM generated empty content during regeneration.")

@@ -37,6 +37,23 @@ export const getUsers = async (skip: number = 0, limit: number = 100): Promise<A
   }
 };
 
+// Interface for updating user API keys
+export interface UserApiKeysPayload {
+  openai_api_key?: string | null; // Allow null to clear
+  sd_api_key?: string | null;     // Allow null to clear
+}
+
+// Update current user's API keys
+export const updateUserApiKeys = async (payload: UserApiKeysPayload): Promise<AppUser> => {
+  try {
+    const response = await apiClient.put<AppUser>('/api/v1/users/me/keys', payload);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating user API keys:', error);
+    throw error;
+  }
+};
+
 // Fetch a single user by ID - Returns AppUser
 export const getUserById = async (userId: number): Promise<AppUser> => {
   try {

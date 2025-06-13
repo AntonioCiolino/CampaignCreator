@@ -1,5 +1,6 @@
-from typing import Optional, Type, Dict, List # Added List
-from app.models import ModelInfo # Added ModelInfo
+from typing import Optional, Type, Dict, List
+from sqlalchemy.orm import Session # Added Session
+from app.models import ModelInfo, User as UserModel # Added UserModel
 from app.services.llm_service import AbstractLLMService
 from app.services.openai_service import OpenAILLMService
 from app.services.gemini_service import GeminiLLMService
@@ -98,7 +99,7 @@ def get_llm_service(
         # The `service_instance.is_available()` check here would be problematic if it's async.
         # We will remove the direct call to `is_available()` from here and let service constructor
         # or an async dependency wrapper handle availability.
-        # if not await service_instance.is_available(): # This would require get_llm_service to be async
+        # if not await service_instance.is_available(current_user=current_user, db=db): # This would require get_llm_service to be async and take user/db
         #     raise LLMServiceUnavailableError(f"Service '{selected_provider}' reported as unavailable after instantiation.")
         return service_instance
     except ValueError as e: 
@@ -106,7 +107,7 @@ def get_llm_service(
     except Exception as e: 
         raise LLMServiceUnavailableError(f"An unexpected error occurred while initializing {selected_provider} service ({type(e).__name__}): {e}")
 
-async def get_available_models_info() -> List[ModelInfo]:
+async def get_available_models_info(db: Session, current_user: UserModel) -> List[ModelInfo]: # Changed signature
     all_models_info: List[ModelInfo] = []
     # LLMServiceUnavailableError is used below, imported from llm_service
     # Iterate over a copy of keys in case the dictionary is modified elsewhere
@@ -118,15 +119,17 @@ async def get_available_models_info() -> List[ModelInfo]:
             print(f"Attempting to get service and models for: {provider_name}")
             # get_llm_service itself checks for basic configuration (API keys/URL)
             # and raises LLMServiceUnavailableError if not configured.
-            service = get_llm_service(provider_name) # This function internally uses LLMServiceUnavailableError
+            service = get_llm_service(provider_name)
 
-            if not await service.is_available():
-                print(f"Service '{provider_name}' is not available.")
+            # Pass current_user and db to is_available
+            if not await service.is_available(current_user=current_user, db=db):
+                print(f"Service '{provider_name}' is not available for user {current_user.id}.")
                 continue
 
-            service_models = await service.list_available_models()
+            # Pass current_user and db to list_available_models
+            service_models = await service.list_available_models(current_user=current_user, db=db)
             if not service_models:
-                print(f"No models listed by service '{provider_name}'.")
+                print(f"No models listed by service '{provider_name}' for user {current_user.id}.")
                 continue
 
             for model_dict in service_models:

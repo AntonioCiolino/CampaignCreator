@@ -18,79 +18,82 @@ class LLMConfigStatus(BaseModel):
     provider: str
     detail: Optional[str] = None
 
+# --- Helper Functions ---
+# Added _extract_provider_and_model helper
+def _extract_provider_and_model(model_id_with_prefix: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    if model_id_with_prefix and "/" in model_id_with_prefix:
+        try:
+            provider, model_id = model_id_with_prefix.split("/", 1)
+            return provider.lower(), model_id
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid model_id_with_prefix format: '{model_id_with_prefix}'. Expected 'provider/model_name'.")
+    elif model_id_with_prefix:
+        # If no slash, assume it's a model_id for the default provider, or a provider name itself.
+        # The get_llm_service factory can try to infer.
+        return None, model_id_with_prefix
+    return None, None
+
+
 # --- Endpoints ---
 
 @router.get("/models", response_model=pydantic_models.ModelListResponse, tags=["LLM Management"])
-async def list_llm_models():
+async def list_llm_models(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[pydantic_models.User, Depends(get_current_active_user)]
+) -> pydantic_models.ModelListResponse:
     """
-    Lists all available LLM models from all configured and available providers.
+    Lists all available LLM models from all configured and available providers for the current user.
     The model IDs returned are prefixed with their provider (e.g., "openai/gpt-3.5-turbo")
     and can be used in other API endpoints that accept a 'model_id_with_prefix'.
     """
     try:
-        available_models_info: List[pydantic_models.ModelInfo] = await get_available_models_info()
+        # Pass db and current_user to get_available_models_info
+        available_models_info: List[pydantic_models.ModelInfo] = await get_available_models_info(db=db, current_user=current_user)
 
         if not available_models_info:
-            print("Warning: No LLM models available from any configured and operational provider for the /models endpoint.")
+            # This means no models are available for this specific user (e.g. no keys provided, no system keys)
+            # or no providers are configured system-wide. Returning an empty list is valid.
+            print(f"Warning: No LLM models available for user {current_user.id} from any configured and operational provider.")
             
         return pydantic_models.ModelListResponse(models=available_models_info)
+    except HTTPException: # Re-raise HTTPExceptions (e.g. from key fetching in services)
+        raise
     except Exception as e:
-        print(f"Critical error in list_llm_models endpoint calling get_available_models_info: {type(e).__name__} - {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve list of LLM models due to an internal server error.")
+        print(f"Error fetching available LLM models in endpoint for user {current_user.id}: {type(e).__name__} - {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve LLM models: {str(e)}")
 
 @router.post("/generate-text", response_model=pydantic_models.LLMTextGenerationResponse, tags=["LLM Management"])
-async def generate_text_endpoint(
-    request: pydantic_models.LLMGenerationRequest,
+async def generate_text_endpoint( # Renamed to match existing, added db
+    request_body: pydantic_models.LLMGenerationRequest, # Changed variable name for clarity
+    db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[pydantic_models.User, Depends(get_current_active_user)]
-):
+) -> pydantic_models.LLMTextGenerationResponse:
     """
     Generates text using the specified LLM provider and model.
     """
-    if not request.prompt:
+    if not request_body.prompt:
         raise HTTPException(status_code=400, detail="Prompt cannot be empty.")
 
-    provider_name: Optional[str] = None
-    model_specific_id: Optional[str] = None # Model ID for the service, without prefix
-
-    if request.model_id_with_prefix:
-        if "/" not in request.model_id_with_prefix:
-            # This means either it's a direct provider name, or a model_id for a default provider.
-            # Or it's a model_id for a provider that needs to be explicitly named or defaulted.
-            # For simplicity, we will assume if no prefix, it's a model ID for the default provider.
-            # The factory's default logic will handle this.
-            print(f"Warning: model_id_with_prefix '{request.model_id_with_prefix}' has no prefix. Factory will attempt default provider.")
-            model_specific_id = request.model_id_with_prefix 
-            # provider_name will be determined by factory's default logic
-        else:
-            try:
-                provider_name, model_specific_id = request.model_id_with_prefix.split("/", 1)
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid model_id_with_prefix format. Expected 'provider/model_name'.")
-    else:
-        # No model_id_with_prefix provided, factory will use its default provider logic
-        # model_specific_id will remain None, so service will use its internal default model
-        pass 
+    provider_name, model_specific_id = _extract_provider_and_model(request_body.model_id_with_prefix)
         
-
     try:
-        # Get the service instance. provider_name can be None here if we want factory to infer/default.
-        # model_id_with_prefix is passed to help factory infer if provider_name is None.
-        llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=request.model_id_with_prefix)
-        
-        # The model_specific_id (without prefix) is passed to the service's generate_text method.
-        # If model_specific_id is None here (e.g. only provider was given, or nothing was given),
-        # the service's generate_text method will use its own default model.
-        generated_text = await llm_service.generate_text( # Added await
-            prompt=request.prompt,
-            model=model_specific_id, # This is the ID for the service, e.g., "gpt-3.5-turbo"
-            temperature=request.temperature,
-            max_tokens=request.max_tokens
+        llm_service = get_llm_service(
+            provider_name=provider_name,
+            model_id_with_prefix=request_body.model_id_with_prefix
         )
         
-        return pydantic_models.LLMTextGenerationResponse(
-            text=generated_text,
-            model_used=request.model_id_with_prefix or f"{llm_service.PROVIDER_NAME}/{model_specific_id or 'default'}" # Best guess of model used
+        text_content = await llm_service.generate_text(
+            prompt=request_body.prompt,
+            model=model_specific_id,
+            temperature=request_body.temperature, # Will use default from Pydantic model if None
+            max_tokens=request_body.max_tokens,   # Will use default from Pydantic model if None
+            current_user=current_user,
+            db=db
         )
+
+        # The response model pydantic_models.LLMTextGenerationResponse is { text: str }
+        # The model_used field was removed as it's not in the Pydantic model.
+        return pydantic_models.LLMTextGenerationResponse(text=text_content)
     except LLMServiceUnavailableError as e:
         raise HTTPException(status_code=503, detail=str(e))
     except LLMGenerationError as e: # New block
@@ -121,7 +124,7 @@ async def test_openai_config(
         # The factory's get_llm_service already does some basic config checks.
         # is_available() does a live API call.
 
-        if await llm_service.is_available():
+        if await llm_service.is_available(current_user=current_user, db=db): # Pass args
             return LLMConfigStatus(
                 status="success",
                 message="OpenAI configuration appears valid and service is reachable.",
@@ -175,7 +178,7 @@ async def test_openai_config_v2(
     try:
         llm_service = get_llm_service(provider_name=provider_to_test)
 
-        if await llm_service.is_available(): # This now raises LLMServiceUnavailableError on failure
+        if await llm_service.is_available(current_user=current_user, db=db): # Pass args. This now raises LLMServiceUnavailableError on failure
             return LLMConfigStatus(
                 status="success",
                 message="OpenAI configuration appears valid and service is reachable.",

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict
 from sqlalchemy.orm import Session
+from app.models import User as UserModel # Added UserModel import
 
 class LLMServiceUnavailableError(Exception):
     """Custom exception for when an LLM service cannot be initialized or is unavailable."""
@@ -12,7 +13,20 @@ class LLMGenerationError(Exception):
 
 class AbstractLLMService(ABC):
     @abstractmethod
-    def generate_text(self, prompt: str, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str:
+    async def is_available(self, current_user: UserModel, db: Session) -> bool: # Changed signature
+        pass
+
+    @abstractmethod
+    async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, str]]: # Changed signature
+        """
+        Lists available LLM models for the specific provider, considering user context.
+        Returns a list of dicts, e.g., [{"id": "model_id_for_provider", "name": "Model Name"}]
+        The 'id' should be usable in the 'model' parameter of generation methods.
+        """
+        pass
+
+    @abstractmethod
+    async def generate_text(self, prompt: str, current_user: UserModel, db: Session, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str: # Changed signature
         """
         Generates text using an LLM based on a generic prompt.
         This is a general-purpose method. Specific generation tasks might have dedicated methods.
@@ -21,7 +35,7 @@ class AbstractLLMService(ABC):
         pass
 
     @abstractmethod
-    def generate_campaign_concept(self, user_prompt: str, db: Session, model: Optional[str] = None) -> str:
+    async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str: # Changed signature
         """
         Generates a campaign concept using an LLM based on a user prompt.
         The 'model' parameter is the specific model ID for the provider.
@@ -29,7 +43,7 @@ class AbstractLLMService(ABC):
         pass
 
     @abstractmethod
-    def generate_titles(self, campaign_concept: str, db: Session, count: int = 5, model: Optional[str] = None) -> list[str]:
+    async def generate_titles(self, campaign_concept: str, db: Session, current_user: UserModel, count: int = 5, model: Optional[str] = None) -> list[str]: # Changed signature
         """
         Generates a list of alternative campaign titles based on a campaign concept.
         The 'model' parameter is the specific model ID for the provider.
@@ -37,7 +51,7 @@ class AbstractLLMService(ABC):
         pass
 
     @abstractmethod
-    def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> Dict[str, str]:
+    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]: # Changed signature
             # Docstring should be updated to reflect it returns a dict with "display_toc" and "homebrewery_toc"
             """
             Generates both a display-friendly and a Homebrewery-formatted Table of Contents
@@ -47,15 +61,16 @@ class AbstractLLMService(ABC):
             pass
 
     @abstractmethod
-    def generate_section_content(
+    async def generate_section_content( # Changed signature
         self, 
         campaign_concept: str, 
         db: Session,
+        current_user: UserModel, # Added current_user
         existing_sections_summary: Optional[str], 
         section_creation_prompt: Optional[str], 
         section_title_suggestion: Optional[str], 
         model: Optional[str] = None,
-        section_type: Optional[str] = None # New parameter
+        section_type: Optional[str] = None
     ) -> str:
         """
         Generates content for a new campaign section.
@@ -64,59 +79,50 @@ class AbstractLLMService(ABC):
         """
         pass
 
-    @abstractmethod
-    def list_available_models(self) -> List[Dict[str, str]]:
-        """
-        Lists available LLM models for the specific provider.
-        Returns a list of dicts, e.g., [{"id": "model_id_for_provider", "name": "Model Name"}]
-        The 'id' should be usable in the 'model' parameter of generation methods.
-        """
-        pass
+# --- Dummy LLMService for placeholder/testing, updated to match async and new signatures ---
+class LLMService(AbstractLLMService): # Note: This is a dummy implementation
+    async def is_available(self, current_user: UserModel, db: Session) -> bool:
+        print(f"Dummy LLMService: is_available called for user {current_user.id}")
+        return True
 
-    def is_available(self) -> bool:
-        """
-        Checks if the service is configured and available for use (e.g., API key is set).
-        Provides a default implementation that can be overridden if more complex checks are needed.
-        """
-        return True # Base implementation assumes availability if instantiated.
-                    # Concrete classes should override if they have specific checks (e.g. API key presence).
+    async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, str]]:
+        print(f"Dummy LLMService: list_available_models called for user {current_user.id}")
+        return [
+            {"id": "dummy/model-1", "name": "Dummy Model 1"},
+            {"id": "dummy/model-2", "name": "Dummy Model 2"},
+        ]
 
-# --- ADD THIS CONCRETE IMPLEMENTATION BELOW ---
+    async def generate_text(self, prompt: str, current_user: UserModel, db: Session, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str:
+        print(f"Dummy LLMService: generate_text called for user {current_user.id} with model {model}")
+        return f"Dummy generated text for prompt: {prompt}"
 
-class LLMService(AbstractLLMService):
-    def generate_text(self, prompt: str, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str:
-        return f"Generated text for prompt: {prompt}"
+    async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
+        print(f"Dummy LLMService: generate_campaign_concept called for user {current_user.id} with model {model}")
+        return f"Dummy campaign concept for: {user_prompt}"
 
-    def generate_campaign_concept(self, user_prompt: str, db: Session, model: Optional[str] = None) -> str:
-        return f"Campaign concept for: {user_prompt}"
+    async def generate_titles(self, campaign_concept: str, db: Session, current_user: UserModel, count: int = 5, model: Optional[str] = None) -> list[str]:
+        print(f"Dummy LLMService: generate_titles called for user {current_user.id} with model {model}")
+        return [f"Dummy Title {i+1} for {campaign_concept}" for i in range(count)]
 
-    def generate_titles(self, campaign_concept: str, db: Session, count: int = 5, model: Optional[str] = None) -> list[str]:
-        return [f"Title {i+1} for {campaign_concept}" for i in range(count)]
+    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]:
+        print(f"Dummy LLMService: generate_toc called for user {current_user.id} with model {model}")
+        return {
+            "display_toc": f"Dummy Display Table of Contents for: {campaign_concept}",
+            "homebrewery_toc": f"Dummy Homebrewery Table of Contents for: {campaign_concept}"
+        }
 
-    def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> Dict[str, str]:
-            return {
-                "display_toc": f"Display Table of Contents for: {campaign_concept}",
-                "homebrewery_toc": f"Homebrewery Table of Contents for: {campaign_concept}"
-            }
-
-    def generate_section_content(
+    async def generate_section_content(
         self,
         campaign_concept: str,
         db: Session,
+        current_user: UserModel,
         existing_sections_summary: Optional[str],
         section_creation_prompt: Optional[str],
         section_title_suggestion: Optional[str],
         model: Optional[str] = None,
-        section_type: Optional[str] = None # New parameter
+        section_type: Optional[str] = None
     ) -> str:
-        # Basic demonstration of using section_type.
-        # In a real implementation, this would involve more sophisticated prompt engineering.
+        print(f"Dummy LLMService: generate_section_content called for user {current_user.id} with model {model} and type {section_type}")
         if section_type:
-            return f"Section content for: {campaign_concept} (Type: {section_type}) - Title: {section_title_suggestion}"
-        return f"Section content for: {campaign_concept} - Title: {section_title_suggestion}"
-
-    def list_available_models(self) -> List[Dict[str, str]]:
-        return [
-            {"id": "openai/gpt-3.5-turbo", "name": "GPT-3.5 Turbo"},
-            {"id": "openai/gpt-4", "name": "GPT-4"},
-        ]
+            return f"Dummy section content for: {campaign_concept} (Type: {section_type}) - Title: {section_title_suggestion}"
+        return f"Dummy section content for: {campaign_concept} - Title: {section_title_suggestion}"

@@ -5,6 +5,9 @@ export interface User {
   full_name?: string | null;
   disabled: boolean;
   is_superuser: boolean;
+  // Add these new fields
+  openai_api_key_provided?: boolean;
+  sd_api_key_provided?: boolean;
 }
 
 // This file can also contain other user-related types if needed in the future,

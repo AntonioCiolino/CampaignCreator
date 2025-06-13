@@ -27,6 +27,7 @@ describe('ProtectedRoute', () => {
       login: jest.fn(),
       logout: jest.fn(),
       isSuperuser: jest.fn().mockReturnValue(false),
+      setUser: jest.fn(), // Add this
     });
 
     render(
@@ -49,6 +50,7 @@ describe('ProtectedRoute', () => {
       login: jest.fn(),
       logout: jest.fn(),
       isSuperuser: jest.fn().mockReturnValue(false),
+      setUser: jest.fn(), // Add this
     });
 
     render(
@@ -72,6 +74,7 @@ describe('ProtectedRoute', () => {
       login: jest.fn(),
       logout: jest.fn(),
       isSuperuser: jest.fn().mockReturnValue(false), // Explicitly regular user
+      setUser: jest.fn(), // Add this
     });
 
     render(
@@ -95,6 +98,7 @@ describe('ProtectedRoute', () => {
       login: jest.fn(),
       logout: jest.fn(),
       isSuperuser: jest.fn().mockReturnValue(true), // Explicitly superuser
+      setUser: jest.fn(), // Add this
     });
 
     render(
@@ -117,6 +121,7 @@ describe('ProtectedRoute', () => {
       login: jest.fn(),
       logout: jest.fn(),
       isSuperuser: jest.fn().mockReturnValue(false),
+      setUser: jest.fn(), // Add this
     });
 
     render(
@@ -139,6 +144,7 @@ describe('ProtectedRoute', () => {
       login: jest.fn(),
       logout: jest.fn(),
       isSuperuser: jest.fn().mockReturnValue(false),
+      setUser: jest.fn(), // Add this
     });
 
     render(

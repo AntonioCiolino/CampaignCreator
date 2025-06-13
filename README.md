@@ -36,6 +36,24 @@ The `campaign_crafter_api` is a Python-based backend service built with **FastAP
 *   **pip & `requirements.txt`**: For dependency management (as per `campaign_crafter_api/README.md`).
 *   **(Planned) Docker**: For containerization and deployment.
 
+### Bring Your Own Key (BYOK) Support
+
+The Campaign Creator API now supports a "Bring Your Own Key" (BYOK) model for certain third-party services, enhancing user control and privacy. Currently, this applies to:
+
+*   **OpenAI API Key**: Used for text generation (e.g., GPT models) and image generation (DALL-E).
+*   **Stable Diffusion API Key**: Used for alternative image generation capabilities.
+
+**How it Works:**
+
+*   **User-Provided Keys**: Users can securely submit their personal API keys for these services via their User Settings page in the web interface (`campaign_crafter_ui`). These keys are encrypted in storage.
+*   **System Fallback for Superusers**: If a user is designated as a "superuser" and has not provided their own key for a specific service, the system will attempt to use a globally configured API key (set via environment variables like `OPENAI_API_KEY` or `STABLE_DIFFUSION_API_KEY`) for that superuser's requests.
+*   **Feature Access**:
+    *   If a user (who is not a superuser) has not provided their own API key for a service, features relying on that service will be disabled for them.
+    *   Superusers can access features using either their own key or the system's key.
+    *   If a system key is not configured, even superusers will need to provide their own key to access the corresponding features.
+
+This system allows users to leverage their own API subscriptions and manage their usage directly, while still enabling administrators to provide system-level access for authorized superusers.
+
 ### Setup and Run
 
 **Detailed setup and run instructions are in `campaign_crafter_api/README.md`.**
@@ -58,6 +76,7 @@ The `campaign_crafter_ui` is a React-based web application that will provide a u
 *   Offering a web-based editor for story and world-building.
 *   Allowing users to manage their content and projects via a web browser.
 *   Integrating with the backend API for LLM suggestions and other features.
+*   Allowing users to manage their account settings, including submitting their own API keys for integrated services (OpenAI, Stable Diffusion).
 
 ### Tech Stack
 
