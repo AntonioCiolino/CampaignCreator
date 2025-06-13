@@ -58,6 +58,7 @@
   white-space: nowrap;      /* Keep title on a single line */
   flex-grow: 1; /* Allow title to take available space */
   flex-shrink: 1; /* Allow title to shrink if necessary */
+  min-width: 0; /* Add this line */
   /* display: block; */ /* Not needed with flex, flex items are blockified */
   /* margin-right: 0.5rem; */ /* Removed, space is now on button's right */
 }
