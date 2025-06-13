@@ -24,7 +24,7 @@ def update_user_api_keys(
     """
     # current_user from deps.get_current_active_user is already a models.User Pydantic model.
     # We need the ORM model to make changes.
-    user_orm = crud.user.get(db, id=current_user.id)
+    user_orm = crud.get_user(db, user_id=current_user.id) # Changed to use crud.get_user
     if not user_orm:
         # This case should ideally not happen if get_current_active_user works correctly
         # and the user hasn't been deleted mid-session.
