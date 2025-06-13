@@ -12,7 +12,7 @@
   /* border-radius: var(--border-radius-lg, 0.5rem); */ /* Radius handled by parent panel */
   /* box-shadow: var(--box-shadow-lg, 0 0.5rem 1rem rgba(0,0,0,0.15)); */ /* Shadow handled by parent panel */
   z-index: 1; /* Local stacking context if needed, parent panel has higher z-index */
-  overflow: hidden;
+  overflow-x: auto;
   display: flex;
   flex-direction: column;
   transition: opacity 0.3s ease-in-out; /* Keep transition for visibility */
@@ -142,8 +142,6 @@
   border-radius: var(--border-radius, 0.3rem);
   transition: border-color 0.2s ease-in-out;
   position: relative; /* For absolute positioning of close button */
-  width: 100px; /* Example size, adjust as needed */
-  height: 100px; /* Example size, adjust as needed */
   padding: 0; /* Remove padding if image takes full tile */
   overflow: hidden; /* Hide parts of image that don't fit */
 }

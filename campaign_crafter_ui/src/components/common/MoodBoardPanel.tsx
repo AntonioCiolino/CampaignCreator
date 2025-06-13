@@ -1,5 +1,26 @@
 // campaign_crafter_ui/src/components/common/MoodBoardPanel.tsx
 import React, { useState } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy, // Though we are horizontal, this can be adapted or we might use a different strategy if needed. For basic setup, it's often included.
+  // For horizontal lists, rectSortingStrategy or horizontalListSortingStrategy might be more semantically correct.
+  // However, verticalListSortingStrategy works for wrapping lists too. Let's try rectSortingStrategy for potentially better wrapping behavior.
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
 import './MoodBoardPanel.css'; // Ensure this path is correct after rename
 import AddMoodBoardImageModal from '../modals/AddMoodBoardImageModal';
 import { uploadImage } from '../../services/imageService'; // Import uploadImage
@@ -16,6 +37,56 @@ export interface MoodBoardPanelProps {
   onRequestOpenGenerateImageModal?: () => void; // New optional prop
   // onRemoveImage is removed
 }
+
+// New SortableMoodBoardItem component
+interface SortableMoodBoardItemProps {
+  id: string;
+  url: string;
+  index: number; // Keep index for alt text and potential non-dnd related logic
+  onRemove: (urlToRemove: string) => void; // Pass remove handler
+}
+
+const SortableMoodBoardItem: React.FC<SortableMoodBoardItemProps> = ({ id, url, index, onRemove }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging, // useful for styling the dragged item
+  } = useSortable({ id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1, // Example: reduce opacity when dragging
+    // Ensure items are still visible and take space when dragging
+    // width: '100px', // Assuming fixed size for now, or ensure CSS handles it
+    // height: '100px',
+    // touchAction: 'none', // Recommended by dnd-kit for pointer sensors
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="mood-board-item-link-wrapper">
+      {/* The original <a> tag can be here or you can directly style the div above */}
+      <a href={url} target="_blank" rel="noopener noreferrer" className="mood-board-item-link">
+        <img src={url} alt={`Mood board ${index + 1}`} className="mood-board-image" />
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onRemove(url);
+          }}
+          className="mood-board-tile-close-button"
+          aria-label={`Remove image ${index + 1}`}
+        >
+          &times;
+        </button>
+      </a>
+    </div>
+  );
+};
+
 
 const MoodBoardPanel: React.FC<MoodBoardPanelProps> = (props) => {
   const {
@@ -34,6 +105,13 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = (props) => {
   const [isDraggingOver, setIsDraggingOver] = useState(false); // State for drag feedback
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Use a more specific main class for the panel itself, wrapper can be for visibility control
   const panelClasses = `mood-board-panel ${isVisible ? 'visible' : 'hidden'} ${isDraggingOver ? 'dragging-over' : ''}`;
@@ -103,6 +181,25 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = (props) => {
     onUpdateMoodBoardUrls(updatedUrls);
   };
 
+  const handleRemoveUrl = (urlToRemove: string) => {
+    const updatedUrls = moodBoardUrls.filter(u => u !== urlToRemove);
+    onUpdateMoodBoardUrls(updatedUrls);
+  };
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = moodBoardUrls.findIndex(url => url === active.id);
+      const newIndex = moodBoardUrls.findIndex(url => url === over.id);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newOrder = arrayMove(moodBoardUrls, oldIndex, newIndex);
+        onUpdateMoodBoardUrls(newOrder);
+      }
+    }
+  }
+
   const renderContent = () => {
     if (isLoading) {
       return <p className="mood-board-loader">Loading...</p>;
@@ -111,29 +208,37 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = (props) => {
       return <p className="mood-board-error">Error: {error}</p>;
     }
     // Ensure moodBoardUrls is treated as an array, even if empty
-    if (moodBoardUrls && moodBoardUrls.length > 0) {
+    // URLs are used as IDs for dnd-kit items. Ensure they are unique.
+    // If URLs might not be unique (e.g., same image added multiple times),
+    // then a more robust ID generation strategy is needed (e.g., objects with {id, url}).
+    // For now, assuming URLs are unique enough to serve as keys/IDs.
+    const items = moodBoardUrls.map(url => ({ id: url, url }));
+
+
+    if (items && items.length > 0) {
       return (
-        <div className="mood-board-list">
-          {moodBoardUrls.map((url, index) => (
-            <a key={index} href={url} target="_blank" rel="noopener noreferrer" className="mood-board-item-link">
-              <img src={url} alt={`Mood board ${index + 1}`} className="mood-board-image" />
-              {/* Button to remove image, now calls onUpdateMoodBoardUrls directly */}
-              <button
-                onClick={(e) => {
-                  e.preventDefault(); // Important: Prevent link navigation
-                  e.stopPropagation(); // Stop event from bubbling up
-                  const updatedUrls = moodBoardUrls.filter(u => u !== url);
-                  onUpdateMoodBoardUrls(updatedUrls);
-                }}
-                className="mood-board-tile-close-button"
-                aria-label={`Remove image ${index + 1}`}
-              >
-                &times;
-              </button>
-              {/* TODO: Add drag handles and integrate with a DND library if reordering is needed */}
-            </a>
-          ))}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={items.map(item => item.id)} // Pass array of IDs
+            strategy={rectSortingStrategy} // Use rectSortingStrategy for better wrapping
+          >
+            <div className="mood-board-list">
+              {items.map(({ id, url }, index) => (
+                <SortableMoodBoardItem
+                  key={id}
+                  id={id}
+                  url={url}
+                  index={index}
+                  onRemove={handleRemoveUrl}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       );
     }
     // Only show "no images" if panel is meant to be visible and not loading/error
