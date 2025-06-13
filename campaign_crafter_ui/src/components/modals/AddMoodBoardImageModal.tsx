@@ -115,7 +115,7 @@ const AddMoodBoardImageModal: React.FC<AddMoodBoardImageModalProps> = ({
         }}
         variant="secondary"
         disabled={!campaignId} // Disable if no campaignId
-        title={!campaignId ? "Campaign context required for upload" : "Upload an image from your computer"} // Tooltip
+        tooltip={!campaignId ? "Campaign context required for upload" : "Upload an image from your computer"} // Tooltip
       >
         Upload Image from Computer
       </Button>
