@@ -2,11 +2,14 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient # Not used in this file directly, but common
+from fastapi import HTTPException # For error case testing
 from unittest.mock import patch, AsyncMock, ANY, MagicMock
+from io import BytesIO
 
 
 from app.main import app
+from app.core.config import settings # For AZURE_STORAGE_CONTAINER_NAME
 from app.db import Base, get_db
 from app.orm_models import Campaign as ORMCampaign, CampaignSection as ORMCampaignSection # Renamed Campaign to ORMCampaign
 from app import crud # Import crud to mock its functions
@@ -459,5 +462,123 @@ async def test_update_campaign_remove_moodboard_image_deletes_blob(
         updated_db_campaign = db.query(ORMCampaign).filter(ORMCampaign.id == db_campaign.id).first()
         assert updated_db_campaign is not None
         assert updated_db_campaign.mood_board_image_urls == [initial_url1]
+    finally:
+        db.close()
+
+
+# --- Tests for Moodboard Image Upload ---
+
+@pytest.mark.asyncio
+@patch('app.api.endpoints.campaigns.ImageGenerationService._save_image_and_log_db', new_callable=AsyncMock)
+async def test_upload_moodboard_image_success(
+    mock_save_image, db_campaign: ORMCampaign, async_client: AsyncClient
+):
+    # Arrange
+    mock_image_url = "http://example.com/mock_uploaded_image.png"
+    mock_save_image.return_value = mock_image_url
+
+    image_content = b"fake image data"
+    image_bytes_io = BytesIO(image_content)
+    file_name = "test_image.png"
+
+    # Act
+    # The async_client should handle authentication if other tests requiring auth pass.
+    # Assuming owner_id=1 for db_campaign is the authenticated user.
+    response = await async_client.post(
+        f"/api/v1/campaigns/{db_campaign.id}/moodboard/upload",
+        files={"file": (file_name, image_bytes_io, "image/png")}
+    )
+
+    # Assert
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["image_url"] == mock_image_url
+    assert data["campaign"]["id"] == db_campaign.id
+    assert mock_image_url in data["campaign"]["mood_board_image_urls"]
+
+    mock_save_image.assert_called_once()
+    call_args = mock_save_image.call_args[1] # Get kwargs
+    assert call_args['image_bytes'] == image_content
+    assert call_args['user_id'] == db_campaign.owner_id # Assuming owner_id 1 is current_user.id
+    assert call_args['original_filename_from_api'] == file_name
+
+    # Verify campaign in DB
+    db = TestingSessionLocal()
+    try:
+        updated_db_campaign = db.query(ORMCampaign).filter(ORMCampaign.id == db_campaign.id).first()
+        assert updated_db_campaign is not None
+        assert mock_image_url in updated_db_campaign.mood_board_image_urls
+    finally:
+        db.close()
+
+@pytest.mark.asyncio
+async def test_upload_moodboard_image_campaign_not_found(async_client: AsyncClient):
+    image_bytes_io = BytesIO(b"fake image data")
+    response = await async_client.post(
+        "/api/v1/campaigns/99999/moodboard/upload", # Non-existent campaign ID
+        files={"file": ("test.png", image_bytes_io, "image/png")}
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Campaign not found"
+
+@pytest.mark.asyncio
+async def test_upload_moodboard_image_unauthorized(db_campaign: ORMCampaign, async_client: AsyncClient):
+    # Arrange: Create a campaign owned by a different user
+    db = TestingSessionLocal()
+    try:
+        other_user_campaign = ORMCampaign(title="Other User Campaign", owner_id=2) # owner_id=2
+        db.add(other_user_campaign)
+        db.commit()
+        db.refresh(other_user_campaign)
+        other_campaign_id = other_user_campaign.id
+    finally:
+        db.close()
+
+    image_bytes_io = BytesIO(b"fake image data")
+    # Assuming async_client is authenticated as user with owner_id=1
+    response = await async_client.post(
+        f"/api/v1/campaigns/{other_campaign_id}/moodboard/upload",
+        files={"file": ("test.png", image_bytes_io, "image/png")}
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Not authorized to upload images to this campaign"
+
+@pytest.mark.asyncio
+async def test_upload_moodboard_image_no_file(db_campaign: ORMCampaign, async_client: AsyncClient):
+    response = await async_client.post(
+        f"/api/v1/campaigns/{db_campaign.id}/moodboard/upload"
+        # No files dictionary passed
+    )
+    assert response.status_code == 422 # FastAPI's validation for missing file
+
+@pytest.mark.asyncio
+@patch('app.api.endpoints.campaigns.ImageGenerationService._save_image_and_log_db', new_callable=AsyncMock)
+async def test_upload_moodboard_image_service_failure(
+    mock_save_image, db_campaign: ORMCampaign, async_client: AsyncClient
+):
+    # Arrange
+    mock_save_image.side_effect = HTTPException(status_code=500, detail="Azure upload failed")
+
+    initial_moodboard_urls = list(db_campaign.mood_board_image_urls or [])
+
+    image_bytes_io = BytesIO(b"fake image data")
+    # Act
+    response = await async_client.post(
+        f"/api/v1/campaigns/{db_campaign.id}/moodboard/upload",
+        files={"file": ("test.png", image_bytes_io, "image/png")}
+    )
+
+    # Assert
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Azure upload failed"
+
+    # Verify campaign in DB was not updated
+    db = TestingSessionLocal()
+    try:
+        unchanged_db_campaign = db.query(ORMCampaign).filter(ORMCampaign.id == db_campaign.id).first()
+        assert unchanged_db_campaign is not None
+        # Ensure mood_board_image_urls is the same as before the call
+        current_urls_in_db = list(unchanged_db_campaign.mood_board_image_urls or [])
+        assert current_urls_in_db == initial_moodboard_urls
     finally:
         db.close()
