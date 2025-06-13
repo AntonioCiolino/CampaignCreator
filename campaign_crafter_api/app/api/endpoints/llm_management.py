@@ -21,22 +21,30 @@ class LLMConfigStatus(BaseModel):
 # --- Endpoints ---
 
 @router.get("/models", response_model=pydantic_models.ModelListResponse, tags=["LLM Management"])
-async def list_llm_models():
+async def list_llm_models( # Renamed from get_available_llms_endpoint to match existing, added params
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[pydantic_models.User, Depends(get_current_active_user)]
+) -> pydantic_models.ModelListResponse:
     """
-    Lists all available LLM models from all configured and available providers.
+    Lists all available LLM models from all configured and available providers for the current user.
     The model IDs returned are prefixed with their provider (e.g., "openai/gpt-3.5-turbo")
     and can be used in other API endpoints that accept a 'model_id_with_prefix'.
     """
     try:
-        available_models_info: List[pydantic_models.ModelInfo] = await get_available_models_info()
+        # Pass db and current_user to get_available_models_info
+        available_models_info: List[pydantic_models.ModelInfo] = await get_available_models_info(db=db, current_user=current_user)
 
         if not available_models_info:
-            print("Warning: No LLM models available from any configured and operational provider for the /models endpoint.")
+            # This means no models are available for this specific user (e.g. no keys provided, no system keys)
+            # or no providers are configured system-wide. Returning an empty list is valid.
+            print(f"Warning: No LLM models available for user {current_user.id} from any configured and operational provider.")
             
         return pydantic_models.ModelListResponse(models=available_models_info)
+    except HTTPException: # Re-raise HTTPExceptions (e.g. from key fetching in services)
+        raise
     except Exception as e:
-        print(f"Critical error in list_llm_models endpoint calling get_available_models_info: {type(e).__name__} - {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve list of LLM models due to an internal server error.")
+        print(f"Error fetching available LLM models in endpoint for user {current_user.id}: {type(e).__name__} - {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve LLM models: {str(e)}")
 
 @router.post("/generate-text", response_model=pydantic_models.LLMTextGenerationResponse, tags=["LLM Management"])
 async def generate_text_endpoint(
