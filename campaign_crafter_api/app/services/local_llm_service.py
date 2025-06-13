@@ -32,6 +32,7 @@ class LocalLLMService(AbstractLLMService):
         await self.client.aclose()
 
     async def is_available(self, _current_user: UserModel, _db: Session) -> bool: # Added _current_user, _db
+        # Accepts current_user and db session for availability checks
         if not self.api_base_url:
             return False
         try:

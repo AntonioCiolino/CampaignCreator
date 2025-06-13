@@ -34,6 +34,7 @@ class GeminiLLMService(AbstractLLMService):
         self.feature_prompt_service = FeaturePromptService()
 
     async def is_available(self, _current_user: UserModel, _db: Session) -> bool: # Added _current_user, _db
+        # Accepts current_user and db session for availability checks
         if not (self.api_key and self.api_key != "YOUR_GEMINI_API_KEY"):
             return False
         try:
