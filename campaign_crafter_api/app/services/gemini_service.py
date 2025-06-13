@@ -64,7 +64,7 @@ class GeminiLLMService(AbstractLLMService):
             raise LLMServiceUnavailableError(f"Failed to initialize Gemini model '{effective_model_id}': {e}")
 
 
-    async def generate_text(self, prompt: str, _current_user: UserModel, db: Session, model: Optional[str] = None, temperature: float = 0.7, max_tokens: Optional[int] = None) -> str: # Added _current_user, db
+    async def generate_text(self, prompt: str, current_user: UserModel, db: Session, model: Optional[str] = None, temperature: float = 0.7, max_tokens: Optional[int] = None) -> str: # Added _current_user, db
         if not await self.is_available(current_user=_current_user, db=db): # Pass args
             raise LLMServiceUnavailableError("Gemini service is not available.")
         if not prompt:
@@ -115,7 +115,7 @@ class GeminiLLMService(AbstractLLMService):
                        f"Generate a detailed and engaging RPG campaign concept based on this idea: {user_prompt}. Include potential plot hooks, key NPCs, and unique settings."
         
         # Re-use generate_text for actual generation, passing current_user and db
-        return await self.generate_text(prompt=final_prompt, _current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=1000)
+        return await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=1000)
 
 
     async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]: # Added current_user
@@ -134,7 +134,7 @@ class GeminiLLMService(AbstractLLMService):
         
         generated_display_toc = await self.generate_text(
             prompt=display_final_prompt,
-            _current_user=current_user, db=db, # Pass args
+            current_user=current_user, db=db, # Pass args
             model=model_instance.model_name,
             temperature=0.5,
             max_tokens=700
@@ -150,7 +150,7 @@ class GeminiLLMService(AbstractLLMService):
 
         generated_homebrewery_toc = await self.generate_text(
             prompt=homebrewery_final_prompt,
-            _current_user=current_user, db=db, # Pass args
+            current_user=current_user, db=db, # Pass args
             model=model_instance.model_name,
             temperature=0.5,
             max_tokens=1000 # Potentially more tokens for complex Homebrewery format
@@ -176,7 +176,7 @@ class GeminiLLMService(AbstractLLMService):
         final_prompt = custom_prompt_template.format(campaign_concept=campaign_concept, count=count) if custom_prompt_template else \
                        f"Based on the following RPG campaign concept: '{campaign_concept}', generate {count} alternative, catchy campaign titles. List each title on a new line. Ensure only the titles are listed, nothing else."
 
-        text_response = await self.generate_text(prompt=final_prompt, _current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=150 + (count * 20)) # Pass args
+        text_response = await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=150 + (count * 20)) # Pass args
         titles = [title.strip() for title in text_response.split('\n') if title.strip()]
         return titles[:count]
 
@@ -240,10 +240,10 @@ class GeminiLLMService(AbstractLLMService):
         # Example: system_guidance = f"You are an expert RPG writer. Pay special attention to the section type: {section_type}.\n\n"
         # final_prompt = system_guidance + final_prompt if section_type else final_prompt
         
-        return await self.generate_text(prompt=final_prompt_for_generation, _current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=4000) # Pass args
+        return await self.generate_text(prompt=final_prompt_for_generation, current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=4000) # Pass args
 
-    async def list_available_models(self, _current_user: UserModel, _db: Session) -> List[Dict[str, str]]: # Added _current_user, _db
-        if not await self.is_available(current_user=_current_user, _db=_db): # Pass args
+    async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, str]]: # Added _current_user, _db
+        if not await self.is_available(current_user=_current_user, db=\1): # Pass args
             print("Warning: Gemini API key not configured or service unavailable. Cannot fetch models.")
             return [
                 {"id": "gemini-pro", "name": "Gemini Pro (Unavailable/Fallback)"},

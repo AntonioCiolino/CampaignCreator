@@ -53,7 +53,7 @@ class LocalLLMService(AbstractLLMService):
         temperature: float = 0.7,
         max_tokens: int = 1024
     ) -> str:
-        if not await self.is_available(current_user=_current_user, _db=_db): # Pass args
+        if not await self.is_available(current_user=_current_user, db=\1): # Pass args
             raise HTTPException(status_code=503, detail=f"{self.PROVIDER_NAME.title()} service is not available or configured.")
 
         selected_model = model or self.default_model_id
@@ -111,8 +111,8 @@ class LocalLLMService(AbstractLLMService):
             raise HTTPException(status_code=500, detail=error_detail)
 
 
-    async def list_available_models(self, _current_user: UserModel, _db: Session) -> List[Dict[str, str]]: # Added _current_user, _db
-        if not await self.is_available(current_user=_current_user, _db=_db): # Pass args
+    async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, str]]: # Added _current_user, _db
+        if not await self.is_available(current_user=_current_user, db=\1): # Pass args
             return []
 
         try:
@@ -163,12 +163,12 @@ class LocalLLMService(AbstractLLMService):
     async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str: # Added current_user
         custom_prompt = self.feature_prompt_service.get_prompt("Campaign", db=db)
         final_prompt = custom_prompt.format(user_prompt=user_prompt) if custom_prompt else f"Generate a detailed RPG campaign concept: {user_prompt}"
-        return await self.generate_text(prompt=final_prompt, _current_user=current_user, db=db, model=model) # Pass args
+        return await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model) # Pass args
 
     async def generate_titles(self, campaign_concept: str, db: Session, current_user: UserModel, count: int = 5, model: Optional[str] = None) -> list[str]: # Added current_user
         custom_prompt = self.feature_prompt_service.get_prompt("Campaign Names", db=db)
         final_prompt = custom_prompt.format(campaign_concept=campaign_concept, count=count) if custom_prompt else f"Generate {count} campaign titles for: {campaign_concept}. Each on a new line."
-        generated_string = await self.generate_text(prompt=final_prompt, _current_user=current_user, db=db, model=model) # Pass args
+        generated_string = await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model) # Pass args
         return [title.strip() for title in generated_string.split('\n') if title.strip()][:count]
 
     async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]: # Added current_user
@@ -185,7 +185,7 @@ class LocalLLMService(AbstractLLMService):
 
         generated_display_toc = await self.generate_text(
             prompt=display_final_prompt,
-            _current_user=current_user, db=db, # Pass args
+            current_user=current_user, db=db, # Pass args
             model=model,
             temperature=0.5,
             max_tokens=700
@@ -201,7 +201,7 @@ class LocalLLMService(AbstractLLMService):
 
         generated_homebrewery_toc = await self.generate_text(
             prompt=homebrewery_final_prompt,
-            _current_user=current_user, db=db, # Pass args
+            current_user=current_user, db=db, # Pass args
             model=model,
             temperature=0.5,
             max_tokens=1000
@@ -269,4 +269,4 @@ class LocalLLMService(AbstractLLMService):
             prompt_parts.append("Generate detailed and engaging content for this new section.")
             final_prompt_for_generation = "\n".join(prompt_parts)
             
-        return await self.generate_text(prompt=final_prompt_for_generation, _current_user=current_user, db=db, model=model, temperature=0.7, max_tokens=4000) # Pass args
+        return await self.generate_text(prompt=final_prompt_for_generation, current_user=current_user, db=db, model=model, temperature=0.7, max_tokens=4000) # Pass args
