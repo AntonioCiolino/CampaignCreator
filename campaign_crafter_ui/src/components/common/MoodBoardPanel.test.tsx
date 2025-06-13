@@ -169,9 +169,9 @@ describe('MoodBoardPanel', () => {
 
       if (handleDragEnd) {
         const dragEndEvent: DragEndEvent = {
-          active: { id: 'url1.jpg', data: { current: null }, disabled: false, over: null },
-          over: { id: 'url3.jpg', data: { current: null }, disabled: false, rect: { width:0, height:0, top:0, left:0, bottom:0, right:0 } },
-          collisions: null, delta: { x:0, y:0, scaleX:0, scaleY:0 }, activators: { keyboard: false, mouse: false, pointer: false, touch: false }
+          active: { id: 'url1.jpg', data: { current: undefined }, disabled: false, over: null },
+          over: { id: 'url3.jpg', data: { current: undefined }, disabled: false, rect: { width:0, height:0, top:0, left:0, bottom:0, right:0 } },
+          collisions: null, delta: { x:0, y:0 }, activators: { keyboard: false, mouse: false, pointer: false, touch: false }
         };
         handleDragEnd(dragEndEvent);
       }
@@ -191,9 +191,9 @@ describe('MoodBoardPanel', () => {
 
       if (handleDragEnd) {
         const dragEndEvent: DragEndEvent = {
-            active: { id: 'url1.jpg', data: { current: null }, disabled: false, over: null },
-            over: { id: 'url1.jpg', data: { current: null }, disabled: false, rect: { width:0, height:0, top:0, left:0, bottom:0, right:0 } },
-            collisions: null, delta: { x:0, y:0, scaleX:0, scaleY:0 }, activators: { keyboard: false, mouse: false, pointer: false, touch: false }
+            active: { id: 'url1.jpg', data: { current: undefined }, disabled: false, over: null },
+            over: { id: 'url1.jpg', data: { current: undefined }, disabled: false, rect: { width:0, height:0, top:0, left:0, bottom:0, right:0 } },
+            collisions: null, delta: { x:0, y:0 }, activators: { keyboard: false, mouse: false, pointer: false, touch: false }
         };
         handleDragEnd(dragEndEvent);
       }
@@ -208,10 +208,10 @@ describe('MoodBoardPanel', () => {
         // Simulating dragging url1 and dropping it back onto url1 (or its original spot)
         // In arrayMove, if oldIndex and newIndex are the same, it should return the same array.
         const dragEndEvent: DragEndEvent = {
-            active: { id: 'url1.jpg', data: { current: null }, disabled: false, over: null },
+            active: { id: 'url1.jpg', data: { current: undefined }, disabled: false, over: null },
             // 'over' could be the same ID or an ID that results in the same index after lookup
-            over: { id: 'url1.jpg', data: { current: null }, disabled: false, rect: { width:0, height:0, top:0, left:0, bottom:0, right:0 } },
-            collisions: null, delta: { x:0, y:0, scaleX:0, scaleY:0 }, activators: { keyboard: false, mouse: false, pointer: false, touch: false }
+            over: { id: 'url1.jpg', data: { current: undefined }, disabled: false, rect: { width:0, height:0, top:0, left:0, bottom:0, right:0 } },
+            collisions: null, delta: { x:0, y:0 }, activators: { keyboard: false, mouse: false, pointer: false, touch: false }
         };
         handleDragEnd(dragEndEvent);
       }
@@ -227,9 +227,9 @@ describe('MoodBoardPanel', () => {
 
         if (handleDragEnd) {
           const dragEndEvent: DragEndEvent = {
-              active: { id: 'url1.jpg', data: { current: null }, disabled: false, over: null },
+              active: { id: 'url1.jpg', data: { current: undefined }, disabled: false, over: null },
               over: null, // Simulate dropping outside a valid target
-              collisions: null, delta: { x:0, y:0, scaleX:0, scaleY:0 }, activators: { keyboard: false, mouse: false, pointer: false, touch: false }
+              collisions: null, delta: { x:0, y:0 }, activators: { keyboard: false, mouse: false, pointer: false, touch: false }
           };
           handleDragEnd(dragEndEvent);
         }
