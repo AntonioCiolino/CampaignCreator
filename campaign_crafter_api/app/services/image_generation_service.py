@@ -13,7 +13,7 @@ from azure.storage.blob import BlobServiceClient # Restored for Azure
 from azure.identity import DefaultAzureCredential # Restored for Azure
 
 # Added imports
-from campaign_crafter_api.app.models import User as UserModel
+from app.models import User as UserModel # Changed import path
 from campaign_crafter_api.app.core.security import decrypt_key
 # settings is already imported below
 # openai is already imported above
