@@ -175,8 +175,7 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = (props) => {
             >
               &times;
             </button>
-            {title && <span id="mood-board-title" className="mood-board-title">{title}</span>}
-            {/* Add Button - always rendered now */}
+            {/* Add Button - moved here */}
             <button
               onClick={(e) => {
                 e.stopPropagation(); // Prevent header click
@@ -187,6 +186,7 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = (props) => {
             >
               +
             </button>
+            {title && <span id="mood-board-title" className="mood-board-title">{title}</span>}
           </div>
         )}
         <div className="mood-board-content-area"> {/* Renamed for clarity from mood-board-content */}
