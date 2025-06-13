@@ -180,12 +180,18 @@ class User(UserBase): # For responses
     id: int
     disabled: bool
     is_superuser: bool
+    openai_api_key_provided: Optional[bool] = None
+    sd_api_key_provided: Optional[bool] = None
 
     campaigns: List[Campaign] = []
     llm_configs: List[LLMConfig] = []
 
     class Config:
         from_attributes = True
+
+class UserAPIKeyUpdate(BaseModel):
+    openai_api_key: Optional[str] = None
+    sd_api_key: Optional[str] = None
 
 # Feature Models
 class FeatureBase(BaseModel):

@@ -13,6 +13,7 @@ from app.api.endpoints import utility_endpoints as utility_router
 from app.api.endpoints import image_generation as image_generation_router
 from app.api.endpoints import import_data as import_data_router
 from app.api.endpoints import users as users_router # New import for users
+from app.api.endpoints import user_settings # Import for user_settings
 from app.api.endpoints import data_tables # New import for data_tables
 from app.api.endpoints import auth as auth_router # Import for auth
 from app.api.endpoints import file_uploads as file_uploads_router # Import for file uploads
@@ -63,6 +64,7 @@ app.include_router(utility_router.router, prefix="/api/v1", tags=["Utilities"])
 app.include_router(image_generation_router.router, prefix="/api/v1", tags=["Image Generation"]) 
 app.include_router(import_data_router.router, prefix="/api/v1/import", tags=["Import"])
 app.include_router(users_router.router, prefix="/api/v1/users", tags=["Users"]) # Added users router
+app.include_router(user_settings.router, prefix="/api/v1/users", tags=["User Settings"]) # Added user_settings router
 app.include_router(auth_router.router, prefix="/api/v1/auth", tags=["Authentication"]) # Added auth router
 app.include_router(data_tables.router_features, prefix="/api/v1/features", tags=["Features"])
 app.include_router(data_tables.router_roll_tables, prefix="/api/v1/roll_tables", tags=["Rolltables"])

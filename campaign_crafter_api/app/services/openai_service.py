@@ -1,47 +1,71 @@
-from openai import AsyncOpenAI, APIError  # Use AsyncOpenAI and new error type
+from openai import AsyncOpenAI, APIError
 from typing import Optional, List, Dict
 from sqlalchemy.orm import Session
+from fastapi import HTTPException # Added import
+
 from app.core.config import settings
-from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError, LLMGenerationError # Import errors
+from app.core.security import decrypt_key # Added import
+from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError, LLMGenerationError
 from app.services.feature_prompt_service import FeaturePromptService
-# Removed import from llm_factory: from app.services.llm_factory import LLMServiceUnavailableError
+from app.models import User as UserModel # Added import for type hint
 
 class OpenAILLMService(AbstractLLMService):
-    PROVIDER_NAME = "openai" # Class variable for provider name
+    PROVIDER_NAME = "openai"
     DEFAULT_CHAT_MODEL = "gpt-3.5-turbo"
-    DEFAULT_COMPLETION_MODEL = "gpt-3.5-turbo-instruct" # Still relevant if we support legacy
+    DEFAULT_COMPLETION_MODEL = "gpt-3.5-turbo-instruct"
 
     def __init__(self):
-        self.api_key = settings.OPENAI_API_KEY
-        self.async_client: Optional[AsyncOpenAI] = None # Initialize as None
-        if self.api_key and self.api_key not in ["YOUR_API_KEY_HERE", "YOUR_OPENAI_API_KEY"]:
-            self.async_client = AsyncOpenAI(api_key=self.api_key)
-        else:
-            # This will be caught by is_available, or raise error if service used without key
-            print("Warning: OpenAI API key not configured or is a placeholder.")
+        # API key and client are no longer initialized here.
+        # They will be handled on a per-request basis using user-specific keys.
         self.feature_prompt_service = FeaturePromptService()
+        # The warning about OPENAI_API_KEY not being configured is still relevant
+        # for superuser fallback, but will be checked in _get_openai_api_key_for_user.
 
-    async def is_available(self) -> bool:
-        if not self.api_key or self.api_key in ["YOUR_API_KEY_HERE", "YOUR_OPENAI_API_KEY"]:
-            return False
-        if not self.async_client:
-            # Attempt to re-initialize if api_key was set later (though unlikely with current setup)
-            # Or simply return False, as __init__ should have set it.
-            try:
-                self.async_client = AsyncOpenAI(api_key=self.api_key)
-            except Exception:
-                return False # Failed to initialize client
+    async def _get_openai_api_key_for_user(self, current_user: UserModel) -> str:
+        """
+        Retrieves the appropriate OpenAI API key for the given user.
+        1. User's own key (decrypted from database)
+        2. Superuser fallback (from settings.OPENAI_API_KEY)
+        Raises HTTPException if no valid key is found.
+        """
+        if current_user.encrypted_openai_api_key:
+            decrypted_user_key = decrypt_key(current_user.encrypted_openai_api_key)
+            if decrypted_user_key:
+                return decrypted_user_key
+            else:
+                # This case implies a stored key that failed to decrypt, which is an issue.
+                # For now, we'll let it fall through to other checks or the final HTTPException.
+                # Consider logging this anomaly.
+                print(f"Warning: Failed to decrypt stored OpenAI API key for user {current_user.id}")
 
+        if current_user.is_superuser:
+            if settings.OPENAI_API_KEY and settings.OPENAI_API_KEY not in ["YOUR_API_KEY_HERE", "YOUR_OPENAI_API_KEY", ""]:
+                return settings.OPENAI_API_KEY
+            else:
+                print("Warning: Superuser attempted to use OpenAI, but settings.OPENAI_API_KEY is not configured or is a placeholder.")
+
+        raise HTTPException(status_code=403, detail="OpenAI API key not available for this user, and no valid fallback key is configured.")
+
+    async def is_available(self, current_user: UserModel) -> bool: # Changed signature
         try:
-            await self.async_client.models.list()
+            api_key = await self._get_openai_api_key_for_user(current_user)
+            if not api_key: # Should be caught by HTTPException in _get_openai_api_key_for_user
+                return False
+
+            async with AsyncOpenAI(api_key=api_key) as client:
+                await client.models.list() # Test API call
             return True
+        except HTTPException: # Raised by _get_openai_api_key_for_user if no key
+            return False
         except APIError as e:
-            print(f"OpenAI service not available due to APIError during models.list(): {e.status_code} - {e.message}")
-            # This indicates a fundamental issue like bad API key or connectivity problem.
-            raise LLMServiceUnavailableError(f"OpenAI API Error: {e.status_code} - {e.message or str(e)}") from e
+            # This can happen if the key is valid but there's an API issue (e.g. quota, bad key perms)
+            print(f"OpenAI service check failed for user {current_user.id} due to APIError: {e.status_code} - {e.message}")
+            # We might not want to raise LLMServiceUnavailableError here, as it's per-user now
+            # Returning False indicates it's not available for *this user* with *this key*.
+            return False
         except Exception as e:
-            print(f"OpenAI service not available due to an unexpected error during models.list(): {e}")
-            raise LLMServiceUnavailableError(f"Unexpected error checking OpenAI availability: {str(e)}") from e
+            print(f"OpenAI service check failed for user {current_user.id} due to an unexpected error: {e}")
+            return False
 
     def _get_model(self, preferred_model: Optional[str], use_chat_model: bool = True) -> str:
         """Helper to determine the model to use, falling back to defaults if None."""
@@ -49,16 +73,17 @@ class OpenAILLMService(AbstractLLMService):
             return preferred_model
         return self.DEFAULT_CHAT_MODEL if use_chat_model else self.DEFAULT_COMPLETION_MODEL
 
-    async def _perform_chat_completion(self, selected_model: str, messages: List[Dict[str,str]], temperature: float, max_tokens: int) -> str:
-        if not self.async_client:
-             raise LLMServiceUnavailableError("OpenAI AsyncClient not initialized.")
+    async def _perform_chat_completion(self, selected_model: str, messages: List[Dict[str,str]], temperature: float, max_tokens: int, api_key: str) -> str:
+        if not api_key:
+             raise LLMServiceUnavailableError("OpenAI API key not provided for chat completion.")
         try:
-            chat_completion = await self.async_client.chat.completions.create(
-                model=selected_model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens
-            )
+            async with AsyncOpenAI(api_key=api_key) as client:
+                chat_completion = await client.chat.completions.create(
+                    model=selected_model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens
+                )
             if chat_completion.choices and chat_completion.choices[0].message and chat_completion.choices[0].message.content:
                 return chat_completion.choices[0].message.content.strip()
             # If no content, it's a generation issue.
@@ -66,8 +91,8 @@ class OpenAILLMService(AbstractLLMService):
         except APIError as e:
             error_detail = f"OpenAI API Error ({e.status_code}): {e.message or str(e)}"
             print(error_detail)
-            if e.status_code == 401: # Unauthorized
-                raise LLMServiceUnavailableError(error_detail) from e
+            if e.status_code == 401: # Unauthorized (this might mean the user-provided key is bad)
+                raise LLMServiceUnavailableError(f"OpenAI API key is invalid or unauthorized. Detail: {error_detail}") from e
             elif e.status_code == 429: # Rate limit
                 raise LLMGenerationError(f"OpenAI rate limit exceeded. Detail: {error_detail}") from e
             else: # Other API errors (400 for bad input, 5xx for server issues)
@@ -76,17 +101,18 @@ class OpenAILLMService(AbstractLLMService):
             print(f"Unexpected error with model {selected_model} (ChatCompletion): {e}")
             raise LLMGenerationError(f"Unexpected error during OpenAI call: {str(e)}") from e
 
-    async def _perform_legacy_completion(self, selected_model: str, prompt: str, temperature: float, max_tokens: int) -> str:
-        if not self.async_client:
-             raise LLMServiceUnavailableError("OpenAI AsyncClient not initialized.")
+    async def _perform_legacy_completion(self, selected_model: str, prompt: str, temperature: float, max_tokens: int, api_key: str) -> str:
+        if not api_key:
+            raise LLMServiceUnavailableError("OpenAI API key not provided for legacy completion.")
         print(f"Warning: Using legacy completions endpoint for model {selected_model}. Consider migrating to chat completions if possible.")
         try:
-            completion = await self.async_client.completions.create(
-                model=selected_model,
-                prompt=prompt,
-                temperature=temperature,
-                max_tokens=max_tokens
-            )
+            async with AsyncOpenAI(api_key=api_key) as client:
+                completion = await client.completions.create(
+                    model=selected_model,
+                    prompt=prompt,
+                    temperature=temperature,
+                    max_tokens=max_tokens
+                )
             if completion.choices and completion.choices[0].text:
                 return completion.choices[0].text.strip()
             raise LLMGenerationError("OpenAI API call (Legacy Completion) succeeded but returned no content.")
@@ -94,7 +120,7 @@ class OpenAILLMService(AbstractLLMService):
             error_detail = f"OpenAI API Error ({e.status_code}): {e.message or str(e)}"
             print(error_detail)
             if e.status_code == 401: # Unauthorized
-                raise LLMServiceUnavailableError(error_detail) from e
+                raise LLMServiceUnavailableError(f"OpenAI API key is invalid or unauthorized. Detail: {error_detail}") from e
             elif e.status_code == 429: # Rate limit
                 raise LLMGenerationError(f"OpenAI rate limit exceeded. Detail: {error_detail}") from e
             else: # Other API errors
@@ -103,33 +129,31 @@ class OpenAILLMService(AbstractLLMService):
             print(f"Unexpected error with model {selected_model} (Legacy Completion): {e}")
             raise LLMGenerationError(f"Unexpected error during OpenAI legacy completion call: {str(e)}") from e
 
-    async def generate_text(self, prompt: str, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str:
-        if not await self.is_available():
-             raise LLMServiceUnavailableError("OpenAI service is not available.")
+    async def generate_text(self, prompt: str, current_user: UserModel, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str: # Added current_user
+        openai_api_key = await self._get_openai_api_key_for_user(current_user)
+        # No longer using self.is_available() here.
+        # _get_openai_api_key_for_user handles key availability/permissions.
+        # _perform_... methods handle API errors if key is invalid.
+
         if not prompt:
             raise ValueError("Prompt cannot be empty.")
 
         selected_model = self._get_model(model, use_chat_model=True)
         
         # Prioritize ChatCompletion, especially for newer models.
-        # The openai v1.x library encourages ChatCompletion even for instruct-like models.
-        # Models like "gpt-3.5-turbo-instruct" are generally completion models.
         if selected_model.endswith("-instruct") or "davinci" in selected_model or "curie" in selected_model or "babbage" in selected_model or "ada" in selected_model:
-             # Check if it's one of the few that might strictly need legacy Completion API
-            if selected_model in ["text-davinci-003", "text-davinci-002", "davinci", "curie", "babbage", "ada"]: # Add other true legacy models if any
-                 return await self._perform_legacy_completion(selected_model, prompt, temperature, max_tokens)
+            if selected_model in ["text-davinci-003", "text-davinci-002", "davinci", "curie", "babbage", "ada"]:
+                 return await self._perform_legacy_completion(selected_model, prompt, temperature, max_tokens, api_key=openai_api_key)
         
-        # Default to ChatCompletion for gpt-4, gpt-3.5-turbo, fine-tuned gpt-3.5-turbo, and others.
-        # For "gpt-3.5-turbo-instruct", it can also be used with ChatCompletion by structuring the prompt.
         messages = [{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": prompt}]
-        if selected_model == "gpt-3.5-turbo-instruct": # Example of adapting an instruct model to chat
-            messages = [{"role": "user", "content": prompt}] # Simpler structure for instruct-like via chat
+        if selected_model == "gpt-3.5-turbo-instruct":
+            messages = [{"role": "user", "content": prompt}]
 
-        return await self._perform_chat_completion(selected_model, messages, temperature, max_tokens)
+        return await self._perform_chat_completion(selected_model, messages, temperature, max_tokens, api_key=openai_api_key)
 
-    async def generate_campaign_concept(self, user_prompt: str, db: Session, model: Optional[str] = None) -> str:
-        if not await self.is_available():
-            raise LLMServiceUnavailableError("OpenAI service is not available.")
+    async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str: # Added current_user
+        openai_api_key = await self._get_openai_api_key_for_user(current_user)
+        # Removed is_available check
 
         # For creative tasks like campaign concept, chat models are generally preferred.
         selected_model = self._get_model(model, use_chat_model=True)
@@ -142,11 +166,12 @@ class OpenAILLMService(AbstractLLMService):
             {"role": "system", "content": "You are a creative assistant helping to brainstorm RPG campaign concepts."},
             {"role": "user", "content": final_prompt}
         ]
-        return await self._perform_chat_completion(selected_model, messages, temperature=0.7, max_tokens=1000)
+        return await self._perform_chat_completion(selected_model, messages, temperature=0.7, max_tokens=1000, api_key=openai_api_key)
 
-    async def generate_toc(self, campaign_concept: str, db: Session, model: Optional[str] = None) -> Dict[str, str]:
-        if not await self.is_available():
-            raise LLMServiceUnavailableError("OpenAI service is not available.")
+    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]: # Added current_user
+        openai_api_key = await self._get_openai_api_key_for_user(current_user)
+        # Removed is_available check
+
         if not campaign_concept:
             raise ValueError("Campaign concept cannot be empty.")
 
@@ -162,7 +187,7 @@ class OpenAILLMService(AbstractLLMService):
             {"role": "system", "content": "You are an assistant skilled in structuring RPG campaign narratives and creating user-friendly Table of Contents for on-screen display."},
             {"role": "user", "content": display_final_prompt}
         ]
-        generated_display_toc = await self._perform_chat_completion(selected_model, display_messages, temperature=0.5, max_tokens=700)
+        generated_display_toc = await self._perform_chat_completion(selected_model, display_messages, temperature=0.5, max_tokens=700, api_key=openai_api_key)
         if not generated_display_toc:
             raise LLMGenerationError("OpenAI API call for Display TOC succeeded but returned no usable content.")
 
@@ -176,7 +201,7 @@ class OpenAILLMService(AbstractLLMService):
             {"role": "system", "content": "You are an assistant skilled in creating RPG Table of Contents strictly following Homebrewery Markdown formatting."},
             {"role": "user", "content": homebrewery_final_prompt}
         ]
-        generated_homebrewery_toc = await self._perform_chat_completion(selected_model, homebrewery_messages, temperature=0.5, max_tokens=700)
+        generated_homebrewery_toc = await self._perform_chat_completion(selected_model, homebrewery_messages, temperature=0.5, max_tokens=700, api_key=openai_api_key)
         if not generated_homebrewery_toc:
             raise LLMGenerationError("OpenAI API call for Homebrewery TOC succeeded but returned no usable content.")
 
@@ -185,9 +210,10 @@ class OpenAILLMService(AbstractLLMService):
             "homebrewery_toc": generated_homebrewery_toc
         }
 
-    async def generate_titles(self, campaign_concept: str, db: Session, count: int = 5, model: Optional[str] = None) -> list[str]:
-        if not await self.is_available():
-            raise LLMServiceUnavailableError("OpenAI service is not available.")
+    async def generate_titles(self, campaign_concept: str, db: Session, current_user: UserModel, count: int = 5, model: Optional[str] = None) -> list[str]: # Added current_user
+        openai_api_key = await self._get_openai_api_key_for_user(current_user)
+        # Removed is_available check
+
         if not campaign_concept:
             raise ValueError("Campaign concept cannot be empty.")
         if count <= 0:
@@ -202,7 +228,7 @@ class OpenAILLMService(AbstractLLMService):
             {"role": "user", "content": final_prompt}
         ]
 
-        titles_text = await self._perform_chat_completion(selected_model, messages, temperature=0.7, max_tokens=150 + (count * 20))
+        titles_text = await self._perform_chat_completion(selected_model, messages, temperature=0.7, max_tokens=150 + (count * 20), api_key=openai_api_key)
         titles_list = [title.strip() for title in titles_text.split('\n') if title.strip()]
         return titles_list[:count]
 
@@ -210,14 +236,16 @@ class OpenAILLMService(AbstractLLMService):
         self,
         campaign_concept: str,
         db: Session,
+        current_user: UserModel, # Added current_user
         existing_sections_summary: Optional[str],
         section_creation_prompt: Optional[str],
         section_title_suggestion: Optional[str],
         model: Optional[str] = None,
-        section_type: Optional[str] = None # New parameter
+        section_type: Optional[str] = None
     ) -> str:
-        if not await self.is_available():
-            raise LLMServiceUnavailableError("OpenAI service is not available.")
+        openai_api_key = await self._get_openai_api_key_for_user(current_user)
+        # Removed is_available check
+
         if not campaign_concept:
             raise ValueError("Campaign concept is required.")
 
@@ -270,14 +298,34 @@ class OpenAILLMService(AbstractLLMService):
             {"role": "system", "content": system_message_content},
             {"role": "user", "content": final_prompt_for_user_role}
         ]
-        return await self._perform_chat_completion(selected_model, messages, temperature=0.7, max_tokens=1500)
+        return await self._perform_chat_completion(selected_model, messages, temperature=0.7, max_tokens=1500, api_key=openai_api_key)
 
-    async def list_available_models(self) -> List[Dict[str, str]]:
-        if not await self.is_available(): # Use the async is_available
-            print("Warning: OpenAI API key not configured or service unavailable. Cannot fetch models.")
+    async def list_available_models(self, current_user: Optional[UserModel] = None) -> List[Dict[str, str]]: # Added current_user, made optional
+        # If current_user is None, this method might be called for general system info.
+        # In that case, it should try to use the system's configured key if available.
+        # Or, it could be restricted to always require a user context.
+        # For now, let's assume if no user, try system key, else return empty/raise.
+
+        api_key_to_use = None
+        if current_user:
+            try:
+                api_key_to_use = await self._get_openai_api_key_for_user(current_user)
+            except HTTPException:
+                # User has no key and is not superuser with system key access
+                print(f"OpenAI models list unavailable for user {current_user.id}: No API key.")
+                return [] # Or raise an error, depending on desired strictness
+        elif settings.OPENAI_API_KEY and settings.OPENAI_API_KEY not in ["YOUR_API_KEY_HERE", "YOUR_OPENAI_API_KEY", ""]:
+            # No user context, but system key is available
+            api_key_to_use = settings.OPENAI_API_KEY
+            print("Listing OpenAI models using system API key (no specific user context).")
+        else:
+            # No user context and no system key
+            print("Warning: OpenAI API key not configured. Cannot fetch models without user context or system key.")
             return []
-        if not self.async_client:
-            return [] # Should have been caught by is_available
+
+        if not api_key_to_use: # Should be redundant given the logic above, but as a safeguard
+             print("No API key available to list OpenAI models.")
+             return []
 
         models_to_return: Dict[str, Dict[str, str]] = {}
 
@@ -294,7 +342,9 @@ class OpenAILLMService(AbstractLLMService):
         models_to_return.update(common_models)
 
         try:
-            response = await self.async_client.models.list()
+            async with AsyncOpenAI(api_key=api_key_to_use) as client:
+                response = await client.models.list()
+
             if response and response.data:
                 for model_obj in response.data:
                     model_id = model_obj.id
@@ -327,19 +377,17 @@ class OpenAILLMService(AbstractLLMService):
 
                         models_to_return[model_id] = {"id": model_id, "name": name, "capabilities": capabilities}
         except APIError as e:
-            # If listing models fails due to API key or fundamental issue, it means service is unavailable.
-            error_detail = f"OpenAI API Error ({e.status_code}) while listing models: {e.message or str(e)}"
+            # If listing models fails due to API key or fundamental issue, it means service is unavailable for this key.
+            user_id_info = f"user {current_user.id}" if current_user else "system key"
+            error_detail = f"OpenAI API Error ({e.status_code}) while listing models for {user_id_info}: {e.message or str(e)}"
             print(error_detail)
-            raise LLMServiceUnavailableError(error_detail) from e
+            # Do not raise LLMServiceUnavailableError globally, as other keys might work.
+            # Return current list (even if just common_models) or empty if common_models also failed.
+            # If the failure was with the API call itself, common_models would still be there.
         except Exception as e:
-            # Catch any other unexpected errors during model listing
-            print(f"An unexpected error occurred when listing OpenAI models: {e}. Returning manually curated list only if any.")
-            # Depending on strictness, could raise LLMServiceUnavailableError here too,
-            # but returning what we have (even if just common_models) might be acceptable.
-            # For now, let's be strict: if API list fails, the service is not fully operational for model discovery.
-            if not models_to_return: # If we couldn't even rely on common_models initially
-                 raise LLMServiceUnavailableError(f"Unexpected error listing OpenAI models: {str(e)}") from e
-            # else, we return the common_models at least
+            user_id_info = f"user {current_user.id}" if current_user else "system key"
+            print(f"An unexpected error occurred when listing OpenAI models for {user_id_info}: {e}. Returning manually curated list if any.")
+            # Depending on strictness, if API list fails, the service is not fully operational for model discovery with this key.
 
         # Sort models: GPT-4 versions first, then GPT-3.5 Turbo, then Instruct, then others alphabetically.
         sorted_models = sorted(list(models_to_return.values()), key=lambda x: (
@@ -352,6 +400,10 @@ class OpenAILLMService(AbstractLLMService):
 
     async def close(self):
         """Close the AsyncOpenAI client if it was initialized."""
-        if self.async_client:
-            await self.async_client.close()
-            print("OpenAI AsyncClient closed.")
+        # Since clients are created per-request with 'async with',
+        # a global self.async_client no longer exists to be closed here.
+        # This method can be removed or left as a no-op.
+        pass
+        # if self.async_client:
+        #     await self.async_client.close()
+        #     print("OpenAI AsyncClient closed.")

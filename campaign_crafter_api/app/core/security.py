@@ -4,10 +4,49 @@ from typing import Optional
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-
-from app.core.config import settings # Standardized
+from cryptography.fernet import Fernet, InvalidToken
+from campaign_crafter_api.app.core.config import settings
+import base64
+import hashlib
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
+
+# Fernet key generation and instance
+def _get_fernet_key() -> bytes:
+    """
+    Derives a Fernet-compatible key from settings.SECRET_KEY.
+    Hashes SECRET_KEY using SHA256 and then encodes it to URL-safe base64.
+    Fernet keys must be 32 bytes and URL-safe base64 encoded.
+    """
+    hashed_secret = hashlib.sha256(settings.SECRET_KEY.encode('utf-8')).digest()
+    return base64.urlsafe_b64encode(hashed_secret)
+
+fernet = Fernet(_get_fernet_key())
+
+def encrypt_key(plain_text_key: str) -> str:
+    """Encrypts a plain text key using Fernet."""
+    if not plain_text_key:
+        return ""
+    encrypted_bytes = fernet.encrypt(plain_text_key.encode('utf-8'))
+    return encrypted_bytes.decode('utf-8')
+
+def decrypt_key(encrypted_key: str) -> str:
+    """
+    Decrypts an encrypted key using Fernet.
+    Returns an empty string if decryption fails.
+    """
+    if not encrypted_key:
+        return ""
+    try:
+        decrypted_bytes = fernet.decrypt(encrypted_key.encode('utf-8'))
+        return decrypted_bytes.decode('utf-8')
+    except InvalidToken:
+        # Log this event in a real application
+        # print(f"Decryption failed for token: {encrypted_key[:20]}...") # Be careful with logging sensitive data
+        return ""
+    except Exception: # Catch any other Fernet related exceptions
+        # print(f"An unexpected error occurred during decryption of token: {encrypted_key[:20]}...")
+        return ""
 
 # Password Hashing (keeping it here for now, or can be in crud.py as it is)
 # If moving from crud.py, ensure crud.py imports them from here.

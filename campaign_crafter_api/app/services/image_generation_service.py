@@ -12,37 +12,80 @@ from io import BytesIO # Restored for Azure
 from azure.storage.blob import BlobServiceClient # Restored for Azure
 from azure.identity import DefaultAzureCredential # Restored for Azure
 
+# Added imports
+from campaign_crafter_api.app.models import User as UserModel
+from campaign_crafter_api.app.core.security import decrypt_key
+# settings is already imported below
+# openai is already imported above
+# HTTPException is already imported above
 
 from app.core.config import settings
 from app.orm_models import GeneratedImage
 
 class ImageGenerationService:
     def __init__(self):
-        # Initialize OpenAI client
-        if not settings.OPENAI_API_KEY or settings.OPENAI_API_KEY in ["YOUR_OPENAI_API_KEY", "YOUR_API_KEY_HERE"]:
-            # Allowing service to initialize even if only one key is present.
-            # Specific method calls will fail if their respective keys are missing.
-            print("Warning: OpenAI API key is not configured or is a placeholder.")
-            self.openai_client = None
-        else:
-            try:
-                self.openai_client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
-            except Exception as e:
-                print(f"Failed to initialize OpenAI client: {e}")
-                self.openai_client = None
+        # OpenAI client is no longer initialized here.
+        # Stable Diffusion API key is no longer initialized here.
+        # Keys will be fetched per-user, per-request.
 
-        # Stable Diffusion API Configuration
-        self.stable_diffusion_api_key = settings.STABLE_DIFFUSION_API_KEY
         self.stable_diffusion_api_url = settings.STABLE_DIFFUSION_API_URL
 
-        if not self.stable_diffusion_api_key or self.stable_diffusion_api_key == "YOUR_STABLE_DIFFUSION_API_KEY_HERE":
-            print("Warning: Stable Diffusion API key is not configured or is a placeholder. Check STABLE_DIFFUSION_API_KEY in your .env file or environment variables.")
+        # Warnings for system-level placeholders are still relevant for superuser fallback.
+        if not settings.OPENAI_API_KEY or settings.OPENAI_API_KEY in ["YOUR_OPENAI_API_KEY", "YOUR_API_KEY_HERE"]:
+            print("Warning: System-level OpenAI API key (settings.OPENAI_API_KEY) is not configured or is a placeholder. Superuser fallback for OpenAI may not work.")
+
+        if not settings.STABLE_DIFFUSION_API_KEY or settings.STABLE_DIFFUSION_API_KEY == "YOUR_STABLE_DIFFUSION_API_KEY_HERE":
+            print("Warning: System-level Stable Diffusion API key (settings.STABLE_DIFFUSION_API_KEY) is not configured or is a placeholder. Superuser fallback for Stable Diffusion may not work.")
+
         if not self.stable_diffusion_api_url or self.stable_diffusion_api_url == "YOUR_STABLE_DIFFUSION_API_URL_HERE":
-            print("Warning: Stable Diffusion API URL is not configured or is a placeholder. Check STABLE_DIFFUSION_API_URL in your .env file or environment variables.")
+            print("Warning: Stable Diffusion API URL (settings.STABLE_DIFFUSION_API_URL) is not configured or is a placeholder.")
             self.stable_diffusion_api_url = None # Ensure it's None if it's the placeholder, so calls will fail clearly.
         elif self.stable_diffusion_api_url and not (self.stable_diffusion_api_url.startswith("http://") or self.stable_diffusion_api_url.startswith("https://")):
             print(f"Warning: STABLE_DIFFUSION_API_URL ('{self.stable_diffusion_api_url}') does not look like a valid URL. Proceeding with caution.")
 
+    async def _get_openai_api_key_for_user(self, current_user: UserModel) -> str:
+        """
+        Retrieves the appropriate OpenAI API key for the given user.
+        1. User's own key (decrypted from database)
+        2. Superuser fallback (from settings.OPENAI_API_KEY)
+        Raises HTTPException if no valid key is found.
+        """
+        if current_user.encrypted_openai_api_key:
+            decrypted_user_key = decrypt_key(current_user.encrypted_openai_api_key)
+            if decrypted_user_key:
+                return decrypted_user_key
+            else:
+                print(f"Warning: Failed to decrypt stored OpenAI API key for user {current_user.id}. Checking superuser fallback.")
+
+        if current_user.is_superuser:
+            if settings.OPENAI_API_KEY and settings.OPENAI_API_KEY not in ["YOUR_OPENAI_API_KEY", "YOUR_API_KEY_HERE", ""]:
+                return settings.OPENAI_API_KEY
+            else:
+                print("Warning: Superuser attempted to use OpenAI for images, but system settings.OPENAI_API_KEY is not configured or is a placeholder.")
+
+        raise HTTPException(status_code=403, detail="OpenAI API key for image generation not available for this user, and no valid fallback key is configured.")
+
+    async def _get_sd_api_key_for_user(self, current_user: UserModel) -> str:
+        """
+        Retrieves the appropriate Stable Diffusion API key for the given user.
+        1. User's own key (decrypted from database)
+        2. Superuser fallback (from settings.STABLE_DIFFUSION_API_KEY)
+        Raises HTTPException if no valid key is found.
+        """
+        if current_user.encrypted_sd_api_key:
+            decrypted_user_key = decrypt_key(current_user.encrypted_sd_api_key)
+            if decrypted_user_key:
+                return decrypted_user_key
+            else:
+                print(f"Warning: Failed to decrypt stored Stable Diffusion API key for user {current_user.id}. Checking superuser fallback.")
+
+        if current_user.is_superuser:
+            if settings.STABLE_DIFFUSION_API_KEY and settings.STABLE_DIFFUSION_API_KEY not in ["YOUR_STABLE_DIFFUSION_API_KEY_HERE", ""]:
+                return settings.STABLE_DIFFUSION_API_KEY
+            else:
+                print("Warning: Superuser attempted to use Stable Diffusion, but system settings.STABLE_DIFFUSION_API_KEY is not configured or is a placeholder.")
+
+        raise HTTPException(status_code=403, detail="Stable Diffusion API key not available for this user, and no valid fallback key is configured.")
 
     async def _save_image_and_log_db(
         self,
@@ -179,19 +222,28 @@ class ImageGenerationService:
     async def generate_image_dalle(
         self,
         prompt: str,
-        db: Session, # Added db session
+        db: Session,
+        current_user: UserModel, # Added current_user
         size: Optional[str] = None,
         quality: Optional[str] = None,
-        model: Optional[str] = None, # This is the DALL-E model, e.g. "dall-e-3"
-        user_id: Optional[int] = None # Added user_id
+        model: Optional[str] = None,
+        user_id: Optional[int] = None # Kept for logging, will be derived from current_user if None
     ) -> str:
         """
         Generates an image using OpenAI's DALL-E API, saves it, logs to DB, and returns the permanent image URL.
         """
-        if not self.openai_client:
-            raise HTTPException(status_code=500, detail="OpenAI client is not initialized. Check API key configuration.")
+        openai_api_key = await self._get_openai_api_key_for_user(current_user)
+        # Initialize client locally
+        dalle_client = openai.OpenAI(api_key=openai_api_key)
+
         if not prompt:
             raise HTTPException(status_code=400, detail="Prompt cannot be empty.")
+
+        # Ensure user_id for logging is consistent with the authenticated user
+        log_user_id = current_user.id if user_id is None or user_id != current_user.id else user_id
+        if user_id is not None and user_id != current_user.id:
+            print(f"Warning: generate_image_dalle called with user_id {user_id} but current_user is {current_user.id}. Using current_user.id for logging.")
+
 
         final_model_name = model or settings.OPENAI_DALLE_MODEL_NAME
         final_size = size or settings.OPENAI_DALLE_DEFAULT_IMAGE_SIZE
@@ -218,7 +270,7 @@ class ImageGenerationService:
              # DALL-E 2 does not use 'quality' parameter in the same way, so it might be ignored or error if sent.
 
         try:
-            api_response = self.openai_client.images.generate( # Use await for async client call
+            api_response = dalle_client.images.generate(
                 model=final_model_name,
                 prompt=prompt,
                 size=final_size, # type: ignore
@@ -235,11 +287,11 @@ class ImageGenerationService:
                 # Save image and log to DB
                 permanent_url = await self._save_image_and_log_db(
                     temporary_url=temporary_url,
-                    prompt=prompt, # Or revised_prompt if available and desired
+                    prompt=prompt,
                     model_used=final_model_name,
                     size_used=final_size,
                     db=db,
-                    user_id=user_id
+                    user_id=log_user_id # Use consistent user_id for logging
                 )
                 return permanent_url
                 # return temporary_url # Return temporary URL directly
@@ -274,22 +326,29 @@ class ImageGenerationService:
     async def generate_image_stable_diffusion(
         self,
         prompt: str,
-        db: Session, # Added db session
+        db: Session,
+        current_user: UserModel, # Added current_user
         size: Optional[str] = None,
         steps: Optional[int] = None,
         cfg_scale: Optional[float] = None,
-        user_id: Optional[int] = None,
-        sd_model_checkpoint: Optional[str] = None # Parameter for specific SD model/checkpoint
+        user_id: Optional[int] = None, # Kept for logging, will be derived
+        sd_model_checkpoint: Optional[str] = None
     ) -> str:
         """
         Generates an image using a Stable Diffusion API, saves it, logs to DB, and returns the permanent image URL.
         """
-        if not self.stable_diffusion_api_key or self.stable_diffusion_api_key == "YOUR_STABLE_DIFFUSION_API_KEY_HERE":
-            raise HTTPException(status_code=503, detail="Stable Diffusion API key is not configured. Check server settings.")
-        if not self.stable_diffusion_api_url:
+        sd_api_key = await self._get_sd_api_key_for_user(current_user)
+        # self.stable_diffusion_api_key check removed. sd_api_key is now fetched.
+
+        if not self.stable_diffusion_api_url: # This check remains, as URL is from system settings
             raise HTTPException(status_code=503, detail="Stable Diffusion API URL is not configured or is invalid. Check server settings.")
         if not prompt:
             raise HTTPException(status_code=400, detail="Prompt cannot be empty.")
+
+        # Ensure user_id for logging is consistent with the authenticated user
+        log_user_id = current_user.id if user_id is None or user_id != current_user.id else user_id
+        if user_id is not None and user_id != current_user.id:
+            print(f"Warning: generate_image_stable_diffusion called with user_id {user_id} but current_user is {current_user.id}. Using current_user.id for logging.")
 
         # Use defaults from settings if not provided by the caller
         # final_size is still available if needed for logging or aspect_ratio conversion, but not sent directly
@@ -299,9 +358,8 @@ class ImageGenerationService:
         final_sd_model_name = sd_model_checkpoint or settings.STABLE_DIFFUSION_DEFAULT_MODEL # For logging
 
         headers = {
-            "Authorization": f"Bearer {self.stable_diffusion_api_key}",
-            "Accept": "image/*", # Requesting image bytes directly
-            # Content-Type is not explicitly set here for multipart/form-data; requests will handle it with `files` and `data`
+            "Authorization": f"Bearer {sd_api_key}", # Use fetched sd_api_key
+            "Accept": "image/*",
         }
         
         form_data = {
@@ -343,8 +401,8 @@ class ImageGenerationService:
                     model_used=final_sd_model_name,
                     size_used=final_size,
                     db=db,
-                    image_bytes=image_bytes_sd, # Pass the raw bytes
-                    user_id=user_id,
+                    image_bytes=image_bytes_sd,
+                    user_id=log_user_id, # Use consistent user_id for logging
                     original_filename_from_api=sd_filename_hint
                 )
                 return permanent_url

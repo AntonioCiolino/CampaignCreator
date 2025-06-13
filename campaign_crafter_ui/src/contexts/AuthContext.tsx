@@ -10,6 +10,7 @@ interface AuthContextType {
   login: (username_or_email: string, password: string) => Promise<void>;
   logout: () => void;
   isSuperuser: () => boolean;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>; // Added setUser
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -70,7 +71,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout, isSuperuser }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, logout, isSuperuser, setUser }}>
       {children}
     </AuthContext.Provider>
   );
