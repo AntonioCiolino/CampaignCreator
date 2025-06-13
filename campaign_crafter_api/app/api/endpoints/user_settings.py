@@ -3,17 +3,19 @@ from sqlalchemy.orm import Session
 from typing import Any
 
 from app import models, crud
-from .. import deps # Changed to relative import
-from campaign_crafter_api.app.core.security import encrypt_key # decrypt_key removed as it's not used
-from campaign_crafter_api.app.models import UserAPIKeyUpdate
+# Removed deps import, will add direct imports for get_db and get_current_active_user
+from app.core.security import encrypt_key
+from app.models import UserAPIKeyUpdate
+from app.db import get_db # Added direct import
+from app.services.auth_service import get_current_active_user # Added direct import
 
 router = APIRouter()
 
 @router.put("/me/keys", response_model=models.User)
 def update_user_api_keys(
     *,
-    db: Session = Depends(deps.get_db),
-    current_user: models.User = Depends(deps.get_current_active_user),
+    db: Session = Depends(get_db), # Changed to use direct import
+    current_user: models.User = Depends(get_current_active_user), # Changed to use direct import
     api_keys_in: UserAPIKeyUpdate,
 ) -> Any:
     """
