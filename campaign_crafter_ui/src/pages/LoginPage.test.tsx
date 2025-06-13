@@ -32,6 +32,7 @@ describe('LoginPage', () => {
       login: mockLogin,
       logout: jest.fn(),
       isSuperuser: jest.fn().mockReturnValue(false),
+      setUser: jest.fn(), // Add this
     });
   });
 
@@ -106,6 +107,7 @@ describe('LoginPage', () => {
       login: mockLogin,
       logout: jest.fn(),
       isSuperuser: jest.fn().mockReturnValue(false),
+      setUser: jest.fn(), // Add this
     });
 
     render(
@@ -128,6 +130,7 @@ describe('LoginPage', () => {
       login: mockLogin,
       logout: jest.fn(),
       isSuperuser: jest.fn().mockReturnValue(false),
+      setUser: jest.fn(), // Add this
     });
 
     render(

@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from cryptography.fernet import Fernet, InvalidToken
-from campaign_crafter_api.app.core.config import settings
+from .config import settings
 import base64
 import hashlib
 
