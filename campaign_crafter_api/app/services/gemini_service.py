@@ -33,7 +33,7 @@ class GeminiLLMService(AbstractLLMService):
 
         self.feature_prompt_service = FeaturePromptService()
 
-    async def is_available(self, _current_user: UserModel, _db: Session) -> bool: # Added _current_user, _db
+    async def is_available(self, current_user: UserModel, db: Session) -> bool: # Added _current_user, _db
         # Accepts current_user and db session for availability checks
         if not (self.api_key and self.api_key != "YOUR_GEMINI_API_KEY"):
             return False
@@ -65,7 +65,7 @@ class GeminiLLMService(AbstractLLMService):
 
 
     async def generate_text(self, prompt: str, _current_user: UserModel, db: Session, model: Optional[str] = None, temperature: float = 0.7, max_tokens: Optional[int] = None) -> str: # Added _current_user, db
-        if not await self.is_available(_current_user=_current_user, db=db): # Pass args
+        if not await self.is_available(current_user=_current_user, db=db): # Pass args
             raise LLMServiceUnavailableError("Gemini service is not available.")
         if not prompt:
             raise ValueError("Prompt cannot be empty.")
@@ -106,7 +106,7 @@ class GeminiLLMService(AbstractLLMService):
 
 
     async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str: # Added current_user
-        if not await self.is_available(_current_user=current_user, db=db): # Pass args
+        if not await self.is_available(current_user=current_user, db=db): # Pass args
             raise LLMServiceUnavailableError("Gemini service is not available.")
         model_instance = self._get_model_instance(model)
         
@@ -119,7 +119,7 @@ class GeminiLLMService(AbstractLLMService):
 
 
     async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]: # Added current_user
-        if not await self.is_available(_current_user=current_user, db=db): # Pass args
+        if not await self.is_available(current_user=current_user, db=db): # Pass args
             raise LLMServiceUnavailableError("Gemini service is not available.")
         if not campaign_concept:
             raise ValueError("Campaign concept cannot be empty.")
@@ -164,7 +164,7 @@ class GeminiLLMService(AbstractLLMService):
         }
 
     async def generate_titles(self, campaign_concept: str, db: Session, current_user: UserModel, count: int = 5, model: Optional[str] = None) -> List[str]: # Added current_user
-        if not await self.is_available(_current_user=current_user, db=db): # Pass args
+        if not await self.is_available(current_user=current_user, db=db): # Pass args
             raise LLMServiceUnavailableError("Gemini service is not available.")
         if not campaign_concept:
             raise ValueError("Campaign concept cannot be empty.")
@@ -191,7 +191,7 @@ class GeminiLLMService(AbstractLLMService):
         model: Optional[str] = None,
         section_type: Optional[str] = None
     ) -> str:
-        if not await self.is_available(_current_user=current_user, db=db): # Pass args
+        if not await self.is_available(current_user=current_user, db=db): # Pass args
             raise LLMServiceUnavailableError("Gemini service is not available.")
         if not campaign_concept:
             raise ValueError("Campaign concept is required.")
@@ -243,7 +243,7 @@ class GeminiLLMService(AbstractLLMService):
         return await self.generate_text(prompt=final_prompt_for_generation, _current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=4000) # Pass args
 
     async def list_available_models(self, _current_user: UserModel, _db: Session) -> List[Dict[str, str]]: # Added _current_user, _db
-        if not await self.is_available(_current_user=_current_user, _db=_db): # Pass args
+        if not await self.is_available(current_user=_current_user, _db=_db): # Pass args
             print("Warning: Gemini API key not configured or service unavailable. Cannot fetch models.")
             return [
                 {"id": "gemini-pro", "name": "Gemini Pro (Unavailable/Fallback)"},
