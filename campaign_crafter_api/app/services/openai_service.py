@@ -1,13 +1,14 @@
 from openai import AsyncOpenAI, APIError
 from typing import Optional, List, Dict
 from sqlalchemy.orm import Session
-from fastapi import HTTPException # Added import
+from fastapi import HTTPException
 
 from app.core.config import settings
-from app.core.security import decrypt_key # Added import
+from app.core.security import decrypt_key
 from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError, LLMGenerationError
 from app.services.feature_prompt_service import FeaturePromptService
-from app.models import User as UserModel # Added import for type hint
+from app.models import User as UserModel
+from app import crud # Added crud import
 
 class OpenAILLMService(AbstractLLMService):
     PROVIDER_NAME = "openai"
@@ -15,30 +16,30 @@ class OpenAILLMService(AbstractLLMService):
     DEFAULT_COMPLETION_MODEL = "gpt-3.5-turbo-instruct"
 
     def __init__(self):
-        # API key and client are no longer initialized here.
-        # They will be handled on a per-request basis using user-specific keys.
         self.feature_prompt_service = FeaturePromptService()
-        # The warning about OPENAI_API_KEY not being configured is still relevant
-        # for superuser fallback, but will be checked in _get_openai_api_key_for_user.
 
-    async def _get_openai_api_key_for_user(self, current_user: UserModel) -> str:
+    async def _get_openai_api_key_for_user(self, current_user: UserModel, db: Session) -> str: # Added db
         """
-        Retrieves the appropriate OpenAI API key for the given user.
-        1. User's own key (decrypted from database)
+        Retrieves the appropriate OpenAI API key for the given user from DB.
+        1. User's own key (decrypted from ORM user model)
         2. Superuser fallback (from settings.OPENAI_API_KEY)
-        Raises HTTPException if no valid key is found.
+        Raises HTTPException if no valid key is found or user not found.
         """
-        if current_user.encrypted_openai_api_key:
-            decrypted_user_key = decrypt_key(current_user.encrypted_openai_api_key)
+        orm_user = crud.get_user(db, user_id=current_user.id)
+        if not orm_user:
+            # This should ideally not happen if current_user (Pydantic) is valid
+            raise HTTPException(status_code=404, detail="User not found in database for API key retrieval.")
+
+        if orm_user.encrypted_openai_api_key: # Use orm_user here
+            decrypted_user_key = decrypt_key(orm_user.encrypted_openai_api_key)
             if decrypted_user_key:
                 return decrypted_user_key
             else:
-                # This case implies a stored key that failed to decrypt, which is an issue.
-                # For now, we'll let it fall through to other checks or the final HTTPException.
-                # Consider logging this anomaly.
-                print(f"Warning: Failed to decrypt stored OpenAI API key for user {current_user.id}")
+                print(f"Warning: Failed to decrypt stored OpenAI API key for user {orm_user.id}")
 
-        if current_user.is_superuser:
+        # Check superuser status from orm_user or current_user (Pydantic model should be up-to-date)
+        # Using orm_user.is_superuser is fine if we trust the DB state is what we need for this check.
+        if orm_user.is_superuser:
             if settings.OPENAI_API_KEY and settings.OPENAI_API_KEY not in ["YOUR_API_KEY_HERE", "YOUR_OPENAI_API_KEY", ""]:
                 return settings.OPENAI_API_KEY
             else:
@@ -46,22 +47,18 @@ class OpenAILLMService(AbstractLLMService):
 
         raise HTTPException(status_code=403, detail="OpenAI API key not available for this user, and no valid fallback key is configured.")
 
-    async def is_available(self, current_user: UserModel) -> bool: # Changed signature
+    async def is_available(self, current_user: UserModel, db: Session) -> bool: # Added db
         try:
-            api_key = await self._get_openai_api_key_for_user(current_user)
-            if not api_key: # Should be caught by HTTPException in _get_openai_api_key_for_user
-                return False
+            api_key = await self._get_openai_api_key_for_user(current_user, db) # Pass db
+            # api_key check is implicitly handled by _get_openai_api_key_for_user raising HTTPException
 
             async with AsyncOpenAI(api_key=api_key) as client:
-                await client.models.list() # Test API call
+                await client.models.list()
             return True
-        except HTTPException: # Raised by _get_openai_api_key_for_user if no key
+        except HTTPException:
             return False
         except APIError as e:
-            # This can happen if the key is valid but there's an API issue (e.g. quota, bad key perms)
             print(f"OpenAI service check failed for user {current_user.id} due to APIError: {e.status_code} - {e.message}")
-            # We might not want to raise LLMServiceUnavailableError here, as it's per-user now
-            # Returning False indicates it's not available for *this user* with *this key*.
             return False
         except Exception as e:
             print(f"OpenAI service check failed for user {current_user.id} due to an unexpected error: {e}")
@@ -129,8 +126,8 @@ class OpenAILLMService(AbstractLLMService):
             print(f"Unexpected error with model {selected_model} (Legacy Completion): {e}")
             raise LLMGenerationError(f"Unexpected error during OpenAI legacy completion call: {str(e)}") from e
 
-    async def generate_text(self, prompt: str, current_user: UserModel, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str: # Added current_user
-        openai_api_key = await self._get_openai_api_key_for_user(current_user)
+    async def generate_text(self, prompt: str, current_user: UserModel, db: Session, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str: # Added db
+        openai_api_key = await self._get_openai_api_key_for_user(current_user, db) # Pass db
         # No longer using self.is_available() here.
         # _get_openai_api_key_for_user handles key availability/permissions.
         # _perform_... methods handle API errors if key is invalid.
@@ -151,8 +148,8 @@ class OpenAILLMService(AbstractLLMService):
 
         return await self._perform_chat_completion(selected_model, messages, temperature, max_tokens, api_key=openai_api_key)
 
-    async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str: # Added current_user
-        openai_api_key = await self._get_openai_api_key_for_user(current_user)
+    async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
+        openai_api_key = await self._get_openai_api_key_for_user(current_user, db) # Pass db
         # Removed is_available check
 
         # For creative tasks like campaign concept, chat models are generally preferred.
@@ -168,8 +165,8 @@ class OpenAILLMService(AbstractLLMService):
         ]
         return await self._perform_chat_completion(selected_model, messages, temperature=0.7, max_tokens=1000, api_key=openai_api_key)
 
-    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]: # Added current_user
-        openai_api_key = await self._get_openai_api_key_for_user(current_user)
+    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]:
+        openai_api_key = await self._get_openai_api_key_for_user(current_user, db) # Pass db
         # Removed is_available check
 
         if not campaign_concept:
@@ -210,8 +207,8 @@ class OpenAILLMService(AbstractLLMService):
             "homebrewery_toc": generated_homebrewery_toc
         }
 
-    async def generate_titles(self, campaign_concept: str, db: Session, current_user: UserModel, count: int = 5, model: Optional[str] = None) -> list[str]: # Added current_user
-        openai_api_key = await self._get_openai_api_key_for_user(current_user)
+    async def generate_titles(self, campaign_concept: str, db: Session, current_user: UserModel, count: int = 5, model: Optional[str] = None) -> list[str]:
+        openai_api_key = await self._get_openai_api_key_for_user(current_user, db) # Pass db
         # Removed is_available check
 
         if not campaign_concept:
@@ -243,7 +240,7 @@ class OpenAILLMService(AbstractLLMService):
         model: Optional[str] = None,
         section_type: Optional[str] = None
     ) -> str:
-        openai_api_key = await self._get_openai_api_key_for_user(current_user)
+        openai_api_key = await self._get_openai_api_key_for_user(current_user, db) # Pass db
         # Removed is_available check
 
         if not campaign_concept:
@@ -300,32 +297,11 @@ class OpenAILLMService(AbstractLLMService):
         ]
         return await self._perform_chat_completion(selected_model, messages, temperature=0.7, max_tokens=1500, api_key=openai_api_key)
 
-    async def list_available_models(self, current_user: Optional[UserModel] = None) -> List[Dict[str, str]]: # Added current_user, made optional
-        # If current_user is None, this method might be called for general system info.
-        # In that case, it should try to use the system's configured key if available.
-        # Or, it could be restricted to always require a user context.
-        # For now, let's assume if no user, try system key, else return empty/raise.
-
-        api_key_to_use = None
-        if current_user:
-            try:
-                api_key_to_use = await self._get_openai_api_key_for_user(current_user)
-            except HTTPException:
-                # User has no key and is not superuser with system key access
-                print(f"OpenAI models list unavailable for user {current_user.id}: No API key.")
-                return [] # Or raise an error, depending on desired strictness
-        elif settings.OPENAI_API_KEY and settings.OPENAI_API_KEY not in ["YOUR_API_KEY_HERE", "YOUR_OPENAI_API_KEY", ""]:
-            # No user context, but system key is available
-            api_key_to_use = settings.OPENAI_API_KEY
-            print("Listing OpenAI models using system API key (no specific user context).")
-        else:
-            # No user context and no system key
-            print("Warning: OpenAI API key not configured. Cannot fetch models without user context or system key.")
-            return []
-
-        if not api_key_to_use: # Should be redundant given the logic above, but as a safeguard
-             print("No API key available to list OpenAI models.")
-             return []
+    async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, str]]: # Made current_user and db non-optional
+        # API key is fetched based on the user context. If no key is found,
+        # _get_openai_api_key_for_user will raise HTTPException, which will propagate.
+        # This means model listing is only available if the user has a valid key setup.
+        api_key_to_use = await self._get_openai_api_key_for_user(current_user, db)
 
         models_to_return: Dict[str, Dict[str, str]] = {}
 

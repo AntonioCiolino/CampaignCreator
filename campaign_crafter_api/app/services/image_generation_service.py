@@ -21,6 +21,7 @@ from ..core.security import decrypt_key # Changed to relative import
 
 from app.core.config import settings
 from app.orm_models import GeneratedImage
+from app import crud # Added crud import
 
 class ImageGenerationService:
     def __init__(self):
@@ -43,21 +44,25 @@ class ImageGenerationService:
         elif self.stable_diffusion_api_url and not (self.stable_diffusion_api_url.startswith("http://") or self.stable_diffusion_api_url.startswith("https://")):
             print(f"Warning: STABLE_DIFFUSION_API_URL ('{self.stable_diffusion_api_url}') does not look like a valid URL. Proceeding with caution.")
 
-    async def _get_openai_api_key_for_user(self, current_user: UserModel) -> str:
+    async def _get_openai_api_key_for_user(self, current_user: UserModel, db: Session) -> str: # Added db
         """
-        Retrieves the appropriate OpenAI API key for the given user.
-        1. User's own key (decrypted from database)
+        Retrieves the appropriate OpenAI API key for the given user from DB.
+        1. User's own key (decrypted from ORM user model)
         2. Superuser fallback (from settings.OPENAI_API_KEY)
-        Raises HTTPException if no valid key is found.
+        Raises HTTPException if no valid key is found or user not found.
         """
-        if current_user.encrypted_openai_api_key:
-            decrypted_user_key = decrypt_key(current_user.encrypted_openai_api_key)
+        orm_user = crud.get_user(db, user_id=current_user.id)
+        if not orm_user:
+            raise HTTPException(status_code=404, detail="User not found in database for OpenAI key retrieval.")
+
+        if orm_user.encrypted_openai_api_key:
+            decrypted_user_key = decrypt_key(orm_user.encrypted_openai_api_key) # Ensure decrypt_key is called
             if decrypted_user_key:
                 return decrypted_user_key
             else:
-                print(f"Warning: Failed to decrypt stored OpenAI API key for user {current_user.id}. Checking superuser fallback.")
+                print(f"Warning: Failed to decrypt stored OpenAI API key for user {orm_user.id}. Checking superuser fallback.")
 
-        if current_user.is_superuser:
+        if orm_user.is_superuser: # Use orm_user for superuser status
             if settings.OPENAI_API_KEY and settings.OPENAI_API_KEY not in ["YOUR_OPENAI_API_KEY", "YOUR_API_KEY_HERE", ""]:
                 return settings.OPENAI_API_KEY
             else:
@@ -65,21 +70,25 @@ class ImageGenerationService:
 
         raise HTTPException(status_code=403, detail="OpenAI API key for image generation not available for this user, and no valid fallback key is configured.")
 
-    async def _get_sd_api_key_for_user(self, current_user: UserModel) -> str:
+    async def _get_sd_api_key_for_user(self, current_user: UserModel, db: Session) -> str: # Added db
         """
-        Retrieves the appropriate Stable Diffusion API key for the given user.
-        1. User's own key (decrypted from database)
+        Retrieves the appropriate Stable Diffusion API key for the given user from DB.
+        1. User's own key (decrypted from ORM user model)
         2. Superuser fallback (from settings.STABLE_DIFFUSION_API_KEY)
-        Raises HTTPException if no valid key is found.
+        Raises HTTPException if no valid key is found or user not found.
         """
-        if current_user.encrypted_sd_api_key:
-            decrypted_user_key = decrypt_key(current_user.encrypted_sd_api_key)
+        orm_user = crud.get_user(db, user_id=current_user.id)
+        if not orm_user:
+            raise HTTPException(status_code=404, detail="User not found in database for SD key retrieval.")
+
+        if orm_user.encrypted_sd_api_key:
+            decrypted_user_key = decrypt_key(orm_user.encrypted_sd_api_key) # Ensure decrypt_key is called
             if decrypted_user_key:
                 return decrypted_user_key
             else:
-                print(f"Warning: Failed to decrypt stored Stable Diffusion API key for user {current_user.id}. Checking superuser fallback.")
+                print(f"Warning: Failed to decrypt stored Stable Diffusion API key for user {orm_user.id}. Checking superuser fallback.")
 
-        if current_user.is_superuser:
+        if orm_user.is_superuser: # Use orm_user for superuser status
             if settings.STABLE_DIFFUSION_API_KEY and settings.STABLE_DIFFUSION_API_KEY not in ["YOUR_STABLE_DIFFUSION_API_KEY_HERE", ""]:
                 return settings.STABLE_DIFFUSION_API_KEY
             else:
@@ -232,7 +241,7 @@ class ImageGenerationService:
         """
         Generates an image using OpenAI's DALL-E API, saves it, logs to DB, and returns the permanent image URL.
         """
-        openai_api_key = await self._get_openai_api_key_for_user(current_user)
+        openai_api_key = await self._get_openai_api_key_for_user(current_user, db) # Pass db
         # Initialize client locally
         dalle_client = openai.OpenAI(api_key=openai_api_key)
 
@@ -337,7 +346,7 @@ class ImageGenerationService:
         """
         Generates an image using a Stable Diffusion API, saves it, logs to DB, and returns the permanent image URL.
         """
-        sd_api_key = await self._get_sd_api_key_for_user(current_user)
+        sd_api_key = await self._get_sd_api_key_for_user(current_user, db) # Pass db
         # self.stable_diffusion_api_key check removed. sd_api_key is now fetched.
 
         if not self.stable_diffusion_api_url: # This check remains, as URL is from system settings
