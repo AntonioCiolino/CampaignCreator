@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Any
 
 from app import models, crud
-from campaign_crafter_api.app.api import deps
+from .. import deps # Changed to relative import
 from campaign_crafter_api.app.core.security import encrypt_key # decrypt_key removed as it's not used
 from campaign_crafter_api.app.models import UserAPIKeyUpdate
 
