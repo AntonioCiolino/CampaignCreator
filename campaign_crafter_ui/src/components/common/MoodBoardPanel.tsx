@@ -176,19 +176,17 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = (props) => {
               &times;
             </button>
             {title && <span id="mood-board-title" className="mood-board-title">{title}</span>}
-            {/* Conditionally render Add Button only if campaignId is present */}
-            {campaignId && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation(); // Prevent header click
-                  setIsAddImageModalOpen(true);
-                }}
-                className="mood-board-add-button" // A new class for styling
-                aria-label="Add new image to mood board"
-              >
-                +
-              </button>
-            )}
+            {/* Add Button - always rendered now */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent header click
+                setIsAddImageModalOpen(true);
+              }}
+              className="mood-board-add-button" // A new class for styling
+              aria-label="Add new image to mood board"
+            >
+              +
+            </button>
           </div>
         )}
         <div className="mood-board-content-area"> {/* Renamed for clarity from mood-board-content */}
