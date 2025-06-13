@@ -14,7 +14,7 @@ from azure.identity import DefaultAzureCredential # Restored for Azure
 
 # Added imports
 from app.models import User as UserModel # Changed import path
-from campaign_crafter_api.app.core.security import decrypt_key
+from ..core.security import decrypt_key # Changed to relative import
 # settings is already imported below
 # openai is already imported above
 # HTTPException is already imported above
