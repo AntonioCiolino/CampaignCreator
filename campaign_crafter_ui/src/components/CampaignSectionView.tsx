@@ -452,26 +452,31 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                 <ReactMarkdown rehypePlugins={[rehypeRaw]}>{section.content}</ReactMarkdown>
               </div>
               <div className="view-actions">
-                <button onClick={handleEdit} className="editor-button edit-button">
-                  Edit Section Content
-                </button>
                 <Button
-                  onClick={() => onDelete(section.id)}
-                  variant="danger"
+                  onClick={handleEdit}
+                  variant="secondary"
                   size="sm"
-                  className="editor-button delete-button" // Keep existing classes if they add value
-                  style={{ marginLeft: '10px' }}
+                  className="editor-button" // Removed edit-button, specific color styling will be removed from CSS
                 >
-                  Delete Section
+                  Edit Section Content
                 </Button>
                 <Button
                   size="sm"
-                  variant="secondary" // Changed from "text" to "secondary"
+                  variant="secondary"
                   onClick={handleRegenerateClick}
                   disabled={isSaving || isRegenerating || isEditing}
                   style={{ marginLeft: '10px' }}
                 >
                   {isRegenerating ? 'Regenerating...' : 'Regenerate'}
+                </Button>
+                <Button
+                  onClick={() => onDelete(section.id)}
+                  variant="danger"
+                  size="sm"
+                  className="editor-button delete-button" // delete-button class might still have specific icon color logic
+                  style={{ marginLeft: '10px' }}
+                >
+                  Delete Section
                 </Button>
               </div>
               {regenerateError && <p className="error-message editor-feedback" style={{ marginTop: '5px' }}>{regenerateError}</p>}
