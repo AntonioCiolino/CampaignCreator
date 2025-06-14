@@ -39,6 +39,7 @@ interface CampaignSectionEditorProps {
   onUpdateSectionOrder: (orderedSectionIds: number[]) => Promise<void>;
   forceCollapseAllSections?: boolean; // Added new prop
   campaignId: string | number; // Added campaignId prop
+  expandSectionId: string | null; // Add this
   onSetThematicImageForSection?: (imageUrl: string, promptUsed: string) => void;
 }
 
@@ -52,6 +53,7 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
   onUpdateSectionOrder,
   forceCollapseAllSections, // Destructure the new prop
   campaignId, // Destructure campaignId
+  expandSectionId, // Add this
   onSetThematicImageForSection,
 }) => {
   const onDragEnd = (result: DropResult) => { // Removed ResponderProvided as it's not typically used in onDragEnd
@@ -165,6 +167,7 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
                                 // Then call the actual update handler passed from parent
                                 handleUpdateSectionType(sectionId, newType);
                               }}
+                              expandSectionId={expandSectionId} // Add this new prop
                               onSetThematicImageFromSection={onSetThematicImageForSection}
                             />
                           </Box>

@@ -3,6 +3,7 @@ import { CampaignSection } from '../services/campaignService';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import ReactQuill from 'react-quill';
+import LoadingSpinner from './common/LoadingSpinner'; // Adjust path if necessary
 import type { RangeStatic as QuillRange } from 'quill'; // Import QuillRange
 import 'react-quill/dist/quill.snow.css'; // Import Quill's snow theme CSS
 import Button from './common/Button'; // Added Button import
@@ -28,6 +29,7 @@ interface CampaignSectionViewProps {
   // Prop for updating section type
   onSectionTypeUpdate?: (sectionId: number, newType: string) => void; // Optional for now
   onSetThematicImageFromSection?: (imageUrl: string, promptUsed: string) => void;
+  expandSectionId: string | null; // Add this
 }
 
 const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
@@ -41,6 +43,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   onSectionUpdated,
   onSectionTypeUpdate, // Destructure the new prop
   onSetThematicImageFromSection,
+  expandSectionId, // Add this
 }) => {
 
   // Function to get tooltip text based on section type
@@ -109,6 +112,13 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
       setIsCollapsed(forceCollapse);
     }
   }, [forceCollapse]);
+
+  useEffect(() => {
+    // Check if this section is the one to be expanded and if it's currently collapsed
+    if (expandSectionId === section.id.toString() && isCollapsed) {
+      setIsCollapsed(false);
+    }
+  }, [expandSectionId, section.id, isCollapsed, setIsCollapsed]); // Add dependencies
 
   useEffect(() => {
     if (isEditing && features.length === 0 && !featureFetchError) {
@@ -355,7 +365,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   };
 
   return (
-    <div className="campaign-section-view">
+    <div id={`section-container-${section.id}`} className="campaign-section-view" tabIndex={-1}>
       {section.title && (
         <div className="section-title-header" onClick={() => setIsCollapsed(!isCollapsed)}>
           <h3 className="section-title">
@@ -431,8 +441,14 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                     {featureFetchError && <p className="error-message" style={{fontSize: '0.8em', color: 'red', marginTop: '2px'}}>{featureFetchError}</p>}
                   </div>
                 )}
-                <Button onClick={handleGenerateContent} className="editor-button" disabled={isGeneratingContent || isSaving}>
-                  {isGeneratingContent ? 'Generating...' : 'Generate Content'}
+                <Button
+                  onClick={handleGenerateContent}
+                  className="editor-button"
+                  disabled={isGeneratingContent || isSaving}
+                  style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
+                >
+                  {isGeneratingContent && <LoadingSpinner />}
+                  <span>{isGeneratingContent ? 'Generating...' : 'Generate Content'}</span>
                 </Button>
                 <Button onClick={() => setIsImageGenerationModalOpen(true)} className="editor-button" disabled={isGeneratingContent || isSaving}>
                   Generate Image
@@ -465,9 +481,10 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                   variant="secondary"
                   onClick={handleRegenerateClick}
                   disabled={isSaving || isRegenerating || isEditing}
-                  style={{ marginLeft: '10px' }}
+                  style={{ marginLeft: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}
                 >
-                  {isRegenerating ? 'Regenerating...' : 'Regenerate'}
+                  {isRegenerating && <LoadingSpinner />}
+                  <span>{isRegenerating ? 'Regenerating...' : 'Regenerate'}</span>
                 </Button>
                 <Button
                   onClick={() => onDelete(section.id)}

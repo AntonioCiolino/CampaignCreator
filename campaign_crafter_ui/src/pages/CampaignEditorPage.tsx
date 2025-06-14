@@ -62,7 +62,7 @@ const CampaignEditorPage: React.FC = () => {
 
   const [availableLLMs, setAvailableLLMs] = useState<LLMModel[]>([]);
   const [isLLMsLoading, setIsLLMsLoading] = useState<boolean>(true); // Added state
-  const [selectedLLMId, setSelectedLLMId] = useState<string>('');
+  const [selectedLLMId, setSelectedLLMId] = useState<string | null>(null);
   const [temperature, setTemperature] = useState<number>(0.7);
 
   const [isExporting, setIsExporting] = useState<boolean>(false);
@@ -77,7 +77,7 @@ const CampaignEditorPage: React.FC = () => {
   const [isBadgeImageModalOpen, setIsBadgeImageModalOpen] = useState(false);
   const [isSuggestedTitlesModalOpen, setIsSuggestedTitlesModalOpen] = useState<boolean>(false);
 
-  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [isAutoSavingLLMSettings, setIsAutoSavingLLMSettings] = useState<boolean>(false);
   const [autoSaveLLMSettingsError, setAutoSaveLLMSettingsError] = useState<string | null>(null);
   const [autoSaveLLMSettingsSuccess, setAutoSaveLLMSettingsSuccess] = useState<string | null>(null);
@@ -128,6 +128,53 @@ const CampaignEditorPage: React.FC = () => {
   // State for generating image for mood board
   const [isGeneratingForMoodBoard, setIsGeneratingForMoodBoard] = useState<boolean>(false);
   const [moodBoardPanelWidth, setMoodBoardPanelWidth] = useState<number>(400); // Default width
+  const [activeEditorTab, setActiveEditorTab] = useState<string>('Details');
+  const [sectionToExpand, setSectionToExpand] = useState<string | null>(null);
+
+  const handleTocLinkClick = useCallback((sectionIdFromLink: string | null) => {
+    if (!sectionIdFromLink) return;
+
+    const actualId = sectionIdFromLink.replace('section-container-', '');
+    console.log(`TOC Link clicked for actual section ID: ${actualId}`);
+
+    const targetTabName = "Sections";
+    setSectionToExpand(actualId); // Set which section should ensure it's expanded
+
+    if (activeEditorTab !== targetTabName) {
+      setActiveEditorTab(targetTabName); // Switch tab if not already on it
+      console.log(`Switched to tab: ${targetTabName}`);
+      // The useEffect below will handle scrolling once the tab is active and section is flagged for expansion
+    } else {
+      // If already on the correct tab, the useEffect will still pick up the change in sectionToExpand
+      // and perform the scroll.
+    }
+    // No direct scrolling here.
+  }, [activeEditorTab, setActiveEditorTab, setSectionToExpand]);
+
+  useEffect(() => {
+    if (activeEditorTab === "Sections" && sectionToExpand) {
+      // Use a microtask or a short timeout to allow DOM updates (tab switch, section expansion)
+      // requestAnimationFrame is often good for this, but setTimeout can also work.
+      const scrollTimer = setTimeout(() => {
+        const elementId = `section-container-${sectionToExpand}`;
+        const element = document.getElementById(elementId);
+
+        if (element) {
+          console.log(`Scrolling to and focusing element: ${elementId}`);
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          element.focus({ preventScroll: true });
+        } else {
+          console.warn(`Element with ID ${elementId} not found for scrolling.`);
+        }
+
+        // Reset sectionToExpand to allow user to manually collapse/expand again
+        // and to prevent this effect from re-running unnecessarily.
+        setSectionToExpand(null);
+      }, 100); // 100ms delay, adjust if needed, or use requestAnimationFrame
+
+      return () => clearTimeout(scrollTimer); // Cleanup timer
+    }
+  }, [activeEditorTab, sectionToExpand, setSectionToExpand]); // Dependencies
 
   const handleSetThematicImage = async (imageUrl: string, prompt: string) => {
     // This function now only handles setting the *main* thematic image for the campaign.
@@ -220,11 +267,7 @@ const CampaignEditorPage: React.FC = () => {
   }, [selectedLLMId, availableLLMs]);
 
   const handleSetSelectedLLM = (llm: LLM | null) => {
-    if (llm) {
-      setSelectedLLMId(llm.id);
-    } else {
-      setSelectedLLMId(''); // Set to empty string for no selection
-    }
+    setSelectedLLMId(llm ? llm.id : null); // Corrected to 'llm.id'
   };
   
   const handleUpdateSectionContent = (sectionId: number, newContent: string) => {
@@ -399,11 +442,11 @@ const CampaignEditorPage: React.FC = () => {
         }
         setAvailableLLMs(fetchedLLMs); // Set LLMs after fetch
         let newSelectedLLMIdToSave: string | null = null;
-        if (campaignDetails.selected_llm_id) {
-            setSelectedLLMId(campaignDetails.selected_llm_id);
-        } else {
+        setSelectedLLMId(campaignDetails.selected_llm_id || null); // Ensure it's null if backend sends empty or undefined
+
+        if (!campaignDetails.selected_llm_id) { // Only try to set a default if none is set from backend
             const preferredModelIds = ["openai/gpt-4.1-nano", "openai/gpt-3.5-turbo", "openai/gpt-4", "gemini/gemini-pro"];
-            let newSelectedLLMId = '';
+            let newSelectedLLMId: string | null = null; // Initialize to null
             for (const preferredId of preferredModelIds) {
                 const foundModel = fetchedLLMs.find(m => m.id === preferredId);
                 if (foundModel) { newSelectedLLMId = foundModel.id; break; }
@@ -415,12 +458,19 @@ const CampaignEditorPage: React.FC = () => {
                     if (firstChatModel) { newSelectedLLMId = firstChatModel.id; }
                 }
             }
-            if (!newSelectedLLMId && fetchedLLMs.length > 0) { newSelectedLLMId = fetchedLLMs[0].id; }
+            // Removed: if (!newSelectedLLMId && fetchedLLMs.length > 0) { newSelectedLLMId = fetchedLLMs[0].id; }
+
             if (newSelectedLLMId) {
                 setSelectedLLMId(newSelectedLLMId);
-                if (!campaignDetails.selected_llm_id) { newSelectedLLMIdToSave = newSelectedLLMId; }
+                // No need to check !campaignDetails.selected_llm_id again, we are in that block
+                newSelectedLLMIdToSave = newSelectedLLMId;
+            } else { // If no campaign LLM and no default found
+                 setSelectedLLMId(null); // Explicitly set state to null
             }
         }
+        // This check should be outside the `if (!campaignDetails.selected_llm_id)` block
+        // if we intend to save a default even if one was loaded but then cleared by logic (though current logic doesn't do that)
+        // For now, it's correct to only save if `newSelectedLLMIdToSave` was set, meaning a default was chosen AND none was previously set.
         if (newSelectedLLMIdToSave && campaignDetails.id) {
             setIsPageLoading(true);
             setAutoSaveLLMSettingsError(null);
@@ -499,10 +549,21 @@ const CampaignEditorPage: React.FC = () => {
     if (!initialLoadCompleteRef.current || !campaignId || !campaign || isLoading) {
         return;
     }
-    if (debounceTimer) { clearTimeout(debounceTimer); }
-    const newTimer = setTimeout(async () => {
-        if (!campaign || !campaign.id) { return; }
-        if (selectedLLMId === campaign.selected_llm_id && temperature === campaign.temperature) { return; }
+
+    // Clear previous timer using the ref
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Set new timer and store its ID in the ref
+    debounceTimerRef.current = setTimeout(async () => {
+        if (!campaign || !campaign.id) { return; } // Check campaign again inside timeout
+        // Condition to prevent saving if values haven't changed from what's in campaign
+        if (selectedLLMId === campaign.selected_llm_id && temperature === campaign.temperature) {
+          return;
+        }
+
+        console.log('Auto-saving LLM settings due to change in selectedLLMId or temperature.');
         setIsAutoSavingLLMSettings(true);
         setAutoSaveLLMSettingsError(null);
         setAutoSaveLLMSettingsSuccess(null);
@@ -512,7 +573,7 @@ const CampaignEditorPage: React.FC = () => {
             temperature: temperature,
           };
           const updatedCampaign = await campaignService.updateCampaign(campaign.id, payload);
-          setCampaign(updatedCampaign);
+          setCampaign(updatedCampaign); // This will update the campaign state
           setAutoSaveLLMSettingsSuccess("LLM settings auto-saved!");
           setTimeout(() => setAutoSaveLLMSettingsSuccess(null), 3000);
         } catch (err) {
@@ -523,13 +584,17 @@ const CampaignEditorPage: React.FC = () => {
           setIsAutoSavingLLMSettings(false);
         }
     }, 1500);
-    setDebounceTimer(newTimer);
-    return () => { if (newTimer) { clearTimeout(newTimer); } };
-  }, [selectedLLMId, temperature, campaignId, campaign, isLoading, debounceTimer, ensureLLMSettingsSaved]);
+
+    // Cleanup function to clear the timer
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [selectedLLMId, temperature, campaignId, campaign, isLoading, setCampaign, setIsAutoSavingLLMSettings, setAutoSaveLLMSettingsError, setAutoSaveLLMSettingsSuccess]);
 
   useEffect(() => {
-    if (!initialLoadCompleteRef.current || !campaign) { return; }
-    if (selectedLLMId && selectedLLMId !== campaign.selected_llm_id) {
+    if (initialLoadCompleteRef.current && campaign && selectedLLMId !== campaign.selected_llm_id) {
       ensureLLMSettingsSaved();
     }
   }, [selectedLLMId, campaign, ensureLLMSettingsSaved]);
@@ -1020,6 +1085,29 @@ const CampaignEditorPage: React.FC = () => {
     }
   };
 
+  const TocLinkRenderer = (props: any) => {
+    const { href, children } = props;
+    // href will be like "#section-container-123"
+    const sectionId = href && href.startsWith('#') ? href.substring(1) : null;
+
+    if (sectionId) {
+      return (
+        <a
+          href={`#${sectionId}`} // Keep for right-click context menu, but prevent default click
+          onClick={(e) => {
+            e.preventDefault();
+            handleTocLinkClick(sectionId);
+          }}
+          style={{ cursor: 'pointer' }}
+        >
+          {children}
+        </a>
+      );
+    }
+    // Fallback for non-section links if any (though TOC should only have section links)
+    return <a href={href}>{children}</a>;
+  };
+
   if (isLoading) return <LoadingSpinner />;
   if (error) return <p className="error-message">{error}</p>;
   if (!campaign) return <p className="error-message">Campaign not found.</p>;
@@ -1063,7 +1151,13 @@ const CampaignEditorPage: React.FC = () => {
         )}
         {(!campaign.display_toc || !isTocCollapsed) && (
           <div className="toc-controls-and-display" style={{ marginTop: '10px' }}>
-            {campaign.display_toc && campaign.display_toc.length > 0 && <ReactMarkdown>{processedToc}</ReactMarkdown>}
+            {campaign.display_toc && campaign.display_toc.length > 0 && (
+              <ReactMarkdown
+                components={{ a: TocLinkRenderer }}
+              >
+                {processedToc}
+              </ReactMarkdown>
+            )}
             {(!campaign.display_toc || campaign.display_toc.length === 0) && <p>No Table of Contents generated yet.</p>}
             <Button
               onClick={handleGenerateTOC}
@@ -1232,6 +1326,7 @@ const CampaignEditorPage: React.FC = () => {
         handleUpdateSectionType={handleUpdateSectionType}
         onUpdateSectionOrder={handleUpdateSectionOrder}
         forceCollapseAllSections={forceCollapseAll}
+        expandSectionId={sectionToExpand} // Add this new prop
         onSetThematicImageForSection={handleSetThematicImage}
       />
       {!campaign?.concept?.trim() && (
@@ -1330,7 +1425,11 @@ const CampaignEditorPage: React.FC = () => {
           )}
         </section>
       )}
-      <Tabs tabs={tabItems} />
+      <Tabs
+        tabs={tabItems}
+        activeTabName={activeEditorTab}
+        onTabChange={setActiveEditorTab}
+      />
       {isMoodBoardPanelOpen && (
         <div
           className="mood-board-side-panel"
