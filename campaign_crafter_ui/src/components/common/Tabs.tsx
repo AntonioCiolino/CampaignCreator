@@ -1,4 +1,4 @@
-import React, { useState, ReactElement } from 'react';
+import React, { ReactElement } from 'react';
 import './Tabs.css'; // Import the CSS file
 
 export interface TabItem {

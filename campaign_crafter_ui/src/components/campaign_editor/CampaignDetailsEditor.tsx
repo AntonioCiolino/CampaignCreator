@@ -1,7 +1,6 @@
 import React, { useState } from 'react'; // Import useState
 import { TextField, Grid, Typography, Card, CardContent, Box, IconButton } from '@mui/material'; // Added IconButton
 import Button from '../common/Button'; // Import common Button
-import CollapsibleSection from '../common/CollapsibleSection'; // Import CollapsibleSection
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined'; // Import icon
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'; // Import ExpandMoreIcon
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'; // Import ChevronRightIcon
