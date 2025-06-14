@@ -120,14 +120,17 @@ const mockedGetFeatures = featureService.getFeatures as jest.MockedFunction<type
 const getMockedQuillInstance = () => (ReactQuill as any).getMostRecentQuillInstance() as MockQuillInstance | undefined;
 
 const defaultProps: React.ComponentProps<typeof CampaignSectionView> = {
-  section: { id: 1, title: 'Test Section', content: 'Initial content', order: 0, campaign_id: 1 },
+  section: { id: 1, title: 'Test Section', content: 'Initial content', order: 0, campaign_id: 1, type: 'generic' }, // Added type as it's part of CampaignSection
   onSave: jest.fn().mockResolvedValue(undefined),
   isSaving: false,
   saveError: null,
   onDelete: jest.fn(),
   forceCollapse: false,
-  campaignId: 1,
+  campaignId: 1, // Assuming campaignId is number
   onSectionUpdated: jest.fn(),
+  // onSectionTypeUpdate: jest.fn(), // Optional, add if tests require it
+  expandSectionId: null, // <--- Add this line
+  // onSetThematicImageFromSection: jest.fn(), // Optional, add if tests require it
 };
 
 describe('CampaignSectionView', () => {
