@@ -126,6 +126,7 @@ const CampaignEditorPage: React.FC = () => {
 
   // State for generating image for mood board
   const [isGeneratingForMoodBoard, setIsGeneratingForMoodBoard] = useState<boolean>(false);
+  const [moodBoardPanelWidth, setMoodBoardPanelWidth] = useState<number>(400); // Default width
 
   const handleSetThematicImage = async (imageUrl: string, prompt: string) => {
     // This function now only handles setting the *main* thematic image for the campaign.
@@ -199,6 +200,16 @@ const CampaignEditorPage: React.FC = () => {
       // thematicImageData state was removed, so no cleanup needed for it here
     }
   };
+
+  const handleMoodBoardResize = useCallback((newWidth: number) => {
+    // Add constraints for min/max width if desired
+    const minWidth = 250; // Example min width
+    const maxWidth = 800; // Example max width
+    let constrainedWidth = newWidth;
+    if (newWidth < minWidth) constrainedWidth = minWidth;
+    if (newWidth > maxWidth) constrainedWidth = maxWidth;
+    setMoodBoardPanelWidth(constrainedWidth);
+  }, []);
 
   const selectedLLMObject = useMemo(() => {
     if (availableLLMs.length > 0 && selectedLLMId) {
@@ -1301,7 +1312,10 @@ const CampaignEditorPage: React.FC = () => {
       )}
       <Tabs tabs={tabItems} />
       {isMoodBoardPanelOpen && (
-        <div className="mood-board-side-panel"> {/* Updated class name for consistency */}
+        <div
+          className="mood-board-side-panel"
+          style={{ width: `${moodBoardPanelWidth}px` }} // Apply dynamic width
+        >
           {/* Close button is now part of MoodBoardPanel's internal structure if desired, or keep here */}
           {/* For simplicity, MoodBoardPanel's onClose is used */}
           <MoodBoardPanel
@@ -1314,6 +1328,9 @@ const CampaignEditorPage: React.FC = () => {
             onUpdateMoodBoardUrls={setEditableMoodBoardUrls} // Pass the state setter
             campaignId={campaignId!} // Pass campaignId to MoodBoardPanel
             onRequestOpenGenerateImageModal={() => setIsGeneratingForMoodBoard(true)} // New callback
+            // Add these lines:
+            currentPanelWidth={moodBoardPanelWidth}
+            onResize={handleMoodBoardResize}
           />
         </div>
       )}

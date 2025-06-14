@@ -306,7 +306,7 @@
   position: fixed;
   right: 0;
   top: 0;
-  width: 400px; /* Increased width */
+  /* width: 400px; */ /* Removed: Now controlled by inline style */
   height: 100vh; /* Full viewport height */
   background-color: #fff; /* Or a suitable panel background */
   border-left: 1px solid #ccc;

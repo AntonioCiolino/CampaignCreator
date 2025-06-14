@@ -35,7 +35,8 @@ export interface MoodBoardPanelProps {
   onUpdateMoodBoardUrls: (newUrls: string[]) => void; // New required prop
   campaignId?: string; // Made campaignId optional
   onRequestOpenGenerateImageModal?: () => void; // New optional prop
-  // onRemoveImage is removed
+  currentPanelWidth?: number; // New: Current width of the panel
+  onResize?: (newWidth: number) => void; // New: Callback to update width
 }
 
 // New SortableMoodBoardItem component
@@ -44,9 +45,10 @@ interface SortableMoodBoardItemProps {
   url: string;
   index: number; // Keep index for alt text and potential non-dnd related logic
   onRemove: (urlToRemove: string) => void; // Pass remove handler
+  isDragEndEventProcessing?: boolean; // New prop
 }
 
-const SortableMoodBoardItem: React.FC<SortableMoodBoardItemProps> = ({ id, url, index, onRemove }) => {
+const SortableMoodBoardItem: React.FC<SortableMoodBoardItemProps> = ({ id, url, index, onRemove, isDragEndEventProcessing }) => {
   const {
     attributes,
     listeners,
@@ -69,13 +71,33 @@ const SortableMoodBoardItem: React.FC<SortableMoodBoardItemProps> = ({ id, url, 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="mood-board-item-link-wrapper">
       {/* The original <a> tag can be here or you can directly style the div above */}
-      <a href={url} target="_blank" rel="noopener noreferrer" className="mood-board-item-link">
-        <img src={url} alt={`Mood board ${index + 1}`} className="mood-board-image" />
-        <button
-          onClick={(e) => {
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mood-board-item-link"
+        onClickCapture={(e: React.MouseEvent) => {
+          if (isDragEndEventProcessing) {
             e.preventDefault();
             e.stopPropagation();
-            onRemove(url);
+          }
+        }}
+      >
+        {/* Image and Button remain here */}
+        <img src={url} alt={`Mood board ${index + 1}`} className="mood-board-image" />
+        <button
+          onPointerDown={(e) => {
+            // Prevent dnd-kit's PointerSensor from processing this event
+            // when it originates from the button. This helps distinguish
+            // a click on the button from an attempt to drag the whole item.
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            // Prevent the default action of the parent <a> tag (navigation)
+            e.preventDefault();
+            // Stop the click event from bubbling further up the DOM tree
+            e.stopPropagation();
+            onRemove(url); // Call the passed in remove handler
           }}
           className="mood-board-tile-close-button"
           aria-label={`Remove image ${index + 1}`}
@@ -98,13 +120,16 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = (props) => {
     title = "Mood Board", // Default title
     onUpdateMoodBoardUrls,
     campaignId, // Destructure campaignId
-    onRequestOpenGenerateImageModal // Destructure new prop
+    onRequestOpenGenerateImageModal, // Destructure new prop
+    currentPanelWidth,
+    onResize,
   } = props;
 
   const [isAddImageModalOpen, setIsAddImageModalOpen] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false); // State for drag feedback
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isDragEndEventProcessing, setIsDragEndEventProcessing] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -196,6 +221,11 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = (props) => {
       if (oldIndex !== -1 && newIndex !== -1) {
         const newOrder = arrayMove(moodBoardUrls, oldIndex, newIndex);
         onUpdateMoodBoardUrls(newOrder);
+
+        setIsDragEndEventProcessing(true);
+        setTimeout(() => {
+          setIsDragEndEventProcessing(false);
+        }, 100);
       }
     }
   }
@@ -234,6 +264,7 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = (props) => {
                   url={url}
                   index={index}
                   onRemove={handleRemoveUrl}
+                  isDragEndEventProcessing={isDragEndEventProcessing} // Pass the state
                 />
               ))}
             </div>
@@ -253,11 +284,33 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = (props) => {
     return null;
   }
 
+  const handleMouseDownOnResizeHandle = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!onResize || !currentPanelWidth) return;
+    e.preventDefault();
+
+    const startX = e.clientX;
+    const startWidth = currentPanelWidth;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const newWidth = startWidth - deltaX; // Panel on right, handle on left
+      onResize(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
   return (
     // The wrapper div that controls visibility via CSS transition (if any)
     // Or simply rely on conditional rendering in parent to not mount this when not visible
     <div
-      className={panelClasses}
+      className={`${panelClasses} mood-board-panel-root`}
       role="dialog"
       aria-labelledby="mood-board-title"
       aria-modal="true"
@@ -266,6 +319,13 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = (props) => {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
+      {onResize && currentPanelWidth && (
+        <div
+          className="mood-board-resize-handle"
+          onMouseDown={handleMouseDownOnResizeHandle}
+          title="Drag to resize mood board"
+        />
+      )}
       <div className="mood-board-panel-content-wrapper"> {/* Added for better structure if needed */}
         {(onClose || title) && (
           <div className="mood-board-header" onClick={onClose}>
