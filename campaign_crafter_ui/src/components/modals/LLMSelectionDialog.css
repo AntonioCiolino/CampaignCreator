@@ -1,4 +1,40 @@
 /* LLMSelectionDialog.css */
+
+/* Styles for the backdrop */
+.llm-selection-dialog-backdrop {
+  /* Assuming we want it to seem contained,
+     it might not need to be a full viewport backdrop anymore.
+     If it was previously position:fixed, this changes it. */
+  position: absolute; /* Key change */
+  top: 0;
+  left: 0;
+  width: 100%; /* Cover its relative parent */
+  height: 100%; /* Cover its relative parent */
+  background-color: rgba(0, 0, 0, 0.3); /* Dimmed backdrop, less intrusive */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999; /* Lower than a typical global modal, but above tab content */
+}
+
+/* Styles for the dialog content box */
+.llm-selection-dialog-content {
+  background-color: var(--background-color, #fff); /* Use theme variable */
+  padding: calc(var(--global-spacing-unit, 1rem) * 1.5);
+  border-radius: 8px; /* Standard border radius */
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); /* Softer shadow */
+  min-width: 300px; /* Minimum width */
+  max-width: 500px; /* Maximum width */
+  width: 90%; /* Responsive width */
+  z-index: 1000; /* Above its own backdrop */
+  /* Removed fixed positioning and transform centering.
+     It will now be centered by the backdrop's flex properties
+     relative to its containing block if the backdrop covers that block.
+     If backdrop is smaller, content is just at top/left of backdrop. */
+}
+
+/* Existing styles below */
+
 /* Assuming this styles content *within* an MUI Dialog.
    Backdrop, dialog panel, and DialogActions styling are primarily handled by MUI. */
 
