@@ -362,6 +362,7 @@ async def seed_sections_from_toc_endpoint(
                     generated_llm_content = await llm_service_instance.generate_section_content(
                         campaign_concept=db_campaign.concept,
                         db=db,
+                        current_user=current_user, # Add this line
                         existing_sections_summary=None,
                         section_creation_prompt=prompt,
                         section_title_suggestion=title,
