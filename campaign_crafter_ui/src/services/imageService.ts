@@ -49,7 +49,7 @@ export const uploadImage = async (file: File): Promise<UploadedImageResponse> =>
 };
 
 export interface MoodboardUploadResponse {
-  imageUrl: string;
+  image_url: string;
   campaign: any; // Define a proper Campaign type if available and needed for frontend state
 }
 
