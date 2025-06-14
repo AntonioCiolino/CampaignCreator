@@ -355,7 +355,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   };
 
   return (
-    <div className="campaign-section-view">
+    <div id={`section-container-${section.id}`} className="campaign-section-view" tabIndex={-1}>
       {section.title && (
         <div className="section-title-header" onClick={() => setIsCollapsed(!isCollapsed)}>
           <h3 className="section-title">
