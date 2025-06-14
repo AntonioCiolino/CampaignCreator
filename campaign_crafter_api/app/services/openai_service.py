@@ -79,7 +79,7 @@ class OpenAILLMService(AbstractLLMService):
                     model=selected_model,
                     messages=messages,
                     temperature=temperature,
-                    max_tokens=max_tokens
+                    max_completion_tokens=max_tokens
                 )
             if chat_completion.choices and chat_completion.choices[0].message and chat_completion.choices[0].message.content:
                 return chat_completion.choices[0].message.content.strip()
@@ -108,7 +108,7 @@ class OpenAILLMService(AbstractLLMService):
                     model=selected_model,
                     prompt=prompt,
                     temperature=temperature,
-                    max_tokens=max_tokens
+                    max_completion_tokens=max_tokens
                 )
             if completion.choices and completion.choices[0].text:
                 return completion.choices[0].text.strip()

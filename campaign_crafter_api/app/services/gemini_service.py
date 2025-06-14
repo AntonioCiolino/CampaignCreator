@@ -29,6 +29,7 @@ class GeminiLLMService(AbstractLLMService):
             print(f"Error configuring Gemini client during __init__: {e}")
             # This doesn't prevent service instantiation but is_available should fail.
         self.feature_prompt_service = FeaturePromptService()
+
     async def is_available(self, current_user: UserModel, db: Session) -> bool: # Added _current_user, _db
         # Accepts current_user and db session for availability checks
         if not (self.api_key and self.api_key != "YOUR_GEMINI_API_KEY"):
@@ -57,6 +58,7 @@ class GeminiLLMService(AbstractLLMService):
             return genai.GenerativeModel(effective_model_id)
         except Exception as e: # Broad catch, as various errors can occur here
             raise LLMServiceUnavailableError(f"Failed to initialize Gemini model '{effective_model_id}': {e}")
+   
     async def generate_text(self, prompt: str, current_user: UserModel, db: Session, model: Optional[str] = None, temperature: float = 0.7, max_tokens: Optional[int] = None) -> str: # Added _current_user, db
         if not await self.is_available(current_user=current_user, db=db): # Pass args
             raise LLMServiceUnavailableError("Gemini service is not available.")
@@ -103,6 +105,7 @@ class GeminiLLMService(AbstractLLMService):
                        f"Generate a detailed and engaging RPG campaign concept based on this idea: {user_prompt}. Include potential plot hooks, key NPCs, and unique settings."
         
         # Re-use generate_text for actual generation, passing current_user and db
+        return await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=1000)
         return await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=1000)
     async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]: # Added current_user
         if not await self.is_available(current_user=current_user, db=db): # Pass args
@@ -216,48 +219,55 @@ class GeminiLLMService(AbstractLLMService):
     async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, str]]: # Added _current_user, _db
         if not await self.is_available(current_user=current_user, db=db): # Pass args
             # Line above was programmatically corrected from a syntax error (db=\1)
+            return await self.generate_text(prompt=final_prompt_for_generation, current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=4000) # Pass args
+    async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, str]]: # Added _current_user, _db
+        if not await self.is_available(current_user=current_user, db=db): # Pass args
+            # Line above was programmatically corrected from a syntax error (db=\1)
             print("Warning: Gemini API key not configured or service unavailable. Cannot fetch models.")
             return [
+            {"id": "gemini-pro", "name": "Gemini Pro (Unavailable/Fallback)"},
+            {"id": "gemini-1.0-pro", "name": "Gemini 1.0 Pro (Unavailable/Fallback)"},
             {"id": "gemini-pro", "name": "Gemini Pro (Unavailable/Fallback)"},
             {"id": "gemini-1.0-pro", "name": "Gemini 1.0 Pro (Unavailable/Fallback)"},
             ]
             available_models: List[Dict[str, str]] = []
             try:
-            print("Fetching available models from Gemini API...")
-            # genai.list_models() is synchronous.
-            # For a truly non-blocking call in an async context, this would ideally be:
-            # loop = asyncio.get_running_loop()
-            # api_models = await loop.run_in_executor(None, genai.list_models)
-            # For now, calling it directly as it's usually fast.
-            api_models = genai.list_models()
-            for m in api_models:
-            if 'generateContent' in m.supported_generation_methods:
-            model_id = m.name.split('/')[-1] if '/' in m.name else m.name
-            capabilities = ["chat"] # Default for Gemini text models
-            if "vision" in model_id:
-            capabilities.append("vision")
-            available_models.append({"id": model_id, "name": m.display_name, "capabilities": capabilities})
-            
-            if not available_models:
-            print("Warning: Gemini API returned no models supporting 'generateContent'. Using hardcoded list.")
-            raise Exception("No models found from API") # Fall through to hardcoded list
+                print("Fetching available models from Gemini API...")
+                # genai.list_models() is synchronous.
+                # For a truly non-blocking call in an async context, this would ideally be:
+                # loop = asyncio.get_running_loop()
+                # api_models = await loop.run_in_executor(None, genai.list_models)
+                # For now, calling it directly as it's usually fast.
+                api_models = genai.list_models()
+                for m in api_models:
+                    if 'generateContent' in m.supported_generation_methods:
+                        model_id = m.name.split('/')[-1] if '/' in m.name else m.name
+                        capabilities = ["chat"] # Default for Gemini text models
+                    if "vision" in model_id:
+                        capabilities.append("vision")
+                        available_models.append({"id": model_id, "name": m.display_name, "capabilities": capabilities})
+                    
+                if not available_models:
+                    print("Warning: Gemini API returned no models supporting 'generateContent'. Using hardcoded list.")
+                    raise Exception("No models found from API") # Fall through to hardcoded list
             except Exception as e:
-            print(f"Could not dynamically fetch models from Gemini API: {e}. Using a hardcoded list as fallback.")
-            available_models = [
-            {"id": "gemini-pro", "name": "Gemini Pro", "capabilities": ["chat"]},
-            {"id": "gemini-1.0-pro", "name": "Gemini 1.0 Pro", "capabilities": ["chat"]},
-            {"id": "gemini-pro-vision", "name": "Gemini Pro Vision", "capabilities": ["chat", "vision"]},
-            ]
+                print(f"Could not dynamically fetch models from Gemini API: {e}. Using a hardcoded list as fallback.")
+                available_models = [
+                {"id": "gemini-pro", "name": "Gemini Pro", "capabilities": ["chat"]},
+                {"id": "gemini-1.0-pro", "name": "Gemini 1.0 Pro", "capabilities": ["chat"]},
+                {"id": "gemini-pro-vision", "name": "Gemini Pro Vision", "capabilities": ["chat", "vision"]},
+                ]
 
-            default_model_id = self.DEFAULT_MODEL
-            # Ensure default model, if added manually, also has capabilities
-            if not any(m['id'] == default_model_id for m in available_models):
-            available_models.insert(0, {
-            "id": default_model_id,
-            "name": default_model_id.replace("-", " ").title() + " (Default)",
-            "capabilities": ["chat"] # Default model is assumed to be chat capable
-            })
+                default_model_id = self.DEFAULT_MODEL
+                # Ensure default model, if added manually, also has capabilities
+                if not any(m['id'] == default_model_id for m in available_models):
+                    available_models.insert(0, {
+                    "id": default_model_id,
+                    "name": default_model_id.replace("-", " ").title() + " (Default)",
+                    "capabilities": ["chat"] # Default model is assumed to be chat capable
+                    })
             
+            return available_models
             return available_models
     async def close(self):
         """Close any persistent connections if the SDK requires it."""
