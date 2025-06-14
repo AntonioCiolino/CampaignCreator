@@ -3,6 +3,7 @@ import { CampaignSection } from '../services/campaignService';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import ReactQuill from 'react-quill';
+import LoadingSpinner from './common/LoadingSpinner'; // Adjust path if necessary
 import type { RangeStatic as QuillRange } from 'quill'; // Import QuillRange
 import 'react-quill/dist/quill.snow.css'; // Import Quill's snow theme CSS
 import Button from './common/Button'; // Added Button import
@@ -440,8 +441,14 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                     {featureFetchError && <p className="error-message" style={{fontSize: '0.8em', color: 'red', marginTop: '2px'}}>{featureFetchError}</p>}
                   </div>
                 )}
-                <Button onClick={handleGenerateContent} className="editor-button" disabled={isGeneratingContent || isSaving}>
-                  {isGeneratingContent ? 'Generating...' : 'Generate Content'}
+                <Button
+                  onClick={handleGenerateContent}
+                  className="editor-button"
+                  disabled={isGeneratingContent || isSaving}
+                  style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
+                >
+                  {isGeneratingContent && <LoadingSpinner />}
+                  <span>{isGeneratingContent ? 'Generating...' : 'Generate Content'}</span>
                 </Button>
                 <Button onClick={() => setIsImageGenerationModalOpen(true)} className="editor-button" disabled={isGeneratingContent || isSaving}>
                   Generate Image
@@ -474,9 +481,10 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                   variant="secondary"
                   onClick={handleRegenerateClick}
                   disabled={isSaving || isRegenerating || isEditing}
-                  style={{ marginLeft: '10px' }}
+                  style={{ marginLeft: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}
                 >
-                  {isRegenerating ? 'Regenerating...' : 'Regenerate'}
+                  {isRegenerating && <LoadingSpinner />}
+                  <span>{isRegenerating ? 'Regenerating...' : 'Regenerate'}</span>
                 </Button>
                 <Button
                   onClick={() => onDelete(section.id)}
