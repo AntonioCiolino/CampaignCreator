@@ -1235,7 +1235,12 @@ const CampaignEditorPage: React.FC = () => {
 
   const settingsTabContent = (
     <>
-      {selectedLLMObject && availableLLMs.length > 0 ? (
+      {isLLMsLoading ? (
+        <div className="editor-section" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+          <LoadingSpinner />
+          <Typography sx={{ ml: 2 }}>Loading LLM models...</Typography>
+        </div>
+      ) : selectedLLMObject && availableLLMs.length > 0 ? (
         <CampaignLLMSettings
           selectedLLM={selectedLLMObject}
           setSelectedLLM={handleSetSelectedLLM}
@@ -1243,24 +1248,16 @@ const CampaignEditorPage: React.FC = () => {
           setTemperature={setTemperature}
           availableLLMs={availableLLMs.map(m => ({...m, name: m.name || m.id})) as LLM[]}
         />
-      ) : isLLMsLoading ? (
-        <div className="editor-section" style={{ textAlign: 'center', padding: '20px' }}>
-          <LoadingSpinner />
-          <p>Loading LLM models...</p>
-        </div>
-      ) : (
+      ) : !selectedLLMObject && availableLLMs.length > 0 ? (
         <div className="editor-section">
-          {availableLLMs.length === 0 && (
-            <p>No LLM models available. Please check LLM provider configurations.</p>
-          )}
-          {!selectedLLMObject && availableLLMs.length > 0 && (
-            <>
-              <p>No LLM model currently selected for the campaign.</p>
-              <Button onClick={() => setIsLLMDialogOpen(true)} className="action-button" icon={<SettingsSuggestIcon />} tooltip="Select the primary Language Model for campaign generation tasks">
-                Select LLM Model
-              </Button>
-            </>
-          )}
+          <p>No LLM model currently selected for the campaign.</p>
+          <Button onClick={() => setIsLLMDialogOpen(true)} className="action-button" icon={<SettingsSuggestIcon />} tooltip="Select the primary Language Model for campaign generation tasks">
+            Select LLM Model
+          </Button>
+        </div>
+      ) : ( // This covers availableLLMs.length === 0 && !isLLMsLoading
+        <div className="editor-section">
+          <Typography>No LLM models available. Please check LLM provider configurations.</Typography>
         </div>
       )}
       <div className="llm-autosave-feedback editor-section feedback-messages">
