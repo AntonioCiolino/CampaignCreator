@@ -5,6 +5,8 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import CampaignEditorPage from './CampaignEditorPage';
 import * as campaignService from '../services/campaignService';
 import * as llmService from '../services/llmService'; // For getAvailableLLMs
+// Import LLMModel type for explicit typing of mockLLMs if desired, though not strictly necessary for mocks
+// import { LLMModel } from '../services/llmService';
 
 import * as imageService from '../services/imageService'; // For MoodBoardPanel image uploads
 
@@ -84,9 +86,22 @@ const mockCampaignForMoodboard = {
   selected_llm_id: 'openai/gpt-3.5-turbo', // Ensure an LLM is selected for generation options
 };
 
-const mockLLMs = [
-  { id: 'openai/gpt-3.5-turbo', name: 'GPT-3.5 Turbo', capabilities: ['chat'] },
-  { id: 'openai/gpt-4', name: 'GPT-4', capabilities: ['chat'] },
+// Explicitly type with llmService.LLMModel if you imported it, or ensure structural compatibility
+const mockLLMs: llmService.LLMModel[] = [ // or just any[] if not importing type for mocks
+  {
+    id: 'openai/gpt-3.5-turbo',
+    name: 'GPT-3.5 Turbo',
+    capabilities: ['chat'],
+    model_type: "chat",        // Added
+    supports_temperature: true // Added
+  },
+  {
+    id: 'openai/gpt-4',
+    name: 'GPT-4',
+    capabilities: ['chat'],
+    model_type: "chat",        // Added
+    supports_temperature: true // Added
+  },
 ];
 
 const mockSections: campaignService.CampaignSection[] = [
@@ -589,3 +604,5 @@ describe('CampaignEditorPage - Mood Board Image Addition', () => {
     expect(screen.queryByTestId('mock-image-gen-modal')).not.toBeInTheDocument();
   });
 });
+
+[end of campaign_crafter_ui/src/pages/CampaignEditorPage.test.tsx]

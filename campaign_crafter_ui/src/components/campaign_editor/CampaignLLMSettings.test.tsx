@@ -18,8 +18,20 @@ describe('CampaignLLMSettings', () => {
   const mockHandleGenerateTOC = jest.fn();
   const mockHandleGenerateTitles = jest.fn();
 
-  const llm1: LLM = { id: 'llm-1', name: 'LLM One', capabilities: ['chat'] };
-  const llm2: LLM = { id: 'llm-2', name: 'LLM Two', capabilities: ['chat'] };
+  const llm1: LLM = {
+    id: 'llm-1',
+    name: 'LLM One',
+    capabilities: ['chat'],
+    model_type: "chat",
+    supports_temperature: true
+  };
+  const llm2: LLM = {
+    id: 'llm-2',
+    name: 'LLM Two',
+    capabilities: ['chat'],
+    model_type: "chat",
+    supports_temperature: true
+  };
   const availableLLMs: LLM[] = [llm1, llm2];
 
   const defaultProps = {
