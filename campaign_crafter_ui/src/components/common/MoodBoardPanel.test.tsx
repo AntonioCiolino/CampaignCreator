@@ -39,6 +39,7 @@ jest.mock('../../services/imageService', () => ({
 const mockOnUpdateMoodBoardUrls = jest.fn();
 const mockOnClose = jest.fn();
 const mockOnRequestOpenGenerateImageModal = jest.fn();
+const mockOnResize = jest.fn();
 
 const defaultProps: MoodBoardPanelProps = {
   moodBoardUrls: [],
@@ -288,6 +289,75 @@ describe('MoodBoardPanel', () => {
         const removeButton = screen.getByLabelText('Remove image 1');
         fireEvent.click(removeButton);
         expect(mockOnUpdateMoodBoardUrls).toHaveBeenCalledWith([]);
+    });
+  });
+
+  describe('Resize Handle Functionality', () => {
+    const panelWidth = 400; // Example initial width
+
+    beforeEach(() => {
+      mockOnResize.mockClear();
+      // Reset useSortable mock to its default state before each resize test
+      (jest.requireMock('@dnd-kit/sortable').useSortable as jest.Mock).mockImplementation(() => ({
+        attributes: {},
+        listeners: {},
+        setNodeRef: jest.fn(),
+        transform: null,
+        transition: null,
+        isDragging: false,
+      }));
+    });
+
+    test('renders resize handle when onResize and currentPanelWidth are provided', () => {
+      render(
+        <MoodBoardPanel
+          {...defaultProps}
+          currentPanelWidth={panelWidth}
+          onResize={mockOnResize}
+        />
+      );
+      expect(screen.getByTitle('Drag to resize mood board')).toBeInTheDocument();
+    });
+
+    test('does not render resize handle if onResize prop is not provided', () => {
+      render(<MoodBoardPanel {...defaultProps} currentPanelWidth={panelWidth} onResize={undefined} />);
+      expect(screen.queryByTitle('Drag to resize mood board')).not.toBeInTheDocument();
+    });
+
+    test('does not render resize handle if currentPanelWidth prop is not provided', () => {
+      render(<MoodBoardPanel {...defaultProps} currentPanelWidth={undefined} onResize={mockOnResize} />);
+      expect(screen.queryByTitle('Drag to resize mood board')).not.toBeInTheDocument();
+    });
+
+    test('calls onResize with new width on drag and stops after mouseup', () => {
+      render(
+        <MoodBoardPanel
+          {...defaultProps}
+          currentPanelWidth={panelWidth}
+          onResize={mockOnResize}
+        />
+      );
+      const handle = screen.getByTitle('Drag to resize mood board');
+
+      // Simulate drag start
+      fireEvent.mouseDown(handle, { clientX: 100 });
+
+      // Simulate drag move left (panel gets wider)
+      fireEvent.mouseMove(document, { clientX: 80 }); // deltaX = -20
+      expect(mockOnResize).toHaveBeenCalledWith(panelWidth - (-20)); // 420
+      mockOnResize.mockClear();
+
+      // Simulate drag move right (panel gets narrower)
+      fireEvent.mouseMove(document, { clientX: 130 }); // deltaX = 30 (relative to initial mouseDown clientX of 100)
+      expect(mockOnResize).toHaveBeenCalledWith(panelWidth - 30); // 370
+      mockOnResize.mockClear();
+
+      // Simulate drag end
+      fireEvent.mouseUp(document);
+
+      // Simulate further mouse move after mouseup
+      fireEvent.mouseMove(document, { clientX: 150 });
+      expect(mockOnResize).not.toHaveBeenCalled();
     });
   });
 });

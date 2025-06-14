@@ -1,22 +1,34 @@
 /* src/components/common/MoodBoardPanel.css */
 
-.mood-board-panel { /* Renamed from .thematic-image-display-wrapper */
-  position: fixed;
-  /* Positioning will be handled by parent in CampaignEditorPage.tsx for .thematic-image-side-panel */
-  /* bottom: 20px;
-  right: 20px; */
-  width: 100%; /* Take full width of its container (.thematic-image-side-panel) */
-  height: 100%; /* Take full height of its container */
+.mood-board-panel {
+  position: relative; /* Changed from fixed */
+  width: 100%;
+  height: 100%;
   background-color: var(--surface-color, #fff);
-  /* border: 1px solid var(--border-color, #dee2e6); */ /* Border handled by parent panel */
-  /* border-radius: var(--border-radius-lg, 0.5rem); */ /* Radius handled by parent panel */
-  /* box-shadow: var(--box-shadow-lg, 0 0.5rem 1rem rgba(0,0,0,0.15)); */ /* Shadow handled by parent panel */
-  z-index: 1; /* Local stacking context if needed, parent panel has higher z-index */
-  overflow-x: auto;
+  z-index: 1;
+  /* overflow-x: auto; */ /* Potentially remove or manage overflow carefully with resize handle */
   display: flex;
   flex-direction: column;
-  transition: opacity 0.3s ease-in-out; /* Keep transition for visibility */
+  transition: opacity 0.3s ease-in-out;
   opacity: 1;
+}
+
+.mood-board-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 10px; /* Width of the draggable area */
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10; /* Ensure it's above other content in the panel */
+  /* Visual cue for the handle */
+  border-left: 3px solid rgba(0, 0, 0, 0.2); /* Example: a subtle line */
+  /* background-color: rgba(0,0,0,0.05); */ /* Optional: slight background tint */
+}
+
+.mood-board-resize-handle:hover {
+  border-left: 3px solid rgba(0, 0, 0, 0.4); /* Darker line on hover */
+  /* background-color: rgba(0,0,0,0.1); */ /* Optional: darker tint on hover */
 }
 
 .mood-board-panel.hidden { /* For potential direct visibility control, though parent usually handles this */
@@ -32,9 +44,10 @@
 
 /* Added wrapper for better structure inside the panel */
 .mood-board-panel-content-wrapper {
+  height: 100%; /* Ensure it takes full height */
   display: flex;
   flex-direction: column;
-  height: 100%;
+  /* overflow: hidden; */ /* If resize handle is outside, content might need to hide overflow */
 }
 
 .mood-board-header { /* Renamed from .thematic-image-header */
@@ -106,7 +119,7 @@
   padding: 1rem;
   overflow-y: auto;
   flex-grow: 1; /* Allows this area to take available space and scroll */
-  text-align: center;
+  text-align: left;
 }
 
 .mood-board-loader, .mood-board-empty { /* Combined loader and empty message styling */
@@ -133,6 +146,7 @@
   flex-wrap: wrap;
   gap: 1rem; /* Spacing between images */
   justify-content: flex-start; /* Align items to the start */
+  max-width: 100%;
 }
 
 .mood-board-item-link {
