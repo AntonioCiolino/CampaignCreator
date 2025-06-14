@@ -62,7 +62,7 @@ const CampaignEditorPage: React.FC = () => {
 
   const [availableLLMs, setAvailableLLMs] = useState<LLMModel[]>([]);
   const [isLLMsLoading, setIsLLMsLoading] = useState<boolean>(true); // Added state
-  const [selectedLLMId, setSelectedLLMId] = useState<string>('');
+  const [selectedLLMId, setSelectedLLMId] = useState<string | null>(null);
   const [temperature, setTemperature] = useState<number>(0.7);
 
   const [isExporting, setIsExporting] = useState<boolean>(false);
@@ -267,11 +267,7 @@ const CampaignEditorPage: React.FC = () => {
   }, [selectedLLMId, availableLLMs]);
 
   const handleSetSelectedLLM = (llm: LLM | null) => {
-    if (llm) {
-      setSelectedLLMId(llm.id);
-    } else {
-      setSelectedLLMId(''); // Set to empty string for no selection
-    }
+    setSelectedLLMId(llm ? ll.id : null);
   };
   
   const handleUpdateSectionContent = (sectionId: number, newContent: string) => {
@@ -446,11 +442,11 @@ const CampaignEditorPage: React.FC = () => {
         }
         setAvailableLLMs(fetchedLLMs); // Set LLMs after fetch
         let newSelectedLLMIdToSave: string | null = null;
-        if (campaignDetails.selected_llm_id) {
-            setSelectedLLMId(campaignDetails.selected_llm_id);
-        } else {
+        setSelectedLLMId(campaignDetails.selected_llm_id || null); // Ensure it's null if backend sends empty or undefined
+
+        if (!campaignDetails.selected_llm_id) { // Only try to set a default if none is set from backend
             const preferredModelIds = ["openai/gpt-4.1-nano", "openai/gpt-3.5-turbo", "openai/gpt-4", "gemini/gemini-pro"];
-            let newSelectedLLMId = '';
+            let newSelectedLLMId: string | null = null; // Initialize to null
             for (const preferredId of preferredModelIds) {
                 const foundModel = fetchedLLMs.find(m => m.id === preferredId);
                 if (foundModel) { newSelectedLLMId = foundModel.id; break; }
@@ -462,12 +458,19 @@ const CampaignEditorPage: React.FC = () => {
                     if (firstChatModel) { newSelectedLLMId = firstChatModel.id; }
                 }
             }
-            if (!newSelectedLLMId && fetchedLLMs.length > 0) { newSelectedLLMId = fetchedLLMs[0].id; }
+            // Removed: if (!newSelectedLLMId && fetchedLLMs.length > 0) { newSelectedLLMId = fetchedLLMs[0].id; }
+
             if (newSelectedLLMId) {
                 setSelectedLLMId(newSelectedLLMId);
-                if (!campaignDetails.selected_llm_id) { newSelectedLLMIdToSave = newSelectedLLMId; }
+                // No need to check !campaignDetails.selected_llm_id again, we are in that block
+                newSelectedLLMIdToSave = newSelectedLLMId;
+            } else { // If no campaign LLM and no default found
+                 setSelectedLLMId(null); // Explicitly set state to null
             }
         }
+        // This check should be outside the `if (!campaignDetails.selected_llm_id)` block
+        // if we intend to save a default even if one was loaded but then cleared by logic (though current logic doesn't do that)
+        // For now, it's correct to only save if `newSelectedLLMIdToSave` was set, meaning a default was chosen AND none was previously set.
         if (newSelectedLLMIdToSave && campaignDetails.id) {
             setIsPageLoading(true);
             setAutoSaveLLMSettingsError(null);
@@ -591,8 +594,7 @@ const CampaignEditorPage: React.FC = () => {
   }, [selectedLLMId, temperature, campaignId, campaign, isLoading, setCampaign, setIsAutoSavingLLMSettings, setAutoSaveLLMSettingsError, setAutoSaveLLMSettingsSuccess]);
 
   useEffect(() => {
-    if (!initialLoadCompleteRef.current || !campaign) { return; }
-    if (selectedLLMId && selectedLLMId !== campaign.selected_llm_id) {
+    if (initialLoadCompleteRef.current && campaign && selectedLLMId !== campaign.selected_llm_id) {
       ensureLLMSettingsSaved();
     }
   }, [selectedLLMId, campaign, ensureLLMSettingsSaved]);
