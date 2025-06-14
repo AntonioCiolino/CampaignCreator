@@ -98,17 +98,41 @@ class DeepSeekLLMService(AbstractLLMService):
             f"Received section_type: {section_type}"
         )
 
-    async def list_available_models(self, _current_user: UserModel, _db: Session) -> List[Dict[str, str]]: # Added _current_user, _db
-        if not await self.is_available(_current_user=_current_user, _db=_db): # Pass args
+    async def list_available_models(self, _current_user: UserModel, _db: Session) -> List[Dict[str, any]]:
+        if not await self.is_available(_current_user=_current_user, _db=_db):
             print(f"Warning: {self.PROVIDER_NAME.title()} service not available. Cannot list models.")
             return []
         
         # Placeholder: DeepSeek has models like 'deepseek-chat' and 'deepseek-coder'.
+        # A real implementation would fetch these from an API if available, or have them more robustly configured.
         print(f"Warning: {self.PROVIDER_NAME.title()}LLMService.list_available_models is returning a placeholder list.")
-        return [
-            {"id": "deepseek-chat", "name": f"{self.PROVIDER_NAME.title()} Chat (Placeholder)", "capabilities": ["chat"]},
-            {"id": "deepseek-coder", "name": f"{self.PROVIDER_NAME.title()} Coder (Placeholder)", "capabilities": ["completion", "code"]},
+
+        placeholder_models = [
+            {
+                "id": "deepseek-chat",
+                "name": f"{self.PROVIDER_NAME.title()} Chat (Placeholder)",
+                "model_type": "chat",
+                "supports_temperature": True, # Assuming chat models support temperature
+                "capabilities": ["chat"]
+            },
+            {
+                "id": "deepseek-coder",
+                "name": f"{self.PROVIDER_NAME.title()} Coder (Placeholder)",
+                "model_type": "completion", # Coder models are often more completion-focused
+                                          # but could be "chat" if they have a conversational interface for coding.
+                "supports_temperature": True, # Assuming coder models also support temperature
+                "capabilities": ["completion", "code"]
+            },
+            # Example of a potentially larger chat model if one exists
+            # {
+            #     "id": "deepseek-chat-large",
+            #     "name": f"{self.PROVIDER_NAME.title()} Chat Large (Placeholder)",
+            #     "model_type": "chat",
+            #     "supports_temperature": True,
+            #     "capabilities": ["chat"]
+            # },
         ]
+        return placeholder_models
 
     async def close(self):
         """Close any persistent connections if the SDK requires it."""

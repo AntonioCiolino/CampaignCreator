@@ -1,7 +1,11 @@
+import apiClient from './apiClient';
+
 // Defines the structure of an LLM model object
 export interface LLMModel {
   id: string; // Prefixed ID, e.g., "openai/gpt-3.5-turbo"
   name: string; // User-friendly name, e.g., "OpenAI GPT-3.5 Turbo"
+  model_type: string; // Added model_type field
+  supports_temperature: boolean; // Added supports_temperature field
   capabilities?: string[]; // Added optional capabilities field
 }
 
@@ -12,7 +16,6 @@ interface LLMModelsResponse {
 
 // const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
 // API_BASE_URL will be handled by apiClient
-import apiClient from './apiClient';
 
 
 /**

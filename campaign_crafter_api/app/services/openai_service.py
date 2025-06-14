@@ -297,25 +297,29 @@ class OpenAILLMService(AbstractLLMService):
         ]
         return await self._perform_chat_completion(selected_model, messages, temperature=0.7, max_tokens=1500, api_key=openai_api_key)
 
-    async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, str]]: # Made current_user and db non-optional
-        # API key is fetched based on the user context. If no key is found,
-        # _get_openai_api_key_for_user will raise HTTPException, which will propagate.
-        # This means model listing is only available if the user has a valid key setup.
+    async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, any]]: # Made current_user and db non-optional, changed return type
         api_key_to_use = await self._get_openai_api_key_for_user(current_user, db)
 
-        models_to_return: Dict[str, Dict[str, str]] = {}
+        processed_models: List[Dict[str, any]] = []
+        # Using a set for quick lookup of already processed model IDs from the API
+        # to give preference to our manually defined common_models.
+        processed_api_model_ids = set()
 
-        # Manually add well-known models with user-friendly names
+
+        # Manually add well-known models with user-friendly names and correct types
         # These are preferred and will be shown first if available.
-        common_models = {
-            "gpt-4": {"id": "gpt-4", "name": "GPT-4", "capabilities": ["chat"]},
-            "gpt-4-turbo-preview": {"id": "gpt-4-turbo-preview", "name": "GPT-4 Turbo Preview", "capabilities": ["chat"]},
-            "gpt-4o": {"id": "gpt-4o", "name": "GPT-4 Omni", "capabilities": ["chat"]}, # Assuming chat, may have vision too
-            "gpt-4.1-nano": {"id": "gpt-4.1-nano", "name": "OpenAI GPT 4.1 Nano", "capabilities": ["chat"]},
-            "gpt-3.5-turbo": {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo (Chat)", "capabilities": ["chat"]},
-            "gpt-3.5-turbo-instruct": {"id": "gpt-3.5-turbo-instruct", "name": "GPT-3.5 Turbo Instruct", "capabilities": ["completion", "chat-adaptable"]},
-        }
-        models_to_return.update(common_models)
+        common_models_data = [
+            {"id": "gpt-4", "name": "GPT-4", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat"]},
+            {"id": "gpt-4-turbo-preview", "name": "GPT-4 Turbo Preview", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat"]},
+            {"id": "gpt-4o", "name": "GPT-4 Omni", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat"]},
+            # {"id": "gpt-4.1-nano", "name": "OpenAI GPT 4.1 Nano", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat"]}, # Example, if such model exists
+            {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo (Chat)", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat"]},
+            {"id": "gpt-3.5-turbo-instruct", "name": "GPT-3.5 Turbo Instruct", "model_type": "completion", "supports_temperature": True, "capabilities": ["completion"]},
+        ]
+
+        for model_data in common_models_data:
+            processed_models.append(model_data)
+            processed_api_model_ids.add(model_data["id"])
 
         try:
             async with AsyncOpenAI(api_key=api_key_to_use) as client:
@@ -324,55 +328,66 @@ class OpenAILLMService(AbstractLLMService):
             if response and response.data:
                 for model_obj in response.data:
                     model_id = model_obj.id
-                    if model_id not in models_to_return: # Prioritize manually defined names
-                        # Simple naming for less common models pulled from API
-                        name_parts = [part.capitalize() for part in model_id.split('-')]
-                        name = " ".join(name_parts)
-                        capabilities = ["chat"] # Default to chat for unknown modern models
+                    if model_id in processed_api_model_ids: # Already added with preferred details
+                        continue
 
+                    name_parts = [part.capitalize() for part in model_id.split('-')]
+                    name = " ".join(name_parts)
+
+                    model_type = "chat" # Default for modern OpenAI models
+                    supports_temperature = True # Most OpenAI generative models do
+
+                    if "instruct" in model_id or \
+                       any(legacy_kw in model_id for legacy_kw in ["davinci", "curie", "babbage", "ada"]) and \
+                       not any(ft_kw in model_id for ft_kw in ["ft:gpt-3.5-turbo", "ft:gpt-4"]) and \
+                       not "embed" in model_id and not "turbo" in model_id : # ensure turbo isn't miscategorized if it's not -instruct
+                        model_type = "completion"
+
+                    # Refine naming and capabilities based on model type and ID
+                    capabilities = [model_type]
+                    if model_type == "chat":
                         if "gpt-3.5" in model_id and "turbo" in model_id and "instruct" not in model_id:
-                            name += " (Chat)"
-                            capabilities = ["chat"]
-                        elif "instruct" in model_id: # Covers gpt-3.5-turbo-instruct if not in common_models
-                             name += " (Instruct)"
-                             capabilities = ["completion", "chat-adaptable"]
-                        elif any(legacy_kw in model_id for legacy_kw in ["davinci", "curie", "babbage", "ada"]) and "instruct" not in model_id:
-                             name += " (Legacy Completion)"
-                             capabilities = ["completion"]
-                        elif model_id.startswith("ft:gpt-3.5-turbo"):
-                            name = f"Fine-tuned (GPT-3.5T): {model_id.split(':')[-1]}"
-                            capabilities = ["chat"]
-                        elif model_id.startswith("ft:davinci") or model_id.startswith("ft:curie") or model_id.startswith("ft:babbage") or model_id.startswith("ft:ada"):
-                            name = f"Fine-tuned (Legacy): {model_id.split(':')[-1]}"
-                            capabilities = ["completion"]
-                        elif model_id.startswith("ft:"): # Generic fine-tune
-                            name = f"Fine-tuned: {model_id.split(':')[-1]}"
-                            # Default to chat for unknown fine-tunes, or could be more specific if base model known
-                            capabilities = ["chat"]
+                            name = f"{name} (Chat)" if not name.endswith("(Chat)") else name
+                        elif model_id.startswith("ft:gpt-3.5-turbo") or model_id.startswith("ft:gpt-4"):
+                             name = f"Fine-tuned ({'GPT-3.5T' if 'gpt-3.5' in model_id else 'GPT-4'}): {model_id.split(':')[-1]}"
+                    elif model_type == "completion":
+                        if "instruct" in model_id:
+                             name = f"{name} (Instruct)" if not name.endswith("(Instruct)") else name
+                        elif any(legacy_kw in model_id for legacy_kw in ["davinci", "curie", "babbage", "ada"]):
+                             name = f"{name} (Legacy Completion)" if not name.endswith("(Legacy Completion)") else name
+                        elif model_id.startswith("ft:") and not (model_id.startswith("ft:gpt-3.5-turbo") or model_id.startswith("ft:gpt-4")): # other fine-tunes assumed completion
+                             name = f"Fine-tuned (Legacy Base): {model_id.split(':')[-1]}"
 
 
-                        models_to_return[model_id] = {"id": model_id, "name": name, "capabilities": capabilities}
+                    processed_models.append({
+                        "id": model_id,
+                        "name": name,
+                        "model_type": model_type,
+                        "supports_temperature": supports_temperature,
+                        "capabilities": capabilities
+                    })
+                    processed_api_model_ids.add(model_id)
+
         except APIError as e:
-            # If listing models fails due to API key or fundamental issue, it means service is unavailable for this key.
             user_id_info = f"user {current_user.id}" if current_user else "system key"
             error_detail = f"OpenAI API Error ({e.status_code}) while listing models for {user_id_info}: {e.message or str(e)}"
             print(error_detail)
-            # Do not raise LLMServiceUnavailableError globally, as other keys might work.
-            # Return current list (even if just common_models) or empty if common_models also failed.
-            # If the failure was with the API call itself, common_models would still be there.
+            # Return whatever we have (common models) even if API fails
         except Exception as e:
             user_id_info = f"user {current_user.id}" if current_user else "system key"
             print(f"An unexpected error occurred when listing OpenAI models for {user_id_info}: {e}. Returning manually curated list if any.")
-            # Depending on strictness, if API list fails, the service is not fully operational for model discovery with this key.
 
         # Sort models: GPT-4 versions first, then GPT-3.5 Turbo, then Instruct, then others alphabetically.
-        sorted_models = sorted(list(models_to_return.values()), key=lambda x: (
+        # This sort order might need adjustment based on how model_type should influence sorting.
+        # For now, keeping a similar sort logic.
+        sorted_models_list = sorted(processed_models, key=lambda x: (
             not x['name'].startswith("GPT-4"),
             not x['name'].startswith("GPT-3.5 Turbo (Chat)"),
             not x['name'].startswith("GPT-3.5 Turbo Instruct"),
+            x['model_type'] != "chat", # Prioritize chat models
             x['name']
         ))
-        return sorted_models
+        return sorted_models_list
 
     async def close(self):
         """Close the AsyncOpenAI client if it was initialized."""

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import LLMSelector from '../LLMSelector'; // Adjust path as needed
+import { LLMModel } from '../../services/llmService'; // Added import
 import './LLMSelectionDialog.css'; // We'll create this CSS file later
 
 interface LLMSelectionDialogProps {
@@ -40,8 +41,8 @@ const LLMSelectionDialog: React.FC<LLMSelectionDialogProps> = ({
     onClose();
   };
 
-  const handleModelChangeInSelector = (modelId: string | null) => {
-    setSelectedModelInDialog(modelId);
+  const handleModelChangeInSelector = (model: LLMModel | null) => { // Changed parameter
+    setSelectedModelInDialog(model ? model.id : null); // Updated logic
   };
 
   return (

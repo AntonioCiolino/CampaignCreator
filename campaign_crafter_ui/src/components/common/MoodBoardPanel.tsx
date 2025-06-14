@@ -14,7 +14,6 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
-  verticalListSortingStrategy, // Though we are horizontal, this can be adapted or we might use a different strategy if needed. For basic setup, it's often included.
   // For horizontal lists, rectSortingStrategy or horizontalListSortingStrategy might be more semantically correct.
   // However, verticalListSortingStrategy works for wrapping lists too. Let's try rectSortingStrategy for potentially better wrapping behavior.
   rectSortingStrategy,

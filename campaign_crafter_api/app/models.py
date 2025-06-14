@@ -46,7 +46,9 @@ class CampaignFullContentResponse(BaseModel):
 class ModelInfo(BaseModel):
     id: str
     name: str
-    capabilities: List[str] = ["chat"] # Default changed to ["chat"]
+    model_type: str = "chat"  # Added model_type, defaulting to "chat"
+    supports_temperature: bool = True  # Added supports_temperature, defaulting to True
+    capabilities: List[str] = [] # Default changed to an empty list
     # Potentially add other fields like 'description' or 'type' in the future
 
 class ModelListResponse(BaseModel):

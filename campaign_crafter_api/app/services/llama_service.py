@@ -99,17 +99,38 @@ class LlamaLLMService(AbstractLLMService):
             f"Received section_type: {section_type}"
         )
 
-    async def list_available_models(self, _current_user: UserModel, _db: Session) -> List[Dict[str, str]]: # Added _current_user, _db
-        if not await self.is_available(_current_user=_current_user, _db=_db): # Pass args
+    async def list_available_models(self, _current_user: UserModel, _db: Session) -> List[Dict[str, any]]:
+        if not await self.is_available(_current_user=_current_user, _db=_db):
             print(f"Warning: {self.PROVIDER_NAME.title()} service not available. Cannot list models.")
             return []
         
         print(f"Warning: {self.PROVIDER_NAME.title()}LLMService.list_available_models is returning a placeholder list.")
-        return [
-            {"id": "llama-7b-chat", "name": f"{self.PROVIDER_NAME.title()} 7B Chat (Placeholder)", "capabilities": ["chat"]},
-            {"id": "llama-13b-chat", "name": f"{self.PROVIDER_NAME.title()} 13B Chat (Placeholder)", "capabilities": ["chat"]},
-            {"id": "codellama-34b-instruct", "name": f"Code{self.PROVIDER_NAME.title()} 34B Instruct (Placeholder)", "capabilities": ["completion", "chat-adaptable", "code"]},
+        # Assuming Llama models are generally chat-based and support temperature.
+        # This is a placeholder; a real implementation would fetch from an API or config.
+        placeholder_models = [
+            {
+                "id": "llama-7b-chat",
+                "name": f"{self.PROVIDER_NAME.title()} 7B Chat (Placeholder)",
+                "model_type": "chat",
+                "supports_temperature": True,
+                "capabilities": ["chat"]
+            },
+            {
+                "id": "llama-13b-chat",
+                "name": f"{self.PROVIDER_NAME.title()} 13B Chat (Placeholder)",
+                "model_type": "chat",
+                "supports_temperature": True,
+                "capabilities": ["chat"]
+            },
+            {
+                "id": "codellama-34b-instruct",
+                "name": f"Code{self.PROVIDER_NAME.title()} 34B Instruct (Placeholder)",
+                "model_type": "completion", # Or "chat" if it's conversational for code
+                "supports_temperature": True,
+                "capabilities": ["completion", "code"] # "chat-adaptable" could be added if true
+            },
         ]
+        return placeholder_models
 
     async def close(self):
         """Close any persistent connections if the SDK requires it."""

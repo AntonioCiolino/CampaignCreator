@@ -111,8 +111,8 @@ class LocalLLMService(AbstractLLMService):
             raise HTTPException(status_code=500, detail=error_detail)
 
 
-    async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, str]]: # Added _current_user, _db
-        if not await self.is_available(current_user=current_user, db=db): # Pass args
+    async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, Any]]:
+        if not await self.is_available(current_user=current_user, db=db):
             return []
 
         try:
@@ -120,18 +120,12 @@ class LocalLLMService(AbstractLLMService):
             response.raise_for_status()
             
             data = response.json()
-            models_list: List[Dict[str, str]] = []
-            
-            # OpenAI /v1/models returns data in a list under "data" key
-            # Each item has "id" (model name), "owned_by", "created" etc.
-            # Ollama's OpenAI-compatible /v1/models endpoint returns a list directly (or sometimes under 'models')
-            # and items have "name" (full model:tag), "model" (same), "digest", "size".
-            # We need to adapt to common patterns. The key is the model ID.
+            models_list: List[Dict[str, Any]] = []
             
             api_models_data = []
             if isinstance(data, dict) and "data" in data and isinstance(data["data"], list): # Standard OpenAI format
                 api_models_data = data["data"]
-            elif isinstance(data, list): # Some compatible servers (like older Ollama versions or custom ones)
+            elif isinstance(data, list): # Some compatible servers
                 api_models_data = data
             elif isinstance(data, dict) and "models" in data and isinstance(data["models"], list): # Ollama native /api/tags or some /v1/models proxies
                  api_models_data = data["models"]
@@ -140,14 +134,23 @@ class LocalLLMService(AbstractLLMService):
                 return []
 
             for model_obj in api_models_data:
-                model_id = model_obj.get("id") or model_obj.get("model") or model_obj.get("name") # Try common keys for ID
+                model_id = model_obj.get("id") or model_obj.get("model") or model_obj.get("name")
                 if model_id:
-                    # Use 'name' if available and different from id, otherwise use id as name
-                    friendly_name = model_obj.get("name", model_id) 
-                    if friendly_name == model_id and model_obj.get("id") and model_obj.get("id") != model_id: # if 'name' was actually the full ID
-                        friendly_name = model_obj.get("id")
+                    friendly_name = model_obj.get("name", model_id)
+                    # Default assumptions for local models
+                    model_type = "chat"
+                    supports_temperature = True
+                    capabilities = ["chat"]
 
-                    models_list.append({"id": model_id, "name": friendly_name, "capabilities": ["chat"]}) # Added capabilities
+                    # Example: if 'coder' in model_id.lower(): model_type = "completion"; capabilities.append("code")
+
+                    models_list.append({
+                        "id": model_id,
+                        "name": friendly_name,
+                        "model_type": model_type,
+                        "supports_temperature": supports_temperature,
+                        "capabilities": capabilities
+                    })
             
             return models_list
         except httpx.HTTPStatusError as e:
@@ -163,8 +166,7 @@ class LocalLLMService(AbstractLLMService):
     async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str: # Added current_user
         custom_prompt = self.feature_prompt_service.get_prompt("Campaign", db=db)
         final_prompt = custom_prompt.format(user_prompt=user_prompt) if custom_prompt else f"Generate a detailed RPG campaign concept: {user_prompt}"
-        return await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model) # Pass args
-        return await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model) # Pass args
+        return await self.generate_text(prompt=final_prompt, _current_user=current_user, _db=db, model=model)
 
     async def generate_titles(self, campaign_concept: str, db: Session, current_user: UserModel, count: int = 5, model: Optional[str] = None) -> list[str]: # Added current_user
         custom_prompt = self.feature_prompt_service.get_prompt("Campaign Names", db=db)
@@ -270,5 +272,4 @@ class LocalLLMService(AbstractLLMService):
             prompt_parts.append("Generate detailed and engaging content for this new section.")
             final_prompt_for_generation = "\n".join(prompt_parts)
             
-        return await self.generate_text(prompt=final_prompt_for_generation, current_user=current_user, db=db, model=model, temperature=0.7, max_tokens=4000) # Pass args
-        return await self.generate_text(prompt=final_prompt_for_generation, current_user=current_user, db=db, model=model, temperature=0.7, max_tokens=4000) # Pass args
+        return await self.generate_text(prompt=final_prompt_for_generation, _current_user=current_user, _db=db, model=model, temperature=0.7, max_tokens=4000)
