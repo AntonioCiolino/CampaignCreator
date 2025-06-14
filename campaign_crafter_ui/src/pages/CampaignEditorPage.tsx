@@ -1377,3 +1377,8 @@ export default CampaignEditorPage;
 // Changed type of campaign and sections state variables to use direct imports.
 // Added EditIcon import and "Edit Table of Contents" button with conditional rendering.
 // Conditionally render TOCEditor section and added "Done Editing TOC" button.
+    // Note: For the moodBoardDebounceTimer useEffect (around line 572 in original request, now ~line 600),
+    // adding moodBoardDebounceTimer to its own dependency array would cause an infinite loop.
+    // The current dependencies [editableMoodBoardUrls, campaignId, campaign, setCampaign] are correct
+    // for triggering the debounce logic. The timer ID itself is an implementation detail managed by the effect.
+    // No change will be made to that dependency array based on this understanding.

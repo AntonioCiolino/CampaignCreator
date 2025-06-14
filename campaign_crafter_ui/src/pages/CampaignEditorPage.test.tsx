@@ -604,5 +604,4 @@ describe('CampaignEditorPage - Mood Board Image Addition', () => {
     expect(screen.queryByTestId('mock-image-gen-modal')).not.toBeInTheDocument();
   });
 });
-
-[end of campaign_crafter_ui/src/pages/CampaignEditorPage.test.tsx]
+// [end of campaign_crafter_ui/src/pages/CampaignEditorPage.test.tsx]

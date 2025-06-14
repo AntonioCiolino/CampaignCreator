@@ -30,7 +30,6 @@ const LLMSelector: React.FC<LLMSelectorProps> = ({
         const models = await getAvailableLLMs();
         setLlmModels(models);
         if (models.length > 0) {
-          const initialModelExists = initialSelectedModelId && models.some(m => m.id === initialSelectedModelId);
           const initialModel = initialSelectedModelId ? models.find(m => m.id === initialSelectedModelId) : undefined;
           if (initialModel) {
             setCurrentSelectedModelId(initialModel.id);
