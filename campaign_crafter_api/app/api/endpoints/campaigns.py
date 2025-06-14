@@ -260,7 +260,7 @@ async def seed_sections_from_toc_endpoint(
     if not db_campaign.display_toc: # display_toc is List[Dict[str, str]] or None
         print(f"Campaign {campaign_id} display_toc is empty or None. Cannot seed sections.")
         async def empty_toc_generator():
-            yield json.dumps({"event_type": "complete", "message": "Display TOC is empty. No sections created."}) + "\n\n"
+            yield f"data: {json.dumps({'event_type': 'complete', 'message': 'Display TOC is empty. No sections created.'})}\n\n"
         return EventSourceResponse(empty_toc_generator())
 
     # Extract title and type from each TOC entry
@@ -274,7 +274,7 @@ async def seed_sections_from_toc_endpoint(
     if not parsed_toc_entries:
         print(f"No valid titles found in display_toc for campaign {campaign_id}. TOC content: {db_campaign.display_toc}. No sections will be created.")
         async def no_titles_generator():
-            yield json.dumps({"event_type": "complete", "message": "No valid titles found in TOC. No sections created."}) + "\n\n"
+            yield f"data: {json.dumps({'event_type': 'complete', 'message': 'No valid titles found in TOC. No sections created.'})}\n\n"
         return EventSourceResponse(no_titles_generator())
 
     print(f"Extracted {len(parsed_toc_entries)} TOC entries for campaign {campaign_id}: {parsed_toc_entries}")
@@ -301,8 +301,22 @@ async def seed_sections_from_toc_endpoint(
     async def event_generator():
         total_sections = len(parsed_toc_entries) # Use parsed_toc_entries
         if total_sections == 0:
-            yield json.dumps({"event_type": "complete", "message": "No sections to process."}) + "\n\n"
+            # Ensure SSE format is correct with "data:" prefix and double newline
+            yield f"data: {json.dumps({'event_type': 'complete', 'message': 'No sections to process.'})}\n\n"
             return
+
+        # Check for LLM service issues before starting the loop if auto-population is requested
+        if auto_populate and llm_service_instance is None:
+            error_payload = {
+                "event_type": "error",
+                "message": "Auto-population failed: No LLM provider is configured or available. Please check your API key settings or local LLM setup in the application configuration. Sections will be created with placeholder content."
+            }
+            try:
+                yield f"data: {json.dumps(error_payload)}\n\n"
+                await asyncio.sleep(0.01) # Ensure event is sent
+            except Exception as e_yield_error:
+                print(f"Error yielding initial auto-population error event: {type(e_yield_error).__name__} - {e_yield_error}")
+                # If we can't even yield this error, not much else to do for SSE for this request
 
         for order, toc_item in enumerate(parsed_toc_entries): # Iterate over toc_item
             title = toc_item["title"]
@@ -359,8 +373,26 @@ async def seed_sections_from_toc_endpoint(
                         print(f"LLM content generated for '{title}' (excerpt): {section_content_for_crud[:50]}...")
                     else:
                         print(f"LLM generated empty content for section '{title}'. Using placeholder.")
+                        error_payload = {
+                            "event_type": "error",
+                            "message": f"Auto-population for section '{title}' failed: LLM returned empty content. Check configuration. Using placeholder content."
+                        }
+                        try:
+                            yield f"data: {json.dumps(error_payload)}\n\n"
+                            await asyncio.sleep(0.01)
+                        except Exception as e_yield_error:
+                            print(f"Error yielding empty content error event for '{title}': {type(e_yield_error).__name__} - {e_yield_error}")
                 except Exception as e_llm:
                     print(f"LLM generation failed for section '{title}': {type(e_llm).__name__} - {e_llm}. Using placeholder.")
+                    error_payload = {
+                        "event_type": "error",
+                        "message": f"Auto-population for section '{title}' failed: {type(e_llm).__name__} - {e_llm}. Check LLM provider configuration. Using placeholder content."
+                    }
+                    try:
+                        yield f"data: {json.dumps(error_payload)}\n\n"
+                        await asyncio.sleep(0.01)
+                    except Exception as e_yield_error:
+                        print(f"Error yielding LLM exception error event for '{title}': {type(e_yield_error).__name__} - {e_yield_error}")
 
             # Create section in DB, passing the original type from TOC
             created_section_orm = crud.create_section_with_placeholder_content(
