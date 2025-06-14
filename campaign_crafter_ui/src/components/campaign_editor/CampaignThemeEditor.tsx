@@ -1,5 +1,6 @@
 // Example structure for CampaignThemeEditor.tsx
 import React from 'react';
+import { applyThemeToDocument } from '../../utils/themeUtils';
 // Assuming Campaign type includes theme fields, if not, CampaignThemeData will be primary
 // import { Campaign } from '../../services/campaignService';
 import './CampaignThemeEditor.css'; // Create this CSS file
@@ -44,17 +45,21 @@ const CampaignThemeEditor: React.FC<CampaignThemeEditorProps> = ({
     }
 
 
-    onThemeDataChange({
+    const newThemeData = {
       ...themeData,
       [name]: processedValue,
-    });
+    };
+    onThemeDataChange(newThemeData);
+    applyThemeToDocument(newThemeData);
   };
 
   const handleColorChange = (name: keyof CampaignThemeData, value: string) => {
     // For color inputs, if a user picks black, it's a valid color.
     // If we want a "clear" behavior, it needs a separate button or a specific "null" color.
     // For now, any chosen color is set.
-    onThemeDataChange({ ...themeData, [name]: value });
+    const newThemeData = { ...themeData, [name]: value };
+    onThemeDataChange(newThemeData);
+    applyThemeToDocument(newThemeData);
   };
 
   const defaultColor = (colorValue: string | null | undefined, fallback: string = "#ffffff"): string => {
@@ -67,14 +72,16 @@ const CampaignThemeEditor: React.FC<CampaignThemeEditorProps> = ({
 
   const handleUseThematicImageAsBackground = () => {
     if (currentThematicImageUrl) {
-      onThemeDataChange({
+      const newThemeData = {
         ...themeData,
         theme_background_image_url: currentThematicImageUrl,
         // Optionally set a default opacity if desired, e.g.:
         // theme_background_image_opacity: themeData.theme_background_image_opacity === null || themeData.theme_background_image_opacity === undefined
         //                                ? 0.7
         //                                : themeData.theme_background_image_opacity,
-      });
+      };
+      onThemeDataChange(newThemeData);
+      applyThemeToDocument(newThemeData);
     }
   };
 

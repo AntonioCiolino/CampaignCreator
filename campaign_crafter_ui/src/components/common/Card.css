@@ -1,8 +1,8 @@
 /* src/components/common/Card.css */
 
 .card-component {
-  background-color: var(--surface-color, #ffffff);
-  border: 1px solid var(--border-color, #dee2e6);
+  background-color: var(--campaign-card-background-color, var(--campaign-background-color, var(--campaign-background-color-default)));
+  border: 1px solid var(--campaign-border-color, var(--campaign-border-color-default));
   border-radius: var(--border-radius, 0.3rem);
   box-shadow: var(--box-shadow, 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075));
   padding: 1.25rem; /* Default padding, can be overridden by specific card content needs */
@@ -24,7 +24,7 @@
 .card-header {
   padding-bottom: 0.75rem;
   margin-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border-color, #dee2e6);
+  border-bottom: 1px solid var(--campaign-border-color, var(--campaign-border-color-default));
   /* font-size: 1.25rem; /* Example size */
   /* font-weight: 500; */
 }
@@ -45,7 +45,7 @@
 .card-footer {
   padding-top: 0.75rem;
   margin-top: 0.75rem;
-  border-top: 1px solid var(--border-color, #dee2e6);
+  border-top: 1px solid var(--campaign-border-color, var(--campaign-border-color-default));
   /* font-size: 0.9rem; */
   /* color: var(--text-color-muted, #6c757d); */
 }
