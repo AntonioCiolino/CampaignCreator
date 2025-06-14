@@ -198,7 +198,7 @@ const CampaignThemeEditor: React.FC<CampaignThemeEditorProps> = ({
         </div>
 
         <div className="form-actions">
-          <button type="submit" className="action-button" disabled={isSaving}>
+          <button type="submit" className="btn btn-primary action-button" disabled={isSaving}>
             {isSaving ? 'Saving Theme...' : 'Save Theme Settings'}
           </button>
         </div>
