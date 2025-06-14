@@ -1,13 +1,14 @@
 import pytest
 import base64 # Added for data URL construction
 from unittest.mock import patch, MagicMock, AsyncMock
+import uuid # Added for UUID assertion
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.services.image_generation_service import ImageGenerationService
 from app.core.config import settings
-from app.orm_models import GeneratedImage # Ensure this is imported if used directly in tests
+from app.orm_models import GeneratedImage, User # User might not be needed directly if only user_id is used
 
 # Mock settings before importing the service, if service uses settings at import time
 # For this service, settings are accessed within methods or __init__, so direct patching is fine.
@@ -336,3 +337,104 @@ class TestImageGenerationServiceDeletion:
         assert exc_info.value.status_code == 500
         assert "Azure Storage configuration error (connection string)" in exc_info.value.detail
         mock_from_conn_string.assert_called_once()
+
+
+# --- Tests for _save_image_and_log_db user-specific path ---
+class TestSaveImageAndLogDbUserSpecificPath:
+    def setup_method(self):
+        self.original_conn_string = settings.AZURE_STORAGE_CONNECTION_STRING
+        self.original_account_name = settings.AZURE_STORAGE_ACCOUNT_NAME
+        self.original_container_name = settings.AZURE_STORAGE_CONTAINER_NAME
+
+        settings.AZURE_STORAGE_CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=testaccount;AccountKey=testkey;EndpointSuffix=core.windows.net"
+        settings.AZURE_STORAGE_ACCOUNT_NAME = None # Explicitly None for this test case
+        settings.AZURE_STORAGE_CONTAINER_NAME = "testcontainer"
+
+        self.image_service = ImageGenerationService()
+        self.mock_db_session = MagicMock(spec=Session)
+
+    def teardown_method(self):
+        settings.AZURE_STORAGE_CONNECTION_STRING = self.original_conn_string
+        settings.AZURE_STORAGE_ACCOUNT_NAME = self.original_account_name
+        settings.AZURE_STORAGE_CONTAINER_NAME = self.original_container_name
+
+    @pytest.mark.asyncio
+    @patch('app.services.image_generation_service.DefaultAzureCredential') # Patch DefaultAzureCredential
+    @patch('app.services.image_generation_service.BlobServiceClient') # Patch BlobServiceClient
+    async def test_save_image_and_log_db_uses_user_specific_path(self, mock_blob_service_client_constructor, mock_default_azure_credential):
+        test_user_id = 123
+        prompt = "test prompt for user path"
+        model_used = "dall-e-test"
+        size_used = "512x512"
+        image_bytes = b"fakeimagedata"
+
+        # Configure mocks
+        mock_bsc_instance = MagicMock()
+        mock_blob_service_client_constructor.from_connection_string.return_value = mock_bsc_instance
+
+        mock_blob_client_instance = MagicMock()
+        mock_bsc_instance.get_blob_client.return_value = mock_blob_client_instance
+        mock_blob_client_instance.upload_blob = MagicMock()
+
+        # Call the method
+        returned_url = await self.image_service._save_image_and_log_db(
+            prompt=prompt,
+            model_used=model_used,
+            size_used=size_used,
+            db=self.mock_db_session,
+            image_bytes=image_bytes,
+            user_id=test_user_id,
+            original_filename_from_api="original.png" # Provide a default to ensure .png extension
+        )
+
+        # Assert BlobServiceClient was called with connection string
+        mock_blob_service_client_constructor.from_connection_string.assert_called_once_with(settings.AZURE_STORAGE_CONNECTION_STRING)
+
+        # Assert get_blob_client call
+        mock_bsc_instance.get_blob_client.assert_called_once()
+        call_args = mock_bsc_instance.get_blob_client.call_args
+        assert call_args[1]['container'] == "testcontainer"
+
+        # Assert blob name format
+        blob_name_arg = call_args[1]['blob']
+        assert blob_name_arg.startswith(f"user_{test_user_id}/")
+        assert blob_name_arg.endswith(".png")
+
+        # Assert UUID part of blob name
+        filename_part = blob_name_arg.split(f"user_{test_user_id}/")[1].split(".png")[0]
+        try:
+            uuid.UUID(filename_part, version=4)
+        except ValueError:
+            pytest.fail(f"Filename part '{filename_part}' is not a valid UUID hex.")
+
+        # Assert upload_blob call
+        mock_blob_client_instance.upload_blob.assert_called_once()
+        # Check that the stream passed to upload_blob contains the image_bytes
+        upload_args, upload_kwargs = mock_blob_client_instance.upload_blob.call_args
+        uploaded_stream_content = upload_args[0].read()
+        assert uploaded_stream_content == image_bytes
+
+
+        # Assert returned URL
+        # The URL construction logic in the service is:
+        # f"{final_account_url_base}/{settings.AZURE_STORAGE_CONTAINER_NAME.strip('/')}/{blob_name}"
+        # final_account_url_base is derived from conn string if AZURE_STORAGE_ACCOUNT_NAME is None
+        # For "DefaultEndpointsProtocol=https;AccountName=testaccount;..." it becomes "https://testaccount.blob.core.windows.net"
+        expected_account_url_base = "https://testaccount.blob.core.windows.net" # From dummy conn string
+        expected_url = f"{expected_account_url_base}/{settings.AZURE_STORAGE_CONTAINER_NAME}/{blob_name_arg}"
+        assert returned_url == expected_url
+
+        # Assert database interaction
+        self.mock_db_session.add.assert_called_once()
+        added_image_instance = self.mock_db_session.add.call_args[0][0]
+        assert isinstance(added_image_instance, GeneratedImage)
+        assert added_image_instance.user_id == test_user_id
+        assert added_image_instance.filename == blob_name_arg
+        assert added_image_instance.image_url == expected_url
+        assert added_image_instance.prompt == prompt
+
+        self.mock_db_session.commit.assert_called_once()
+        self.mock_db_session.refresh.assert_called_once_with(added_image_instance)
+
+        # Ensure DefaultAzureCredential was NOT called because connection string was used
+        mock_default_azure_credential.assert_not_called()
