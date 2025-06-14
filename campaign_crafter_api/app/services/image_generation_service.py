@@ -158,7 +158,7 @@ class ImageGenerationService:
         if not file_extension.startswith(".") or len(file_extension) > 5: # Sanitize
             file_extension = ".png"
 
-        blob_name = f"user_{user_id}/{uuid.uuid4().hex}{file_extension}"
+        blob_name = f"user_uploads/{user_id}/{uuid.uuid4().hex}{file_extension}"
         actual_image_bytes = None
         content_type = 'application/octet-stream' # Default
 

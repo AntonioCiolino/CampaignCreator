@@ -397,11 +397,11 @@ class TestSaveImageAndLogDbUserSpecificPath:
 
         # Assert blob name format
         blob_name_arg = call_args[1]['blob']
-        assert blob_name_arg.startswith(f"user_{test_user_id}/")
+        assert blob_name_arg.startswith(f"user_uploads/{test_user_id}/")
         assert blob_name_arg.endswith(".png")
 
         # Assert UUID part of blob name
-        filename_part = blob_name_arg.split(f"user_{test_user_id}/")[1].split(".png")[0]
+        filename_part = blob_name_arg.split(f"user_uploads/{test_user_id}/")[1].split(".png")[0]
         try:
             uuid.UUID(filename_part, version=4)
         except ValueError:
