@@ -129,6 +129,7 @@
   font-size: 0.9rem;
 }
 
+/*
 .campaign-section-view .edit-button {
   background-color: var(--info-color); 
   border-color: var(--info-color);
@@ -138,6 +139,7 @@
   background-color: #138496; /* Darker info */
   border-color: #138496;
 }
+*/
 
 .campaign-section-view .save-button {
   background-color: var(--success-color); 

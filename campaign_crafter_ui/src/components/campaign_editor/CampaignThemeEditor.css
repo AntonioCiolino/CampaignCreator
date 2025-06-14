@@ -79,19 +79,30 @@
 .campaign-theme-editor .utility-button {
   padding: 8px 12px;
   font-size: 0.9em;
-  background-color: #e9ecef; /* Light grey, adjust as needed */
+  /* Previous hardcoded styles commented out or removed:
+  background-color: #e9ecef;
   color: #343a40;
-  border: 1px solid #ced4da;
+  border: 1px solid #ced4da; */
+
+  /* New styles using theme variables for an outline effect */
+  background-color: transparent;
+  color: var(--campaign-secondary-color, var(--campaign-secondary-color-default));
+  border: 1px solid var(--campaign-secondary-color, var(--campaign-secondary-color-default));
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.2s ease-in-out;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
 }
 
 .campaign-theme-editor .utility-button:hover:not(:disabled) {
-  background-color: #dee2e6;
+  /* background-color: #dee2e6; */ /* Old hover */
+  background-color: var(--campaign-secondary-color, var(--campaign-secondary-color-default));
+  color: var(--campaign-text-color-on-secondary, var(--campaign-text-color-on-secondary-default));
 }
 
 .campaign-theme-editor .utility-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  /* Ensure background and color don't change on hover for disabled state */
+  background-color: transparent;
+  color: var(--campaign-secondary-color, var(--campaign-secondary-color-default));
 }

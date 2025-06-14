@@ -1,11 +1,11 @@
 .tabs-container {
   width: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--campaign-font-family, var(--campaign-font-family-default));
 }
 
 .tab-list {
   display: flex;
-  border-bottom: 2px solid #dee2e6; /* Slightly thicker border */
+  border-bottom: 2px solid var(--campaign-border-color, var(--campaign-border-color-default)); /* Slightly thicker border */
   padding-left: 0;
   margin-top: 0; /* Ensure no extra space above */
   margin-bottom: -2px; /* Overlap with tab-content border slightly for connected look */
@@ -26,16 +26,18 @@
 }
 
 .tab-list-item.active {
-  background-color: #ffffff; /* White background for active tab */
-  border-color: #dee2e6 #dee2e6 #ffffff; /* Match bottom border with content bg */
-  color: #007bff; /* Primary color for active tab text */
+  background-color: var(--campaign-background-color, var(--campaign-background-color-default)); /* White background for active tab */
+  border-color: var(--campaign-border-color, var(--campaign-border-color-default)) var(--campaign-border-color, var(--campaign-border-color-default)) var(--campaign-background-color, var(--campaign-background-color-default)); /* Match bottom border with content bg */
+  color: var(--campaign-primary-color, var(--campaign-primary-color-default)); /* Primary color for active tab text */
   font-weight: 600; /* Slightly bolder */
 }
 
 .tab-list-item:hover:not(.active) {
-  background-color: #e9ecef; /* Slightly darker hover for non-active */
-  border-color: #dee2e6 #dee2e6 transparent; /* Show top/side borders on hover */
-  color: #0056b3;
+  background-color: var(--campaign-background-color, var(--campaign-background-color-default)); /* Slightly darker hover for non-active */
+  filter: brightness(95%);
+  border-color: var(--campaign-border-color, var(--campaign-border-color-default)) var(--campaign-border-color, var(--campaign-border-color-default)) transparent; /* Show top/side borders on hover */
+  color: var(--campaign-primary-color, var(--campaign-primary-color-default));
+  /* To make hover color slightly different from active, could use filter: brightness(90%) on primary color if needed */
 }
 
 .tab-list-item.tab-disabled {
@@ -53,9 +55,9 @@
 
 .tab-content {
   padding: 1.5rem; /* Increased padding for content area */
-  border: 2px solid #dee2e6;
+  border: 2px solid var(--campaign-border-color, var(--campaign-border-color-default));
   border-top: none; /* Top border is handled by active tab */
-  background-color: #ffffff;
+  background-color: var(--campaign-background-color, var(--campaign-background-color-default));
   border-radius: 0 0 6px 6px; /* Match tab radius */
   line-height: 1.6; /* Improved readability for content */
 }

@@ -12,6 +12,10 @@ body {
   --campaign-background-image-opacity-default: 1;
   /* Default for text on primary background */
   --campaign-text-color-on-primary-default: #ffffff;
+  /* Default for text on secondary background */
+  --campaign-text-color-on-secondary-default: #ffffff;
+  /* Default for border colors if not otherwise specified by theme */
+  --campaign-border-color-default: #dee2e6;
 
   margin: 0;
   font-family: var(--campaign-font-family, var(--campaign-font-family-default));

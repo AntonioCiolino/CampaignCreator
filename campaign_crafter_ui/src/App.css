@@ -30,11 +30,11 @@
 /* Basic Reset or Global Styles */
 body {
   margin: 0;
-  font-family: var(--font-family-sans-serif);
+  /* font-family is now handled by index.css to prioritize campaign theme */
   font-size: var(--base-font-size);
   line-height: var(--line-height-base);
   color: var(--text-color);
-  background-color: var(--background-color);
+  /* background-color is now handled by index.css to prioritize campaign theme */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

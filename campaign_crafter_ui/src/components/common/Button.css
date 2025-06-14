@@ -26,29 +26,35 @@
 
 /* Variant Styles */
 .btn-primary {
-  color: #fff;
-  background-color: var(--primary-color, #007bff);
-  border-color: var(--primary-color, #007bff);
+  color: var(--campaign-text-color-on-primary, var(--campaign-text-color-on-primary-default));
+  background-color: var(--campaign-primary-color, var(--campaign-primary-color-default));
+  border-color: var(--campaign-primary-color, var(--campaign-primary-color-default));
 }
 .btn-primary:hover {
-  background-color: var(--primary-color-dark, #0056b3);
-  border-color: var(--primary-color-dark, #0056b3);
+  /* Assuming a simple opacity change or the theme will define a hover state.
+     For now, let's make it slightly darker if possible or rely on theme to provide this.
+     A common approach is to use filter: brightness(90%); or a pre-defined dark variable.
+     Let's use brightness for now as a placeholder if a dark var is not defined. */
+  background-color: var(--campaign-primary-color-dark, var(--campaign-primary-color, var(--campaign-primary-color-default)));
+  border-color: var(--campaign-primary-color-dark, var(--campaign-primary-color, var(--campaign-primary-color-default)));
+  filter: brightness(90%); /* Add this for a generic hover effect if dark var isn't specific enough */
 }
 .btn-primary:focus, .btn-primary.focus { /* Added .focus for programmatic focus */
-  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.5); /* Use primary color for focus shadow */
+  box-shadow: 0 0 0 0.2rem var(--campaign-primary-color-focus, rgba(0, 123, 255, 0.5)); /* Use campaign primary color for focus shadow, with fallback */
 }
 
 .btn-secondary {
-  color: #fff;
-  background-color: var(--secondary-color, #6c757d);
-  border-color: var(--secondary-color, #6c757d);
+  color: var(--campaign-text-color-on-secondary, var(--campaign-text-color-on-secondary-default));
+  background-color: var(--campaign-secondary-color, var(--campaign-secondary-color-default));
+  border-color: var(--campaign-secondary-color, var(--campaign-secondary-color-default));
 }
 .btn-secondary:hover {
-  background-color: var(--secondary-color-dark, #545b62);
-  border-color: var(--secondary-color-dark, #545b62);
+  background-color: var(--campaign-secondary-color-dark, var(--campaign-secondary-color, var(--campaign-secondary-color-default)));
+  border-color: var(--campaign-secondary-color-dark, var(--campaign-secondary-color, var(--campaign-secondary-color-default)));
+  filter: brightness(90%); /* Add this for a generic hover effect */
 }
 .btn-secondary:focus, .btn-secondary.focus {
-  box-shadow: 0 0 0 0.2rem rgba(108, 117, 125, 0.5); /* Use secondary color for focus shadow */
+  box-shadow: 0 0 0 0.2rem var(--campaign-secondary-color-focus, rgba(108, 117, 125, 0.5)); /* Use campaign secondary color for focus shadow, with fallback */
 }
 
 .btn-success {
@@ -93,13 +99,14 @@
 
 .btn-link {
   font-weight: 400;
-  color: var(--primary-color, #007bff);
+  color: var(--campaign-primary-color, var(--campaign-primary-color-default));
   text-decoration: underline;
   background-color: transparent;
   border-color: transparent;
 }
 .btn-link:hover {
-  color: var(--primary-color-dark, #0056b3);
+  color: var(--campaign-primary-color-dark, var(--campaign-primary-color, var(--campaign-primary-color-default)));
+  filter: brightness(90%); /* Consistent hover effect */
   text-decoration: underline;
 }
 .btn-link:disabled, .btn-link.disabled {
@@ -110,14 +117,14 @@
 
 /* Outline Variants (Example for Primary) */
 .btn-outline-primary {
-  color: var(--primary-color, #007bff);
+  color: var(--campaign-primary-color, var(--campaign-primary-color-default));
   background-color: transparent;
-  border-color: var(--primary-color, #007bff);
+  border-color: var(--campaign-primary-color, var(--campaign-primary-color-default));
 }
 .btn-outline-primary:hover {
-  color: #fff;
-  background-color: var(--primary-color, #007bff);
-  border-color: var(--primary-color, #007bff);
+  color: var(--campaign-text-color-on-primary, var(--campaign-text-color-on-primary-default));
+  background-color: var(--campaign-primary-color, var(--campaign-primary-color-default));
+  border-color: var(--campaign-primary-color, var(--campaign-primary-color-default));
 }
 /* Add other outline variants as needed (e.g., .btn-outline-secondary) */
 
