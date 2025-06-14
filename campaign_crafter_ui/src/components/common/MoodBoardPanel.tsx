@@ -224,7 +224,7 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = (props) => {
         setIsDragEndEventProcessing(true);
         setTimeout(() => {
           setIsDragEndEventProcessing(false);
-        }, 100);
+        }, 250);
       }
     }
   }
