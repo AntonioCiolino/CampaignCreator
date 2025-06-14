@@ -61,6 +61,7 @@ const CampaignEditorPage: React.FC = () => {
   const [addSectionSuccess, setAddSectionSuccess] = useState<string | null>(null);
 
   const [availableLLMs, setAvailableLLMs] = useState<LLMModel[]>([]);
+  const [isLLMsLoading, setIsLLMsLoading] = useState<boolean>(true); // Added state
   const [selectedLLMId, setSelectedLLMId] = useState<string>('');
   const [temperature, setTemperature] = useState<number>(0.7);
 
@@ -355,14 +356,20 @@ const CampaignEditorPage: React.FC = () => {
       return;
     }
     const fetchInitialData = async () => {
-      setIsLoading(true);
+      setIsLoading(true); // For overall page loading
       setError(null);
+
+      // Specifically manage LLM loading state
+      setIsLLMsLoading(true);
+
       try {
+        // Fetch all data concurrently
         const [campaignDetails, campaignSectionsResponse, fetchedLLMs] = await Promise.all([
           campaignService.getCampaignById(campaignId),
           campaignService.getCampaignSections(campaignId),
-          getAvailableLLMs(),
+          getAvailableLLMs().finally(() => setIsLLMsLoading(false)) // Set loading false when getAvailableLLMs finishes
         ]);
+
         setCampaign(campaignDetails);
         setEditableDisplayTOC(campaignDetails.display_toc || []);
         if (Array.isArray(campaignSectionsResponse)) {
@@ -379,7 +386,7 @@ const CampaignEditorPage: React.FC = () => {
         } else {
             setTemperature(0.7);
         }
-        setAvailableLLMs(fetchedLLMs);
+        setAvailableLLMs(fetchedLLMs); // Set LLMs after fetch
         let newSelectedLLMIdToSave: string | null = null;
         if (campaignDetails.selected_llm_id) {
             setSelectedLLMId(campaignDetails.selected_llm_id);
@@ -464,8 +471,9 @@ const CampaignEditorPage: React.FC = () => {
       } catch (err) {
         console.error('Failed to fetch initial campaign or LLM data:', err);
         setError('Failed to load initial data. Please try again later.');
+        setIsLLMsLoading(false); // Ensure LLM loading is false on error too
       } finally {
-        setIsLoading(false);
+        setIsLoading(false); // Overall page loading finishes
       }
     };
     fetchInitialData();
@@ -1235,13 +1243,23 @@ const CampaignEditorPage: React.FC = () => {
           setTemperature={setTemperature}
           availableLLMs={availableLLMs.map(m => ({...m, name: m.name || m.id})) as LLM[]}
         />
+      ) : isLLMsLoading ? (
+        <div className="editor-section" style={{ textAlign: 'center', padding: '20px' }}>
+          <LoadingSpinner />
+          <p>Loading LLM models...</p>
+        </div>
       ) : (
         <div className="editor-section">
-          <p>Loading LLM settings or no LLMs available...</p>
-          {!selectedLLMId && availableLLMs.length > 0 && (
-            <Button onClick={() => setIsLLMDialogOpen(true)} className="action-button" icon={<SettingsSuggestIcon />} tooltip="Select the primary Language Model for campaign generation tasks">
-              Select Initial LLM Model
-            </Button>
+          {availableLLMs.length === 0 && (
+            <p>No LLM models available. Please check LLM provider configurations.</p>
+          )}
+          {!selectedLLMObject && availableLLMs.length > 0 && (
+            <>
+              <p>No LLM model currently selected for the campaign.</p>
+              <Button onClick={() => setIsLLMDialogOpen(true)} className="action-button" icon={<SettingsSuggestIcon />} tooltip="Select the primary Language Model for campaign generation tasks">
+                Select LLM Model
+              </Button>
+            </>
           )}
         </div>
       )}
