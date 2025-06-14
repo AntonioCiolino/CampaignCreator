@@ -2,6 +2,8 @@
 export interface LLMModel {
   id: string; // Prefixed ID, e.g., "openai/gpt-3.5-turbo"
   name: string; // User-friendly name, e.g., "OpenAI GPT-3.5 Turbo"
+  model_type: string; // Added model_type field
+  supports_temperature: boolean; // Added supports_temperature field
   capabilities?: string[]; // Added optional capabilities field
 }
 

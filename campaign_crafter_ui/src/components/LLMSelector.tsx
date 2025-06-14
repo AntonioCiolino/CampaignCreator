@@ -3,8 +3,8 @@ import { getAvailableLLMs, LLMModel } from '../services/llmService';
 import './LLMSelector.css'; // Import the CSS file
 
 interface LLMSelectorProps {
-  onModelChange: (selectedModelId: string | null) => void;
-  initialSelectedModelId?: string | null;
+  onModelChange: (selectedModel: LLMModel | null) => void;
+  initialSelectedModelId?: string | null; // Keep initialSelectedModelId as string for prop compatibility
   label?: string;
   className?: string; // For the wrapper div
   selectClassName?: string; // For the select element itself
@@ -31,19 +31,25 @@ const LLMSelector: React.FC<LLMSelectorProps> = ({
         setLlmModels(models);
         if (models.length > 0) {
           const initialModelExists = initialSelectedModelId && models.some(m => m.id === initialSelectedModelId);
-          if (initialModelExists) {
-            setCurrentSelectedModelId(initialSelectedModelId);
-            // onModelChange(initialSelectedModelId); // Avoid calling on initial prop set
+          const initialModel = initialSelectedModelId ? models.find(m => m.id === initialSelectedModelId) : undefined;
+          if (initialModel) {
+            setCurrentSelectedModelId(initialModel.id);
+            // onModelChange(initialModel); // Avoid calling on initial prop set, parent should handle initial state
           } else if (!initialSelectedModelId && models.length > 0) {
+            // Default to first model if no initial ID is provided and models exist
             setCurrentSelectedModelId(models[0].id);
-            onModelChange(models[0].id); 
+            onModelChange(models[0]);
+          } else if (initialSelectedModelId === null) { // Explicitly null initial ID
+            setCurrentSelectedModelId(null);
+            // onModelChange(null);
           } else {
-            setCurrentSelectedModelId(initialSelectedModelId); // Respect null or non-existent initial ID
-            // onModelChange(initialSelectedModelId);
+            // initialSelectedModelId provided but not found, or models array is empty
+            setCurrentSelectedModelId(initialSelectedModelId); // Keep it as is, or null if models empty
+             // onModelChange(null); // Or pass initialModel if found
           }
-        } else {
+        } else { // No models fetched
           setCurrentSelectedModelId(null);
-          // onModelChange(null); // If no models, effectively no selection
+          onModelChange(null);
         }
       } catch (err) {
         console.error("Failed to fetch LLM models:", err);
@@ -70,19 +76,32 @@ const LLMSelector: React.FC<LLMSelectorProps> = ({
         } else if (initialSelectedModelId === null) { // Explicitly set to null
             setCurrentSelectedModelId(null);
         }
-        // Not calling onModelChange here to prevent potential loops if parent isn't careful
-    } else if (initialSelectedModelId === null && llmModels.length > 0) {
-        // If initial prop becomes null, reflect that
+        // Not calling onModelChange here to prevent potential loops if parent isn't careful,
+        // and to respect the initialSelectedModelId prop primarily for setting the select's display.
+        // The parent component is responsible for deriving state from initialSelectedModelId if needed.
+    } else if (initialSelectedModelId === null && llmModels.length > 0) { // If prop explicitly becomes null
         setCurrentSelectedModelId(null);
+        // onModelChange(null); // Parent should manage this change if needed
     }
-  }, [initialSelectedModelId, llmModels]);
+  }, [initialSelectedModelId, llmModels]); // Removed onModelChange from deps
 
 
   const handleSelectionChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const newSelectedModelId = event.target.value;
-    const finalModelId = newSelectedModelId === "" || newSelectedModelId === "none" ? null : newSelectedModelId;
-    setCurrentSelectedModelId(finalModelId);
-    onModelChange(finalModelId);
+    if (newSelectedModelId === "" || newSelectedModelId === "none") {
+      setCurrentSelectedModelId(null);
+      onModelChange(null);
+    } else {
+      const selectedModelObject = llmModels.find(model => model.id === newSelectedModelId);
+      if (selectedModelObject) {
+        setCurrentSelectedModelId(selectedModelObject.id);
+        onModelChange(selectedModelObject);
+      } else {
+        // Should not happen if llmModels is correctly populated
+        setCurrentSelectedModelId(null);
+        onModelChange(null);
+      }
+    }
   };
 
   const wrapperClasses = ['llm-selector-wrapper', className].filter(Boolean).join(' ');
@@ -114,7 +133,7 @@ const LLMSelector: React.FC<LLMSelectorProps> = ({
         <option value="none" disabled={currentSelectedModelId !== null}>-- Select a Model (Optional) --</option>
         {llmModels.map((model) => (
           <option key={model.id} value={model.id}>
-            {model.name} ({model.id})
+            {model.name} ({model.model_type}) - {model.id}
           </option>
         ))}
       </select>

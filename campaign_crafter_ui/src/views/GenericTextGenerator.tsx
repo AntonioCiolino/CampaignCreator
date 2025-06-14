@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'; // Added useEffect
 import LLMSelector from '../components/LLMSelector';
-import { 
-    generateTextLLM, LLMTextGenerationParams, 
-    generateImage, ImageGenerationRequest, ImageGenerationResponse 
+import {
+    generateTextLLM, LLMTextGenerationParams, LLMModel, // Added LLMModel
+    generateImage, ImageGenerationRequest, ImageGenerationResponse
 } from '../services/llmService';
 import { getFeatures } from '../services/featureService'; // Updated import
 import { Feature } from '../types/featureTypes'; // Updated import
@@ -16,7 +16,8 @@ import './GenericTextGenerator.css';
 const GenericTextGenerator: React.FC = () => {
   // State for Text Generation
   const [textPrompt, setTextPrompt] = useState<string>('');
-  const [selectedLLMModelId, setSelectedLLMModelId] = useState<string | null>(null);
+  const [selectedLLMModel, setSelectedLLMModel] = useState<LLMModel | null>(null); // Updated state
+  const [temperature, setTemperature] = useState<number>(0.7); // Added temperature state
   const [generatedText, setGeneratedText] = useState<string | null>(null);
   const [textIsLoading, setTextIsLoading] = useState<boolean>(false);
   const [textError, setTextError] = useState<string | null>(null); // Existing text error
@@ -56,8 +57,8 @@ const GenericTextGenerator: React.FC = () => {
     loadFeatures();
   }, []);
 
-  const handleLLMModelChange = (modelId: string | null) => {
-    setSelectedLLMModelId(modelId);
+  const handleLLMModelChange = (model: LLMModel | null) => { // Updated signature
+    setSelectedLLMModel(model); // Updated state setter
     setGeneratedText(null); // Clear previous results
     setTextModelUsed(null);
     setTextError(null); // Clear text generation errors
@@ -111,9 +112,12 @@ const GenericTextGenerator: React.FC = () => {
 
     try {
       const params: LLMTextGenerationParams = {
-        prompt: finalPrompt, // Use the finalPrompt
-        model_id_with_prefix: selectedLLMModelId,
+        prompt: finalPrompt,
+        model_id_with_prefix: selectedLLMModel ? selectedLLMModel.id : null,
       };
+      if (selectedLLMModel && selectedLLMModel.supports_temperature) {
+        params.temperature = temperature;
+      }
       const result = await generateTextLLM(params);
       setGeneratedText(result.text);
       setTextModelUsed(result.model_used || null);
@@ -192,7 +196,38 @@ const GenericTextGenerator: React.FC = () => {
         <LLMSelector 
           onModelChange={handleLLMModelChange} 
           label="Choose LLM Model for Text (optional):"
+          // Pass initialSelectedModelId if you want to control it from this component's state,
+          // e.g., initialSelectedModelId={selectedLLMModel?.id}
+          // However, LLMSelector manages its own initial selection if not directly controlled post-mount.
         />
+
+        {selectedLLMModel && (
+          <div className="gt-model-info form-group">
+            <p><strong>Model Type:</strong> {selectedLLMModel.model_type}</p>
+            <p>
+              {selectedLLMModel.supports_temperature
+                ? "Supports temperature adjustment."
+                : "Temperature not adjustable for this model."}
+            </p>
+            {selectedLLMModel.supports_temperature && (
+              <div className="gt-temperature-slider">
+                <label htmlFor="temperature-slider" className="form-label">
+                  Temperature: {temperature.toFixed(1)}
+                </label>
+                <input
+                  type="range"
+                  id="temperature-slider"
+                  min="0.0"
+                  max="1.0" // Or 2.0, adjust as needed
+                  step="0.1"
+                  value={temperature}
+                  onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                  className="form-range"
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Feature Prompts Section */}
         <div className="gt-feature-group form-group">
@@ -313,7 +348,7 @@ const GenericTextGenerator: React.FC = () => {
         primaryActionText="Display This Image"
         autoApplyDefault={true}
         // campaignId={undefined} // Explicitly undefined or omit if not needed by modal for basic generation
-        // selectedLLMId={selectedLLMModelId} // Pass if modal needs LLM context for generation
+        // selectedLLMId={selectedLLMModel?.id} // Pass if modal needs LLM context for generation
       />
     </div>
   );

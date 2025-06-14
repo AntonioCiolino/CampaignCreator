@@ -145,7 +145,15 @@ async def get_available_models_info(db: Session, current_user: UserModel) -> Lis
                 # Use PROVIDER_NAME for a more descriptive name if desired, or just model_name
                 # For consistency with how models might be displayed, let's use the name from the service.
                 # The prefixed_id already contains the provider context.
-                all_models_info.append(ModelInfo(id=prefixed_id, name=model_name if model_name else prefixed_id))
+                all_models_info.append(
+                    ModelInfo(
+                        id=prefixed_id,
+                        name=model_name if model_name else prefixed_id,
+                        model_type=model_dict.get("model_type", "unknown"), # Get the new field
+                        supports_temperature=model_dict.get("supports_temperature", True), # Get the new field
+                        capabilities=model_dict.get("capabilities", []) # Ensure this is also handled
+                    )
+                )
             print(f"Successfully processed models for {provider_name}")
 
         except LLMServiceUnavailableError as e:

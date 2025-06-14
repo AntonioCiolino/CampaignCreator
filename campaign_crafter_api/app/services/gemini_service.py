@@ -209,66 +209,84 @@ class GeminiLLMService(AbstractLLMService):
             if existing_sections_summary:
                 final_prompt_for_generation += f"Summary of existing sections: {existing_sections_summary}\n"
             final_prompt_for_generation += f"Instruction for new section (titled '{section_title_suggestion or 'Next Part'}', Type: '{section_type or 'Generic'}'): {effective_section_prompt}"
-        # The system prompt for Gemini is often part of the main prompt or handled differently by the SDK.
-        # For now, we'll ensure the final_prompt_for_generation is comprehensive.
-        # If a system prompt equivalent is needed, it might be prepended to final_prompt_for_generation.
-        # Example: system_guidance = f"You are an expert RPG writer. Pay special attention to the section type: {section_type}.\n\n"
-        # final_prompt = system_guidance + final_prompt if section_type else final_prompt
         
-        return await self.generate_text(prompt=final_prompt_for_generation, current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=4000) # Pass args
-    async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, str]]: # Added _current_user, _db
-        if not await self.is_available(current_user=current_user, db=db): # Pass args
-            # Line above was programmatically corrected from a syntax error (db=\1)
-            return await self.generate_text(prompt=final_prompt_for_generation, current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=4000) # Pass args
-    async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, str]]: # Added _current_user, _db
-        if not await self.is_available(current_user=current_user, db=db): # Pass args
-            # Line above was programmatically corrected from a syntax error (db=\1)
-            print("Warning: Gemini API key not configured or service unavailable. Cannot fetch models.")
-            return [
-            {"id": "gemini-pro", "name": "Gemini Pro (Unavailable/Fallback)"},
-            {"id": "gemini-1.0-pro", "name": "Gemini 1.0 Pro (Unavailable/Fallback)"},
-            {"id": "gemini-pro", "name": "Gemini Pro (Unavailable/Fallback)"},
-            {"id": "gemini-1.0-pro", "name": "Gemini 1.0 Pro (Unavailable/Fallback)"},
-            ]
-            available_models: List[Dict[str, str]] = []
-            try:
-                print("Fetching available models from Gemini API...")
-                # genai.list_models() is synchronous.
-                # For a truly non-blocking call in an async context, this would ideally be:
-                # loop = asyncio.get_running_loop()
-                # api_models = await loop.run_in_executor(None, genai.list_models)
-                # For now, calling it directly as it's usually fast.
-                api_models = genai.list_models()
-                for m in api_models:
-                    if 'generateContent' in m.supported_generation_methods:
-                        model_id = m.name.split('/')[-1] if '/' in m.name else m.name
-                        capabilities = ["chat"] # Default for Gemini text models
-                    if "vision" in model_id:
-                        capabilities.append("vision")
-                        available_models.append({"id": model_id, "name": m.display_name, "capabilities": capabilities})
-                    
-                if not available_models:
-                    print("Warning: Gemini API returned no models supporting 'generateContent'. Using hardcoded list.")
-                    raise Exception("No models found from API") # Fall through to hardcoded list
-            except Exception as e:
-                print(f"Could not dynamically fetch models from Gemini API: {e}. Using a hardcoded list as fallback.")
-                available_models = [
-                {"id": "gemini-pro", "name": "Gemini Pro", "capabilities": ["chat"]},
-                {"id": "gemini-1.0-pro", "name": "Gemini 1.0 Pro", "capabilities": ["chat"]},
-                {"id": "gemini-pro-vision", "name": "Gemini Pro Vision", "capabilities": ["chat", "vision"]},
-                ]
+        return await self.generate_text(prompt=final_prompt_for_generation, current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=4000)
 
-                default_model_id = self.DEFAULT_MODEL
-                # Ensure default model, if added manually, also has capabilities
-                if not any(m['id'] == default_model_id for m in available_models):
-                    available_models.insert(0, {
-                    "id": default_model_id,
-                    "name": default_model_id.replace("-", " ").title() + " (Default)",
-                    "capabilities": ["chat"] # Default model is assumed to be chat capable
+    async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, any]]:
+        if not await self.is_available(current_user=current_user, db=db):
+            print("Warning: Gemini API key not configured or service unavailable. Cannot fetch models.")
+            # Return a minimal list or an empty list, but ensure structure matches.
+            fallback_models = [
+                {"id": "gemini-pro", "name": "Gemini Pro (Unavailable/Fallback)", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat"]},
+                {"id": "gemini-1.5-flash", "name": "Gemini 1.5 Flash (Unavailable/Fallback)", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat"]},
+            ]
+            return fallback_models
+
+        available_models: List[Dict[str, any]] = []
+        try:
+            print("Fetching available models from Gemini API...")
+            # genai.list_models() is synchronous.
+            # Consider loop.run_in_executor for true async if this blocks significantly.
+            api_models = genai.list_models()
+            for m in api_models:
+                # Filter for models that support 'generateContent' as a proxy for text/chat generation
+                if 'generateContent' in m.supported_generation_methods:
+                    model_id = m.name.split('/')[-1] if '/' in m.name else m.name
+
+                    # Determine model_type and capabilities
+                    model_type = "chat" # Default for Gemini generative models
+                    supports_temperature = True # Gemini models generally support temperature
+                    capabilities = ["chat"]
+
+                    if "vision" in model_id.lower() or "vision" in m.display_name.lower():
+                        capabilities.append("vision")
+                        # Vision models are typically chat-based as well for multimodal interactions
+                    
+                    # Add to list
+                    available_models.append({
+                        "id": model_id,
+                        "name": m.display_name,
+                        "model_type": model_type,
+                        "supports_temperature": supports_temperature,
+                        "capabilities": capabilities
                     })
-            
-            return available_models
-            return available_models
+
+            if not available_models:
+                print("Warning: Gemini API returned no models supporting 'generateContent'. Using hardcoded list as fallback.")
+                raise Exception("No suitable models found from API") # Triggers fallback in except block
+
+        except Exception as e:
+            print(f"Could not dynamically fetch models from Gemini API: {e}. Using a hardcoded list as fallback.")
+            # Ensure fallback list also includes the new fields
+            available_models = [
+                {"id": "gemini-1.5-pro-latest", "name": "Gemini 1.5 Pro (Latest)", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat", "vision"]},
+                {"id": "gemini-1.5-flash-latest", "name": "Gemini 1.5 Flash (Latest)", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat", "vision"]},
+                {"id": "gemini-pro", "name": "Gemini Pro (Legacy)", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat"]}, # Older version, might phase out
+                {"id": "gemini-pro-vision", "name": "Gemini Pro Vision (Legacy)", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat", "vision"]}, # Older version
+            ]
+            # Ensure default model is in the list if using fallback
+            default_model_id = self.DEFAULT_MODEL # e.g., "gemini-1.5-flash"
+            if not any(m['id'] == default_model_id for m in available_models):
+                # Find if a variant of default (e.g. latest) is present, otherwise add it
+                is_default_variant_present = any(default_model_id in m['id'] for m in available_models)
+                if not is_default_variant_present:
+                    available_models.insert(0, {
+                        "id": default_model_id,
+                        "name": default_model_id.replace("-", " ").title() + " (Default)",
+                        "model_type": "chat",
+                        "supports_temperature": True,
+                        "capabilities": ["chat", "vision"] if "vision" in default_model_id else ["chat"]
+                    })
+
+        # Sort models to have a consistent order, e.g., by name or a preferred list
+        available_models.sort(key=lambda x: (
+            "latest" not in x["id"], # Put latest versions first
+            "pro" not in x["id"],    # Then pro versions
+            "flash" not in x["id"],  # Then flash versions
+            x["name"]
+        ))
+        return available_models
+
     async def close(self):
         """Close any persistent connections if the SDK requires it."""
         # The google-generativeai library for Gemini (as of early 2024)
