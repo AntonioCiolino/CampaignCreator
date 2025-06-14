@@ -78,7 +78,7 @@ const AddMoodBoardImageModal: React.FC<AddMoodBoardImageModalProps> = ({
       setUploadError(null);
       try {
         const response = await uploadMoodboardImageApi(campaignId, selectedFile);
-        onAddUrl(response.imageUrl); // Pass the new URL to the parent
+        onAddUrl(response.image_url); // Pass the new URL to the parent
         // Reset states before closing
         setSelectedFile(null);
         setIsUploading(false);

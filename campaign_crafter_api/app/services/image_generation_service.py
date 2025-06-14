@@ -112,6 +112,9 @@ class ImageGenerationService:
         uploads to Azure Blob Storage, logs it in the database,
         and returns the permanent URL.
         """
+        if user_id is None:
+            raise ValueError("user_id cannot be None when saving an image")
+
         blob_service_client = None
         account_url = None # Will be set if using account name + credential
 
@@ -155,7 +158,7 @@ class ImageGenerationService:
         if not file_extension.startswith(".") or len(file_extension) > 5: # Sanitize
             file_extension = ".png"
 
-        blob_name = f"{uuid.uuid4().hex}{file_extension}"
+        blob_name = f"user_uploads/{user_id}/{uuid.uuid4().hex}{file_extension}"
         actual_image_bytes = None
         content_type = 'application/octet-stream' # Default
 
@@ -179,7 +182,7 @@ class ImageGenerationService:
                         elif "image/webp" in content_type: file_extension = ".webp"
                         elif "image/png" in content_type: file_extension = ".png"
                         # ... any other common types
-                        blob_name = f"{uuid.uuid4().hex}{file_extension}" # Re-generate blob_name if extension changed
+                        blob_name = f"user_uploads/{user_id}/{uuid.uuid4().hex}{file_extension}" # Re-generate blob_name if extension changed
             except requests.exceptions.RequestException as e:
                 print(f"Failed to download image from temporary URL {temporary_url}: {e}")
                 raise HTTPException(status_code=502, detail=f"Failed to download image from source: {e}")
