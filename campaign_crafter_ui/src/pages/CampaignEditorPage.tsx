@@ -128,6 +128,53 @@ const CampaignEditorPage: React.FC = () => {
   // State for generating image for mood board
   const [isGeneratingForMoodBoard, setIsGeneratingForMoodBoard] = useState<boolean>(false);
   const [moodBoardPanelWidth, setMoodBoardPanelWidth] = useState<number>(400); // Default width
+  const [activeEditorTab, setActiveEditorTab] = useState<string>('Details');
+  const [sectionToExpand, setSectionToExpand] = useState<string | null>(null);
+
+  const handleTocLinkClick = useCallback((sectionIdFromLink: string | null) => {
+    if (!sectionIdFromLink) return;
+
+    const actualId = sectionIdFromLink.replace('section-container-', '');
+    console.log(`TOC Link clicked for actual section ID: ${actualId}`);
+
+    const targetTabName = "Sections";
+    setSectionToExpand(actualId); // Set which section should ensure it's expanded
+
+    if (activeEditorTab !== targetTabName) {
+      setActiveEditorTab(targetTabName); // Switch tab if not already on it
+      console.log(`Switched to tab: ${targetTabName}`);
+      // The useEffect below will handle scrolling once the tab is active and section is flagged for expansion
+    } else {
+      // If already on the correct tab, the useEffect will still pick up the change in sectionToExpand
+      // and perform the scroll.
+    }
+    // No direct scrolling here.
+  }, [activeEditorTab, setActiveEditorTab, setSectionToExpand]);
+
+  useEffect(() => {
+    if (activeEditorTab === "Sections" && sectionToExpand) {
+      // Use a microtask or a short timeout to allow DOM updates (tab switch, section expansion)
+      // requestAnimationFrame is often good for this, but setTimeout can also work.
+      const scrollTimer = setTimeout(() => {
+        const elementId = `section-container-${sectionToExpand}`;
+        const element = document.getElementById(elementId);
+
+        if (element) {
+          console.log(`Scrolling to and focusing element: ${elementId}`);
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          element.focus({ preventScroll: true });
+        } else {
+          console.warn(`Element with ID ${elementId} not found for scrolling.`);
+        }
+
+        // Reset sectionToExpand to allow user to manually collapse/expand again
+        // and to prevent this effect from re-running unnecessarily.
+        setSectionToExpand(null);
+      }, 100); // 100ms delay, adjust if needed, or use requestAnimationFrame
+
+      return () => clearTimeout(scrollTimer); // Cleanup timer
+    }
+  }, [activeEditorTab, sectionToExpand, setSectionToExpand]); // Dependencies
 
   const handleSetThematicImage = async (imageUrl: string, prompt: string) => {
     // This function now only handles setting the *main* thematic image for the campaign.
@@ -1020,6 +1067,29 @@ const CampaignEditorPage: React.FC = () => {
     }
   };
 
+  const TocLinkRenderer = (props: any) => {
+    const { href, children } = props;
+    // href will be like "#section-container-123"
+    const sectionId = href && href.startsWith('#') ? href.substring(1) : null;
+
+    if (sectionId) {
+      return (
+        <a
+          href={`#${sectionId}`} // Keep for right-click context menu, but prevent default click
+          onClick={(e) => {
+            e.preventDefault();
+            handleTocLinkClick(sectionId);
+          }}
+          style={{ cursor: 'pointer' }}
+        >
+          {children}
+        </a>
+      );
+    }
+    // Fallback for non-section links if any (though TOC should only have section links)
+    return <a href={href}>{children}</a>;
+  };
+
   if (isLoading) return <LoadingSpinner />;
   if (error) return <p className="error-message">{error}</p>;
   if (!campaign) return <p className="error-message">Campaign not found.</p>;
@@ -1063,7 +1133,13 @@ const CampaignEditorPage: React.FC = () => {
         )}
         {(!campaign.display_toc || !isTocCollapsed) && (
           <div className="toc-controls-and-display" style={{ marginTop: '10px' }}>
-            {campaign.display_toc && campaign.display_toc.length > 0 && <ReactMarkdown>{processedToc}</ReactMarkdown>}
+            {campaign.display_toc && campaign.display_toc.length > 0 && (
+              <ReactMarkdown
+                components={{ a: TocLinkRenderer }}
+              >
+                {processedToc}
+              </ReactMarkdown>
+            )}
             {(!campaign.display_toc || campaign.display_toc.length === 0) && <p>No Table of Contents generated yet.</p>}
             <Button
               onClick={handleGenerateTOC}
@@ -1232,6 +1308,7 @@ const CampaignEditorPage: React.FC = () => {
         handleUpdateSectionType={handleUpdateSectionType}
         onUpdateSectionOrder={handleUpdateSectionOrder}
         forceCollapseAllSections={forceCollapseAll}
+        expandSectionId={sectionToExpand} // Add this new prop
         onSetThematicImageForSection={handleSetThematicImage}
       />
       {!campaign?.concept?.trim() && (
@@ -1330,7 +1407,11 @@ const CampaignEditorPage: React.FC = () => {
           )}
         </section>
       )}
-      <Tabs tabs={tabItems} />
+      <Tabs
+        tabs={tabItems}
+        activeTabName={activeEditorTab}
+        onTabChange={setActiveEditorTab}
+      />
       {isMoodBoardPanelOpen && (
         <div
           className="mood-board-side-panel"
