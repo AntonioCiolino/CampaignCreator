@@ -23,7 +23,7 @@ interface CampaignDetailsEditorProps {
   onSuggestTitles: () => void; // New prop
   isGeneratingTitles: boolean; // New prop
   titlesError: string | null; // New prop
-  selectedLLMId: string; // New prop
+  selectedLLMId: string | null; // Updated type
   originalTitle: string; // New prop
   originalInitialPrompt: string; // New prop
   originalBadgeImageUrl?: string; // New prop

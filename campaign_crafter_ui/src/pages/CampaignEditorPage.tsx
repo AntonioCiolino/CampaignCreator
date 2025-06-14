@@ -267,7 +267,7 @@ const CampaignEditorPage: React.FC = () => {
   }, [selectedLLMId, availableLLMs]);
 
   const handleSetSelectedLLM = (llm: LLM | null) => {
-    setSelectedLLMId(llm ? ll.id : null);
+    setSelectedLLMId(llm ? llm.id : null); // Corrected to 'llm.id'
   };
   
   const handleUpdateSectionContent = (sectionId: number, newContent: string) => {
