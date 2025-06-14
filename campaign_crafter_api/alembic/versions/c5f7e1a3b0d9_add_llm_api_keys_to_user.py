@@ -10,8 +10,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'zzzz_placeholder_add_api_keys' # User should replace this if an actual revision command was run
-down_revision = '<PREVIOUS_REVISION_ID_NEEDS_UPDATE>'  # IMPORTANT: User MUST update this to the actual previous revision ID
+revision = 'c5f7e1a3b0d9'
+down_revision = '98424bc8b1bb'
 branch_labels = None
 depends_on = None
 
@@ -19,8 +19,12 @@ depends_on = None
 def upgrade() -> None:
     op.add_column('users', sa.Column('encrypted_openai_api_key', sa.String(), nullable=True))
     op.add_column('users', sa.Column('encrypted_sd_api_key', sa.String(), nullable=True))
+    op.add_column('users', sa.Column('encrypted_gemini_api_key', sa.String(), nullable=True))
+    op.add_column('users', sa.Column('encrypted_other_llm_api_key', sa.String(), nullable=True))
 
 
 def downgrade() -> None:
     op.drop_column('users', 'encrypted_sd_api_key')
     op.drop_column('users', 'encrypted_openai_api_key')
+    op.drop_column('users', 'encrypted_other_llm_api_key')
+    op.drop_column('users', 'encrypted_gemini_api_key')

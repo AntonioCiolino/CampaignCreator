@@ -77,6 +77,36 @@ def delete_user(db: Session, user_id: int) -> Optional[orm_models.User]:
     db.commit()
     return db_user
 
+def update_user_api_keys(db: Session, db_user: orm_models.User, api_keys_in: models.UserAPIKeyUpdate) -> orm_models.User:
+    if api_keys_in.openai_api_key is not None:
+        if api_keys_in.openai_api_key == "":
+            db_user.encrypted_openai_api_key = None
+        else:
+            db_user.encrypted_openai_api_key = api_keys_in.openai_api_key
+
+    if api_keys_in.sd_api_key is not None:
+        if api_keys_in.sd_api_key == "":
+            db_user.encrypted_sd_api_key = None
+        else:
+            db_user.encrypted_sd_api_key = api_keys_in.sd_api_key
+
+    if api_keys_in.gemini_api_key is not None:
+        if api_keys_in.gemini_api_key == "":
+            db_user.encrypted_gemini_api_key = None
+        else:
+            db_user.encrypted_gemini_api_key = api_keys_in.gemini_api_key
+
+    if api_keys_in.other_llm_api_key is not None:
+        if api_keys_in.other_llm_api_key == "":
+            db_user.encrypted_other_llm_api_key = None
+        else:
+            db_user.encrypted_other_llm_api_key = api_keys_in.other_llm_api_key
+
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
 # --- Feature CRUD Functions ---
 def get_feature(db: Session, feature_id: int) -> Optional[orm_models.Feature]:
     return db.query(orm_models.Feature).filter(orm_models.Feature.id == feature_id).first()
