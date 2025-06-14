@@ -182,7 +182,7 @@ class ImageGenerationService:
                         elif "image/webp" in content_type: file_extension = ".webp"
                         elif "image/png" in content_type: file_extension = ".png"
                         # ... any other common types
-                        blob_name = f"{uuid.uuid4().hex}{file_extension}" # Re-generate blob_name if extension changed
+                        blob_name = f"user_uploads/{user_id}/{uuid.uuid4().hex}{file_extension}" # Re-generate blob_name if extension changed
             except requests.exceptions.RequestException as e:
                 print(f"Failed to download image from temporary URL {temporary_url}: {e}")
                 raise HTTPException(status_code=502, detail=f"Failed to download image from source: {e}")

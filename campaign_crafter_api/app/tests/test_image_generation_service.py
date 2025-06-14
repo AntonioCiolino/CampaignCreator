@@ -438,3 +438,103 @@ class TestSaveImageAndLogDbUserSpecificPath:
 
         # Ensure DefaultAzureCredential was NOT called because connection string was used
         mock_default_azure_credential.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch('app.services.image_generation_service.requests.get') # Mock requests.get for this test
+    @patch('app.services.image_generation_service.DefaultAzureCredential')
+    @patch('app.services.image_generation_service.BlobServiceClient')
+    async def test_save_image_and_log_db_temp_url_path_correction(
+        self,
+        mock_blob_service_client_constructor,
+        mock_default_azure_credential,
+        mock_requests_get
+    ):
+        test_user_id = 456
+        prompt = "test prompt for temp url correction"
+        model_used = "dall-e-temp-url"
+        size_used = "1024x1024"
+        temporary_url = "http://example.com/image.png" # Initial extension is .png
+        image_content_bytes = b"fakejpegdata"
+
+        # Configure mock for requests.get()
+        mock_http_response = MagicMock()
+        mock_http_response.raise_for_status = MagicMock()
+        mock_http_response.content = image_content_bytes
+        mock_http_response.headers = {'Content-Type': 'image/jpeg'} # Actual type is JPEG
+        mock_requests_get.return_value = mock_http_response
+
+        # Configure Azure mocks (BlobServiceClient, DefaultAzureCredential are parameters)
+        mock_bsc_instance = MagicMock()
+        mock_blob_service_client_constructor.from_connection_string.return_value = mock_bsc_instance
+
+        mock_blob_client_instance = MagicMock()
+        mock_bsc_instance.get_blob_client.return_value = mock_blob_client_instance
+        mock_blob_client_instance.upload_blob = MagicMock()
+
+        # Call the method with temporary_url, no image_bytes directly
+        returned_url = await self.image_service._save_image_and_log_db(
+            prompt=prompt,
+            model_used=model_used,
+            size_used=size_used,
+            db=self.mock_db_session,
+            temporary_url=temporary_url,
+            image_bytes=None, # Explicitly None
+            user_id=test_user_id
+            # original_filename_from_api is not provided, so initial extension from URL is used
+        )
+
+        # Assert requests.get was called
+        mock_requests_get.assert_called_once_with(temporary_url, stream=True)
+
+        # Assert BlobServiceClient was called
+        mock_blob_service_client_constructor.from_connection_string.assert_called_once_with(
+            settings.AZURE_STORAGE_CONNECTION_STRING
+        )
+
+        # Assert get_blob_client call
+        mock_bsc_instance.get_blob_client.assert_called_once()
+        call_args = mock_bsc_instance.get_blob_client.call_args
+        assert call_args[1]['container'] == "testcontainer"
+
+        # Assert blob name format - this is crucial
+        blob_name_arg = call_args[1]['blob']
+        assert blob_name_arg.startswith(f"user_uploads/{test_user_id}/")
+        assert blob_name_arg.endswith(".jpg") # Should be .jpg due to Content-Type header
+
+        # Assert UUID part of blob name
+        # The split needs to account for the dynamic part of the path
+        expected_prefix = f"user_uploads/{test_user_id}/"
+        expected_suffix = ".jpg"
+        filename_part = blob_name_arg[len(expected_prefix):-len(expected_suffix)]
+        try:
+            uuid.UUID(filename_part, version=4)
+        except ValueError:
+            pytest.fail(f"Filename part '{filename_part}' is not a valid UUID hex.")
+
+        # Assert upload_blob call with correct data
+        mock_blob_client_instance.upload_blob.assert_called_once()
+        upload_args, upload_kwargs = mock_blob_client_instance.upload_blob.call_args
+        uploaded_stream_content = upload_args[0].read()
+        assert uploaded_stream_content == image_content_bytes # Should be the JPEG data
+        assert upload_kwargs['headers']['Content-Type'] == 'image/jpeg'
+
+
+        # Assert returned URL
+        expected_account_url_base = "https://testaccount.blob.core.windows.net" # From dummy conn string in setup_method
+        expected_url = f"{expected_account_url_base}/{settings.AZURE_STORAGE_CONTAINER_NAME}/{blob_name_arg}"
+        assert returned_url == expected_url
+
+        # Assert database interaction
+        self.mock_db_session.add.assert_called_once()
+        added_image_instance = self.mock_db_session.add.call_args[0][0]
+        assert isinstance(added_image_instance, GeneratedImage)
+        assert added_image_instance.user_id == test_user_id
+        assert added_image_instance.filename == blob_name_arg # Filename should end with .jpg
+        assert added_image_instance.image_url == expected_url
+        assert added_image_instance.prompt == prompt
+
+        self.mock_db_session.commit.assert_called_once()
+        self.mock_db_session.refresh.assert_called_once_with(added_image_instance)
+
+        # Ensure DefaultAzureCredential was NOT called
+        mock_default_azure_credential.assert_not_called()
