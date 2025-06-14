@@ -77,7 +77,7 @@ const CampaignEditorPage: React.FC = () => {
   const [isBadgeImageModalOpen, setIsBadgeImageModalOpen] = useState(false);
   const [isSuggestedTitlesModalOpen, setIsSuggestedTitlesModalOpen] = useState<boolean>(false);
 
-  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [isAutoSavingLLMSettings, setIsAutoSavingLLMSettings] = useState<boolean>(false);
   const [autoSaveLLMSettingsError, setAutoSaveLLMSettingsError] = useState<string | null>(null);
   const [autoSaveLLMSettingsSuccess, setAutoSaveLLMSettingsSuccess] = useState<string | null>(null);
@@ -546,10 +546,21 @@ const CampaignEditorPage: React.FC = () => {
     if (!initialLoadCompleteRef.current || !campaignId || !campaign || isLoading) {
         return;
     }
-    if (debounceTimer) { clearTimeout(debounceTimer); }
-    const newTimer = setTimeout(async () => {
-        if (!campaign || !campaign.id) { return; }
-        if (selectedLLMId === campaign.selected_llm_id && temperature === campaign.temperature) { return; }
+
+    // Clear previous timer using the ref
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Set new timer and store its ID in the ref
+    debounceTimerRef.current = setTimeout(async () => {
+        if (!campaign || !campaign.id) { return; } // Check campaign again inside timeout
+        // Condition to prevent saving if values haven't changed from what's in campaign
+        if (selectedLLMId === campaign.selected_llm_id && temperature === campaign.temperature) {
+          return;
+        }
+
+        console.log('Auto-saving LLM settings due to change in selectedLLMId or temperature.');
         setIsAutoSavingLLMSettings(true);
         setAutoSaveLLMSettingsError(null);
         setAutoSaveLLMSettingsSuccess(null);
@@ -559,7 +570,7 @@ const CampaignEditorPage: React.FC = () => {
             temperature: temperature,
           };
           const updatedCampaign = await campaignService.updateCampaign(campaign.id, payload);
-          setCampaign(updatedCampaign);
+          setCampaign(updatedCampaign); // This will update the campaign state
           setAutoSaveLLMSettingsSuccess("LLM settings auto-saved!");
           setTimeout(() => setAutoSaveLLMSettingsSuccess(null), 3000);
         } catch (err) {
@@ -570,9 +581,14 @@ const CampaignEditorPage: React.FC = () => {
           setIsAutoSavingLLMSettings(false);
         }
     }, 1500);
-    setDebounceTimer(newTimer);
-    return () => { if (newTimer) { clearTimeout(newTimer); } };
-  }, [selectedLLMId, temperature, campaignId, campaign, isLoading, debounceTimer, ensureLLMSettingsSaved]);
+
+    // Cleanup function to clear the timer
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [selectedLLMId, temperature, campaignId, campaign, isLoading, setCampaign, setIsAutoSavingLLMSettings, setAutoSaveLLMSettingsError, setAutoSaveLLMSettingsSuccess]);
 
   useEffect(() => {
     if (!initialLoadCompleteRef.current || !campaign) { return; }
