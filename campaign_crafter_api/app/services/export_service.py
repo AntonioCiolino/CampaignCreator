@@ -9,6 +9,10 @@ class HomebreweryExportService:
         if block_content is None:
             return ""
         
+        # If block_content is a list, join its elements into a single string
+        if isinstance(block_content, list):
+            block_content = "\n".join(map(str, block_content)) # Ensure all elements are strings
+
         # Remove any leading/trailing whitespace
         processed_content = block_content.strip()
 
@@ -17,7 +21,7 @@ class HomebreweryExportService:
         if processed_content.strip().startswith("Table of Contents:"):
             processed_content = processed_content.replace("Table of Contents:", "{{toc,wide,frame,box}}", 1)
             # Further process list items if this is a TOC block
-            lines = processed_content.split('\n')
+            lines = processed_content.split('\n') # Use escaped newline
             processed_lines = []
             for line in lines:
                 if line.strip().startswith(("* ", "- ", "+ ")):
@@ -26,7 +30,7 @@ class HomebreweryExportService:
                     processed_lines.append(f"- {cleaned_line}") 
                 else:
                     processed_lines.append(line)
-            processed_content = "\n".join(processed_lines)
+            processed_content = "\n".join(processed_lines) # Use escaped newline
             return processed_content # Return early as TOC block is special
 
         # Replace "Chapter X:" or "Section X:" at the start of a line with Markdown H2 headings

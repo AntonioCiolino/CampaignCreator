@@ -12,6 +12,8 @@ from app.services.openai_service import OpenAILLMService
 # FeaturePromptService is patched where it's looked up ('app.services.openai_service.FeaturePromptService')
 # from app.services.feature_prompt_service import FeaturePromptService # Not directly used in test
 from app.services.llm_service import LLMServiceUnavailableError
+from app.services.export_service import HomebreweryExportService
+from app.orm_models import Campaign
 
 
 class TestServices(unittest.TestCase):
@@ -44,6 +46,46 @@ class TestServices(unittest.TestCase):
                     # then this should be a self.fail().
                     # For now, we'll assume models without Config are fine or handled elsewhere.
                     print(f"Model {name} does not have a Config class. Skipping from_attributes check.")
+
+    def test_format_campaign_for_homebrewery_with_list_toc(self):
+        """
+        Tests HomebreweryExportService.format_campaign_for_homebrewery
+        with homebrewery_toc as a list.
+        """
+        service = HomebreweryExportService()
+
+        # Create a Campaign object with necessary fields
+        # Based on orm_models.py: title is mandatory.
+        # homebrewery_toc is what we're testing with a list.
+        # concept is optional. owner_id is not directly relevant for formatting logic.
+        campaign = Campaign(
+            title="Test Campaign for List TOC",
+            concept="A concept for testing list TOC.",
+            homebrewery_toc=[
+                "Table of Contents:",
+                "* Chapter 1: Introduction",
+                "* Chapter 2: The Adventure Begins",
+                "Section 1: Deeper Dive"
+            ]
+            # owner_id can be omitted or set to None if model allows for this test context
+        )
+
+        sections = [] # No sections needed for this specific TOC test
+
+        try:
+            output = service.format_campaign_for_homebrewery(campaign, sections)
+
+            self.assertIsInstance(output, str)
+            self.assertIn("# Test Campaign for List TOC", output) # Title
+            self.assertIn("## Campaign Overview", output) # From concept
+            self.assertIn("A concept for testing list TOC.", output) # Concept text
+            self.assertIn("{{toc,wide,frame,box}}", output) # TOC tag
+            self.assertIn("- Chapter 1: Introduction", output) # Processed TOC item
+            self.assertIn("- Chapter 2: The Adventure Begins", output) # Processed TOC item
+            self.assertIn("Section 1: Deeper Dive", output) # Processed TOC item (heading not applied due to early return)
+
+        except Exception as e:
+            self.fail(f"format_campaign_for_homebrewery raised an exception: {e}")
 
 # New pytest async test function
 @pytest.mark.asyncio
