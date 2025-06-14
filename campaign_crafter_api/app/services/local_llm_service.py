@@ -33,8 +33,6 @@ class LocalLLMService(AbstractLLMService):
 
     async def is_available(self, current_user: UserModel, db: Session) -> bool: # Added _current_user, _db
         # Accepts current_user and db session for availability checks
-    async def is_available(self, current_user: UserModel, db: Session) -> bool: # Added _current_user, _db
-        # Accepts current_user and db session for availability checks
         if not self.api_base_url:
             return False
         try:
@@ -172,11 +170,9 @@ class LocalLLMService(AbstractLLMService):
         custom_prompt = self.feature_prompt_service.get_prompt("Campaign Names", db=db)
         final_prompt = custom_prompt.format(campaign_concept=campaign_concept, count=count) if custom_prompt else f"Generate {count} campaign titles for: {campaign_concept}. Each on a new line."
         generated_string = await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model) # Pass args
-        generated_string = await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model) # Pass args
         return [title.strip() for title in generated_string.split('\n') if title.strip()][:count]
 
     async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]: # Added current_user
-        if not await self.is_available(current_user=current_user, db=db): # Pass args
         if not await self.is_available(current_user=current_user, db=db): # Pass args
             raise HTTPException(status_code=503, detail=f"{self.PROVIDER_NAME.title()} service is not available or configured.")
         if not campaign_concept:
@@ -190,7 +186,6 @@ class LocalLLMService(AbstractLLMService):
 
         generated_display_toc = await self.generate_text(
             prompt=display_final_prompt,
-            current_user=current_user, db=db, # Pass args
             current_user=current_user, db=db, # Pass args
             model=model,
             temperature=0.5,
@@ -207,7 +202,6 @@ class LocalLLMService(AbstractLLMService):
 
         generated_homebrewery_toc = await self.generate_text(
             prompt=homebrewery_final_prompt,
-            current_user=current_user, db=db, # Pass args
             current_user=current_user, db=db, # Pass args
             model=model,
             temperature=0.5,
