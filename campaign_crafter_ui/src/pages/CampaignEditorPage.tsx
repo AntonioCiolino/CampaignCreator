@@ -207,8 +207,12 @@ const CampaignEditorPage: React.FC = () => {
     return undefined;
   }, [selectedLLMId, availableLLMs]);
 
-  const handleSetSelectedLLM = (llm: LLM) => {
-    setSelectedLLMId(llm.id);
+  const handleSetSelectedLLM = (llm: LLM | null) => {
+    if (llm) {
+      setSelectedLLMId(llm.id);
+    } else {
+      setSelectedLLMId(''); // Set to empty string for no selection
+    }
   };
   
   const handleUpdateSectionContent = (sectionId: number, newContent: string) => {
@@ -569,6 +573,7 @@ const CampaignEditorPage: React.FC = () => {
         clearTimeout(newTimer);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editableMoodBoardUrls, campaignId, campaign, setCampaign]); // initialLoadCompleteRef.current is not needed as a dep, effect runs when it's true. campaign contains mood_board_image_urls.
 
   const handleCancelSeeding = async () => {
