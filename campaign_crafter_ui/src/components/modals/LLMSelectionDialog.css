@@ -64,12 +64,10 @@
 /* DialogActions are styled by MUI. If custom buttons are placed outside DialogActions,
    or if overriding MUI Button styles specifically here: */
 .llm-selection-dialog-actions {
-  /* MUI DialogActions already handles flex and spacing.
-     This class might be redundant if DialogActions is used. */
-  /* display: flex;
-  justify-content: flex-end;
-  gap: calc(var(--global-spacing-unit, 1rem) * 0.5);
-  margin-top: var(--global-spacing-unit, 1rem); */
+  display: flex;
+  justify-content: flex-end; /* Align buttons to the right */
+  gap: 10px; /* Spacing between buttons */
+  margin-top: calc(var(--global-spacing-unit, 1rem) * 1.5); /* Space above the action buttons */
 }
 
 /* Custom styling for buttons if NOT using MUI Buttons or need heavy overrides.
