@@ -188,3 +188,11 @@
 .mood-board-tile-close-button:hover {
   background-color: rgba(0, 0, 0, 0.8);
 }
+
+
+.mood-board-item-link-wrapper {
+  width: 120px; /* Define fixed width for the item wrapper */
+  height: 120px; /* Define fixed height for the item wrapper */
+  overflow: hidden; /* Ensure content respects these bounds */
+  border-radius: var(--border-radius-sm, 0.2rem); /* Optional: slight rounding */
+}
