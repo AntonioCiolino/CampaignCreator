@@ -1,5 +1,5 @@
 // campaign_crafter_ui/src/components/common/MoodBoardPanel.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -44,10 +44,10 @@ interface SortableMoodBoardItemProps {
   url: string;
   index: number; // Keep index for alt text and potential non-dnd related logic
   onRemove: (urlToRemove: string) => void; // Pass remove handler
-  isDragEndEventProcessing?: boolean; // New prop
+  isDraggingImage?: boolean; // Changed prop name
 }
 
-const SortableMoodBoardItem: React.FC<SortableMoodBoardItemProps> = ({ id, url, index, onRemove, isDragEndEventProcessing }) => {
+const SortableMoodBoardItem: React.FC<SortableMoodBoardItemProps> = ({ id, url, index, onRemove, isDraggingImage }) => {
   const {
     attributes,
     listeners,
@@ -67,6 +67,23 @@ const SortableMoodBoardItem: React.FC<SortableMoodBoardItemProps> = ({ id, url, 
     // touchAction: 'none', // Recommended by dnd-kit for pointer sensors
   };
 
+  const [justFinishedDragging, setJustFinishedDragging] = useState(false);
+
+  // Ensure 'isDragging' is obtained from the useSortable hook call like:
+  // const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+  useEffect(() => {
+    if (isDragging) {
+      setJustFinishedDragging(true);
+    } else if (justFinishedDragging) {
+      // Only set a timer to turn it off if it was true (meaning we just stopped dragging THIS item)
+      const timer = setTimeout(() => {
+        setJustFinishedDragging(false);
+      }, 50); // Keep it disabled for 50ms after isDragging becomes false
+      return () => clearTimeout(timer);
+    }
+  }, [isDragging, justFinishedDragging]);
+
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="mood-board-item-link-wrapper">
       {/* The original <a> tag can be here or you can directly style the div above */}
@@ -76,7 +93,7 @@ const SortableMoodBoardItem: React.FC<SortableMoodBoardItemProps> = ({ id, url, 
         rel="noopener noreferrer"
         className="mood-board-item-link"
         onClickCapture={(e: React.MouseEvent) => {
-          if (isDragEndEventProcessing) {
+          if (isDraggingImage || justFinishedDragging) { // isDraggingImage is the prop
             e.preventDefault();
             e.stopPropagation();
           }
@@ -128,7 +145,7 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = (props) => {
   const [isDraggingOver, setIsDraggingOver] = useState(false); // State for drag feedback
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [isDragEndEventProcessing, setIsDragEndEventProcessing] = useState(false);
+  const [isDraggingImage, setIsDraggingImage] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -221,11 +238,29 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = (props) => {
         const newOrder = arrayMove(moodBoardUrls, oldIndex, newIndex);
         onUpdateMoodBoardUrls(newOrder);
 
-        setIsDragEndEventProcessing(true);
-        setTimeout(() => {
-          setIsDragEndEventProcessing(false);
-        }, 100);
+        // NEW logic for isDraggingImage
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setIsDraggingImage(false);
+          });
+        });
+      } else {
+        // If item is dragged to a non-droppable area or indices are not found,
+        // still ensure isDraggingImage is reset.
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setIsDraggingImage(false);
+          });
+        });
       }
+    } else {
+      // If not a valid drop or no actual move, reset the flag.
+      // This handles cases like clicking without dragging, or dragging and returning to the same spot if not handled by active.id !== over.id
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setIsDraggingImage(false);
+        });
+      });
     }
   }
 
@@ -249,6 +284,7 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = (props) => {
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
+          onDragStart={() => setIsDraggingImage(true)} // <-- ADD THIS
           onDragEnd={handleDragEnd}
         >
           <SortableContext
@@ -263,7 +299,7 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = (props) => {
                   url={url}
                   index={index}
                   onRemove={handleRemoveUrl}
-                  isDragEndEventProcessing={isDragEndEventProcessing} // Pass the state
+                  isDraggingImage={isDraggingImage} // Pass the updated state/prop
                 />
               ))}
             </div>
