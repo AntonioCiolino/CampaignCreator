@@ -77,13 +77,25 @@ class HomebreweryExportService:
         homebrewery_content.append("\\page\n") # Page break after concept/title page
 
         # Table of Contents
-        # The campaign.homebrewery_toc field is expected to be a block of text that process_block can handle.
-        # Users can manually create this, or it can be LLM-generated.
-        if campaign.homebrewery_toc: # Use the new field name
-            # process_block is designed for TOC-like structures.
-            processed_toc = self.process_block(campaign.homebrewery_toc) # Use the new field name
+        actual_toc_markdown_string: Optional[str] = None
+        if campaign.homebrewery_toc:
+            if isinstance(campaign.homebrewery_toc, dict):
+                actual_toc_markdown_string = campaign.homebrewery_toc.get("markdown_string")
+            elif isinstance(campaign.homebrewery_toc, str):
+                # Fallback for old data that might have been a direct string
+                actual_toc_markdown_string = campaign.homebrewery_toc
+                print(f"Warning: campaign.homebrewery_toc for campaign {campaign.id} was a string, not a dict. Using as is.")
+            else:
+                # Log or handle other unexpected types if necessary
+                print(f"Warning: campaign.homebrewery_toc for campaign {campaign.id} is of unexpected type: {type(campaign.homebrewery_toc)}. Expected dict or str.")
+
+        if actual_toc_markdown_string: # Check if we successfully got a string
+            processed_toc = self.process_block(actual_toc_markdown_string)
             homebrewery_content.append(f"{processed_toc.strip()}\n")
             homebrewery_content.append("\\page\n") # Page break after TOC
+        # else: # No valid TOC content found or extracted
+            # Optionally log that no TOC is being added
+            # print(f"No valid Homebrewery TOC content found or extracted for campaign {campaign.id}.")
         
         # Main Content - Sections
         # Sections are iterated in their given order.

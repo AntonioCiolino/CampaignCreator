@@ -167,24 +167,27 @@ async def generate_campaign_toc_endpoint(
                 items.append({"title": title, "type": "unknown"})
         return items
 
-    display_toc_list = parse_toc_string_to_list(display_toc_content)
-    homebrewery_toc_list = parse_toc_string_to_list(homebrewery_toc_content)
+    display_toc_list = parse_toc_string_to_list(display_toc_content if display_toc_content is not None else "")
+    # homebrewery_toc_list = parse_toc_string_to_list(homebrewery_toc_content) # Removed this line
+    homebrewery_toc_object = {"markdown_string": homebrewery_toc_content if homebrewery_toc_content is not None else ""}
+
 
     if not display_toc_list and display_toc_content: # If parsing resulted in empty list but original string was not empty
         print(f"Warning: display_toc_list is empty after parsing non-empty string: '{display_toc_content}'")
         # Potentially use the raw string as a single item if parsing fails completely
         # display_toc_list = [{"title": "Failed to parse Display TOC", "type": "error"}]
 
-    if not homebrewery_toc_list and homebrewery_toc_content:
-        print(f"Warning: homebrewery_toc_list is empty after parsing non-empty string: '{homebrewery_toc_content}'")
-        # homebrewery_toc_list = [{"title": "Failed to parse Homebrewery TOC", "type": "error"}]
+    # Removed warning for homebrewery_toc_list as it's no longer a list derived from parsing.
+    # if not homebrewery_toc_list and homebrewery_toc_content:
+    #     print(f"Warning: homebrewery_toc_list is empty after parsing non-empty string: '{homebrewery_toc_content}'")
+    #     # homebrewery_toc_list = [{"title": "Failed to parse Homebrewery TOC", "type": "error"}]
 
 
     updated_campaign_with_toc = crud.update_campaign_toc(
         db=db,
         campaign_id=campaign_id,
         display_toc_content=display_toc_list,
-        homebrewery_toc_content=homebrewery_toc_list
+        homebrewery_toc_content=homebrewery_toc_object # Changed to pass the object
     )
     if updated_campaign_with_toc is None:
         # This specific check for campaign existence after update might be redundant if get_campaign above already confirmed it.

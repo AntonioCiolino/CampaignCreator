@@ -159,11 +159,14 @@ export const updateCampaign = async (campaignId: string | number, campaignData: 
 };
 
 // Define the payload for updating a section
+// Removed ImageData interface
+
 export interface CampaignSectionUpdatePayload {
   title?: string;
   content?: string;
   order?: number;
   type?: string; // Added type field
+  // Removed images field
 }
 
 // Update a specific campaign section
