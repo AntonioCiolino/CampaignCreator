@@ -623,7 +623,13 @@ async def export_campaign_homebrewery(
     sections = crud.get_campaign_sections(db=db, campaign_id=campaign_id, limit=1000) 
     export_service = HomebreweryExportService()
     try:
-        formatted_text = export_service.format_campaign_for_homebrewery(campaign=db_campaign, sections=sections)
+        # Ensure db and current_user are passed
+        formatted_text = await export_service.format_campaign_for_homebrewery(
+            campaign=db_campaign,
+            sections=sections,
+            db=db,
+            current_user=current_user
+        )
     except Exception as e:
         print(f"Error during Homebrewery export formatting for campaign {campaign_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to format campaign for Homebrewery export: {str(e)}")
@@ -689,7 +695,13 @@ async def prepare_campaign_for_homebrewery_posting(
     sections = crud.get_campaign_sections(db=db, campaign_id=campaign_id, limit=1000)
     export_service = HomebreweryExportService()
     try:
-        markdown_content = export_service.format_campaign_for_homebrewery(campaign=db_campaign, sections=sections)
+        # Ensure db and current_user are passed
+        markdown_content = await export_service.format_campaign_for_homebrewery(
+            campaign=db_campaign,
+            sections=sections,
+            db=db,
+            current_user=current_user
+        )
     except Exception as e:
         print(f"Error during Homebrewery content generation for campaign {campaign_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to generate Homebrewery Markdown: {str(e)}")
