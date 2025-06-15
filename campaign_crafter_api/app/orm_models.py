@@ -29,8 +29,8 @@ class Campaign(Base):
     title = Column(String, index=True, nullable=False)
     initial_user_prompt = Column(Text, nullable=True)
     concept = Column(Text, nullable=True) # LLM-generated campaign overview
-    homebrewery_toc = Column(JSON, nullable=True) # Changed from Text to JSON
-    display_toc = Column(JSON, nullable=True) # Changed from Text to JSON
+    homebrewery_toc = Column(JSON, nullable=True)
+    display_toc = Column(JSON, nullable=True)
     homebrewery_export = Column(Text, nullable=True)
     badge_image_url = Column(String, nullable=True) # New field for campaign badge
     thematic_image_url = Column(String, nullable=True)
