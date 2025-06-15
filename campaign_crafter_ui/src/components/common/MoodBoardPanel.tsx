@@ -224,16 +224,28 @@ const MoodBoardPanel: React.FC<MoodBoardPanelProps> = (props) => {
         onUpdateMoodBoardUrls(newOrder);
 
         // NEW logic for isDraggingImage
-        setTimeout(() => setIsDraggingImage(false), 0);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setIsDraggingImage(false);
+          });
+        });
       } else {
         // If item is dragged to a non-droppable area or indices are not found,
         // still ensure isDraggingImage is reset.
-        setTimeout(() => setIsDraggingImage(false), 0);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setIsDraggingImage(false);
+          });
+        });
       }
     } else {
       // If not a valid drop or no actual move, reset the flag.
       // This handles cases like clicking without dragging, or dragging and returning to the same spot if not handled by active.id !== over.id
-      setTimeout(() => setIsDraggingImage(false), 0);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setIsDraggingImage(false);
+        });
+      });
     }
   }
 
