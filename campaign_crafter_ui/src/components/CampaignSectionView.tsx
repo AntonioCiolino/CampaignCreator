@@ -141,7 +141,25 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   
   const handleEdit = () => {
     setIsCollapsed(false); // Expand section on edit
-    setEditedContent(section.content || '');
+
+    const plainTextContent = section.content || '';
+    // Convert plain text to HTML: wrap each line in <p> tags.
+    // This handles empty lines as <p></p>, which Quill should treat as a blank paragraph.
+    // For a more robust empty line representation (like a visible space),
+    // one might use <p><br></p> for lines that are truly empty.
+    // const lines = plainTextContent.split('\n');
+    // const htmlContent = lines.map(line => {
+    //   if (line.trim() === '') {
+    //     return '<p><br></p>'; // Or just '<p></p>' if that suffices
+    //   }
+    //   return `<p>${line}</p>`;
+    // }).join('');
+    // Simpler version first:
+    const lines = plainTextContent.split('\n');
+    const htmlContent = lines.map(line => `<p>${line}</p>`).join('');
+
+    setEditedContent(htmlContent);
+
     setIsEditing(true);
     setLocalSaveError(null); // Clear local errors when starting to edit
     setSaveSuccess(false);
@@ -299,10 +317,18 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   const handleSave = async () => {
     setLocalSaveError(null);
     setSaveSuccess(false);
+
+    if (!quillInstance) {
+      console.error("Editor not available. Cannot save.");
+      setLocalSaveError("Editor not available. Cannot save.");
+      // setLocalSaving(false); // We don't have localSaving in this version of the code
+      return;
+    }
+
     try {
       // For now, only content is editable in this component.
       // Title/order would be handled elsewhere or if this component is expanded.
-      await onSave(section.id, { content: editedContent });
+      await onSave(section.id, { content: quillInstance.getText() });
       setIsEditing(false);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000); // Display success for 3s
