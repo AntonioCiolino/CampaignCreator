@@ -77,6 +77,7 @@ class HomebreweryExportService:
         homebrewery_content.append("\\page\n") # Page break after concept/title page
 
         # Table of Contents
+        print(f"DEBUG EXPORT: campaign.homebrewery_toc (type: {type(campaign.homebrewery_toc)}): {campaign.homebrewery_toc}")
         actual_toc_markdown_string: Optional[str] = None
         if campaign.homebrewery_toc:
             if isinstance(campaign.homebrewery_toc, dict):
@@ -89,8 +90,10 @@ class HomebreweryExportService:
                 # Log or handle other unexpected types if necessary
                 print(f"Warning: campaign.homebrewery_toc for campaign {campaign.id} is of unexpected type: {type(campaign.homebrewery_toc)}. Expected dict or str.")
 
+        print(f"DEBUG EXPORT: actual_toc_markdown_string (type: {type(actual_toc_markdown_string)}): {actual_toc_markdown_string}")
         if actual_toc_markdown_string: # Check if we successfully got a string
             processed_toc = self.process_block(actual_toc_markdown_string)
+            print(f"DEBUG EXPORT: processed_toc (type: {type(processed_toc)}): {processed_toc}")
             homebrewery_content.append(f"{processed_toc.strip()}\n")
             homebrewery_content.append("\\page\n") # Page break after TOC
         # else: # No valid TOC content found or extracted
