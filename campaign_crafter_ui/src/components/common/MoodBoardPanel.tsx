@@ -1,5 +1,5 @@
 // campaign_crafter_ui/src/components/common/MoodBoardPanel.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -67,6 +67,23 @@ const SortableMoodBoardItem: React.FC<SortableMoodBoardItemProps> = ({ id, url, 
     // touchAction: 'none', // Recommended by dnd-kit for pointer sensors
   };
 
+  const [justFinishedDragging, setJustFinishedDragging] = useState(false);
+
+  // Ensure 'isDragging' is obtained from the useSortable hook call like:
+  // const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+  useEffect(() => {
+    if (isDragging) {
+      setJustFinishedDragging(true);
+    } else if (justFinishedDragging) {
+      // Only set a timer to turn it off if it was true (meaning we just stopped dragging THIS item)
+      const timer = setTimeout(() => {
+        setJustFinishedDragging(false);
+      }, 50); // Keep it disabled for 50ms after isDragging becomes false
+      return () => clearTimeout(timer);
+    }
+  }, [isDragging, justFinishedDragging]);
+
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="mood-board-item-link-wrapper">
       {/* The original <a> tag can be here or you can directly style the div above */}
@@ -76,9 +93,7 @@ const SortableMoodBoardItem: React.FC<SortableMoodBoardItemProps> = ({ id, url, 
         rel="noopener noreferrer"
         className="mood-board-item-link"
         onClickCapture={(e: React.MouseEvent) => {
-          // Prevent click navigation if a drag operation just completed.
-          // This uses the new isDraggingImage flag.
-          if (isDraggingImage) {
+          if (isDraggingImage || justFinishedDragging) { // isDraggingImage is the prop
             e.preventDefault();
             e.stopPropagation();
           }
