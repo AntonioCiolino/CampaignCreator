@@ -311,6 +311,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
       // For now, only content is editable in this component.
       // Title/order would be handled elsewhere or if this component is expanded.
       await onSave(section.id, { content: quillInstance.getText() });
+      setEditedContent(quillInstance.getText());
       setIsEditing(false);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000); // Display success for 3s
@@ -417,7 +418,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
               <ReactQuill
                 theme="snow"
                 value={editedContent}
-                onChange={setEditedContent}
+                onChange={(content, delta, source, editor) => setEditedContent(editor.getText())}
                 modules={quillModules}
                 formats={quillFormats}
                 className="quill-editor"
