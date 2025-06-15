@@ -132,12 +132,6 @@ async def generate_campaign_toc_endpoint(
             model=model_specific_id,
             current_user=current_user # Add this
         )
-        print(f"DEBUG: generate_campaign_toc_endpoint - received generated_tocs_dict: {generated_tocs_dict}")
-        if isinstance(generated_tocs_dict, dict):
-            hb_toc_from_llm = generated_tocs_dict.get('homebrewery_toc')
-            display_toc_from_llm = generated_tocs_dict.get('display_toc')
-            print(f"DEBUG: Type of homebrewery_toc from LLM: {type(hb_toc_from_llm)}, Value: {hb_toc_from_llm}")
-            print(f"DEBUG: Type of display_toc from LLM: {type(display_toc_from_llm)}, Value: {display_toc_from_llm}")
     except LLMServiceUnavailableError as e:
         raise HTTPException(status_code=503, detail=f"LLM Service Error for TOC generation: {str(e)}")
     except LLMGenerationError as e: # This will catch errors from LLM service if content is empty or template not found
