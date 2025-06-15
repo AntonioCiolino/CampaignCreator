@@ -299,10 +299,18 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   const handleSave = async () => {
     setLocalSaveError(null);
     setSaveSuccess(false);
+
+    if (!quillInstance) {
+      console.error("Editor not available. Cannot save.");
+      setLocalSaveError("Editor not available. Cannot save.");
+      // setLocalSaving(false); // We don't have localSaving in this version of the code
+      return;
+    }
+
     try {
       // For now, only content is editable in this component.
       // Title/order would be handled elsewhere or if this component is expanded.
-      await onSave(section.id, { content: editedContent });
+      await onSave(section.id, { content: quillInstance.getText() });
       setIsEditing(false);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000); // Display success for 3s
