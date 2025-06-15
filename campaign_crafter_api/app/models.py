@@ -1,6 +1,8 @@
 from typing import Optional, List, Dict
 from pydantic import BaseModel
 
+# Removed ImageData model
+
 class LLMConfigBase(BaseModel):
     name: str
     api_key: Optional[str] = None
@@ -37,6 +39,7 @@ class CampaignSectionUpdateInput(BaseModel):
     content: Optional[str] = None
     order: Optional[int] = None # Optional: allow reordering
     type: Optional[str] = None # New field
+    # Removed images field
 
 class CampaignFullContentResponse(BaseModel):
     campaign_id: int
@@ -66,6 +69,7 @@ class CampaignSectionCreate(CampaignSectionBase):
 class CampaignSection(CampaignSectionBase):
     id: int
     campaign_id: int # foreign key to Campaign
+    # Removed images field
 
     class Config:
         from_attributes = True

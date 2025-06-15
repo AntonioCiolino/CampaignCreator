@@ -425,7 +425,7 @@ def get_section(db: Session, section_id: int, campaign_id: int) -> Optional[orm_
 def update_campaign_section(db: Session, section_id: int, campaign_id: int, section_update_data: models.CampaignSectionUpdateInput) -> Optional[orm_models.CampaignSection]:
     db_section = get_section(db=db, section_id=section_id, campaign_id=campaign_id)
     if db_section:
-        update_data = section_update_data.dict(exclude_unset=True)
+        update_data = section_update_data.model_dump(exclude_unset=True) # Changed .dict() to .model_dump()
         for key, value in update_data.items():
             # If 'order' is updated, and more complex logic is needed later (e.g., reordering others),
             # it would be handled here. For now, direct update.

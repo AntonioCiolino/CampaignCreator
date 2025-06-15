@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'zzzz_placeholder_add_api_keys' # User should replace this if an actual revision command was run
-down_revision = '<PREVIOUS_REVISION_ID_NEEDS_UPDATE>'  # IMPORTANT: User MUST update this to the actual previous revision ID
+down_revision = '88aee1ef707a'  # IMPORTANT: User MUST update this to the actual previous revision ID
 branch_labels = None
 depends_on = None
 
