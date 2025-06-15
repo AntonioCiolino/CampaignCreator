@@ -142,14 +142,23 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   const handleEdit = () => {
     setIsCollapsed(false); // Expand section on edit
 
-    if (quillInstance) {
-      quillInstance.setText(section.content || ''); // Set Quill's content directly using plain text
-      setEditedContent(quillInstance.root.innerHTML); // Sync React state with Quill's HTML
-    } else {
-      // Fallback if Quill instance isn't ready (should be rare if editor is visible)
-      console.warn("Quill instance not available in handleEdit. Falling back to setting plain text directly to state.");
-      setEditedContent(section.content || '');
-    }
+    const plainTextContent = section.content || '';
+    // Convert plain text to HTML: wrap each line in <p> tags.
+    // This handles empty lines as <p></p>, which Quill should treat as a blank paragraph.
+    // For a more robust empty line representation (like a visible space),
+    // one might use <p><br></p> for lines that are truly empty.
+    // const lines = plainTextContent.split('\n');
+    // const htmlContent = lines.map(line => {
+    //   if (line.trim() === '') {
+    //     return '<p><br></p>'; // Or just '<p></p>' if that suffices
+    //   }
+    //   return `<p>${line}</p>`;
+    // }).join('');
+    // Simpler version first:
+    const lines = plainTextContent.split('\n');
+    const htmlContent = lines.map(line => `<p>${line}</p>`).join('');
+
+    setEditedContent(htmlContent);
 
     setIsEditing(true);
     setLocalSaveError(null); // Clear local errors when starting to edit
