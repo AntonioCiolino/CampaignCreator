@@ -1,6 +1,10 @@
 import re
-from typing import List, Optional
-from app import orm_models # Assuming orm_models.py contains Campaign and CampaignSection
+from typing import List, Optional, Dict # Added Dict
+from app import orm_models, crud # Assuming orm_models.py contains Campaign and CampaignSection, added crud
+from app.services.llm_factory import get_llm_service
+from app.services.llm_service import LLMServiceUnavailableError, LLMGenerationError
+from sqlalchemy.orm import Session
+from app.models import User as UserModel # For current_user type hint
 
 class HomebreweryExportService:
 
@@ -47,7 +51,7 @@ class HomebreweryExportService:
         # It's not intended for deep processing of general Markdown or complex section content.
         return processed_content
 
-    def format_campaign_for_homebrewery(self, campaign: orm_models.Campaign, sections: List[orm_models.CampaignSection]) -> str:
+    async def format_campaign_for_homebrewery(self, campaign: orm_models.Campaign, sections: List[orm_models.CampaignSection], db: Session, current_user: UserModel) -> str: # Added db, current_user and async
         # TODO: Make page_image_url and stain_images configurable in the future, perhaps via campaign settings or user profile.
         page_image_url = "https://www.gmbinder.com/images/b7OT9E4.png" # Example URL for title page background
         stain_images = [
@@ -76,30 +80,71 @@ class HomebreweryExportService:
         
         homebrewery_content.append("\\page\n") # Page break after concept/title page
 
-        # Table of Contents
-        print(f"DEBUG EXPORT: campaign.homebrewery_toc (type: {type(campaign.homebrewery_toc)}): {campaign.homebrewery_toc}")
-        actual_toc_markdown_string: Optional[str] = None
-        if campaign.homebrewery_toc:
-            if isinstance(campaign.homebrewery_toc, dict):
-                actual_toc_markdown_string = campaign.homebrewery_toc.get("markdown_string")
-            elif isinstance(campaign.homebrewery_toc, str):
-                # Fallback for old data that might have been a direct string
-                actual_toc_markdown_string = campaign.homebrewery_toc
-                print(f"Warning: campaign.homebrewery_toc for campaign {campaign.id} was a string, not a dict. Using as is.")
-            else:
-                # Log or handle other unexpected types if necessary
-                print(f"Warning: campaign.homebrewery_toc for campaign {campaign.id} is of unexpected type: {type(campaign.homebrewery_toc)}. Expected dict or str.")
+        # Table of Contents - New Generation Logic
+        sections_summary = "\n".join([s.title for s in sections if s.title])
+        freshly_generated_hb_toc_string: Optional[str] = None
 
-        print(f"DEBUG EXPORT: actual_toc_markdown_string (type: {type(actual_toc_markdown_string)}): {actual_toc_markdown_string}")
-        if actual_toc_markdown_string: # Check if we successfully got a string
-            processed_toc = self.process_block(actual_toc_markdown_string)
-            print(f"DEBUG EXPORT: processed_toc (type: {type(processed_toc)}): {processed_toc}")
+        if sections_summary: # Only attempt to generate if there are sections
+            try:
+                # Determine provider and model_id from campaign.selected_llm_id
+                provider_name_for_llm = None
+                model_id_for_llm = campaign.selected_llm_id
+                if campaign.selected_llm_id and '/' in campaign.selected_llm_id:
+                    provider_name_for_llm, model_id_for_llm = campaign.selected_llm_id.split('/', 1)
+
+                llm_service = get_llm_service(
+                    provider_name=provider_name_for_llm,
+                    model_id_with_prefix=campaign.selected_llm_id
+                )
+                if llm_service:
+                    print(f"INFO EXPORT: Generating Homebrewery TOC for campaign {campaign.id} using model {campaign.selected_llm_id}")
+                    freshly_generated_hb_toc_string = await llm_service.generate_homebrewery_toc_from_sections(
+                        sections_summary=sections_summary,
+                        db=db,
+                        current_user=current_user,
+                        model=model_id_for_llm # Pass only the model part if provider was split
+                    )
+                else:
+                    print(f"ERROR EXPORT: Could not get LLM service for provider '{provider_name_for_llm}' or model '{campaign.selected_llm_id}' for campaign {campaign.id}")
+
+            except (LLMServiceUnavailableError, LLMGenerationError) as e:
+                print(f"ERROR EXPORT: LLM error generating Homebrewery TOC for campaign {campaign.id}: {e}")
+            except Exception as e: # Catch any other unexpected errors
+                print(f"ERROR EXPORT: Unexpected error generating Homebrewery TOC for campaign {campaign.id}: {type(e).__name__} - {e}")
+        else:
+            print(f"INFO EXPORT: No sections with titles found for campaign {campaign.id}, skipping Homebrewery TOC generation.")
+
+        if freshly_generated_hb_toc_string:
+            processed_toc = self.process_block(freshly_generated_hb_toc_string)
             homebrewery_content.append(f"{processed_toc.strip()}\n")
             homebrewery_content.append("\\page\n") # Page break after TOC
-        # else: # No valid TOC content found or extracted
-            # Optionally log that no TOC is being added
-            # print(f"No valid Homebrewery TOC content found or extracted for campaign {campaign.id}.")
-        
+
+            # Save the newly generated TOC back to the database
+            hb_toc_object_to_save = {"markdown_string": freshly_generated_hb_toc_string}
+            try:
+                # This assumes crud.update_campaign_homebrewery_toc will be created/adapted
+                # to handle updating only this field.
+                # For now, we'll use a more general update and rely on Pydantic model validation for structure.
+                # This might be problematic if campaign.homebrewery_toc is not Optional[Dict[str,str]] in CampaignUpdate model.
+                # Let's assume a specific CRUD function or that CampaignUpdate model is correctly structured for this.
+
+                # Placeholder for actual CRUD call, as it needs specific design
+                # For this subtask, we are focusing on the service logic.
+                # A direct call to crud.update_campaign might be too broad if we only want to update the TOC.
+                # We will assume a more targeted (hypothetical) CRUD function for now:
+                # crud.update_campaign_homebrewery_toc(db=db, campaign_id=campaign.id, homebrewery_toc_content=hb_toc_object_to_save)
+
+                # To make this runnable without a new CRUD method yet, we can try to update using existing CampaignUpdate
+                # This requires CampaignUpdate Pydantic model to accept homebrewery_toc as Dict[str, str]
+                from app.models import CampaignUpdate # Local import for this block
+                campaign_update_payload = CampaignUpdate(homebrewery_toc=hb_toc_object_to_save)
+                await crud.update_campaign(db=db, campaign_id=campaign.id, campaign_update=campaign_update_payload)
+                print(f"INFO EXPORT: Attempted to save newly generated Homebrewery TOC to DB for campaign {campaign.id}")
+            except Exception as e:
+                print(f"ERROR EXPORT: Failed to save newly generated Homebrewery TOC to DB for campaign {campaign.id}: {type(e).__name__} - {e}")
+        else:
+            print(f"INFO EXPORT: No Homebrewery TOC was generated or appended for campaign {campaign.id}.")
+
         # Main Content - Sections
         # Sections are iterated in their given order.
         # Users should use Markdown for formatting within section content.

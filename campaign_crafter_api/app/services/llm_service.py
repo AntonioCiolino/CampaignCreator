@@ -79,6 +79,14 @@ class AbstractLLMService(ABC):
         """
         pass
 
+    @abstractmethod
+    async def generate_homebrewery_toc_from_sections(self, sections_summary: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
+        '''
+        Generates a Homebrewery-formatted Table of Contents based on a summary of campaign sections.
+        Returns the raw Homebrewery Markdown string.
+        '''
+        pass
+
 # --- Dummy LLMService for placeholder/testing, updated to match async and new signatures ---
 class LLMService(AbstractLLMService): # Note: This is a dummy implementation
     async def is_available(self, current_user: UserModel, db: Session) -> bool:
@@ -126,3 +134,7 @@ class LLMService(AbstractLLMService): # Note: This is a dummy implementation
         if section_type:
             return f"Dummy section content for: {campaign_concept} (Type: {section_type}) - Title: {section_title_suggestion}"
         return f"Dummy section content for: {campaign_concept} - Title: {section_title_suggestion}"
+
+    async def generate_homebrewery_toc_from_sections(self, sections_summary: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
+        print(f"Dummy LLMService: generate_homebrewery_toc_from_sections called for user {current_user.id} with model {model}")
+        return f"Dummy Homebrewery TOC based on sections: {sections_summary}"

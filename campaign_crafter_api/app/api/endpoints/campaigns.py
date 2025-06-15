@@ -145,10 +145,10 @@ async def generate_campaign_toc_endpoint(
         raise HTTPException(status_code=500, detail=f"Failed to generate Table of Contents: {str(e)}")
 
     display_toc_content = generated_tocs_dict.get("display_toc")
-    homebrewery_toc_content = generated_tocs_dict.get("homebrewery_toc")
+    # homebrewery_toc_content = generated_tocs_dict.get("homebrewery_toc") # Removed
 
-    if display_toc_content is None or homebrewery_toc_content is None:
-        error_detail = "TOC generation did not return the expected structure (missing display_toc or homebrewery_toc key, or value is null)."
+    if display_toc_content is None: # Simplified condition
+        error_detail = "Display TOC generation did not return the expected content."
         print(f"Error: {error_detail} - Dict received: {generated_tocs_dict}")
         raise HTTPException(status_code=500, detail=error_detail)
 
@@ -168,8 +168,7 @@ async def generate_campaign_toc_endpoint(
         return items
 
     display_toc_list = parse_toc_string_to_list(display_toc_content if display_toc_content is not None else "")
-    # homebrewery_toc_list = parse_toc_string_to_list(homebrewery_toc_content) # Removed this line
-    homebrewery_toc_object = {"markdown_string": homebrewery_toc_content if homebrewery_toc_content is not None else ""}
+    # homebrewery_toc_object = {"markdown_string": homebrewery_toc_content if homebrewery_toc_content is not None else ""} # Removed
 
 
     if not display_toc_list and display_toc_content: # If parsing resulted in empty list but original string was not empty
@@ -177,17 +176,14 @@ async def generate_campaign_toc_endpoint(
         # Potentially use the raw string as a single item if parsing fails completely
         # display_toc_list = [{"title": "Failed to parse Display TOC", "type": "error"}]
 
-    # Removed warning for homebrewery_toc_list as it's no longer a list derived from parsing.
-    # if not homebrewery_toc_list and homebrewery_toc_content:
-    #     print(f"Warning: homebrewery_toc_list is empty after parsing non-empty string: '{homebrewery_toc_content}'")
-    #     # homebrewery_toc_list = [{"title": "Failed to parse Homebrewery TOC", "type": "error"}]
+    # Warnings for homebrewery_toc_list should be removed (already done in previous steps).
 
 
     updated_campaign_with_toc = crud.update_campaign_toc(
         db=db,
         campaign_id=campaign_id,
         display_toc_content=display_toc_list,
-        homebrewery_toc_content=homebrewery_toc_object # Changed to pass the object
+        homebrewery_toc_content=None # Explicitly pass None for homebrewery_toc
     )
     if updated_campaign_with_toc is None:
         # This specific check for campaign existence after update might be redundant if get_campaign above already confirmed it.

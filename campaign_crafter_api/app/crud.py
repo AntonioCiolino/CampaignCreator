@@ -364,8 +364,9 @@ async def update_campaign(db: Session, campaign_id: int, campaign_update: models
 def update_campaign_toc(db: Session, campaign_id: int, display_toc_content: List[Dict[str, str]], homebrewery_toc_content: Optional[Dict[str, str]]) -> Optional[orm_models.Campaign]:
     db_campaign = get_campaign(db, campaign_id=campaign_id) # get_campaign will handle potential string TOC conversion before update
     if db_campaign:
-        db_campaign.display_toc = display_toc_content
-        db_campaign.homebrewery_toc = homebrewery_toc_content
+        db_campaign.display_toc = display_toc_content # Always update this
+        if homebrewery_toc_content is not None: # Only update if provided
+            db_campaign.homebrewery_toc = homebrewery_toc_content
         # db.add(db_campaign) # Not strictly necessary as SQLAlchemy tracks changes on attached objects
         db.commit()
         db.refresh(db_campaign)

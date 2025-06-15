@@ -398,3 +398,30 @@ class OpenAILLMService(AbstractLLMService):
         # if self.async_client:
         #     await self.async_client.close()
         #     print("OpenAI AsyncClient closed.")
+
+    async def generate_homebrewery_toc_from_sections(self, sections_summary: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
+        openai_api_key = await self._get_openai_api_key_for_user(current_user, db)
+
+        if not sections_summary:
+            # Return a basic empty TOC if no sections are provided, or raise an error.
+            # For now, returning a minimal valid Homebrewery TOC structure.
+            return "{{toc,wide\n# Table Of Contents\n}}\n"
+
+        selected_model = self._get_model(model, use_chat_model=True)
+
+        prompt_template_str = self.feature_prompt_service.get_prompt("TOC Homebrewery", db=db)
+        if not prompt_template_str:
+            raise LLMGenerationError("Homebrewery TOC prompt template ('TOC Homebrewery') not found in database.")
+
+        final_prompt = prompt_template_str.format(sections_summary=sections_summary)
+
+        messages = [
+            {"role": "system", "content": "You are an assistant skilled in creating RPG Table of Contents strictly following Homebrewery Markdown formatting, using provided section titles."},
+            {"role": "user", "content": final_prompt}
+        ]
+
+        generated_toc = await self._perform_chat_completion(selected_model, messages, temperature=0.3, max_tokens=1000, api_key=openai_api_key)
+        if not generated_toc:
+            raise LLMGenerationError("OpenAI API call for Homebrewery TOC from sections succeeded but returned no usable content.")
+
+        return generated_toc
