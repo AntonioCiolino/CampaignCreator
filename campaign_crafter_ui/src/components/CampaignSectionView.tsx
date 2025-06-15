@@ -141,7 +141,16 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   
   const handleEdit = () => {
     setIsCollapsed(false); // Expand section on edit
-    setEditedContent(section.content || '');
+
+    if (quillInstance) {
+      quillInstance.setText(section.content || ''); // Set Quill's content directly using plain text
+      setEditedContent(quillInstance.root.innerHTML); // Sync React state with Quill's HTML
+    } else {
+      // Fallback if Quill instance isn't ready (should be rare if editor is visible)
+      console.warn("Quill instance not available in handleEdit. Falling back to setting plain text directly to state.");
+      setEditedContent(section.content || '');
+    }
+
     setIsEditing(true);
     setLocalSaveError(null); // Clear local errors when starting to edit
     setSaveSuccess(false);
