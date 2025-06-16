@@ -114,7 +114,6 @@ VTCNP Enterprises
         homebrewery_content.append("  .phb#p1{ text-align:center; }")
         homebrewery_content.append("  .phb#p1:after{ display:none; }")
         homebrewery_content.append("</style>\n")
-        homebrewery_content.append(f"![background]({page_image_url})\n") # Background image for title page
 
         # Title
         homebrewery_content.append(f"# {campaign.title if campaign.title else 'Untitled Campaign'}\n")
