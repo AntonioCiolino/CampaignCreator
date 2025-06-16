@@ -428,16 +428,6 @@ const CampaignEditorPage: React.FC = () => {
         setCampaign(campaignDetails);
         setEditableDisplayTOC(campaignDetails.display_toc || []);
 
-    // ADD LOGGING HERE
-    console.log("CampaignEditorPage: Fetched campaignSectionsResponse raw:", campaignSectionsResponse);
-    if (Array.isArray(campaignSectionsResponse)) {
-        console.log("CampaignEditorPage: Processing fetched sections (before sorting/setting state):");
-        campaignSectionsResponse.forEach(section => {
-            console.log(`CampaignEditorPage: Section ID ${section.id}, Title: '${section.title}', Content (length ${section.content?.length}):`, JSON.stringify(section.content));
-        });
-    }
-    // END LOGGING
-
         if (Array.isArray(campaignSectionsResponse)) {
             setSections(campaignSectionsResponse.sort((a, b) => a.order - b.order));
         } else {

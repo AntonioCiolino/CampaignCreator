@@ -48,8 +48,6 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   onSetThematicImageFromSection,
   expandSectionId, // Add this
 }) => {
-  // At the start of CampaignSectionView component
-  console.log(`CampaignSectionView: Received props for Section ID ${section.id}, Title: '${section.title}'. Initial section.content (length ${section.content?.length}):`, JSON.stringify(section.content));
 
   // Function to get tooltip text based on section type
   const getTooltipText = (sectionType: string | undefined): string => {
@@ -164,17 +162,12 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
     const lines = plainTextContent.split('\n');
     const htmlContent = lines.map(line => `<p>${line}</p>`).join('');
 
-      // ADD LOGGING HERE
-      console.log(`CampaignSectionView: Section ID ${section.id} handleEdit - plainTextContent (length ${plainTextContent?.length}):`, JSON.stringify(plainTextContent));
-      console.log(`CampaignSectionView: Section ID ${section.id} handleEdit - generated htmlContent for Quill (length ${htmlContent?.length}):`, JSON.stringify(htmlContent));
-      // END LOGGING
-
     setEditedContent(htmlContent);
 
     setIsEditing(true);
     setLocalSaveError(null); // Clear local errors when starting to edit
     setSaveSuccess(false);
-    setContentGenerationError(null); // Clear content generation error on cancel - this line was in handleCancel, but good to ensure clean state
+    // setContentGenerationError(null); // Removed as per cleanup task
   };
 
   const handleCancel = () => {
