@@ -21,7 +21,8 @@ ___
  EPISODE_INFO
 }}
 
-![background image](https://onedrive.live.com/embed?resid=387fb00e5a1e24c8%2152521&authkey=%21APkOXzEAywQMAwA){position:absolute,bottom:0,left:0,width:100%}"""
+![background image](https://onedrive.live.com/embed?resid=387fb00e5a1e24c8%2152521&authkey=%21APkOXzEAywQMAwA){position:absolute,bottom:0,left:0,width:100%}
+\page"""
 
     BACK_COVER_TEMPLATE = """\\page
 {{backCover}}

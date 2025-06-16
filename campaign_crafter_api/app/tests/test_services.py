@@ -182,15 +182,33 @@ async def test_format_campaign_for_homebrewery_front_cover_content():
 
     output = await service.format_campaign_for_homebrewery(campaign_mock, [], db_mock, user_mock)
 
-    # Assertions for front cover content
-    # Check if it starts with the front cover template, accounting for potential newlines
-    assert output.lstrip().startswith("{{frontCover}}")
+    # Construct expected front cover string
+    # Note: FRONT_COVER_TEMPLATE already includes the trailing "\n\\page"
+    expected_front_cover = service.FRONT_COVER_TEMPLATE
+    expected_front_cover = expected_front_cover.replace("TITLE", "My Test Campaign")
+    expected_front_cover = expected_front_cover.replace("SUBTITLE", "A Campaign Adventure")
+    expected_front_cover = expected_front_cover.replace("BANNER_TEXT", "Exciting Banner Text!")
+    expected_front_cover = expected_front_cover.replace("EPISODE_INFO", "Author to provide episode details here.")
+    # The background image URL in the template is the onedrive one, it's replaced by the service method
+    expected_front_cover = expected_front_cover.replace("https://onedrive.live.com/embed?resid=387fb00e5a1e24c8%2152521&authkey=%21APkOXzEAywQMAwA", "https://via.placeholder.com/816x1056.png?text=Front+Cover+Background")
+
+    # The output is a join of many parts. The first part should be the formatted front cover.
+    # The `\n\n` joiner in the service means we should check if output starts with expected_front_cover + "\n\n"
+    # However, if it's the only content before style, it might be just expected_front_cover
+    # Let's check if the output starts with the fully formatted front cover.
+    # The front_cover is added to homebrewery_content list, then other things, then joined by "\n\n"
+    # So, the actual output will start with expected_front_cover, then "\n\n", then "<style>..."
+    assert output.startswith(expected_front_cover)
+
+    # Verify other key elements are still present if startswith is too broad or tricky due to joining
     assert "# My Test Campaign" in output
     assert "## A Campaign Adventure" in output
     assert "{{banner Exciting Banner Text!}}" in output
     assert "Author to provide episode details here." in output
     assert "![background image](https://via.placeholder.com/816x1056.png?text=Front+Cover+Background)" in output
     assert "![](/assets/naturalCritLogoRed.svg)" in output
+    assert expected_front_cover.strip().endswith("\\page")
+
 
 @pytest.mark.asyncio
 async def test_format_campaign_for_homebrewery_back_cover_content():
@@ -210,29 +228,23 @@ async def test_format_campaign_for_homebrewery_back_cover_content():
 
     output = await service.format_campaign_for_homebrewery(campaign_mock, [], db_mock, user_mock)
 
-    # Expected end of the document (part of the back cover)
-    # This helps verify the back cover is the last thing added.
-    # Need to be careful with exact whitespace and newlines if the template is complex.
-    # For simplicity, checking key elements of the back cover.
+    # Construct expected back cover string
+    expected_back_cover = service.BACK_COVER_TEMPLATE
+    expected_back_cover = expected_back_cover.replace("https://--backcover url image--", "https://via.placeholder.com/816x1056.png?text=Back+Cover+Background")
+    expected_back_cover = expected_back_cover.replace("BACKCOVER ONE-LINER", "An Unforgettable Adventure Awaits!")
+    expected_back_cover = expected_back_cover.replace("ADD A CAMPAIGN COMMENTARY BLOCK HERE", "Author's notes and commentary on the campaign.")
 
-    expected_back_cover_elements = [
-        "\\page\n{{backCover}}", # Note: The template itself has \page at the start
-        "![background image](https://via.placeholder.com/816x1056.png?text=Back+Cover+Background)",
-        "# An Unforgettable Adventure Awaits!",
-        "Author's notes and commentary on the campaign.",
-        "![](/assets/naturalCritLogoWhite.svg)",
-        "VTCNP Enterprises" # Part of the logo block in the template
-    ]
+    # The back_cover is the last element appended to homebrewery_content, then joined by "\n\n"
+    # So the output, when stripped of any final whitespace from the join, should end with the expected_back_cover.
+    assert output.strip().endswith(expected_back_cover.strip())
 
-    for element in expected_back_cover_elements:
-        assert element in output
-
-    # Check if the output string, when stripped, ends with the final part of the back cover template
-    # This is a bit fragile; depends on the exact structure of BACK_COVER_TEMPLATE
-    # BACK_COVER_TEMPLATE ends with "VTCNP Enterprises\n}}"
-    # The join operation might add more newlines.
-    # A more robust check might be to ensure all key components are present towards the end.
-    assert output.strip().endswith("VTCNP Enterprises\n}}")
+    # Keep some specific checks for key elements to be sure
+    assert "\\page\n{{backCover}}" in output # This is how BACK_COVER_TEMPLATE starts
+    assert "![background image](https://via.placeholder.com/816x1056.png?text=Back+Cover+Background)" in output
+    assert "# An Unforgettable Adventure Awaits!" in output
+    assert "Author's notes and commentary on the campaign." in output
+    assert "![](/assets/naturalCritLogoWhite.svg)" in output
+    assert "VTCNP Enterprises" in output # Part of the logo block
 
 
 def test_service_get_available_table_names_user_priority(random_table_service: RandomTableService, db_mock: MagicMock):
