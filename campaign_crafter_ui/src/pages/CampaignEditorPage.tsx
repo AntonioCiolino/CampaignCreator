@@ -1258,10 +1258,12 @@ const CampaignEditorPage: React.FC = () => {
           >
               Done Editing TOC
           </Button>
-          {tocSaveError && <p className="error-message feedback-message">{tocSaveError}</p>}
-          {tocSaveSuccess && <p className="success-message feedback-message">{tocSaveSuccess}</p>}
         </section>
       )}
+    {/* Moved messages START */}
+    {tocSaveError && <p className="error-message feedback-message">{tocSaveError}</p>}
+    {tocSaveSuccess && <p className="success-message feedback-message">{tocSaveSuccess}</p>}
+    {/* Moved messages END */}
       <div className="action-group export-action-group editor-section">
         <Button onClick={handleExportHomebrewery} disabled={isExporting} className="llm-button export-button" icon={<PublishIcon />} tooltip="Export the campaign content as Markdown formatted for Homebrewery">
           {isExporting ? 'Exporting...' : 'Export to Homebrewery'}
