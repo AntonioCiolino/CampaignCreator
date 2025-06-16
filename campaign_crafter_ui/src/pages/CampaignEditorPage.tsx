@@ -319,12 +319,13 @@ const CampaignEditorPage: React.FC = () => {
     );
     return campaign.display_toc.map((tocEntry: TOCEntry) => {
       const title = tocEntry.title || "Untitled Section";
+      const typeDisplay = tocEntry.type || 'N/A'; // Default if type is missing
       const cleanedTitle = title.trim().toLowerCase();
       const sectionId = sectionTitleToIdMap.get(cleanedTitle);
       if (sectionId && sections?.length > 0) {
-        return `- [${title}](#${sectionId})`;
+        return `- [${title}](#${sectionId}) (Type: ${typeDisplay})`;
       }
-      return `- ${title}`;
+      return `- ${title} (Type: ${typeDisplay})`;
     }).join('\n');
   }, [campaign, sections]);
 
