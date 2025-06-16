@@ -400,6 +400,7 @@ class OpenAILLMService(AbstractLLMService):
         #     print("OpenAI AsyncClient closed.")
 
     async def generate_homebrewery_toc_from_sections(self, sections_summary: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
+        print(f"DEBUG OPENAI_HB_TOC: Received sections_summary: {sections_summary}")
         openai_api_key = await self._get_openai_api_key_for_user(current_user, db)
 
         if not sections_summary:
@@ -409,11 +410,13 @@ class OpenAILLMService(AbstractLLMService):
 
         selected_model = self._get_model(model, use_chat_model=True)
 
-        prompt_template_str = self.feature_prompt_service.get_prompt("TOC Homebrewery", db=db)
-        if not prompt_template_str:
+        homebrewery_prompt_template_str = self.feature_prompt_service.get_prompt("TOC Homebrewery", db=db)
+        print(f"DEBUG OPENAI_HB_TOC: Fetched prompt template: {homebrewery_prompt_template_str}")
+        if not homebrewery_prompt_template_str:
             raise LLMGenerationError("Homebrewery TOC prompt template ('TOC Homebrewery') not found in database.")
 
-        final_prompt = prompt_template_str.format(sections_summary=sections_summary)
+        final_prompt = homebrewery_prompt_template_str.format(sections_summary=sections_summary)
+        print(f"DEBUG OPENAI_HB_TOC: Formatted final_prompt: {final_prompt}")
 
         messages = [
             {"role": "system", "content": "You are an assistant skilled in creating RPG Table of Contents strictly following Homebrewery Markdown formatting, using provided section titles."},
