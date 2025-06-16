@@ -39,16 +39,16 @@ const mockGetCampaignSections = campaignService.getCampaignSections as jest.Mock
 const mockUpdateCampaign = campaignService.updateCampaign as jest.Mock;
 const mockGetAvailableLLMs = llmService.getAvailableLLMs as jest.Mock;
 
-const mockCampaignId = 'test-campaign-123';
+const mockCampaignId = 123; // Changed to number to match Campaign interface
 
 const mockLLMs: LLMModel[] = [
-  { id: 'llm1', name: 'LLM One', capabilities: ['chat'] },
-  { id: 'llm2', name: 'LLM Two', capabilities: ['chat'] },
+  { id: 'llm1', name: 'LLM One', capabilities: ['chat'], model_type: 'chat', supports_temperature: true },
+  { id: 'llm2', name: 'LLM Two', capabilities: ['chat'], model_type: 'chat', supports_temperature: false },
 ];
 
 const initialCampaignConcept = 'This is the initial campaign concept.';
 const mockCampaign: Campaign = {
-  id: mockCampaignId,
+  id: mockCampaignId, // Now a number
   title: 'Test Campaign Title',
   concept: initialCampaignConcept,
   initial_user_prompt: 'Initial prompt',
