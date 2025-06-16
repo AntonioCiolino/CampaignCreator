@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TOCEntry } from '../../services/campaignService';
-import { TextField, Button, IconButton, List, Box, Typography, Select, MenuItem, FormControl, InputLabel, SelectChangeEvent, Paper } from '@mui/material';
+import { TextField, Button, IconButton, List, Box, Typography, Select, MenuItem, FormControl, InputLabel, SelectChangeEvent, Paper, Autocomplete } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
@@ -15,7 +15,7 @@ import {
 } from 'react-beautiful-dnd';
 
 // Define available types for the dropdown
-const AVAILABLE_SECTION_TYPES = ["generic", "character", "location", "chapter", "item", "quest", "note", "world_detail", "monster"];
+const AVAILABLE_SECTION_TYPES = ["generic", "character", "npc", "location", "chapter", "item", "quest", "note", "world_detail", "monster"];
 
 interface TOCEditorProps {
   toc: TOCEntry[];
@@ -40,14 +40,14 @@ const TOCEditor: React.FC<TOCEditorProps> = ({ toc, onTOCChange }) => {
     onTOCChange(newTOC); // Propagate changes immediately
   };
 
-  const handleTypeChange = (index: number, event: SelectChangeEvent<string>) => {
-    const newType = event.target.value;
-    const newTOC = editableTOC.map((entry, i) =>
-      i === index ? { ...entry, type: newType } : entry
-    );
-    setEditableTOC(newTOC);
-    onTOCChange(newTOC);
-  };
+  // const handleTypeChange = (index: number, event: SelectChangeEvent<string>) => {
+  //   const newType = event.target.value;
+  //   const newTOC = editableTOC.map((entry, i) =>
+  //     i === index ? { ...entry, type: newType } : entry
+  //   );
+  //   setEditableTOC(newTOC);
+  //   onTOCChange(newTOC);
+  // };
 
   const handleAddEntry = () => {
     const newEntry: TOCEntry = { title: 'New Section', type: 'generic' };
@@ -118,21 +118,35 @@ const TOCEditor: React.FC<TOCEditorProps> = ({ toc, onTOCChange }) => {
                           onChange={(e) => handleInputChange(index, 'title', e.target.value)}
                           sx={{ marginBottom: 1 }}
                         />
-                        <FormControl size="small" sx={{ minWidth: 120 }}>
-                          <InputLabel id={`type-label-${index}`}>Type</InputLabel>
-                          <Select
-                            labelId={`type-label-${index}`}
-                            value={entry.type}
-                            label="Type"
-                            onChange={(e) => handleTypeChange(index, e)}
-                          >
-                            {AVAILABLE_SECTION_TYPES.map((typeOption) => (
-                              <MenuItem key={typeOption} value={typeOption}>
-                                {typeOption.charAt(0).toUpperCase() + typeOption.slice(1)}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
+                        <Autocomplete
+                          freeSolo
+                          options={AVAILABLE_SECTION_TYPES}
+                          value={entry.type}
+                          onChange={(event: any, newValue: string | null) => {
+                            const newTOC = editableTOC.map((e, i) =>
+                              i === index ? { ...e, type: newValue || '' } : e
+                            );
+                            setEditableTOC(newTOC);
+                            onTOCChange(newTOC);
+                          }}
+                          onInputChange={(event: any, newInputValue: string) => {
+                            const newTOC = editableTOC.map((e, i) =>
+                              i === index ? { ...e, type: newInputValue } : e
+                            );
+                            setEditableTOC(newTOC);
+                            onTOCChange(newTOC);
+                          }}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label="Type"
+                              variant="outlined"
+                              size="small"
+                            />
+                          )}
+                          sx={{ minWidth: 180 }} // Adjust width as needed
+                          size="small"
+                        />
                       </Box>
                       <IconButton onClick={() => handleDeleteEntry(index)} edge="end" aria-label="delete" color="error" sx={{ marginLeft: 1 }}>
                         <DeleteIcon />
