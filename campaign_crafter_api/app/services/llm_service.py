@@ -136,4 +136,6 @@ class LLMService(AbstractLLMService): # Note: This is a dummy implementation
 
     async def generate_homebrewery_toc_from_sections(self, sections_summary: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
         print(f"Dummy LLMService: generate_homebrewery_toc_from_sections called for user {current_user.id} with model {model}")
+        if not sections_summary:
+            return ""
         return f"Dummy Homebrewery TOC based on sections: {sections_summary}"
