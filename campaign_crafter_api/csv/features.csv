@@ -12,13 +12,20 @@ End the Table of Contents with }}}}
 
 Current Campaign Sections (titles, in order):
 {sections_summary}"
-TOC Display,"Based on the campaign concept provided below, generate a user-friendly Table of Contents for on-screen display. Use Markdown. Focus on clear section titles that can be linked. Example format:
+TOC Display,"Based on the campaign concept provided below, generate a user-friendly Table of Contents for on-screen display.
+For each suggested section title, also determine its most appropriate type from the following list:
+[monster, character, npc, location, item, quest, chapter, note, world_detail, generic].
 
-- Main Section 1
-  - Subsection 1.1
-  - Subsection 1.2
-- Main Section 2
-  - Subsection 2.1
+Output each top-level section as a bullet point starting with '- '.
+The format for each line should be: `- {{Generated Section Title}} [Type: {{SuggestedType}}]`
+For example:
+- The Whispering Caves [Type: location]
+- Rescuing the Artifact [Type: quest]
+  - The Guardian Golem [Type: monster]
+  - The Hidden Lever [Type: item]
+- Elara, the Wise Sage [Type: npc]
+
+Focus on clear section titles. Subsections can be nested with indentation if appropriate, following the same format.
 
 Campaign Concept:
 {campaign_concept}"

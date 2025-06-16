@@ -1,4 +1,5 @@
 import google.generativeai as genai # type: ignore
+import re # Added import
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
 from app.core.config import settings
@@ -106,7 +107,35 @@ class GeminiLLMService(AbstractLLMService):
         
         # Re-use generate_text for actual generation, passing current_user and db
         return await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=1000)
-    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str: # Added current_user
+
+    def _parse_toc_string_with_types(self, raw_toc_string: str) -> List[Dict[str, str]]:
+        parsed_toc_items = []
+        regex = r"^\s*-\s*(.+?)\s*\[Type:\s*([^\]]+?)\s*\]\s*$"
+        fallback_regex = r"^\s*-\s*(.+)"
+        known_types = ["monster", "character", "npc", "location", "item", "quest", "chapter", "note", "world_detail", "generic", "unknown"]
+
+        for line in raw_toc_string.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            match = re.match(regex, line, re.IGNORECASE)
+            if match:
+                title = match.group(1).strip()
+                type_str = match.group(2).strip().lower()
+                if type_str not in known_types:
+                    print(f"Warning: Unknown type '{type_str}' found for title '{title}'. Defaulting to 'unknown'.")
+                    type_str = "unknown"
+                parsed_toc_items.append({"title": title, "type": type_str})
+            else:
+                fallback_match = re.match(fallback_regex, line)
+                if fallback_match:
+                    title = fallback_match.group(1).strip()
+                    title = re.sub(r"\[(.*?)\]\(.*?\)", r"\1", title).strip()
+                    if title:
+                         parsed_toc_items.append({"title": title, "type": "unknown"})
+        return parsed_toc_items
+
+    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> List[Dict[str, str]]: # Added current_user
         if not await self.is_available(current_user=current_user, db=db): # Pass args
             raise LLMServiceUnavailableError("Gemini service is not available.")
         if not campaign_concept:
@@ -125,17 +154,17 @@ class GeminiLLMService(AbstractLLMService):
             print(f"ERROR: Gemini formatting 'TOC Display' prompt failed due to KeyError. Prompt: '{display_prompt_template_str}' Concept: '{campaign_concept}'")
             raise LLMGenerationError("Failed to format 'TOC Display' prompt due to unexpected placeholders for Gemini.")
 
-        generated_display_toc = await self.generate_text(
+        raw_toc_string = await self.generate_text(
             prompt=display_final_prompt,
             current_user=current_user, db=db, # Pass args
             model=model_instance.model_name,
             temperature=0.5,
             max_tokens=700
         )
-        if not generated_display_toc:
+        if not raw_toc_string:
              raise LLMGenerationError(f"Gemini API call for Display TOC (model: {model_instance.model_name}) succeeded but returned no usable content.")
 
-        return generated_display_toc
+        return self._parse_toc_string_with_types(raw_toc_string)
 
     async def generate_titles(self, campaign_concept: str, db: Session, current_user: UserModel, count: int = 5, model: Optional[str] = None) -> List[str]: # Added current_user
         if not await self.is_available(current_user=current_user, db=db): # Pass args

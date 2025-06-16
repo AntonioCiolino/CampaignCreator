@@ -172,59 +172,20 @@ async def test_generate_campaign_titles_success(mock_get_llm_service, db_campaig
 @pytest.mark.asyncio
 @patch('app.api.endpoints.campaigns.get_llm_service')
 @patch('app.api.endpoints.campaigns.crud.update_campaign_toc')
-async def test_generate_campaign_toc_endpoint_new_format(
-    mock_crud_update_toc, mock_get_llm_service, db_campaign: ORMCampaign, async_client: AsyncClient
-):
-    mock_llm_instance = AsyncMock()
-    mock_llm_instance.generate_toc = AsyncMock(return_value={
-        "display_toc": "- Title 1\n- Title 2", "homebrewery_toc": "* HB Title 1"
-    })
-    mock_get_llm_service.return_value = mock_llm_instance
-
-    updated_campaign_mock = MagicMock(spec=ORMCampaign)
-    updated_campaign_mock.id = db_campaign.id; updated_campaign_mock.title = db_campaign.title
-    updated_campaign_mock.concept = db_campaign.concept; updated_campaign_mock.initial_user_prompt = db_campaign.initial_user_prompt
-    updated_campaign_mock.owner_id = db_campaign.owner_id; updated_campaign_mock.mood_board_image_urls = db_campaign.mood_board_image_urls
-    updated_campaign_mock.homebrewery_export = db_campaign.homebrewery_export
-    expected_display_toc_structure = [{"title": "Title 1", "type": "unknown"}, {"title": "Title 2", "type": "unknown"}]
-    expected_hb_toc_structure = [{"title": "HB Title 1", "type": "unknown"}]
-    updated_campaign_mock.display_toc = expected_display_toc_structure
-    updated_campaign_mock.homebrewery_toc = expected_hb_toc_structure
-    mock_crud_update_toc.return_value = updated_campaign_mock
-
-    response = await async_client.post(
-        f"/api/v1/campaigns/{db_campaign.id}/toc",
-        json={"prompt": "Unused prompt", "model_id_with_prefix": "test/model"}
-    )
-    assert response.status_code == 200, response.text
-    mock_crud_update_toc.assert_called_once()
-    call_args = mock_crud_update_toc.call_args
-    assert call_args.kwargs['campaign_id'] == db_campaign.id
-    assert call_args.kwargs['display_toc_content'] == expected_display_toc_structure
-    assert call_args.kwargs['homebrewery_toc_content'] == expected_hb_toc_structure
-    data = response.json()
-    assert data["id"] == db_campaign.id
-    assert data["display_toc"] == expected_display_toc_structure
-    assert data["homebrewery_toc"] == expected_hb_toc_structure
-
-@pytest.mark.asyncio
-@patch('app.api.endpoints.campaigns.get_llm_service')
-@patch('app.api.endpoints.campaigns.crud.update_campaign_toc')
 async def test_generate_campaign_toc_success(
     mock_crud_update_toc: MagicMock, mock_get_llm_service: MagicMock,
     db_campaign: ORMCampaign, async_client: AsyncClient
 ):
     mock_llm_instance = AsyncMock()
-    generated_display_toc_str = "- Display TOC Item 1\n  - Sub Item 1.1\n- Display TOC Item 2"
-    # LLM service's generate_toc now only returns the display TOC string
-    mock_llm_instance.generate_toc = AsyncMock(return_value=generated_display_toc_str)
-    mock_get_llm_service.return_value = mock_llm_instance
-
+    # This is the structure the LLM service's generate_toc is now expected to return
     expected_api_display_toc = [
         {"title": "Display TOC Item 1", "type": "unknown"},
         {"title": "Sub Item 1.1", "type": "unknown"},
         {"title": "Display TOC Item 2", "type": "unknown"}
     ]
+    mock_llm_instance.generate_toc = AsyncMock(return_value=expected_api_display_toc)
+    mock_get_llm_service.return_value = mock_llm_instance
+
     # Homebrewery TOC is no longer processed or returned by the endpoint in this flow
     mock_updated_campaign_orm = MagicMock(spec=ORMCampaign)
     mock_updated_campaign_orm.id = db_campaign.id; mock_updated_campaign_orm.title = db_campaign.title

@@ -51,11 +51,11 @@ class AbstractLLMService(ABC):
         pass
 
     @abstractmethod
-    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str: # Changed signature
+    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> List[Dict[str, str]]: # Changed signature
             """
-            Generates a display-friendly Table of Contents string
-            for a campaign based on its concept.
-            Returns the display-friendly TOC string.
+            Generates a display-friendly Table of Contents for a campaign based on its concept,
+            parses it, and returns a list of dictionaries, each with "title" and "type".
+            Example: [{"title": "Chapter 1: The Beginning", "type": "chapter"}, {"title": "NPC: Elara", "type": "npc"}]
             """
             pass
 
@@ -111,9 +111,12 @@ class LLMService(AbstractLLMService): # Note: This is a dummy implementation
         print(f"Dummy LLMService: generate_titles called for user {current_user.id} with model {model}")
         return [f"Dummy Title {i+1} for {campaign_concept}" for i in range(count)]
 
-    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
+    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> List[Dict[str, str]]:
         print(f"Dummy LLMService: generate_toc called for user {current_user.id} with model {model}")
-        return f"Dummy Display Table of Contents for: {campaign_concept}"
+        return [
+            {"title": f"Dummy Section 1 for {campaign_concept}", "type": "generic"},
+            {"title": "Dummy NPC Section", "type": "npc"}
+        ]
 
     async def generate_section_content(
         self,

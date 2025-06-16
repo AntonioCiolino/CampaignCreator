@@ -126,8 +126,8 @@ async def generate_campaign_toc_endpoint(
         provider_name, model_specific_id = _extract_provider_and_model(request_body.model_id_with_prefix)
         llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=request_body.model_id_with_prefix)
 
-        # LLM service now returns only the display TOC string
-        display_toc_str = await llm_service.generate_toc(
+        # LLM service now returns a List[Dict[str, str]]
+        display_toc_list = await llm_service.generate_toc(
             campaign_concept=db_campaign.concept,
             db=db,
             model=model_specific_id,
@@ -145,33 +145,19 @@ async def generate_campaign_toc_endpoint(
         print(f"Error during TOC generation for campaign {campaign_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to generate Table of Contents: {str(e)}")
 
-    # display_toc_str is the direct result, which is the display TOC content string
-    if not display_toc_str: # Check if the string is empty or None
-        error_detail = "Display TOC generation returned empty or no content."
-        print(f"Error: {error_detail} - String received: '{display_toc_str}'")
+    # display_toc_list is now the direct result from the service.
+    if not display_toc_list: # Check if the list is empty or None
+        error_detail = "Display TOC generation returned an empty list or no content."
+        # If you need to log the (now non-existent) raw string, this part of the log would change or be removed.
+        # For now, just logging that the list is empty.
+        print(f"Error: {error_detail} - List received: {display_toc_list}")
         raise HTTPException(status_code=500, detail=error_detail)
 
-    def parse_toc_string_to_list(toc_str: str) -> List[Dict[str, str]]:
-        items = []
-        for line in toc_str.splitlines():
-            stripped_line = line.strip()
-            if not stripped_line:
-                continue
-            # Try to match lines like "- Title" or "* Title" or "+ Title"
-            match = re.match(r"^(?:-|\*|\+)\s+(.+)", stripped_line)
-            title = match.group(1).strip() if match else stripped_line
-            # Remove potential markdown links like [text](url) from title
-            title = re.sub(r"\[(.*?)\]\(.*?\)", r"\1", title).strip()
-            if title: # Ensure title is not empty after stripping/regex
-                items.append({"title": title, "type": "unknown"})
-        return items
+    # The internal parse_toc_string_to_list function is no longer needed
+    # as the service now returns the parsed list.
 
-    display_toc_list = parse_toc_string_to_list(display_toc_str) # Directly use the string
-
-    if not display_toc_list and display_toc_str: # If parsing resulted in empty list but original string was not empty
-        print(f"Warning: display_toc_list is empty after parsing non-empty string: '{display_toc_str}'")
-        # Potentially use the raw string as a single item if parsing fails completely
-        # display_toc_list = [{"title": "Failed to parse Display TOC", "type": "error"}]
+    # The check `if not display_toc_list and display_toc_str:` is no longer needed
+    # as display_toc_str doesn't exist and display_toc_list is checked above.
 
     # Homebrewery TOC is no longer handled here by the endpoint for update content
 
