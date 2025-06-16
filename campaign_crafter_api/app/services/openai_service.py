@@ -1,3 +1,4 @@
+import re # Added import
 from openai import AsyncOpenAI, APIError
 from typing import Optional, List, Dict
 from sqlalchemy.orm import Session
@@ -165,7 +166,48 @@ class OpenAILLMService(AbstractLLMService):
         ]
         return await self._perform_chat_completion(selected_model, messages, temperature=0.7, max_tokens=1000, api_key=openai_api_key)
 
-    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]:
+    def _parse_toc_string_with_types(self, raw_toc_string: str) -> List[Dict[str, str]]:
+        parsed_toc_items = []
+        # Regex to capture title and type, case-insensitive for "Type"
+        # Title: group 1, Type: group 2
+        # Allows for optional space after hyphen and before [Type:...]
+        regex = r"^\s*-\s*(.+?)\s*\[Type:\s*([^\]]+?)\s*\]\s*$"
+        # Fallback regex for lines that might just be titles (e.g. if LLM doesn't provide type)
+        fallback_regex = r"^\s*-\s*(.+)"
+        # Known types for basic validation - adjust as needed, or make more dynamic
+        known_types = ["monster", "character", "npc", "location", "item", "quest", "chapter", "note", "world_detail", "generic", "unknown"]
+
+
+        for line in raw_toc_string.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+
+            match = re.match(regex, line, re.IGNORECASE) # Match [Type: ...]
+            if match:
+                title = match.group(1).strip()
+                type_str = match.group(2).strip().lower()
+                # Optional: Validate against known_types or clean up type_str further
+                if type_str not in known_types:
+                    # This logic can be adjusted, e.g. log a warning, or try to find closest match
+                    print(f"Warning: Unknown type '{type_str}' found for title '{title}'. Defaulting to 'unknown'.")
+                    type_str = "unknown"
+                parsed_toc_items.append({"title": title, "type": type_str})
+            else:
+                # If specific [Type: ...] format not found, try to capture it as a title with a default type
+                fallback_match = re.match(fallback_regex, line)
+                if fallback_match:
+                    title = fallback_match.group(1).strip()
+                    # Remove any lingering markdown link syntax from title if necessary
+                    # e.g. "[A Title](some_link)" -> "A Title"
+                    title = re.sub(r"\[(.*?)\]\(.*?\)", r"\1", title).strip()
+                    if title: # Ensure title is not empty
+                         parsed_toc_items.append({"title": title, "type": "unknown"})
+                # else: if no regex matches, the line is ignored or could be logged.
+                #     print(f"Warning: Line did not match TOC item format: '{line}'")
+        return parsed_toc_items
+
+    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> List[Dict[str, str]]:
         openai_api_key = await self._get_openai_api_key_for_user(current_user, db) # Pass db
         # Removed is_available check
 
@@ -177,35 +219,27 @@ class OpenAILLMService(AbstractLLMService):
         # Fetch Display TOC prompt
         display_prompt_template_str = self.feature_prompt_service.get_prompt("TOC Display", db=db)
         if not display_prompt_template_str:
+            # This is critical, if the main display TOC prompt is missing, we should error.
             raise LLMGenerationError("Display TOC prompt template ('TOC Display') not found in database.")
-        display_final_prompt = display_prompt_template_str.format(campaign_concept=campaign_concept)
         
+        try:
+            display_final_prompt = display_prompt_template_str.format(campaign_concept=campaign_concept)
+        except KeyError:
+            # This would indicate a misconfigured "TOC Display" prompt, which is an issue.
+            print(f"ERROR: Formatting 'TOC Display' prompt failed due to KeyError. Prompt: '{display_prompt_template_str}' Concept: '{campaign_concept}'")
+            raise LLMGenerationError("Failed to format 'TOC Display' prompt due to unexpected placeholders.")
+
         display_messages = [
             {"role": "system", "content": "You are an assistant skilled in structuring RPG campaign narratives and creating user-friendly Table of Contents for on-screen display."},
             {"role": "user", "content": display_final_prompt}
         ]
-        generated_display_toc = await self._perform_chat_completion(selected_model, display_messages, temperature=0.5, max_tokens=700, api_key=openai_api_key)
-        if not generated_display_toc:
+        raw_toc_string = await self._perform_chat_completion(selected_model, display_messages, temperature=0.5, max_tokens=700, api_key=openai_api_key)
+
+        if not raw_toc_string:
+            # If Display TOC generation itself fails or returns empty, this is a problem.
             raise LLMGenerationError("OpenAI API call for Display TOC succeeded but returned no usable content.")
 
-        # Fetch Homebrewery TOC prompt
-        homebrewery_prompt_template_str = self.feature_prompt_service.get_prompt("TOC Homebrewery", db=db)
-        if not homebrewery_prompt_template_str:
-            raise LLMGenerationError("Homebrewery TOC prompt template ('TOC Homebrewery') not found in database.")
-        homebrewery_final_prompt = homebrewery_prompt_template_str.format(campaign_concept=campaign_concept)
-
-        homebrewery_messages = [
-            {"role": "system", "content": "You are an assistant skilled in creating RPG Table of Contents strictly following Homebrewery Markdown formatting."},
-            {"role": "user", "content": homebrewery_final_prompt}
-        ]
-        generated_homebrewery_toc = await self._perform_chat_completion(selected_model, homebrewery_messages, temperature=0.5, max_tokens=700, api_key=openai_api_key)
-        if not generated_homebrewery_toc:
-            raise LLMGenerationError("OpenAI API call for Homebrewery TOC succeeded but returned no usable content.")
-
-        return {
-            "display_toc": generated_display_toc,
-            "homebrewery_toc": generated_homebrewery_toc
-        }
+        return self._parse_toc_string_with_types(raw_toc_string)
 
     async def generate_titles(self, campaign_concept: str, db: Session, current_user: UserModel, count: int = 5, model: Optional[str] = None) -> list[str]:
         openai_api_key = await self._get_openai_api_key_for_user(current_user, db) # Pass db

@@ -1,4 +1,5 @@
 import httpx # For making async HTTP requests
+import re # Added import
 from typing import Optional, List, Dict, Any, AsyncGenerator
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -176,7 +177,34 @@ class LocalLLMService(AbstractLLMService):
         generated_string = await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model) # Pass args
         return [title.strip() for title in generated_string.split('\n') if title.strip()][:count]
 
-    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]: # Added current_user
+    def _parse_toc_string_with_types(self, raw_toc_string: str) -> List[Dict[str, str]]:
+        parsed_toc_items = []
+        regex = r"^\s*-\s*(.+?)\s*\[Type:\s*([^\]]+?)\s*\]\s*$"
+        fallback_regex = r"^\s*-\s*(.+)"
+        known_types = ["monster", "character", "npc", "location", "item", "quest", "chapter", "note", "world_detail", "generic", "unknown"]
+
+        for line in raw_toc_string.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            match = re.match(regex, line, re.IGNORECASE)
+            if match:
+                title = match.group(1).strip()
+                type_str = match.group(2).strip().lower()
+                if type_str not in known_types:
+                    print(f"Warning: Unknown type '{type_str}' found for title '{title}'. Defaulting to 'unknown'.")
+                    type_str = "unknown"
+                parsed_toc_items.append({"title": title, "type": type_str})
+            else:
+                fallback_match = re.match(fallback_regex, line)
+                if fallback_match:
+                    title = fallback_match.group(1).strip()
+                    title = re.sub(r"\[(.*?)\]\(.*?\)", r"\1", title).strip()
+                    if title:
+                         parsed_toc_items.append({"title": title, "type": "unknown"})
+        return parsed_toc_items
+
+    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> List[Dict[str, str]]: # Added current_user
         if not await self.is_available(current_user=current_user, db=db): # Pass args
             raise HTTPException(status_code=503, detail=f"{self.PROVIDER_NAME.title()} service is not available or configured.")
         if not campaign_concept:
@@ -186,38 +214,24 @@ class LocalLLMService(AbstractLLMService):
         display_prompt_template = self.feature_prompt_service.get_prompt("TOC Display", db=db)
         if not display_prompt_template:
             raise LLMGenerationError(f"Display TOC prompt template ('TOC Display') not found for {self.PROVIDER_NAME}.")
-        display_final_prompt = display_prompt_template.format(campaign_concept=campaign_concept)
 
-        generated_display_toc = await self.generate_text(
+        try:
+            display_final_prompt = display_prompt_template.format(campaign_concept=campaign_concept)
+        except KeyError:
+            print(f"ERROR: {self.PROVIDER_NAME.title()} formatting 'TOC Display' prompt failed due to KeyError. Prompt: '{display_prompt_template}' Concept: '{campaign_concept}'")
+            raise LLMGenerationError(f"Failed to format 'TOC Display' prompt due to unexpected placeholders for {self.PROVIDER_NAME.title()}.")
+
+        raw_toc_string = await self.generate_text(
             prompt=display_final_prompt,
             current_user=current_user, db=db, # Pass args
-            model=model,
+            model=model, # Use the model passed to generate_toc
             temperature=0.5,
             max_tokens=700
         )
-        if not generated_display_toc:
+        if not raw_toc_string:
              raise LLMGenerationError(f"{self.PROVIDER_NAME.title()} API call for Display TOC succeeded but returned no usable content.")
 
-        # Fetch Homebrewery TOC prompt
-        homebrewery_prompt_template = self.feature_prompt_service.get_prompt("TOC Homebrewery", db=db)
-        if not homebrewery_prompt_template:
-            raise LLMGenerationError(f"Homebrewery TOC prompt template ('TOC Homebrewery') not found for {self.PROVIDER_NAME}.")
-        homebrewery_final_prompt = homebrewery_prompt_template.format(campaign_concept=campaign_concept)
-
-        generated_homebrewery_toc = await self.generate_text(
-            prompt=homebrewery_final_prompt,
-            current_user=current_user, db=db, # Pass args
-            model=model,
-            temperature=0.5,
-            max_tokens=1000
-        )
-        if not generated_homebrewery_toc:
-             raise LLMGenerationError(f"{self.PROVIDER_NAME.title()} API call for Homebrewery TOC succeeded but returned no usable content.")
-
-        return {
-            "display_toc": generated_display_toc,
-            "homebrewery_toc": generated_homebrewery_toc
-        }
+        return self._parse_toc_string_with_types(raw_toc_string)
 
     async def generate_section_content(
         self,
