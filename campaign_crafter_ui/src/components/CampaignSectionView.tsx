@@ -151,16 +151,13 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
     // This handles empty lines as <p></p>, which Quill should treat as a blank paragraph.
     // For a more robust empty line representation (like a visible space),
     // one might use <p><br></p> for lines that are truly empty.
-    // const lines = plainTextContent.split('\n');
-    // const htmlContent = lines.map(line => {
-    //   if (line.trim() === '') {
-    //     return '<p><br></p>'; // Or just '<p></p>' if that suffices
-    //   }
-    //   return `<p>${line}</p>`;
-    // }).join('');
-    // Simpler version first:
     const lines = plainTextContent.split('\n');
-    const htmlContent = lines.map(line => `<p>${line}</p>`).join('');
+    const htmlContent = lines.map(line => {
+      if (line.trim() === '') {
+        return '<p><br></p>';
+      }
+      return `<p>${line}</p>`;
+    }).join('');
 
     setEditedContent(htmlContent);
 
@@ -333,7 +330,9 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
     try {
       // For now, only content is editable in this component.
       // Title/order would be handled elsewhere or if this component is expanded.
-      await onSave(section.id, { content: quillInstance.getText() }); // Removed images: imageData
+      const quillHtml = quillInstance.root.innerHTML;
+      const plainTextContent = convertQuillHtmlToPlainText(quillHtml);
+      await onSave(section.id, { content: plainTextContent }); // Removed images: imageData
       setIsEditing(false);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000); // Display success for 3s
@@ -597,4 +596,36 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
 // No, this should be in campaignService.ts. The call will be made there.
 // CampaignSectionView will call onRegenerate which is handleRegenerateSection in CampaignSectionEditor,
 // which then calls the service.
+
+// New utility function to convert Quill HTML to plain text
+const convertQuillHtmlToPlainText = (htmlString: string): string => {
+  if (!htmlString) {
+    return '';
+  }
+
+  let text = htmlString;
+
+  // Replace <br> tags with \n
+  text = text.replace(/<br\s*\/?>/gi, '\n');
+
+  // Replace closing </p> tags with \n
+  text = text.replace(/<\/p>/gi, '\n');
+
+  // Strip all remaining HTML tags
+  text = text.replace(/<[^>]*>/g, '');
+
+  // Normalize newlines: sequences of 3 or more newlines with two newlines
+  text = text.replace(/\n{3,}/g, '\n\n');
+
+  // Trim leading and trailing newlines from the entire text
+  text = text.trim();
+
+  // Add a single newline at the end if the content is not empty
+  if (text) {
+    text += '\n';
+  }
+
+  return text;
+};
+
 export default CampaignSectionView;
