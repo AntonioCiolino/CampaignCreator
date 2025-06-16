@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'; // Added useEffect
 import LLMSelector from '../components/LLMSelector';
 import {
     generateTextLLM, LLMTextGenerationParams, LLMModel, // Added LLMModel
-    generateImage, ImageGenerationRequest, ImageGenerationResponse
+    generateImage, ImageGenerationParams, ImageGenerationResponse // Changed ImageGenerationRequest to ImageGenerationParams
 } from '../services/llmService';
 import { getFeatures } from '../services/featureService'; // Updated import
 import { Feature } from '../types/featureTypes'; // Updated import
@@ -143,13 +143,20 @@ const GenericTextGenerator: React.FC = () => {
     setIsImageDisplayVisible(true); // Show display with loading indicator
 
     try {
-      const request: ImageGenerationRequest = {
+      // Ensure this matches the ImageGenerationParams from llmService.ts
+      // The `model` field is now mandatory in ImageGenerationParams.
+      // Since this component doesn't have model selection for images yet,
+      // we'll need to decide a default or add UI for it.
+      // For now, let's assume a default like 'dall-e' or make it more explicit.
+      // This part of the code might need further UI logic if model selection is desired here.
+      const params: ImageGenerationParams = {
         prompt: imagePrompt,
-        // model: dalleModel, // Pass if UI allows model selection
-        // size: imageSize,   // Pass if UI allows size selection
-        // quality: imageQuality, // Pass if UI allows quality selection
+        model: 'dall-e', // Defaulting to 'dall-e' for now as no UI for model selection here.
+                           // This should ideally be configurable or selected by the user.
+        // size: imageSize,
+        // quality: imageQuality,
       };
-      const result = await generateImage(request);
+      const result = await generateImage(params); // Changed 'request' to 'params'
       setGeneratedImageUrl(result.image_url);
       setPromptUsedForImage(result.prompt_used); // Or use result.revised_prompt if available and preferred
     } catch (err) {

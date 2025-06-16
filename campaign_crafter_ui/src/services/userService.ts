@@ -41,6 +41,7 @@ export const getUsers = async (skip: number = 0, limit: number = 100): Promise<A
 export interface UserApiKeysPayload {
   openai_api_key?: string | null; // Allow null to clear
   sd_api_key?: string | null;     // Allow null to clear
+  gemini_api_key?: string | null; // Added for Gemini API Key
 }
 
 // Update current user's API keys

@@ -18,6 +18,7 @@ const UserSettingsPage: React.FC = () => {
   // New state for API Keys
   const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [sdApiKey, setSdApiKey] = useState('');
+  const [geminiApiKey, setGeminiApiKey] = useState(''); // Added for Gemini
   const [apiKeyMessage, setApiKeyMessage] = useState<string | null>(null);
   const [apiKeyError, setApiKeyError] = useState<string | null>(null);
   const [isApiKeysLoading, setIsApiKeysLoading] = useState(false);
@@ -119,6 +120,7 @@ const UserSettingsPage: React.FC = () => {
     // Send current input value. If field is empty string, backend interprets as clearing the key.
     payload.openai_api_key = openaiApiKey;
     payload.sd_api_key = sdApiKey;
+    payload.gemini_api_key = geminiApiKey; // Added for Gemini
 
     try {
       const updatedUser = await updateUserApiKeys(payload);
@@ -127,8 +129,9 @@ const UserSettingsPage: React.FC = () => {
            setAuthUser(updatedUser); // Update user in AuthContext
       }
       setCurrentUser(updatedUser); // Update local state for the page
-      setOpenaiApiKey(''); // Clear input field after successful submission
-      setSdApiKey('');   // Clear input field after successful submission
+      setOpenaiApiKey('');
+      setSdApiKey('');
+      setGeminiApiKey(''); // Clear Gemini key input
     } catch (err: any) {
       let errorMessage = 'Failed to update API keys.';
       if (err.response?.data?.detail) {
@@ -233,6 +236,16 @@ const UserSettingsPage: React.FC = () => {
           onChange={(e) => setSdApiKey(e.target.value)}
           placeholder={currentUser?.sd_api_key_provided ? "Key is set (leave blank to keep, type to update/clear)" : "Enter Stable Diffusion API Key"}
           helperText={`Status: ${currentUser?.sd_api_key_provided ? 'Provided' : 'Not Provided'}. To clear a key, submit an empty field.`}
+        />
+        <Input
+          id="gemini-api-key"
+          name="geminiApiKey"
+          type="password"
+          label="Gemini API Key:"
+          value={geminiApiKey}
+          onChange={(e) => setGeminiApiKey(e.target.value)}
+          placeholder={currentUser?.gemini_api_key_provided ? "Key is set (leave blank to keep, type to update/clear)" : "Enter Gemini API Key"}
+          helperText={`Status: ${currentUser?.gemini_api_key_provided ? 'Provided' : 'Not Provided'}. To clear a key, submit an empty field.`}
         />
         <Button type="submit" variant="primary" disabled={isApiKeysLoading}>
           {isApiKeysLoading ? 'Saving Keys...' : 'Save API Keys'}

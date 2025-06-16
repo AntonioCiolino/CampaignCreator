@@ -15,6 +15,7 @@ Campaign Crafter API is the backend server for CampaignCreator. It provides the 
 *   **LLM Services**:
     *   `POST /llm/suggest/`: Get text suggestions from a configured LLM.
     *   `POST /llm/generate/`: Generate more extensive text content.
+    *   `POST /images/generate`: Generate images using various models (DALL-E, Stable Diffusion, Gemini).
     *   (Further endpoints for specific LLM tasks may be added).
 *   **(Planned) User Authentication & Management**:
     *   Endpoints for user registration, login, and profile management.
@@ -87,8 +88,8 @@ The API requires certain environment variables for configuration, such as databa
 2.  **Populate `.env` with your configurations:**
     Open the `.env` file in a text editor and fill in the required values. Key variables typically include:
     *   `DATABASE_URL`: The connection string for your database (e.g., `sqlite:///./campaign_crafter.db` for a local SQLite DB, or connection strings for PostgreSQL, MySQL, etc.).
-    *   `OPENAI_API_KEY`: Your API key for OpenAI services.
-    *   `GEMINI_API_KEY`: Your API key for Google Gemini services.
+    *   `OPENAI_API_KEY`: Your API key for OpenAI services (text and image generation).
+    *   `GEMINI_API_KEY`: Your API key for Google Gemini services (text and image generation).
     *   `LLAMA_API_KEY`, `LLAMA_API_URL`: Configuration for Llama models.
     *   `DEEPSEEK_API_KEY`: Your API key for DeepSeek services.
     *   `OPENAI_DALLE_MODEL_NAME`, `OPENAI_DALLE_DEFAULT_IMAGE_SIZE`, `OPENAI_DALLE_DEFAULT_IMAGE_QUALITY`: Settings for DALL-E image generation.

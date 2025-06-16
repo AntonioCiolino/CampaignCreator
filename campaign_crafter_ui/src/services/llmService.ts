@@ -98,39 +98,72 @@ export const generateTextLLM = async (params: LLMTextGenerationParams): Promise<
 
 // --- New Image Generation Interfaces and Function ---
 
-export interface ImageGenerationRequest {
+// Matches ImageModelName enum in the backend
+export type ImageModelName = "dall-e" | "stable-diffusion" | "gemini";
+
+export interface ImageGenerationParams { // Renamed from ImageGenerationRequest for clarity if used elsewhere
   prompt: string;
-  size?: string | null;    // e.g., "1024x1024", "1792x1024", "1024x1792" for DALL-E 3
-  quality?: string | null; // e.g., "standard", "hd" for DALL-E 3
-  model?: string | null;   // e.g., "dall-e-3", "dall-e-2"
-  // style?: string | null; // Optional: "vivid", "natural" for DALL-E 3
+  model: ImageModelName; // Use the defined type
+  size?: string | null;
+  // DALL-E specific
+  quality?: string | null;
+  // style?: string | null; // DALL-E 3 specific, if added later
+
+  // Stable Diffusion specific
+  steps?: number | null;
+  cfg_scale?: number | null;
+  // sd_model_checkpoint?: string | null; // If UI allows selecting SD model
+
+  // Gemini specific
+  gemini_model_name?: string | null;
 }
 
 export interface ImageGenerationResponse {
-  image_url: string; // HttpUrl from Pydantic will be a string here
+  image_url: string;
   prompt_used: string;
-  model_used: string;
+  model_used: ImageModelName; // Reflects the primary model type used
   size_used: string;
-  quality_used: string;
-  // revised_prompt?: string | null; // If backend sends it
+  // DALL-E specific response fields
+  quality_used?: string | null;
+  // revised_prompt?: string | null; // DALL-E 3 might return this
+
+  // Stable Diffusion specific response fields
+  steps_used?: number | null;
+  cfg_scale_used?: number | null;
+  // sd_model_checkpoint_used?: string | null;
+
+  // Gemini specific response fields
+  gemini_model_name_used?: string | null;
 }
 
 /**
- * Generates an image using the backend's DALL-E service.
- * @param request The image generation parameters.
+ * Generates an image using the backend's image generation service.
+ * @param params The image generation parameters.
  * @returns A promise that resolves to the image generation response.
  * @throws Will throw an error if the network request fails or the API returns an error.
  */
-export const generateImage = async (request: ImageGenerationRequest): Promise<ImageGenerationResponse> => {
+export const generateImage = async (params: ImageGenerationParams): Promise<ImageGenerationResponse> => {
   try {
-    // Construct body, only including optional fields if they have values
-    const requestBody: Record<string, any> = { prompt: request.prompt };
-    if (request.model) requestBody.model = request.model;
-    if (request.size) requestBody.size = request.size;
-    if (request.quality) requestBody.quality = request.quality;
-    // if (request.style) requestBody.style = request.style;
+    // Construct body, including only relevant fields for the selected model
+    const requestBody: Record<string, any> = {
+      prompt: params.prompt,
+      model: params.model, // This now refers to "dall-e", "stable-diffusion", or "gemini"
+    };
 
-    // New apiClient call:
+    if (params.size) requestBody.size = params.size;
+
+    if (params.model === "dall-e") {
+      if (params.quality) requestBody.quality = params.quality;
+      // Potentially add DALL-E specific model name if backend needs it, e.g. "dall-e-3" vs "dall-e-2"
+      // This is currently handled by backend settings for OPENAI_DALLE_MODEL_NAME
+    } else if (params.model === "stable-diffusion") {
+      if (params.steps) requestBody.steps = params.steps;
+      if (params.cfg_scale) requestBody.cfg_scale = params.cfg_scale;
+      // if (params.sd_model_checkpoint) requestBody.sd_model_checkpoint = params.sd_model_checkpoint;
+    } else if (params.model === "gemini") {
+      if (params.gemini_model_name) requestBody.gemini_model_name = params.gemini_model_name;
+    }
+
     const response = await apiClient.post<ImageGenerationResponse>('/api/v1/images/generate', requestBody);
     return response.data;
 
