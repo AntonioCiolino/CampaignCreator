@@ -330,9 +330,11 @@ def test_service_get_random_item_from_table_user_priority(random_table_service: 
 # Added imports for LLMService tests
 import pytest # This was already imported above, but ensure it's available contextually
 from sqlalchemy.orm import Session # This was already imported above
-from unittest.mock import MagicMock # This was already imported above
-from app.services.llm_service import LLMService, LLMGenerationError # LLMService is new here
+from unittest.mock import MagicMock, AsyncMock, patch # Ensure all mock types are available
+from app.services.llm_service import LLMService, LLMGenerationError, LLMServiceUnavailableError # LLMService is new here, added LLMServiceUnavailableError
 from app.models import User as UserModel # UserModel is new here
+from app.services.gemini_service import GeminiLLMService # Import GeminiLLMService
+import google.generativeai as genai # To mock the genai module
 
 # Fixtures for LLMService tests
 @pytest.fixture
@@ -386,6 +388,119 @@ async def test_generate_homebrewery_toc_from_sections_empty_summary(llm_service:
         current_user=mock_current_user
     )
     assert homebrewery_toc == ""
+
+
+# --- GeminiLLMService Tests ---
+
+@pytest.mark.asyncio
+@patch('app.services.gemini_service.genai.GenerativeModel')
+async def test_gemini_generate_image_success(mock_generative_model_class, mock_db_session, mock_current_user):
+    """Tests successful image generation with GeminiLLMService."""
+    # Arrange
+    mock_gemini_service = GeminiLLMService()
+    mock_gemini_service.is_available = AsyncMock(return_value=True)
+
+    # Configure the mock for the genai.GenerativeModel instance
+    mock_model_instance = AsyncMock() # The model instance itself needs to be an AsyncMock if its methods are async
+
+    # Mock the response structure from generate_content_async
+    mock_response_part = MagicMock()
+    mock_response_part.inline_data.data = b"test_image_bytes"
+    mock_response_part.inline_data.mime_type = "image/png"
+
+    mock_gemini_response = MagicMock()
+    mock_gemini_response.parts = [mock_response_part]
+
+    mock_model_instance.generate_content_async = AsyncMock(return_value=mock_gemini_response)
+
+    # Patch _get_model_instance to return our fine-tuned mock_model_instance
+    # This is often cleaner than patching the class constructor if you only need to control the instance
+    # returned by a specific method within your service.
+    with patch.object(mock_gemini_service, '_get_model_instance', return_value=mock_model_instance) as mock_get_model:
+        prompt = "A beautiful sunset"
+        model_name = "gemini-pro-vision"
+
+        # Act
+        image_bytes = await mock_gemini_service.generate_image(
+            prompt=prompt,
+            current_user=mock_current_user,
+            db=mock_db_session,
+            model=model_name
+        )
+
+        # Assert
+        mock_get_model.assert_called_once_with(model_id=model_name)
+        mock_model_instance.generate_content_async.assert_called_once_with(prompt)
+        assert image_bytes == b"test_image_bytes"
+
+@pytest.mark.asyncio
+async def test_gemini_generate_image_service_unavailable(mock_db_session, mock_current_user):
+    """Tests generate_image when the Gemini service is unavailable."""
+    # Arrange
+    mock_gemini_service = GeminiLLMService()
+    mock_gemini_service.is_available = AsyncMock(return_value=False)
+
+    prompt = "A beautiful sunset"
+
+    # Act & Assert
+    with pytest.raises(LLMServiceUnavailableError, match="Gemini service is not available."):
+        await mock_gemini_service.generate_image(
+            prompt=prompt,
+            current_user=mock_current_user,
+            db=mock_db_session
+        )
+    mock_gemini_service.is_available.assert_called_once_with(current_user=mock_current_user, db=mock_db_session)
+
+
+@pytest.mark.asyncio
+@patch('app.services.gemini_service.genai.GenerativeModel')
+async def test_gemini_generate_image_no_image_data(mock_generative_model_class, mock_db_session, mock_current_user):
+    """Tests generate_image when the API returns no image data."""
+    # Arrange
+    mock_gemini_service = GeminiLLMService()
+    mock_gemini_service.is_available = AsyncMock(return_value=True)
+
+    mock_model_instance = AsyncMock()
+    mock_gemini_response = MagicMock()
+    mock_gemini_response.parts = [] # No parts, or parts without inline_data
+    mock_gemini_response.prompt_feedback = None # No feedback
+    mock_gemini_response.candidates = [] # No candidates
+
+    mock_model_instance.generate_content_async = AsyncMock(return_value=mock_gemini_response)
+
+    with patch.object(mock_gemini_service, '_get_model_instance', return_value=mock_model_instance):
+        prompt = "A beautiful sunset"
+
+        # Act & Assert
+        with pytest.raises(LLMGenerationError, match="Gemini API call for image generation succeeded but returned no image data."):
+            await mock_gemini_service.generate_image(
+                prompt=prompt,
+                current_user=mock_current_user,
+                db=mock_db_session
+            )
+
+@pytest.mark.asyncio
+@patch('app.services.gemini_service.genai.GenerativeModel')
+async def test_gemini_generate_image_api_exception(mock_generative_model_class, mock_db_session, mock_current_user):
+    """Tests generate_image when the Gemini API call raises an exception."""
+    # Arrange
+    mock_gemini_service = GeminiLLMService()
+    mock_gemini_service.is_available = AsyncMock(return_value=True)
+
+    mock_model_instance = AsyncMock()
+    mock_model_instance.generate_content_async = AsyncMock(side_effect=Exception("Gemini API Error"))
+
+    with patch.object(mock_gemini_service, '_get_model_instance', return_value=mock_model_instance):
+        prompt = "A beautiful sunset"
+
+        # Act & Assert
+        with pytest.raises(LLMGenerationError, match="Failed to generate image with Gemini model gemini-pro-vision: Gemini API Error"):
+            await mock_gemini_service.generate_image(
+                prompt=prompt,
+                current_user=mock_current_user,
+                db=mock_db_session,
+                model="gemini-pro-vision" # Explicitly pass model for error message check
+            )
 
 @pytest.mark.asyncio
 async def test_generate_homebrewery_toc_from_sections_none_summary(llm_service: LLMService, mock_db_session: Session, mock_current_user: UserModel):

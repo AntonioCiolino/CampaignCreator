@@ -314,7 +314,7 @@ class GeminiLLMService(AbstractLLMService):
         # this is where it would be done. For now, it's a no-op.
         pass
 
-    async def generate_homebrewery_toc_from_sections(self, sections_summary: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
+    async def generate_homebrewery_toc_from_sections(self, sections_summary:str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
         if not await self.is_available(current_user=current_user, db=db):
             raise LLMServiceUnavailableError("Gemini service is not available.")
 
@@ -341,6 +341,78 @@ class GeminiLLMService(AbstractLLMService):
             raise LLMGenerationError(f"Gemini API call for Homebrewery TOC from sections (model: {model_instance.model_name}) succeeded but returned no usable content.")
 
         return generated_toc
+
+    async def generate_image(self, prompt: str, current_user: UserModel, db: Session, model: Optional[str] = "gemini-pro-vision", size: Optional[str] = None) -> bytes:
+        """
+        Generates an image based on the given prompt using Gemini.
+        Note: The 'size' parameter is conceptual as API capabilities for size need confirmation.
+        The 'gemini-pro-vision' model is specified, but a dedicated image generation
+        model might be more appropriate if available via the API.
+        """
+        if not await self.is_available(current_user=current_user, db=db):
+            raise LLMServiceUnavailableError("Gemini service is not available.")
+
+        if not prompt:
+            raise ValueError("Prompt cannot be empty for image generation.")
+
+        # It's crucial that the chosen model supports image generation.
+        # 'gemini-pro-vision' is primarily for understanding images.
+        # This might need to be a specific image generation model (e.g., an Imagen model endpoint if accessible via Gemini SDK).
+        # For now, we proceed with the specified model, assuming it might have some image generation capabilities or this is a placeholder.
+        model_instance = self._get_model_instance(model_id=model or "gemini-pro-vision")
+
+        try:
+            # The structure of the API call for text-to-image generation needs to be confirmed.
+            # This is a conceptual implementation based on typical Gemini API patterns.
+            # We assume generate_content_async can produce images and the response format.
+            # Specific generation_config might be needed for image output, e.g., mime_type.
+            # genai.types.GenerationConfig(..., output_mime_type="image/png")
+
+            # Placeholder for actual API call parameters.
+            # The Gemini API for image generation might expect a different content structure or specific parameters.
+            # For example, some APIs might require a specific prompt format or configuration.
+            print(f"Attempting to generate image with model: {model_instance.model_name} using prompt: '{prompt[:50]}...'")
+
+            response = await model_instance.generate_content_async(
+                prompt
+                # generation_config=genai.types.GenerationConfig(
+                #     # Example: request PNG image if API supports mime_type specification
+                #     # This is speculative and depends on actual API features.
+                #     # response_mime_type="image/png"
+                # )
+            )
+
+            # Process the response to extract image bytes.
+            # This assumes the image data is in response.parts[0].inline_data.data.
+            # The actual structure might differ for image generation models.
+            if response.parts and response.parts[0].inline_data and response.parts[0].inline_data.data:
+                image_bytes = response.parts[0].inline_data.data
+                # mime_type = response.parts[0].inline_data.mime_type # Could be useful
+                return image_bytes
+            else:
+                # Log details if the response is not as expected.
+                error_message = "Gemini API call for image generation succeeded but returned no image data."
+                if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
+                    error_message += f" Prompt feedback: {response.prompt_feedback}"
+                if not response.candidates:
+                     error_message += " No candidates were generated."
+                # You might want to log the full response here for debugging if it's small enough
+                # print(f"Unexpected response structure from Gemini image generation: {response}")
+                raise LLMGenerationError(error_message)
+
+        except LLMGenerationError: # Re-raise if it's already our specific error
+            raise
+        except LLMServiceUnavailableError: # Re-raise
+            raise
+        except Exception as e:
+            # Handle potential errors from the API call (e.g., network issues, API errors)
+            # This could include errors if the model doesn't support image generation or the prompt is invalid.
+            # from google.api_core import exceptions as google_exceptions
+            # if isinstance(e, google_exceptions.InvalidArgument):
+            #     raise LLMGenerationError(f"Invalid prompt or parameters for Gemini image generation (model: {model_instance.model_name}): {e}")
+            print(f"Error during Gemini image generation (model: {model_instance.model_name}): {type(e).__name__} - {e}")
+            raise LLMGenerationError(f"Failed to generate image with Gemini model {model_instance.model_name}: {e}") from e
+
 
 if __name__ == '__main__':
     from dotenv import load_dotenv

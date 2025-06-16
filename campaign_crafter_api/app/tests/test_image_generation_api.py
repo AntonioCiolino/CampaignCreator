@@ -21,6 +21,7 @@ def mock_image_service():
     # Configure async methods on the mock
     service_mock.generate_image_dalle = AsyncMock()
     service_mock.generate_image_stable_diffusion = AsyncMock()
+    service_mock.generate_image_gemini = AsyncMock() # Added for Gemini
     return service_mock
 
 # --- Override Dependency ---
@@ -81,6 +82,53 @@ def test_generate_image_stable_diffusion_success(client, mock_image_service):
     assert data["cfg_scale_used"] == 7.0
 
     mock_image_service.generate_image_stable_diffusion.assert_called_once()
+
+def test_generate_image_gemini_success(client, mock_image_service):
+    expected_url = "http://example.com/generated_gemini_image.png"
+    # Simulate the service layer returning the URL. The actual response from the endpoint
+    # will include other details like model_used, prompt_used etc., based on endpoint logic.
+    mock_image_service.generate_image_gemini.return_value = expected_url
+
+    test_prompt = "A magical forest scene with Gemini"
+    test_gemini_model = "gemini-pro-vision"
+
+    response = client.post(
+        "/api/images/generate",
+        json={
+            "prompt": test_prompt,
+            "model": "gemini",
+            "gemini_model_name": test_gemini_model,
+            "size": "1024x1024" # Conceptual size for Gemini
+        }
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["image_url"] == expected_url
+    assert data["prompt_used"] == test_prompt
+    assert data["model_used"] == "gemini"
+    assert data["gemini_model_name_used"] == test_gemini_model
+    assert data["size_used"] == "1024x1024" # As passed in request, used for logging by service
+
+    mock_image_service.generate_image_gemini.assert_called_once()
+    # Check arguments passed to the service method
+    called_args_kwargs = mock_image_service.generate_image_gemini.call_args
+    assert called_args_kwargs.kwargs['prompt'] == test_prompt
+    assert called_args_kwargs.kwargs['model'] == test_gemini_model # Endpoint passes gemini_model_name as 'model' to service
+    assert called_args_kwargs.kwargs['size'] == "1024x1024"
+    # current_user and db are passed by Depends, not directly asserted here unless crucial for a specific test logic flow.
+
+def test_generate_image_gemini_service_exception(client, mock_image_service):
+    mock_image_service.generate_image_gemini.side_effect = HTTPException(status_code=503, detail="Gemini service is overloaded")
+
+    response = client.post(
+        "/api/images/generate",
+        json={"prompt": "test gemini failure", "model": "gemini", "gemini_model_name": "gemini-pro-vision"}
+    )
+    assert response.status_code == 503
+    data = response.json()
+    assert data["detail"] == "Gemini service is overloaded"
+    mock_image_service.generate_image_gemini.assert_called_once()
+
 
 def test_generate_image_missing_prompt(client):
     response = client.post(
