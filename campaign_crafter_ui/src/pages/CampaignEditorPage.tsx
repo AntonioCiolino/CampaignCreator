@@ -1443,8 +1443,6 @@ const CampaignEditorPage: React.FC = () => {
                 setConceptSaveSuccess(null);
               }}
               icon={<EditIcon />}
-              variant="text"
-              size="small"
               style={{minWidth: 'auto', padding: '4px', marginLeft: '10px'}}
               tooltip="Edit Campaign Concept"
             >
