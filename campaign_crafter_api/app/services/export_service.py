@@ -7,6 +7,44 @@ from sqlalchemy.orm import Session
 from app.models import User as UserModel # For current_user type hint
 
 class HomebreweryExportService:
+    FRONT_COVER_TEMPLATE = """{{frontCover}}
+
+{{logo ![](/assets/naturalCritLogoRed.svg)}}
+
+# TITLE
+## SUBTITLE
+___
+
+{{banner BANNER_TEXT}}
+
+{{footnote
+ EPISODE_INFO
+}}
+
+![background image](https://onedrive.live.com/embed?resid=387fb00e5a1e24c8%2152521&authkey=%21APkOXzEAywQMAwA){position:absolute,bottom:0,left:0,width:100%}
+\page"""
+
+    BACK_COVER_TEMPLATE = """\\page
+{{backCover}}
+
+#
+
+![background image](https://--backcover url image--){position:absolute,bottom:0,left:0,height:100%}
+
+
+# BACKCOVER ONE-LINER
+
+---
+
+ADD A CAMPAIGN COMMENTARY BLOCK HERE
+
+---
+
+{{logo
+![](/assets/naturalCritLogoWhite.svg)
+
+VTCNP Enterprises
+}}"""
 
     @staticmethod
     def process_block(block_content: Optional[str]) -> str:
@@ -62,12 +100,20 @@ class HomebreweryExportService:
         
         homebrewery_content = []
 
+        # Front Cover
+        front_cover = self.FRONT_COVER_TEMPLATE
+        front_cover = front_cover.replace("TITLE", campaign.title if campaign.title else "Untitled Campaign")
+        front_cover = front_cover.replace("SUBTITLE", "A Campaign Adventure")
+        front_cover = front_cover.replace("BANNER_TEXT", "Exciting Banner Text!")
+        front_cover = front_cover.replace("EPISODE_INFO", "Author to provide episode details here.")
+        front_cover = front_cover.replace("https://onedrive.live.com/embed?resid=387fb00e5a1e24c8%2152521&authkey=%21APkOXzEAywQMAwA", "https://via.placeholder.com/816x1056.png?text=Front+Cover+Background")
+        homebrewery_content.append(front_cover)
+
         # Title page style
         homebrewery_content.append("<style>")
         homebrewery_content.append("  .phb#p1{ text-align:center; }")
         homebrewery_content.append("  .phb#p1:after{ display:none; }")
         homebrewery_content.append("</style>\n")
-        homebrewery_content.append(f"![background]({page_image_url})\n") # Background image for title page
 
         # Title
         homebrewery_content.append(f"# {campaign.title if campaign.title else 'Untitled Campaign'}\n")
@@ -174,5 +220,12 @@ class HomebreweryExportService:
                 # Could also use background-image for full page stains on certain pages:
                 # elif (i + 1) % 5 == 0:
                 #     homebrewery_content.append(f"{{{{background-image: {stain_url}}}}}\n")
+
+        # Back Cover
+        back_cover = self.BACK_COVER_TEMPLATE
+        back_cover = back_cover.replace("https://--backcover url image--", "https://via.placeholder.com/816x1056.png?text=Back+Cover+Background")
+        back_cover = back_cover.replace("BACKCOVER ONE-LINER", "An Unforgettable Adventure Awaits!")
+        back_cover = back_cover.replace("ADD A CAMPAIGN COMMENTARY BLOCK HERE", "Author's notes and commentary on the campaign.")
+        homebrewery_content.append(back_cover)
 
         return "\n\n".join(homebrewery_content) # Use double newline to ensure separation of major blocks
