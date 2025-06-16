@@ -1,7 +1,5 @@
 Campaign,"Create a campaign based on the following concepts: {user_prompt}###"
-TOC Homebrewery,"Based on the campaign concept provided below, generate a detailed Table of Contents suitable for an RPG campaign book.
-The Table of Contents must strictly follow Homebrewery Markdown formatting.
-Use 'PAGENUM' as a placeholder for all page numbers, like '{{PAGENUM}}' and '(#pPAGENUM)'.
+TOC Homebrewery,"Based on the following list of campaign section titles (in order), generate a detailed Table of Contents suitable for an RPG campaign book strictly following Homebrewery Markdown formatting. Use 'PAGENUM' as a placeholder for all page numbers, like '{{PAGENUM}}' and '(#pPAGENUM)'.
 
 The structure should be:
 
