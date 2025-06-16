@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../../common/Modal';
 import Input from '../../common/Input';
 import Button from '../../common/Button';
-import apiClient from '../../../services/apiClient';
+// import apiClient from '../../../services/apiClient'; // Removed as generateImage service is used directly
+import { generateImage, ImageGenerationParams, ImageGenerationResponse, ImageModelName as BackendImageModelName } from '../../../services/llmService'; // Moved import to top
 import './ImageGenerationModal.css';
 
 // Helper function to sanitize prompt for use as filename
@@ -28,8 +29,6 @@ interface ImageGenerationModalProps {
   primaryActionText?: string;
   autoApplyDefault?: boolean;
 }
-
-import { generateImage, ImageGenerationParams, ImageGenerationResponse, ImageModelName as BackendImageModelName } from '../../../services/llmService'; // Updated import
 
 // Use ImageModelName from llmService.ts if it's exported, or redefine/align here
 type ImageModel = BackendImageModelName; // 'dall-e' | 'stable-diffusion' | 'gemini';
