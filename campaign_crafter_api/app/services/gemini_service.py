@@ -128,21 +128,50 @@ class GeminiLLMService(AbstractLLMService):
             max_tokens=700
         )
         if not generated_display_toc:
+             # This error is for Display TOC, which is critical.
              raise LLMGenerationError(f"Gemini API call for Display TOC (model: {model_instance.model_name}) succeeded but returned no usable content.")
-        # Fetch Homebrewery TOC prompt
-        homebrewery_prompt_template_str = self.feature_prompt_service.get_prompt("TOC Homebrewery Concept", db=db)
-        if not homebrewery_prompt_template_str:
-            raise LLMGenerationError("Homebrewery TOC prompt template ('TOC Homebrewery Concept') not found in database for Gemini.")
-        homebrewery_final_prompt = homebrewery_prompt_template_str.format(campaign_concept=campaign_concept)
-        generated_homebrewery_toc = await self.generate_text(
-            prompt=homebrewery_final_prompt,
-            current_user=current_user, db=db, # Pass args
-            model=model_instance.model_name,
-            temperature=0.5,
-            max_tokens=1000 # Potentially more tokens for complex Homebrewery format
-        )
+
+        # --- Homebrewery TOC Generation with Fallback ---
+        generated_homebrewery_toc = None
+        homebrewery_fallback_toc = "{{toc,wide\\n# Table Of Contents\\n- ### [Content{{PAGENUM}}](#pPAGENUM)\\n}}"
+
+        homebrewery_concept_prompt_str = self.feature_prompt_service.get_prompt("TOC Homebrewery Concept", db=db)
+
+        if homebrewery_concept_prompt_str:
+            try:
+                homebrewery_final_prompt = homebrewery_concept_prompt_str.format(campaign_concept=campaign_concept)
+                # Attempt to generate the Homebrewery TOC
+                generated_homebrewery_toc = await self.generate_text(
+                    prompt=homebrewery_final_prompt,
+                    current_user=current_user,
+                    db=db,
+                    model=model_instance.model_name, # Use the same model as display_toc
+                    temperature=0.5,
+                    max_tokens=1000
+                )
+                if not generated_homebrewery_toc:
+                    print(f"WARNING: Gemini Homebrewery TOC generation with 'TOC Homebrewery Concept' returned empty. Using fallback.")
+                    generated_homebrewery_toc = homebrewery_fallback_toc
+            except KeyError:
+                print(f"WARNING: Gemini formatting 'TOC Homebrewery Concept' prompt failed due to KeyError. DB may have stale data. Falling back. Check prompt '{'TOC Homebrewery Concept'}'.")
+                generated_homebrewery_toc = homebrewery_fallback_toc
+            except LLMGenerationError as e: # Catch specific LLM errors during generation
+                print(f"WARNING: Gemini Homebrewery TOC generation failed with LLMGenerationError: {e}. Using fallback.")
+                generated_homebrewery_toc = homebrewery_fallback_toc
+            except LLMServiceUnavailableError as e: # Catch service unavailable errors specifically
+                print(f"WARNING: Gemini Homebrewery TOC generation failed as service is unavailable: {e}. Using fallback.")
+                generated_homebrewery_toc = homebrewery_fallback_toc
+            except Exception as e: # Catch any other unexpected errors during generation
+                print(f"WARNING: An unexpected error occurred during Gemini Homebrewery TOC generation: {e}. Using fallback.")
+                generated_homebrewery_toc = homebrewery_fallback_toc
+        else:
+            print(f"WARNING: Gemini 'TOC Homebrewery Concept' prompt not found in DB. Falling back. Please check DB seeding.")
+            generated_homebrewery_toc = homebrewery_fallback_toc
+
+        # Ensure there's always some content
         if not generated_homebrewery_toc:
-             raise LLMGenerationError(f"Gemini API call for Homebrewery TOC (model: {model_instance.model_name}) succeeded but returned no usable content.")
+             generated_homebrewery_toc = homebrewery_fallback_toc
+
         return {
             "display_toc": generated_display_toc,
             "homebrewery_toc": generated_homebrewery_toc

@@ -186,21 +186,45 @@ class OpenAILLMService(AbstractLLMService):
         ]
         generated_display_toc = await self._perform_chat_completion(selected_model, display_messages, temperature=0.5, max_tokens=700, api_key=openai_api_key)
         if not generated_display_toc:
+            # This error is for Display TOC, which is critical.
             raise LLMGenerationError("OpenAI API call for Display TOC succeeded but returned no usable content.")
 
-        # Fetch Homebrewery TOC prompt
-        homebrewery_prompt_template_str = self.feature_prompt_service.get_prompt("TOC Homebrewery Concept", db=db)
-        if not homebrewery_prompt_template_str:
-            raise LLMGenerationError("Homebrewery TOC prompt template ('TOC Homebrewery Concept') not found in database.")
-        homebrewery_final_prompt = homebrewery_prompt_template_str.format(campaign_concept=campaign_concept)
+        # --- Homebrewery TOC Generation with Fallback ---
+        generated_homebrewery_toc = None
+        homebrewery_fallback_toc = "{{toc,wide\\n# Table Of Contents\\n- ### [Content{{PAGENUM}}](#pPAGENUM)\\n}}"
 
-        homebrewery_messages = [
-            {"role": "system", "content": "You are an assistant skilled in creating RPG Table of Contents strictly following Homebrewery Markdown formatting."},
-            {"role": "user", "content": homebrewery_final_prompt}
-        ]
-        generated_homebrewery_toc = await self._perform_chat_completion(selected_model, homebrewery_messages, temperature=0.5, max_tokens=700, api_key=openai_api_key)
-        if not generated_homebrewery_toc:
-            raise LLMGenerationError("OpenAI API call for Homebrewery TOC succeeded but returned no usable content.")
+        homebrewery_concept_prompt_str = self.feature_prompt_service.get_prompt("TOC Homebrewery Concept", db=db)
+
+        if homebrewery_concept_prompt_str:
+            try:
+                homebrewery_final_prompt = homebrewery_concept_prompt_str.format(campaign_concept=campaign_concept)
+                homebrewery_messages = [
+                    {"role": "system", "content": "You are an assistant skilled in creating RPG Table of Contents strictly following Homebrewery Markdown formatting."},
+                    {"role": "user", "content": homebrewery_final_prompt}
+                ]
+                # Attempt to generate the Homebrewery TOC
+                generated_homebrewery_toc = await self._perform_chat_completion(
+                    selected_model, homebrewery_messages, temperature=0.5, max_tokens=700, api_key=openai_api_key
+                )
+                if not generated_homebrewery_toc:
+                    print(f"WARNING: OpenAI Homebrewery TOC generation with 'TOC Homebrewery Concept' returned empty. Using fallback.")
+                    generated_homebrewery_toc = homebrewery_fallback_toc
+            except KeyError:
+                print(f"WARNING: OpenAI formatting 'TOC Homebrewery Concept' prompt failed due to KeyError. DB may have stale data (e.g., expecting 'sections_summary'). Falling back for Homebrewery TOC. Please check feature prompt '{'TOC Homebrewery Concept'}' in the database.")
+                generated_homebrewery_toc = homebrewery_fallback_toc
+            except LLMGenerationError as e: # Catch specific LLM errors during generation
+                print(f"WARNING: OpenAI Homebrewery TOC generation failed with LLMGenerationError: {e}. Using fallback.")
+                generated_homebrewery_toc = homebrewery_fallback_toc
+            except Exception as e: # Catch any other unexpected errors during generation
+                print(f"WARNING: An unexpected error occurred during OpenAI Homebrewery TOC generation: {e}. Using fallback.")
+                generated_homebrewery_toc = homebrewery_fallback_toc
+        else:
+            print(f"WARNING: OpenAI 'TOC Homebrewery Concept' prompt not found in DB. Falling back for Homebrewery TOC. Please check DB seeding for feature prompts.")
+            generated_homebrewery_toc = homebrewery_fallback_toc
+
+        # Ensure there's always some content, even if very basic, if it ended up None or empty above
+        if not generated_homebrewery_toc: # Covers None or empty string
+             generated_homebrewery_toc = homebrewery_fallback_toc
 
         return {
             "display_toc": generated_display_toc,
