@@ -598,7 +598,8 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
 // which then calls the service.
 
 // New utility function to convert Quill HTML to plain text
-const convertQuillHtmlToPlainText = (htmlString: string): string => {
+// Exported for testing
+export const convertQuillHtmlToPlainText = (htmlString: string): string => {
   if (!htmlString) {
     return '';
   }
