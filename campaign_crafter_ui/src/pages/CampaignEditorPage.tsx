@@ -908,7 +908,8 @@ const CampaignEditorPage: React.FC = () => {
     try {
       const payload: campaignService.CampaignUpdatePayload = {
         display_toc: editableDisplayTOC,
-        homebrewery_toc: editableDisplayTOC,
+        // homebrewery_toc is intentionally omitted to prevent accidental overwrite
+        // when only display_toc is being edited.
       };
       const updatedCampaign = await campaignService.updateCampaign(campaignId, payload);
       setCampaign(updatedCampaign);
