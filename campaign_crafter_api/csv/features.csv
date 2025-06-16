@@ -12,6 +12,20 @@ End the Table of Contents with }}}}
 
 Current Campaign Sections (titles, in order):
 {sections_summary}"
+TOC Homebrewery Concept,"Based on the following campaign concept, generate a potential detailed Table of Contents suitable for an RPG campaign book, strictly following Homebrewery Markdown formatting. Use 'PAGENUM' as a placeholder for all page numbers, like '{{PAGENUM}}' and '(#pPAGENUM)'.
+
+The structure should be:
+
+{{{{toc,wide
+# Table Of Contents
+- ### [{{Suggested Main Section Title 1}}{{PAGENUM}}](#pPAGENUM)
+  - #### [{{Suggested Subsection Title 1.1}}{{PAGENUM}}](#pPAGENUM)
+- ### [{{Suggested Main Section Title 2}}{{PAGENUM}}](#pPAGENUM)
+{{!-- LLM should infer appropriate section and subsection titles based on the campaign concept. Ensure all page numbers use PAGENUM placeholders. --}}
+End the Table of Contents with }}}}
+
+Campaign Concept:
+{campaign_concept}"
 TOC Display,"Based on the campaign concept provided below, generate a user-friendly Table of Contents for on-screen display. Use Markdown. Focus on clear section titles that can be linked. Example format:
 
 - Main Section 1

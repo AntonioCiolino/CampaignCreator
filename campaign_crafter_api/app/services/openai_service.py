@@ -189,9 +189,9 @@ class OpenAILLMService(AbstractLLMService):
             raise LLMGenerationError("OpenAI API call for Display TOC succeeded but returned no usable content.")
 
         # Fetch Homebrewery TOC prompt
-        homebrewery_prompt_template_str = self.feature_prompt_service.get_prompt("TOC Homebrewery", db=db)
+        homebrewery_prompt_template_str = self.feature_prompt_service.get_prompt("TOC Homebrewery Concept", db=db)
         if not homebrewery_prompt_template_str:
-            raise LLMGenerationError("Homebrewery TOC prompt template ('TOC Homebrewery') not found in database.")
+            raise LLMGenerationError("Homebrewery TOC prompt template ('TOC Homebrewery Concept') not found in database.")
         homebrewery_final_prompt = homebrewery_prompt_template_str.format(campaign_concept=campaign_concept)
 
         homebrewery_messages = [

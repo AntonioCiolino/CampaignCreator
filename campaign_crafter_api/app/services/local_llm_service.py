@@ -199,9 +199,9 @@ class LocalLLMService(AbstractLLMService):
              raise LLMGenerationError(f"{self.PROVIDER_NAME.title()} API call for Display TOC succeeded but returned no usable content.")
 
         # Fetch Homebrewery TOC prompt
-        homebrewery_prompt_template = self.feature_prompt_service.get_prompt("TOC Homebrewery", db=db)
+        homebrewery_prompt_template = self.feature_prompt_service.get_prompt("TOC Homebrewery Concept", db=db)
         if not homebrewery_prompt_template:
-            raise LLMGenerationError(f"Homebrewery TOC prompt template ('TOC Homebrewery') not found for {self.PROVIDER_NAME}.")
+            raise LLMGenerationError(f"Homebrewery TOC prompt template ('TOC Homebrewery Concept') not found for {self.PROVIDER_NAME}.")
         homebrewery_final_prompt = homebrewery_prompt_template.format(campaign_concept=campaign_concept)
 
         generated_homebrewery_toc = await self.generate_text(

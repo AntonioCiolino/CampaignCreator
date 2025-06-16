@@ -130,9 +130,9 @@ class GeminiLLMService(AbstractLLMService):
         if not generated_display_toc:
              raise LLMGenerationError(f"Gemini API call for Display TOC (model: {model_instance.model_name}) succeeded but returned no usable content.")
         # Fetch Homebrewery TOC prompt
-        homebrewery_prompt_template_str = self.feature_prompt_service.get_prompt("TOC Homebrewery", db=db)
+        homebrewery_prompt_template_str = self.feature_prompt_service.get_prompt("TOC Homebrewery Concept", db=db)
         if not homebrewery_prompt_template_str:
-            raise LLMGenerationError("Homebrewery TOC prompt template ('TOC Homebrewery') not found in database for Gemini.")
+            raise LLMGenerationError("Homebrewery TOC prompt template ('TOC Homebrewery Concept') not found in database for Gemini.")
         homebrewery_final_prompt = homebrewery_prompt_template_str.format(campaign_concept=campaign_concept)
         generated_homebrewery_toc = await self.generate_text(
             prompt=homebrewery_final_prompt,
