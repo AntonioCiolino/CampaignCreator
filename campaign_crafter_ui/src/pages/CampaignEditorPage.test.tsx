@@ -52,14 +52,14 @@ const mockCampaign: Campaign = {
   title: 'Test Campaign Title',
   concept: initialCampaignConcept,
   initial_user_prompt: 'Initial prompt',
-  current_status: 'draft',
-  created_at: new Date().toISOString(),
-  updated_at: new Date().toISOString(),
-  user_id: 'user1',
+  // current_status: 'draft', // Removed: Not in Campaign interface
+  // created_at: new Date().toISOString(), // Removed: Not in Campaign interface
+  // updated_at: new Date().toISOString(), // Removed: Not in Campaign interface
+  // user_id: 'user1', // Removed: Not in Campaign interface
   selected_llm_id: 'llm1',
   temperature: 0.7,
   display_toc: [],
-  sections_order: [],
+  // sections_order: [], // Removed: Not in Campaign interface
   thematic_image_url: null,
   thematic_image_prompt: null,
   badge_image_url: null,
@@ -72,9 +72,9 @@ const mockCampaign: Campaign = {
   theme_background_image_url: null,
   theme_background_image_opacity: null,
   homebrewery_toc: null,
-  is_public: false,
-  view_count: 0,
-  like_count: 0,
+  // is_public: false, // Removed: Not in Campaign interface
+  // view_count: 0, // Removed: Not in Campaign interface
+  // like_count: 0, // Removed: Not in Campaign interface
 };
 
 const mockSections: CampaignSection[] = [];
@@ -93,14 +93,20 @@ describe('CampaignEditorPage - Campaign Concept Editing', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseParams.mockReturnValue({ campaignId: mockCampaignId });
-    mockGetCampaignById.mockResolvedValue({...mockCampaign, concept: initialCampaignConcept}); // Ensure fresh concept
+    // Use a spread of the cleaned mockCampaign to prevent mutations between tests
+    mockGetCampaignById.mockResolvedValue({...mockCampaign, concept: initialCampaignConcept});
     mockGetCampaignSections.mockResolvedValue(mockSections);
     mockGetAvailableLLMs.mockResolvedValue(mockLLMs);
     
     // Default mock for updateCampaign
     mockUpdateCampaign.mockImplementation(async (id, payload) => {
-      const currentCampaign = await mockGetCampaignById(id); // Get current state
-      return { ...currentCampaign, ...payload };
+      // To better simulate a real update, we'd merge payload with the current state of mockCampaign
+      // For simplicity here, we assume the tests will mockResolvedValueOnce for specific update scenarios
+      // or we can use a more robust mock state management if needed.
+      const currentCampaignState = mockGetCampaignById.mock.results.length > 0 && mockGetCampaignById.mock.results[0].type === 'return'
+        ? mockGetCampaignById.mock.results[0].value
+        : {...mockCampaign}; // Fallback to initial mockCampaign
+      return { ...currentCampaignState, ...payload };
     });
   });
 
@@ -246,18 +252,27 @@ describe('CampaignEditorPage - Campaign Concept Editing', () => {
 
   test('does not show Edit Concept button if campaign concept is empty or null', async () => {
     // Override mock for this specific test
-    mockGetCampaignById.mockResolvedValueOnce({ ...mockCampaign, concept: null });
-    await renderPage(); // Render with the campaign having null concept
+    // Clone mockCampaign and set concept to null for this specific test run
+    const campaignWithoutConcept = { ...mockCampaign, concept: null };
+    mockGetCampaignById.mockResolvedValueOnce(campaignWithoutConcept);
+
+    await renderPage();
 
     // The "Campaign Concept" h2 itself should be visible
     expect(screen.getByRole('heading', { name: /Campaign Concept/i, level: 2})).toBeInTheDocument();
 
     // The specific "Edit" button for concept should not be present
-    const editButton = getConceptEditButton(); // This helper looks for the button within the concept section
+    const editButton = getConceptEditButton();
     expect(editButton).not.toBeInTheDocument();
 
     // Also, the ReactMarkdown display for the concept should not render the initialCampaignConcept
-    expect(screen.queryByTestId('react-markdown')).not.toHaveTextContent(initialCampaignConcept);
+    // and should ideally not exist or be empty if concept is null
+    const markdownDisplay = screen.queryByTestId('react-markdown');
+    if (markdownDisplay) { // It might not render at all if concept is null and there's no fallback UI
+        expect(markdownDisplay).not.toHaveTextContent(initialCampaignConcept);
+    }
+    // More robustly, ensure no part of initialCampaignConcept is present if the component handles null concept by not rendering it
+    expect(screen.queryByText(initialCampaignConcept)).not.toBeInTheDocument();
   });
 
 });

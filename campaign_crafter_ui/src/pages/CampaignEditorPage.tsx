@@ -603,18 +603,22 @@ const CampaignEditorPage: React.FC = () => {
     };
   }, [selectedLLMId, temperature, campaignId, campaign, isLoading, setCampaign, setIsAutoSavingLLMSettings, setAutoSaveLLMSettingsError, setAutoSaveLLMSettingsSuccess]);
 
+  // This useEffect triggers ensureLLMSettingsSaved when selectedLLMId changes after initial load
   useEffect(() => {
     if (initialLoadCompleteRef.current && campaign && selectedLLMId !== campaign.selected_llm_id) {
       ensureLLMSettingsSaved();
     }
   }, [selectedLLMId, campaign, ensureLLMSettingsSaved]);
 
+  // This useEffect triggers ensureLLMSettingsSaved when temperature changes after initial load
   useEffect(() => {
     if (!initialLoadCompleteRef.current || !campaign) { return; }
-    if (temperature !== null && temperature !== campaign.temperature) {
+    // Check if temperature is not null (or undefined) before comparing,
+    // and ensure it has actually changed from the campaign's stored temperature.
+    if (temperature !== null && temperature !== undefined && temperature !== campaign.temperature) {
       ensureLLMSettingsSaved();
     }
-  }, [temperature, campaign, ensureLLMSettingsSaved]);
+  }, [temperature, campaign, ensureLLMSettingsSaved, initialLoadCompleteRef]); // Added initialLoadCompleteRef, though the guard already checks it. ESLint might prefer it if it's used in the condition.
 
   // useEffect for auto-saving mood board URLs
   useEffect(() => {
