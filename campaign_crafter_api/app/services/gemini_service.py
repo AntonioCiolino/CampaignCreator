@@ -294,6 +294,35 @@ class GeminiLLMService(AbstractLLMService):
         # If it were using something like an httpx.AsyncClient internally that needs closing,
         # this is where it would be done. For now, it's a no-op.
         pass
+
+    async def generate_homebrewery_toc_from_sections(self, sections_summary: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
+        if not await self.is_available(current_user=current_user, db=db):
+            raise LLMServiceUnavailableError("Gemini service is not available.")
+
+        if not sections_summary:
+            return "{{toc,wide\n# Table Of Contents\n}}\n"
+
+        model_instance = self._get_model_instance(model)
+
+        prompt_template_str = self.feature_prompt_service.get_prompt("TOC Homebrewery", db=db)
+        if not prompt_template_str:
+            raise LLMGenerationError("Homebrewery TOC prompt template ('TOC Homebrewery') not found in database for Gemini.")
+
+        final_prompt = prompt_template_str.format(sections_summary=sections_summary)
+
+        generated_toc = await self.generate_text(
+            prompt=final_prompt,
+            current_user=current_user,
+            db=db,
+            model=model_instance.model_name, # Use the determined model_name
+            temperature=0.3, # Consistent with OpenAI
+            max_tokens=1000    # Consistent with OpenAI
+        )
+        if not generated_toc:
+            raise LLMGenerationError(f"Gemini API call for Homebrewery TOC from sections (model: {model_instance.model_name}) succeeded but returned no usable content.")
+
+        return generated_toc
+
 if __name__ == '__main__':
     from dotenv import load_dotenv
     import os

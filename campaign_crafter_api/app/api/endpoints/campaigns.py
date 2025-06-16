@@ -145,10 +145,10 @@ async def generate_campaign_toc_endpoint(
         raise HTTPException(status_code=500, detail=f"Failed to generate Table of Contents: {str(e)}")
 
     display_toc_content = generated_tocs_dict.get("display_toc")
-    homebrewery_toc_content = generated_tocs_dict.get("homebrewery_toc")
+    # homebrewery_toc_content = generated_tocs_dict.get("homebrewery_toc") # Removed
 
-    if display_toc_content is None or homebrewery_toc_content is None:
-        error_detail = "TOC generation did not return the expected structure (missing display_toc or homebrewery_toc key, or value is null)."
+    if display_toc_content is None: # Simplified condition
+        error_detail = "Display TOC generation did not return the expected content."
         print(f"Error: {error_detail} - Dict received: {generated_tocs_dict}")
         raise HTTPException(status_code=500, detail=error_detail)
 
@@ -167,24 +167,23 @@ async def generate_campaign_toc_endpoint(
                 items.append({"title": title, "type": "unknown"})
         return items
 
-    display_toc_list = parse_toc_string_to_list(display_toc_content)
-    homebrewery_toc_list = parse_toc_string_to_list(homebrewery_toc_content)
+    display_toc_list = parse_toc_string_to_list(display_toc_content if display_toc_content is not None else "")
+    # homebrewery_toc_object = {"markdown_string": homebrewery_toc_content if homebrewery_toc_content is not None else ""} # Removed
+
 
     if not display_toc_list and display_toc_content: # If parsing resulted in empty list but original string was not empty
         print(f"Warning: display_toc_list is empty after parsing non-empty string: '{display_toc_content}'")
         # Potentially use the raw string as a single item if parsing fails completely
         # display_toc_list = [{"title": "Failed to parse Display TOC", "type": "error"}]
 
-    if not homebrewery_toc_list and homebrewery_toc_content:
-        print(f"Warning: homebrewery_toc_list is empty after parsing non-empty string: '{homebrewery_toc_content}'")
-        # homebrewery_toc_list = [{"title": "Failed to parse Homebrewery TOC", "type": "error"}]
+    # Warnings for homebrewery_toc_list should be removed (already done in previous steps).
 
 
     updated_campaign_with_toc = crud.update_campaign_toc(
         db=db,
         campaign_id=campaign_id,
         display_toc_content=display_toc_list,
-        homebrewery_toc_content=homebrewery_toc_list
+        homebrewery_toc_content=None # Explicitly pass None for homebrewery_toc
     )
     if updated_campaign_with_toc is None:
         # This specific check for campaign existence after update might be redundant if get_campaign above already confirmed it.
@@ -624,7 +623,13 @@ async def export_campaign_homebrewery(
     sections = crud.get_campaign_sections(db=db, campaign_id=campaign_id, limit=1000) 
     export_service = HomebreweryExportService()
     try:
-        formatted_text = export_service.format_campaign_for_homebrewery(campaign=db_campaign, sections=sections)
+        # Ensure db and current_user are passed
+        formatted_text = await export_service.format_campaign_for_homebrewery(
+            campaign=db_campaign,
+            sections=sections,
+            db=db,
+            current_user=current_user
+        )
     except Exception as e:
         print(f"Error during Homebrewery export formatting for campaign {campaign_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to format campaign for Homebrewery export: {str(e)}")
@@ -690,7 +695,13 @@ async def prepare_campaign_for_homebrewery_posting(
     sections = crud.get_campaign_sections(db=db, campaign_id=campaign_id, limit=1000)
     export_service = HomebreweryExportService()
     try:
-        markdown_content = export_service.format_campaign_for_homebrewery(campaign=db_campaign, sections=sections)
+        # Ensure db and current_user are passed
+        markdown_content = await export_service.format_campaign_for_homebrewery(
+            campaign=db_campaign,
+            sections=sections,
+            db=db,
+            current_user=current_user
+        )
     except Exception as e:
         print(f"Error during Homebrewery content generation for campaign {campaign_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to generate Homebrewery Markdown: {str(e)}")

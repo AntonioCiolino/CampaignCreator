@@ -275,3 +275,29 @@ class LocalLLMService(AbstractLLMService):
             final_prompt_for_generation = "\n".join(prompt_parts)
             
         return await self.generate_text(prompt=final_prompt_for_generation, current_user=current_user, db=db, model=model, temperature=0.7, max_tokens=4000)
+
+    async def generate_homebrewery_toc_from_sections(self, sections_summary: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
+        if not await self.is_available(current_user=current_user, db=db):
+            raise HTTPException(status_code=503, detail=f"{self.PROVIDER_NAME.title()} service is not available or configured.")
+
+        if not sections_summary:
+            return "{{toc,wide\n# Table Of Contents\n}}\n"
+
+        prompt_template_str = self.feature_prompt_service.get_prompt("TOC Homebrewery", db=db)
+        if not prompt_template_str:
+            raise LLMGenerationError(f"Homebrewery TOC prompt template ('TOC Homebrewery') not found for {self.PROVIDER_NAME}.")
+
+        final_prompt = prompt_template_str.format(sections_summary=sections_summary)
+
+        generated_toc = await self.generate_text(
+            prompt=final_prompt,
+            current_user=current_user,
+            db=db,
+            model=model, # Pass the model selected for this operation
+            temperature=0.3, # Consistent with other services
+            max_tokens=1000    # Consistent with other services
+        )
+        if not generated_toc:
+            raise LLMGenerationError(f"{self.PROVIDER_NAME.title()} API call for Homebrewery TOC from sections succeeded but returned no usable content.")
+
+        return generated_toc
