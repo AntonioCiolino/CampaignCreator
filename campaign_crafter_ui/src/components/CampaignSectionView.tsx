@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'; // Removed useRef
 import { CampaignSection } from '../services/campaignService';
 import ReactMarkdown from 'react-markdown';
+import { Typography } from '@mui/material';
 import rehypeRaw from 'rehype-raw';
 import ReactQuill from 'react-quill';
 import LoadingSpinner from './common/LoadingSpinner'; // Adjust path if necessary
@@ -166,6 +167,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
     setIsEditing(true);
     setLocalSaveError(null); // Clear local errors when starting to edit
     setSaveSuccess(false);
+    // setContentGenerationError(null); // Removed as per cleanup task
   };
 
   const handleCancel = () => {
@@ -444,6 +446,9 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                 className="quill-editor"
                 ref={setQuillRef} // Set the ref to get Quill instance
               />
+              <Typography variant="caption" display="block" sx={{ mt: 1, color: 'text.secondary' }}>
+                Tip: For a horizontal line, use three dashes (`---`) on a line by themselves, surrounded by blank lines.
+              </Typography>
               {/* Random Table Roller Integration */}
               <RandomTableRoller onInsertItem={handleInsertRandomItem} />
               

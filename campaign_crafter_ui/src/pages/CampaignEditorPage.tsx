@@ -319,12 +319,13 @@ const CampaignEditorPage: React.FC = () => {
     );
     return campaign.display_toc.map((tocEntry: TOCEntry) => {
       const title = tocEntry.title || "Untitled Section";
+      const typeDisplay = tocEntry.type || 'N/A'; // Default if type is missing
       const cleanedTitle = title.trim().toLowerCase();
       const sectionId = sectionTitleToIdMap.get(cleanedTitle);
       if (sectionId && sections?.length > 0) {
-        return `- [${title}](#${sectionId})`;
+        return `- [${title}](#${sectionId}) (Type: ${typeDisplay})`;
       }
-      return `- ${title}`;
+      return `- ${title} (Type: ${typeDisplay})`;
     }).join('\n');
   }, [campaign, sections]);
 
@@ -426,6 +427,7 @@ const CampaignEditorPage: React.FC = () => {
 
         setCampaign(campaignDetails);
         setEditableDisplayTOC(campaignDetails.display_toc || []);
+
         if (Array.isArray(campaignSectionsResponse)) {
             setSections(campaignSectionsResponse.sort((a, b) => a.order - b.order));
         } else {
@@ -908,7 +910,8 @@ const CampaignEditorPage: React.FC = () => {
     try {
       const payload: campaignService.CampaignUpdatePayload = {
         display_toc: editableDisplayTOC,
-        homebrewery_toc: editableDisplayTOC,
+        // homebrewery_toc is intentionally omitted to prevent accidental overwrite
+        // when only display_toc is being edited.
       };
       const updatedCampaign = await campaignService.updateCampaign(campaignId, payload);
       setCampaign(updatedCampaign);
@@ -1257,10 +1260,12 @@ const CampaignEditorPage: React.FC = () => {
           >
               Done Editing TOC
           </Button>
-          {tocSaveError && <p className="error-message feedback-message">{tocSaveError}</p>}
-          {tocSaveSuccess && <p className="success-message feedback-message">{tocSaveSuccess}</p>}
         </section>
       )}
+    {/* Moved messages START */}
+    {tocSaveError && <p className="error-message feedback-message">{tocSaveError}</p>}
+    {tocSaveSuccess && <p className="success-message feedback-message">{tocSaveSuccess}</p>}
+    {/* Moved messages END */}
       <div className="action-group export-action-group editor-section">
         <Button onClick={handleExportHomebrewery} disabled={isExporting} className="llm-button export-button" icon={<PublishIcon />} tooltip="Export the campaign content as Markdown formatted for Homebrewery">
           {isExporting ? 'Exporting...' : 'Export to Homebrewery'}
