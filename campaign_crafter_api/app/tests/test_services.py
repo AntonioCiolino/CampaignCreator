@@ -162,6 +162,79 @@ def db_mock() -> MagicMock:
 def random_table_service() -> RandomTableService:
     return RandomTableService() # Instantiate the service
 
+# --- HomebreweryExportService Tests ---
+
+@pytest.mark.asyncio
+async def test_format_campaign_for_homebrewery_front_cover_content():
+    """Tests that the front cover is correctly formatted and included."""
+    service = HomebreweryExportService()
+
+    # Mock campaign object
+    campaign_mock = MagicMock(spec=Campaign)
+    campaign_mock.title = "My Test Campaign"
+    campaign_mock.concept = "A thrilling adventure."
+    campaign_mock.homebrewery_toc = None
+    campaign_mock.selected_llm_id = None # Not strictly needed for this part of the test
+
+    # Mocks for db and current_user
+    db_mock = MagicMock(spec=Session)
+    user_mock = MagicMock() # Spec can be added if specific user attributes are accessed
+
+    output = await service.format_campaign_for_homebrewery(campaign_mock, [], db_mock, user_mock)
+
+    # Assertions for front cover content
+    # Check if it starts with the front cover template, accounting for potential newlines
+    assert output.lstrip().startswith("{{frontCover}}")
+    assert "# My Test Campaign" in output
+    assert "## A Campaign Adventure" in output
+    assert "{{banner Exciting Banner Text!}}" in output
+    assert "Author to provide episode details here." in output
+    assert "![background image](https://via.placeholder.com/816x1056.png?text=Front+Cover+Background)" in output
+    assert "![](/assets/naturalCritLogoRed.svg)" in output
+
+@pytest.mark.asyncio
+async def test_format_campaign_for_homebrewery_back_cover_content():
+    """Tests that the back cover is correctly formatted and included."""
+    service = HomebreweryExportService()
+
+    # Mock campaign object
+    campaign_mock = MagicMock(spec=Campaign)
+    campaign_mock.title = "Another Test Campaign"
+    campaign_mock.concept = "Another epic journey."
+    campaign_mock.homebrewery_toc = None
+    campaign_mock.selected_llm_id = None
+
+    # Mocks for db and current_user
+    db_mock = MagicMock(spec=Session)
+    user_mock = MagicMock()
+
+    output = await service.format_campaign_for_homebrewery(campaign_mock, [], db_mock, user_mock)
+
+    # Expected end of the document (part of the back cover)
+    # This helps verify the back cover is the last thing added.
+    # Need to be careful with exact whitespace and newlines if the template is complex.
+    # For simplicity, checking key elements of the back cover.
+
+    expected_back_cover_elements = [
+        "\\page\n{{backCover}}", # Note: The template itself has \page at the start
+        "![background image](https://via.placeholder.com/816x1056.png?text=Back+Cover+Background)",
+        "# An Unforgettable Adventure Awaits!",
+        "Author's notes and commentary on the campaign.",
+        "![](/assets/naturalCritLogoWhite.svg)",
+        "VTCNP Enterprises" # Part of the logo block in the template
+    ]
+
+    for element in expected_back_cover_elements:
+        assert element in output
+
+    # Check if the output string, when stripped, ends with the final part of the back cover template
+    # This is a bit fragile; depends on the exact structure of BACK_COVER_TEMPLATE
+    # BACK_COVER_TEMPLATE ends with "VTCNP Enterprises\n}}"
+    # The join operation might add more newlines.
+    # A more robust check might be to ensure all key components are present towards the end.
+    assert output.strip().endswith("VTCNP Enterprises\n}}")
+
+
 def test_service_get_available_table_names_user_priority(random_table_service: RandomTableService, db_mock: MagicMock):
     # Arrange
     user_id = 1
