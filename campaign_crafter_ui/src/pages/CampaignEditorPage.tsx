@@ -20,6 +20,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import PublishIcon from '@mui/icons-material/Publish';
 import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
+import SaveIcon from '@mui/icons-material/Save'; // Import SaveIcon for concept saving
 import ImageIcon from '@mui/icons-material/Image';
 // import ThematicImageDisplay, { ThematicImageDisplayProps } from '../components/common/ThematicImageDisplay'; // Old import
 import MoodBoardPanel from '../components/common/MoodBoardPanel'; // New import
@@ -29,7 +30,7 @@ import CampaignLLMSettings from '../components/campaign_editor/CampaignLLMSettin
 import CampaignSectionEditor from '../components/campaign_editor/CampaignSectionEditor';
 import { LLMModel as LLM } from '../services/llmService';
 import Tabs, { TabItem } from '../components/common/Tabs';
-import { Typography } from '@mui/material';
+import { Typography, TextField } from '@mui/material'; // Import TextField
 import DetailedProgressDisplay from '../components/common/DetailedProgressDisplay';
 import TOCEditor from '../components/campaign_editor/TOCEditor';
 import CampaignThemeEditor, { CampaignThemeData } from '../components/campaign_editor/CampaignThemeEditor';
@@ -101,6 +102,13 @@ const CampaignEditorPage: React.FC = () => {
   const [tocSaveError, setTocSaveError] = useState<string | null>(null);
   const [tocSaveSuccess, setTocSaveSuccess] = useState<string | null>(null);
   const [isTOCEditorVisible, setIsTOCEditorVisible] = useState<boolean>(false);
+
+  // State for Concept Editor
+  const [isConceptEditorVisible, setIsConceptEditorVisible] = useState<boolean>(false);
+  const [editableConcept, setEditableConcept] = useState<string>('');
+  const [conceptSaveError, setConceptSaveError] = useState<string | null>(null);
+  const [conceptSaveSuccess, setConceptSaveSuccess] = useState<string | null>(null);
+
   // Rename state for MoodBoardPanel visibility
   const [isMoodBoardPanelOpen, setIsMoodBoardPanelOpen] = useState<boolean>(false);
   // Remove thematicImageData state as MoodBoardPanel will use campaign.mood_board_image_urls directly
@@ -595,18 +603,22 @@ const CampaignEditorPage: React.FC = () => {
     };
   }, [selectedLLMId, temperature, campaignId, campaign, isLoading, setCampaign, setIsAutoSavingLLMSettings, setAutoSaveLLMSettingsError, setAutoSaveLLMSettingsSuccess]);
 
+  // This useEffect triggers ensureLLMSettingsSaved when selectedLLMId changes after initial load
   useEffect(() => {
     if (initialLoadCompleteRef.current && campaign && selectedLLMId !== campaign.selected_llm_id) {
       ensureLLMSettingsSaved();
     }
   }, [selectedLLMId, campaign, ensureLLMSettingsSaved]);
 
+  // This useEffect triggers ensureLLMSettingsSaved when temperature changes after initial load
   useEffect(() => {
     if (!initialLoadCompleteRef.current || !campaign) { return; }
-    if (temperature !== null && temperature !== campaign.temperature) {
+    // Check if temperature is not null (or undefined) before comparing,
+    // and ensure it has actually changed from the campaign's stored temperature.
+    if (temperature !== null && temperature !== undefined && temperature !== campaign.temperature) {
       ensureLLMSettingsSaved();
     }
-  }, [temperature, campaign, ensureLLMSettingsSaved]);
+  }, [temperature, campaign, ensureLLMSettingsSaved, initialLoadCompleteRef]); // Added initialLoadCompleteRef, though the guard already checks it. ESLint might prefer it if it's used in the condition.
 
   // useEffect for auto-saving mood board URLs
   useEffect(() => {
@@ -1420,16 +1432,98 @@ const CampaignEditorPage: React.FC = () => {
       {campaign && campaign.title && (
         <h1 className="campaign-main-title">{campaign.title}</h1>
       )}
-      {campaign && campaign.concept && (
+      {campaign && campaign.concept && !isConceptEditorVisible && (
         <section className="campaign-detail-section read-only-section editor-section page-level-concept">
-          <h2 onClick={() => setIsCampaignConceptCollapsed(!isCampaignConceptCollapsed)} style={{ cursor: 'pointer' }}>
-            {isCampaignConceptCollapsed ? '▶' : '▼'} Campaign Concept
-          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h2 onClick={() => setIsCampaignConceptCollapsed(!isCampaignConceptCollapsed)} style={{ cursor: 'pointer', marginBottom: '0.5rem' }}>
+              {isCampaignConceptCollapsed ? '▶' : '▼'} Campaign Concept
+            </h2>
+            <Button
+              onClick={() => {
+                setEditableConcept(campaign.concept || '');
+                setIsConceptEditorVisible(true);
+                setIsCampaignConceptCollapsed(false); // Ensure section is expanded
+                setConceptSaveError(null);
+                setConceptSaveSuccess(null);
+              }}
+              icon={<EditIcon />}
+              style={{minWidth: 'auto', padding: '4px', marginLeft: '10px'}}
+              tooltip="Edit Campaign Concept"
+            >
+              Edit
+            </Button>
+          </div>
           {!isCampaignConceptCollapsed && (
-            <div className="concept-content"><ReactMarkdown>{campaign.concept}</ReactMarkdown></div>
+            <div className="concept-content">
+              <ReactMarkdown>{campaign.concept}</ReactMarkdown>
+            </div>
           )}
         </section>
       )}
+
+      {isConceptEditorVisible && campaign && (
+        <section className="campaign-detail-section editor-section page-level-concept edit-concept-section card-like">
+          <h2>Edit Campaign Concept</h2>
+          <TextField
+            label="Campaign Concept"
+            multiline
+            rows={6}
+            fullWidth
+            value={editableConcept}
+            onChange={(e) => setEditableConcept(e.target.value)}
+            variant="outlined"
+            margin="normal"
+            helperText={conceptSaveError ? conceptSaveError : (conceptSaveSuccess ? conceptSaveSuccess : "Enter the core concept for your campaign.")}
+            error={!!conceptSaveError}
+            sx={{
+                '& .MuiFormHelperText-root': {
+                    color: conceptSaveError ? 'error.main' : (conceptSaveSuccess ? 'success.main' : 'text.secondary'),
+                },
+            }}
+          />
+          <div className="action-group" style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
+            <Button
+              onClick={async () => {
+                if (!campaignId || !campaign) return;
+                setIsPageLoading(true);
+                setConceptSaveError(null);
+                setConceptSaveSuccess(null);
+                try {
+                  const updatedCampaign = await campaignService.updateCampaign(campaignId, { concept: editableConcept });
+                  setCampaign(updatedCampaign);
+                  setConceptSaveSuccess("Campaign concept updated successfully!");
+                  setTimeout(() => setConceptSaveSuccess(null), 3000);
+                  setIsConceptEditorVisible(false);
+                } catch (err) {
+                  console.error("Failed to save concept:", err);
+                  setConceptSaveError("Failed to save concept. Please try again.");
+                  setTimeout(() => setConceptSaveError(null), 5000);
+                } finally {
+                  setIsPageLoading(false);
+                }
+              }}
+              variant="primary"
+              icon={<SaveIcon />}
+              disabled={isPageLoading || editableConcept === campaign.concept}
+            >
+              Save Concept
+            </Button>
+            <Button
+              onClick={() => {
+                setIsConceptEditorVisible(false);
+                setConceptSaveError(null); // Clear any previous errors
+                // editableConcept doesn't need reset, will be re-init on next open
+              }}
+              variant="secondary"
+              icon={<CancelIcon />}
+              disabled={isPageLoading}
+            >
+              Cancel
+            </Button>
+          </div>
+        </section>
+      )}
+
       <Tabs
         tabs={tabItems}
         activeTabName={activeEditorTab}
