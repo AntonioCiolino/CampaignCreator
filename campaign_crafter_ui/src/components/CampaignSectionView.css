@@ -193,7 +193,7 @@
 /* Responsive image scaling for content and editor */
 .section-content img,
 .ql-editor img {
-  max-width: 100%; /* Ensures image is not wider than its container */
+  max-width: 50%; /* Ensures image is not wider than its container, now capped at 50% */
   height: auto;    /* Maintains aspect ratio */
   display: block;  /* Can help with spacing issues */
   margin-bottom: 1rem; /* Space below images */
