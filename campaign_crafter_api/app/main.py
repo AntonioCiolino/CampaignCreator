@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware # Added import
+from contextlib import asynccontextmanager # Added for lifespan
 
 # sys.path manipulation for 'utils' is no longer needed here.
 # We will use a relative import for the seeding module.
@@ -18,20 +19,9 @@ from app.api.endpoints import data_tables # New import for data_tables
 from app.api.endpoints import auth as auth_router # Import for auth
 from app.api.endpoints import file_uploads as file_uploads_router # Import for file uploads
 
-app = FastAPI(title="Campaign Crafter API", version="0.1.0")
 
-# origins = ["*"] # Removed this line
-
-app.add_middleware( # Added middleware
-    CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS, # Use the new setting
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.on_event("startup")
-async def on_startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     print("Application startup: Initializing database...")
     # init_db() likely calls Base.metadata.create_all(bind=engine)
     # If not, or to be explicit, call it here:
@@ -50,12 +40,27 @@ async def on_startup():
             print("Data seeding process completed.")
         else:
             print("Data already exists (features found), skipping CSV data seeding.")
+
+        yield # Application is ready to serve requests
+
     except Exception as e:
-        print(f"An error occurred during startup data seeding: {e}")
+        print(f"An error occurred during startup data seeding or application lifecycle: {e}")
     finally:
         if db:
             db.close()
-            print("Database session closed after startup.")
+            print("Database session closed after startup/shutdown.")
+
+app = FastAPI(title="Campaign Crafter API", version="0.1.0", lifespan=lifespan)
+
+# origins = ["*"] # Removed this line
+
+app.add_middleware( # Added middleware
+    CORSMiddleware,
+    allow_origins=settings.BACKEND_CORS_ORIGINS, # Use the new setting
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Include routers
 app.include_router(campaigns_router.router, prefix="/api/v1/campaigns", tags=["Campaigns"])
