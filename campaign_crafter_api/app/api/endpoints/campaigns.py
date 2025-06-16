@@ -126,11 +126,12 @@ async def generate_campaign_toc_endpoint(
         provider_name, model_specific_id = _extract_provider_and_model(request_body.model_id_with_prefix)
         llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=request_body.model_id_with_prefix)
 
-        generated_tocs_dict = await llm_service.generate_toc( # Returns a dict now
+        # LLM service now returns only the display TOC string
+        display_toc_str = await llm_service.generate_toc(
             campaign_concept=db_campaign.concept,
             db=db,
             model=model_specific_id,
-            current_user=current_user # Add this
+            current_user=current_user
         )
     except LLMServiceUnavailableError as e:
         raise HTTPException(status_code=503, detail=f"LLM Service Error for TOC generation: {str(e)}")
@@ -144,12 +145,10 @@ async def generate_campaign_toc_endpoint(
         print(f"Error during TOC generation for campaign {campaign_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to generate Table of Contents: {str(e)}")
 
-    display_toc_content = generated_tocs_dict.get("display_toc")
-    # homebrewery_toc_content = generated_tocs_dict.get("homebrewery_toc") # Removed
-
-    if display_toc_content is None: # Simplified condition
-        error_detail = "Display TOC generation did not return the expected content."
-        print(f"Error: {error_detail} - Dict received: {generated_tocs_dict}")
+    # display_toc_str is the direct result, which is the display TOC content string
+    if not display_toc_str: # Check if the string is empty or None
+        error_detail = "Display TOC generation returned empty or no content."
+        print(f"Error: {error_detail} - String received: '{display_toc_str}'")
         raise HTTPException(status_code=500, detail=error_detail)
 
     def parse_toc_string_to_list(toc_str: str) -> List[Dict[str, str]]:
@@ -167,17 +166,14 @@ async def generate_campaign_toc_endpoint(
                 items.append({"title": title, "type": "unknown"})
         return items
 
-    display_toc_list = parse_toc_string_to_list(display_toc_content if display_toc_content is not None else "")
-    # homebrewery_toc_object = {"markdown_string": homebrewery_toc_content if homebrewery_toc_content is not None else ""} # Removed
+    display_toc_list = parse_toc_string_to_list(display_toc_str) # Directly use the string
 
-
-    if not display_toc_list and display_toc_content: # If parsing resulted in empty list but original string was not empty
-        print(f"Warning: display_toc_list is empty after parsing non-empty string: '{display_toc_content}'")
+    if not display_toc_list and display_toc_str: # If parsing resulted in empty list but original string was not empty
+        print(f"Warning: display_toc_list is empty after parsing non-empty string: '{display_toc_str}'")
         # Potentially use the raw string as a single item if parsing fails completely
         # display_toc_list = [{"title": "Failed to parse Display TOC", "type": "error"}]
 
-    # Warnings for homebrewery_toc_list should be removed (already done in previous steps).
-
+    # Homebrewery TOC is no longer handled here by the endpoint for update content
 
     updated_campaign_with_toc = crud.update_campaign_toc(
         db=db,

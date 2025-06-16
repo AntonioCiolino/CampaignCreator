@@ -106,20 +106,25 @@ class GeminiLLMService(AbstractLLMService):
         
         # Re-use generate_text for actual generation, passing current_user and db
         return await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=1000)
-        return await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=1000)
-    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]: # Added current_user
+    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str: # Added current_user
         if not await self.is_available(current_user=current_user, db=db): # Pass args
             raise LLMServiceUnavailableError("Gemini service is not available.")
         if not campaign_concept:
             raise ValueError("Campaign concept cannot be empty.")
         
         model_instance = self._get_model_instance(model) # Determine model instance once
+
         # Fetch Display TOC prompt
         display_prompt_template_str = self.feature_prompt_service.get_prompt("TOC Display", db=db)
         if not display_prompt_template_str:
             raise LLMGenerationError("Display TOC prompt template ('TOC Display') not found in database for Gemini.")
-        display_final_prompt = display_prompt_template_str.format(campaign_concept=campaign_concept)
         
+        try:
+            display_final_prompt = display_prompt_template_str.format(campaign_concept=campaign_concept)
+        except KeyError:
+            print(f"ERROR: Gemini formatting 'TOC Display' prompt failed due to KeyError. Prompt: '{display_prompt_template_str}' Concept: '{campaign_concept}'")
+            raise LLMGenerationError("Failed to format 'TOC Display' prompt due to unexpected placeholders for Gemini.")
+
         generated_display_toc = await self.generate_text(
             prompt=display_final_prompt,
             current_user=current_user, db=db, # Pass args
@@ -128,54 +133,10 @@ class GeminiLLMService(AbstractLLMService):
             max_tokens=700
         )
         if not generated_display_toc:
-             # This error is for Display TOC, which is critical.
              raise LLMGenerationError(f"Gemini API call for Display TOC (model: {model_instance.model_name}) succeeded but returned no usable content.")
 
-        # --- Homebrewery TOC Generation with Fallback ---
-        generated_homebrewery_toc = None
-        homebrewery_fallback_toc = "{{toc,wide\\n# Table Of Contents\\n- ### [Content{{PAGENUM}}](#pPAGENUM)\\n}}"
+        return generated_display_toc
 
-        homebrewery_concept_prompt_str = self.feature_prompt_service.get_prompt("TOC Homebrewery Concept", db=db)
-
-        if homebrewery_concept_prompt_str:
-            try:
-                homebrewery_final_prompt = homebrewery_concept_prompt_str.format(campaign_concept=campaign_concept)
-                # Attempt to generate the Homebrewery TOC
-                generated_homebrewery_toc = await self.generate_text(
-                    prompt=homebrewery_final_prompt,
-                    current_user=current_user,
-                    db=db,
-                    model=model_instance.model_name, # Use the same model as display_toc
-                    temperature=0.5,
-                    max_tokens=1000
-                )
-                if not generated_homebrewery_toc:
-                    print(f"WARNING: Gemini Homebrewery TOC generation with 'TOC Homebrewery Concept' returned empty. Using fallback.")
-                    generated_homebrewery_toc = homebrewery_fallback_toc
-            except KeyError:
-                print(f"WARNING: Gemini formatting 'TOC Homebrewery Concept' prompt failed due to KeyError. DB may have stale data. Falling back. Check prompt '{'TOC Homebrewery Concept'}'.")
-                generated_homebrewery_toc = homebrewery_fallback_toc
-            except LLMGenerationError as e: # Catch specific LLM errors during generation
-                print(f"WARNING: Gemini Homebrewery TOC generation failed with LLMGenerationError: {e}. Using fallback.")
-                generated_homebrewery_toc = homebrewery_fallback_toc
-            except LLMServiceUnavailableError as e: # Catch service unavailable errors specifically
-                print(f"WARNING: Gemini Homebrewery TOC generation failed as service is unavailable: {e}. Using fallback.")
-                generated_homebrewery_toc = homebrewery_fallback_toc
-            except Exception as e: # Catch any other unexpected errors during generation
-                print(f"WARNING: An unexpected error occurred during Gemini Homebrewery TOC generation: {e}. Using fallback.")
-                generated_homebrewery_toc = homebrewery_fallback_toc
-        else:
-            print(f"WARNING: Gemini 'TOC Homebrewery Concept' prompt not found in DB. Falling back. Please check DB seeding.")
-            generated_homebrewery_toc = homebrewery_fallback_toc
-
-        # Ensure there's always some content
-        if not generated_homebrewery_toc:
-             generated_homebrewery_toc = homebrewery_fallback_toc
-
-        return {
-            "display_toc": generated_display_toc,
-            "homebrewery_toc": generated_homebrewery_toc
-        }
     async def generate_titles(self, campaign_concept: str, db: Session, current_user: UserModel, count: int = 5, model: Optional[str] = None) -> List[str]: # Added current_user
         if not await self.is_available(current_user=current_user, db=db): # Pass args
             raise LLMServiceUnavailableError("Gemini service is not available.")

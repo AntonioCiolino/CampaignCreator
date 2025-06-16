@@ -51,12 +51,11 @@ class AbstractLLMService(ABC):
         pass
 
     @abstractmethod
-    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]: # Changed signature
-            # Docstring should be updated to reflect it returns a dict with "display_toc" and "homebrewery_toc"
+    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str: # Changed signature
             """
-            Generates both a display-friendly and a Homebrewery-formatted Table of Contents
+            Generates a display-friendly Table of Contents string
             for a campaign based on its concept.
-            Returns a dictionary with keys "display_toc" and "homebrewery_toc".
+            Returns the display-friendly TOC string.
             """
             pass
 
@@ -112,12 +111,9 @@ class LLMService(AbstractLLMService): # Note: This is a dummy implementation
         print(f"Dummy LLMService: generate_titles called for user {current_user.id} with model {model}")
         return [f"Dummy Title {i+1} for {campaign_concept}" for i in range(count)]
 
-    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]:
+    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
         print(f"Dummy LLMService: generate_toc called for user {current_user.id} with model {model}")
-        return {
-            "display_toc": f"Dummy Display Table of Contents for: {campaign_concept}",
-            "homebrewery_toc": f"Dummy Homebrewery Table of Contents for: {campaign_concept}"
-        }
+        return f"Dummy Display Table of Contents for: {campaign_concept}"
 
     async def generate_section_content(
         self,

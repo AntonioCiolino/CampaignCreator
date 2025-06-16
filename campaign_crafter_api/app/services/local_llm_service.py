@@ -176,7 +176,7 @@ class LocalLLMService(AbstractLLMService):
         generated_string = await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model) # Pass args
         return [title.strip() for title in generated_string.split('\n') if title.strip()][:count]
 
-    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]: # Added current_user
+    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str: # Added current_user
         if not await self.is_available(current_user=current_user, db=db): # Pass args
             raise HTTPException(status_code=503, detail=f"{self.PROVIDER_NAME.title()} service is not available or configured.")
         if not campaign_concept:
@@ -186,69 +186,24 @@ class LocalLLMService(AbstractLLMService):
         display_prompt_template = self.feature_prompt_service.get_prompt("TOC Display", db=db)
         if not display_prompt_template:
             raise LLMGenerationError(f"Display TOC prompt template ('TOC Display') not found for {self.PROVIDER_NAME}.")
-        display_final_prompt = display_prompt_template.format(campaign_concept=campaign_concept)
+
+        try:
+            display_final_prompt = display_prompt_template.format(campaign_concept=campaign_concept)
+        except KeyError:
+            print(f"ERROR: {self.PROVIDER_NAME.title()} formatting 'TOC Display' prompt failed due to KeyError. Prompt: '{display_prompt_template}' Concept: '{campaign_concept}'")
+            raise LLMGenerationError(f"Failed to format 'TOC Display' prompt due to unexpected placeholders for {self.PROVIDER_NAME.title()}.")
 
         generated_display_toc = await self.generate_text(
             prompt=display_final_prompt,
             current_user=current_user, db=db, # Pass args
-            model=model,
+            model=model, # Use the model passed to generate_toc
             temperature=0.5,
             max_tokens=700
         )
         if not generated_display_toc:
-             # This error is for Display TOC, which is critical.
              raise LLMGenerationError(f"{self.PROVIDER_NAME.title()} API call for Display TOC succeeded but returned no usable content.")
 
-        # --- Homebrewery TOC Generation with Fallback ---
-        generated_homebrewery_toc = None
-        homebrewery_fallback_toc = "{{toc,wide\\n# Table Of Contents\\n- ### [Content{{PAGENUM}}](#pPAGENUM)\\n}}"
-
-        # Determine selected_model for Homebrewery TOC generation (can be same as display or specific)
-        # Using the 'model' parameter passed to generate_toc, or default for the service.
-        # This service's generate_text handles None model by using self.default_model_id.
-        selected_model_for_hb = model
-
-        homebrewery_concept_prompt_str = self.feature_prompt_service.get_prompt("TOC Homebrewery Concept", db=db)
-
-        if homebrewery_concept_prompt_str:
-            try:
-                homebrewery_final_prompt = homebrewery_concept_prompt_str.format(campaign_concept=campaign_concept)
-                # Attempt to generate the Homebrewery TOC
-                generated_homebrewery_toc = await self.generate_text(
-                    prompt=homebrewery_final_prompt,
-                    current_user=current_user,
-                    db=db,
-                    model=selected_model_for_hb, # Pass the determined model
-                    temperature=0.5,
-                    max_tokens=1000
-                )
-                if not generated_homebrewery_toc:
-                    print(f"WARNING: {self.PROVIDER_NAME.title()} Homebrewery TOC generation with 'TOC Homebrewery Concept' returned empty. Using fallback.")
-                    generated_homebrewery_toc = homebrewery_fallback_toc
-            except KeyError:
-                print(f"WARNING: {self.PROVIDER_NAME.title()} formatting 'TOC Homebrewery Concept' prompt failed due to KeyError. DB may have stale data. Falling back. Check prompt '{'TOC Homebrewery Concept'}'.")
-                generated_homebrewery_toc = homebrewery_fallback_toc
-            except HTTPException as e: # Catch HTTPException from self.generate_text
-                print(f"WARNING: {self.PROVIDER_NAME.title()} Homebrewery TOC generation failed with HTTPException: {e.detail}. Using fallback.")
-                generated_homebrewery_toc = homebrewery_fallback_toc
-            except LLMGenerationError as e: # Though generate_text throws HTTPException, good to be safe
-                print(f"WARNING: {self.PROVIDER_NAME.title()} Homebrewery TOC generation failed with LLMGenerationError: {e}. Using fallback.")
-                generated_homebrewery_toc = homebrewery_fallback_toc
-            except Exception as e: # Catch any other unexpected errors
-                print(f"WARNING: An unexpected error occurred during {self.PROVIDER_NAME.title()} Homebrewery TOC generation: {e}. Using fallback.")
-                generated_homebrewery_toc = homebrewery_fallback_toc
-        else:
-            print(f"WARNING: {self.PROVIDER_NAME.title()} 'TOC Homebrewery Concept' prompt not found in DB. Falling back. Please check DB seeding.")
-            generated_homebrewery_toc = homebrewery_fallback_toc
-
-        # Ensure there's always some content
-        if not generated_homebrewery_toc:
-             generated_homebrewery_toc = homebrewery_fallback_toc
-
-        return {
-            "display_toc": generated_display_toc,
-            "homebrewery_toc": generated_homebrewery_toc
-        }
+        return generated_display_toc
 
     async def generate_section_content(
         self,

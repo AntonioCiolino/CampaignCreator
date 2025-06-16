@@ -216,10 +216,8 @@ async def test_generate_campaign_toc_success(
 ):
     mock_llm_instance = AsyncMock()
     generated_display_toc_str = "- Display TOC Item 1\n  - Sub Item 1.1\n- Display TOC Item 2"
-    generated_hb_toc_str = "- ### [HB TOC Item 1{{PAGENUM}}](#pPAGENUM)\n  - #### [HB Sub Item 1.1{{PAGENUM}}](#pPAGENUM)"
-    mock_llm_instance.generate_toc = AsyncMock(return_value={
-        "display_toc": generated_display_toc_str, "homebrewery_toc": generated_hb_toc_str
-    })
+    # LLM service's generate_toc now only returns the display TOC string
+    mock_llm_instance.generate_toc = AsyncMock(return_value=generated_display_toc_str)
     mock_get_llm_service.return_value = mock_llm_instance
 
     expected_api_display_toc = [
@@ -227,17 +225,16 @@ async def test_generate_campaign_toc_success(
         {"title": "Sub Item 1.1", "type": "unknown"},
         {"title": "Display TOC Item 2", "type": "unknown"}
     ]
-    expected_api_hb_toc = [
-        {"title": "HB TOC Item 1", "type": "unknown"},
-        {"title": "HB Sub Item 1.1", "type": "unknown"}
-    ]
+    # Homebrewery TOC is no longer processed or returned by the endpoint in this flow
     mock_updated_campaign_orm = MagicMock(spec=ORMCampaign)
     mock_updated_campaign_orm.id = db_campaign.id; mock_updated_campaign_orm.title = db_campaign.title
     mock_updated_campaign_orm.concept = db_campaign.concept; mock_updated_campaign_orm.initial_user_prompt = db_campaign.initial_user_prompt
     mock_updated_campaign_orm.owner_id = db_campaign.owner_id; mock_updated_campaign_orm.mood_board_image_urls = db_campaign.mood_board_image_urls
     mock_updated_campaign_orm.homebrewery_export = "Existing export or None"
     mock_updated_campaign_orm.display_toc = expected_api_display_toc
-    mock_updated_campaign_orm.homebrewery_toc = expected_api_hb_toc
+    # The campaign model in response will have homebrewery_toc as None
+    # as crud.update_campaign_toc is called with homebrewery_toc_content=None
+    mock_updated_campaign_orm.homebrewery_toc = None
     mock_crud_update_toc.return_value = mock_updated_campaign_orm
 
     request_payload = {"model_id_with_prefix": "test_provider/test_model"}
@@ -251,104 +248,15 @@ async def test_generate_campaign_toc_success(
     )
     mock_crud_update_toc.assert_called_once_with(
         db=ANY, campaign_id=db_campaign.id,
-        display_toc_content=expected_api_display_toc, homebrewery_toc_content=expected_api_hb_toc
+        display_toc_content=expected_api_display_toc,
+        homebrewery_toc_content=None # Endpoint passes None for HB content
     )
-    assert "display_toc" in response_data; assert "homebrewery_toc" in response_data
+    assert "display_toc" in response_data
     validated_campaign_response = PydanticCampaign.model_validate(response_data)
     assert validated_campaign_response.display_toc == expected_api_display_toc
-    assert validated_campaign_response.homebrewery_toc == expected_api_hb_toc
+    # homebrewery_toc in the response should be None
+    assert validated_campaign_response.homebrewery_toc is None
     assert len(validated_campaign_response.display_toc) > 0
-    assert len(validated_campaign_response.homebrewery_toc) > 0
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("hb_concept_prompt_scenario", ["prompt_not_found", "prompt_key_error"])
-@patch("app.services.openai_service.OpenAILLMService._perform_chat_completion", new_callable=AsyncMock)
-@patch("app.services.feature_prompt_service.FeaturePromptService.get_prompt")
-@patch("app.api.endpoints.campaigns.crud.update_campaign_toc")
-@patch("builtins.print") # To capture warning print statements
-async def test_generate_campaign_toc_handles_hb_prompt_issues(
-    mock_print: MagicMock,
-    mock_crud_update_toc: MagicMock,
-    mock_get_feature_prompt: MagicMock,
-    mock_perform_chat_completion: AsyncMock,
-    hb_concept_prompt_scenario: str,
-    db_campaign: ORMCampaign,
-    async_client: AsyncClient,
-):
-    # --- Arrange ---
-    # Mock FeaturePromptService.get_prompt behavior based on scenario
-    def get_prompt_side_effect(prompt_name: str, db: ANY):
-        if prompt_name == "TOC Display":
-            return "Generate Display TOC for {campaign_concept}"
-        elif prompt_name == "TOC Homebrewery Concept":
-            if hb_concept_prompt_scenario == "prompt_not_found":
-                return None
-            elif hb_concept_prompt_scenario == "prompt_key_error":
-                return "Malformed prompt {campaign_concept} and {sections_summary}" # sections_summary will cause KeyError
-        return f"Default prompt for {prompt_name}" # Should not be called for these
-    mock_get_feature_prompt.side_effect = get_prompt_side_effect
-
-    # Mock LLM's _perform_chat_completion
-    # First call is for Display TOC, second (if any) for Homebrewery TOC
-    mock_perform_chat_completion.side_effect = [
-        AsyncMock(return_value="- Display Item 1\n- Display Item 2"), # For Display TOC
-        AsyncMock(return_value="This should not be used if fallback occurs before LLM call for HB") # For Homebrewery TOC (if prompt was found and valid)
-    ]
-
-    # Mock crud.update_campaign_toc to return a campaign object
-    # The endpoint will set homebrewery_toc to None when calling this if it used the LLM service's fallback string.
-    # More accurately, the endpoint currently always sets homebrewery_toc_content=None for update_campaign_toc.
-    # So the returned campaign from CRUD will likely have homebrewery_toc as None or its previous DB state.
-    mock_updated_campaign_orm = MagicMock(spec=ORMCampaign)
-    mock_updated_campaign_orm.id = db_campaign.id; mock_updated_campaign_orm.title = db_campaign.title
-    mock_updated_campaign_orm.concept = db_campaign.concept; mock_updated_campaign_orm.initial_user_prompt = db_campaign.initial_user_prompt
-    mock_updated_campaign_orm.owner_id = db_campaign.owner_id; mock_updated_campaign_orm.mood_board_image_urls = []
-    mock_updated_campaign_orm.homebrewery_export = None
-
-    expected_display_toc_structure = [{"title": "Display Item 1", "type": "unknown"}, {"title": "Display Item 2", "type": "unknown"}]
-    mock_updated_campaign_orm.display_toc = expected_display_toc_structure
-    # Since endpoint calls crud.update_campaign_toc with homebrewery_toc_content=None,
-    # the returned campaign's homebrewery_toc will be None (or its state before update if not cleared by None).
-    mock_updated_campaign_orm.homebrewery_toc = None
-    mock_crud_update_toc.return_value = mock_updated_campaign_orm
-
-    # --- Act ---
-    # Use a specific provider to ensure we are testing the patched OpenAILLMService's behavior
-    request_payload = {"model_id_with_prefix": "openai/gpt-3.5-turbo"}
-    # This patch makes get_llm_service return a real OpenAILLMService,
-    # whose _perform_chat_completion is mocked, and whose FeaturePromptService uses the globally mocked get_prompt.
-    with patch("app.api.endpoints.campaigns.get_llm_service", return_value=OpenAILLMService()):
-        response = await async_client.post(
-            f"/api/v1/campaigns/{db_campaign.id}/toc",
-            json=request_payload
-        )
-
-    # --- Assert ---
-    assert response.status_code == 200, f"Endpoint failed with scenario: {hb_concept_prompt_scenario}, details: {response.text}"
-
-    # Verify Display TOC was generated and processed
-    mock_crud_update_toc.assert_called_once()
-    update_call_args = mock_crud_update_toc.call_args.kwargs
-    assert update_call_args['display_toc_content'] == expected_display_toc_structure
-    # Endpoint currently passes homebrewery_toc_content=None to crud.update_campaign_toc
-    assert update_call_args['homebrewery_toc_content'] is None
-
-    # Check that a warning was printed by the LLM service
-    warning_found = False
-    for call in mock_print.call_args_list:
-        args, _ = call
-        if args and "WARNING:" in args[0]:
-            if hb_concept_prompt_scenario == "prompt_not_found" and "'TOC Homebrewery Concept' prompt not found" in args[0]:
-                warning_found = True; break
-            if hb_concept_prompt_scenario == "prompt_key_error" and "formatting 'TOC Homebrewery Concept' prompt failed due to KeyError" in args[0]:
-                warning_found = True; break
-    assert warning_found, f"Expected warning not printed for scenario: {hb_concept_prompt_scenario}"
-
-    # Check response structure (homebrewery_toc should be None as per current endpoint logic)
-    response_data = response.json()
-    validated_response = PydanticCampaign.model_validate(response_data)
-    assert validated_response.display_toc == expected_display_toc_structure
-    assert validated_response.homebrewery_toc is None
 
 
 @pytest.mark.asyncio
