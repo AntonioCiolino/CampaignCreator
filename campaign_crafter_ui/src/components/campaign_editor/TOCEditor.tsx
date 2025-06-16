@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TOCEntry } from '../../services/campaignService';
-import { TextField, Button, IconButton, List, Box, Typography, Select, MenuItem, FormControl, InputLabel, SelectChangeEvent, Paper, Autocomplete } from '@mui/material';
+import { TextField, Button, IconButton, List, Box, Typography, Paper, Autocomplete } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
@@ -39,15 +39,6 @@ const TOCEditor: React.FC<TOCEditorProps> = ({ toc, onTOCChange }) => {
     setEditableTOC(newTOC);
     onTOCChange(newTOC); // Propagate changes immediately
   };
-
-  // const handleTypeChange = (index: number, event: SelectChangeEvent<string>) => {
-  //   const newType = event.target.value;
-  //   const newTOC = editableTOC.map((entry, i) =>
-  //     i === index ? { ...entry, type: newType } : entry
-  //   );
-  //   setEditableTOC(newTOC);
-  //   onTOCChange(newTOC);
-  // };
 
   const handleAddEntry = () => {
     const newEntry: TOCEntry = { title: 'New Section', type: 'generic' };
