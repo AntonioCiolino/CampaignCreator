@@ -9,25 +9,35 @@ from app.models import User as UserModel # Added UserModel import
 class LlamaLLMService(AbstractLLMService):
     PROVIDER_NAME = "llama" # For easy reference
 
-    def __init__(self):
-        self.api_key = settings.LLAMA_API_KEY 
+    def __init__(self, api_key: Optional[str] = None):
+        super().__init__(api_key=api_key)
+        self.effective_api_key = self.api_key # Key from constructor (user-provided)
+        if not self.effective_api_key:
+            self.effective_api_key = settings.LLAMA_API_KEY # Fallback to system key
+
         self.api_url = settings.LLAMA_API_URL # Assuming a base URL might be needed
-        # Removed self.is_available() call from __init__
-        if not (self.api_key and self.api_key not in ["YOUR_LLAMA_API_KEY", "YOUR_API_KEY_HERE"]):
-            print(f"Warning: {self.PROVIDER_NAME.title()} API key not configured or is a placeholder.")
 
-        self.feature_prompt_service = FeaturePromptService() # Added initialization
+        self.configured_successfully = False
+        # For Llama, URL might also be essential if it's a self-hosted or specific endpoint
+        key_is_valid = bool(self.effective_api_key and self.effective_api_key not in ["YOUR_LLAMA_API_KEY", "YOUR_API_KEY_HERE"])
+        # url_is_valid = bool(self.api_url and "YOUR_LLAMA_API_URL" not in self.api_url) # Add if URL is also mandatory from settings
+        # For now, primarily relying on key for placeholder configuration status
+        if key_is_valid: # And url_is_valid if that's a strict requirement
+            self.configured_successfully = True
+            # print(f"{self.PROVIDER_NAME.title()}LLMService configured with an effective API key.")
+        else:
+            print(f"Warning: {self.PROVIDER_NAME.title()} API key (user or system) not configured or is a placeholder.") # Add URL status if relevant
+
+        self.feature_prompt_service = FeaturePromptService()
         # Placeholder for actual client initialization if needed
-        print(f"{self.PROVIDER_NAME.title()}LLMService initialized (placeholder).")
+        # print(f"{self.PROVIDER_NAME.title()}LLMService initialized (placeholder).") # Optional: can be removed if too verbose
 
-    async def is_available(self, _current_user: UserModel, _db: Session) -> bool: # Added _current_user, _db
-        key_present = bool(self.api_key and self.api_key not in ["YOUR_LLAMA_API_KEY", "YOUR_API_KEY_HERE"])
-        # In a real scenario, this might involve an async check to an API endpoint if one exists
-        # For this placeholder, key_present is sufficient.
-        return key_present 
+    async def is_available(self, _current_user: UserModel, _db: Session) -> bool:
+        # This could also check self.api_url if it's essential for the service to function
+        return self.configured_successfully
 
-    async def generate_text(self, prompt: str, _current_user: UserModel, db: Session, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str: # Added _current_user, db
-        if not await self.is_available(_current_user=_current_user, _db=db): # Pass args
+    async def generate_text(self, prompt: str, _current_user: UserModel, db: Session, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str:
+        if not await self.is_available(_current_user=_current_user, _db=_db):
             raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available. Please configure API key/URL.")
         
         error_message = (

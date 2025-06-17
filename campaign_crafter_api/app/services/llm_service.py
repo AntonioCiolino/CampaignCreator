@@ -12,6 +12,9 @@ class LLMGenerationError(Exception):
     pass
 
 class AbstractLLMService(ABC):
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key
+
     @abstractmethod
     async def is_available(self, current_user: UserModel, db: Session) -> bool: # Changed signature
         pass
@@ -81,6 +84,10 @@ class AbstractLLMService(ABC):
 
 # --- Dummy LLMService for placeholder/testing, updated to match async and new signatures ---
 class LLMService(AbstractLLMService): # Note: This is a dummy implementation
+    def __init__(self, api_key: Optional[str] = None):
+        super().__init__(api_key=api_key)
+        # print(f"Dummy LLMService initialized with API key: {'Provided' if api_key else 'Not Provided'}")
+
     async def is_available(self, current_user: UserModel, db: Session) -> bool:
         print(f"Dummy LLMService: is_available called for user {current_user.id}")
         return True
