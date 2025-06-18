@@ -123,8 +123,11 @@ async def generate_campaign_toc_endpoint(
         raise HTTPException(status_code=400, detail="Campaign concept is missing. TOC cannot be generated.")
 
     try:
+        current_user_orm = crud.get_user(db, user_id=current_user.id)
+        if not current_user_orm:
+            raise HTTPException(status_code=404, detail="Current user ORM object not found.")
         provider_name, model_specific_id = _extract_provider_and_model(request_body.model_id_with_prefix)
-        llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=request_body.model_id_with_prefix)
+        llm_service = get_llm_service(db=db, current_user_orm=current_user_orm, provider_name=provider_name, model_id_with_prefix=request_body.model_id_with_prefix)
 
         # LLM service now returns a List[Dict[str, str]]
         display_toc_list = await llm_service.generate_toc(
@@ -189,8 +192,11 @@ async def generate_campaign_titles_endpoint(
     if not db_campaign.concept:
         raise HTTPException(status_code=400, detail="Campaign concept is missing. Titles cannot be generated.")
     try:
+        current_user_orm = crud.get_user(db, user_id=current_user.id)
+        if not current_user_orm:
+            raise HTTPException(status_code=404, detail="Current user ORM object not found.")
         provider_name, model_specific_id = _extract_provider_and_model(request_body.model_id_with_prefix)
-        llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=request_body.model_id_with_prefix)
+        llm_service = get_llm_service(db=db, current_user_orm=current_user_orm, provider_name=provider_name, model_id_with_prefix=request_body.model_id_with_prefix)
         generated_titles = await llm_service.generate_titles( # Added await
             campaign_concept=db_campaign.concept,
             db=db,
