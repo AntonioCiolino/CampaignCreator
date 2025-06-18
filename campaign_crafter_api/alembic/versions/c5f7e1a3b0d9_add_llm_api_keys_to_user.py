@@ -11,14 +11,14 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'c5f7e1a3b0d9'
-down_revision = '98424bc8b1bb'
+down_revision = None
 branch_labels = None
 depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column('users', sa.Column('encrypted_openai_api_key', sa.String(), nullable=True))
-    op.add_column('users', sa.Column('encrypted_sd_api_key', sa.String(), nullable=True))
+    #op.add_column('users', sa.Column('encrypted_openai_api_key', sa.String(), nullable=True))
+    #op.add_column('users', sa.Column('encrypted_sd_api_key', sa.String(), nullable=True))
     op.add_column('users', sa.Column('encrypted_gemini_api_key', sa.String(), nullable=True))
     op.add_column('users', sa.Column('encrypted_other_llm_api_key', sa.String(), nullable=True))
 
