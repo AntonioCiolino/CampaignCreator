@@ -18,10 +18,28 @@ class User(Base):
     encrypted_openai_api_key = Column(String, nullable=True)
     encrypted_sd_api_key = Column(String, nullable=True)
     sd_engine_preference = Column(String, nullable=True)
+    encrypted_gemini_api_key = Column(String, nullable=True)
+    encrypted_other_llm_api_key = Column(String, nullable=True)
 
     campaigns = relationship("Campaign", back_populates="owner")
     llm_configs = relationship("LLMConfig", back_populates="owner")
     roll_tables = relationship("RollTable", back_populates="owner")
+
+    @property
+    def openai_api_key_provided(self) -> bool:
+        return bool(self.encrypted_openai_api_key)
+
+    @property
+    def sd_api_key_provided(self) -> bool:
+        return bool(self.encrypted_sd_api_key)
+
+    @property
+    def gemini_api_key_provided(self) -> bool:
+        return bool(self.encrypted_gemini_api_key)
+
+    @property
+    def other_llm_api_key_provided(self) -> bool:
+        return bool(self.encrypted_other_llm_api_key)
 
 class Campaign(Base):
     __tablename__ = "campaigns"

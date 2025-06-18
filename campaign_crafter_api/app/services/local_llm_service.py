@@ -15,30 +15,29 @@ class LocalLLMService(AbstractLLMService):
     # Used by the factory to refer to this provider, matches settings.LOCAL_LLM_PROVIDER_NAME
     PROVIDER_NAME = settings.LOCAL_LLM_PROVIDER_NAME 
 
-    def __init__(self):
+    def __init__(self, api_key: Optional[str] = None):
+        super().__init__(api_key=api_key)
         self.api_base_url = settings.LOCAL_LLM_API_BASE_URL
-        if not self.api_base_url:
+
+        self.configured_successfully = bool(self.api_base_url)
+        if not self.configured_successfully:
             raise ValueError(f"{self.PROVIDER_NAME.title()} API base URL not configured. Please set LOCAL_LLM_API_BASE_URL in your .env file.")
         
-        # Ensure base_url ends with a slash if it's not already the case, for proper joining with /chat/completions etc.
         if not self.api_base_url.endswith('/'):
             self.api_base_url += '/'
             
-        self.client = httpx.AsyncClient(base_url=self.api_base_url, timeout=60.0) # Increased timeout
+        self.client = httpx.AsyncClient(base_url=self.api_base_url, timeout=60.0)
         self.default_model_id = settings.LOCAL_LLM_DEFAULT_MODEL_ID
-        self.feature_prompt_service = FeaturePromptService() # For structured prompts
+        self.feature_prompt_service = FeaturePromptService()
 
     async def close(self):
         """Closes the HTTP client session."""
         await self.client.aclose()
 
-    async def is_available(self, current_user: UserModel, db: Session) -> bool: # Added _current_user, _db
-        # Accepts current_user and db session for availability checks
-        if not self.api_base_url:
+    async def is_available(self, current_user: UserModel, db: Session) -> bool:
+        if not self.configured_successfully: # Relies on __init__ to set this based on api_base_url
             return False
         try:
-            # Try a quick health check by listing models.
-            # This also implicitly checks if the API is OpenAI-compatible enough for /models.
             response = await self.client.get("models", headers={"Authorization": f"Bearer {LOCAL_LLM_DUMMY_API_KEY}"})
             return response.status_code == 200
         except httpx.RequestError as e:
@@ -48,14 +47,12 @@ class LocalLLMService(AbstractLLMService):
     async def generate_text(
         self, 
         prompt: str, 
-        current_user: UserModel, # Changed from _current_user
-        db: Session,             # Changed from _db
+        current_user: UserModel,
+        db: Session,
         model: Optional[str] = None, 
         temperature: float = 0.7,
         max_tokens: int = 1024
     ) -> str:
-        # Parameters current_user and db are now correctly named to match AbstractLLMService
-        # The call to is_available below correctly uses these names.
         if not await self.is_available(current_user=current_user, db=db):
             raise HTTPException(status_code=503, detail=f"{self.PROVIDER_NAME.title()} service is not available or configured.")
 
@@ -166,15 +163,15 @@ class LocalLLMService(AbstractLLMService):
 
 
     # Implement other abstract methods by calling self.generate_text
-    async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str: # Added current_user
+    async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
         custom_prompt = self.feature_prompt_service.get_prompt("Campaign", db=db)
         final_prompt = custom_prompt.format(user_prompt=user_prompt) if custom_prompt else f"Generate a detailed RPG campaign concept: {user_prompt}"
         return await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model)
 
-    async def generate_titles(self, campaign_concept: str, db: Session, current_user: UserModel, count: int = 5, model: Optional[str] = None) -> list[str]: # Added current_user
+    async def generate_titles(self, campaign_concept: str, db: Session, current_user: UserModel, count: int = 5, model: Optional[str] = None) -> list[str]:
         custom_prompt = self.feature_prompt_service.get_prompt("Campaign Names", db=db)
         final_prompt = custom_prompt.format(campaign_concept=campaign_concept, count=count) if custom_prompt else f"Generate {count} campaign titles for: {campaign_concept}. Each on a new line."
-        generated_string = await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model) # Pass args
+        generated_string = await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model)
         return [title.strip() for title in generated_string.split('\n') if title.strip()][:count]
 
     def _parse_toc_string_with_types(self, raw_toc_string: str) -> List[Dict[str, str]]:
@@ -210,7 +207,6 @@ class LocalLLMService(AbstractLLMService):
         if not campaign_concept:
             raise ValueError("Campaign concept cannot be empty.")
 
-        # Fetch Display TOC prompt
         display_prompt_template = self.feature_prompt_service.get_prompt("TOC Display", db=db)
         if not display_prompt_template:
             raise LLMGenerationError(f"Display TOC prompt template ('TOC Display') not found for {self.PROVIDER_NAME}.")
@@ -223,15 +219,33 @@ class LocalLLMService(AbstractLLMService):
 
         raw_toc_string = await self.generate_text(
             prompt=display_final_prompt,
-            current_user=current_user, db=db, # Pass args
-            model=model, # Use the model passed to generate_toc
+            current_user=current_user, db=db,
+            model=model,
             temperature=0.5,
             max_tokens=700
         )
         if not raw_toc_string:
              raise LLMGenerationError(f"{self.PROVIDER_NAME.title()} API call for Display TOC succeeded but returned no usable content.")
 
-        return self._parse_toc_string_with_types(raw_toc_string)
+        homebrewery_prompt_template = self.feature_prompt_service.get_prompt("TOC Homebrewery", db=db)
+        if not homebrewery_prompt_template:
+            raise LLMGenerationError(f"Homebrewery TOC prompt template ('TOC Homebrewery') not found for {self.PROVIDER_NAME}.")
+        homebrewery_final_prompt = homebrewery_prompt_template.format(campaign_concept=campaign_concept)
+
+        generated_homebrewery_toc = await self.generate_text(
+            prompt=homebrewery_final_prompt,
+            current_user=current_user, db=db,
+            model=model,
+            temperature=0.5,
+            max_tokens=1000
+        )
+        if not generated_homebrewery_toc:
+             raise LLMGenerationError(f"{self.PROVIDER_NAME.title()} API call for Homebrewery TOC succeeded but returned no usable content.")
+
+        return {
+            "display_toc": generated_display_toc,
+            "homebrewery_toc": generated_homebrewery_toc
+        }
 
     async def generate_section_content(
         self,

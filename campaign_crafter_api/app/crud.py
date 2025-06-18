@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 
 from app import models, orm_models # Standardized
+from app.core.security import encrypt_key # Added for API key encryption
 from app.services.image_generation_service import ImageGenerationService
 # import asyncio # No longer needed here
 from urllib.parse import urlparse
@@ -80,6 +81,36 @@ def delete_user(db: Session, user_id: int) -> Optional[orm_models.User]:
 
     db.delete(db_user)
     db.commit()
+    return db_user
+
+def update_user_api_keys(db: Session, db_user: orm_models.User, api_keys_in: models.UserAPIKeyUpdate) -> orm_models.User:
+    if api_keys_in.openai_api_key is not None:
+        if api_keys_in.openai_api_key == "":
+            db_user.encrypted_openai_api_key = None
+        else:
+            db_user.encrypted_openai_api_key = encrypt_key(api_keys_in.openai_api_key)
+
+    if api_keys_in.sd_api_key is not None:
+        if api_keys_in.sd_api_key == "":
+            db_user.encrypted_sd_api_key = None
+        else:
+            db_user.encrypted_sd_api_key = encrypt_key(api_keys_in.sd_api_key)
+
+    if api_keys_in.gemini_api_key is not None:
+        if api_keys_in.gemini_api_key == "":
+            db_user.encrypted_gemini_api_key = None
+        else:
+            db_user.encrypted_gemini_api_key = encrypt_key(api_keys_in.gemini_api_key)
+
+    if api_keys_in.other_llm_api_key is not None:
+        if api_keys_in.other_llm_api_key == "":
+            db_user.encrypted_other_llm_api_key = None
+        else:
+            db_user.encrypted_other_llm_api_key = encrypt_key(api_keys_in.other_llm_api_key)
+
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
     return db_user
 
 # --- Feature CRUD Functions ---
@@ -268,8 +299,15 @@ async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, 
     generated_concept = None
     # Only attempt to generate a concept if there's an initial prompt
     if campaign_payload.initial_user_prompt:
+        current_user_orm_for_keys = get_user(db, user_id=current_user_obj.id)
+        # If current_user_orm_for_keys is None, it's an inconsistency.
+        # get_llm_service will use system keys if current_user_orm_for_keys is None.
         try:
-            llm_service: LLMService = get_llm_service(campaign_payload.model_id_with_prefix_for_concept)
+            llm_service: LLMService = get_llm_service(
+                db=db,
+                current_user_orm=current_user_orm_for_keys,
+                model_id_with_prefix=campaign_payload.model_id_with_prefix_for_concept
+            )
             generated_concept = await llm_service.generate_campaign_concept(
                 user_prompt=campaign_payload.initial_user_prompt,
                 db=db,

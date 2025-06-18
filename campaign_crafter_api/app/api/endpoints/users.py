@@ -20,6 +20,27 @@ async def read_users_me(
     """
     return current_user
 
+@router.put("/me/keys", response_model=models.User)
+def update_my_api_keys(
+    api_keys_in: models.UserAPIKeyUpdate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+):
+    # Assuming current_user from get_current_active_user is an ORM model instance
+    # or a Pydantic model that has the user's ID.
+    # We need the ORM model of the user to pass to the CRUD function.
+    db_user = crud.get_user(db, user_id=current_user.id)
+    if not db_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    updated_user_orm = crud.update_user_api_keys(db=db, db_user=db_user, api_keys_in=api_keys_in)
+
+    # Construct the response model. This might require converting updated_user_orm
+    # to include the dynamically generated *_api_key_provided fields.
+    # The crud.update_user_api_keys should ideally return an ORM object that,
+    # when converted by FastAPI to models.User, correctly populates these.
+    return updated_user_orm
+
 @router.post("/", response_model=models.User, status_code=status.HTTP_201_CREATED)
 def create_user_endpoint(
     user: models.UserCreate,

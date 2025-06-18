@@ -10,17 +10,22 @@ from app.models import User as UserModel # Added UserModel import
 class DeepSeekLLMService(AbstractLLMService):
     PROVIDER_NAME = "deepseek" # For easy reference
 
-    def __init__(self):
-        self.api_key = settings.DEEPSEEK_API_KEY
-        # DeepSeek might also have a specific base URL, but usually it's a standard OpenAI-compatible one.
-        # self.api_url = settings.DEEPSEEK_API_URL 
-        # Removed self.is_available() call from __init__
-        if not (self.api_key and self.api_key not in ["YOUR_DEEPSEEK_API_KEY", "YOUR_API_KEY_HERE"]):
-            print(f"Warning: {self.PROVIDER_NAME.title()} API key not configured or is a placeholder.")
+    def __init__(self, api_key: Optional[str] = None):
+        super().__init__(api_key=api_key)
+        self.effective_api_key = self.api_key # Key from constructor (user-provided)
+        if not self.effective_api_key:
+            self.effective_api_key = settings.DEEPSEEK_API_KEY # Fallback to system key
 
-        self.feature_prompt_service = FeaturePromptService() # Added initialization
+        self.configured_successfully = False
+        if self.effective_api_key and self.effective_api_key not in ["YOUR_DEEPSEEK_API_KEY", "YOUR_API_KEY_HERE"]:
+            self.configured_successfully = True
+            # print(f"{self.PROVIDER_NAME.title()}LLMService configured with an effective API key.")
+        else:
+            print(f"Warning: {self.PROVIDER_NAME.title()} API key (user or system) not configured or is a placeholder.")
+
+        self.feature_prompt_service = FeaturePromptService()
         # Placeholder for actual client initialization. DeepSeek often uses an OpenAI-compatible client.
-        print(f"{self.PROVIDER_NAME.title()}LLMService initialized (placeholder).")
+        # print(f"{self.PROVIDER_NAME.title()}LLMService initialized (placeholder).") # Optional: can be removed if too verbose
 
     async def is_available(self, current_user: UserModel, db: Session) -> bool: # Changed params
         # Checks if essential configuration is present.
