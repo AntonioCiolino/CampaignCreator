@@ -17,6 +17,7 @@ class User(Base):
     disabled = Column(Boolean, default=False)
     encrypted_openai_api_key = Column(String, nullable=True)
     encrypted_sd_api_key = Column(String, nullable=True)
+    sd_engine_preference = Column(String, nullable=True)
 
     campaigns = relationship("Campaign", back_populates="owner")
     llm_configs = relationship("LLMConfig", back_populates="owner")

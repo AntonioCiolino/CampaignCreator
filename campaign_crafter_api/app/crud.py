@@ -63,6 +63,11 @@ def update_user(db: Session, db_user: orm_models.User, user_in: models.UserUpdat
     if user_in.disabled is not None:
         db_user.disabled = user_in.disabled
 
+    # Handle sd_engine_preference
+    # Check if 'sd_engine_preference' was explicitly passed in the request data
+    if "sd_engine_preference" in update_data:
+        db_user.sd_engine_preference = user_in.sd_engine_preference
+
     db.add(db_user)
     db.commit()
     db.refresh(db_user)

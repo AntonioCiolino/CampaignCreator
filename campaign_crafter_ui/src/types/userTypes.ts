@@ -9,6 +9,7 @@ export interface User {
   openai_api_key_provided?: boolean;
   sd_api_key_provided?: boolean;
   gemini_api_key_provided?: boolean; // Added for Gemini API key status
+  sd_engine_preference?: string;
 }
 
 // This file can also contain other user-related types if needed in the future,

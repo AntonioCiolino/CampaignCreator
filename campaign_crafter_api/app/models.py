@@ -154,6 +154,7 @@ class UserUpdate(BaseModel): # Changed from inheriting UserBase
     password: Optional[str] = None
     disabled: Optional[bool] = None
     is_superuser: Optional[bool] = None
+    sd_engine_preference: Optional[str] = None
 
 class CampaignUpdate(BaseModel): # Assuming CampaignUpdate is for PATCH, all fields optional
     title: Optional[str] = None
@@ -188,6 +189,7 @@ class User(UserBase): # For responses
     is_superuser: bool
     openai_api_key_provided: Optional[bool] = None
     sd_api_key_provided: Optional[bool] = None
+    sd_engine_preference: Optional[str] = None
 
     campaigns: List[Campaign] = []
     llm_configs: List[LLMConfig] = []

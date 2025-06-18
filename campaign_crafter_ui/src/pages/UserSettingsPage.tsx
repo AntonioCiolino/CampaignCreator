@@ -6,6 +6,14 @@ import Input from '../components/common/Input';
 import Button from '../components/common/Button';
 import './UserSettingsPage.css';
 
+// Define Stable Diffusion Engine Options
+const STABLE_DIFFUSION_ENGINE_OPTIONS = [
+  { value: "", label: "System Default" }, // Represents clearing the preference or using backend default
+  { value: "core", label: "Core" },
+  { value: "ultra", label: "Ultra (Experimental)" },
+  { value: "sd3", label: "SD3 (Experimental)" },
+];
+
 const UserSettingsPage: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -22,21 +30,34 @@ const UserSettingsPage: React.FC = () => {
   const [apiKeyMessage, setApiKeyMessage] = useState<string | null>(null);
   const [apiKeyError, setApiKeyError] = useState<string | null>(null);
   const [isApiKeysLoading, setIsApiKeysLoading] = useState(false);
+
+  // State for Stable Diffusion Settings
+  const [sdEnginePreference, setSdEnginePreference] = useState('');
+  const [sdSettingsMessage, setSdSettingsMessage] = useState<string | null>(null);
+  const [sdSettingsError, setSdSettingsError] = useState<string | null>(null);
+  const [isSdSettingsLoading, setIsSdSettingsLoading] = useState(false);
+
   const { user: authUser, setUser: setAuthUser } = useAuth(); // Get user and setUser from AuthContext
 
   useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
+        let userToSet: User | null = null;
         // Use user from AuthContext if available, otherwise fetch
         if (authUser) {
-          setCurrentUser(authUser);
+          userToSet = authUser;
         } else {
           const user = await getMe();
-          setCurrentUser(user);
+          userToSet = user;
           if (setAuthUser) setAuthUser(user); // Optionally update AuthContext if fetched manually
         }
+        setCurrentUser(userToSet);
+        if (userToSet) {
+          setSdEnginePreference(userToSet.sd_engine_preference || '');
+        }
       } catch (err) {
-        setError('Failed to fetch user data.'); // This error state is for password form, consider separate for initial load
+        // Consider a general page-level error for initial load failure
+        setError('Failed to fetch user data.');
         console.error(err);
       }
     };
@@ -150,6 +171,46 @@ const UserSettingsPage: React.FC = () => {
     }
   };
 
+  // Stable Diffusion Settings Submit Handler
+  const handleStableDiffusionSettingsSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSdSettingsError(null);
+    setSdSettingsMessage(null);
+    setIsSdSettingsLoading(true);
+
+    if (!currentUser) {
+      setSdSettingsError('User data not loaded.');
+      setIsSdSettingsLoading(false);
+      return;
+    }
+
+    try {
+      const updatedUser = await updateUser(currentUser.id, {
+        sd_engine_preference: sdEnginePreference === "" ? null : sdEnginePreference // Send null if empty string to clear
+      });
+      setSdSettingsMessage('Stable Diffusion settings updated successfully!');
+      if (setAuthUser) setAuthUser(updatedUser);
+      setCurrentUser(updatedUser);
+      setSdEnginePreference(updatedUser.sd_engine_preference || '');
+    } catch (err: any) {
+      let errorMessage = 'Failed to update Stable Diffusion settings.';
+      if (err.response?.data?.detail) {
+          const detail = err.response.data.detail;
+          if (typeof detail === 'string') {
+            errorMessage = detail;
+          } else if (Array.isArray(detail) && detail.length > 0 && typeof detail[0].msg === 'string') {
+            errorMessage = `Validation Error: ${detail[0].msg}`;
+          }
+      } else if (err.message) {
+          errorMessage = err.message;
+      }
+      setSdSettingsError(errorMessage);
+    } finally {
+      setIsSdSettingsLoading(false);
+    }
+  };
+
+
   return (
     <div className="user-settings-page">
       <h2>User Settings</h2>
@@ -249,6 +310,35 @@ const UserSettingsPage: React.FC = () => {
         />
         <Button type="submit" variant="primary" disabled={isApiKeysLoading}>
           {isApiKeysLoading ? 'Saving Keys...' : 'Save API Keys'}
+        </Button>
+      </form>
+
+      {/* Stable Diffusion Settings Form */}
+      <h3>Stable Diffusion Settings</h3>
+      {sdSettingsMessage && <div className="message success">{sdSettingsMessage}</div>}
+      {sdSettingsError && <div className="message error">{sdSettingsError}</div>}
+      <form onSubmit={handleStableDiffusionSettingsSubmit} className="sd-settings-form">
+        <div className="form-group">
+          <label htmlFor="sd-engine-preference">Preferred Stable Diffusion Engine:</label>
+          <select
+            id="sd-engine-preference"
+            name="sdEnginePreference"
+            value={sdEnginePreference}
+            onChange={(e) => setSdEnginePreference(e.target.value)}
+            className="form-control" // Assuming some basic styling class
+          >
+            {STABLE_DIFFUSION_ENGINE_OPTIONS.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <p className="form-helper-text">
+            Select your preferred engine for Stable Diffusion image generation. "System Default" will use the server's configured default.
+          </p>
+        </div>
+        <Button type="submit" variant="primary" disabled={isSdSettingsLoading}>
+          {isSdSettingsLoading ? 'Saving...' : 'Save Stable Diffusion Settings'}
         </Button>
       </form>
     </div>
