@@ -726,13 +726,13 @@ async def regenerate_campaign_section_endpoint(
 
     # Determine section type and prompt
     final_prompt = section_input.new_prompt
-    determined_section_type_for_llm = section_input.section_type # Use type from input if provided
+    # Prioritize input type, then existing DB type, then generic
+    determined_section_type_for_llm = section_input.section_type or db_section.type or "generic"
 
     if not final_prompt:
-        if not determined_section_type_for_llm: # If type not provided in input, try to infer from title or use existing DB type
-            determined_section_type_for_llm = db_section.type or "generic" # Fallback to existing type or generic
+        # If type was not in input and still generic (i.e., db_section.type was also generic or None), try to infer from title
+        if not section_input.section_type and determined_section_type_for_llm.lower() in ["unknown", "generic", "other", ""]:
             title_lower = current_title.lower()
-            # Only infer from title if current type is generic/unknown
             if determined_section_type_for_llm.lower() in ["unknown", "generic", "other", ""]:
                 if "npc" in title_lower or "character" in title_lower:
                     determined_section_type_for_llm = "NPC"
@@ -758,8 +758,12 @@ async def regenerate_campaign_section_endpoint(
         raise HTTPException(status_code=400, detail="LLM model ID not specified in request or campaign settings. Cannot regenerate section.")
 
     try:
+        current_user_orm = crud.get_user(db, user_id=current_user.id)
+        if not current_user_orm:
+            raise HTTPException(status_code=404, detail="Current user ORM object not found.")
+
         provider_name, model_specific_id = _extract_provider_and_model(llm_model_to_use)
-        llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=llm_model_to_use)
+        llm_service = get_llm_service(db=db, current_user_orm=current_user_orm, provider_name=provider_name, model_id_with_prefix=llm_model_to_use)
     except LLMServiceUnavailableError as e:
         raise HTTPException(status_code=503, detail=f"LLM Service unavailable: {str(e)}")
     except ValueError as ve:
