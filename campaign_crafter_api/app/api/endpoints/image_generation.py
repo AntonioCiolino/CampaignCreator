@@ -144,6 +144,8 @@ async def generate_image_endpoint(
             # If we wanted to allow selecting SD model checkpoint via API:
             # sd_model_checkpoint_to_pass = request.sd_model_checkpoint # Assuming it's added to ImageGenerationRequest
 
+            # Fetch user's preferred Stable Diffusion engine
+            sd_engine_to_use = current_user.sd_engine_preference
 
             image_url = await service.generate_image_stable_diffusion(
                 prompt=request.prompt,
@@ -151,7 +153,8 @@ async def generate_image_endpoint(
                 size=final_size, # Pass the determined size (request or default)
                 steps=final_steps, # Pass request value (can be None)
                 cfg_scale=final_cfg_scale, # Pass request value (can be None)
-                current_user=current_user
+                current_user=current_user,
+                sd_engine_id=sd_engine_to_use # Pass the user's preferred engine
             )
             model_used_for_response = request.model.value
 

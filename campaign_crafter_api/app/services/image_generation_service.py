@@ -373,16 +373,30 @@ class ImageGenerationService:
         steps: Optional[int] = None,
         cfg_scale: Optional[float] = None,
         user_id: Optional[int] = None, # Kept for logging, will be derived
-        sd_model_checkpoint: Optional[str] = None
+        sd_model_checkpoint: Optional[str] = None,
+        sd_engine_id: Optional[str] = None # New parameter for engine selection
     ) -> str:
         """
         Generates an image using a Stable Diffusion API, saves it, logs to DB, and returns the permanent image URL.
         """
         sd_api_key = await self._get_sd_api_key_for_user(current_user, db) # Pass db
-        # self.stable_diffusion_api_key check removed. sd_api_key is now fetched.
 
-        if not self.stable_diffusion_api_url: # This check remains, as URL is from system settings
-            raise HTTPException(status_code=503, detail="Stable Diffusion API URL is not configured or is invalid. Check server settings.")
+        # Determine engine and construct URL
+        actual_engine_id = settings.STABLE_DIFFUSION_DEFAULT_ENGINE
+        if sd_engine_id and sd_engine_id in settings.STABLE_DIFFUSION_ENGINES:
+            actual_engine_id = sd_engine_id
+        elif sd_engine_id: # User provided an engine_id, but it's not valid
+            print(f"Warning: Provided sd_engine_id '{sd_engine_id}' is not valid. Falling back to default engine '{actual_engine_id}'.")
+
+        if not settings.STABLE_DIFFUSION_API_BASE_URL or not actual_engine_id or actual_engine_id not in settings.STABLE_DIFFUSION_ENGINES:
+            raise HTTPException(status_code=503, detail="Stable Diffusion API base URL or engine configuration is missing/invalid. Check server settings.")
+
+        target_api_url = f"{settings.STABLE_DIFFUSION_API_BASE_URL.strip('/')}/{settings.STABLE_DIFFUSION_ENGINES[actual_engine_id].lstrip('/')}"
+
+        # self.stable_diffusion_api_url check removed. sd_api_key is now fetched.
+
+        # if not self.stable_diffusion_api_url: # This check remains, as URL is from system settings
+        #     raise HTTPException(status_code=503, detail="Stable Diffusion API URL is not configured or is invalid. Check server settings.")
         if not prompt:
             raise HTTPException(status_code=400, detail="Prompt cannot be empty.")
 
@@ -393,10 +407,16 @@ class ImageGenerationService:
 
         # Use defaults from settings if not provided by the caller
         # final_size is still available if needed for logging or aspect_ratio conversion, but not sent directly
-        final_size = size or settings.STABLE_DIFFUSION_DEFAULT_IMAGE_SIZE 
+        final_size = size or settings.STABLE_DIFFUSION_DEFAULT_IMAGE_SIZE
         final_steps = steps or settings.STABLE_DIFFUSION_DEFAULT_STEPS
         final_cfg_scale = cfg_scale or settings.STABLE_DIFFUSION_DEFAULT_CFG_SCALE
-        final_sd_model_name = sd_model_checkpoint or settings.STABLE_DIFFUSION_DEFAULT_MODEL # For logging
+        # For logging, model_used should reflect the engine. If specific checkpoints are also relevant, this might need adjustment.
+        # For now, using actual_engine_id for model_used when logging.
+        # final_sd_model_name = sd_model_checkpoint or settings.STABLE_DIFFUSION_DEFAULT_MODEL # Old way for logging
+        model_for_logging = actual_engine_id # Log the engine used
+        if sd_model_checkpoint: # Optionally append checkpoint if provided
+            model_for_logging = f"{actual_engine_id}:{sd_model_checkpoint}"
+
 
         headers = {
             "Authorization": f"Bearer {sd_api_key}", # Use fetched sd_api_key
@@ -420,7 +440,7 @@ class ImageGenerationService:
 
         try:
             api_response = requests.post(
-                self.stable_diffusion_api_url,
+                target_api_url, # Use the dynamically constructed URL
                 headers=headers,
                 data=form_data,
                 files=files_payload 
@@ -439,7 +459,7 @@ class ImageGenerationService:
 
                 permanent_url = await self._save_image_and_log_db(
                     prompt=prompt,
-                    model_used=final_sd_model_name,
+                    model_used=model_for_logging, # Use new model_for_logging
                     size_used=final_size,
                     db=db,
                     image_bytes=image_bytes_sd,

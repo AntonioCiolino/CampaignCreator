@@ -22,6 +22,7 @@ export interface UserUpdatePayload {
   full_name?: string | null | undefined;
   disabled?: boolean;
   is_superuser?: boolean;
+  sd_engine_preference?: string;
 }
 
 // Fetch all users (with optional pagination) - Returns AppUser[]

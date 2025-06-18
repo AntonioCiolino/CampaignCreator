@@ -7,6 +7,7 @@ export interface User {
   is_superuser: boolean;
   openai_api_key_provided?: boolean;
   sd_api_key_provided?: boolean;
+  sd_engine_preference?: string;
   gemini_api_key_provided?: boolean;
   other_llm_api_key_provided?: boolean;
 }

@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS_CSV: Optional[str] = None
@@ -37,7 +37,14 @@ class Settings(BaseSettings):
 
     # Stable Diffusion Image Generation Settings
     STABLE_DIFFUSION_API_KEY: Optional[str] = "YOUR_STABLE_DIFFUSION_API_KEY_HERE"
-    STABLE_DIFFUSION_API_URL: Optional[str] = "YOUR_STABLE_DIFFUSION_API_URL_HERE" # e.g. http://localhost:7860/sdapi/v1/txt2img for Auto1111
+    # STABLE_DIFFUSION_API_URL: Optional[str] = "YOUR_STABLE_DIFFUSION_API_URL_HERE" # Old one
+    STABLE_DIFFUSION_API_BASE_URL: Optional[str] = "https://api.stability.ai" # Base URL
+    STABLE_DIFFUSION_ENGINES: Dict[str, str] = {
+        "core": "v2beta/stable-image/generate/core",
+        "ultra": "v2beta/stable-image/generate/ultra", # Assumed
+        "sd3": "v2beta/stable-image/generate/sd3"      # Assumed
+    }
+    STABLE_DIFFUSION_DEFAULT_ENGINE: str = "core" # New default engine
     STABLE_DIFFUSION_DEFAULT_MODEL: Optional[str] = "stable-diffusion-v1-5" # Model checkpoint name if API supports it
     STABLE_DIFFUSION_DEFAULT_IMAGE_SIZE: str = "512x512"
     STABLE_DIFFUSION_DEFAULT_STEPS: int = 30
