@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 
 from app import models, orm_models # Standardized
+from app.core.security import encrypt_key # Added for API key encryption
 from app.services.image_generation_service import ImageGenerationService
 # import asyncio # No longer needed here
 from urllib.parse import urlparse
@@ -82,25 +83,25 @@ def update_user_api_keys(db: Session, db_user: orm_models.User, api_keys_in: mod
         if api_keys_in.openai_api_key == "":
             db_user.encrypted_openai_api_key = None
         else:
-            db_user.encrypted_openai_api_key = api_keys_in.openai_api_key
+            db_user.encrypted_openai_api_key = encrypt_key(api_keys_in.openai_api_key)
 
     if api_keys_in.sd_api_key is not None:
         if api_keys_in.sd_api_key == "":
             db_user.encrypted_sd_api_key = None
         else:
-            db_user.encrypted_sd_api_key = api_keys_in.sd_api_key
+            db_user.encrypted_sd_api_key = encrypt_key(api_keys_in.sd_api_key)
 
     if api_keys_in.gemini_api_key is not None:
         if api_keys_in.gemini_api_key == "":
             db_user.encrypted_gemini_api_key = None
         else:
-            db_user.encrypted_gemini_api_key = api_keys_in.gemini_api_key
+            db_user.encrypted_gemini_api_key = encrypt_key(api_keys_in.gemini_api_key)
 
     if api_keys_in.other_llm_api_key is not None:
         if api_keys_in.other_llm_api_key == "":
             db_user.encrypted_other_llm_api_key = None
         else:
-            db_user.encrypted_other_llm_api_key = api_keys_in.other_llm_api_key
+            db_user.encrypted_other_llm_api_key = encrypt_key(api_keys_in.other_llm_api_key)
 
     db.add(db_user)
     db.commit()
