@@ -9,6 +9,8 @@ pydantic-settings
 google-generativeai
 pytest
 httpx
+pytest-asyncio
+pytest-httpx
 passlib[bcrypt]
 bcrypt==3.2.2
 python-multipart

@@ -1,5 +1,6 @@
 import pytest
-from httpx import AsyncClient
+import pytest_asyncio
+from httpx import AsyncClient, ASGITransport
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient # Not used in this file directly, but common
@@ -11,11 +12,12 @@ import builtins # For patching print
 from app.main import app
 from app.core.config import settings # For AZURE_STORAGE_CONTAINER_NAME
 from app.db import Base, get_db
-from app.orm_models import Campaign as ORMCampaign, CampaignSection as ORMCampaignSection
+from app.orm_models import Campaign as ORMCampaign, CampaignSection as ORMCampaignSection, User as ORMUser
 from app import crud
 from app import models as pydantic_models
-from app.models import Campaign as PydanticCampaign
+from app.models import Campaign as PydanticCampaign, User as PydanticUser # Added User
 from app.services.openai_service import OpenAILLMService # To allow its direct instantiation if needed, or to patch its methods
+from app.services.auth_service import get_current_active_user # To override
 
 
 # Use an in-memory SQLite database for testing
@@ -311,25 +313,23 @@ async def test_create_new_campaign_section_endpoint_uses_type(
 @patch('app.api.endpoints.campaigns.get_llm_service')
 @patch('app.api.endpoints.campaigns.crud.update_campaign_section')
 async def test_regenerate_campaign_section_endpoint_uses_type(
-    mock_crud_update_section, mock_get_llm_service, db_section: ORMCampaignSection, async_client: AsyncClient
+    mock_crud_update_section, mock_get_llm_service, db_section: ORMCampaignSection, async_client: AsyncClient, current_active_user_override
 ):
     mock_llm_instance = AsyncMock()
     mock_llm_instance.generate_section_content = AsyncMock(return_value="Regenerated content.")
     mock_get_llm_service.return_value = mock_llm_instance
 
-    def update_side_effect(db, section_id, campaign_id, section_update_data: pydantic_models.CampaignSectionUpdate):
+    def update_side_effect(db, section_id, campaign_id, section_update_data: pydantic_models.CampaignSectionUpdateInput):
         updated_section_mock = MagicMock(spec=ORMCampaignSection)
         updated_section_mock.id = db_section.id; updated_section_mock.campaign_id = db_section.campaign_id
         updated_section_mock.title = section_update_data.title if section_update_data.title is not None else db_section.title
         updated_section_mock.content = section_update_data.content if section_update_data.content is not None else db_section.content
-        updated_section_mock.order = db_section.order
+        updated_section_mock.order = db_section.order # Order is not in CampaignSectionUpdateInput, should retain original
         updated_section_mock.type = section_update_data.type if section_update_data.type is not None else db_section.type
-        updated_section_mock.user_prompt = section_update_data.user_prompt if section_update_data.user_prompt is not None else db_section.user_prompt
-        updated_section_mock.llm_prompt = section_update_data.llm_prompt if section_update_data.llm_prompt is not None else db_section.llm_prompt
-        updated_section_mock.llm_response = section_update_data.llm_response if section_update_data.llm_response is not None else db_section.llm_response
+        # user_prompt, llm_prompt, llm_response are not part of CampaignSection ORM model or CampaignSectionUpdateInput
+        # images attribute was removed from ORM model
+        # created_at and updated_at are not part of CampaignSection ORM model
         updated_section_mock.word_count = len(updated_section_mock.content.split()) if updated_section_mock.content else 0
-        updated_section_mock.images = db_section.images; updated_section_mock.created_at = db_section.created_at
-        updated_section_mock.updated_at = db_section.updated_at
         if section_update_data.type is not None: db_section.type = section_update_data.type
         return updated_section_mock
     mock_crud_update_section.side_effect = update_side_effect
@@ -351,16 +351,25 @@ async def test_regenerate_campaign_section_endpoint_uses_type(
     assert response1.json()["type"] == "new_type_from_payload"
 
     mock_llm_instance.generate_section_content.reset_mock(); mock_crud_update_section.reset_mock()
-    current_section_type_in_db = "new_type_from_payload"
+    # For the second call, the endpoint will fetch the section from DB again.
+    # Since crud.update_campaign_section is mocked and doesn't actually save to DB,
+    # the db_section.type it fetches will be the original "initial_type".
+    # For the LLM call during the second request, the type should be what's actually in the DB ("initial_type")
+    # because section_input.type is None and the endpoint fetches the fresh section.
+    expected_llm_section_type_for_second_call = "initial_type"
+    # However, the response from the mocked CRUD operation will be based on the test's db_section fixture instance,
+    # which *was* mutated by the first call's side_effect.
+    expected_response_type_for_second_call = db_section.type # This is "new_type_from_payload"
+
     regenerate_payload_no_type = { "new_prompt": "Another new prompt.", "model_id_with_prefix": "another_provider/another_model" }
     response2 = await async_client.post(
         f"/api/v1/campaigns/{campaign_id}/sections/{db_section.id}/regenerate", json=regenerate_payload_no_type
     )
     assert response2.status_code == 200, response2.text
-    assert mock_llm_instance.generate_section_content.call_args.kwargs['section_type'] == current_section_type_in_db
+    assert mock_llm_instance.generate_section_content.call_args.kwargs['section_type'] == expected_llm_section_type_for_second_call
     assert mock_llm_instance.generate_section_content.call_args.kwargs['model'] == "another_model"
     assert mock_crud_update_section.call_args.kwargs['section_update_data'].type is None
-    assert response2.json()["type"] == current_section_type_in_db
+    assert response2.json()["type"] == expected_response_type_for_second_call
 
 @pytest.mark.asyncio
 @patch('app.crud.ImageGenerationService.delete_image_from_blob_storage', new_callable=AsyncMock)
@@ -458,3 +467,59 @@ async def test_upload_moodboard_image_service_failure(
         unchanged_db_campaign = db.query(ORMCampaign).filter(ORMCampaign.id == db_campaign.id).first()
         assert list(unchanged_db_campaign.mood_board_image_urls or []) == initial_moodboard_urls
     finally: db.close()
+
+
+@pytest_asyncio.fixture
+async def async_client() -> AsyncClient:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        yield client
+
+@pytest.fixture
+def current_active_user_override(create_test_tables): # Add create_test_tables to ensure schema
+    db = TestingSessionLocal()
+    # Create an ORM user in the test database
+    orm_user = ORMUser(
+        id=1,
+        username="testuser",
+        email="test@example.com",
+        full_name="Test User",
+        hashed_password="fakepassword", # ORM model needs this
+        disabled=False,
+        is_superuser=False
+    )
+    db.add(orm_user)
+    db.commit()
+
+    # This is the Pydantic user model that the endpoint's current_user dependency will resolve to
+    pydantic_mock_user = PydanticUser(
+        id=1,
+        username="testuser",
+        email="test@example.com",
+        full_name="Test User",
+        disabled=False,
+        is_superuser=False,
+        openai_api_key_provided=False,
+        sd_api_key_provided=False,
+        gemini_api_key_provided=False,
+        other_llm_api_key_provided=False,
+        campaigns=[],
+        llm_configs=[]
+    )
+
+    def override_get_current_active_user():
+        return pydantic_mock_user
+
+    original_dependency = app.dependency_overrides.get(get_current_active_user)
+    app.dependency_overrides[get_current_active_user] = override_get_current_active_user
+
+    yield # Test runs here
+
+    # Teardown: remove the override and the ORM user
+    if original_dependency:
+        app.dependency_overrides[get_current_active_user] = original_dependency
+    else:
+        del app.dependency_overrides[get_current_active_user]
+
+    db.delete(orm_user)
+    db.commit()
+    db.close()
