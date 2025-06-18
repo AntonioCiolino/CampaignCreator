@@ -86,7 +86,8 @@ export interface CampaignUpdatePayload {
   temperature?: number | null;
   display_toc?: TOCEntry[] | null; // Added
   homebrewery_toc?: TOCEntry[] | null; // Added
-  // Concept is typically updated via specific generation endpoints
+  concept?: string | null; // Added field for direct concept updates
+  // Concept is typically updated via specific generation endpoints // Comment might be partially outdated
 
   // New Theme Properties
   theme_primary_color?: string | null;
@@ -159,11 +160,14 @@ export const updateCampaign = async (campaignId: string | number, campaignData: 
 };
 
 // Define the payload for updating a section
+// Removed ImageData interface
+
 export interface CampaignSectionUpdatePayload {
   title?: string;
   content?: string;
   order?: number;
   type?: string; // Added type field
+  // Removed images field
 }
 
 // Update a specific campaign section

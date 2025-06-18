@@ -18,27 +18,28 @@ router = APIRouter()
 class ImageModelName(str, Enum):
     DALLE = "dall-e"
     STABLE_DIFFUSION = "stable-diffusion"
+    GEMINI = "gemini" # Added Gemini model
 
 class ImageGenerationRequest(BaseModel):
     prompt: str
     model: ImageModelName = Field(ImageModelName.DALLE, description="The image generation model to use.")
-    size: Optional[str] = Field(None, description="Desired image size (e.g., '1024x1024'). Varies by model.")
+    size: Optional[str] = Field(None, description="Desired image size. Varies by model. For Gemini, this is conceptual (e.g., '1024x1024').")
     quality: Optional[str] = Field(None, description="Desired image quality (e.g., 'hd', 'standard'). Mainly for DALL-E.")
     # Stable Diffusion specific parameters (optional)
     steps: Optional[int] = Field(None, description="Number of inference steps for Stable Diffusion.")
     cfg_scale: Optional[float] = Field(None, description="Classifier Free Guidance scale for Stable Diffusion.")
-    # Add other DALL-E parameters if needed, e.g., style ('vivid', 'natural' for DALL-E 3)
-    # style: Optional[str] = "vivid" # Example for DALL-E 3 for DALL-E model
+    # Gemini specific parameters (optional)
+    gemini_model_name: Optional[str] = Field(None, description="Specific Gemini model to use, e.g., 'gemini-pro-vision'. Only used if 'model' is 'gemini'.")
 
 class ImageGenerationResponse(BaseModel):
     image_url: str # Changed from HttpUrl to str, to accommodate data URLs
     prompt_used: str
-    model_used: ImageModelName
+    model_used: ImageModelName # This will now include "gemini"
     size_used: str
     quality_used: Optional[str] = None # Quality may not apply to all models
     steps_used: Optional[int] = None # For Stable Diffusion
     cfg_scale_used: Optional[float] = None # For Stable Diffusion
-    # revised_prompt: Optional[str] = None # DALL-E 3 might return a revised prompt
+    gemini_model_name_used: Optional[str] = Field(None, description="The specific Gemini model that was used for generation, if applicable.")
 
 # --- Dependency ---
 # A simple dependency function to get the service instance.
@@ -61,7 +62,7 @@ def get_image_generation_service():
     "/images/generate",
     response_model=ImageGenerationResponse,
     tags=["Image Generation"],
-    summary="Generate an image using a selected model (DALL-E or Stable Diffusion)."
+    summary="Generate an image using DALL-E, Stable Diffusion, or Gemini."
 )
 async def generate_image_endpoint(
     request: ImageGenerationRequest,
@@ -81,17 +82,18 @@ async def generate_image_endpoint(
             - `size` defaults to `settings.STABLE_DIFFUSION_DEFAULT_IMAGE_SIZE`.
             - `steps` defaults to `settings.STABLE_DIFFUSION_DEFAULT_STEPS`.
             - `cfg_scale` defaults to `settings.STABLE_DIFFUSION_DEFAULT_CFG_SCALE`.
-    - **size**: (Optional) The size of the generated image (e.g., "1024x1024").
-              Supported sizes vary by model. Check DALL-E or Stable Diffusion documentation.
-    - **quality**: (Optional) For DALL-E 3: "standard", "hd". (Ignored for DALL-E 2 and Stable Diffusion).
+        - `gemini`: Uses a Google Gemini model.
+            - `size` is conceptual (e.g., "1024x1024"), actual output size depends on the Gemini API.
+            - `gemini_model_name` (Optional) to specify a particular Gemini model (e.g., "gemini-pro-vision").
+    - **size**: (Optional) The size of the generated image. Behavior varies by model.
+    - **quality**: (Optional) For DALL-E 3: "standard", "hd". (Ignored for others).
     - **steps**: (Optional) Number of inference steps for Stable Diffusion.
     - **cfg_scale**: (Optional) Classifier Free Guidance scale for Stable Diffusion.
+    - **gemini_model_name**: (Optional) Specific Gemini model (e.g., "gemini-pro-vision").
 
-    The specific Stable Diffusion API endpoint and model checkpoint are configured on the server.
     Returns the URL of the generated image and details of the generation parameters used.
     """
-    # Docstring updated, no need for dynamic replacement of STABLE_DIFFUSION_API_URL
-
+    # Docstring updated
 
     try:
         image_url: str
@@ -99,10 +101,10 @@ async def generate_image_endpoint(
         final_quality: Optional[str] = None
         final_steps: Optional[int] = None
         final_cfg_scale: Optional[float] = None
+        final_gemini_model_name: Optional[str] = None
 
         if request.model == ImageModelName.DALLE:
-            # Use DALL-E specific defaults from settings if not provided in request
-            dalle_model_name = settings.OPENAI_DALLE_MODEL_NAME # e.g. "dall-e-3"
+            dalle_model_name = settings.OPENAI_DALLE_MODEL_NAME
             final_size = request.size or settings.OPENAI_DALLE_DEFAULT_IMAGE_SIZE
             final_quality = request.quality or settings.OPENAI_DALLE_DEFAULT_IMAGE_QUALITY
             
@@ -149,10 +151,30 @@ async def generate_image_endpoint(
                 size=final_size, # Pass the determined size (request or default)
                 steps=final_steps, # Pass request value (can be None)
                 cfg_scale=final_cfg_scale, # Pass request value (can be None)
-                current_user=current_user # Changed from user_id
-                # sd_model_checkpoint=sd_model_checkpoint_to_pass # If allowing selection
+                current_user=current_user
             )
-            model_used_for_response = request.model.value # This is 'stable-diffusion'
+            model_used_for_response = request.model.value
+
+        elif request.model == ImageModelName.GEMINI:
+            # For Gemini, size is conceptual. Pass what's given or a default string for logging.
+            # The actual image dimensions will be determined by the Gemini API and model.
+            final_size = request.size or "default_gemini_size" # Placeholder for logging if not provided
+            final_gemini_model_name = request.gemini_model_name or "gemini-pro-vision" # Default if not specified by user
+
+            image_url = await service.generate_image_gemini(
+                prompt=request.prompt,
+                db=db,
+                current_user=current_user,
+                size=request.size, # Pass user's requested size (conceptual for Gemini)
+                model=final_gemini_model_name, # Pass specific Gemini model
+                user_id=current_user.id
+            )
+            model_used_for_response = request.model.value # This is 'gemini'
+            # For Gemini, quality, steps, cfg_scale are not applicable in the same way
+            final_quality = "n/a (gemini)"
+            final_steps = None
+            final_cfg_scale = None
+
         else:
             # This case should not be reached if Pydantic validation works correctly with Enum
             raise HTTPException(status_code=400, detail="Invalid image generation model selected.")
@@ -160,11 +182,12 @@ async def generate_image_endpoint(
         return ImageGenerationResponse(
             image_url=image_url,
             prompt_used=request.prompt,
-            model_used=request.model, # Return the enum value (e.g. "dall-e" or "stable-diffusion")
+            model_used=request.model,
             size_used=final_size,
             quality_used=final_quality if request.model == ImageModelName.DALLE else None,
             steps_used=final_steps if request.model == ImageModelName.STABLE_DIFFUSION else None,
-            cfg_scale_used=final_cfg_scale if request.model == ImageModelName.STABLE_DIFFUSION else None
+            cfg_scale_used=final_cfg_scale if request.model == ImageModelName.STABLE_DIFFUSION else None,
+            gemini_model_name_used=final_gemini_model_name if request.model == ImageModelName.GEMINI else None
         )
     # HTTPException raised by the service (e.g., for API errors, bad params) will pass through.
     except HTTPException:

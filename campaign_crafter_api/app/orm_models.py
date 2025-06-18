@@ -47,8 +47,8 @@ class Campaign(Base):
     title = Column(String, index=True, nullable=False)
     initial_user_prompt = Column(Text, nullable=True)
     concept = Column(Text, nullable=True) # LLM-generated campaign overview
-    homebrewery_toc = Column(JSON, nullable=True) # Changed from Text to JSON
-    display_toc = Column(JSON, nullable=True) # Changed from Text to JSON
+    homebrewery_toc = Column(JSON, nullable=True)
+    display_toc = Column(JSON, nullable=True)
     homebrewery_export = Column(Text, nullable=True)
     badge_image_url = Column(String, nullable=True) # New field for campaign badge
     thematic_image_url = Column(String, nullable=True)
@@ -81,6 +81,7 @@ class CampaignSection(Base):
     order = Column(Integer, nullable=False, default=0)
     type = Column(String, nullable=True) # New field for section type
     campaign_id = Column(Integer, ForeignKey("campaigns.id"))
+    # images_json = Column(JSON, nullable=True) # Field removed
 
     campaign = relationship("Campaign", back_populates="sections")
 

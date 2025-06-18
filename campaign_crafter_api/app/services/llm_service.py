@@ -54,12 +54,11 @@ class AbstractLLMService(ABC):
         pass
 
     @abstractmethod
-    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]: # Changed signature
-            # Docstring should be updated to reflect it returns a dict with "display_toc" and "homebrewery_toc"
+    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> List[Dict[str, str]]: # Changed signature
             """
-            Generates both a display-friendly and a Homebrewery-formatted Table of Contents
-            for a campaign based on its concept.
-            Returns a dictionary with keys "display_toc" and "homebrewery_toc".
+            Generates a display-friendly Table of Contents for a campaign based on its concept,
+            parses it, and returns a list of dictionaries, each with "title" and "type".
+            Example: [{"title": "Chapter 1: The Beginning", "type": "chapter"}, {"title": "NPC: Elara", "type": "npc"}]
             """
             pass
 
@@ -80,6 +79,14 @@ class AbstractLLMService(ABC):
         'section_type' can be used to tailor the generation (e.g., "NPC", "Location").
         The 'model' parameter is the specific model ID for the provider.
         """
+        pass
+
+    @abstractmethod
+    async def generate_homebrewery_toc_from_sections(self, sections_summary: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
+        '''
+        Generates a Homebrewery-formatted Table of Contents based on a summary of campaign sections.
+        Returns the raw Homebrewery Markdown string.
+        '''
         pass
 
 # --- Dummy LLMService for placeholder/testing, updated to match async and new signatures ---
@@ -111,12 +118,12 @@ class LLMService(AbstractLLMService): # Note: This is a dummy implementation
         print(f"Dummy LLMService: generate_titles called for user {current_user.id} with model {model}")
         return [f"Dummy Title {i+1} for {campaign_concept}" for i in range(count)]
 
-    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]:
+    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> List[Dict[str, str]]:
         print(f"Dummy LLMService: generate_toc called for user {current_user.id} with model {model}")
-        return {
-            "display_toc": f"Dummy Display Table of Contents for: {campaign_concept}",
-            "homebrewery_toc": f"Dummy Homebrewery Table of Contents for: {campaign_concept}"
-        }
+        return [
+            {"title": f"Dummy Section 1 for {campaign_concept}", "type": "generic"},
+            {"title": "Dummy NPC Section", "type": "npc"}
+        ]
 
     async def generate_section_content(
         self,
@@ -133,3 +140,9 @@ class LLMService(AbstractLLMService): # Note: This is a dummy implementation
         if section_type:
             return f"Dummy section content for: {campaign_concept} (Type: {section_type}) - Title: {section_title_suggestion}"
         return f"Dummy section content for: {campaign_concept} - Title: {section_title_suggestion}"
+
+    async def generate_homebrewery_toc_from_sections(self, sections_summary: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
+        print(f"Dummy LLMService: generate_homebrewery_toc_from_sections called for user {current_user.id} with model {model}")
+        if not sections_summary:
+            return ""
+        return f"Dummy Homebrewery TOC based on sections: {sections_summary}"

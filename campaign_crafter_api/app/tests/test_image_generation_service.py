@@ -19,21 +19,33 @@ def mock_db_session():
     return db
 
 @pytest.fixture
+def mock_current_user():
+    user = MagicMock(spec=User) # Assuming User is the ORM model for this context
+    user.id = 1
+    user.is_superuser = False
+    user.encrypted_gemini_api_key = None
+    # Add other key attributes as needed for tests, e.g. encrypted_openai_api_key
+    return user
+
+@pytest.fixture
 def mock_openai_client():
     client = MagicMock()
-    # .images.generate() is now a synchronous method, so it should be a MagicMock
-    client.images.generate = MagicMock() 
+    client.images.generate = MagicMock()
     return client
 
 @pytest.fixture
-def image_service(mock_openai_client):
-    with patch('openai.OpenAI', return_value=mock_openai_client):
+def image_service(mock_openai_client): # This fixture might need to be adjusted if OpenAI specific setup is too much
+    # For general ImageGenerationService tests not focused on OpenAI,
+    # we might not need to mock openai.OpenAI specifically here,
+    # or we can make it more generic.
+    # For now, keeping it as is, but tests for Gemini won't rely on mock_openai_client.
+    with patch('openai.OpenAI', return_value=mock_openai_client): # This patches OpenAI for all tests using this fixture
         service = ImageGenerationService()
-        # Override specific settings if necessary for testing, e.g., API keys if checks are stringent
-        service.stable_diffusion_api_key = "test_sd_api_key"
-        service.stable_diffusion_api_url = "http://test-sd-api.com/generate"
-        # service.openai_client is already mocked via patch on openai.OpenAI
+        # Default settings for SD can remain if they don't interfere
+        service.stable_diffusion_api_key = "test_sd_api_key" # This is not used by Gemini tests
+        service.stable_diffusion_api_url = "http://test-sd-api.com/generate" # Not used by Gemini
     return service
+
 
 # --- Tests for _save_image_and_log_db ---
 @pytest.mark.asyncio
@@ -538,3 +550,245 @@ class TestSaveImageAndLogDbUserSpecificPath:
 
         # Ensure DefaultAzureCredential was NOT called
         mock_default_azure_credential.assert_not_called()
+
+
+# --- Tests for _get_gemini_api_key_for_user ---
+
+@pytest.mark.asyncio
+@patch('app.services.image_generation_service.crud.get_user')
+@patch('app.services.image_generation_service.decrypt_key')
+@patch('app.services.image_generation_service.settings')
+async def test_get_gemini_api_key_user_key_valid(mock_settings, mock_decrypt_key, mock_get_user, image_service: ImageGenerationService, mock_current_user: User, mock_db_session: Session):
+    mock_current_user.id = 1
+    mock_user_orm = MagicMock(spec=User)
+    mock_user_orm.id = mock_current_user.id
+    mock_user_orm.is_superuser = False
+    mock_user_orm.encrypted_gemini_api_key = "encrypted_user_gemini_key"
+    mock_get_user.return_value = mock_user_orm
+    mock_decrypt_key.return_value = "decrypted_user_gemini_key"
+
+    api_key = await image_service._get_gemini_api_key_for_user(mock_current_user, mock_db_session)
+
+    assert api_key == "decrypted_user_gemini_key"
+    mock_get_user.assert_called_once_with(mock_db_session, user_id=mock_current_user.id)
+    mock_decrypt_key.assert_called_once_with("encrypted_user_gemini_key")
+
+@pytest.mark.asyncio
+@patch('app.services.image_generation_service.crud.get_user')
+@patch('app.services.image_generation_service.settings')
+async def test_get_gemini_api_key_no_user_key_not_superuser(mock_settings, mock_get_user, image_service: ImageGenerationService, mock_current_user: User, mock_db_session: Session):
+    mock_current_user.id = 2
+    mock_user_orm = MagicMock(spec=User)
+    mock_user_orm.id = mock_current_user.id
+    mock_user_orm.is_superuser = False
+    mock_user_orm.encrypted_gemini_api_key = None
+    mock_get_user.return_value = mock_user_orm
+
+    with pytest.raises(HTTPException) as exc_info:
+        await image_service._get_gemini_api_key_for_user(mock_current_user, mock_db_session)
+
+    assert exc_info.value.status_code == 403
+    assert "Gemini API key for image generation not available" in exc_info.value.detail
+
+@pytest.mark.asyncio
+@patch('app.services.image_generation_service.crud.get_user')
+@patch('app.services.image_generation_service.decrypt_key') # Still need to patch decrypt even if not called
+@patch('app.services.image_generation_service.settings')
+async def test_get_gemini_api_key_superuser_system_key_set(mock_settings, mock_decrypt_key, mock_get_user, image_service: ImageGenerationService, mock_current_user: User, mock_db_session: Session):
+    mock_current_user.id = 3
+    mock_user_orm = MagicMock(spec=User)
+    mock_user_orm.id = mock_current_user.id
+    mock_user_orm.is_superuser = True
+    mock_user_orm.encrypted_gemini_api_key = None # No user-specific key
+    mock_get_user.return_value = mock_user_orm
+
+    mock_settings.GEMINI_API_KEY = "system_gemini_key"
+
+    api_key = await image_service._get_gemini_api_key_for_user(mock_current_user, mock_db_session)
+
+    assert api_key == "system_gemini_key"
+    mock_decrypt_key.assert_not_called() # Should not be called as there's no encrypted key
+
+@pytest.mark.asyncio
+@patch('app.services.image_generation_service.crud.get_user')
+@patch('app.services.image_generation_service.settings')
+async def test_get_gemini_api_key_superuser_system_key_not_set(mock_settings, mock_get_user, image_service: ImageGenerationService, mock_current_user: User, mock_db_session: Session):
+    mock_current_user.id = 4
+    mock_user_orm = MagicMock(spec=User)
+    mock_user_orm.id = mock_current_user.id
+    mock_user_orm.is_superuser = True
+    mock_user_orm.encrypted_gemini_api_key = None
+    mock_get_user.return_value = mock_user_orm
+
+    mock_settings.GEMINI_API_KEY = None # System key not set
+
+    with pytest.raises(HTTPException) as exc_info:
+        await image_service._get_gemini_api_key_for_user(mock_current_user, mock_db_session)
+
+    assert exc_info.value.status_code == 403
+    assert "Gemini API key for image generation not available" in exc_info.value.detail
+
+@pytest.mark.asyncio
+@patch('app.services.image_generation_service.crud.get_user')
+async def test_get_gemini_api_key_user_not_found(mock_get_user, image_service: ImageGenerationService, mock_current_user: User, mock_db_session: Session):
+    mock_current_user.id = 5
+    mock_get_user.return_value = None # User not found
+
+    with pytest.raises(HTTPException) as exc_info:
+        await image_service._get_gemini_api_key_for_user(mock_current_user, mock_db_session)
+
+    assert exc_info.value.status_code == 404
+    assert "User not found" in exc_info.value.detail
+
+@pytest.mark.asyncio
+@patch('app.services.image_generation_service.crud.get_user')
+@patch('app.services.image_generation_service.decrypt_key')
+@patch('app.services.image_generation_service.settings') # Mock settings for fallback check
+async def test_get_gemini_api_key_decryption_fails_not_superuser(mock_settings, mock_decrypt_key, mock_get_user, image_service: ImageGenerationService, mock_current_user: User, mock_db_session: Session):
+    mock_current_user.id = 6
+    mock_user_orm = MagicMock(spec=User)
+    mock_user_orm.id = mock_current_user.id
+    mock_user_orm.is_superuser = False
+    mock_user_orm.encrypted_gemini_api_key = "encrypted_key_that_fails_decryption"
+    mock_get_user.return_value = mock_user_orm
+    mock_decrypt_key.return_value = None # Simulate decryption failure
+
+    # No system key fallback for non-superuser if decryption fails
+    mock_settings.GEMINI_API_KEY = None
+
+    with pytest.raises(HTTPException) as exc_info:
+        await image_service._get_gemini_api_key_for_user(mock_current_user, mock_db_session)
+
+    assert exc_info.value.status_code == 403
+    assert "Gemini API key for image generation not available" in exc_info.value.detail
+    mock_decrypt_key.assert_called_once_with("encrypted_key_that_fails_decryption")
+
+@pytest.mark.asyncio
+@patch('app.services.image_generation_service.crud.get_user')
+@patch('app.services.image_generation_service.decrypt_key')
+@patch('app.services.image_generation_service.settings')
+async def test_get_gemini_api_key_decryption_fails_superuser_fallback(mock_settings, mock_decrypt_key, mock_get_user, image_service: ImageGenerationService, mock_current_user: User, mock_db_session: Session):
+    mock_current_user.id = 7
+    mock_user_orm = MagicMock(spec=User)
+    mock_user_orm.id = mock_current_user.id
+    mock_user_orm.is_superuser = True
+    mock_user_orm.encrypted_gemini_api_key = "encrypted_key_that_fails_decryption"
+    mock_get_user.return_value = mock_user_orm
+    mock_decrypt_key.return_value = None # Simulate decryption failure
+
+    mock_settings.GEMINI_API_KEY = "system_fallback_gemini_key" # Superuser has system key fallback
+
+    api_key = await image_service._get_gemini_api_key_for_user(mock_current_user, mock_db_session)
+
+    assert api_key == "system_fallback_gemini_key"
+    mock_decrypt_key.assert_called_once_with("encrypted_key_that_fails_decryption")
+
+
+# --- Tests for generate_image_gemini ---
+
+@pytest.mark.asyncio
+@patch('app.services.image_generation_service.GeminiLLMService')
+async def test_generate_image_gemini_success(mock_gemini_llm_service_class, image_service: ImageGenerationService, mock_current_user: User, mock_db_session: Session):
+    # Arrange
+    prompt = "A test Gemini image"
+    expected_url = "http://example.com/gemini_image.png"
+    mock_image_bytes = b"gemini_image_data"
+
+    # Mock _get_gemini_api_key_for_user to return a dummy key
+    image_service._get_gemini_api_key_for_user = AsyncMock(return_value="dummy_gemini_key")
+
+    # Mock GeminiLLMService instance and its generate_image method
+    mock_gemini_instance = AsyncMock()
+    mock_gemini_instance.generate_image = AsyncMock(return_value=mock_image_bytes)
+    mock_gemini_llm_service_class.return_value = mock_gemini_instance # When ImageGenerationService instantiates GeminiLLMService
+
+    # Mock _save_image_and_log_db
+    image_service._save_image_and_log_db = AsyncMock(return_value=expected_url)
+
+    # Act
+    image_url = await image_service.generate_image_gemini(
+        prompt=prompt,
+        db=mock_db_session,
+        current_user=mock_current_user,
+        model="gemini-pro-vision", # Explicit model
+        size="1024x1024" # Conceptual size
+    )
+
+    # Assert
+    image_service._get_gemini_api_key_for_user.assert_called_once_with(mock_current_user, mock_db_session)
+    mock_gemini_llm_service_class.assert_called_once_with() # Check GeminiLLMService was instantiated
+    mock_gemini_instance.generate_image.assert_called_once_with(
+        prompt=prompt,
+        current_user=mock_current_user,
+        db=mock_db_session,
+        model="gemini-pro-vision",
+        size="1024x1024"
+    )
+    image_service._save_image_and_log_db.assert_called_once_with(
+        prompt=prompt,
+        model_used="gemini-pro-vision",
+        size_used="1024x1024", # This is the conceptual size passed for logging
+        db=mock_db_session,
+        image_bytes=mock_image_bytes,
+        user_id=mock_current_user.id,
+        original_filename_from_api="gemini_image.png"
+    )
+    assert image_url == expected_url
+
+@pytest.mark.asyncio
+async def test_generate_image_gemini_key_error(image_service: ImageGenerationService, mock_current_user: User, mock_db_session: Session):
+    # Arrange
+    image_service._get_gemini_api_key_for_user = AsyncMock(side_effect=HTTPException(status_code=403, detail="Key not available"))
+
+    # Act & Assert
+    with pytest.raises(HTTPException) as exc_info:
+        await image_service.generate_image_gemini(prompt="test", db=mock_db_session, current_user=mock_current_user)
+    assert exc_info.value.status_code == 403
+    assert "Key not available" in exc_info.value.detail
+
+@pytest.mark.asyncio
+@patch('app.services.image_generation_service.GeminiLLMService')
+async def test_generate_image_gemini_service_unavailable_error(mock_gemini_llm_service_class, image_service: ImageGenerationService, mock_current_user: User, mock_db_session: Session):
+    # Arrange
+    image_service._get_gemini_api_key_for_user = AsyncMock(return_value="dummy_key")
+    mock_gemini_instance = AsyncMock()
+    mock_gemini_instance.generate_image = AsyncMock(side_effect=LLMServiceUnavailableError("Gemini down"))
+    mock_gemini_llm_service_class.return_value = mock_gemini_instance
+
+    # Act & Assert
+    with pytest.raises(HTTPException) as exc_info:
+        await image_service.generate_image_gemini(prompt="test", db=mock_db_session, current_user=mock_current_user)
+    assert exc_info.value.status_code == 503
+    assert "Gemini service is unavailable: Gemini down" in exc_info.value.detail
+
+@pytest.mark.asyncio
+@patch('app.services.image_generation_service.GeminiLLMService')
+async def test_generate_image_gemini_generation_error(mock_gemini_llm_service_class, image_service: ImageGenerationService, mock_current_user: User, mock_db_session: Session):
+    # Arrange
+    image_service._get_gemini_api_key_for_user = AsyncMock(return_value="dummy_key")
+    mock_gemini_instance = AsyncMock()
+    mock_gemini_instance.generate_image = AsyncMock(side_effect=LLMGenerationError("Bad prompt for Gemini"))
+    mock_gemini_llm_service_class.return_value = mock_gemini_instance
+
+    # Act & Assert
+    with pytest.raises(HTTPException) as exc_info:
+        await image_service.generate_image_gemini(prompt="test", db=mock_db_session, current_user=mock_current_user)
+    assert exc_info.value.status_code == 500 # Default for LLMGenerationError, could be 400 if specific check added
+    assert "Failed to generate image with Gemini: Bad prompt for Gemini" in exc_info.value.detail
+
+@pytest.mark.asyncio
+@patch('app.services.image_generation_service.GeminiLLMService')
+async def test_generate_image_gemini_save_error(mock_gemini_llm_service_class, image_service: ImageGenerationService, mock_current_user: User, mock_db_session: Session):
+    # Arrange
+    image_service._get_gemini_api_key_for_user = AsyncMock(return_value="dummy_key")
+    mock_gemini_instance = AsyncMock()
+    mock_gemini_instance.generate_image = AsyncMock(return_value=b"image_data")
+    mock_gemini_llm_service_class.return_value = mock_gemini_instance
+
+    image_service._save_image_and_log_db = AsyncMock(side_effect=HTTPException(status_code=500, detail="Disk full"))
+
+    # Act & Assert
+    with pytest.raises(HTTPException) as exc_info:
+        await image_service.generate_image_gemini(prompt="test", db=mock_db_session, current_user=mock_current_user)
+    assert exc_info.value.status_code == 500
+    assert "Disk full" in exc_info.value.detail

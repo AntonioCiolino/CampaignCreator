@@ -162,6 +162,91 @@ def db_mock() -> MagicMock:
 def random_table_service() -> RandomTableService:
     return RandomTableService() # Instantiate the service
 
+# --- HomebreweryExportService Tests ---
+
+@pytest.mark.asyncio
+async def test_format_campaign_for_homebrewery_front_cover_content():
+    """Tests that the front cover is correctly formatted and included."""
+    service = HomebreweryExportService()
+
+    # Mock campaign object
+    campaign_mock = MagicMock(spec=Campaign)
+    campaign_mock.title = "My Test Campaign"
+    campaign_mock.concept = "A thrilling adventure."
+    campaign_mock.homebrewery_toc = None
+    campaign_mock.selected_llm_id = None # Not strictly needed for this part of the test
+
+    # Mocks for db and current_user
+    db_mock = MagicMock(spec=Session)
+    user_mock = MagicMock() # Spec can be added if specific user attributes are accessed
+
+    output = await service.format_campaign_for_homebrewery(campaign_mock, [], db_mock, user_mock)
+
+    # Construct expected front cover string
+    # Note: FRONT_COVER_TEMPLATE already includes the trailing "\n\\page"
+    expected_front_cover = service.FRONT_COVER_TEMPLATE
+    expected_front_cover = expected_front_cover.replace("TITLE", "My Test Campaign")
+    expected_front_cover = expected_front_cover.replace("SUBTITLE", "A Campaign Adventure")
+    expected_front_cover = expected_front_cover.replace("BANNER_TEXT", "Exciting Banner Text!")
+    expected_front_cover = expected_front_cover.replace("EPISODE_INFO", "Author to provide episode details here.")
+    # The background image URL in the template is the onedrive one, it's replaced by the service method
+    expected_front_cover = expected_front_cover.replace("https://onedrive.live.com/embed?resid=387fb00e5a1e24c8%2152521&authkey=%21APkOXzEAywQMAwA", "https://via.placeholder.com/816x1056.png?text=Front+Cover+Background")
+
+    # The output is a join of many parts. The first part should be the formatted front cover.
+    # The `\n\n` joiner in the service means we should check if output starts with expected_front_cover + "\n\n"
+    # However, if it's the only content before style, it might be just expected_front_cover
+    # Let's check if the output starts with the fully formatted front cover.
+    # The front_cover is added to homebrewery_content list, then other things, then joined by "\n\n"
+    # So, the actual output will start with expected_front_cover, then "\n\n", then "<style>..."
+    assert output.startswith(expected_front_cover)
+
+    # Verify other key elements are still present if startswith is too broad or tricky due to joining
+    assert "# My Test Campaign" in output
+    assert "## A Campaign Adventure" in output
+    assert "{{banner Exciting Banner Text!}}" in output
+    assert "Author to provide episode details here." in output
+    assert "![background image](https://via.placeholder.com/816x1056.png?text=Front+Cover+Background)" in output
+    assert "![](/assets/naturalCritLogoRed.svg)" in output
+    assert expected_front_cover.strip().endswith("\\page")
+
+
+@pytest.mark.asyncio
+async def test_format_campaign_for_homebrewery_back_cover_content():
+    """Tests that the back cover is correctly formatted and included."""
+    service = HomebreweryExportService()
+
+    # Mock campaign object
+    campaign_mock = MagicMock(spec=Campaign)
+    campaign_mock.title = "Another Test Campaign"
+    campaign_mock.concept = "Another epic journey."
+    campaign_mock.homebrewery_toc = None
+    campaign_mock.selected_llm_id = None
+
+    # Mocks for db and current_user
+    db_mock = MagicMock(spec=Session)
+    user_mock = MagicMock()
+
+    output = await service.format_campaign_for_homebrewery(campaign_mock, [], db_mock, user_mock)
+
+    # Construct expected back cover string
+    expected_back_cover = service.BACK_COVER_TEMPLATE
+    expected_back_cover = expected_back_cover.replace("https://--backcover url image--", "https://via.placeholder.com/816x1056.png?text=Back+Cover+Background")
+    expected_back_cover = expected_back_cover.replace("BACKCOVER ONE-LINER", "An Unforgettable Adventure Awaits!")
+    expected_back_cover = expected_back_cover.replace("ADD A CAMPAIGN COMMENTARY BLOCK HERE", "Author's notes and commentary on the campaign.")
+
+    # The back_cover is the last element appended to homebrewery_content, then joined by "\n\n"
+    # So the output, when stripped of any final whitespace from the join, should end with the expected_back_cover.
+    assert output.strip().endswith(expected_back_cover.strip())
+
+    # Keep some specific checks for key elements to be sure
+    assert "\\page\n{{backCover}}" in output # This is how BACK_COVER_TEMPLATE starts
+    assert "![background image](https://via.placeholder.com/816x1056.png?text=Back+Cover+Background)" in output
+    assert "# An Unforgettable Adventure Awaits!" in output
+    assert "Author's notes and commentary on the campaign." in output
+    assert "![](/assets/naturalCritLogoWhite.svg)" in output
+    assert "VTCNP Enterprises" in output # Part of the logo block
+
+
 def test_service_get_available_table_names_user_priority(random_table_service: RandomTableService, db_mock: MagicMock):
     # Arrange
     user_id = 1
@@ -241,3 +326,188 @@ def test_service_get_random_item_from_table_user_priority(random_table_service: 
 # if __name__ == '__main__':
 #     unittest.main() # Keep if other unittest tests are still relevant
 # Pytest will discover tests without this, so it can be removed if fully on pytest
+
+# Added imports for LLMService tests
+import pytest # This was already imported above, but ensure it's available contextually
+from sqlalchemy.orm import Session # This was already imported above
+from unittest.mock import MagicMock, AsyncMock, patch # Ensure all mock types are available
+from app.services.llm_service import LLMService, LLMGenerationError, LLMServiceUnavailableError # LLMService is new here, added LLMServiceUnavailableError
+from app.models import User as UserModel # UserModel is new here
+from app.services.gemini_service import GeminiLLMService # Import GeminiLLMService
+import google.generativeai as genai # To mock the genai module
+
+# Fixtures for LLMService tests
+@pytest.fixture
+def llm_service():
+    return LLMService()
+
+@pytest.fixture
+def mock_db_session(): # Renamed from db_mock to avoid conflict if it's used differently elsewhere
+    return MagicMock(spec=Session)
+
+@pytest.fixture
+def mock_current_user():
+    user = MagicMock(spec=UserModel)
+    user.id = 1
+    return user
+
+# Tests for LLMService
+@pytest.mark.asyncio
+async def test_generate_toc_dummy_service(llm_service: LLMService, mock_db_session: Session, mock_current_user: UserModel):
+    concept = "A heroic fantasy adventure"
+    toc_list = await llm_service.generate_toc(
+        campaign_concept=concept,
+        db=mock_db_session,
+        current_user=mock_current_user
+    )
+    assert isinstance(toc_list, list)
+    assert len(toc_list) > 0
+    for item in toc_list:
+        assert "title" in item
+        assert "type" in item
+    # Check content of the first item as generated by the dummy service
+    assert toc_list[0]["title"] == f"Dummy Section 1 for {concept}"
+    assert toc_list[0]["type"] == "generic"
+
+@pytest.mark.asyncio
+async def test_generate_homebrewery_toc_from_sections_with_summary(llm_service: LLMService, mock_db_session: Session, mock_current_user: UserModel):
+    summary = "Section 1; Section 2"
+    homebrewery_toc = await llm_service.generate_homebrewery_toc_from_sections(
+        sections_summary=summary,
+        db=mock_db_session,
+        current_user=mock_current_user
+    )
+    assert homebrewery_toc == f"Dummy Homebrewery TOC based on sections: {summary}"
+
+@pytest.mark.asyncio
+async def test_generate_homebrewery_toc_from_sections_empty_summary(llm_service: LLMService, mock_db_session: Session, mock_current_user: UserModel):
+    summary = ""
+    homebrewery_toc = await llm_service.generate_homebrewery_toc_from_sections(
+        sections_summary=summary,
+        db=mock_db_session,
+        current_user=mock_current_user
+    )
+    assert homebrewery_toc == ""
+
+
+# --- GeminiLLMService Tests ---
+
+@pytest.mark.asyncio
+@patch('app.services.gemini_service.genai.GenerativeModel')
+async def test_gemini_generate_image_success(mock_generative_model_class, mock_db_session, mock_current_user):
+    """Tests successful image generation with GeminiLLMService."""
+    # Arrange
+    mock_gemini_service = GeminiLLMService()
+    mock_gemini_service.is_available = AsyncMock(return_value=True)
+
+    # Configure the mock for the genai.GenerativeModel instance
+    mock_model_instance = AsyncMock() # The model instance itself needs to be an AsyncMock if its methods are async
+
+    # Mock the response structure from generate_content_async
+    mock_response_part = MagicMock()
+    mock_response_part.inline_data.data = b"test_image_bytes"
+    mock_response_part.inline_data.mime_type = "image/png"
+
+    mock_gemini_response = MagicMock()
+    mock_gemini_response.parts = [mock_response_part]
+
+    mock_model_instance.generate_content_async = AsyncMock(return_value=mock_gemini_response)
+
+    # Patch _get_model_instance to return our fine-tuned mock_model_instance
+    # This is often cleaner than patching the class constructor if you only need to control the instance
+    # returned by a specific method within your service.
+    with patch.object(mock_gemini_service, '_get_model_instance', return_value=mock_model_instance) as mock_get_model:
+        prompt = "A beautiful sunset"
+        model_name = "gemini-pro-vision"
+
+        # Act
+        image_bytes = await mock_gemini_service.generate_image(
+            prompt=prompt,
+            current_user=mock_current_user,
+            db=mock_db_session,
+            model=model_name
+        )
+
+        # Assert
+        mock_get_model.assert_called_once_with(model_id=model_name)
+        mock_model_instance.generate_content_async.assert_called_once_with(prompt)
+        assert image_bytes == b"test_image_bytes"
+
+@pytest.mark.asyncio
+async def test_gemini_generate_image_service_unavailable(mock_db_session, mock_current_user):
+    """Tests generate_image when the Gemini service is unavailable."""
+    # Arrange
+    mock_gemini_service = GeminiLLMService()
+    mock_gemini_service.is_available = AsyncMock(return_value=False)
+
+    prompt = "A beautiful sunset"
+
+    # Act & Assert
+    with pytest.raises(LLMServiceUnavailableError, match="Gemini service is not available."):
+        await mock_gemini_service.generate_image(
+            prompt=prompt,
+            current_user=mock_current_user,
+            db=mock_db_session
+        )
+    mock_gemini_service.is_available.assert_called_once_with(current_user=mock_current_user, db=mock_db_session)
+
+
+@pytest.mark.asyncio
+@patch('app.services.gemini_service.genai.GenerativeModel')
+async def test_gemini_generate_image_no_image_data(mock_generative_model_class, mock_db_session, mock_current_user):
+    """Tests generate_image when the API returns no image data."""
+    # Arrange
+    mock_gemini_service = GeminiLLMService()
+    mock_gemini_service.is_available = AsyncMock(return_value=True)
+
+    mock_model_instance = AsyncMock()
+    mock_gemini_response = MagicMock()
+    mock_gemini_response.parts = [] # No parts, or parts without inline_data
+    mock_gemini_response.prompt_feedback = None # No feedback
+    mock_gemini_response.candidates = [] # No candidates
+
+    mock_model_instance.generate_content_async = AsyncMock(return_value=mock_gemini_response)
+
+    with patch.object(mock_gemini_service, '_get_model_instance', return_value=mock_model_instance):
+        prompt = "A beautiful sunset"
+
+        # Act & Assert
+        with pytest.raises(LLMGenerationError, match="Gemini API call for image generation succeeded but returned no image data."):
+            await mock_gemini_service.generate_image(
+                prompt=prompt,
+                current_user=mock_current_user,
+                db=mock_db_session
+            )
+
+@pytest.mark.asyncio
+@patch('app.services.gemini_service.genai.GenerativeModel')
+async def test_gemini_generate_image_api_exception(mock_generative_model_class, mock_db_session, mock_current_user):
+    """Tests generate_image when the Gemini API call raises an exception."""
+    # Arrange
+    mock_gemini_service = GeminiLLMService()
+    mock_gemini_service.is_available = AsyncMock(return_value=True)
+
+    mock_model_instance = AsyncMock()
+    mock_model_instance.generate_content_async = AsyncMock(side_effect=Exception("Gemini API Error"))
+
+    with patch.object(mock_gemini_service, '_get_model_instance', return_value=mock_model_instance):
+        prompt = "A beautiful sunset"
+
+        # Act & Assert
+        with pytest.raises(LLMGenerationError, match="Failed to generate image with Gemini model gemini-pro-vision: Gemini API Error"):
+            await mock_gemini_service.generate_image(
+                prompt=prompt,
+                current_user=mock_current_user,
+                db=mock_db_session,
+                model="gemini-pro-vision" # Explicitly pass model for error message check
+            )
+
+@pytest.mark.asyncio
+async def test_generate_homebrewery_toc_from_sections_none_summary(llm_service: LLMService, mock_db_session: Session, mock_current_user: UserModel):
+    summary = None # Intentionally None
+    homebrewery_toc = await llm_service.generate_homebrewery_toc_from_sections(
+        sections_summary=summary, # Pass None directly
+        db=mock_db_session,
+        current_user=mock_current_user
+    )
+    assert homebrewery_toc == ""

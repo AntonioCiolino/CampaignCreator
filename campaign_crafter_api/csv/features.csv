@@ -1,32 +1,31 @@
 Campaign,"Create a campaign based on the following concepts: {user_prompt}###"
-TOC Homebrewery,"Based on the campaign concept provided below, generate a detailed Table of Contents suitable for an RPG campaign book.
-The Table of Contents must strictly follow Homebrewery Markdown formatting.
-Use 'PAGENUM' as a placeholder for all page numbers, like '{{PAGENUM}}' and '(#pPAGENUM)'.
+TOC Homebrewery,"Based on the following list of campaign section titles (in order), generate a detailed Table of Contents suitable for an RPG campaign book strictly following Homebrewery Markdown formatting. Use 'PAGENUM' as a placeholder for all page numbers, like '{{PAGENUM}}' and '(#pPAGENUM)'.
 
 The structure should be:
 
 {{{{toc,wide
 # Table Of Contents
-
-- ### [{{Main Section Title}}{{PAGENUM}}](#pPAGENUM)
-  - #### [{{Subsection Title}}{{PAGENUM}}](#pPAGENUM)
-    - [{{Sub-subsection Title (if any)}}{{PAGENUM}}](#pPAGENUM)
-  - #### [{{Another Subsection Title}}{{PAGENUM}}](#pPAGENUM)
-- ### [{{Another Main Section Title}}{{PAGENUM}}](#pPAGENUM)
-  - #### [{{Subsection Title}}{{PAGENUM}}](#pPAGENUM)
-  {{!-- If the TOC is long, you can suggest a \column break. e.g. \column --}}
-
+- ### [{{Section Title from input}}{{PAGENUM}}](#pPAGENUM)
+  - #### [{{Possible Subsection Title - LLM can infer or be omitted if not applicable}}{{PAGENUM}}](#pPAGENUM)
+{{!-- LLM can add more subsections or main sections as appropriate based on the input sections_summary. Ensure all page numbers use PAGENUM placeholders. --}}
 End the Table of Contents with }}}}
 
-Campaign Concept:
-{campaign_concept}"
-TOC Display,"Based on the campaign concept provided below, generate a user-friendly Table of Contents for on-screen display. Use Markdown. Focus on clear section titles that can be linked. Example format:
+Current Campaign Sections (titles, in order):
+{sections_summary}"
+TOC Display,"Based on the campaign concept provided below, generate a user-friendly Table of Contents for on-screen display.
+For each suggested section title, also determine its most appropriate type from the following list:
+[monster, character, npc, location, item, quest, chapter, note, world_detail, generic].
 
-- Main Section 1
-  - Subsection 1.1
-  - Subsection 1.2
-- Main Section 2
-  - Subsection 2.1
+Output each top-level section as a bullet point starting with '- '.
+The format for each line should be: `- {{Generated Section Title}} [Type: {{SuggestedType}}]`
+For example:
+- The Whispering Caves [Type: location]
+- Rescuing the Artifact [Type: quest]
+  - The Guardian Golem [Type: monster]
+  - The Hidden Lever [Type: item]
+- Elara, the Wise Sage [Type: npc]
+
+Focus on clear section titles. Subsections can be nested with indentation if appropriate, following the same format.
 
 Campaign Concept:
 {campaign_concept}"

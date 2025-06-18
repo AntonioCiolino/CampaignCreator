@@ -126,11 +126,12 @@ async def generate_campaign_toc_endpoint(
         provider_name, model_specific_id = _extract_provider_and_model(request_body.model_id_with_prefix)
         llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=request_body.model_id_with_prefix)
 
-        generated_tocs_dict = await llm_service.generate_toc( # Returns a dict now
+        # LLM service now returns a List[Dict[str, str]]
+        display_toc_list = await llm_service.generate_toc(
             campaign_concept=db_campaign.concept,
             db=db,
             model=model_specific_id,
-            current_user=current_user # Add this
+            current_user=current_user
         )
     except LLMServiceUnavailableError as e:
         raise HTTPException(status_code=503, detail=f"LLM Service Error for TOC generation: {str(e)}")
@@ -144,47 +145,27 @@ async def generate_campaign_toc_endpoint(
         print(f"Error during TOC generation for campaign {campaign_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to generate Table of Contents: {str(e)}")
 
-    display_toc_content = generated_tocs_dict.get("display_toc")
-    homebrewery_toc_content = generated_tocs_dict.get("homebrewery_toc")
-
-    if display_toc_content is None or homebrewery_toc_content is None:
-        error_detail = "TOC generation did not return the expected structure (missing display_toc or homebrewery_toc key, or value is null)."
-        print(f"Error: {error_detail} - Dict received: {generated_tocs_dict}")
+    # display_toc_list is now the direct result from the service.
+    if not display_toc_list: # Check if the list is empty or None
+        error_detail = "Display TOC generation returned an empty list or no content."
+        # If you need to log the (now non-existent) raw string, this part of the log would change or be removed.
+        # For now, just logging that the list is empty.
+        print(f"Error: {error_detail} - List received: {display_toc_list}")
         raise HTTPException(status_code=500, detail=error_detail)
 
-    def parse_toc_string_to_list(toc_str: str) -> List[Dict[str, str]]:
-        items = []
-        for line in toc_str.splitlines():
-            stripped_line = line.strip()
-            if not stripped_line:
-                continue
-            # Try to match lines like "- Title" or "* Title" or "+ Title"
-            match = re.match(r"^(?:-|\*|\+)\s+(.+)", stripped_line)
-            title = match.group(1).strip() if match else stripped_line
-            # Remove potential markdown links like [text](url) from title
-            title = re.sub(r"\[(.*?)\]\(.*?\)", r"\1", title).strip()
-            if title: # Ensure title is not empty after stripping/regex
-                items.append({"title": title, "type": "unknown"})
-        return items
+    # The internal parse_toc_string_to_list function is no longer needed
+    # as the service now returns the parsed list.
 
-    display_toc_list = parse_toc_string_to_list(display_toc_content)
-    homebrewery_toc_list = parse_toc_string_to_list(homebrewery_toc_content)
+    # The check `if not display_toc_list and display_toc_str:` is no longer needed
+    # as display_toc_str doesn't exist and display_toc_list is checked above.
 
-    if not display_toc_list and display_toc_content: # If parsing resulted in empty list but original string was not empty
-        print(f"Warning: display_toc_list is empty after parsing non-empty string: '{display_toc_content}'")
-        # Potentially use the raw string as a single item if parsing fails completely
-        # display_toc_list = [{"title": "Failed to parse Display TOC", "type": "error"}]
-
-    if not homebrewery_toc_list and homebrewery_toc_content:
-        print(f"Warning: homebrewery_toc_list is empty after parsing non-empty string: '{homebrewery_toc_content}'")
-        # homebrewery_toc_list = [{"title": "Failed to parse Homebrewery TOC", "type": "error"}]
-
+    # Homebrewery TOC is no longer handled here by the endpoint for update content
 
     updated_campaign_with_toc = crud.update_campaign_toc(
         db=db,
         campaign_id=campaign_id,
         display_toc_content=display_toc_list,
-        homebrewery_toc_content=homebrewery_toc_list
+        homebrewery_toc_content=None # Explicitly pass None for homebrewery_toc
     )
     if updated_campaign_with_toc is None:
         # This specific check for campaign existence after update might be redundant if get_campaign above already confirmed it.
@@ -260,7 +241,7 @@ async def seed_sections_from_toc_endpoint(
     if not db_campaign.display_toc: # display_toc is List[Dict[str, str]] or None
         print(f"Campaign {campaign_id} display_toc is empty or None. Cannot seed sections.")
         async def empty_toc_generator():
-            yield json.dumps({"event_type": "complete", "message": "Display TOC is empty. No sections created."}) + "\n\n"
+            yield f"data: {json.dumps({'event_type': 'complete', 'message': 'Display TOC is empty. No sections created.'})}\n\n"
         return EventSourceResponse(empty_toc_generator())
 
     # Extract title and type from each TOC entry
@@ -274,7 +255,7 @@ async def seed_sections_from_toc_endpoint(
     if not parsed_toc_entries:
         print(f"No valid titles found in display_toc for campaign {campaign_id}. TOC content: {db_campaign.display_toc}. No sections will be created.")
         async def no_titles_generator():
-            yield json.dumps({"event_type": "complete", "message": "No valid titles found in TOC. No sections created."}) + "\n\n"
+            yield f"data: {json.dumps({'event_type': 'complete', 'message': 'No valid titles found in TOC. No sections created.'})}\n\n"
         return EventSourceResponse(no_titles_generator())
 
     print(f"Extracted {len(parsed_toc_entries)} TOC entries for campaign {campaign_id}: {parsed_toc_entries}")
@@ -301,8 +282,22 @@ async def seed_sections_from_toc_endpoint(
     async def event_generator():
         total_sections = len(parsed_toc_entries) # Use parsed_toc_entries
         if total_sections == 0:
-            yield json.dumps({"event_type": "complete", "message": "No sections to process."}) + "\n\n"
+            # Ensure SSE format is correct with "data:" prefix and double newline
+            yield f"data: {json.dumps({'event_type': 'complete', 'message': 'No sections to process.'})}\n\n"
             return
+
+        # Check for LLM service issues before starting the loop if auto-population is requested
+        if auto_populate and llm_service_instance is None:
+            error_payload = {
+                "event_type": "error",
+                "message": "Auto-population failed: No LLM provider is configured or available. Please check your API key settings or local LLM setup in the application configuration. Sections will be created with placeholder content."
+            }
+            try:
+                yield f"data: {json.dumps(error_payload)}\n\n"
+                await asyncio.sleep(0.01) # Ensure event is sent
+            except Exception as e_yield_error:
+                print(f"Error yielding initial auto-population error event: {type(e_yield_error).__name__} - {e_yield_error}")
+                # If we can't even yield this error, not much else to do for SSE for this request
 
         for order, toc_item in enumerate(parsed_toc_entries): # Iterate over toc_item
             title = toc_item["title"]
@@ -348,6 +343,7 @@ async def seed_sections_from_toc_endpoint(
                     generated_llm_content = await llm_service_instance.generate_section_content(
                         campaign_concept=db_campaign.concept,
                         db=db,
+                        current_user=current_user, # Add this line
                         existing_sections_summary=None,
                         section_creation_prompt=prompt,
                         section_title_suggestion=title,
@@ -359,8 +355,26 @@ async def seed_sections_from_toc_endpoint(
                         print(f"LLM content generated for '{title}' (excerpt): {section_content_for_crud[:50]}...")
                     else:
                         print(f"LLM generated empty content for section '{title}'. Using placeholder.")
+                        error_payload = {
+                            "event_type": "error",
+                            "message": f"Auto-population for section '{title}' failed: LLM returned empty content. Check configuration. Using placeholder content."
+                        }
+                        try:
+                            yield f"data: {json.dumps(error_payload)}\n\n"
+                            await asyncio.sleep(0.01)
+                        except Exception as e_yield_error:
+                            print(f"Error yielding empty content error event for '{title}': {type(e_yield_error).__name__} - {e_yield_error}")
                 except Exception as e_llm:
                     print(f"LLM generation failed for section '{title}': {type(e_llm).__name__} - {e_llm}. Using placeholder.")
+                    error_payload = {
+                        "event_type": "error",
+                        "message": f"Auto-population for section '{title}' failed: {type(e_llm).__name__} - {e_llm}. Check LLM provider configuration. Using placeholder content."
+                    }
+                    try:
+                        yield f"data: {json.dumps(error_payload)}\n\n"
+                        await asyncio.sleep(0.01)
+                    except Exception as e_yield_error:
+                        print(f"Error yielding LLM exception error event for '{title}': {type(e_yield_error).__name__} - {e_yield_error}")
 
             # Create section in DB, passing the original type from TOC
             created_section_orm = crud.create_section_with_placeholder_content(
@@ -591,7 +605,13 @@ async def export_campaign_homebrewery(
     sections = crud.get_campaign_sections(db=db, campaign_id=campaign_id, limit=1000) 
     export_service = HomebreweryExportService()
     try:
-        formatted_text = export_service.format_campaign_for_homebrewery(campaign=db_campaign, sections=sections)
+        # Ensure db and current_user are passed
+        formatted_text = await export_service.format_campaign_for_homebrewery(
+            campaign=db_campaign,
+            sections=sections,
+            db=db,
+            current_user=current_user
+        )
     except Exception as e:
         print(f"Error during Homebrewery export formatting for campaign {campaign_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to format campaign for Homebrewery export: {str(e)}")
@@ -657,7 +677,13 @@ async def prepare_campaign_for_homebrewery_posting(
     sections = crud.get_campaign_sections(db=db, campaign_id=campaign_id, limit=1000)
     export_service = HomebreweryExportService()
     try:
-        markdown_content = export_service.format_campaign_for_homebrewery(campaign=db_campaign, sections=sections)
+        # Ensure db and current_user are passed
+        markdown_content = await export_service.format_campaign_for_homebrewery(
+            campaign=db_campaign,
+            sections=sections,
+            db=db,
+            current_user=current_user
+        )
     except Exception as e:
         print(f"Error during Homebrewery content generation for campaign {campaign_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to generate Homebrewery Markdown: {str(e)}")

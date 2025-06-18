@@ -1,6 +1,8 @@
 from typing import Optional, List, Dict
 from pydantic import BaseModel
 
+# Removed ImageData model
+
 class LLMConfigBase(BaseModel):
     name: str
     api_key: Optional[str] = None
@@ -37,6 +39,7 @@ class CampaignSectionUpdateInput(BaseModel):
     content: Optional[str] = None
     order: Optional[int] = None # Optional: allow reordering
     type: Optional[str] = None # New field
+    # Removed images field
 
 class CampaignFullContentResponse(BaseModel):
     campaign_id: int
@@ -66,6 +69,7 @@ class CampaignSectionCreate(CampaignSectionBase):
 class CampaignSection(CampaignSectionBase):
     id: int
     campaign_id: int # foreign key to Campaign
+    # Removed images field
 
     class Config:
         from_attributes = True
@@ -108,8 +112,8 @@ class Campaign(CampaignBase):
     id: int
     owner_id: int # In a real app, this would be properly linked
     concept: Optional[str] = None # LLM-generated campaign overview
-    homebrewery_toc: Optional[List[Dict[str, str]]] = None # Renamed from toc
-    display_toc: Optional[List[Dict[str, str]]] = None # New field for display TOC
+    homebrewery_toc: Optional[List[Dict[str, str]]] = None # NEW - To accept {"markdown_string": "..."}
+    display_toc: Optional[List[Dict[str, str]]] = None # Should already be like this
     homebrewery_export: Optional[str] = None # Stores the homebrewery export
     sections: List['CampaignSection'] = [] # Assuming CampaignSection is defined elsewhere or properly forward referenced
 
@@ -155,7 +159,7 @@ class CampaignUpdate(BaseModel): # Assuming CampaignUpdate is for PATCH, all fie
     title: Optional[str] = None
     initial_user_prompt: Optional[str] = None
     concept: Optional[str] = None
-    homebrewery_toc: Optional[List[Dict[str, str]]] = None # Renamed from toc
+    homebrewery_toc: Optional[List[Dict[str, str]]] = None # NEW - To accept {"markdown_string": "..."}
     display_toc: Optional[List[Dict[str, str]]] = None # New field for display TOC
     homebrewery_export: Optional[str] = None
     badge_image_url: Optional[str] = None

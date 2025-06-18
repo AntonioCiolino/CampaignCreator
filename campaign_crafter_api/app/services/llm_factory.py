@@ -60,7 +60,7 @@ def get_llm_service(
             selected_provider = "deepseek"
         else:
             raise LLMServiceUnavailableError(
-                "LLM provider name must be specified or inferable. No default system provider seems to be configured."
+                "LLM provider name must be specified or inferable. No default provider could be determined because none of the supported LLM services (OpenAI, Local LLM, Gemini, Llama, DeepSeek) appear to be configured with valid API keys or URLs in the application settings. Please configure at least one provider."
             )
         print(f"Warning: No LLM provider specified or directly inferable. Defaulting to system provider '{selected_provider}'.")
 

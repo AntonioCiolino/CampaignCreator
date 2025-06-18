@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'; // Removed useRef
 import { CampaignSection } from '../services/campaignService';
 import ReactMarkdown from 'react-markdown';
+import { Typography } from '@mui/material';
 import rehypeRaw from 'rehype-raw';
 import ReactQuill from 'react-quill';
 import LoadingSpinner from './common/LoadingSpinner'; // Adjust path if necessary
@@ -31,6 +32,8 @@ interface CampaignSectionViewProps {
   onSetThematicImageFromSection?: (imageUrl: string, promptUsed: string) => void;
   expandSectionId: string | null; // Add this
 }
+
+// Removed ImageData interface
 
 const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   section,
@@ -95,6 +98,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   const [featureFetchError, setFeatureFetchError] = useState<string | null>(null);
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [regenerateError, setRegenerateError] = useState<string | null>(null);
+  // Removed imageData state and imageIdCounter ref
 
 
   // Ensure editedContent is updated if the section prop changes externally
@@ -141,10 +145,26 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   
   const handleEdit = () => {
     setIsCollapsed(false); // Expand section on edit
-    setEditedContent(section.content || '');
+
+    const plainTextContent = section.content || '';
+    // Convert plain text to HTML: wrap each line in <p> tags.
+    // This handles empty lines as <p></p>, which Quill should treat as a blank paragraph.
+    // For a more robust empty line representation (like a visible space),
+    // one might use <p><br></p> for lines that are truly empty.
+    const lines = plainTextContent.split('\n');
+    const htmlContent = lines.map(line => {
+      if (line.trim() === '') {
+        return '<p><br></p>';
+      }
+      return `<p>${line}</p>`;
+    }).join('');
+
+    setEditedContent(htmlContent);
+
     setIsEditing(true);
     setLocalSaveError(null); // Clear local errors when starting to edit
     setSaveSuccess(false);
+    // setContentGenerationError(null); // Removed as per cleanup task
   };
 
   const handleCancel = () => {
@@ -299,10 +319,20 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   const handleSave = async () => {
     setLocalSaveError(null);
     setSaveSuccess(false);
+
+    if (!quillInstance) {
+      console.error("Editor not available. Cannot save.");
+      setLocalSaveError("Editor not available. Cannot save.");
+      // setLocalSaving(false); // We don't have localSaving in this version of the code
+      return;
+    }
+
     try {
       // For now, only content is editable in this component.
       // Title/order would be handled elsewhere or if this component is expanded.
-      await onSave(section.id, { content: editedContent });
+      const quillHtml = quillInstance.root.innerHTML;
+      const plainTextContent = convertQuillHtmlToPlainText(quillHtml);
+      await onSave(section.id, { content: plainTextContent }); // Removed images: imageData
       setIsEditing(false);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000); // Display success for 3s
@@ -415,6 +445,9 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                 className="quill-editor"
                 ref={setQuillRef} // Set the ref to get Quill instance
               />
+              <Typography variant="caption" display="block" sx={{ mt: 1, color: 'text.secondary' }}>
+                Tip: For a horizontal line, use three dashes (`---`) on a line by themselves, surrounded by blank lines.
+              </Typography>
               {/* Random Table Roller Integration */}
               <RandomTableRoller onInsertItem={handleInsertRandomItem} />
               
@@ -525,49 +558,28 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
         // prop for ImageGenerationModal (if it's added) could use a similar logic to handleImageInsert.
         onImageSuccessfullyGenerated={(imageUrl, promptUsed) => {
           if (!quillInstance) {
-            console.error("Quill instance not available for inserting image or setting alt text.");
-            setEditedContent(prev => `${prev}\n![${promptUsed || 'Generated Image'}](${imageUrl})\n`);
+            console.error("Quill instance not available for inserting image Markdown.");
+            // Fallback: Append Markdown to text state if no Quill instance
+            const markdownImage = `\n![${promptUsed || 'Generated Image'}](${imageUrl})\n`;
+            setEditedContent(prev => prev + markdownImage);
             setIsImageGenerationModalOpen(false);
             return;
           }
 
           const range = quillInstance.getSelection(true) || { index: quillInstance.getLength() -1, length: 0 };
-          // Ensure range.index is valid if editor is empty or nearly empty
           let safeIndex = range.index;
-          if (quillInstance.getLength() === 1 && safeIndex > 0) { // Quill starts with a newline
+          // Adjust safeIndex if editor is empty or Quill reports length 1 for initial newline
+          if (quillInstance.getLength() === 1 && safeIndex > 0) {
              safeIndex = 0;
-          } else if (safeIndex < 0) {
+          } else if (safeIndex < 0) { // Should not happen, but as a safeguard
              safeIndex = 0;
           }
 
-          quillInstance.insertEmbed(safeIndex, 'image', imageUrl, 'user');
-
-          try {
-            setTimeout(() => {
-              if (!quillInstance) return; // Check again inside timeout
-              const editorRoot = quillInstance.root;
-              // Query for the specific image. Note: src might get proxied or altered by Quill/browser.
-              // A more robust way might involve marking the image somehow before insertion if this fails.
-              const imgElements = editorRoot.querySelectorAll(`img[src="${imageUrl}"]`);
-              if (imgElements.length > 0) {
-                const imgElement = imgElements[imgElements.length - 1] as HTMLImageElement; // Assume last is newest
-                imgElement.alt = promptUsed || 'Generated image'; // Set alt text
-                // Update Quill's internal model if direct DOM manipulation isn't picked up
-                // This ensures the change is saved and part of the undo/redo stack.
-                setEditedContent(quillInstance.root.innerHTML);
-              } else {
-                console.warn("Could not find the inserted image to set alt text for src:", imageUrl);
-              }
-            }, 100); // 100ms delay to allow Quill to render the image
-          } catch (e) {
-            console.error("Error setting alt text for image:", e);
-          }
-
-          // Move cursor after the inserted image + a space for better UX
-          // Quill inserts images as 0-length embeds, cursor behavior can be tricky.
-          // This attempts to place it after.
-          quillInstance.setSelection(safeIndex + 1, 0, 'user');
-
+          const markdownImage = `\n![${promptUsed || 'Generated Image'}](${imageUrl})\n`;
+          quillInstance.insertText(safeIndex, markdownImage, 'user');
+          // Move cursor to the end of the inserted markdown image
+          quillInstance.setSelection(safeIndex + markdownImage.length, 0, 'user');
+          setEditedContent(quillInstance.root.innerHTML); // Update content to reflect new Markdown
 
           setIsImageGenerationModalOpen(false);
         }}
@@ -584,4 +596,37 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
 // No, this should be in campaignService.ts. The call will be made there.
 // CampaignSectionView will call onRegenerate which is handleRegenerateSection in CampaignSectionEditor,
 // which then calls the service.
+
+// New utility function to convert Quill HTML to plain text
+// Exported for testing
+export const convertQuillHtmlToPlainText = (htmlString: string): string => {
+  if (!htmlString) {
+    return '';
+  }
+
+  let text = htmlString;
+
+  // Replace <br> tags with \n
+  text = text.replace(/<br\s*\/?>/gi, '\n');
+
+  // Replace closing </p> tags with \n
+  text = text.replace(/<\/p>/gi, '\n');
+
+  // Strip all remaining HTML tags
+  text = text.replace(/<[^>]*>/g, '');
+
+  // Normalize newlines: sequences of 3 or more newlines with two newlines
+  text = text.replace(/\n{3,}/g, '\n\n');
+
+  // Trim leading and trailing newlines from the entire text
+  text = text.trim();
+
+  // Add a single newline at the end if the content is not empty
+  if (text) {
+    text += '\n';
+  }
+
+  return text;
+};
+
 export default CampaignSectionView;

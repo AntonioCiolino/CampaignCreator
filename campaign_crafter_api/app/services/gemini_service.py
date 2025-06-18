@@ -1,4 +1,5 @@
 import google.generativeai as genai # type: ignore
+import re # Added import
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
 from app.core.config import settings
@@ -102,47 +103,65 @@ class GeminiLLMService(AbstractLLMService):
         
         # Re-use generate_text for actual generation, passing current_user and db
         return await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=1000)
-        return await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=1000)
-    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]: # Added current_user
+
+    def _parse_toc_string_with_types(self, raw_toc_string: str) -> List[Dict[str, str]]:
+        parsed_toc_items = []
+        regex = r"^\s*-\s*(.+?)\s*\[Type:\s*([^\]]+?)\s*\]\s*$"
+        fallback_regex = r"^\s*-\s*(.+)"
+        known_types = ["monster", "character", "npc", "location", "item", "quest", "chapter", "note", "world_detail", "generic", "unknown"]
+
+        for line in raw_toc_string.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            match = re.match(regex, line, re.IGNORECASE)
+            if match:
+                title = match.group(1).strip()
+                type_str = match.group(2).strip().lower()
+                if type_str not in known_types:
+                    print(f"Warning: Unknown type '{type_str}' found for title '{title}'. Defaulting to 'unknown'.")
+                    type_str = "unknown"
+                parsed_toc_items.append({"title": title, "type": type_str})
+            else:
+                fallback_match = re.match(fallback_regex, line)
+                if fallback_match:
+                    title = fallback_match.group(1).strip()
+                    title = re.sub(r"\[(.*?)\]\(.*?\)", r"\1", title).strip()
+                    if title:
+                         parsed_toc_items.append({"title": title, "type": "unknown"})
+        return parsed_toc_items
+
+    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> List[Dict[str, str]]: # Added current_user
         if not await self.is_available(current_user=current_user, db=db): # Pass args
             raise LLMServiceUnavailableError("Gemini service is not available.")
         if not campaign_concept:
             raise ValueError("Campaign concept cannot be empty.")
         
         model_instance = self._get_model_instance(model) # Determine model instance once
+
         # Fetch Display TOC prompt
         display_prompt_template_str = self.feature_prompt_service.get_prompt("TOC Display", db=db)
         if not display_prompt_template_str:
             raise LLMGenerationError("Display TOC prompt template ('TOC Display') not found in database for Gemini.")
-        display_final_prompt = display_prompt_template_str.format(campaign_concept=campaign_concept)
         
-        generated_display_toc = await self.generate_text(
+        try:
+            display_final_prompt = display_prompt_template_str.format(campaign_concept=campaign_concept)
+        except KeyError:
+            print(f"ERROR: Gemini formatting 'TOC Display' prompt failed due to KeyError. Prompt: '{display_prompt_template_str}' Concept: '{campaign_concept}'")
+            raise LLMGenerationError("Failed to format 'TOC Display' prompt due to unexpected placeholders for Gemini.")
+
+        raw_toc_string = await self.generate_text(
             prompt=display_final_prompt,
             current_user=current_user, db=db, # Pass args
             model=model_instance.model_name,
             temperature=0.5,
             max_tokens=700
         )
-        if not generated_display_toc:
+        if not raw_toc_string:
              raise LLMGenerationError(f"Gemini API call for Display TOC (model: {model_instance.model_name}) succeeded but returned no usable content.")
-        # Fetch Homebrewery TOC prompt
-        homebrewery_prompt_template_str = self.feature_prompt_service.get_prompt("TOC Homebrewery", db=db)
-        if not homebrewery_prompt_template_str:
-            raise LLMGenerationError("Homebrewery TOC prompt template ('TOC Homebrewery') not found in database for Gemini.")
-        homebrewery_final_prompt = homebrewery_prompt_template_str.format(campaign_concept=campaign_concept)
-        generated_homebrewery_toc = await self.generate_text(
-            prompt=homebrewery_final_prompt,
-            current_user=current_user, db=db, # Pass args
-            model=model_instance.model_name,
-            temperature=0.5,
-            max_tokens=1000 # Potentially more tokens for complex Homebrewery format
-        )
-        if not generated_homebrewery_toc:
-             raise LLMGenerationError(f"Gemini API call for Homebrewery TOC (model: {model_instance.model_name}) succeeded but returned no usable content.")
-        return {
-            "display_toc": generated_display_toc,
-            "homebrewery_toc": generated_homebrewery_toc
-        }
+
+        return self._parse_toc_string_with_types(raw_toc_string)
+
     async def generate_titles(self, campaign_concept: str, db: Session, current_user: UserModel, count: int = 5, model: Optional[str] = None) -> List[str]: # Added current_user
         if not await self.is_available(current_user=current_user, db=db): # Pass args
             raise LLMServiceUnavailableError("Gemini service is not available.")
@@ -290,6 +309,107 @@ class GeminiLLMService(AbstractLLMService):
         # If it were using something like an httpx.AsyncClient internally that needs closing,
         # this is where it would be done. For now, it's a no-op.
         pass
+
+    async def generate_homebrewery_toc_from_sections(self, sections_summary:str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
+        if not await self.is_available(current_user=current_user, db=db):
+            raise LLMServiceUnavailableError("Gemini service is not available.")
+
+        if not sections_summary:
+            return "{{toc,wide\n# Table Of Contents\n}}\n"
+
+        model_instance = self._get_model_instance(model)
+
+        prompt_template_str = self.feature_prompt_service.get_prompt("TOC Homebrewery", db=db)
+        if not prompt_template_str:
+            raise LLMGenerationError("Homebrewery TOC prompt template ('TOC Homebrewery') not found in database for Gemini.")
+
+        final_prompt = prompt_template_str.format(sections_summary=sections_summary)
+
+        generated_toc = await self.generate_text(
+            prompt=final_prompt,
+            current_user=current_user,
+            db=db,
+            model=model_instance.model_name, # Use the determined model_name
+            temperature=0.3, # Consistent with OpenAI
+            max_tokens=1000    # Consistent with OpenAI
+        )
+        if not generated_toc:
+            raise LLMGenerationError(f"Gemini API call for Homebrewery TOC from sections (model: {model_instance.model_name}) succeeded but returned no usable content.")
+
+        return generated_toc
+
+    async def generate_image(self, prompt: str, current_user: UserModel, db: Session, model: Optional[str] = "gemini-pro-vision", size: Optional[str] = None) -> bytes:
+        """
+        Generates an image based on the given prompt using Gemini.
+        Note: The 'size' parameter is conceptual as API capabilities for size need confirmation.
+        The 'gemini-pro-vision' model is specified, but a dedicated image generation
+        model might be more appropriate if available via the API.
+        """
+        if not await self.is_available(current_user=current_user, db=db):
+            raise LLMServiceUnavailableError("Gemini service is not available.")
+
+        if not prompt:
+            raise ValueError("Prompt cannot be empty for image generation.")
+
+        # It's crucial that the chosen model supports image generation.
+        # 'gemini-pro-vision' is primarily for understanding images.
+        # This might need to be a specific image generation model (e.g., an Imagen model endpoint if accessible via Gemini SDK).
+        # For now, we proceed with the specified model, assuming it might have some image generation capabilities or this is a placeholder.
+        model_instance = self._get_model_instance(model_id=model or "gemini-pro-vision")
+
+        try:
+            # The structure of the API call for text-to-image generation needs to be confirmed.
+            # This is a conceptual implementation based on typical Gemini API patterns.
+            # We assume generate_content_async can produce images and the response format.
+            # Specific generation_config might be needed for image output, e.g., mime_type.
+            # genai.types.GenerationConfig(..., output_mime_type="image/png")
+
+            # Placeholder for actual API call parameters.
+            # The Gemini API for image generation might expect a different content structure or specific parameters.
+            # For example, some APIs might require a specific prompt format or configuration.
+            print(f"Attempting to generate image with model: {model_instance.model_name} using prompt: '{prompt[:50]}...'")
+
+            response = await model_instance.generate_content_async(
+                prompt
+                # generation_config=genai.types.GenerationConfig(
+                #     # Example: request PNG image if API supports mime_type specification
+                #     # This is speculative and depends on actual API features.
+                #     # response_mime_type="image/png"
+                # )
+            )
+
+            # Process the response to extract image bytes.
+            # This assumes the image data is in response.parts[0].inline_data.data.
+            # The actual structure might differ for image generation models.
+            if response.parts and response.parts[0].inline_data and response.parts[0].inline_data.data:
+                image_bytes = response.parts[0].inline_data.data
+                # mime_type = response.parts[0].inline_data.mime_type # Could be useful
+                return image_bytes
+            else:
+                # Log details if the response is not as expected.
+                error_message = "Gemini API call for image generation succeeded but returned no image data."
+                if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
+                    error_message += f" Prompt feedback: {response.prompt_feedback}"
+                if not response.candidates:
+                     error_message += " No candidates were generated."
+                # You might want to log the full response here for debugging if it's small enough
+                # print(f"Unexpected response structure from Gemini image generation: {response}")
+                raise LLMGenerationError(error_message)
+
+        except LLMGenerationError: # Re-raise if it's already our specific error
+            raise
+        except LLMServiceUnavailableError: # Re-raise
+            raise
+        except Exception as e:
+            # Handle potential errors from the API call (e.g., network issues, API errors)
+            # This could include errors if the model doesn't support image generation or the prompt is invalid.
+            # from google.api_core import exceptions as google_exceptions
+            # if isinstance(e, google_exceptions.InvalidArgument):
+            #     raise LLMGenerationError(f"Invalid prompt or parameters for Gemini image generation (model: {model_instance.model_name}): {e}")
+            print(f"Error during Gemini image generation (model: {model_instance.model_name}): {type(e).__name__} - {e}")
+            raise LLMGenerationError(f"Failed to generate image with Gemini model {model_instance.model_name}: {e}") from e
+
+
 if __name__ == '__main__':
     from dotenv import load_dotenv
     import os

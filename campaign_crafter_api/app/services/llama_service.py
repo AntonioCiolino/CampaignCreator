@@ -32,12 +32,14 @@ class LlamaLLMService(AbstractLLMService):
         # Placeholder for actual client initialization if needed
         # print(f"{self.PROVIDER_NAME.title()}LLMService initialized (placeholder).") # Optional: can be removed if too verbose
 
-    async def is_available(self, _current_user: UserModel, _db: Session) -> bool:
-        # This could also check self.api_url if it's essential for the service to function
-        return self.configured_successfully
+    async def is_available(self, current_user: UserModel, db: Session) -> bool: # Changed params
+        key_present = bool(self.api_key and self.api_key not in ["YOUR_LLAMA_API_KEY", "YOUR_API_KEY_HERE"])
+        # In a real scenario, this might involve an async check to an API endpoint if one exists
+        # For this placeholder, key_present is sufficient.
+        return key_present 
 
-    async def generate_text(self, prompt: str, _current_user: UserModel, db: Session, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str:
-        if not await self.is_available(_current_user=_current_user, _db=_db):
+    async def generate_text(self, prompt: str, current_user: UserModel, db: Session, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str: # Changed _current_user
+        if not await self.is_available(current_user=current_user, db=db): # Pass corrected args
             raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available. Please configure API key/URL.")
         
         error_message = (
@@ -48,18 +50,18 @@ class LlamaLLMService(AbstractLLMService):
         raise NotImplementedError(error_message)
 
     async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str: # Added current_user
-        if not await self.is_available(_current_user=current_user, _db=db): # Pass args
+        if not await self.is_available(current_user=current_user, db=db): # Pass corrected args
             raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available.")
         # This method directly raises NotImplementedError, so no internal call to generate_text to update yet.
         raise NotImplementedError(f"{self.PROVIDER_NAME.title()}LLMService.generate_campaign_concept not implemented.")
 
     async def generate_titles(self, campaign_concept: str, db: Session, current_user: UserModel, count: int = 5, model: Optional[str] = None) -> list[str]: # Added current_user
-        if not await self.is_available(_current_user=current_user, _db=db): # Pass args
+        if not await self.is_available(current_user=current_user, db=db): # Pass corrected args
             raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available.")
         raise NotImplementedError(f"{self.PROVIDER_NAME.title()}LLMService.generate_titles not implemented.")
 
     async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]: # Added current_user
-        if not await self.is_available(_current_user=current_user, _db=db): # Pass args
+        if not await self.is_available(current_user=current_user, db=db): # Pass corrected args
             raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available.")
         if not campaign_concept:
             raise ValueError("Campaign concept cannot be empty.")
@@ -77,11 +79,11 @@ class LlamaLLMService(AbstractLLMService):
         homebrewery_final_prompt = homebrewery_prompt_template.format(campaign_concept=campaign_concept)
 
         # These calls will fail until generate_text is implemented
-        generated_display_toc = await self.generate_text(prompt=display_final_prompt, _current_user=current_user, db=db, model=model, temperature=0.5, max_tokens=700) # Pass args
+        generated_display_toc = await self.generate_text(prompt=display_final_prompt, current_user=current_user, db=db, model=model, temperature=0.5, max_tokens=700) # Pass corrected args
         if not generated_display_toc:
              raise LLMGenerationError(f"{self.PROVIDER_NAME.title()} API call for Display TOC succeeded but returned no usable content.")
 
-        generated_homebrewery_toc = await self.generate_text(prompt=homebrewery_final_prompt, _current_user=current_user, db=db, model=model, temperature=0.5, max_tokens=1000) # Pass args
+        generated_homebrewery_toc = await self.generate_text(prompt=homebrewery_final_prompt, current_user=current_user, db=db, model=model, temperature=0.5, max_tokens=1000) # Pass corrected args
         if not generated_homebrewery_toc:
              raise LLMGenerationError(f"{self.PROVIDER_NAME.title()} API call for Homebrewery TOC succeeded but returned no usable content.")
 
@@ -101,7 +103,7 @@ class LlamaLLMService(AbstractLLMService):
         model: Optional[str] = None,
         section_type: Optional[str] = None
     ) -> str:
-        if not await self.is_available(_current_user=current_user, _db=db): # Pass args
+        if not await self.is_available(current_user=current_user, db=db): # Pass corrected args
             raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available.")
         # This method also directly raises NotImplementedError.
         raise NotImplementedError(
@@ -109,8 +111,8 @@ class LlamaLLMService(AbstractLLMService):
             f"Received section_type: {section_type}"
         )
 
-    async def list_available_models(self, _current_user: UserModel, _db: Session) -> List[Dict[str, any]]:
-        if not await self.is_available(_current_user=_current_user, _db=_db):
+    async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, any]]: # Changed params
+        if not await self.is_available(current_user=current_user, db=db): # Pass corrected args
             print(f"Warning: {self.PROVIDER_NAME.title()} service not available. Cannot list models.")
             return []
         
@@ -149,6 +151,33 @@ class LlamaLLMService(AbstractLLMService):
         # This is a placeholder.
         print(f"{self.PROVIDER_NAME.title()}LLMService close method called (placeholder).")
         pass
+
+    async def generate_homebrewery_toc_from_sections(self, sections_summary: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
+        if not await self.is_available(current_user=current_user, db=db):
+            raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available. Please configure API key/URL.")
+
+        if not sections_summary:
+            return "{{toc,wide\n# Table Of Contents\n}}\n"
+
+        prompt_template_str = self.feature_prompt_service.get_prompt("TOC Homebrewery", db=db)
+        if not prompt_template_str:
+            raise LLMGenerationError(f"Homebrewery TOC prompt template ('TOC Homebrewery') not found for {self.PROVIDER_NAME}.")
+
+        final_prompt = prompt_template_str.format(sections_summary=sections_summary)
+
+        # This will raise NotImplementedError because self.generate_text is not implemented
+        generated_toc = await self.generate_text(
+            prompt=final_prompt,
+            current_user=current_user,
+            db=db,
+            model=model, # Pass the model selected for this operation
+            temperature=0.3,
+            max_tokens=1000
+        )
+        # The following lines would only be reached if generate_text was implemented and returned content:
+        # if not generated_toc:
+        #     raise LLMGenerationError(f"{self.PROVIDER_NAME.title()} API call for Homebrewery TOC from sections succeeded but returned no usable content.")
+        return generated_toc
 
 # if __name__ == '__main__':
 #     from app.core.config import settings

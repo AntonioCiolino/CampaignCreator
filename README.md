@@ -41,6 +41,7 @@ The `campaign_crafter_api` is a Python-based backend service built with **FastAP
 The Campaign Creator API now supports a "Bring Your Own Key" (BYOK) model for certain third-party services, enhancing user control and privacy. Currently, this applies to:
 
 *   **OpenAI API Key**: Used for text generation (e.g., GPT models) and image generation (DALL-E).
+*   **Google Gemini API Key**: Used for text generation and image generation with Gemini models.
 *   **Stable Diffusion API Key**: Used for alternative image generation capabilities.
 
 **How it Works:**
@@ -53,6 +54,20 @@ The Campaign Creator API now supports a "Bring Your Own Key" (BYOK) model for ce
     *   If a system key is not configured, even superusers will need to provide their own key to access the corresponding features.
 
 This system allows users to leverage their own API subscriptions and manage their usage directly, while still enabling administrators to provide system-level access for authorized superusers.
+
+### LLM Configuration for Content Generation
+
+For features like auto-populating campaign sections, generating titles, or other AI-powered content creation, the Campaign Creator API needs to connect to a Large Language Model (LLM). Users must configure at least one LLM provider to enable these capabilities.
+
+Configuration is typically managed by setting environment variables that the API reads on startup. Common examples include:
+
+*   `OPENAI_API_KEY`: Your personal API key for accessing OpenAI models (e.g., GPT-3.5, GPT-4 for text; DALL-E for images).
+*   `GEMINI_API_KEY`: Your API key for accessing Google's Gemini models (for text and image generation).
+*   `LOCAL_LLM_API_BASE_URL`: The base URL for a locally running LLM that exposes an OpenAI-compatible API (e.g., Ollama, LM Studio, Jan). For instance, `http://localhost:11434/v1`.
+    *   You might also want to set `LOCAL_LLM_DEFAULT_MODEL_ID` to specify the default model to be used with this local LLM service (e.g., `ollama/llama2` or your specific model identifier).
+    *   The `LOCAL_LLM_PROVIDER_NAME` (defaults to "local_llm") can be set if you want to customize the identifier for your local provider in API requests.
+
+If no LLM provider is configured with a valid API key or URL, AI-driven content generation features will typically fall back to using placeholder text. The user interface may also display error messages guiding you to configure a provider in the application settings or by setting the appropriate environment variables. Please refer to the `campaign_crafter_api/.env.example` file for a more comprehensive list of configurable environment variables.
 
 ### Setup and Run
 

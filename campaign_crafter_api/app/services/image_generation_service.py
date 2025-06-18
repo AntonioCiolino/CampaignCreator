@@ -22,6 +22,9 @@ from ..core.security import decrypt_key # Changed to relative import
 from app.core.config import settings
 from app.orm_models import GeneratedImage
 from app import crud # Added crud import
+from app.services.gemini_service import GeminiLLMService
+from app.services.llm_service import LLMGenerationError, LLMServiceUnavailableError
+
 
 class ImageGenerationService:
     def __init__(self):
@@ -95,6 +98,32 @@ class ImageGenerationService:
                 print("Warning: Superuser attempted to use Stable Diffusion, but system settings.STABLE_DIFFUSION_API_KEY is not configured or is a placeholder.")
 
         raise HTTPException(status_code=403, detail="Stable Diffusion API key not available for this user, and no valid fallback key is configured.")
+
+    async def _get_gemini_api_key_for_user(self, current_user: UserModel, db: Session) -> str:
+        """
+        Retrieves the appropriate Gemini API key for the given user from DB.
+        1. User's own key (decrypted from ORM user model)
+        2. Superuser fallback (from settings.GEMINI_API_KEY)
+        Raises HTTPException if no valid key is found or user not found.
+        """
+        orm_user = crud.get_user(db, user_id=current_user.id)
+        if not orm_user:
+            raise HTTPException(status_code=404, detail="User not found in database for Gemini key retrieval.")
+
+        if orm_user.encrypted_gemini_api_key:
+            decrypted_user_key = decrypt_key(orm_user.encrypted_gemini_api_key)
+            if decrypted_user_key:
+                return decrypted_user_key
+            else:
+                print(f"Warning: Failed to decrypt stored Gemini API key for user {orm_user.id}. Checking superuser fallback.")
+
+        if orm_user.is_superuser:
+            if settings.GEMINI_API_KEY and settings.GEMINI_API_KEY not in ["YOUR_GEMINI_API_KEY", ""]: # Add relevant placeholder checks
+                return settings.GEMINI_API_KEY
+            else:
+                print("Warning: Superuser attempted to use Gemini for images, but system settings.GEMINI_API_KEY is not configured or is a placeholder.")
+
+        raise HTTPException(status_code=403, detail="Gemini API key for image generation not available for this user, and no valid fallback key is configured.")
 
     async def _save_image_and_log_db(
         self,
@@ -444,6 +473,83 @@ class ImageGenerationService:
         except Exception as e:
             print(f"Unexpected error during Stable Diffusion image generation: {e}")
             raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+    async def generate_image_gemini(
+        self,
+        prompt: str,
+        db: Session,
+        current_user: UserModel,
+        size: Optional[str] = None,
+        model: Optional[str] = "gemini-pro-vision", # Default model for Gemini image generation
+        user_id: Optional[int] = None
+    ) -> str:
+        """
+        Generates an image using Gemini API, saves it, logs to DB, and returns the permanent image URL.
+        """
+        # Fetching the key here primarily validates if the user has access.
+        # GeminiLLMService itself will load the key from settings or expect genai.configure()
+        # to have been called, which happens in its is_available or __init__.
+        _ = await self._get_gemini_api_key_for_user(current_user, db) # Key fetched for validation
+
+        gemini_service = GeminiLLMService()
+
+        if not prompt:
+            raise HTTPException(status_code=400, detail="Prompt cannot be empty.")
+
+        log_user_id = current_user.id
+        if user_id is not None and user_id != current_user.id:
+            print(f"Warning: generate_image_gemini called with user_id {user_id} but current_user is {current_user.id}. Using current_user.id ({current_user.id}) for logging.")
+
+        # The model used for Gemini image generation. 'gemini-pro-vision' is a placeholder;
+        # a specific image generation model should be used if available.
+        final_model_name = model or "gemini-pro-vision"
+
+        # The 'size' parameter for Gemini is conceptual. The actual size will depend on the API's capabilities.
+        # For logging, we'll use the provided size or a default string.
+        final_size_log = size or "default_gemini_size" # Placeholder for logging
+
+        try:
+            # Call GeminiLLMService to generate image bytes
+            image_bytes = await gemini_service.generate_image(
+                prompt=prompt,
+                current_user=current_user,
+                db=db,
+                model=final_model_name,
+                size=size # Pass size if generate_image supports it, even if conceptual
+            )
+
+            if image_bytes:
+                # Save image and log to DB
+                # Assuming a default filename/mime type for now, as generate_image currently only returns bytes.
+                # This could be enhanced if generate_image returns (bytes, mime_type).
+                permanent_url = await self._save_image_and_log_db(
+                    prompt=prompt,
+                    model_used=final_model_name,
+                    size_used=final_size_log,
+                    db=db,
+                    image_bytes=image_bytes,
+                    user_id=log_user_id,
+                    original_filename_from_api="gemini_image.png" # Placeholder filename
+                )
+                return permanent_url
+            else:
+                # This case should ideally be handled by generate_image raising an error
+                raise HTTPException(status_code=500, detail="Image generation with Gemini succeeded but returned no image data.")
+
+        except LLMServiceUnavailableError as e:
+            print(f"Gemini service unavailable error: {e}")
+            raise HTTPException(status_code=503, detail=f"Gemini service is unavailable: {str(e)}")
+        except LLMGenerationError as e:
+            print(f"Gemini image generation error: {e}")
+            # Check for specific error messages that might indicate a content policy violation or bad prompt
+            if "content policy" in str(e).lower() or "prompt" in str(e).lower():
+                 raise HTTPException(status_code=400, detail=f"Gemini image generation failed (possibly due to prompt or content policy): {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to generate image with Gemini: {str(e)}")
+        except HTTPException: # Re-raise HTTPExceptions from _save_image_and_log_db or _get_gemini_api_key_for_user
+            raise
+        except Exception as e:
+            print(f"Unexpected error during Gemini image generation: {e}")
+            raise HTTPException(status_code=500, detail=f"An unexpected error occurred during Gemini image generation: {str(e)}")
 
     async def delete_image_from_blob_storage(self, blob_name: str):
         """

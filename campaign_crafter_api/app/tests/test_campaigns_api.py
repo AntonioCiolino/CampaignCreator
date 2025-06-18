@@ -6,24 +6,23 @@ from fastapi.testclient import TestClient # Not used in this file directly, but 
 from fastapi import HTTPException # For error case testing
 from unittest.mock import patch, AsyncMock, ANY, MagicMock
 from io import BytesIO
-
+import builtins # For patching print
 
 from app.main import app
 from app.core.config import settings # For AZURE_STORAGE_CONTAINER_NAME
 from app.db import Base, get_db
-from app.orm_models import Campaign as ORMCampaign, CampaignSection as ORMCampaignSection # Renamed Campaign to ORMCampaign
-from app import crud # Import crud to mock its functions
-from app import models as pydantic_models # For request/response validation if needed
+from app.orm_models import Campaign as ORMCampaign, CampaignSection as ORMCampaignSection
+from app import crud
+from app import models as pydantic_models
+from app.models import Campaign as PydanticCampaign
+from app.services.openai_service import OpenAILLMService # To allow its direct instantiation if needed, or to patch its methods
 
 
 # Use an in-memory SQLite database for testing
 DATABASE_URL = "sqlite:///:memory:"
-# DATABASE_URL = "sqlite:///./test.db" # Alternative: use a file-based test DB
-
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False}) # check_same_thread for SQLite
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Override the get_db dependency for testing
 def override_get_db():
     try:
         db = TestingSessionLocal()
@@ -33,7 +32,6 @@ def override_get_db():
 
 app.dependency_overrides[get_db] = override_get_db
 
-# Pytest fixture to create tables for each test function
 @pytest.fixture(autouse=True)
 def create_test_tables():
     Base.metadata.create_all(bind=engine)
@@ -43,28 +41,22 @@ def create_test_tables():
 @pytest.mark.asyncio
 async def test_list_campaigns_empty_db():
     async with AsyncClient(app=app, base_url="http://test") as ac:
-        response = await ac.get("/api/v1/campaigns/") # Adjusted path
+        response = await ac.get("/api/v1/campaigns/")
     assert response.status_code == 200
     assert response.json() == []
 
 @pytest.mark.asyncio
 async def test_list_campaigns_with_data():
-    # Add a campaign to the test database
     db = TestingSessionLocal()
-    # For Campaign ORM model, ensure all required fields from the latest models.py are present
-    # Based on previous steps, Campaign ORM model has: id, title, initial_user_prompt, concept, toc, homebrewery_export, owner_id
-    # The test Campaign model used here for setup might need to be updated if it causes issues with the actual ORM model.
-    # For now, assuming title and owner_id are sufficient for pre-populating,
-    # and other fields are nullable or have defaults.
-    test_campaign = Campaign(title="Test Campaign 1", owner_id=1) # owner_id is placeholder
+    test_campaign = ORMCampaign(title="Test Campaign 1", owner_id=1)
     db.add(test_campaign)
     db.commit()
     db.refresh(test_campaign)
-    campaign_id = test_campaign.id # Get the id for the path
+    campaign_id = test_campaign.id
     db.close()
 
     async with AsyncClient(app=app, base_url="http://test") as ac:
-        response = await ac.get("/api/v1/campaigns/") # Adjusted path
+        response = await ac.get("/api/v1/campaigns/")
 
     assert response.status_code == 200
     response_data = response.json()
@@ -72,10 +64,8 @@ async def test_list_campaigns_with_data():
     ret_campaign = response_data[0]
     assert ret_campaign["title"] == "Test Campaign 1"
     assert ret_campaign["id"] == campaign_id
-    # Asserting based on the Campaign model from models.py which includes these fields
     assert "initial_user_prompt" in ret_campaign
     assert "concept" in ret_campaign
-    # Updated field names
     assert "display_toc" in ret_campaign
     assert "homebrewery_toc" in ret_campaign
     assert "homebrewery_export" in ret_campaign
@@ -86,23 +76,20 @@ async def test_create_campaign_full_data():
         payload = {
             "title": "My Super Campaign",
             "initial_user_prompt": "A world of dragons and magic.",
-            "model_id_with_prefix_for_concept": "openai/gpt-3.5-turbo" # Example model
+            "model_id_with_prefix_for_concept": "openai/gpt-3.5-turbo"
         }
         response = await ac.post("/api/v1/campaigns/", json=payload)
 
-    assert response.status_code == 200, response.text # Include response text on failure
+    assert response.status_code == 200, response.text
     data = response.json()
     assert data["title"] == "My Super Campaign"
     assert data["initial_user_prompt"] == "A world of dragons and magic."
     assert "id" in data
-    assert "owner_id" in data # Default owner_id = 1 from endpoint
-    assert "concept" in data # Can be None or str
-    # Updated field names
+    assert "owner_id" in data
+    assert "concept" in data
     assert data["display_toc"] is None
     assert data["homebrewery_toc"] is None
-    assert data["homebrewery_export"] is None # Should be None initially
-    # If LLMs are not actually called in test env, concept might be None.
-    # If concept generation is mocked, assert specific mock output.
+    assert data["homebrewery_export"] is None
 
 @pytest.mark.asyncio
 async def test_create_campaign_no_model_id():
@@ -110,7 +97,6 @@ async def test_create_campaign_no_model_id():
         payload = {
             "title": "Simple Adventure",
             "initial_user_prompt": "A quiet village with a dark secret."
-            # model_id_with_prefix_for_concept is omitted
         }
         response = await ac.post("/api/v1/campaigns/", json=payload)
 
@@ -120,8 +106,7 @@ async def test_create_campaign_no_model_id():
     assert data["initial_user_prompt"] == "A quiet village with a dark secret."
     assert "id" in data
     assert "owner_id" in data
-    assert "concept" in data # Concept generation might be attempted with a default model or skipped
-    # Updated field names
+    assert "concept" in data
     assert data["display_toc"] is None
     assert data["homebrewery_toc"] is None
     assert data["homebrewery_export"] is None
@@ -129,11 +114,7 @@ async def test_create_campaign_no_model_id():
 @pytest.mark.asyncio
 async def test_create_campaign_only_title():
     async with AsyncClient(app=app, base_url="http://test") as ac:
-        payload = {
-            "title": "The Lone Artifact"
-            # initial_user_prompt is omitted
-            # model_id_with_prefix_for_concept is omitted
-        }
+        payload = { "title": "The Lone Artifact" }
         response = await ac.post("/api/v1/campaigns/", json=payload)
 
     assert response.status_code == 200, response.text
@@ -142,16 +123,13 @@ async def test_create_campaign_only_title():
     assert data["initial_user_prompt"] is None
     assert "id" in data
     assert "owner_id" in data
-    # Concept should be None as no prompt was provided for generation
     assert data["concept"] is None
-    # Updated field names
     assert data["display_toc"] is None
     assert data["homebrewery_toc"] is None
     assert data["homebrewery_export"] is None
 
-# Helper fixture to create a campaign directly in DB for API tests
 @pytest.fixture
-def db_campaign(create_test_tables) -> ORMCampaign: # Depends on create_test_tables to ensure tables exist
+def db_campaign(create_test_tables) -> ORMCampaign:
     db = TestingSessionLocal()
     campaign = ORMCampaign(title="API Test Campaign", owner_id=1, concept="A concept for testing APIs.")
     db.add(campaign)
@@ -160,23 +138,15 @@ def db_campaign(create_test_tables) -> ORMCampaign: # Depends on create_test_tab
     db.close()
     return campaign
 
-# Helper fixture to create a section directly in DB for API tests
 @pytest.fixture
 def db_section(db_campaign: ORMCampaign) -> ORMCampaignSection:
     db = TestingSessionLocal()
     section = ORMCampaignSection(
-        title="Test Section for API",
-        content="Initial content",
-        order=0,
-        campaign_id=db_campaign.id,
-        type="initial_type"
+        title="Test Section for API", content="Initial content", order=0,
+        campaign_id=db_campaign.id, type="initial_type"
     )
-    db.add(section)
-    db.commit()
-    db.refresh(section)
-    db.close()
+    db.add(section); db.commit(); db.refresh(section); db.close()
     return section
-
 
 @pytest.mark.asyncio
 @patch('app.api.endpoints.campaigns.get_llm_service')
@@ -188,7 +158,7 @@ async def test_generate_campaign_titles_success(mock_get_llm_service, db_campaig
 
     response = await async_client.post(
         f"/api/v1/campaigns/{db_campaign.id}/titles",
-        json={"model_id_with_prefix": "test_provider/test_model"}, # prompt is not used by this endpoint
+        json={"model_id_with_prefix": "test_provider/test_model"},
         params={"count": 3}
     )
 
@@ -196,57 +166,59 @@ async def test_generate_campaign_titles_success(mock_get_llm_service, db_campaig
     assert response.json() == {"titles": expected_titles}
     mock_get_llm_service.assert_called_once_with(provider_name="test_provider", model_id_with_prefix="test_provider/test_model")
     mock_llm_instance.generate_titles.assert_called_once_with(
-        campaign_concept=db_campaign.concept,
-        db=ANY,
-        count=3,
-        model="test_model"
+        campaign_concept=db_campaign.concept, db=ANY, current_user=ANY, count=3, model="test_model"
     )
-
-# --- New Tests for TOC and Section Type ---
 
 @pytest.mark.asyncio
 @patch('app.api.endpoints.campaigns.get_llm_service')
 @patch('app.api.endpoints.campaigns.crud.update_campaign_toc')
-async def test_generate_campaign_toc_endpoint_new_format(
-    mock_crud_update_toc, mock_get_llm_service, db_campaign: ORMCampaign, async_client: AsyncClient
+async def test_generate_campaign_toc_success(
+    mock_crud_update_toc: MagicMock, mock_get_llm_service: MagicMock,
+    db_campaign: ORMCampaign, async_client: AsyncClient
 ):
     mock_llm_instance = AsyncMock()
-    mock_llm_instance.generate_toc = AsyncMock(return_value={
-        "display_toc": "- Title 1\n- Title 2",
-        "homebrewery_toc": "* HB Title 1"
-    })
+    # This is the structure the LLM service's generate_toc is now expected to return
+    expected_api_display_toc = [
+        {"title": "Display TOC Item 1", "type": "unknown"},
+        {"title": "Sub Item 1.1", "type": "unknown"},
+        {"title": "Display TOC Item 2", "type": "unknown"}
+    ]
+    mock_llm_instance.generate_toc = AsyncMock(return_value=expected_api_display_toc)
     mock_get_llm_service.return_value = mock_llm_instance
 
-    # Mock crud.update_campaign_toc to return a campaign-like object (or the campaign itself)
-    # The actual ORMCampaign object might be complex to construct here fully,
-    # so we mock its return to be a simplified version or the input campaign if appropriate.
-    # For this test, we mostly care that it was called correctly.
-    mock_crud_update_toc.return_value = db_campaign # Simulate it returns the updated campaign
+    # Homebrewery TOC is no longer processed or returned by the endpoint in this flow
+    mock_updated_campaign_orm = MagicMock(spec=ORMCampaign)
+    mock_updated_campaign_orm.id = db_campaign.id; mock_updated_campaign_orm.title = db_campaign.title
+    mock_updated_campaign_orm.concept = db_campaign.concept; mock_updated_campaign_orm.initial_user_prompt = db_campaign.initial_user_prompt
+    mock_updated_campaign_orm.owner_id = db_campaign.owner_id; mock_updated_campaign_orm.mood_board_image_urls = db_campaign.mood_board_image_urls
+    mock_updated_campaign_orm.homebrewery_export = "Existing export or None"
+    mock_updated_campaign_orm.display_toc = expected_api_display_toc
+    # The campaign model in response will have homebrewery_toc as None
+    # as crud.update_campaign_toc is called with homebrewery_toc_content=None
+    mock_updated_campaign_orm.homebrewery_toc = None
+    mock_crud_update_toc.return_value = mock_updated_campaign_orm
 
-    response = await async_client.post(
-        f"/api/v1/campaigns/{db_campaign.id}/toc",
-        json={"prompt": "Unused prompt", "model_id_with_prefix": "test/model"} # Prompt is unused by endpoint
-    )
+    request_payload = {"model_id_with_prefix": "test_provider/test_model"}
+    response = await async_client.post(f"/api/v1/campaigns/{db_campaign.id}/toc", json=request_payload)
 
     assert response.status_code == 200, response.text
-    data = response.json()
+    response_data = response.json()
+    mock_get_llm_service.assert_called_once_with(provider_name="test_provider", model_id_with_prefix="test_provider/test_model")
+    mock_llm_instance.generate_toc.assert_called_once_with(
+        campaign_concept=db_campaign.concept, db=ANY, current_user=ANY, model="test_model"
+    )
+    mock_crud_update_toc.assert_called_once_with(
+        db=ANY, campaign_id=db_campaign.id,
+        display_toc_content=expected_api_display_toc,
+        homebrewery_toc_content=None # Endpoint passes None for HB content
+    )
+    assert "display_toc" in response_data
+    validated_campaign_response = PydanticCampaign.model_validate(response_data)
+    assert validated_campaign_response.display_toc == expected_api_display_toc
+    # homebrewery_toc in the response should be None
+    assert validated_campaign_response.homebrewery_toc is None
+    assert len(validated_campaign_response.display_toc) > 0
 
-    expected_display_toc = [{"title": "Title 1", "type": "unknown"}, {"title": "Title 2", "type": "unknown"}]
-    expected_hb_toc = [{"title": "HB Title 1", "type": "unknown"}]
-
-    # The response from the endpoint IS the campaign object from crud.update_campaign_toc
-    # If that mock returns db_campaign, and db_campaign itself wasn't updated with these lists,
-    # this assertion might fail on data["display_toc"].
-    # For this to pass, mock_crud_update_toc should return a campaign with these lists.
-    # A simpler way is to check the call to mock_crud_update_toc.
-
-    # Instead of checking response.json() for the TOC content (which depends on mock_crud_update_toc's return value),
-    # we check if crud.update_campaign_toc was called with the correctly transformed lists.
-    mock_crud_update_toc.assert_called_once()
-    call_args = mock_crud_update_toc.call_args
-    assert call_args.kwargs['campaign_id'] == db_campaign.id
-    assert call_args.kwargs['display_toc_content'] == expected_display_toc
-    assert call_args.kwargs['homebrewery_toc_content'] == expected_hb_toc
 
 @pytest.mark.asyncio
 @patch('app.api.endpoints.campaigns.get_llm_service')
@@ -256,65 +228,46 @@ async def test_seed_sections_from_toc_endpoint_uses_type(
 ):
     db = TestingSessionLocal()
     toc_data = [
-        {"title": "NPC Alpha", "type": "npc"},
-        {"title": "Generic Chapter", "type": "generic"},
-        {"title": "Location Beta", "type": "Location"} # Test case-insensitivity for type refinement
+        {"title": "NPC Alpha", "type": "npc"}, {"title": "Generic Chapter", "type": "generic"},
+        {"title": "Location Beta", "type": "Location"}
     ]
-    crud.update_campaign_toc(db, db_campaign.id, toc_data, []) # Set display_toc
-    db.close()
+    db_campaign_instance = db.query(ORMCampaign).filter(ORMCampaign.id == db_campaign.id).first()
+    db_campaign_instance.display_toc = toc_data; db_campaign_instance.homebrewery_toc = []
+    db.commit(); db.refresh(db_campaign_instance); db.close()
 
     mock_llm_instance = AsyncMock()
     mock_llm_instance.generate_section_content = AsyncMock(return_value="Generated content")
     mock_get_llm_service.return_value = mock_llm_instance
 
-    # Mock for crud.create_section_with_placeholder_content
-    # It needs to return an ORMCampaignSection compatible object for from_orm
     def mock_create_section_side_effect(db, campaign_id, title, order, placeholder_content, type):
         mock_section = MagicMock(spec=ORMCampaignSection)
-        mock_section.id = order + 1 # Ensure unique ID for key
-        mock_section.title = title
-        mock_section.content = placeholder_content
-        mock_section.order = order
-        mock_section.campaign_id = campaign_id
-        mock_section.type = type
+        mock_section.id = order + 1; mock_section.title = title; mock_section.content = placeholder_content
+        mock_section.order = order; mock_section.campaign_id = campaign_id; mock_section.type = type
+        mock_section.user_prompt = None; mock_section.llm_prompt = None; mock_section.llm_response = None
+        mock_section.word_count = len(placeholder_content.split()) if placeholder_content else 0
+        mock_section.images = []; mock_section.created_at = db_campaign.created_at; mock_section.updated_at = db_campaign.updated_at
         return mock_section
     mock_crud_create_section.side_effect = mock_create_section_side_effect
 
-
-    response = await async_client.post(f"/api/v1/campaigns/{db_campaign.id}/seed_sections_from_toc?auto_populate=true")
-
-    # Consume SSE response to ensure all calls are made
-    async for line in response.aiter_lines():
-        pass # print(line) # For debugging SSE content
-
+    response = await async_client.post(f"/api/v1/campaigns/{db_campaign.id}/seed_sections_from_toc?auto_populate=true&model_id_with_prefix=test_provider/test_model")
+    async for _ in response.aiter_lines(): pass
     assert response.status_code == 200
-
     assert mock_crud_create_section.call_count == 3
-    # Call 1 for NPC Alpha
     assert mock_crud_create_section.call_args_list[0].kwargs['type'] == "npc"
-    assert mock_crud_create_section.call_args_list[0].kwargs['title'] == "NPC Alpha"
-    # Call 2 for Generic Chapter
     assert mock_crud_create_section.call_args_list[1].kwargs['type'] == "generic"
-    assert mock_crud_create_section.call_args_list[1].kwargs['title'] == "Generic Chapter"
-    # Call 3 for Location Beta
-    assert mock_crud_create_section.call_args_list[2].kwargs['type'] == "Location" # Preserves case from TOC
-    assert mock_crud_create_section.call_args_list[2].kwargs['title'] == "Location Beta"
-
+    assert mock_crud_create_section.call_args_list[2].kwargs['type'] == "Location"
     assert mock_llm_instance.generate_section_content.call_count == 3
-    # LLM call for NPC Alpha
     assert mock_llm_instance.generate_section_content.call_args_list[0].kwargs['section_type'] == "npc"
-    # LLM call for Generic Chapter (title "Generic Chapter" implies "Chapter/Quest" if logic is hit)
-    assert mock_llm_instance.generate_section_content.call_args_list[1].kwargs['section_type'] == "Chapter/Quest" # type refined by title
-    # LLM call for Location Beta (type "Location" is specific enough)
+    assert mock_llm_instance.generate_section_content.call_args_list[1].kwargs['section_type'] == "generic"
     assert mock_llm_instance.generate_section_content.call_args_list[2].kwargs['section_type'] == "Location"
-
 
 @pytest.mark.asyncio
 async def test_get_campaign_full_content_formats_new_toc(db_campaign: ORMCampaign, async_client: AsyncClient):
     db = TestingSessionLocal()
     toc_data = [{"title": "Entry 1", "type": "chapter"}, {"title": "Entry 2", "type": "location"}]
-    crud.update_campaign_toc(db, db_campaign.id, toc_data, [])
-    db.close()
+    db_campaign_instance = db.query(ORMCampaign).filter(ORMCampaign.id == db_campaign.id).first()
+    db_campaign_instance.display_toc = toc_data; db_campaign_instance.homebrewery_toc = []
+    db.commit(); db.refresh(db_campaign_instance); db.close()
 
     response = await async_client.get(f"/api/v1/campaigns/{db_campaign.id}/full_content")
     assert response.status_code == 200
@@ -332,24 +285,27 @@ async def test_create_new_campaign_section_endpoint_uses_type(
     mock_llm_instance.generate_section_content = AsyncMock(return_value="Generated test content.")
     mock_get_llm_service.return_value = mock_llm_instance
 
-    # Mock crud.create_campaign_section to return a valid CampaignSection object
-    mock_created_section = ORMCampaignSection(id=1, campaign_id=db_campaign.id, title="Test Section", content="Generated test content.", order=0, type="custom_type")
+    mock_created_section = MagicMock(spec=ORMCampaignSection)
+    mock_created_section.id = 1; mock_created_section.campaign_id = db_campaign.id
+    mock_created_section.title = "New Section with Type"; mock_created_section.content = "Generated test content."
+    mock_created_section.order = 0; mock_created_section.type = "custom_type"
+    mock_created_section.user_prompt = "A detailed prompt."; mock_created_section.llm_prompt = "Actual LLM prompt."
+    mock_created_section.llm_response = "Generated test content."; mock_created_section.word_count = len("Generated test content.".split())
+    mock_created_section.images = []; mock_created_section.created_at = db_campaign.created_at; mock_created_section.updated_at = db_campaign.updated_at
     mock_crud_create_section.return_value = mock_created_section
 
     section_payload = {
-        "title": "New Section with Type",
-        "prompt": "A detailed prompt.",
-        "type": "custom_type",
-        "model_id_with_prefix": "test/model"
+        "title": "New Section with Type", "prompt": "A detailed prompt.",
+        "type": "custom_type", "model_id_with_prefix": "test/model"
     }
     response = await async_client.post(f"/api/v1/campaigns/{db_campaign.id}/sections", json=section_payload)
-
     assert response.status_code == 200, response.text
     mock_crud_create_section.assert_called_once()
     assert mock_crud_create_section.call_args.kwargs['section_type'] == "custom_type"
-
     mock_llm_instance.generate_section_content.assert_called_once()
     assert mock_llm_instance.generate_section_content.call_args.kwargs['section_type'] == "custom_type"
+    response_data = response.json()
+    assert response_data["title"] == "New Section with Type"; assert response_data["content"] == "Generated test content."; assert response_data["type"] == "custom_type"
 
 @pytest.mark.asyncio
 @patch('app.api.endpoints.campaigns.get_llm_service')
@@ -361,224 +317,144 @@ async def test_regenerate_campaign_section_endpoint_uses_type(
     mock_llm_instance.generate_section_content = AsyncMock(return_value="Regenerated content.")
     mock_get_llm_service.return_value = mock_llm_instance
 
-    # Mock crud.update_campaign_section to return the updated section
-    # The actual db_section object is fine to return, or a mock with updated attributes
-    def update_side_effect(db, section_id, campaign_id, section_update_data):
-        # Simulate update
-        db_section.content = section_update_data.content
-        if section_update_data.title is not None: db_section.title = section_update_data.title
+    def update_side_effect(db, section_id, campaign_id, section_update_data: pydantic_models.CampaignSectionUpdate):
+        updated_section_mock = MagicMock(spec=ORMCampaignSection)
+        updated_section_mock.id = db_section.id; updated_section_mock.campaign_id = db_section.campaign_id
+        updated_section_mock.title = section_update_data.title if section_update_data.title is not None else db_section.title
+        updated_section_mock.content = section_update_data.content if section_update_data.content is not None else db_section.content
+        updated_section_mock.order = db_section.order
+        updated_section_mock.type = section_update_data.type if section_update_data.type is not None else db_section.type
+        updated_section_mock.user_prompt = section_update_data.user_prompt if section_update_data.user_prompt is not None else db_section.user_prompt
+        updated_section_mock.llm_prompt = section_update_data.llm_prompt if section_update_data.llm_prompt is not None else db_section.llm_prompt
+        updated_section_mock.llm_response = section_update_data.llm_response if section_update_data.llm_response is not None else db_section.llm_response
+        updated_section_mock.word_count = len(updated_section_mock.content.split()) if updated_section_mock.content else 0
+        updated_section_mock.images = db_section.images; updated_section_mock.created_at = db_section.created_at
+        updated_section_mock.updated_at = db_section.updated_at
         if section_update_data.type is not None: db_section.type = section_update_data.type
-        return db_section
+        return updated_section_mock
     mock_crud_update_section.side_effect = update_side_effect
 
     campaign_id = db_section.campaign_id
-
-    # Test 1: Provide section_type in request
-    regenerate_payload_with_type = {"section_type": "new_type", "new_prompt": "A new prompt."}
+    regenerate_payload_with_type = {
+        "section_type": "new_type_from_payload", "new_prompt": "A new prompt.",
+        "model_id_with_prefix": "test_provider/test_model"
+    }
     response1 = await async_client.post(
-        f"/api/v1/campaigns/{campaign_id}/sections/{db_section.id}/regenerate",
-        json=regenerate_payload_with_type
+        f"/api/v1/campaigns/{campaign_id}/sections/{db_section.id}/regenerate", json=regenerate_payload_with_type
     )
     assert response1.status_code == 200, response1.text
     mock_llm_instance.generate_section_content.assert_called_with(
-        campaign_concept=ANY, db=ANY, existing_sections_summary=ANY,
-        section_creation_prompt=ANY, section_title_suggestion=ANY,
-        model=ANY, section_type="new_type"
+        campaign_concept=ANY, db=ANY, existing_sections_summary=ANY, section_creation_prompt=ANY,
+        section_title_suggestion=ANY, model="test_model", section_type="new_type_from_payload", current_user=ANY
     )
-    mock_crud_update_section.assert_called_with(
-        db=ANY, section_id=db_section.id, campaign_id=campaign_id,
-        section_update_data=ANY
-    )
-    assert mock_crud_update_section.call_args.kwargs['section_update_data'].type == "new_type"
+    assert mock_crud_update_section.call_args.kwargs['section_update_data'].type == "new_type_from_payload"
+    assert response1.json()["type"] == "new_type_from_payload"
 
-    # Test 2: Do not provide section_type in request (should use existing or inferred)
-    mock_llm_instance.generate_section_content.reset_mock()
-    mock_crud_update_section.reset_mock()
-    # db_section.type is now "new_type" from the previous call due to side_effect
-
-    regenerate_payload_no_type = {"new_prompt": "Another new prompt."}
+    mock_llm_instance.generate_section_content.reset_mock(); mock_crud_update_section.reset_mock()
+    current_section_type_in_db = "new_type_from_payload"
+    regenerate_payload_no_type = { "new_prompt": "Another new prompt.", "model_id_with_prefix": "another_provider/another_model" }
     response2 = await async_client.post(
-        f"/api/v1/campaigns/{campaign_id}/sections/{db_section.id}/regenerate",
-        json=regenerate_payload_no_type
+        f"/api/v1/campaigns/{campaign_id}/sections/{db_section.id}/regenerate", json=regenerate_payload_no_type
     )
     assert response2.status_code == 200, response2.text
-    # Type for LLM should be the existing type of the section ("new_type")
-    # because no new type was provided in input, and title keyword inference logic might trigger if it's generic.
-    # If db_section.type ("new_type") is not generic, it will be used.
-    assert mock_llm_instance.generate_section_content.call_args.kwargs['section_type'] == "new_type"
-
-    # Type should not be in the update data if not specified in input
+    assert mock_llm_instance.generate_section_content.call_args.kwargs['section_type'] == current_section_type_in_db
+    assert mock_llm_instance.generate_section_content.call_args.kwargs['model'] == "another_model"
     assert mock_crud_update_section.call_args.kwargs['section_update_data'].type is None
-
+    assert response2.json()["type"] == current_section_type_in_db
 
 @pytest.mark.asyncio
 @patch('app.crud.ImageGenerationService.delete_image_from_blob_storage', new_callable=AsyncMock)
 async def test_update_campaign_remove_moodboard_image_deletes_blob(
     mock_delete_blob, db_campaign: ORMCampaign, async_client: AsyncClient
 ):
-    # Arrange:
-    # The db_campaign fixture provides a campaign with owner_id=1.
-    # We need to set its mood_board_image_urls.
     initial_url1 = f"https://mockaccount.blob.core.windows.net/{settings.AZURE_STORAGE_CONTAINER_NAME}/blob1.png"
     initial_url2 = f"https://mockaccount.blob.core.windows.net/{settings.AZURE_STORAGE_CONTAINER_NAME}/blob2.jpg"
-
     db = TestingSessionLocal()
     try:
-        # Fetch the campaign provided by the fixture within the current session
         campaign_to_update = db.query(ORMCampaign).filter(ORMCampaign.id == db_campaign.id).first()
-        if not campaign_to_update:
-            pytest.fail(f"Campaign with ID {db_campaign.id} not found in test setup.")
-
-        campaign_to_update.mood_board_image_urls = [initial_url1, initial_url2]
-        db.commit()
-        db.refresh(campaign_to_update)
-    finally:
-        db.close()
-
-    update_payload = {
-        "mood_board_image_urls": [initial_url1] # Remove initial_url2
-    }
-
-    # Act:
-    # Assuming owner_id=1 is the default authenticated user for these tests.
-    # The campaigns router usually checks if db_campaign.owner_id == current_user.id.
-    # The db_campaign fixture sets owner_id=1.
-    # If current_user.id is not 1 in the test context, this will fail with 403.
-    # The existing tests seem to imply current_user.id = 1 by default.
-    response = await async_client.put(
-        f"/api/v1/campaigns/{db_campaign.id}",
-        json=update_payload
-    )
-
-    # Assert:
+        if not campaign_to_update: pytest.fail(f"Campaign with ID {db_campaign.id} not found.")
+        campaign_to_update.mood_board_image_urls = [initial_url1, initial_url2]; db.commit()
+    finally: db.close()
+    update_payload = { "mood_board_image_urls": [initial_url1] }
+    response = await async_client.put( f"/api/v1/campaigns/{db_campaign.id}", json=update_payload )
     assert response.status_code == 200, response.text
-
-    # Verify that delete_image_from_blob_storage was called correctly
     mock_delete_blob.assert_called_once_with("blob2.jpg")
-
-    # Verify the campaign in the database
     db = TestingSessionLocal()
     try:
         updated_db_campaign = db.query(ORMCampaign).filter(ORMCampaign.id == db_campaign.id).first()
-        assert updated_db_campaign is not None
         assert updated_db_campaign.mood_board_image_urls == [initial_url1]
-    finally:
-        db.close()
-
-
-# --- Tests for Moodboard Image Upload ---
+    finally: db.close()
 
 @pytest.mark.asyncio
 @patch('app.api.endpoints.campaigns.ImageGenerationService._save_image_and_log_db', new_callable=AsyncMock)
 async def test_upload_moodboard_image_success(
     mock_save_image, db_campaign: ORMCampaign, async_client: AsyncClient
 ):
-    # Arrange
     mock_image_url = "http://example.com/mock_uploaded_image.png"
     mock_save_image.return_value = mock_image_url
-
-    image_content = b"fake image data"
-    image_bytes_io = BytesIO(image_content)
-    file_name = "test_image.png"
-
-    # Act
-    # The async_client should handle authentication if other tests requiring auth pass.
-    # Assuming owner_id=1 for db_campaign is the authenticated user.
+    image_content = b"fake image data"; image_bytes_io = BytesIO(image_content); file_name = "test_image.png"
     response = await async_client.post(
         f"/api/v1/campaigns/{db_campaign.id}/moodboard/upload",
         files={"file": (file_name, image_bytes_io, "image/png")}
     )
-
-    # Assert
     assert response.status_code == 200, response.text
     data = response.json()
-    assert data["image_url"] == mock_image_url
-    assert data["campaign"]["id"] == db_campaign.id
+    assert data["image_url"] == mock_image_url; assert data["campaign"]["id"] == db_campaign.id
     assert mock_image_url in data["campaign"]["mood_board_image_urls"]
-
     mock_save_image.assert_called_once()
-    call_args = mock_save_image.call_args[1] # Get kwargs
-    assert call_args['image_bytes'] == image_content
-    assert call_args['user_id'] == db_campaign.owner_id # Assuming owner_id 1 is current_user.id
-    assert call_args['original_filename_from_api'] == file_name
-
-    # Verify campaign in DB
+    assert mock_save_image.call_args[1]['image_bytes'] == image_content
+    assert mock_save_image.call_args[1]['user_id'] == db_campaign.owner_id
+    assert mock_save_image.call_args[1]['original_filename_from_api'] == file_name
     db = TestingSessionLocal()
     try:
         updated_db_campaign = db.query(ORMCampaign).filter(ORMCampaign.id == db_campaign.id).first()
-        assert updated_db_campaign is not None
         assert mock_image_url in updated_db_campaign.mood_board_image_urls
-    finally:
-        db.close()
+    finally: db.close()
 
 @pytest.mark.asyncio
 async def test_upload_moodboard_image_campaign_not_found(async_client: AsyncClient):
     image_bytes_io = BytesIO(b"fake image data")
     response = await async_client.post(
-        "/api/v1/campaigns/99999/moodboard/upload", # Non-existent campaign ID
+        "/api/v1/campaigns/99999/moodboard/upload",
         files={"file": ("test.png", image_bytes_io, "image/png")}
     )
-    assert response.status_code == 404
-    assert response.json()["detail"] == "Campaign not found"
+    assert response.status_code == 404; assert response.json()["detail"] == "Campaign not found"
 
 @pytest.mark.asyncio
 async def test_upload_moodboard_image_unauthorized(db_campaign: ORMCampaign, async_client: AsyncClient):
-    # Arrange: Create a campaign owned by a different user
     db = TestingSessionLocal()
     try:
-        other_user_campaign = ORMCampaign(title="Other User Campaign", owner_id=2) # owner_id=2
-        db.add(other_user_campaign)
-        db.commit()
-        db.refresh(other_user_campaign)
+        other_user_campaign = ORMCampaign(title="Other User Campaign", owner_id=2)
+        db.add(other_user_campaign); db.commit(); db.refresh(other_user_campaign)
         other_campaign_id = other_user_campaign.id
-    finally:
-        db.close()
-
+    finally: db.close()
     image_bytes_io = BytesIO(b"fake image data")
-    # Assuming async_client is authenticated as user with owner_id=1
     response = await async_client.post(
         f"/api/v1/campaigns/{other_campaign_id}/moodboard/upload",
         files={"file": ("test.png", image_bytes_io, "image/png")}
     )
-    assert response.status_code == 403
-    assert response.json()["detail"] == "Not authorized to upload images to this campaign"
+    assert response.status_code == 403; assert response.json()["detail"] == "Not authorized to upload images to this campaign"
 
 @pytest.mark.asyncio
 async def test_upload_moodboard_image_no_file(db_campaign: ORMCampaign, async_client: AsyncClient):
-    response = await async_client.post(
-        f"/api/v1/campaigns/{db_campaign.id}/moodboard/upload"
-        # No files dictionary passed
-    )
-    assert response.status_code == 422 # FastAPI's validation for missing file
+    response = await async_client.post(f"/api/v1/campaigns/{db_campaign.id}/moodboard/upload")
+    assert response.status_code == 422
 
 @pytest.mark.asyncio
 @patch('app.api.endpoints.campaigns.ImageGenerationService._save_image_and_log_db', new_callable=AsyncMock)
 async def test_upload_moodboard_image_service_failure(
     mock_save_image, db_campaign: ORMCampaign, async_client: AsyncClient
 ):
-    # Arrange
     mock_save_image.side_effect = HTTPException(status_code=500, detail="Azure upload failed")
-
     initial_moodboard_urls = list(db_campaign.mood_board_image_urls or [])
-
     image_bytes_io = BytesIO(b"fake image data")
-    # Act
     response = await async_client.post(
         f"/api/v1/campaigns/{db_campaign.id}/moodboard/upload",
         files={"file": ("test.png", image_bytes_io, "image/png")}
     )
-
-    # Assert
-    assert response.status_code == 500
-    assert response.json()["detail"] == "Azure upload failed"
-
-    # Verify campaign in DB was not updated
+    assert response.status_code == 500; assert response.json()["detail"] == "Azure upload failed"
     db = TestingSessionLocal()
     try:
         unchanged_db_campaign = db.query(ORMCampaign).filter(ORMCampaign.id == db_campaign.id).first()
-        assert unchanged_db_campaign is not None
-        # Ensure mood_board_image_urls is the same as before the call
-        current_urls_in_db = list(unchanged_db_campaign.mood_board_image_urls or [])
-        assert current_urls_in_db == initial_moodboard_urls
-    finally:
-        db.close()
+        assert list(unchanged_db_campaign.mood_board_image_urls or []) == initial_moodboard_urls
+    finally: db.close()

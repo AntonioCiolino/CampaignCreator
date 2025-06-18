@@ -399,11 +399,12 @@ async def update_campaign(db: Session, campaign_id: int, campaign_update: models
         db.refresh(db_campaign)
     return db_campaign
 
-def update_campaign_toc(db: Session, campaign_id: int, display_toc_content: List[Dict[str, str]], homebrewery_toc_content: List[Dict[str, str]]) -> Optional[orm_models.Campaign]:
+def update_campaign_toc(db: Session, campaign_id: int, display_toc_content: List[Dict[str, str]], homebrewery_toc_content: Optional[Dict[str, str]]) -> Optional[orm_models.Campaign]:
     db_campaign = get_campaign(db, campaign_id=campaign_id) # get_campaign will handle potential string TOC conversion before update
     if db_campaign:
-        db_campaign.display_toc = display_toc_content
-        db_campaign.homebrewery_toc = homebrewery_toc_content
+        db_campaign.display_toc = display_toc_content # Always update this
+        if homebrewery_toc_content is not None: # Only update if provided
+            db_campaign.homebrewery_toc = homebrewery_toc_content
         # db.add(db_campaign) # Not strictly necessary as SQLAlchemy tracks changes on attached objects
         db.commit()
         db.refresh(db_campaign)
@@ -463,7 +464,7 @@ def get_section(db: Session, section_id: int, campaign_id: int) -> Optional[orm_
 def update_campaign_section(db: Session, section_id: int, campaign_id: int, section_update_data: models.CampaignSectionUpdateInput) -> Optional[orm_models.CampaignSection]:
     db_section = get_section(db=db, section_id=section_id, campaign_id=campaign_id)
     if db_section:
-        update_data = section_update_data.dict(exclude_unset=True)
+        update_data = section_update_data.model_dump(exclude_unset=True) # Changed .dict() to .model_dump()
         for key, value in update_data.items():
             # If 'order' is updated, and more complex logic is needed later (e.g., reordering others),
             # it would be handled here. For now, direct update.
