@@ -188,6 +188,8 @@ class User(UserBase): # For responses
     is_superuser: bool
     openai_api_key_provided: Optional[bool] = None
     sd_api_key_provided: Optional[bool] = None
+    gemini_api_key_provided: Optional[bool] = None
+    other_llm_api_key_provided: Optional[bool] = None
 
     campaigns: List[Campaign] = []
     llm_configs: List[LLMConfig] = []
@@ -198,6 +200,8 @@ class User(UserBase): # For responses
 class UserAPIKeyUpdate(BaseModel):
     openai_api_key: Optional[str] = None
     sd_api_key: Optional[str] = None
+    gemini_api_key: Optional[str] = None
+    other_llm_api_key: Optional[str] = None
 
 # Feature Models
 class FeatureBase(BaseModel):

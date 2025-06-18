@@ -1,8 +1,11 @@
 from typing import Optional, Type, Dict, List
-from sqlalchemy.orm import Session # Added Session
-from app.models import ModelInfo, User as UserModel # Added UserModel
+from sqlalchemy.orm import Session
+from app.models import ModelInfo, User as UserModel
 from app.services.llm_service import AbstractLLMService
 from app.services.openai_service import OpenAILLMService
+from app import orm_models # For type hinting current_user_orm
+from app import crud # To fetch orm_user from current_user Pydantic model
+from app.core.security import decrypt_key # To decrypt user's API keys
 from app.services.gemini_service import GeminiLLMService
 from app.services.llama_service import LlamaLLMService 
 from app.services.deepseek_service import DeepSeekLLMService
@@ -25,7 +28,9 @@ if settings.LOCAL_LLM_PROVIDER_NAME:
 
 
 def get_llm_service(
-    provider_name: Optional[str] = None, 
+    db: Session,
+    current_user_orm: Optional[orm_models.User], # Pass the ORM user model
+    provider_name: Optional[str] = None,
     model_id_with_prefix: Optional[str] = None
 ) -> AbstractLLMService:
     """
@@ -34,7 +39,6 @@ def get_llm_service(
     selected_provider: Optional[str] = None
     local_provider_key = settings.LOCAL_LLM_PROVIDER_NAME.lower() if settings.LOCAL_LLM_PROVIDER_NAME else "local_llm"
 
-
     if provider_name:
         selected_provider = provider_name.lower()
     elif model_id_with_prefix and "/" in model_id_with_prefix:
@@ -42,10 +46,11 @@ def get_llm_service(
         selected_provider = selected_provider.lower()
         print(f"Inferred provider '{selected_provider}' from model_id_with_prefix '{model_id_with_prefix}'.")
     else:
-        # Default provider selection logic
+        # Default provider selection logic based on system settings if no specific request.
+        # This part might need adjustment if user-specific default is desired.
         if settings.OPENAI_API_KEY and settings.OPENAI_API_KEY not in ["YOUR_API_KEY_HERE", "YOUR_OPENAI_API_KEY"]:
             selected_provider = "openai"
-        elif settings.LOCAL_LLM_API_BASE_URL and settings.LOCAL_LLM_API_BASE_URL.strip(): # Check local LLM next
+        elif settings.LOCAL_LLM_API_BASE_URL and settings.LOCAL_LLM_API_BASE_URL.strip():
             selected_provider = local_provider_key
         elif settings.GEMINI_API_KEY and settings.GEMINI_API_KEY not in ["YOUR_GEMINI_API_KEY"]:
             selected_provider = "gemini"
@@ -57,13 +62,11 @@ def get_llm_service(
             raise LLMServiceUnavailableError(
                 "LLM provider name must be specified or inferable. No default provider could be determined because none of the supported LLM services (OpenAI, Local LLM, Gemini, Llama, DeepSeek) appear to be configured with valid API keys or URLs in the application settings. Please configure at least one provider."
             )
-        print(f"Warning: No LLM provider specified or directly inferable. Defaulting to '{selected_provider}'.")
-
+        print(f"Warning: No LLM provider specified or directly inferable. Defaulting to system provider '{selected_provider}'.")
 
     if not selected_provider: 
         raise LLMServiceUnavailableError("Could not determine LLM provider.")
         
-    # Ensure the dynamic local_provider_key is in the map if it was selected
     if selected_provider == local_provider_key and local_provider_key not in _llm_service_providers:
         _llm_service_providers[local_provider_key] = LocalLLMService
         
@@ -72,37 +75,32 @@ def get_llm_service(
     if not service_class:
         raise LLMServiceUnavailableError(f"Unsupported or unknown LLM provider: {selected_provider}")
 
-    # API key/URL availability checks
-    if selected_provider == "openai":
-        if not settings.OPENAI_API_KEY or settings.OPENAI_API_KEY in ["YOUR_API_KEY_HERE", "YOUR_OPENAI_API_KEY"]:
-            raise LLMServiceUnavailableError("OpenAI API key is not configured or is a placeholder.")
-    elif selected_provider == "gemini":
-        if not settings.GEMINI_API_KEY or settings.GEMINI_API_KEY == "YOUR_GEMINI_API_KEY":
-            raise LLMServiceUnavailableError("Gemini API key is not configured or is a placeholder.")
-    elif selected_provider == "llama":
-        if not settings.LLAMA_API_KEY or settings.LLAMA_API_KEY in ["YOUR_LLAMA_API_KEY", "YOUR_API_KEY_HERE"]:
-            raise LLMServiceUnavailableError("Llama API key is not configured or is a placeholder.")
-    elif selected_provider == "deepseek":
-        if not settings.DEEPSEEK_API_KEY or settings.DEEPSEEK_API_KEY in ["YOUR_DEEPSEEK_API_KEY", "YOUR_API_KEY_HERE"]:
-            raise LLMServiceUnavailableError("DeepSeek API key is not configured or is a placeholder.")
-    elif selected_provider == local_provider_key: # Use the dynamic key from settings
-        if not settings.LOCAL_LLM_API_BASE_URL or not settings.LOCAL_LLM_API_BASE_URL.strip():
-            raise LLMServiceUnavailableError(f"{settings.LOCAL_LLM_PROVIDER_NAME.title()} API Base URL is not configured.")
-    
+    user_specific_api_key: Optional[str] = None
+    if current_user_orm:
+        encrypted_key_to_use: Optional[str] = None
+        if selected_provider == "openai":
+            encrypted_key_to_use = current_user_orm.encrypted_openai_api_key
+        elif selected_provider == "gemini":
+            encrypted_key_to_use = current_user_orm.encrypted_gemini_api_key
+        # Placeholder for 'other_llm_api_key' logic:
+        # elif selected_provider == "some_other_provider_mapped_to_other_llm":
+        #     encrypted_key_to_use = current_user_orm.encrypted_other_llm_api_key
+
+        if encrypted_key_to_use:
+            decrypted_key = decrypt_key(encrypted_key_to_use)
+            if decrypted_key:
+                user_specific_api_key = decrypted_key
+            else:
+                print(f"Warning: Failed to decrypt API key for user {current_user_orm.id} and provider {selected_provider}.")
+
     try:
-        service_instance = service_class() 
-        # The service's __init__ or an async is_available() should handle internal checks.
-        # For services that need async initialization for is_available (like LocalLLMService),
-        # this factory cannot easily await it. The service should try to be operational
-        # on instantiation if possible, or the check in the endpoint/dependency is more critical.
-        # For now, we rely on the service's own __init__ checks for immediate configuration errors.
-        # The `service_instance.is_available()` check here would be problematic if it's async.
-        # We will remove the direct call to `is_available()` from here and let service constructor
-        # or an async dependency wrapper handle availability.
-        # if not await service_instance.is_available(current_user=current_user, db=db): # This would require get_llm_service to be async and take user/db
-        #     raise LLMServiceUnavailableError(f"Service '{selected_provider}' reported as unavailable after instantiation.")
+        # Instantiate the service with the (potentially None) user_specific_api_key
+        service_instance = service_class(api_key=user_specific_api_key)
+        # The service's __init__ now handles API key logic (user vs system fallback) and client setup.
+        # No need for direct API key/URL availability checks here anymore.
         return service_instance
     except ValueError as e: 
+        # ValueError might be raised by service __init__ (e.g., LocalLLMService if URL is missing)
         raise LLMServiceUnavailableError(f"Failed to initialize {selected_provider} service: {e}")
     except Exception as e: 
         raise LLMServiceUnavailableError(f"An unexpected error occurred while initializing {selected_provider} service ({type(e).__name__}): {e}")
@@ -113,13 +111,22 @@ async def get_available_models_info(db: Session, current_user: UserModel) -> Lis
     # Iterate over a copy of keys in case the dictionary is modified elsewhere
     provider_names = list(_llm_service_providers.keys())
 
+    if not current_user: # Should not happen if endpoint protects correctly
+        raise LLMServiceUnavailableError("User context is required to list available models.")
+
+    current_user_orm = crud.get_user(db, user_id=current_user.id)
+    if not current_user_orm:
+        # This means the user from the token exists in Pydantic form but not in DB via crud.get_user
+        # This is a critical state inconsistency.
+        raise LLMServiceUnavailableError(f"Could not retrieve ORM user for user ID {current_user.id}. Cannot determine API key context.")
+
     for provider_name in provider_names:
         service: Optional[AbstractLLMService] = None
         try:
             print(f"Attempting to get service and models for: {provider_name}")
             # get_llm_service itself checks for basic configuration (API keys/URL)
             # and raises LLMServiceUnavailableError if not configured.
-            service = get_llm_service(provider_name)
+            service = get_llm_service(db=db, current_user_orm=current_user_orm, provider_name=provider_name)
 
             # Pass current_user and db to is_available
             if not await service.is_available(current_user=current_user, db=db):

@@ -18,7 +18,8 @@ const UserSettingsPage: React.FC = () => {
   // New state for API Keys
   const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [sdApiKey, setSdApiKey] = useState('');
-  const [geminiApiKey, setGeminiApiKey] = useState(''); // Added for Gemini
+  const [geminiApiKey, setGeminiApiKey] = useState('');
+  const [otherLlmApiKey, setOtherLlmApiKey] = useState('');
   const [apiKeyMessage, setApiKeyMessage] = useState<string | null>(null);
   const [apiKeyError, setApiKeyError] = useState<string | null>(null);
   const [isApiKeysLoading, setIsApiKeysLoading] = useState(false);
@@ -120,7 +121,8 @@ const UserSettingsPage: React.FC = () => {
     // Send current input value. If field is empty string, backend interprets as clearing the key.
     payload.openai_api_key = openaiApiKey;
     payload.sd_api_key = sdApiKey;
-    payload.gemini_api_key = geminiApiKey; // Added for Gemini
+    payload.gemini_api_key = geminiApiKey;
+    payload.other_llm_api_key = otherLlmApiKey;
 
     try {
       const updatedUser = await updateUserApiKeys(payload);
@@ -129,9 +131,10 @@ const UserSettingsPage: React.FC = () => {
            setAuthUser(updatedUser); // Update user in AuthContext
       }
       setCurrentUser(updatedUser); // Update local state for the page
-      setOpenaiApiKey('');
-      setSdApiKey('');
-      setGeminiApiKey(''); // Clear Gemini key input
+      setOpenaiApiKey(''); // Clear input field after successful submission
+      setSdApiKey('');   // Clear input field after successful submission
+      setGeminiApiKey('');
+      setOtherLlmApiKey('');
     } catch (err: any) {
       let errorMessage = 'Failed to update API keys.';
       if (err.response?.data?.detail) {
@@ -246,6 +249,16 @@ const UserSettingsPage: React.FC = () => {
           onChange={(e) => setGeminiApiKey(e.target.value)}
           placeholder={currentUser?.gemini_api_key_provided ? "Key is set (leave blank to keep, type to update/clear)" : "Enter Gemini API Key"}
           helperText={`Status: ${currentUser?.gemini_api_key_provided ? 'Provided' : 'Not Provided'}. To clear a key, submit an empty field.`}
+        />
+        <Input
+          id="other-llm-api-key"
+          name="otherLlmApiKey"
+          type="password"
+          label="Other LLM API Key:" // Or a more specific name if known
+          value={otherLlmApiKey}
+          onChange={(e) => setOtherLlmApiKey(e.target.value)}
+          placeholder={currentUser?.other_llm_api_key_provided ? "Key is set (leave blank to keep, type to update/clear)" : "Enter Other LLM API Key"}
+          helperText={`Status: ${currentUser?.other_llm_api_key_provided ? 'Provided' : 'Not Provided'}. To clear a key, submit an empty field.`}
         />
         <Button type="submit" variant="primary" disabled={isApiKeysLoading}>
           {isApiKeysLoading ? 'Saving Keys...' : 'Save API Keys'}

@@ -12,43 +12,39 @@ import asyncio # For testing async methods in __main__
 class GeminiLLMService(AbstractLLMService):
     PROVIDER_NAME = "gemini" # Class variable for provider name
     DEFAULT_MODEL = "gemini-1.5-flash"
-    def __init__(self):
-        self.api_key = settings.GEMINI_API_KEY
-        # Removed self.is_available() call from __init__
-        if not (self.api_key and self.api_key != "YOUR_GEMINI_API_KEY"):
-            print("Warning: Gemini API key not configured or is a placeholder.")
-            # Service will report as unavailable.
+    def __init__(self, api_key: Optional[str] = None):
+        super().__init__(api_key=api_key)
+        self.effective_api_key = self.api_key # Key from constructor (user-provided)
+        if not self.effective_api_key:
+            self.effective_api_key = settings.GEMINI_API_KEY # Fallback to system key
+
+        self.configured_successfully = False
+        if self.effective_api_key and self.effective_api_key != "YOUR_GEMINI_API_KEY":
+            try:
+                genai.configure(api_key=self.effective_api_key)
+                self.configured_successfully = True
+            except Exception as e:
+                print(f"Error configuring Gemini client during __init__ with effective_api_key: {e}")
+                # self.configured_successfully remains False
+        else:
+            print("Warning: Gemini API key (user or system) not configured or is a placeholder.")
         
-        try:
-            # Configure should ideally happen once, but SDK might handle re-configuration.
-            # If API key is missing, this might not raise an error immediately,
-            # but subsequent calls will fail. is_available() will catch this.
-            if self.api_key and self.api_key != "YOUR_GEMINI_API_KEY":
-                 genai.configure(api_key=self.api_key)
-        except Exception as e:
-            # This might catch issues if genai.configure fails immediately
-            print(f"Error configuring Gemini client during __init__: {e}")
-            # This doesn't prevent service instantiation but is_available should fail.
         self.feature_prompt_service = FeaturePromptService()
 
-    async def is_available(self, current_user: UserModel, db: Session) -> bool: # Added _current_user, _db
-        # Accepts current_user and db session for availability checks
-        if not (self.api_key and self.api_key != "YOUR_GEMINI_API_KEY"):
+    async def is_available(self, current_user: UserModel, db: Session) -> bool:
+        if not self.configured_successfully:
             return False
         try:
-            # Attempt to configure here again if not done, or if it needs to be per-instance
-            # However, genai.configure is typically global.
-            # A lightweight API call is better for checking availability.
-            genai.configure(api_key=self.api_key) # Ensure configured for this check if not globally
-            model_instance = self._get_model_instance(self.DEFAULT_MODEL) # Use a known default
-            # Perform a very small, non-empty prompt generation
+            # genai should already be configured from __init__
+            model_instance = self._get_model_instance(self.DEFAULT_MODEL)
             await model_instance.generate_content_async(
                 "test",
                 generation_config=genai.types.GenerationConfig(candidate_count=1, max_output_tokens=1)
             )
             return True
         except Exception as e:
-            print(f"Gemini service not available. API check failed: {e}")
+            print(f"Gemini service not available. API check failed (using effective_api_key): {e}")
+            # This might indicate the key, though configured, is invalid or has quota issues.
             return False
     def _get_model_instance(self, model_id: Optional[str] = None): # No changes here, internal helper
         effective_model_id = model_id or self.DEFAULT_MODEL
@@ -426,39 +422,93 @@ if __name__ == '__main__':
         load_dotenv(dotenv_path=env_path_monorepo_root)
     else:
         print(f"Warning: .env file not found at {env_path_api_root} or {env_path_monorepo_root}. Service might not initialize correctly.")
-    settings.GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", settings.GEMINI_API_KEY)
-    settings.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", settings.OPENAI_API_KEY)
+
+    # Use a placeholder current_user and db for service initialization and checks in main_test
+    class DummyUser(UserModel):
+        id: int = 1
+        username: str = "testuser"
+        # Add other fields if necessary, matching UserModel structure
+        email: Optional[str] = "test@example.com"
+        full_name: Optional[str] = "Test User"
+        disabled: bool = False
+        is_superuser: bool = False
+        openai_api_key_provided: bool = False
+        sd_api_key_provided: bool = False
+        gemini_api_key_provided: bool = False
+        other_llm_api_key_provided: bool = False
+        # campaigns, llm_configs, roll_tables can be empty lists or None
+        campaigns = []
+        llm_configs = []
+        roll_tables = []
+
+
+    mock_user = DummyUser()
+    mock_db_session: Optional[Session] = None
+
+
     async def main_test(): # Async function definition
-        db_session_placeholder: Optional[Session] = None # Placeholder for db session
-        gemini_service_instance_for_check = GeminiLLMService() # Create instance for is_available check
-        is_initially_available = False
+        # Load environment variables for GEMINI_API_KEY specifically for the test
+        # This allows testing both system key and constructor-injected key scenarios if desired
+        system_gemini_key = os.getenv("GEMINI_API_KEY", settings.GEMINI_API_KEY) # settings.GEMINI_API_KEY might be already updated by load_dotenv
+        settings.GEMINI_API_KEY = system_gemini_key # Ensure settings object has the key from .env for system fallback test
+
+        # Test with system key first (or if no user key is provided)
+        print(f"Attempting to initialize GeminiLLMService with system key: ...{system_gemini_key[-4:] if system_gemini_key and system_gemini_key != 'YOUR_GEMINI_API_KEY' else 'Not Set or Placeholder'}")
+        gemini_service_system = GeminiLLMService() # Uses system key from settings if no key passed
+
+        is_system_available = await gemini_service_system.is_available(current_user=mock_user, db=mock_db_session)
+        if not is_system_available:
+            print("Skipping GeminiLLMService tests as system GEMINI_API_KEY is not set, is a placeholder, or service is unavailable.")
+            await gemini_service_system.close()
+            return
+
+        print("GeminiLLMService with system key is available.")
+        # Optionally, run a quick test with the system key service instance
+        # For example, list models:
+        # models_list_system = await gemini_service_system.list_available_models(current_user=mock_user, db=mock_db_session)
+        # print(f"Models available with system key: {[m['name'] for m in models_list_system[:2]]}") # Print first 2 model names
+
+        # Now, to test with a constructor-injected key (if different or for specific test)
+        # For this example, we'll just re-use the system_gemini_key as if it were user-provided
+        # In a real test suite, you might have a separate test_user_api_key
+        user_provided_key_for_test = system_gemini_key
+        print(f"\nAttempting to initialize GeminiLLMService with a constructor-injected key: ...{user_provided_key_for_test[-4:] if user_provided_key_for_test and user_provided_key_for_test != 'YOUR_GEMINI_API_KEY' else 'Not Set or Placeholder'}")
+        gemini_service = GeminiLLMService(api_key=user_provided_key_for_test) # Instance for further tests
+
         try:
-            is_initially_available = await gemini_service_instance_for_check.is_available()
-        finally:
-            await gemini_service_instance_for_check.close() # Ensure close is awaited
-        if not is_initially_available: # Check availability using the instance method
-            print("Skipping GeminiLLMService tests as GEMINI_API_KEY is not set or is a placeholder.")
-            return # Exit main_test if not available
-        print(f"Attempting to initialize GeminiLLMService with key: ...{settings.GEMINI_API_KEY[-4:] if settings.GEMINI_API_KEY else 'None'}")
-        gemini_service = GeminiLLMService() # Re-initialize for actual use
-        try:
-            print("GeminiLLMService Initialized for tests.") # Clarified print message
+            # The is_available check is crucial and now uses the logic from __init__
+            if not await gemini_service.is_available(current_user=mock_user, db=mock_db_session):
+                 print("GeminiLLMService with constructor-injected key is NOT available. Check key and configuration.")
+                 await gemini_service.close()
+                 await gemini_service_system.close() # Also close the system instance
+                 return
+
+            print("GeminiLLMService with constructor-injected key Initialized and Available for tests.")
             print("\nAvailable Gemini Models (IDs are for service methods):")
-            models_list = await gemini_service.list_available_models() # Use a different variable name
+            models_list = await gemini_service.list_available_models(current_user=mock_user, db=mock_db_session) # Use a different variable name
+            for m in models_list:
+                print(f"- {m['name']} (id: {m['id']})")
             for m in models_list:
                 print(f"- {m['name']} (id: {m['id']})")
             if models_list:
                 test_model_id_for_service = gemini_service.DEFAULT_MODEL
-                if len(models_list) > 1:
-                    alt_models = [m['id'] for m in models_list if m['id'] != gemini_service.DEFAULT_MODEL]
-                    if alt_models:
-                        test_model_id_for_service = alt_models[0]
+                # Try to pick a different model if available for more robust testing
+                alt_models = [m['id'] for m in models_list if m['id'] != gemini_service.DEFAULT_MODEL and "vision" not in m['id'].lower()] # Prefer non-vision for text tests
+                if not alt_models: # If only vision models or only default, stick to default
+                     alt_models = [m['id'] for m in models_list if m['id'] != gemini_service.DEFAULT_MODEL] # take any other model
                 
+                if alt_models:
+                    test_model_id_for_service = alt_models[0]
+                else: # Only one model in list, use it
+                    test_model_id_for_service = models_list[0]['id']
+
                 print(f"\nUsing model ID: '{test_model_id_for_service}' for generation tests...")
+
                 print("\n--- Testing Generic Text Generation ---")
                 try:
                     generic_text = await gemini_service.generate_text(
                         prompt=f"Tell me a short story about a robot learning to paint. Use model {test_model_id_for_service}.", 
+                        current_user=mock_user, db=mock_db_session, # Pass mock_user and mock_db_session
                         model=test_model_id_for_service, 
                         temperature=0.8, 
                         max_tokens=200
@@ -466,26 +516,28 @@ if __name__ == '__main__':
                     print("Generic Text Output (first 250 chars):", generic_text[:250] + "..." if generic_text else "No generic text generated.")
                 except Exception as e:
                     print(f"Error during generic text generation test: {e}")
+
                 print(f"\n--- Testing Campaign Concept Generation (using default model: {gemini_service.DEFAULT_MODEL}) ---")
-                db_session_placeholder: Optional[Session] = None
                 try:
-                    concept = await gemini_service.generate_campaign_concept("A city powered by captured dreams.", db=db_session_placeholder)
+                    concept = await gemini_service.generate_campaign_concept("A city powered by captured dreams.", current_user=mock_user, db=mock_db_session) # Pass mock_user and mock_db_session
                     print("Concept Output (first 150 chars):", concept[:150] + "..." if concept else "No concept generated.")
                     if concept:
                         print(f"\n--- Testing TOC Generation (using model: {test_model_id_for_service}) ---")
-                        toc_result = await gemini_service.generate_toc(concept, db=db_session_placeholder, model=test_model_id_for_service)
+                        toc_result = await gemini_service.generate_toc(concept, current_user=mock_user, db=mock_db_session, model=test_model_id_for_service) # Pass mock_user and mock_db_session
                         if toc_result:
                             print("Display TOC Output (first 150 chars):", toc_result.get("display_toc", "")[:150] + "...")
                             print("Homebrewery TOC Output (first 150 chars):", toc_result.get("homebrewery_toc", "")[:150] + "...")
                         else:
                             print("No TOC generated.")
+
                         print(f"\n--- Testing Titles Generation (using default model: {gemini_service.DEFAULT_MODEL}) ---")
-                        titles = await gemini_service.generate_titles(concept, db=db_session_placeholder, count=3)
+                        titles = await gemini_service.generate_titles(concept, current_user=mock_user, db=mock_db_session, count=3) # Pass mock_user and mock_db_session
                         print("Titles Output:", titles)
+
                         print(f"\n--- Testing Section Content Generation (using model: {test_model_id_for_service}) ---")
                         section_content = await gemini_service.generate_section_content(
                             campaign_concept=concept,
-                            db=db_session_placeholder,
+                            current_user=mock_user, db=mock_db_session, # Pass mock_user and mock_db_session
                             existing_sections_summary="Chapter 1: The Dream Weavers. Chapter 2: The Nightmare Market.",
                             section_creation_prompt="A character discovers a way to enter the dreamscape physically.",
                             section_title_suggestion="Chapter 3: Lucid Reality",
@@ -496,10 +548,15 @@ if __name__ == '__main__':
                      print(f"Error during campaign feature tests: {e}")
             else:
                 print("No Gemini models listed by the service, skipping generation tests.")
-        except ValueError as ve:
-            print(f"Error initializing or using GeminiLLMService: {ve}")
-        except Exception as e:
+
+        except ValueError as ve: # Catch specific errors if needed
+            print(f"ValueError during GeminiLLMService testing: {ve}")
+        except LLMServiceUnavailableError as llmsue: # Catch specific errors if needed
+            print(f"LLMServiceUnavailableError during GeminiLLMService testing: {llmsue}")
+        except Exception as e: # General catch-all
             print(f"An unexpected error occurred during GeminiLLMService testing: {e}")
         finally:
-            await gemini_service.close() # Ensure client is closed
+            if 'gemini_service' in locals() and gemini_service: await gemini_service.close()
+            if 'gemini_service_system' in locals() and gemini_service_system: await gemini_service_system.close()
+
     asyncio.run(main_test())

@@ -7,7 +7,8 @@ from app.db import get_db
 from app.services.llm_service import LLMServiceUnavailableError, LLMGenerationError
 from app.services.llm_factory import get_llm_service, get_available_models_info
 from app.core.config import settings
-from app.services.auth_service import get_current_active_user # Import for auth
+from app.services.auth_service import get_current_active_user
+from app import crud, orm_models # For fetching orm_models.User
 
 router = APIRouter()
 
@@ -77,7 +78,14 @@ async def generate_text_endpoint( # Renamed to match existing, added db
     provider_name, model_specific_id = _extract_provider_and_model(request_body.model_id_with_prefix)
         
     try:
+        # Fetch the ORM user model
+        current_user_orm = crud.get_user(db, user_id=current_user.id)
+        if not current_user_orm:
+            raise HTTPException(status_code=404, detail="User not found in database.")
+
         llm_service = get_llm_service(
+            db=db,
+            current_user_orm=current_user_orm,
             provider_name=provider_name,
             model_id_with_prefix=request_body.model_id_with_prefix
         )
@@ -117,7 +125,16 @@ async def test_openai_config(
     """
     provider_to_test = "openai"
     try:
-        llm_service = get_llm_service(provider_name=provider_to_test)
+        # Fetch the ORM user model
+        current_user_orm = crud.get_user(db, user_id=current_user.id)
+        if not current_user_orm:
+            raise HTTPException(status_code=404, detail="User not found in database.")
+
+        llm_service = get_llm_service(
+            db=db,
+            current_user_orm=current_user_orm,
+            provider_name=provider_to_test
+        )
         # The is_available() method for OpenAI now raises LLMServiceUnavailableError if the models.list() call fails
         # So, if get_llm_service succeeds, and is_available also succeeds by not raising, it's available.
         # However, is_available() itself returns True/False after its internal check.
@@ -176,7 +193,16 @@ async def test_openai_config_v2(
     """
     provider_to_test = "openai"
     try:
-        llm_service = get_llm_service(provider_name=provider_to_test)
+        # Fetch the ORM user model
+        current_user_orm = crud.get_user(db, user_id=current_user.id)
+        if not current_user_orm:
+            raise HTTPException(status_code=404, detail="User not found in database.")
+
+        llm_service = get_llm_service(
+            db=db,
+            current_user_orm=current_user_orm,
+            provider_name=provider_to_test
+        )
 
         if await llm_service.is_available(current_user=current_user, db=db): # Pass args. This now raises LLMServiceUnavailableError on failure
             return LLMConfigStatus(
