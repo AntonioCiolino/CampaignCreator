@@ -186,7 +186,7 @@ const UserSettingsPage: React.FC = () => {
 
     try {
       const updatedUser = await updateUser(currentUser.id, {
-        sd_engine_preference: sdEnginePreference === "" ? null : sdEnginePreference // Send null if empty string to clear
+        sd_engine_preference: sdEnginePreference === "" ? undefined : sdEnginePreference // Send undefined if empty string
       });
       setSdSettingsMessage('Stable Diffusion settings updated successfully!');
       if (setAuthUser) setAuthUser(updatedUser);
