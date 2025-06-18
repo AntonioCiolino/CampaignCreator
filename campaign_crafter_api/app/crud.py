@@ -293,8 +293,15 @@ async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, 
     generated_concept = None
     # Only attempt to generate a concept if there's an initial prompt
     if campaign_payload.initial_user_prompt:
+        current_user_orm_for_keys = get_user(db, user_id=current_user_obj.id)
+        # If current_user_orm_for_keys is None, it's an inconsistency.
+        # get_llm_service will use system keys if current_user_orm_for_keys is None.
         try:
-            llm_service: LLMService = get_llm_service(campaign_payload.model_id_with_prefix_for_concept)
+            llm_service: LLMService = get_llm_service(
+                db=db,
+                current_user_orm=current_user_orm_for_keys,
+                model_id_with_prefix=campaign_payload.model_id_with_prefix_for_concept
+            )
             generated_concept = await llm_service.generate_campaign_concept(
                 user_prompt=campaign_payload.initial_user_prompt,
                 db=db,

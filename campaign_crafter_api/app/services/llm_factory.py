@@ -111,13 +111,22 @@ async def get_available_models_info(db: Session, current_user: UserModel) -> Lis
     # Iterate over a copy of keys in case the dictionary is modified elsewhere
     provider_names = list(_llm_service_providers.keys())
 
+    if not current_user: # Should not happen if endpoint protects correctly
+        raise LLMServiceUnavailableError("User context is required to list available models.")
+
+    current_user_orm = crud.get_user(db, user_id=current_user.id)
+    if not current_user_orm:
+        # This means the user from the token exists in Pydantic form but not in DB via crud.get_user
+        # This is a critical state inconsistency.
+        raise LLMServiceUnavailableError(f"Could not retrieve ORM user for user ID {current_user.id}. Cannot determine API key context.")
+
     for provider_name in provider_names:
         service: Optional[AbstractLLMService] = None
         try:
             print(f"Attempting to get service and models for: {provider_name}")
             # get_llm_service itself checks for basic configuration (API keys/URL)
             # and raises LLMServiceUnavailableError if not configured.
-            service = get_llm_service(provider_name)
+            service = get_llm_service(db=db, current_user_orm=current_user_orm, provider_name=provider_name)
 
             # Pass current_user and db to is_available
             if not await service.is_available(current_user=current_user, db=db):
