@@ -303,15 +303,26 @@ async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, 
         # If current_user_orm_for_keys is None, it's an inconsistency.
         # get_llm_service will use system keys if current_user_orm_for_keys is None.
         try:
-            llm_service: LLMService = get_llm_service(
+            provider_name_for_concept = None
+            model_specific_id_for_concept_crud = None
+            if campaign_payload.model_id_with_prefix_for_concept:
+                if "/" in campaign_payload.model_id_with_prefix_for_concept:
+                    provider_name_for_concept, model_specific_id_for_concept_crud = campaign_payload.model_id_with_prefix_for_concept.split("/",1)
+                else: # No prefix, assume it's the model ID itself
+                    model_specific_id_for_concept_crud = campaign_payload.model_id_with_prefix_for_concept
+
+            llm_service = get_llm_service(
                 db=db,
                 current_user_orm=current_user_orm_for_keys,
-                model_id_with_prefix=campaign_payload.model_id_with_prefix_for_concept
+                provider_name=provider_name_for_concept,
+                model_id_with_prefix=campaign_payload.model_id_with_prefix_for_concept,
+                campaign=None  # Campaign doesn't exist yet
             )
             generated_concept = await llm_service.generate_campaign_concept(
                 user_prompt=campaign_payload.initial_user_prompt,
                 db=db,
-                current_user=current_user_obj # Pass current_user object
+                current_user=current_user_obj, # Pass current_user object
+                model=model_specific_id_for_concept_crud
             )
         except LLMServiceUnavailableError as e:
             print(f"LLM service unavailable for concept generation: {e}")

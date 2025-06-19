@@ -123,14 +123,32 @@ async def generate_campaign_toc_endpoint(
         raise HTTPException(status_code=400, detail="Campaign concept is missing. TOC cannot be generated.")
 
     try:
+        current_user_orm = crud.get_user(db, user_id=current_user.id)
+        if not current_user_orm:
+            raise HTTPException(status_code=404, detail="Current user ORM object not found.")
         provider_name, model_specific_id = _extract_provider_and_model(request_body.model_id_with_prefix)
-        llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=request_body.model_id_with_prefix)
+        llm_service = get_llm_service(
+            db=db,
+            current_user_orm=current_user_orm,
+            provider_name=provider_name,
+            model_id_with_prefix=request_body.model_id_with_prefix,
+            campaign=db_campaign
+        )
+
+        final_model_id_for_generation = model_specific_id
+        if not request_body.model_id_with_prefix: # If no model was specified in the request
+            if db_campaign and db_campaign.selected_llm_id and "/" in db_campaign.selected_llm_id:
+                _, campaign_model_id = db_campaign.selected_llm_id.split("/", 1)
+                final_model_id_for_generation = campaign_model_id
+            # Placeholder for user preference logic:
+            # elif current_user_orm and hasattr(current_user_orm, 'preferred_llm_id') ...
+            # This ensures that if request is generic, we use campaign's specific model, else None for service default.
 
         # LLM service now returns a List[Dict[str, str]]
         display_toc_list = await llm_service.generate_toc(
             campaign_concept=db_campaign.concept,
             db=db,
-            model=model_specific_id,
+            model=final_model_id_for_generation,
             current_user=current_user
         )
     except LLMServiceUnavailableError as e:
@@ -189,13 +207,30 @@ async def generate_campaign_titles_endpoint(
     if not db_campaign.concept:
         raise HTTPException(status_code=400, detail="Campaign concept is missing. Titles cannot be generated.")
     try:
+        current_user_orm = crud.get_user(db, user_id=current_user.id)
+        if not current_user_orm:
+            raise HTTPException(status_code=404, detail="Current user ORM object not found.")
         provider_name, model_specific_id = _extract_provider_and_model(request_body.model_id_with_prefix)
-        llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=request_body.model_id_with_prefix)
+        llm_service = get_llm_service(
+            db=db,
+            current_user_orm=current_user_orm,
+            provider_name=provider_name,
+            model_id_with_prefix=request_body.model_id_with_prefix,
+            campaign=db_campaign
+        )
+
+        final_model_id_for_generation = model_specific_id
+        if not request_body.model_id_with_prefix:
+            if db_campaign and db_campaign.selected_llm_id and "/" in db_campaign.selected_llm_id:
+                _, campaign_model_id = db_campaign.selected_llm_id.split("/", 1)
+                final_model_id_for_generation = campaign_model_id
+            # Placeholder for user preference logic
+
         generated_titles = await llm_service.generate_titles( # Added await
             campaign_concept=db_campaign.concept,
             db=db,
             count=count, 
-            model=model_specific_id,
+            model=final_model_id_for_generation,
             current_user=current_user # Add this
         )
     except LLMServiceUnavailableError as e:
@@ -269,9 +304,20 @@ async def seed_sections_from_toc_endpoint(
     llm_service_instance = None
     if auto_populate and db_campaign.selected_llm_id and db_campaign.concept:
         try:
-            provider_name, _ = _extract_provider_and_model(db_campaign.selected_llm_id)
-            llm_service_instance = get_llm_service(provider_name=provider_name, model_id_with_prefix=db_campaign.selected_llm_id)
-            print(f"LLM Service for auto-population initialized: {bool(llm_service_instance)}")
+            current_user_orm = crud.get_user(db, user_id=current_user.id)
+            if not current_user_orm:
+                print(f"LLM service initialization failed for SSE: User ORM not found for user {current_user.id}")
+                llm_service_instance = None
+            else:
+                provider_name, _ = _extract_provider_and_model(db_campaign.selected_llm_id)
+                llm_service_instance = get_llm_service(
+                    db=db,
+                    current_user_orm=current_user_orm,
+                    provider_name=provider_name, # Extracted from campaign's selected_llm_id
+                    model_id_with_prefix=db_campaign.selected_llm_id, # Original prefix from campaign
+                    campaign=db_campaign
+                )
+                print(f"LLM Service for auto-population initialized: {bool(llm_service_instance)}")
         except Exception as e:
             print(f"LLM service initialization failed for SSE auto-population: {type(e).__name__} - {e}")
             llm_service_instance = None # Ensure it's None if init fails
@@ -488,8 +534,25 @@ async def create_new_campaign_section_endpoint(
     type_from_input = section_input.type or "generic" # Default to "generic" if not provided
 
     try:
+        current_user_orm = crud.get_user(db, user_id=current_user.id)
+        if not current_user_orm:
+            raise HTTPException(status_code=404, detail="Current user ORM object not found.")
         provider_name, model_specific_id = _extract_provider_and_model(section_input.model_id_with_prefix)
-        llm_service = get_llm_service(provider_name=provider_name, model_id_with_prefix=section_input.model_id_with_prefix)
+        llm_service = get_llm_service(
+            db=db,
+            current_user_orm=current_user_orm,
+            provider_name=provider_name, # Already extracted
+            model_id_with_prefix=section_input.model_id_with_prefix,
+            campaign=db_campaign # Pass the fetched campaign
+        )
+
+        final_model_id_for_generation = model_specific_id
+        if not section_input.model_id_with_prefix: # If no model specified in request
+            if db_campaign and db_campaign.selected_llm_id and "/" in db_campaign.selected_llm_id:
+                _, campaign_model_id = db_campaign.selected_llm_id.split("/", 1)
+                final_model_id_for_generation = campaign_model_id
+            # Placeholder for user preference logic
+
         generated_content = await llm_service.generate_section_content(
             campaign_concept=db_campaign.concept or "A general creative writing piece.",
             db=db,
@@ -497,7 +560,7 @@ async def create_new_campaign_section_endpoint(
             section_creation_prompt=section_input.prompt,
             section_title_suggestion=section_input.title,
             section_type=type_from_input,
-            model=model_specific_id,
+            model=final_model_id_for_generation,
             current_user=current_user # Add this
         )
     except LLMServiceUnavailableError as e:
@@ -763,7 +826,13 @@ async def regenerate_campaign_section_endpoint(
             raise HTTPException(status_code=404, detail="Current user ORM object not found.")
 
         provider_name, model_specific_id = _extract_provider_and_model(llm_model_to_use)
-        llm_service = get_llm_service(db=db, current_user_orm=current_user_orm, provider_name=provider_name, model_id_with_prefix=llm_model_to_use)
+        llm_service = get_llm_service(
+            db=db,
+            current_user_orm=current_user_orm,
+            provider_name=provider_name,
+            model_id_with_prefix=llm_model_to_use, # Pass the determined model_id_with_prefix
+            campaign=db_campaign # Add this
+        )
     except LLMServiceUnavailableError as e:
         raise HTTPException(status_code=503, detail=f"LLM Service unavailable: {str(e)}")
     except ValueError as ve:

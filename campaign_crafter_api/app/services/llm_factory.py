@@ -1,3 +1,4 @@
+import logging # Added logging
 from typing import Optional, Type, Dict, List
 from sqlalchemy.orm import Session
 from app.models import ModelInfo, User as UserModel
@@ -12,6 +13,8 @@ from app.services.deepseek_service import DeepSeekLLMService
 from app.services.local_llm_service import LocalLLMService # New import
 from app.core.config import settings
 from app.services.llm_service import LLMServiceUnavailableError # Added import
+
+logger = logging.getLogger(__name__) # Added logger
 
 # Updated mapping of provider names to service classes
 _llm_service_providers: Dict[str, Type[AbstractLLMService]] = {
@@ -29,80 +32,119 @@ if settings.LOCAL_LLM_PROVIDER_NAME:
 
 def get_llm_service(
     db: Session,
-    current_user_orm: Optional[orm_models.User], # Pass the ORM user model
+    current_user_orm: Optional[orm_models.User],
     provider_name: Optional[str] = None,
-    model_id_with_prefix: Optional[str] = None
+    model_id_with_prefix: Optional[str] = None,
+    campaign: Optional[orm_models.Campaign] = None  # New parameter
 ) -> AbstractLLMService:
     """
     Factory function to get an instance of an AbstractLLMService.
     """
+    # Inside get_llm_service function
     selected_provider: Optional[str] = None
-    local_provider_key = settings.LOCAL_LLM_PROVIDER_NAME.lower() if settings.LOCAL_LLM_PROVIDER_NAME else "local_llm"
+    source_of_selection_message: str = "unknown"
 
+    # Priority 1: Explicit provider_name from arguments (implies it was extracted from request's model_id_with_prefix by caller)
     if provider_name:
         selected_provider = provider_name.lower()
+        source_of_selection_message = f"explicitly specified provider_name='{selected_provider}' (from request's model_id_with_prefix='{model_id_with_prefix}')"
+
+    # Priority 2: model_id_with_prefix from arguments (if it contains a provider and provider_name was not derived by caller)
     elif model_id_with_prefix and "/" in model_id_with_prefix:
-        selected_provider, _ = model_id_with_prefix.split("/", 1)
-        selected_provider = selected_provider.lower()
-        print(f"Inferred provider '{selected_provider}' from model_id_with_prefix '{model_id_with_prefix}'.")
+        inferred_provider, _ = model_id_with_prefix.split("/", 1)
+        selected_provider = inferred_provider.lower()
+        source_of_selection_message = f"request's model_id_with_prefix='{model_id_with_prefix}'"
+
+    # Priority 3: Campaign's selected_llm_id
+    elif campaign and campaign.selected_llm_id and "/" in campaign.selected_llm_id:
+        inferred_provider, _ = campaign.selected_llm_id.split("/", 1)
+        selected_provider = inferred_provider.lower()
+        source_of_selection_message = f"campaign (ID: {campaign.id}) setting: '{campaign.selected_llm_id}'"
+
+    # Priority 4: User's preferred_llm_id (if exists on orm_models.User)
+    elif current_user_orm and hasattr(current_user_orm, 'preferred_llm_id'):
+        user_pref_llm_id = getattr(current_user_orm, 'preferred_llm_id', None)
+        if user_pref_llm_id and "/" in user_pref_llm_id:
+            inferred_provider, _ = user_pref_llm_id.split("/", 1)
+            selected_provider = inferred_provider.lower()
+            source_of_selection_message = f"user (ID: {current_user_orm.id}) preference: '{user_pref_llm_id}'"
+
+    # Priority 5: System fallback
     else:
-        # Default provider selection logic based on system settings if no specific request.
-        # This part might need adjustment if user-specific default is desired.
+        local_provider_key = settings.LOCAL_LLM_PROVIDER_NAME.lower() if settings.LOCAL_LLM_PROVIDER_NAME else "local_llm"
+        # Determine selected_provider based on system settings
+        temp_selected_provider: Optional[str] = None # Temporary variable for this block
         if settings.OPENAI_API_KEY and settings.OPENAI_API_KEY not in ["YOUR_API_KEY_HERE", "YOUR_OPENAI_API_KEY"]:
-            selected_provider = "openai"
+            temp_selected_provider = "openai"
         elif settings.LOCAL_LLM_API_BASE_URL and settings.LOCAL_LLM_API_BASE_URL.strip():
-            selected_provider = local_provider_key
+            temp_selected_provider = local_provider_key
         elif settings.GEMINI_API_KEY and settings.GEMINI_API_KEY not in ["YOUR_GEMINI_API_KEY"]:
-            selected_provider = "gemini"
+            temp_selected_provider = "gemini"
         elif settings.LLAMA_API_KEY and settings.LLAMA_API_KEY not in ["YOUR_LLAMA_API_KEY", "YOUR_API_KEY_HERE"]:
-            selected_provider = "llama"
+            temp_selected_provider = "llama"
         elif settings.DEEPSEEK_API_KEY and settings.DEEPSEEK_API_KEY not in ["YOUR_DEEPSEEK_API_KEY", "YOUR_API_KEY_HERE"]:
-            selected_provider = "deepseek"
-        else:
+            temp_selected_provider = "deepseek"
+
+        if not temp_selected_provider: # Check if any system default was found
+            logger.error("LLM provider could not be determined from any source, including system defaults.")
             raise LLMServiceUnavailableError(
-                "LLM provider name must be specified or inferable. No default provider could be determined because none of the supported LLM services (OpenAI, Local LLM, Gemini, Llama, DeepSeek) appear to be configured with valid API keys or URLs in the application settings. Please configure at least one provider."
+                "LLM provider could not be determined. Please configure a provider or specify one in the request, campaign, or user settings."
             )
-        print(f"Warning: No LLM provider specified or directly inferable. Defaulting to system provider '{selected_provider}'.")
+
+        selected_provider = temp_selected_provider # Assign to the main variable
+        source_of_selection_message = f"system configuration fallback (chose '{selected_provider}')"
+        logger.warning(f"LLM provider selection defaulted to system config: Chose '{selected_provider}' because no provider was specified in request, campaign, or user settings.")
 
     if not selected_provider: 
-        raise LLMServiceUnavailableError("Could not determine LLM provider.")
-        
-    if selected_provider == local_provider_key and local_provider_key not in _llm_service_providers:
-        _llm_service_providers[local_provider_key] = LocalLLMService
-        
+        logger.critical("Fatal: selected_provider is None after selection logic. This should not happen if fallback has defaults.")
+        raise LLMServiceUnavailableError("Fatal: Could not determine LLM provider.")
+
+    logger.info(f"LLM Service: Attempting to use provider '{selected_provider}' (selected based on: {source_of_selection_message}).")
+
+    local_provider_key_for_check = settings.LOCAL_LLM_PROVIDER_NAME.lower() if settings.LOCAL_LLM_PROVIDER_NAME else "local_llm"
+    if selected_provider == local_provider_key_for_check and local_provider_key_for_check not in _llm_service_providers:
+        _llm_service_providers[local_provider_key_for_check] = LocalLLMService
+
     service_class = _llm_service_providers.get(selected_provider)
 
     if not service_class:
+        logger.error(f"Unsupported or unknown LLM provider after selection: {selected_provider}")
         raise LLMServiceUnavailableError(f"Unsupported or unknown LLM provider: {selected_provider}")
 
-    user_specific_api_key: Optional[str] = None
+    user_specific_api_key: Optional[str] = None # Moved definition here
     if current_user_orm:
         encrypted_key_to_use: Optional[str] = None
         if selected_provider == "openai":
-            encrypted_key_to_use = current_user_orm.encrypted_openai_api_key
+            if hasattr(current_user_orm, 'encrypted_openai_api_key'):
+                encrypted_key_to_use = current_user_orm.encrypted_openai_api_key
         elif selected_provider == "gemini":
-            encrypted_key_to_use = current_user_orm.encrypted_gemini_api_key
-        # Placeholder for 'other_llm_api_key' logic:
-        # elif selected_provider == "some_other_provider_mapped_to_other_llm":
-        #     encrypted_key_to_use = current_user_orm.encrypted_other_llm_api_key
+            if hasattr(current_user_orm, 'encrypted_gemini_api_key'):
+                encrypted_key_to_use = current_user_orm.encrypted_gemini_api_key
+        elif selected_provider == "llama":
+            if hasattr(current_user_orm, 'encrypted_llama_api_key'):
+                encrypted_key_to_use = current_user_orm.encrypted_llama_api_key
+        elif selected_provider == "deepseek":
+            if hasattr(current_user_orm, 'encrypted_deepseek_api_key'):
+                encrypted_key_to_use = current_user_orm.encrypted_deepseek_api_key
 
         if encrypted_key_to_use:
-            decrypted_key = decrypt_key(encrypted_key_to_use)
-            if decrypted_key:
-                user_specific_api_key = decrypted_key
-            else:
-                print(f"Warning: Failed to decrypt API key for user {current_user_orm.id} and provider {selected_provider}.")
+            try:
+                decrypted_key = decrypt_key(encrypted_key_to_use)
+                if decrypted_key:
+                    user_specific_api_key = decrypted_key
+                else:
+                    logger.warning(f"Failed to decrypt API key for user {current_user_orm.id} and provider {selected_provider} (key was empty after decryption).")
+            except Exception as e_decrypt:
+                    logger.error(f"Error decrypting API key for user {current_user_orm.id}, provider {selected_provider}: {e_decrypt}")
 
     try:
-        # Instantiate the service with the (potentially None) user_specific_api_key
         service_instance = service_class(api_key=user_specific_api_key)
-        # The service's __init__ now handles API key logic (user vs system fallback) and client setup.
-        # No need for direct API key/URL availability checks here anymore.
         return service_instance
     except ValueError as e: 
-        # ValueError might be raised by service __init__ (e.g., LocalLLMService if URL is missing)
+        logger.error(f"ValueError during {selected_provider} service initialization: {e}")
         raise LLMServiceUnavailableError(f"Failed to initialize {selected_provider} service: {e}")
-    except Exception as e: 
+    except Exception as e:
+        logger.error(f"Unexpected error during {selected_provider} service initialization ({type(e).__name__}): {e}")
         raise LLMServiceUnavailableError(f"An unexpected error occurred while initializing {selected_provider} service ({type(e).__name__}): {e}")
 
 async def get_available_models_info(db: Session, current_user: UserModel) -> List[ModelInfo]: # Changed signature

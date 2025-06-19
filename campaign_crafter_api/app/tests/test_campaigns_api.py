@@ -15,7 +15,8 @@ from app.db import Base, get_db
 from app.orm_models import Campaign as ORMCampaign, CampaignSection as ORMCampaignSection, User as ORMUser
 from app import crud
 from app import models as pydantic_models
-from app.models import Campaign as PydanticCampaign, User as PydanticUser # Added User
+from app.models import Campaign as PydanticCampaign, User as PydanticUser, CampaignTitlesResponse, LLMGenerationRequest # Added User, CampaignTitlesResponse, LLMGenerationRequest
+from app.services.llm_service import AbstractLLMService # Added AbstractLLMService
 from app.services.openai_service import OpenAILLMService # To allow its direct instantiation if needed, or to patch its methods
 from app.services.auth_service import get_current_active_user # To override
 
@@ -151,82 +152,400 @@ def db_section(db_campaign: ORMCampaign) -> ORMCampaignSection:
     return section
 
 @pytest.mark.asyncio
+@patch('app.api.endpoints.campaigns.crud.get_campaign')
+@patch('app.api.endpoints.campaigns.crud.get_user')
 @patch('app.api.endpoints.campaigns.get_llm_service')
-async def test_generate_campaign_titles_success(mock_get_llm_service, db_campaign: ORMCampaign, async_client: AsyncClient):
-    mock_llm_instance = AsyncMock()
+async def test_generate_campaign_titles_success(
+    mock_get_llm_service: MagicMock,
+    mock_crud_get_user: MagicMock,
+    mock_crud_get_campaign: MagicMock,
+    async_client: AsyncClient,
+    current_active_user_override: PydanticUser # Use the fixture
+):
+    mock_campaign_id = 1
+    mock_user_id = current_active_user_override.id
+
+    # Mock ORM Campaign object
+    mock_orm_campaign = MagicMock(spec=ORMCampaign)
+    mock_orm_campaign.id = mock_campaign_id
+    mock_orm_campaign.owner_id = mock_user_id
+    mock_orm_campaign.concept = "Test concept for titles"
+    mock_crud_get_campaign.return_value = mock_orm_campaign
+
+    # Mock ORM User object
+    mock_orm_user = MagicMock(spec=ORMUser)
+    mock_orm_user.id = mock_user_id
+    mock_crud_get_user.return_value = mock_orm_user
+
+    # Mock LLM Service
+    mock_llm_instance = AsyncMock(spec=AbstractLLMService)
     expected_titles = ["Title 1", "Awesome Title 2", "The Third Title"]
     mock_llm_instance.generate_titles = AsyncMock(return_value=expected_titles)
     mock_get_llm_service.return_value = mock_llm_instance
 
+    request_body = LLMGenerationRequest(model_id_with_prefix="openai/gpt-3.5-turbo")
+
     response = await async_client.post(
-        f"/api/v1/campaigns/{db_campaign.id}/titles",
-        json={"model_id_with_prefix": "test_provider/test_model"},
+        f"/api/v1/campaigns/{mock_campaign_id}/titles",
+        json=request_body.model_dump(),
         params={"count": 3}
+        # Headers for auth are typically handled by the async_client fixture if auth is part of app setup
+        # or by overriding the dependency `get_current_active_user` as done by `current_active_user_override`
     )
 
     assert response.status_code == 200, response.text
-    assert response.json() == {"titles": expected_titles}
-    mock_get_llm_service.assert_called_once_with(provider_name="test_provider", model_id_with_prefix="test_provider/test_model")
+    expected_response = CampaignTitlesResponse(titles=expected_titles)
+    assert response.json() == expected_response.model_dump()
+
+    mock_crud_get_campaign.assert_called_once_with(db=ANY, campaign_id=mock_campaign_id)
+    mock_crud_get_user.assert_called_once_with(ANY, user_id=mock_user_id)
+    mock_get_llm_service.assert_called_once_with(
+        db=ANY,
+        current_user_orm=mock_orm_user,
+        provider_name="openai",
+        model_id_with_prefix="openai/gpt-3.5-turbo",
+        campaign=mock_orm_campaign
+    )
     mock_llm_instance.generate_titles.assert_called_once_with(
-        campaign_concept=db_campaign.concept, db=ANY, current_user=ANY, count=3, model="test_model"
+        campaign_concept=mock_orm_campaign.concept,
+        db=ANY,
+        current_user=current_active_user_override, # This is the Pydantic User
+        count=3,
+        model="gpt-3.5-turbo"
+    )
+
+# New test: Scenario where request model_id is None, uses campaign.selected_llm_id
+@pytest.mark.asyncio
+@patch('app.api.endpoints.campaigns.crud.get_campaign')
+@patch('app.api.endpoints.campaigns.crud.get_user')
+@patch('app.api.endpoints.campaigns.get_llm_service')
+async def test_generate_campaign_titles_uses_campaign_model_when_request_model_none(
+    mock_get_llm_service: MagicMock,
+    mock_crud_get_user: MagicMock,
+    mock_crud_get_campaign: MagicMock,
+    async_client: AsyncClient,
+    current_active_user_override: PydanticUser
+):
+    mock_campaign_id = 2
+    mock_user_id = current_active_user_override.id
+
+    mock_orm_campaign = MagicMock(spec=ORMCampaign)
+    mock_orm_campaign.id = mock_campaign_id
+    mock_orm_campaign.owner_id = mock_user_id
+    mock_orm_campaign.concept = "Test concept for titles - campaign model"
+    mock_orm_campaign.selected_llm_id = "testprovider/campaign_model" # Campaign specific model
+    mock_crud_get_campaign.return_value = mock_orm_campaign
+
+    mock_orm_user = MagicMock(spec=ORMUser)
+    mock_orm_user.id = mock_user_id
+    mock_crud_get_user.return_value = mock_orm_user
+
+    mock_llm_instance = AsyncMock(spec=AbstractLLMService)
+    expected_titles = ["Campaign Model Title 1", "Campaign Model Title 2"]
+    mock_llm_instance.generate_titles = AsyncMock(return_value=expected_titles)
+    mock_get_llm_service.return_value = mock_llm_instance
+
+    request_body = LLMGenerationRequest(model_id_with_prefix=None) # No model in request
+
+    await async_client.post(
+        f"/api/v1/campaigns/{mock_campaign_id}/titles",
+        json=request_body.model_dump(),
+        params={"count": 2}
+    )
+
+    mock_get_llm_service.assert_called_once_with(
+        db=ANY,
+        current_user_orm=mock_orm_user,
+        provider_name=None, # As request model_id_with_prefix is None
+        model_id_with_prefix=None,
+        campaign=mock_orm_campaign
+    )
+    # generate_titles should be called with the model part from campaign.selected_llm_id
+    mock_llm_instance.generate_titles.assert_called_once_with(
+        campaign_concept=mock_orm_campaign.concept,
+        db=ANY,
+        current_user=current_active_user_override,
+        count=2,
+        model="campaign_model"
+    )
+
+# New test: Scenario where request and campaign model_id are None (system fallback)
+@pytest.mark.asyncio
+@patch('app.api.endpoints.campaigns.crud.get_campaign')
+@patch('app.api.endpoints.campaigns.crud.get_user')
+@patch('app.api.endpoints.campaigns.get_llm_service')
+async def test_generate_campaign_titles_system_fallback_when_request_and_campaign_model_none(
+    mock_get_llm_service: MagicMock,
+    mock_crud_get_user: MagicMock,
+    mock_crud_get_campaign: MagicMock,
+    async_client: AsyncClient,
+    current_active_user_override: PydanticUser
+):
+    mock_campaign_id = 3
+    mock_user_id = current_active_user_override.id
+
+    mock_orm_campaign = MagicMock(spec=ORMCampaign)
+    mock_orm_campaign.id = mock_campaign_id
+    mock_orm_campaign.owner_id = mock_user_id
+    mock_orm_campaign.concept = "Test concept for titles - system fallback"
+    mock_orm_campaign.selected_llm_id = None # No campaign specific model
+    mock_crud_get_campaign.return_value = mock_orm_campaign
+
+    mock_orm_user = MagicMock(spec=ORMUser)
+    mock_orm_user.id = mock_user_id
+    mock_crud_get_user.return_value = mock_orm_user
+
+    mock_llm_instance = AsyncMock(spec=AbstractLLMService)
+    expected_titles = ["System Fallback Title 1"]
+    mock_llm_instance.generate_titles = AsyncMock(return_value=expected_titles)
+    mock_get_llm_service.return_value = mock_llm_instance
+
+    request_body = LLMGenerationRequest(model_id_with_prefix=None) # No model in request
+
+    await async_client.post(
+        f"/api/v1/campaigns/{mock_campaign_id}/titles",
+        json=request_body.model_dump(),
+        params={"count": 1}
+    )
+
+    mock_get_llm_service.assert_called_once_with(
+        db=ANY,
+        current_user_orm=mock_orm_user,
+        provider_name=None,
+        model_id_with_prefix=None,
+        campaign=mock_orm_campaign
+    )
+    # generate_titles should be called with model=None (service uses its default)
+    mock_llm_instance.generate_titles.assert_called_once_with(
+        campaign_concept=mock_orm_campaign.concept,
+        db=ANY,
+        current_user=current_active_user_override,
+        count=1,
+        model=None
     )
 
 @pytest.mark.asyncio
+@patch('app.api.endpoints.campaigns.crud.get_campaign')
+@patch('app.api.endpoints.campaigns.crud.get_user')
 @patch('app.api.endpoints.campaigns.get_llm_service')
 @patch('app.api.endpoints.campaigns.crud.update_campaign_toc')
 async def test_generate_campaign_toc_success(
-    mock_crud_update_toc: MagicMock, mock_get_llm_service: MagicMock,
-    db_campaign: ORMCampaign, async_client: AsyncClient
+    mock_crud_update_toc: MagicMock,
+    mock_get_llm_service: MagicMock,
+    mock_crud_get_user: MagicMock,
+    mock_crud_get_campaign: MagicMock,
+    async_client: AsyncClient,
+    current_active_user_override: PydanticUser # Use the fixture
 ):
-    mock_llm_instance = AsyncMock()
-    # This is the structure the LLM service's generate_toc is now expected to return
-    expected_api_display_toc = [
-        {"title": "Display TOC Item 1", "type": "unknown"},
-        {"title": "Sub Item 1.1", "type": "unknown"},
-        {"title": "Display TOC Item 2", "type": "unknown"}
-    ]
-    mock_llm_instance.generate_toc = AsyncMock(return_value=expected_api_display_toc)
+    mock_campaign_id = 1
+    mock_user_id = current_active_user_override.id
+
+    # Mock ORM Campaign object (initial state)
+    mock_initial_orm_campaign = MagicMock(spec=ORMCampaign)
+    mock_initial_orm_campaign.id = mock_campaign_id
+    mock_initial_orm_campaign.owner_id = mock_user_id
+    mock_initial_orm_campaign.concept = "Test concept for TOC"
+    mock_initial_orm_campaign.title = "Test Campaign Title"
+    mock_initial_orm_campaign.initial_user_prompt = "Initial prompt"
+    mock_initial_orm_campaign.mood_board_image_urls = []
+    mock_initial_orm_campaign.homebrewery_export = None
+    mock_initial_orm_campaign.display_toc = [{"title": "Old Chapter 1", "type": "chapter"}] # Initial TOC
+    mock_initial_orm_campaign.homebrewery_toc = None # Initial HB TOC
+    mock_crud_get_campaign.return_value = mock_initial_orm_campaign
+
+    # Mock ORM User object
+    mock_orm_user = MagicMock(spec=ORMUser)
+    mock_orm_user.id = mock_user_id
+    mock_crud_get_user.return_value = mock_orm_user
+
+    # Mock LLM Service
+    mock_llm_instance = AsyncMock(spec=AbstractLLMService)
+    generated_toc_list = [{"title": "Generated Chapter 1", "type": "chapter"}]
+    mock_llm_instance.generate_toc = AsyncMock(return_value=generated_toc_list)
     mock_get_llm_service.return_value = mock_llm_instance
 
-    # Homebrewery TOC is no longer processed or returned by the endpoint in this flow
-    mock_updated_campaign_orm = MagicMock(spec=ORMCampaign)
-    mock_updated_campaign_orm.id = db_campaign.id; mock_updated_campaign_orm.title = db_campaign.title
-    mock_updated_campaign_orm.concept = db_campaign.concept; mock_updated_campaign_orm.initial_user_prompt = db_campaign.initial_user_prompt
-    mock_updated_campaign_orm.owner_id = db_campaign.owner_id; mock_updated_campaign_orm.mood_board_image_urls = db_campaign.mood_board_image_urls
-    mock_updated_campaign_orm.homebrewery_export = "Existing export or None"
-    mock_updated_campaign_orm.display_toc = expected_api_display_toc
-    # The campaign model in response will have homebrewery_toc as None
-    # as crud.update_campaign_toc is called with homebrewery_toc_content=None
-    mock_updated_campaign_orm.homebrewery_toc = None
-    mock_crud_update_toc.return_value = mock_updated_campaign_orm
+    # Mock ORM Campaign object (after TOC update)
+    # This mock should reflect the state *after* update_campaign_toc is called
+    mock_updated_orm_campaign = MagicMock(spec=ORMCampaign)
+    mock_updated_orm_campaign.id = mock_campaign_id
+    mock_updated_orm_campaign.owner_id = mock_user_id
+    mock_updated_orm_campaign.concept = mock_initial_orm_campaign.concept
+    mock_updated_orm_campaign.title = mock_initial_orm_campaign.title
+    mock_updated_orm_campaign.initial_user_prompt = mock_initial_orm_campaign.initial_user_prompt
+    mock_updated_orm_campaign.mood_board_image_urls = mock_initial_orm_campaign.mood_board_image_urls
+    mock_updated_orm_campaign.homebrewery_export = mock_initial_orm_campaign.homebrewery_export
+    mock_updated_orm_campaign.display_toc = generated_toc_list # This is the key change
+    mock_updated_orm_campaign.homebrewery_toc = None # As per current logic
+    mock_crud_update_toc.return_value = mock_updated_orm_campaign
 
-    request_payload = {"model_id_with_prefix": "test_provider/test_model"}
-    response = await async_client.post(f"/api/v1/campaigns/{db_campaign.id}/toc", json=request_payload)
+
+    request_body = LLMGenerationRequest(model_id_with_prefix="openai/gpt-3.5-turbo")
+
+    response = await async_client.post(
+        f"/api/v1/campaigns/{mock_campaign_id}/toc",
+        json=request_body.model_dump()
+    )
 
     assert response.status_code == 200, response.text
     response_data = response.json()
-    mock_get_llm_service.assert_called_once_with(provider_name="test_provider", model_id_with_prefix="test_provider/test_model")
+
+    # Validate campaign data in response
+    # The endpoint returns a Pydantic model of the campaign
+    validated_response_campaign = PydanticCampaign.model_validate(response_data)
+    assert validated_response_campaign.id == mock_campaign_id
+    assert validated_response_campaign.display_toc == generated_toc_list
+    assert validated_response_campaign.homebrewery_toc is None
+
+
+    mock_crud_get_campaign.assert_called_once_with(db=ANY, campaign_id=mock_campaign_id)
+    mock_crud_get_user.assert_called_once_with(ANY, user_id=mock_user_id)
+    mock_get_llm_service.assert_called_once_with(
+        db=ANY,
+        current_user_orm=mock_orm_user,
+        provider_name="openai",
+        model_id_with_prefix="openai/gpt-3.5-turbo",
+        campaign=mock_initial_orm_campaign
+    )
     mock_llm_instance.generate_toc.assert_called_once_with(
-        campaign_concept=db_campaign.concept, db=ANY, current_user=ANY, model="test_model"
+        campaign_concept=mock_initial_orm_campaign.concept,
+        db=ANY,
+        current_user=current_active_user_override, # Pydantic User
+        model="gpt-3.5-turbo"
     )
     mock_crud_update_toc.assert_called_once_with(
-        db=ANY, campaign_id=db_campaign.id,
-        display_toc_content=expected_api_display_toc,
-        homebrewery_toc_content=None # Endpoint passes None for HB content
+        db=ANY,
+        campaign_id=mock_campaign_id,
+        display_toc_content=generated_toc_list,
+        homebrewery_toc_content=None
     )
-    assert "display_toc" in response_data
-    validated_campaign_response = PydanticCampaign.model_validate(response_data)
-    assert validated_campaign_response.display_toc == expected_api_display_toc
-    # homebrewery_toc in the response should be None
-    assert validated_campaign_response.homebrewery_toc is None
-    assert len(validated_campaign_response.display_toc) > 0
 
+# New test: Scenario where request model_id is None, uses campaign.selected_llm_id for TOC
+@pytest.mark.asyncio
+@patch('app.api.endpoints.campaigns.crud.get_campaign')
+@patch('app.api.endpoints.campaigns.crud.get_user')
+@patch('app.api.endpoints.campaigns.get_llm_service')
+@patch('app.api.endpoints.campaigns.crud.update_campaign_toc')
+async def test_generate_campaign_toc_uses_campaign_model_when_request_model_none(
+    mock_crud_update_toc: MagicMock,
+    mock_get_llm_service: MagicMock,
+    mock_crud_get_user: MagicMock,
+    mock_crud_get_campaign: MagicMock,
+    async_client: AsyncClient,
+    current_active_user_override: PydanticUser
+):
+    mock_campaign_id = 2
+    mock_user_id = current_active_user_override.id
+
+    mock_initial_orm_campaign = MagicMock(spec=ORMCampaign)
+    mock_initial_orm_campaign.id = mock_campaign_id
+    mock_initial_orm_campaign.owner_id = mock_user_id
+    mock_initial_orm_campaign.concept = "Test concept for TOC - campaign model"
+    mock_initial_orm_campaign.selected_llm_id = "testprovider/campaign_toc_model" # Campaign specific model
+    mock_crud_get_campaign.return_value = mock_initial_orm_campaign
+
+    mock_orm_user = MagicMock(spec=ORMUser)
+    mock_orm_user.id = mock_user_id
+    mock_crud_get_user.return_value = mock_orm_user
+
+    mock_llm_instance = AsyncMock(spec=AbstractLLMService)
+    generated_toc_list = [{"title": "Campaign Model TOC Item", "type": "generic"}]
+    mock_llm_instance.generate_toc = AsyncMock(return_value=generated_toc_list)
+    mock_get_llm_service.return_value = mock_llm_instance
+
+    mock_updated_orm_campaign = MagicMock(spec=ORMCampaign, **vars(mock_initial_orm_campaign))
+    mock_updated_orm_campaign.display_toc = generated_toc_list
+    mock_crud_update_toc.return_value = mock_updated_orm_campaign
+
+    request_body = LLMGenerationRequest(model_id_with_prefix=None) # No model in request
+
+    await async_client.post(
+        f"/api/v1/campaigns/{mock_campaign_id}/toc",
+        json=request_body.model_dump()
+    )
+
+    mock_get_llm_service.assert_called_once_with(
+        db=ANY,
+        current_user_orm=mock_orm_user,
+        provider_name=None,
+        model_id_with_prefix=None,
+        campaign=mock_initial_orm_campaign
+    )
+    mock_llm_instance.generate_toc.assert_called_once_with(
+        campaign_concept=mock_initial_orm_campaign.concept,
+        db=ANY,
+        current_user=current_active_user_override,
+        model="campaign_toc_model"
+    )
+
+# New test: Scenario where request and campaign model_id are None for TOC (system fallback)
+@pytest.mark.asyncio
+@patch('app.api.endpoints.campaigns.crud.get_campaign')
+@patch('app.api.endpoints.campaigns.crud.get_user')
+@patch('app.api.endpoints.campaigns.get_llm_service')
+@patch('app.api.endpoints.campaigns.crud.update_campaign_toc')
+async def test_generate_campaign_toc_system_fallback(
+    mock_crud_update_toc: MagicMock,
+    mock_get_llm_service: MagicMock,
+    mock_crud_get_user: MagicMock,
+    mock_crud_get_campaign: MagicMock,
+    async_client: AsyncClient,
+    current_active_user_override: PydanticUser
+):
+    mock_campaign_id = 3
+    mock_user_id = current_active_user_override.id
+
+    mock_initial_orm_campaign = MagicMock(spec=ORMCampaign)
+    mock_initial_orm_campaign.id = mock_campaign_id
+    mock_initial_orm_campaign.owner_id = mock_user_id
+    mock_initial_orm_campaign.concept = "Test concept for TOC - system fallback"
+    mock_initial_orm_campaign.selected_llm_id = None # No campaign model
+    mock_crud_get_campaign.return_value = mock_initial_orm_campaign
+
+    mock_orm_user = MagicMock(spec=ORMUser)
+    mock_orm_user.id = mock_user_id
+    mock_crud_get_user.return_value = mock_orm_user
+
+    mock_llm_instance = AsyncMock(spec=AbstractLLMService)
+    generated_toc_list = [{"title": "System Fallback TOC Item", "type": "generic"}]
+    mock_llm_instance.generate_toc = AsyncMock(return_value=generated_toc_list)
+    mock_get_llm_service.return_value = mock_llm_instance
+
+    mock_updated_orm_campaign = MagicMock(spec=ORMCampaign, **vars(mock_initial_orm_campaign))
+    mock_updated_orm_campaign.display_toc = generated_toc_list
+    mock_crud_update_toc.return_value = mock_updated_orm_campaign
+
+    request_body = LLMGenerationRequest(model_id_with_prefix=None) # No model in request
+
+    await async_client.post(
+        f"/api/v1/campaigns/{mock_campaign_id}/toc",
+        json=request_body.model_dump()
+    )
+
+    mock_get_llm_service.assert_called_once_with(
+        db=ANY,
+        current_user_orm=mock_orm_user,
+        provider_name=None,
+        model_id_with_prefix=None,
+        campaign=mock_initial_orm_campaign
+    )
+    mock_llm_instance.generate_toc.assert_called_once_with(
+        campaign_concept=mock_initial_orm_campaign.concept,
+        db=ANY,
+        current_user=current_active_user_override,
+        model=None
+    )
 
 @pytest.mark.asyncio
+@patch('app.api.endpoints.campaigns.crud.get_user') # Added patch for crud.get_user
 @patch('app.api.endpoints.campaigns.get_llm_service')
 @patch('app.api.endpoints.campaigns.crud.create_section_with_placeholder_content')
 async def test_seed_sections_from_toc_endpoint_uses_type(
-    mock_crud_create_section, mock_get_llm_service, db_campaign: ORMCampaign, async_client: AsyncClient
+    mock_crud_create_section: MagicMock,
+    mock_get_llm_service: MagicMock,
+    mock_crud_get_user: MagicMock, # Added mock for crud.get_user
+    db_campaign: ORMCampaign,
+    async_client: AsyncClient,
+    current_active_user_override: PydanticUser
 ):
     db = TestingSessionLocal()
     toc_data = [
@@ -234,10 +553,19 @@ async def test_seed_sections_from_toc_endpoint_uses_type(
         {"title": "Location Beta", "type": "Location"}
     ]
     db_campaign_instance = db.query(ORMCampaign).filter(ORMCampaign.id == db_campaign.id).first()
-    db_campaign_instance.display_toc = toc_data; db_campaign_instance.homebrewery_toc = []
+    db_campaign_instance.display_toc = toc_data
+    db_campaign_instance.homebrewery_toc = []
+    # Simulate campaign having a selected LLM ID for auto-population
+    db_campaign_instance.selected_llm_id = "test_provider/test_model_campaign_setting"
+    db_campaign_instance.concept = "A grand adventure concept for seeding." # Ensure concept exists
     db.commit(); db.refresh(db_campaign_instance); db.close()
 
-    mock_llm_instance = AsyncMock()
+    # Mock for crud.get_user called during LLM service initialization in auto-populate
+    mock_user_orm = MagicMock(spec=ORMUser)
+    mock_user_orm.id = current_active_user_override.id
+    mock_crud_get_user.return_value = mock_user_orm
+
+    mock_llm_instance = AsyncMock(spec=AbstractLLMService)
     mock_llm_instance.generate_section_content = AsyncMock(return_value="Generated content")
     mock_get_llm_service.return_value = mock_llm_instance
 
@@ -251,10 +579,23 @@ async def test_seed_sections_from_toc_endpoint_uses_type(
         return mock_section
     mock_crud_create_section.side_effect = mock_create_section_side_effect
 
-    response = await async_client.post(f"/api/v1/campaigns/{db_campaign.id}/seed_sections_from_toc?auto_populate=true&model_id_with_prefix=test_provider/test_model")
-    async for _ in response.aiter_lines(): pass
-    assert response.status_code == 200
-    assert mock_crud_create_section.call_count == 3
+    response = await async_client.post(f"/api/v1/campaigns/{db_campaign_instance.id}/seed_sections_from_toc?auto_populate=true") # Removed model_id_with_prefix from query
+    async for _ in response.aiter_lines(): pass # Consume SSE stream
+
+    assert response.status_code == 200, response.text # Added response.text for debugging
+
+    # Assert get_user was called if auto-population path was taken
+    if db_campaign_instance.selected_llm_id and db_campaign_instance.concept:
+        mock_crud_get_user.assert_called_with(ANY, user_id=current_active_user_override.id)
+        mock_get_llm_service.assert_called_with(
+            db=ANY,
+            current_user_orm=mock_user_orm,
+            provider_name="test_provider", # from campaign's selected_llm_id
+            model_id_with_prefix=db_campaign_instance.selected_llm_id,
+            campaign=db_campaign_instance
+        )
+
+    assert mock_crud_create_section.call_count == 3 # Check if sections were created
     assert mock_crud_create_section.call_args_list[0].kwargs['type'] == "npc"
     assert mock_crud_create_section.call_args_list[1].kwargs['type'] == "generic"
     assert mock_crud_create_section.call_args_list[2].kwargs['type'] == "Location"
@@ -278,12 +619,23 @@ async def test_get_campaign_full_content_formats_new_toc(db_campaign: ORMCampaig
     assert expected_toc_string in data["full_content"]
 
 @pytest.mark.asyncio
+@patch('app.api.endpoints.campaigns.crud.get_user') # Added patch for crud.get_user
 @patch('app.api.endpoints.campaigns.get_llm_service')
 @patch('app.api.endpoints.campaigns.crud.create_campaign_section')
 async def test_create_new_campaign_section_endpoint_uses_type(
-    mock_crud_create_section, mock_get_llm_service, db_campaign: ORMCampaign, async_client: AsyncClient
+    mock_crud_create_section: MagicMock,
+    mock_get_llm_service: MagicMock,
+    mock_crud_get_user: MagicMock, # Added mock for crud.get_user
+    db_campaign: ORMCampaign, # This is an ORM campaign fixture
+    async_client: AsyncClient,
+    current_active_user_override: PydanticUser
 ):
-    mock_llm_instance = AsyncMock()
+    # Mock for crud.get_user
+    mock_user_orm = MagicMock(spec=ORMUser)
+    mock_user_orm.id = current_active_user_override.id
+    mock_crud_get_user.return_value = mock_user_orm
+
+    mock_llm_instance = AsyncMock(spec=AbstractLLMService)
     mock_llm_instance.generate_section_content = AsyncMock(return_value="Generated test content.")
     mock_get_llm_service.return_value = mock_llm_instance
 
@@ -302,20 +654,55 @@ async def test_create_new_campaign_section_endpoint_uses_type(
     }
     response = await async_client.post(f"/api/v1/campaigns/{db_campaign.id}/sections", json=section_payload)
     assert response.status_code == 200, response.text
+
+    mock_crud_get_user.assert_called_once_with(ANY, user_id=current_active_user_override.id)
+    mock_get_llm_service.assert_called_once_with(
+        db=ANY,
+        current_user_orm=mock_user_orm,
+        provider_name="test", # from section_payload's model_id_with_prefix
+        model_id_with_prefix="test/model",
+        campaign=db_campaign # Passed the ORM campaign
+    )
     mock_crud_create_section.assert_called_once()
     assert mock_crud_create_section.call_args.kwargs['section_type'] == "custom_type"
+
     mock_llm_instance.generate_section_content.assert_called_once()
+    # The model passed to generate_section_content should be "model" (extracted from "test/model")
+    # and if section_payload["model_id_with_prefix"] was None, it should use campaign's model.
+    assert mock_llm_instance.generate_section_content.call_args.kwargs['model'] == "model"
     assert mock_llm_instance.generate_section_content.call_args.kwargs['section_type'] == "custom_type"
+
     response_data = response.json()
     assert response_data["title"] == "New Section with Type"; assert response_data["content"] == "Generated test content."; assert response_data["type"] == "custom_type"
 
 @pytest.mark.asyncio
+@patch('app.api.endpoints.campaigns.crud.get_campaign') # Need to mock get_campaign as it's called first
+@patch('app.api.endpoints.campaigns.crud.get_user')
 @patch('app.api.endpoints.campaigns.get_llm_service')
 @patch('app.api.endpoints.campaigns.crud.update_campaign_section')
 async def test_regenerate_campaign_section_endpoint_uses_type(
-    mock_crud_update_section, mock_get_llm_service, db_section: ORMCampaignSection, async_client: AsyncClient, current_active_user_override
+    mock_crud_update_section: MagicMock,
+    mock_get_llm_service: MagicMock,
+    mock_crud_get_user: MagicMock,
+    mock_crud_get_campaign: MagicMock, # Added mock for get_campaign
+    db_section: ORMCampaignSection, # This fixture provides an existing section
+    async_client: AsyncClient,
+    current_active_user_override: PydanticUser
 ):
-    mock_llm_instance = AsyncMock()
+    # Mock the campaign associated with db_section
+    mock_campaign_orm = MagicMock(spec=ORMCampaign)
+    mock_campaign_orm.id = db_section.campaign_id
+    mock_campaign_orm.owner_id = current_active_user_override.id
+    mock_campaign_orm.concept = "Test Concept"
+    mock_campaign_orm.selected_llm_id = "default_provider/default_model_campaign" # Campaign default
+    mock_crud_get_campaign.return_value = mock_campaign_orm
+
+    # Mock user orm
+    mock_user_orm = MagicMock(spec=ORMUser)
+    mock_user_orm.id = current_active_user_override.id
+    mock_crud_get_user.return_value = mock_user_orm
+
+    mock_llm_instance = AsyncMock(spec=AbstractLLMService)
     mock_llm_instance.generate_section_content = AsyncMock(return_value="Regenerated content.")
     mock_get_llm_service.return_value = mock_llm_instance
 
@@ -335,41 +722,79 @@ async def test_regenerate_campaign_section_endpoint_uses_type(
     mock_crud_update_section.side_effect = update_side_effect
 
     campaign_id = db_section.campaign_id
-    regenerate_payload_with_type = {
-        "section_type": "new_type_from_payload", "new_prompt": "A new prompt.",
-        "model_id_with_prefix": "test_provider/test_model"
+    # Scenario 1: Request specifies model_id_with_prefix
+    request_model_prefix = "request_provider/request_model"
+    regenerate_payload_with_type_and_model = {
+        "section_type": "new_type_from_payload",
+        "new_prompt": "A new prompt.",
+        "model_id_with_prefix": request_model_prefix
     }
     response1 = await async_client.post(
-        f"/api/v1/campaigns/{campaign_id}/sections/{db_section.id}/regenerate", json=regenerate_payload_with_type
+        f"/api/v1/campaigns/{mock_campaign_orm.id}/sections/{db_section.id}/regenerate", json=regenerate_payload_with_type_and_model
     )
     assert response1.status_code == 200, response1.text
+    mock_get_llm_service.assert_called_with(
+        db=ANY,
+        current_user_orm=mock_user_orm,
+        provider_name="request_provider",
+        model_id_with_prefix=request_model_prefix,
+        campaign=mock_campaign_orm
+    )
     mock_llm_instance.generate_section_content.assert_called_with(
-        campaign_concept=ANY, db=ANY, existing_sections_summary=ANY, section_creation_prompt=ANY,
-        section_title_suggestion=ANY, model="test_model", section_type="new_type_from_payload", current_user=ANY
+        campaign_concept=mock_campaign_orm.concept,
+        db=ANY,
+        existing_sections_summary=ANY,
+        section_creation_prompt=ANY,
+        section_title_suggestion=ANY,
+        model="request_model", # Model from request
+        section_type="new_type_from_payload",
+        current_user=current_active_user_override
     )
     assert mock_crud_update_section.call_args.kwargs['section_update_data'].type == "new_type_from_payload"
     assert response1.json()["type"] == "new_type_from_payload"
 
-    mock_llm_instance.generate_section_content.reset_mock(); mock_crud_update_section.reset_mock()
-    # For the second call, the endpoint will fetch the section from DB again.
-    # Since crud.update_campaign_section is mocked and doesn't actually save to DB,
-    # the db_section.type it fetches will be the original "initial_type".
-    # For the LLM call during the second request, the type should be what's actually in the DB ("initial_type")
-    # because section_input.type is None and the endpoint fetches the fresh section.
-    expected_llm_section_type_for_second_call = "initial_type"
-    # However, the response from the mocked CRUD operation will be based on the test's db_section fixture instance,
-    # which *was* mutated by the first call's side_effect.
-    expected_response_type_for_second_call = db_section.type # This is "new_type_from_payload"
+    # Reset mocks for next scenario
+    mock_get_llm_service.reset_mock()
+    mock_llm_instance.generate_section_content.reset_mock()
+    mock_crud_update_section.reset_mock()
+    # mock_crud_get_user.reset_mock() # get_user is called once per request
+    # mock_crud_get_campaign.reset_mock() # get_campaign is called once per request
 
-    regenerate_payload_no_type = { "new_prompt": "Another new prompt.", "model_id_with_prefix": "another_provider/another_model" }
+
+    # Scenario 2: Request does NOT specify model_id_with_prefix, uses campaign's selected_llm_id
+    regenerate_payload_no_model = {
+        "section_type": "type_from_db_or_new", # This could be None to test db_section.type fallback
+        "new_prompt": "Another new prompt."
+        # No model_id_with_prefix, so campaign's selected_llm_id should be used by endpoint
+    }
+    # Ensure db_section.type is something specific for this part of the test if needed
+    db_section.type = "original_section_type_in_db" # Simulate current DB state for type determination
+
     response2 = await async_client.post(
-        f"/api/v1/campaigns/{campaign_id}/sections/{db_section.id}/regenerate", json=regenerate_payload_no_type
+        f"/api/v1/campaigns/{mock_campaign_orm.id}/sections/{db_section.id}/regenerate", json=regenerate_payload_no_model
     )
     assert response2.status_code == 200, response2.text
-    assert mock_llm_instance.generate_section_content.call_args.kwargs['section_type'] == expected_llm_section_type_for_second_call
-    assert mock_llm_instance.generate_section_content.call_args.kwargs['model'] == "another_model"
-    assert mock_crud_update_section.call_args.kwargs['section_update_data'].type is None
-    assert response2.json()["type"] == expected_response_type_for_second_call
+
+    mock_get_llm_service.assert_called_with(
+        db=ANY,
+        current_user_orm=mock_user_orm,
+        provider_name="default_provider", # From campaign.selected_llm_id
+        model_id_with_prefix=mock_campaign_orm.selected_llm_id, # Campaign's full prefix
+        campaign=mock_campaign_orm
+    )
+    mock_llm_instance.generate_section_content.assert_called_with(
+        campaign_concept=mock_campaign_orm.concept,
+        db=ANY,
+        existing_sections_summary=ANY,
+        section_creation_prompt=ANY, # Prompt will be auto-generated based on title/type
+        section_title_suggestion=ANY,
+        model="default_model_campaign", # Model from campaign.selected_llm_id
+        section_type="type_from_db_or_new", # Type from payload
+        current_user=current_active_user_override
+    )
+    # Type in update payload will be what was in regenerate_payload_no_model.section_type
+    assert mock_crud_update_section.call_args.kwargs['section_update_data'].type == "type_from_db_or_new"
+    assert response2.json()["type"] == "type_from_db_or_new"
 
 @pytest.mark.asyncio
 @patch('app.crud.ImageGenerationService.delete_image_from_blob_storage', new_callable=AsyncMock)

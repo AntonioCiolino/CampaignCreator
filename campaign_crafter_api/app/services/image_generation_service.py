@@ -32,20 +32,31 @@ class ImageGenerationService:
         # Stable Diffusion API key is no longer initialized here.
         # Keys will be fetched per-user, per-request.
 
-        self.stable_diffusion_api_url = settings.STABLE_DIFFUSION_API_URL
+        # self.stable_diffusion_api_url = settings.STABLE_DIFFUSION_API_URL # DELETED
 
         # Warnings for system-level placeholders are still relevant for superuser fallback.
         if not settings.OPENAI_API_KEY or settings.OPENAI_API_KEY in ["YOUR_OPENAI_API_KEY", "YOUR_API_KEY_HERE"]:
             print("Warning: System-level OpenAI API key (settings.OPENAI_API_KEY) is not configured or is a placeholder. Superuser fallback for OpenAI may not work.")
 
-        if not settings.STABLE_DIFFUSION_API_KEY or settings.STABLE_DIFFUSION_API_KEY == "YOUR_STABLE_DIFFUSION_API_KEY_HERE":
-            print("Warning: System-level Stable Diffusion API key (settings.STABLE_DIFFUSION_API_KEY) is not configured or is a placeholder. Superuser fallback for Stable Diffusion may not work.")
+        # This specific check for STABLE_DIFFUSION_API_KEY is removed as per plan,
+        # the new block below handles STABLE_DIFFUSION_API_BASE_URL and its relation to the key.
+        # if not settings.STABLE_DIFFUSION_API_KEY or settings.STABLE_DIFFUSION_API_KEY == "YOUR_STABLE_DIFFUSION_API_KEY_HERE":
+        #     print("Warning: System-level Stable Diffusion API key (settings.STABLE_DIFFUSION_API_KEY) is not configured or is a placeholder. Superuser fallback for Stable Diffusion may not work.")
 
-        if not self.stable_diffusion_api_url or self.stable_diffusion_api_url == "YOUR_STABLE_DIFFUSION_API_URL_HERE":
-            print("Warning: Stable Diffusion API URL (settings.STABLE_DIFFUSION_API_URL) is not configured or is a placeholder.")
-            self.stable_diffusion_api_url = None # Ensure it's None if it's the placeholder, so calls will fail clearly.
-        elif self.stable_diffusion_api_url and not (self.stable_diffusion_api_url.startswith("http://") or self.stable_diffusion_api_url.startswith("https://")):
-            print(f"Warning: STABLE_DIFFUSION_API_URL ('{self.stable_diffusion_api_url}') does not look like a valid URL. Proceeding with caution.")
+        # New warning check for STABLE_DIFFUSION_API_BASE_URL
+        if not settings.STABLE_DIFFUSION_API_BASE_URL or \
+           settings.STABLE_DIFFUSION_API_BASE_URL == "https://api.stability.ai" and \
+           (not settings.STABLE_DIFFUSION_API_KEY or settings.STABLE_DIFFUSION_API_KEY == "YOUR_STABLE_DIFFUSION_API_KEY_HERE"):
+            print("Warning: STABLE_DIFFUSION_API_BASE_URL is default or STABLE_DIFFUSION_API_KEY is a placeholder. Ensure it's correctly configured if you intend to use Stable Diffusion with the default base URL.")
+        elif settings.STABLE_DIFFUSION_API_BASE_URL and not (settings.STABLE_DIFFUSION_API_BASE_URL.startswith("http://") or settings.STABLE_DIFFUSION_API_BASE_URL.startswith("https://")):
+            print(f"Warning: STABLE_DIFFUSION_API_BASE_URL ('{settings.STABLE_DIFFUSION_API_BASE_URL}') does not look like a valid URL. Proceeding with caution.")
+
+        # Old block for self.stable_diffusion_api_url is removed.
+        # if not self.stable_diffusion_api_url or self.stable_diffusion_api_url == "YOUR_STABLE_DIFFUSION_API_URL_HERE":
+        #     print("Warning: Stable Diffusion API URL (settings.STABLE_DIFFUSION_API_URL) is not configured or is a placeholder.")
+        #     self.stable_diffusion_api_url = None
+        # elif self.stable_diffusion_api_url and not (self.stable_diffusion_api_url.startswith("http://") or self.stable_diffusion_api_url.startswith("https://")):
+        #     print(f"Warning: STABLE_DIFFUSION_API_URL ('{self.stable_diffusion_api_url}') does not look like a valid URL. Proceeding with caution.")
 
     async def _get_openai_api_key_for_user(self, current_user: UserModel, db: Session) -> str: # Added db
         """

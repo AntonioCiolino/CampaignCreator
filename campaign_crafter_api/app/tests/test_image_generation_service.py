@@ -186,6 +186,26 @@ async def test_generate_image_stable_diffusion_success(image_service, mock_db_se
         assert 'none' in kwargs['files']
         assert kwargs['files']['none'] == (None, '')
 
+@pytest.mark.asyncio
+async def test_generate_image_stable_diffusion_missing_base_url(image_service, mock_db_session, mock_current_user):
+    # Ensure _get_sd_api_key_for_user is mocked to prevent its own HTTPException
+    # if the test environment doesn't have SD keys set up for the mock_current_user.
+    image_service._get_sd_api_key_for_user = AsyncMock(return_value="dummy_sd_key")
+
+    original_sd_base_url = settings.STABLE_DIFFUSION_API_BASE_URL
+    settings.STABLE_DIFFUSION_API_BASE_URL = None  # Simulate missing base URL
+    try:
+        with pytest.raises(HTTPException) as exc_info:
+            await image_service.generate_image_stable_diffusion(
+                prompt="test prompt",
+                db=mock_db_session,
+                current_user=mock_current_user
+                # Other parameters can use defaults or be explicitly None
+            )
+        assert exc_info.value.status_code == 503
+        assert "Stable Diffusion API base URL or engine configuration is missing/invalid" in exc_info.value.detail
+    finally:
+        settings.STABLE_DIFFUSION_API_BASE_URL = original_sd_base_url # Restore original setting
 
 # TODO: Add tests for error handling in all three methods
 # e.g., API connection errors, API returning error status, _save_image failure scenarios.
