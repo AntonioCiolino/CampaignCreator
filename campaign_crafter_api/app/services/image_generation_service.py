@@ -518,11 +518,11 @@ class ImageGenerationService:
         Generates an image using Gemini API, saves it, logs to DB, and returns the permanent image URL.
         """
         # Fetching the key here primarily validates if the user has access.
-        # GeminiLLMService itself will load the key from settings or expect genai.configure()
-        # to have been called, which happens in its is_available or __init__.
-        _ = await self._get_gemini_api_key_for_user(current_user, db) # Key fetched for validation
+        # The fetched key should be passed to GeminiLLMService constructor.
+        gemini_api_key = await self._get_gemini_api_key_for_user(current_user, db)
 
-        gemini_service = GeminiLLMService()
+        # Instantiate GeminiLLMService with the fetched API key
+        gemini_service = GeminiLLMService(api_key=gemini_api_key)
 
         if not prompt:
             raise HTTPException(status_code=400, detail="Prompt cannot be empty.")
@@ -531,56 +531,60 @@ class ImageGenerationService:
         if user_id is not None and user_id != current_user.id:
             print(f"Warning: generate_image_gemini called with user_id {user_id} but current_user is {current_user.id}. Using current_user.id ({current_user.id}) for logging.")
 
-        # The model used for Gemini image generation. 'gemini-pro-vision' is a placeholder;
-        # a specific image generation model should be used if available.
-        final_model_name = model or "gemini-pro-vision"
+        # `model` is now expected to be the specific Imagen model ID selected by the user from the UI.
+        # Provide a fallback default Imagen model if none is somehow passed or if it's empty.
+        actual_imagen_model_to_use = model if model else "imagen-latest" # Default to "imagen-latest"
 
-        # The 'size' parameter for Gemini is conceptual. The actual size will depend on the API's capabilities.
+        # The model name for logging should be the actual Imagen model used.
+        final_model_name_for_logging = actual_imagen_model_to_use
+
+        # The 'size' parameter for Gemini/Imagen is conceptual. The actual size will depend on the API's capabilities.
         # For logging, we'll use the provided size or a default string.
         final_size_log = size or "default_gemini_size" # Placeholder for logging
 
         try:
-            # Call GeminiLLMService to generate image bytes
+            # Call GeminiLLMService to generate image bytes, passing the resolved Imagen model ID
             image_bytes = await gemini_service.generate_image(
                 prompt=prompt,
                 current_user=current_user,
                 db=db,
-                model=final_model_name,
-                size=size # Pass size if generate_image supports it, even if conceptual
+                model=actual_imagen_model_to_use, # Pass the resolved Imagen model ID
+                size=size # Pass original size, GeminiLLMService.generate_image might handle it
             )
 
             if image_bytes:
                 # Save image and log to DB
-                # Assuming a default filename/mime type for now, as generate_image currently only returns bytes.
-                # This could be enhanced if generate_image returns (bytes, mime_type).
                 permanent_url = await self._save_image_and_log_db(
                     prompt=prompt,
-                    model_used=final_model_name,
+                    model_used=final_model_name_for_logging, # Log the actual Imagen model used
                     size_used=final_size_log,
                     db=db,
                     image_bytes=image_bytes,
                     user_id=log_user_id,
-                    original_filename_from_api="gemini_image.png" # Placeholder filename
+                    original_filename_from_api="gemini_imagen_image.png" # Filename hint
                 )
                 return permanent_url
             else:
-                # This case should ideally be handled by generate_image raising an error
-                raise HTTPException(status_code=500, detail="Image generation with Gemini succeeded but returned no image data.")
+                # This path should ideally not be hit if gemini_service.generate_image raises LLMGenerationError on failure
+                raise HTTPException(status_code=500, detail="Image generation with Gemini (Imagen) returned no image data unexpectedly.")
 
         except LLMServiceUnavailableError as e:
-            print(f"Gemini service unavailable error: {e}")
-            raise HTTPException(status_code=503, detail=f"Gemini service is unavailable: {str(e)}")
+            print(f"Gemini/Imagen service unavailable error: {e}")
+            raise HTTPException(status_code=503, detail=f"Gemini/Imagen service is unavailable: {str(e)}")
         except LLMGenerationError as e:
-            print(f"Gemini image generation error: {e}")
-            # Check for specific error messages that might indicate a content policy violation or bad prompt
-            if "content policy" in str(e).lower() or "prompt" in str(e).lower():
-                 raise HTTPException(status_code=400, detail=f"Gemini image generation failed (possibly due to prompt or content policy): {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Failed to generate image with Gemini: {str(e)}")
+            # The error 'e' now comes from the refactored GeminiLLMService, potentially wrapping new SDK errors.
+            print(f"Gemini/Imagen image generation error: {e}")
+            # The specific string check might be less effective now.
+            # However, keeping it for now as a fallback.
+            # The new SDK might raise more specific errors that could be caught if needed.
+            if "content policy" in str(e).lower() or "prompt" in str(e).lower() or "permission" in str(e).lower() or "allowlist" in str(e).lower():
+                 raise HTTPException(status_code=400, detail=f"Image generation failed (Gemini/Imagen): {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to generate image with Gemini/Imagen: {str(e)}")
         except HTTPException: # Re-raise HTTPExceptions from _save_image_and_log_db or _get_gemini_api_key_for_user
             raise
         except Exception as e:
-            print(f"Unexpected error during Gemini image generation: {e}")
-            raise HTTPException(status_code=500, detail=f"An unexpected error occurred during Gemini image generation: {str(e)}")
+            print(f"Unexpected error during Gemini/Imagen image generation: {e}")
+            raise HTTPException(status_code=500, detail=f"An unexpected error occurred during Gemini/Imagen image generation: {str(e)}")
 
     async def delete_image_from_blob_storage(self, blob_name: str):
         """

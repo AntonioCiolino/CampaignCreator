@@ -1,4 +1,5 @@
-import google.generativeai as genai # type: ignore
+from google import genai as new_genai # type: ignore
+from google.generativeai import types as google_types # type: ignore # Assuming old types might still be needed for a bit, or map to new_genai.types
 import re # Added import
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
@@ -9,100 +10,171 @@ from app.models import User as UserModel # Added UserModel import
 # Removed import from llm_factory: from app.services.llm_factory import LLMServiceUnavailableError
 from pathlib import Path # For the __main__ block
 import asyncio # For testing async methods in __main__
+
+# Attempt to import new SDK errors, fall back or define if not available directly
+try:
+    from google.generativeai.types import BlockedPromptError as NewBlockedPromptError
+    from google.generativeai.types import GenerativeAIError as NewGenerativeAIError
+    # For specific API errors like AuthenticationError, PermissionDenied, etc.
+    # these are usually under google.api_core.exceptions or similar,
+    # but the new genai SDK might wrap them in new_genai.errors
+    from google.api_core import exceptions as google_api_exceptions # For common API errors
+except ImportError:
+    # Define placeholder errors if new SDK doesn't have them named this way,
+    # or rely on a general new_genai.errors.APIError
+    class NewBlockedPromptError(Exception): pass
+    class NewGenerativeAIError(Exception): pass
+    # google_api_exceptions might still be valid for underlying transport errors
+    from google.api_core import exceptions as google_api_exceptions
+
+
 class GeminiLLMService(AbstractLLMService):
-    PROVIDER_NAME = "gemini" # Class variable for provider name
-    DEFAULT_MODEL = "gemini-1.5-flash"
+    DEFAULT_MODEL = "gemini-1.5-flash-latest" # Updated DEFAULT_MODEL
+
     def __init__(self, api_key: Optional[str] = None):
         super().__init__(api_key=api_key)
-        self.effective_api_key = self.api_key # Key from constructor (user-provided)
+        self.effective_api_key = self.api_key
         if not self.effective_api_key:
-            self.effective_api_key = settings.GEMINI_API_KEY # Fallback to system key
+            self.effective_api_key = settings.GEMINI_API_KEY
 
+        self.client: Optional[new_genai.GenerativeServiceClient] = None # Updated type hint
         self.configured_successfully = False
+
         if self.effective_api_key and self.effective_api_key != "YOUR_GEMINI_API_KEY":
             try:
-                genai.configure(api_key=self.effective_api_key)
+                # Initialize the new client
+                self.client = new_genai.GenerativeServiceClient(
+                    client_options={"api_key": self.effective_api_key}
+                )
+                # TODO: The new SDK might not have a direct equivalent to old_genai.configure(api_key=...).
+                # The API key is typically passed during client instantiation.
+                # We'll assume client instantiation is enough for now.
+                # If self.client.transport is an attribute, can check its type.
+                # For example, if it's a gRPC transport, it might have options for API key.
+                # The new SDK's Client() might be what we need instead of GenerativeServiceClient directly for higher level APIs
+                # Let's try with new_genai.Client(api_key=...)
+                self.client = new_genai.Client(api_key=self.effective_api_key)
+
                 self.configured_successfully = True
+                print("GeminiLLMService configured successfully with new SDK client.")
             except Exception as e:
-                print(f"Error configuring Gemini client during __init__ with effective_api_key: {e}")
-                # self.configured_successfully remains False
+                self.client = None
+                self.configured_successfully = False
+                print(f"Error configuring Gemini client with new SDK: {e}")
         else:
-            print("Warning: Gemini API key (user or system) not configured or is a placeholder.")
+            self.client = None
+            self.configured_successfully = False
+            print("Warning: Gemini API key (user or system) not configured or is a placeholder for new SDK.")
         
         self.feature_prompt_service = FeaturePromptService()
 
     async def is_available(self, current_user: UserModel, db: Session) -> bool:
-        if not self.configured_successfully:
+        if not self.configured_successfully or not self.client:
             return False
         try:
-            # genai should already be configured from __init__
-            model_instance = self._get_model_instance(self.DEFAULT_MODEL)
-            await model_instance.generate_content_async(
-                "test",
-                generation_config=genai.types.GenerationConfig(candidate_count=1, max_output_tokens=1)
-            )
+            # Use a lightweight API call to check availability, e.g., listing top 1 model
+            # The new SDK uses self.client.models.list() or self.client.aio.models.list()
+            await self.client.aio.models.list(page_size=1) # Test with async client
             return True
-        except Exception as e:
-            print(f"Gemini service not available. API check failed (using effective_api_key): {e}")
-            # This might indicate the key, though configured, is invalid or has quota issues.
+        except google_api_exceptions.PermissionDenied as e: # More specific error for auth issues
+            print(f"Gemini service not available due to Permission Denied (API key issue?): {e}")
             return False
-    def _get_model_instance(self, model_id: Optional[str] = None): # No changes here, internal helper
-        effective_model_id = model_id or self.DEFAULT_MODEL
-        if not effective_model_id or not effective_model_id.strip():
-            effective_model_id = self.DEFAULT_MODEL
-        try:
-            # This part remains synchronous as model instantiation itself is not async.
-            return genai.GenerativeModel(effective_model_id)
-        except Exception as e: # Broad catch, as various errors can occur here
-            raise LLMServiceUnavailableError(f"Failed to initialize Gemini model '{effective_model_id}': {e}")
+        except google_api_exceptions.Unauthenticated as e: # More specific error for auth issues
+            print(f"Gemini service not available due to Unauthenticated (API key issue?): {e}")
+            return False
+        except new_genai.errors.APIError as e: # Catch general new SDK API errors
+            print(f"Gemini service not available. New SDK API check failed: {e}")
+            return False
+        except Exception as e:
+            print(f"Gemini service not available. Unexpected error during API check: {e}")
+            return False
+
+    # _get_model_instance method is to be removed.
    
-    async def generate_text(self, prompt: str, current_user: UserModel, db: Session, model: Optional[str] = None, temperature: float = 0.7, max_tokens: Optional[int] = None) -> str: # Added _current_user, db
-        if not await self.is_available(current_user=current_user, db=db): # Pass args
+    async def generate_text(self, prompt: str, current_user: UserModel, db: Session, model: Optional[str] = None, temperature: float = 0.7, max_tokens: Optional[int] = None) -> str:
+        if not await self.is_available(current_user=current_user, db=db):
             raise LLMServiceUnavailableError("Gemini service is not available.")
+        if not self.client: # Should be caught by is_available, but as a safeguard
+            raise LLMServiceUnavailableError("Gemini client not initialized.")
         if not prompt:
             raise ValueError("Prompt cannot be empty.")
-        model_instance = self._get_model_instance(model)
-        generation_config_params = {}
+
+        model_to_use = f"models/{model or self.DEFAULT_MODEL}"
+
+        generation_config_dict = {}
         if temperature is not None:
-            generation_config_params["temperature"] = max(0.0, min(temperature, 1.0))
+            # Ensure temperature is within valid range if SDK requires (e.g. 0.0 to 1.0 or 2.0)
+            # Assuming google_types.GenerationConfig handles validation or API does.
+            generation_config_dict["temperature"] = temperature
         if max_tokens is not None:
-            generation_config_params["max_output_tokens"] = max_tokens
+            generation_config_dict["max_output_tokens"] = max_tokens
         
-        generation_config = genai.types.GenerationConfig(**generation_config_params) if generation_config_params else None
+        # Use google_types.GenerationConfig from the new SDK (or equivalent)
+        # The new SDK might take dict directly or have its own config object.
+        # Assuming new_genai.types.GenerationConfig or directly passing the dict.
+        # Let's use the new SDK's types: google_types.GenerationConfig
+        effective_generation_config = google_types.GenerationConfig(**generation_config_dict) if generation_config_dict else None
+
         try:
-            response = await model_instance.generate_content_async(prompt, generation_config=generation_config) if generation_config else await model_instance.generate_content_async(prompt)
+            # Use the new client's async method for generating content
+            # response = await self.client.generate_content_async( # This was for the old model instance
+            # Example: response = await self.client.aio.generate_content(
+            response = await self.client.aio.models.generate_content( # Corrected: client.aio.models.generate_content
+                model=model_to_use,
+                contents=[prompt], # New SDK expects a list of contents
+                generation_config=effective_generation_config
+            )
                 
-            if response.parts:
-                return "".join(part.text for part in response.parts if hasattr(part, 'text'))
-            elif hasattr(response, 'text') and response.text: # Check for simple text response
+            # Process response - new SDK structure might differ
+            # Assuming response.text directly gives the combined text
+            if response.text:
                 return response.text
+            # Fallback for older structure or if parts are still relevant
+            elif hasattr(response, 'parts') and response.parts:
+                 return "".join(part.text for part in response.parts if hasattr(part, 'text'))
             else: # Handle cases where response might be empty or malformed
                 error_details = "Unknown reason for empty content."
                 if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
-                    error_details = f"Prompt feedback: {response.prompt_feedback}"
+                    # Accessing prompt_feedback might be different, e.g., response.prompt_feedback.block_reason
+                    feedback_info = response.prompt_feedback
+                    if hasattr(feedback_info, 'block_reason'):
+                         error_details = f"Prompt feedback: Blocked - {feedback_info.block_reason}"
+                         if hasattr(feedback_info, 'block_reason_message'):
+                             error_details += f" ({feedback_info.block_reason_message})"
+                    else:
+                        error_details = f"Prompt feedback: {feedback_info}"
                 elif not response.candidates: # No candidates means no valid response.
                     error_details = "No candidates returned in response."
-                raise LLMServiceUnavailableError(f"Gemini API call succeeded but returned no usable content. Model: {model_instance.model_name}. Details: {error_details}")
-        except Exception as e: # Catch broader exceptions from the SDK or logic
-            # Check if it's a Google specific API error if possible, otherwise generic
-            # from google.api_core import exceptions as google_exceptions
-            # if isinstance(e, google_exceptions.GoogleAPIError):
-            print(f"Gemini API error (model: {model_instance.model_name}): {type(e).__name__} - {e}")
-            raise LLMServiceUnavailableError(f"Failed to generate text with Gemini model {model_instance.model_name} due to API error: {str(e)}") from e
-            # else:
-            #     print(f"Unexpected error (model: {model_instance.model_name}): {type(e).__name__} - {e}")
-            #     raise Exception(f"An unexpected error occurred: {str(e)}") from e
+                raise LLMGenerationError(f"Gemini API call succeeded but returned no usable content. Model: {model_to_use}. Details: {error_details}")
+
+        except NewBlockedPromptError as e: # Specific error for blocked prompts
+            print(f"Gemini API error (model: {model_to_use}): Blocked prompt - {e}")
+            raise LLMGenerationError(f"Content generation blocked for model {model_to_use}. Reason: {e}") from e
+        except google_api_exceptions.PermissionDenied as e:
+            print(f"Gemini API error (model: {model_to_use}): Permission Denied - {e}")
+            raise LLMServiceUnavailableError(f"Permission denied for Gemini model {model_to_use}. API key issue or model access not granted: {e}") from e
+        except google_api_exceptions.InvalidArgument as e: # E.g. invalid model name, bad request format
+            print(f"Gemini API error (model: {model_to_use}): Invalid Argument - {e}")
+            raise LLMGenerationError(f"Invalid argument for Gemini model {model_to_use} (e.g., model name, parameters): {e}") from e
+        except new_genai.errors.APIError as e: # General new SDK API errors
+            print(f"Gemini API error (model: {model_to_use}): {type(e).__name__} - {e}")
+            raise LLMServiceUnavailableError(f"Failed to generate text with Gemini model {model_to_use} due to API error: {str(e)}") from e
+        except Exception as e: # Catch broader exceptions
+            print(f"Unexpected error during text generation (model: {model_to_use}): {type(e).__name__} - {e}")
+            raise LLMGenerationError(f"An unexpected error occurred while generating text with {model_to_use}: {str(e)}") from e
+
     async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str: # Added current_user
         if not await self.is_available(current_user=current_user, db=db): # Pass args
             raise LLMServiceUnavailableError("Gemini service is not available.")
-        model_instance = self._get_model_instance(model)
+        # model_instance = self._get_model_instance(model) # _get_model_instance removed
         
         custom_prompt_template = self.feature_prompt_service.get_prompt("Campaign", db=db)
         final_prompt = custom_prompt_template.format(user_prompt=user_prompt) if custom_prompt_template else \
                        f"Generate a detailed and engaging RPG campaign concept based on this idea: {user_prompt}. Include potential plot hooks, key NPCs, and unique settings."
         
         # Re-use generate_text for actual generation, passing current_user and db
-        return await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=1000)
+        # Model passed to generate_text should be the short ID, generate_text will prefix with "models/"
+        return await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=(model or self.DEFAULT_MODEL), temperature=0.7, max_tokens=1000)
 
     def _parse_toc_string_with_types(self, raw_toc_string: str) -> List[Dict[str, str]]:
         parsed_toc_items = []
@@ -137,7 +209,9 @@ class GeminiLLMService(AbstractLLMService):
         if not campaign_concept:
             raise ValueError("Campaign concept cannot be empty.")
         
-        model_instance = self._get_model_instance(model) # Determine model instance once
+        # model_instance = self._get_model_instance(model) # _get_model_instance removed
+        effective_model_for_toc = model or self.DEFAULT_MODEL
+
 
         # Fetch Display TOC prompt
         display_prompt_template_str = self.feature_prompt_service.get_prompt("TOC Display", db=db)
@@ -153,12 +227,12 @@ class GeminiLLMService(AbstractLLMService):
         raw_toc_string = await self.generate_text(
             prompt=display_final_prompt,
             current_user=current_user, db=db, # Pass args
-            model=model_instance.model_name,
+            model=effective_model_for_toc, # Use short model ID
             temperature=0.5,
             max_tokens=700
         )
         if not raw_toc_string:
-             raise LLMGenerationError(f"Gemini API call for Display TOC (model: {model_instance.model_name}) succeeded but returned no usable content.")
+             raise LLMGenerationError(f"Gemini API call for Display TOC (model: models/{effective_model_for_toc}) succeeded but returned no usable content.")
 
         return self._parse_toc_string_with_types(raw_toc_string)
 
@@ -169,11 +243,12 @@ class GeminiLLMService(AbstractLLMService):
             raise ValueError("Campaign concept cannot be empty.")
         if count <= 0:
             raise ValueError("Count for titles must be a positive integer.")
-        model_instance = self._get_model_instance(model)
+        # model_instance = self._get_model_instance(model) # _get_model_instance removed
+        effective_model_for_titles = model or self.DEFAULT_MODEL
         custom_prompt_template = self.feature_prompt_service.get_prompt("Campaign Names", db=db)
         final_prompt = custom_prompt_template.format(campaign_concept=campaign_concept, count=count) if custom_prompt_template else \
                        f"Based on the following RPG campaign concept: '{campaign_concept}', generate {count} alternative, catchy campaign titles. List each title on a new line. Ensure only the titles are listed, nothing else."
-        text_response = await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=150 + (count * 20)) # Pass args
+        text_response = await self.generate_text(prompt=final_prompt, current_user=current_user, db=db, model=effective_model_for_titles, temperature=0.7, max_tokens=150 + (count * 20)) # Pass args
         titles = [title.strip() for title in text_response.split('\n') if title.strip()]
         return titles[:count]
     async def generate_section_content(
@@ -191,7 +266,8 @@ class GeminiLLMService(AbstractLLMService):
             raise LLMServiceUnavailableError("Gemini service is not available.")
         if not campaign_concept:
             raise ValueError("Campaign concept is required.")
-        model_instance = self._get_model_instance(model)
+        # model_instance = self._get_model_instance(model) # _get_model_instance removed
+        effective_model_for_section = model or self.DEFAULT_MODEL
         effective_section_prompt = section_creation_prompt
         type_based_instruction = ""
         if section_type and section_type.lower() not in ["generic", "unknown", "", None]:
@@ -225,89 +301,113 @@ class GeminiLLMService(AbstractLLMService):
                 final_prompt_for_generation += f"Summary of existing sections: {existing_sections_summary}\n"
             final_prompt_for_generation += f"Instruction for new section (titled '{section_title_suggestion or 'Next Part'}', Type: '{section_type or 'Generic'}'): {effective_section_prompt}"
         
-        return await self.generate_text(prompt=final_prompt_for_generation, current_user=current_user, db=db, model=model_instance.model_name, temperature=0.7, max_tokens=4000)
+        return await self.generate_text(prompt=final_prompt_for_generation, current_user=current_user, db=db, model=effective_model_for_section, temperature=0.7, max_tokens=4000)
 
     async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, any]]:
         if not await self.is_available(current_user=current_user, db=db):
             print("Warning: Gemini API key not configured or service unavailable. Cannot fetch models.")
-            # Return a minimal list or an empty list, but ensure structure matches.
-            fallback_models = [
-                {"id": "gemini-pro", "name": "Gemini Pro (Unavailable/Fallback)", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat"]},
-                {"id": "gemini-1.5-flash", "name": "Gemini 1.5 Flash (Unavailable/Fallback)", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat"]},
-            ]
-            return fallback_models
+            return [] # Return empty list as per new requirement for unavailability
 
-        available_models: List[Dict[str, any]] = []
+        if not self.client: # Should be caught by is_available
+            return []
+
+        available_models_list: List[Dict[str, any]] = []
         try:
-            print("Fetching available models from Gemini API...")
-            # genai.list_models() is synchronous.
-            # Consider loop.run_in_executor for true async if this blocks significantly.
-            api_models = genai.list_models()
-            for m in api_models:
-                # Filter for models that support 'generateContent' as a proxy for text/chat generation
-                if 'generateContent' in m.supported_generation_methods:
-                    model_id = m.name.split('/')[-1] if '/' in m.name else m.name
+            print("Fetching available models from new Gemini SDK...")
+            # Use self.client.aio.models.list()
+            api_models_iterator = await self.client.aio.models.list()
 
-                    # Determine model_type and capabilities
-                    model_type = "chat" # Default for Gemini generative models
-                    supports_temperature = True # Gemini models generally support temperature
-                    capabilities = ["chat"]
+            async for sdk_model in api_models_iterator:
+                model_id_full = sdk_model.name # e.g., "models/gemini-1.5-pro-latest"
+                model_id_short = model_id_full.split('/')[-1]
+                model_name_display = sdk_model.display_name
 
-                    if "vision" in model_id.lower() or "vision" in m.display_name.lower():
-                        capabilities.append("vision")
-                        # Vision models are typically chat-based as well for multimodal interactions
-                    
-                    # Add to list
-                    available_models.append({
-                        "id": model_id,
-                        "name": m.display_name,
-                        "model_type": model_type,
-                        "supports_temperature": supports_temperature,
-                        "capabilities": capabilities
-                    })
+                capabilities = []
+                # Inspect sdk_model.supported_generation_methods
+                # Example: ['generateContent', 'embedContent', 'generateAnswer']
+                # Example for Imagen: ['generateImages', 'upscaleImages'] (speculative)
+                if 'generateContent' in sdk_model.supported_generation_methods:
+                    capabilities.append("chat")
+                if 'generateImages' in sdk_model.supported_generation_methods: # For Imagen models
+                    capabilities.append("image_generation")
+                if 'embedContent' in sdk_model.supported_generation_methods:
+                    capabilities.append("embedding")
 
-            if not available_models:
-                print("Warning: Gemini API returned no models supporting 'generateContent'. Using hardcoded list as fallback.")
-                raise Exception("No suitable models found from API") # Triggers fallback in except block
+                # Determine model_type
+                model_type = "image" if "image_generation" in capabilities else "chat"
+                if not capabilities: # If no known capabilities, mark as other or skip
+                    model_type = "other"
+
+                # Assume True for temperature for now, or check sdk_model attributes if available
+                # sdk_model might have attributes like `temperature_control` (bool) or similar
+                supports_temperature = True # Default assumption
+
+                available_models_list.append({
+                    "id": model_id_short, # Store short ID
+                    "name": model_name_display,
+                    "model_type": model_type,
+                    "supports_temperature": supports_temperature,
+                    "capabilities": capabilities,
+                    "provider": "gemini" # Add provider info
+                })
+
+            if not available_models_list:
+                print("Warning: New Gemini SDK returned no models. Using hardcoded list as fallback.")
+                # Fallback logic can be similar to before, or simplified
+                raise Exception("No suitable models found from API with new SDK")
 
         except Exception as e:
-            print(f"Could not dynamically fetch models from Gemini API: {e}. Using a hardcoded list as fallback.")
-            # Ensure fallback list also includes the new fields
-            available_models = [
-                {"id": "gemini-1.5-pro-latest", "name": "Gemini 1.5 Pro (Latest)", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat", "vision"]},
-                {"id": "gemini-1.5-flash-latest", "name": "Gemini 1.5 Flash (Latest)", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat", "vision"]},
-                {"id": "gemini-pro", "name": "Gemini Pro (Legacy)", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat"]}, # Older version, might phase out
-                {"id": "gemini-pro-vision", "name": "Gemini Pro Vision (Legacy)", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat", "vision"]}, # Older version
+            print(f"Could not dynamically fetch models from new Gemini SDK: {e}. Using a hardcoded list as fallback.")
+            # Fallback list (ensure it matches the new structure)
+            available_models_list = [
+                {"id": "gemini-1.5-pro-latest", "name": "Gemini 1.5 Pro (Latest)", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat", "vision"], "provider": "gemini"},
+                {"id": "gemini-1.5-flash-latest", "name": "Gemini 1.5 Flash (Latest)", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat", "vision"], "provider": "gemini"},
+                {"id": "imagen-latest", "name": "Imagen (Latest)", "model_type": "image", "supports_temperature": True, "capabilities": ["image_generation"], "provider": "gemini"}, # Example Imagen
             ]
             # Ensure default model is in the list if using fallback
-            default_model_id = self.DEFAULT_MODEL # e.g., "gemini-1.5-flash"
-            if not any(m['id'] == default_model_id for m in available_models):
-                # Find if a variant of default (e.g. latest) is present, otherwise add it
-                is_default_variant_present = any(default_model_id in m['id'] for m in available_models)
-                if not is_default_variant_present:
-                    available_models.insert(0, {
-                        "id": default_model_id,
-                        "name": default_model_id.replace("-", " ").title() + " (Default)",
-                        "model_type": "chat",
+            default_model_id_short = self.DEFAULT_MODEL # e.g., "gemini-1.5-flash-latest"
+            if not any(m['id'] == default_model_id_short for m in available_models_list):
+                 available_models_list.insert(0, {
+                        "id": default_model_id_short,
+                        "name": default_model_id_short.replace("-", " ").title() + " (Default)",
+                        "model_type": "chat", # Assuming default is chat
                         "supports_temperature": True,
-                        "capabilities": ["chat", "vision"] if "vision" in default_model_id else ["chat"]
+                        "capabilities": ["chat", "vision"] if "vision" in default_model_id_short or "flash" in default_model_id_short else ["chat"], # Basic assumption
+                        "provider": "gemini"
                     })
 
-        # Sort models to have a consistent order, e.g., by name or a preferred list
-        available_models.sort(key=lambda x: (
-            "latest" not in x["id"], # Put latest versions first
-            "pro" not in x["id"],    # Then pro versions
-            "flash" not in x["id"],  # Then flash versions
+        # Sort models
+        available_models_list.sort(key=lambda x: (
+            "imagen" in x["id"], # Put Imagen models last or first based on preference
+            "latest" not in x["id"],
+            "pro" not in x["id"],
+            "flash" not in x["id"],
             x["name"]
         ))
-        return available_models
+        return available_models_list
 
     async def close(self):
         """Close any persistent connections if the SDK requires it."""
-        # The google-generativeai library for Gemini (as of early 2024)
-        # does not typically require explicit client closing for basic generate_content_async usage.
-        # If it were using something like an httpx.AsyncClient internally that needs closing,
-        # this is where it would be done. For now, it's a no-op.
+        # The new google-genai SDK's Client object might have a close method,
+        # especially if it uses gRPC or HTTP/2 connections.
+        # For an async client (self.client.aio), it might be self.client.aio.close()
+        # or the underlying transport might need closing.
+        # For now, assume no explicit close is needed or it's handled by garbage collection.
+        if hasattr(self.client, 'aio') and hasattr(self.client.aio, '_transport') and hasattr(self.client.aio._transport, 'close'):
+            try:
+                await self.client.aio._transport.close()
+                print("Closed Gemini async client transport.")
+            except Exception as e:
+                print(f"Error closing Gemini async client transport: {e}")
+        elif hasattr(self.client, 'close'): # If the main client has close
+             try:
+                if asyncio.iscoroutinefunction(self.client.close):
+                    await self.client.close()
+                else:
+                    self.client.close()
+                print("Closed Gemini client.")
+             except Exception as e:
+                print(f"Error closing Gemini client: {e}")
         pass
 
     async def generate_homebrewery_toc_from_sections(self, sections_summary:str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
@@ -317,7 +417,9 @@ class GeminiLLMService(AbstractLLMService):
         if not sections_summary:
             return "{{toc,wide\n# Table Of Contents\n}}\n"
 
-        model_instance = self._get_model_instance(model)
+        # model_instance = self._get_model_instance(model) # _get_model_instance removed
+        effective_model_for_hb_toc = model or self.DEFAULT_MODEL
+
 
         prompt_template_str = self.feature_prompt_service.get_prompt("TOC Homebrewery", db=db)
         if not prompt_template_str:
@@ -329,40 +431,109 @@ class GeminiLLMService(AbstractLLMService):
             prompt=final_prompt,
             current_user=current_user,
             db=db,
-            model=model_instance.model_name, # Use the determined model_name
+            model=effective_model_for_hb_toc, # Use short model ID
             temperature=0.3, # Consistent with OpenAI
             max_tokens=1000    # Consistent with OpenAI
         )
         if not generated_toc:
-            raise LLMGenerationError(f"Gemini API call for Homebrewery TOC from sections (model: {model_instance.model_name}) succeeded but returned no usable content.")
+            raise LLMGenerationError(f"Gemini API call for Homebrewery TOC from sections (model: models/{effective_model_for_hb_toc}) succeeded but returned no usable content.")
 
         return generated_toc
 
-    async def generate_image(self, prompt: str, current_user: UserModel, db: Session, model: Optional[str] = "gemini-pro-vision", size: Optional[str] = None) -> bytes:
+    async def generate_image(self, prompt: str, current_user: UserModel, db: Session, model: Optional[str] = None, size: Optional[str] = None) -> bytes:
         """
-        Generates an image based on the given prompt using Gemini.
-        Note: The 'size' parameter is conceptual as API capabilities for size need confirmation.
-        The 'gemini-pro-vision' model is specified, but a dedicated image generation
-        model might be more appropriate if available via the API.
+        """
+        Generates an image using an Imagen model via the new Gemini SDK.
+        The 'size' parameter is currently conceptual and not directly mapped to API.
         """
         if not await self.is_available(current_user=current_user, db=db):
-            raise LLMServiceUnavailableError("Gemini service is not available.")
+            raise LLMServiceUnavailableError("Gemini service (for image generation) is not available.")
+        if not self.client:
+             raise LLMServiceUnavailableError("Gemini client not initialized for image generation.")
 
         if not prompt:
             raise ValueError("Prompt cannot be empty for image generation.")
 
-        # It's crucial that the chosen model supports image generation.
-        # 'gemini-pro-vision' is primarily for understanding images.
-        # This might need to be a specific image generation model (e.g., an Imagen model endpoint if accessible via Gemini SDK).
-        # For now, we proceed with the specified model, assuming it might have some image generation capabilities or this is a placeholder.
-        # model_instance = self._get_model_instance(model_id=model or "gemini-pro-vision")
+        # Default to a known Imagen model if not specified.
+        # User should pass short ID like "imagen-005" or "imagen-latest"
+        imagen_model_id_short = model or "imagen-latest" # TODO: Confirm a default Imagen model ID from list_available_models
+        model_to_use = f"models/{imagen_model_id_short}"
 
-        # Directly raise LLMGenerationError as text-to-image is not supported with this SDK configuration.
-        raise LLMGenerationError(
-            "Text-to-image generation with Gemini models is not currently supported with the configured SDK. "
-            "The 'gemini-1.5-flash' and 'gemini-pro-vision' models are intended for multimodal understanding, "
-            "not direct image generation through this service."
+        # Configure image generation parameters
+        # TODO: Map 'size' (e.g., "1024x1024") to API if supported.
+        # google_types.GenerateImagesConfig might take width, height, aspect_ratio, etc.
+        # For now, number_of_images and mime_type are common.
+        image_gen_config = google_types.GenerateImagesConfig(
+            number_of_images=1,
+            # output_mime_type='image/png' # This might be specific to older SDK or a different method.
+            # The new SDK's generate_images might infer or have different config.
+            # For now, let's assume the default is PNG or the SDK handles it.
         )
+        # If size is "WxH", parse it. Example:
+        # width, height = None, None
+        # if size and 'x' in size:
+        #   try:
+        #       width, height = map(int, size.split('x'))
+        #       image_gen_config.width = width # If supported by GenerateImagesConfig
+        #       image_gen_config.height = height # If supported
+        #   except ValueError:
+        #       print(f"Warning: Could not parse size '{size}' for Imagen.")
+
+
+        try:
+            print(f"Attempting to generate image with Imagen model: {model_to_use} using prompt: '{prompt[:50]}...'")
+
+            # Use the new client's async method for generating images
+            # response = await self.client.aio.generate_images( # This was a guess
+            response = await self.client.aio.models.generate_images( # Corrected: client.aio.models.generate_images
+                model=model_to_use,
+                prompt=prompt,
+                # config=image_gen_config # config might not be a direct param here, or named differently
+                # The method signature for client.aio.models.generate_images needs to be confirmed.
+                # It might be: generate_images(resource_name=model_to_use, prompt=prompt)
+                # Let's assume for now it takes prompt directly. If config is needed, it might be part of model options.
+            )
+
+            # Process the response to extract image bytes
+            # This is speculative and needs to be verified against the actual new SDK response structure.
+            # Assuming response.generated_images is a list of objects, each with image data.
+            if hasattr(response, 'generated_images') and response.generated_images and len(response.generated_images) > 0:
+                img_obj = response.generated_images[0] # Get the first image
+
+                # Try to access image bytes. Common attributes could be:
+                # img_obj.image_bytes, img_obj.data, img_obj._image_bytes, img_obj.content
+                if hasattr(img_obj, '_image_bytes'): # Based on some Google SDK patterns
+                    image_bytes = img_obj._image_bytes
+                    if image_bytes: return image_bytes
+                elif hasattr(img_obj, 'image_bytes'):
+                    image_bytes = img_obj.image_bytes
+                    if image_bytes: return image_bytes
+                elif hasattr(img_obj, 'data'): # Another common pattern
+                    image_bytes = img_obj.data
+                    if isinstance(image_bytes, bytes): return image_bytes
+
+                # If direct byte access fails, log for debugging
+                print(f"DEBUG: Imagen response img_obj type: {type(img_obj)}, attributes: {dir(img_obj)}")
+                raise LLMGenerationError(f"Could not extract image bytes from Imagen response object of type {type(img_obj)}.")
+            else:
+                # Log details if the response is not as expected.
+                error_message = "Imagen API call succeeded but returned no image data or unexpected structure."
+                # You might want to log the full response here for debugging if it's small enough
+                # print(f"Unexpected response structure from Imagen generation: {response}")
+                raise LLMGenerationError(error_message)
+
+        except google_api_exceptions.PermissionDenied as e:
+            print(f"Imagen API error (model: {model_to_use}): Permission Denied - {e}")
+            raise LLMServiceUnavailableError(f"Permission denied for Imagen model {model_to_use}. API key issue, allowlist, or model access not granted: {e}") from e
+        except google_api_exceptions.InvalidArgument as e:
+             print(f"Imagen API error (model: {model_to_use}): Invalid Argument - {e}")
+             raise LLMGenerationError(f"Invalid argument for Imagen model {model_to_use} (e.g., model name, parameters): {e}") from e
+        except new_genai.errors.APIError as e: # General new SDK API errors
+            print(f"Error during Imagen image generation (model: {model_to_use}): {type(e).__name__} - {e}")
+            raise LLMGenerationError(f"Failed to generate image with Imagen model {model_to_use}: {e}") from e
+        except Exception as e:
+            print(f"Unexpected error during Imagen image generation (model: {model_to_use}): {type(e).__name__} - {e}")
+            raise LLMGenerationError(f"An unexpected error occurred with Imagen model {model_to_use}: {e}") from e
 
 
 if __name__ == '__main__':

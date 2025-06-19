@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import Field # Ensure Field is imported
 from typing import Optional, List, Dict
 
 class Settings(BaseSettings):
@@ -54,6 +55,11 @@ class Settings(BaseSettings):
     LOCAL_LLM_PROVIDER_NAME: str = "local_llm" # Used as a key in the LLM factory
     LOCAL_LLM_API_BASE_URL: Optional[str] = None # e.g., "http://localhost:11434/v1" for Ollama's OpenAI compat endpoint
     LOCAL_LLM_DEFAULT_MODEL_ID: Optional[str] = None # e.g., "mistral:latest" or just "mistral"
+
+    # Google GenAI SDK - Vertex AI Configuration
+    GOOGLE_GENAI_USE_VERTEXAI: bool = Field(default=False, description="Use Vertex AI for Google GenAI services instead of Gemini Developer API")
+    GOOGLE_CLOUD_PROJECT: Optional[str] = Field(default=None, description="Google Cloud Project ID (required if GOOGLE_GENAI_USE_VERTEXAI is True)")
+    GOOGLE_CLOUD_LOCATION: Optional[str] = Field(default=None, description="Google Cloud Project Location (e.g., 'us-central1', required if GOOGLE_GENAI_USE_VERTEXAI is True)")
 
     DATABASE_URL: str = "sqlite:///./campaign_crafter_default.db"
 

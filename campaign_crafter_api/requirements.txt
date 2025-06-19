@@ -6,7 +6,7 @@ psycopg2-binary
 python-dotenv
 openai
 pydantic-settings
-google-generativeai
+google-genai
 pytest
 httpx
 pytest-asyncio

@@ -331,10 +331,26 @@ def test_service_get_random_item_from_table_user_priority(random_table_service: 
 import pytest # This was already imported above, but ensure it's available contextually
 from sqlalchemy.orm import Session # This was already imported above
 from unittest.mock import MagicMock, AsyncMock, patch # Ensure all mock types are available
-from app.services.llm_service import LLMService, LLMGenerationError, LLMServiceUnavailableError # LLMService is new here, added LLMServiceUnavailableError
-from app.models import User as UserModel # UserModel is new here
-from app.services.gemini_service import GeminiLLMService # Import GeminiLLMService
-import google.generativeai as genai # To mock the genai module
+
+# Service and error imports
+from app.services.llm_service import LLMService, LLMGenerationError, LLMServiceUnavailableError
+from app.services.gemini_service import GeminiLLMService
+from app.models import User as UserModel
+
+# Google GenAI SDK related imports (actual and for mocking)
+# We will mock 'app.services.gemini_service.new_genai' for most tests
+# For simulating errors, we might need direct access to exception types
+try:
+    from google.api_core import exceptions as google_api_exceptions
+    # For creating mock responses or types, we might need these, but usually mocked via new_genai patch
+    # from google.genai import types as google_types
+except ImportError:
+    # Define dummy exceptions if google.api_core is not available in test env (should be)
+    class MockGoogleAPIError(Exception): pass
+    google_api_exceptions = MagicMock()
+    google_api_exceptions.PermissionDenied = type('PermissionDenied', (MockGoogleAPIError,), {})
+    google_api_exceptions.InvalidArgument = type('InvalidArgument', (MockGoogleAPIError,), {})
+    google_api_exceptions.APIError = MockGoogleAPIError # General API error
 
 # Fixtures for LLMService tests
 @pytest.fixture
@@ -392,115 +408,278 @@ async def test_generate_homebrewery_toc_from_sections_empty_summary(llm_service:
 
 # --- GeminiLLMService Tests ---
 
+# --- GeminiLLMService Tests (New SDK) ---
+
+# Helper to create a mock SdkModel object (as would be returned by new_genai client)
+def create_mock_sdk_model(name: str, display_name: str, supported_generation_methods: list):
+    mock_model = MagicMock()
+    mock_model.name = name
+    mock_model.display_name = display_name
+    mock_model.supported_generation_methods = supported_generation_methods
+    return mock_model
+
 @pytest.mark.asyncio
-@patch('app.services.gemini_service.genai.GenerativeModel')
-async def test_gemini_generate_image_success(mock_generative_model_class, mock_db_session, mock_current_user):
-    """Tests successful image generation with GeminiLLMService."""
+@patch('app.services.gemini_service.new_genai.Client')
+async def test_gemini_llm_service_init_success(mock_new_genai_client_constructor, mock_current_user, mock_db_session):
+    """Tests successful client creation with new_genai.Client."""
     # Arrange
-    mock_gemini_service = GeminiLLMService()
-    mock_gemini_service.is_available = AsyncMock(return_value=True)
+    dummy_api_key = "test_gemini_key"
+    mock_client_instance = MagicMock()
+    mock_new_genai_client_constructor.return_value = mock_client_instance
 
-    # Configure the mock for the genai.GenerativeModel instance
-    mock_model_instance = AsyncMock() # The model instance itself needs to be an AsyncMock if its methods are async
+    # Act
+    service = GeminiLLMService(api_key=dummy_api_key)
 
-    # Mock the response structure from generate_content_async
-    mock_response_part = MagicMock()
-    mock_response_part.inline_data.data = b"test_image_bytes"
-    mock_response_part.inline_data.mime_type = "image/png"
+    # Assert
+    assert service.configured_successfully is True
+    assert service.client == mock_client_instance
+    mock_new_genai_client_constructor.assert_called_once_with(api_key=dummy_api_key)
 
-    mock_gemini_response = MagicMock()
-    mock_gemini_response.parts = [mock_response_part]
+@pytest.mark.asyncio
+async def test_gemini_llm_service_init_no_key(mock_current_user, mock_db_session):
+    """Tests client creation failure if API key is missing/invalid."""
+    # Arrange (simulate settings.GEMINI_API_KEY is also None or placeholder)
+    with patch('app.services.gemini_service.settings') as mock_settings:
+        mock_settings.GEMINI_API_KEY = None # Ensure system fallback is also None
+        service = GeminiLLMService(api_key=None) # Pass no key
+        assert service.configured_successfully is False
+        assert service.client is None
 
-    mock_model_instance.generate_content_async = AsyncMock(return_value=mock_gemini_response)
+        service_placeholder = GeminiLLMService(api_key="YOUR_GEMINI_API_KEY") # Pass placeholder
+        assert service_placeholder.configured_successfully is False
+        assert service_placeholder.client is None
 
-    # Patch _get_model_instance to return our fine-tuned mock_model_instance
-    # This is often cleaner than patching the class constructor if you only need to control the instance
-    # returned by a specific method within your service.
-    with patch.object(mock_gemini_service, '_get_model_instance', return_value=mock_model_instance) as mock_get_model:
-        prompt = "A beautiful sunset"
-        model_name = "gemini-pro-vision"
 
-        # Act
-        image_bytes = await mock_gemini_service.generate_image(
+@pytest.mark.asyncio
+@patch('app.services.gemini_service.new_genai.Client')
+async def test_gemini_is_available_success(mock_new_genai_client_constructor, mock_current_user, mock_db_session):
+    """Tests is_available returns True on successful API check."""
+    # Arrange
+    mock_aio_models = AsyncMock()
+    mock_aio_models.list = AsyncMock() # Successfully returns (doesn't raise)
+
+    mock_client_instance = MagicMock()
+    mock_client_instance.aio.models = mock_aio_models
+    mock_new_genai_client_constructor.return_value = mock_client_instance
+
+    service = GeminiLLMService(api_key="fake_key") # Assume configured
+
+    # Act
+    available = await service.is_available(current_user=mock_current_user, db=mock_db_session)
+
+    # Assert
+    assert available is True
+    mock_aio_models.list.assert_called_once_with(page_size=1)
+
+@pytest.mark.asyncio
+@patch('app.services.gemini_service.new_genai.Client')
+async def test_gemini_is_available_permission_denied(mock_new_genai_client_constructor, mock_current_user, mock_db_session):
+    """Tests is_available returns False on PermissionDenied."""
+    mock_aio_models = AsyncMock()
+    mock_aio_models.list = AsyncMock(side_effect=google_api_exceptions.PermissionDenied("Test permission denied"))
+
+    mock_client_instance = MagicMock()
+    mock_client_instance.aio.models = mock_aio_models
+    mock_new_genai_client_constructor.return_value = mock_client_instance
+
+    service = GeminiLLMService(api_key="fake_key")
+    available = await service.is_available(current_user=mock_current_user, db=mock_db_session)
+    assert available is False
+
+@pytest.mark.asyncio
+@patch('app.services.gemini_service.new_genai.Client')
+async def test_gemini_is_available_api_error(mock_new_genai_client_constructor, mock_current_user, mock_db_session):
+    """Tests is_available returns False on general APIError."""
+    mock_aio_models = AsyncMock()
+    # Assuming new_genai.errors.APIError exists and can be raised
+    # If new_genai.errors is not directly importable for error types, use a generic Exception
+    # or a more specific google.api_core.exceptions if that's what the SDK throws.
+    # For now, let's use google_api_exceptions.APIError as a stand-in if new_genai.errors.APIError isn't easily mockable.
+    mock_aio_models.list = AsyncMock(side_effect=google_api_exceptions.APIError("Test API error"))
+
+    mock_client_instance = MagicMock()
+    mock_client_instance.aio.models = mock_aio_models
+    mock_new_genai_client_constructor.return_value = mock_client_instance
+
+    service = GeminiLLMService(api_key="fake_key")
+    available = await service.is_available(current_user=mock_current_user, db=mock_db_session)
+    assert available is False
+
+
+@pytest.mark.asyncio
+@patch('app.services.gemini_service.new_genai.Client')
+async def test_gemini_list_available_models_success(mock_new_genai_client_constructor, mock_current_user, mock_db_session):
+    """Tests list_available_models successfully retrieves and maps models."""
+    # Arrange
+    mock_sdk_models_data = [
+        create_mock_sdk_model("models/gemini-1.5-pro-latest", "Gemini 1.5 Pro", ["generateContent"]),
+        create_mock_sdk_model("models/gemini-1.5-flash-latest", "Gemini 1.5 Flash", ["generateContent", "embedContent"]),
+        create_mock_sdk_model("models/imagen-005", "Imagen 005", ["generateImages"]),
+        create_mock_sdk_model("models/text-embedding-004", "Embedding Model 004", ["embedContent"]),
+    ]
+
+    # Mock the async iterator behavior for client.aio.models.list()
+    async def mock_model_list_iterator():
+        for model_data in mock_sdk_models_data:
+            yield model_data
+
+    mock_aio_models_client = AsyncMock()
+    mock_aio_models_client.list = MagicMock(return_value=mock_model_list_iterator()) # Return the async generator
+
+    mock_genai_client_instance = MagicMock()
+    mock_genai_client_instance.aio.models = mock_aio_models_client
+    mock_new_genai_client_constructor.return_value = mock_genai_client_instance
+
+    service = GeminiLLMService(api_key="fake_key")
+    service.is_available = AsyncMock(return_value=True) # Ensure service is considered available
+
+    # Act
+    models_list = await service.list_available_models(current_user=mock_current_user, db=mock_db_session)
+
+    # Assert
+    assert len(models_list) == 4
+
+    gemini_pro = next(m for m in models_list if m["id"] == "gemini-1.5-pro-latest")
+    assert gemini_pro["name"] == "Gemini 1.5 Pro"
+    assert gemini_pro["model_type"] == "chat"
+    assert "chat" in gemini_pro["capabilities"]
+    assert gemini_pro["provider"] == "gemini"
+
+    imagen = next(m for m in models_list if m["id"] == "imagen-005")
+    assert imagen["name"] == "Imagen 005"
+    assert imagen["model_type"] == "image"
+    assert "image_generation" in imagen["capabilities"]
+
+    embedding_model = next(m for m in models_list if m["id"] == "text-embedding-004")
+    assert "embedding" in embedding_model["capabilities"]
+    # Model type for embedding only might be 'chat' or 'other' depending on definition, check service logic
+    # Current logic: model_type = "image" if "image_generation" in capabilities else "chat"
+    # So, an embedding-only model would be "chat". This might need refinement.
+    assert embedding_model["model_type"] == "chat"
+
+
+@pytest.mark.asyncio
+@patch('app.services.gemini_service.new_genai.Client')
+async def test_gemini_generate_text_success(mock_new_genai_client_constructor, mock_current_user, mock_db_session):
+    """Tests successful text generation."""
+    # Arrange
+    mock_aio_models_client = AsyncMock()
+    mock_generate_content_response = MagicMock(text="Generated text from Gemini")
+    mock_aio_models_client.generate_content = AsyncMock(return_value=mock_generate_content_response)
+
+    mock_genai_client_instance = MagicMock()
+    mock_genai_client_instance.aio.models = mock_aio_models_client
+    mock_new_genai_client_constructor.return_value = mock_genai_client_instance
+
+    service = GeminiLLMService(api_key="fake_key")
+    service.is_available = AsyncMock(return_value=True)
+
+    prompt = "Tell me a story."
+    model_id = "gemini-1.5-flash-latest" # Short ID
+
+    # Act
+    # Ensure google_types.GenerationConfig can be instantiated or is also mocked if needed
+    # For this test, we can assume it's fine or pass None for config if generate_text handles it.
+    # The service creates GenerationConfig internally.
+    with patch('app.services.gemini_service.google_types.GenerationConfig') as mock_google_types_gen_config:
+        mock_config_instance = MagicMock()
+        mock_google_types_gen_config.return_value = mock_config_instance
+
+        generated_text = await service.generate_text(
             prompt=prompt,
             current_user=mock_current_user,
             db=mock_db_session,
-            model=model_name
+            model=model_id,
+            temperature=0.5,
+            max_tokens=100
         )
 
         # Assert
-        mock_get_model.assert_called_once_with(model_id=model_name)
-        mock_model_instance.generate_content_async.assert_called_once_with(prompt)
-        assert image_bytes == b"test_image_bytes"
-
-@pytest.mark.asyncio
-async def test_gemini_generate_image_service_unavailable(mock_db_session, mock_current_user):
-    """Tests generate_image when the Gemini service is unavailable."""
-    # Arrange
-    mock_gemini_service = GeminiLLMService()
-    mock_gemini_service.is_available = AsyncMock(return_value=False)
-
-    prompt = "A beautiful sunset"
-
-    # Act & Assert
-    with pytest.raises(LLMServiceUnavailableError, match="Gemini service is not available."):
-        await mock_gemini_service.generate_image(
-            prompt=prompt,
-            current_user=mock_current_user,
-            db=mock_db_session
+        assert generated_text == "Generated text from Gemini"
+        mock_aio_models_client.generate_content.assert_called_once_with(
+            model=f"models/{model_id}",
+            contents=[prompt],
+            generation_config=mock_config_instance # Check that the config object was passed
         )
-    mock_gemini_service.is_available.assert_called_once_with(current_user=mock_current_user, db=mock_db_session)
+        mock_google_types_gen_config.assert_called_once_with(temperature=0.5, max_output_tokens=100)
 
 
 @pytest.mark.asyncio
-@patch('app.services.gemini_service.genai.GenerativeModel')
-async def test_gemini_generate_image_no_image_data(mock_generative_model_class, mock_db_session, mock_current_user):
-    """Tests generate_image when the API returns no image data."""
-    # Arrange
-    mock_gemini_service = GeminiLLMService()
-    mock_gemini_service.is_available = AsyncMock(return_value=True)
+@patch('app.services.gemini_service.new_genai.Client')
+async def test_gemini_generate_text_api_error(mock_new_genai_client_constructor, mock_current_user, mock_db_session):
+    """Tests text generation failure due to API error."""
+    mock_aio_models_client = AsyncMock()
+    mock_aio_models_client.generate_content = AsyncMock(side_effect=google_api_exceptions.APIError("LLM Error"))
 
-    mock_model_instance = AsyncMock()
-    mock_gemini_response = MagicMock()
-    mock_gemini_response.parts = [] # No parts, or parts without inline_data
-    mock_gemini_response.prompt_feedback = None # No feedback
-    mock_gemini_response.candidates = [] # No candidates
+    mock_genai_client_instance = MagicMock()
+    mock_genai_client_instance.aio.models = mock_aio_models_client
+    mock_new_genai_client_constructor.return_value = mock_genai_client_instance
 
-    mock_model_instance.generate_content_async = AsyncMock(return_value=mock_gemini_response)
+    service = GeminiLLMService(api_key="fake_key")
+    service.is_available = AsyncMock(return_value=True)
 
-    with patch.object(mock_gemini_service, '_get_model_instance', return_value=mock_model_instance):
-        prompt = "A beautiful sunset"
+    with pytest.raises(LLMServiceUnavailableError, match="Failed to generate text with Gemini model models/gemini-1.5-flash-latest due to API error: LLM Error"):
+        await service.generate_text("A prompt", mock_current_user, mock_db_session, model="gemini-1.5-flash-latest")
 
-        # Act & Assert
-        with pytest.raises(LLMGenerationError, match="Gemini API call for image generation succeeded but returned no image data."):
-            await mock_gemini_service.generate_image(
-                prompt=prompt,
-                current_user=mock_current_user,
-                db=mock_db_session
-            )
 
 @pytest.mark.asyncio
-@patch('app.services.gemini_service.genai.GenerativeModel')
-async def test_gemini_generate_image_api_exception(mock_generative_model_class, mock_db_session, mock_current_user):
-    """Tests generate_image when the Gemini API call raises an exception."""
+@patch('app.services.gemini_service.new_genai.Client')
+async def test_gemini_generate_image_success_imagen(mock_new_genai_client_constructor, mock_current_user, mock_db_session):
+    """Tests successful image generation with Imagen model via GeminiLLMService."""
     # Arrange
-    mock_gemini_service = GeminiLLMService()
-    mock_gemini_service.is_available = AsyncMock(return_value=True)
+    mock_aio_models_client = AsyncMock()
 
-    mock_model_instance = AsyncMock()
-    mock_model_instance.generate_content_async = AsyncMock(side_effect=Exception("Gemini API Error"))
+    # Mock the structure for generate_images response
+    # Assuming the response has 'generated_images' list, and each item has '_image_bytes'
+    mock_image_object = MagicMock()
+    mock_image_object._image_bytes = b"test_imagen_bytes"
+    mock_generate_images_response = MagicMock(generated_images=[mock_image_object])
+    mock_aio_models_client.generate_images = AsyncMock(return_value=mock_generate_images_response)
 
-    with patch.object(mock_gemini_service, '_get_model_instance', return_value=mock_model_instance):
-        prompt = "A beautiful sunset"
+    mock_genai_client_instance = MagicMock()
+    mock_genai_client_instance.aio.models = mock_aio_models_client
+    mock_new_genai_client_constructor.return_value = mock_genai_client_instance
 
-        # Act & Assert
-        with pytest.raises(LLMGenerationError, match="Failed to generate image with Gemini model gemini-pro-vision: Gemini API Error"):
-            await mock_gemini_service.generate_image(
-                prompt=prompt,
-                current_user=mock_current_user,
-                db=mock_db_session,
-                model="gemini-pro-vision" # Explicitly pass model for error message check
-            )
+    service = GeminiLLMService(api_key="fake_key")
+    service.is_available = AsyncMock(return_value=True)
+
+    prompt = "A futuristic city"
+    model_id = "imagen-005" # Short ID for an Imagen model
+
+    # Act
+    image_bytes = await service.generate_image(
+        prompt=prompt,
+        current_user=mock_current_user,
+        db=mock_db_session,
+        model=model_id
+    )
+
+    # Assert
+    assert image_bytes == b"test_imagen_bytes"
+    mock_aio_models_client.generate_images.assert_called_once_with(
+        model=f"models/{model_id}",
+        prompt=prompt
+        # config is not passed in current service.generate_image implementation
+    )
+
+
+@pytest.mark.asyncio
+@patch('app.services.gemini_service.new_genai.Client')
+async def test_gemini_generate_image_api_error_imagen(mock_new_genai_client_constructor, mock_current_user, mock_db_session):
+    """Tests Imagen image generation failure due to API error."""
+    mock_aio_models_client = AsyncMock()
+    mock_aio_models_client.generate_images = AsyncMock(side_effect=google_api_exceptions.APIError("Imagen LLM Error"))
+
+    mock_genai_client_instance = MagicMock()
+    mock_genai_client_instance.aio.models = mock_aio_models_client
+    mock_new_genai_client_constructor.return_value = mock_genai_client_instance
+
+    service = GeminiLLMService(api_key="fake_key")
+    service.is_available = AsyncMock(return_value=True)
+
+    with pytest.raises(LLMGenerationError, match="Failed to generate image with Imagen model models/imagen-005: Imagen LLM Error"):
+        await service.generate_image("A prompt for Imagen", mock_current_user, mock_db_session, model="imagen-005")
+
 
 @pytest.mark.asyncio
 async def test_generate_homebrewery_toc_from_sections_none_summary(llm_service: LLMService, mock_db_session: Session, mock_current_user: UserModel):
