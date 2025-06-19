@@ -3,7 +3,7 @@ import Modal from '../../common/Modal';
 import Input from '../../common/Input';
 import Button from '../../common/Button';
 // import apiClient from '../../../services/apiClient'; // Removed as generateImage service is used directly
-import { generateImage, ImageGenerationParams, ImageGenerationResponse, ImageModelName as BackendImageModelName } from '../../../services/llmService'; // Moved import to top
+import { generateImage, ImageGenerationParams, ImageGenerationResponse, ImageModelName as BackendImageModelName, getAvailableLLMs, LLMModel } from '../../../services/llmService'; // Moved import to top
 import './ImageGenerationModal.css';
 
 // Helper function to sanitize prompt for use as filename
@@ -58,6 +58,10 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
 
   // Gemini specific
   const [geminiModelName, setGeminiModelName] = useState<string>('gemini-pro-vision'); // Default Gemini model
+  const [geminiModelsList, setGeminiModelsList] = useState<LLMModel[]>([]);
+  const [isGeminiModelsLoading, setIsGeminiModelsLoading] = useState<boolean>(false);
+  const [geminiModelsError, setGeminiModelsError] = useState<string | null>(null);
+
 
   // Common state
   const [genericSizeInput, setGenericSizeInput] = useState<string>('1024x1024'); // For SD and conceptual for Gemini
@@ -245,10 +249,53 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
       setDalleQuality('standard');
       setSdSteps(30);
       setSdCfgScale(7.5);
-      setGeminiModelName('gemini-pro-vision');
+      setGeminiModelName('gemini-pro-vision'); // This might be immediately overridden
       setGenericSizeInput('1024x1024');
+      // Reset Gemini models list and errors as well
+      setGeminiModelsList([]);
+      setIsGeminiModelsLoading(false);
+      setGeminiModelsError(null);
     }
   }, [isOpen, autoApplyDefault]);
+
+  // Effect to fetch Gemini models when modal opens and Gemini is selected
+  useEffect(() => {
+    if (isOpen && selectedModel === 'gemini') {
+      const fetchGeminiModels = async () => {
+        setIsGeminiModelsLoading(true);
+        setGeminiModelsError(null);
+        try {
+          const allModels = await getAvailableLLMs();
+          const filteredModels = allModels.filter(model => model.id.startsWith('gemini/'));
+          setGeminiModelsList(filteredModels);
+
+          if (filteredModels.length > 0) {
+            const currentModelIdWithoutPrefix = geminiModelName;
+            const currentModelInNewList = filteredModels.find(m => m.id.split('/')[1] === currentModelIdWithoutPrefix);
+
+            if (currentModelInNewList) {
+              // If current model name (without prefix) is valid in the new list, keep it
+              setGeminiModelName(currentModelIdWithoutPrefix);
+            } else {
+              // Otherwise, default to the first model in the filtered list
+              setGeminiModelName(filteredModels[0].id.split('/')[1]);
+            }
+          } else {
+            // No models available, clear selection or set to a placeholder if needed
+             setGeminiModelName(''); // Or handle as per UI/UX decision
+          }
+        } catch (error: any) {
+          console.error("Failed to fetch Gemini models:", error);
+          setGeminiModelsError(error.message || "Failed to load Gemini models. Please check your connection or API key configuration.");
+          setGeminiModelsList([]);
+        } finally {
+          setIsGeminiModelsLoading(false);
+        }
+      };
+      fetchGeminiModels();
+    }
+  }, [isOpen, selectedModel]); // Removed geminiModelName from deps to avoid re-triggering on its own update
+
 
   let imageActionsContent = null;
   if (generationCompleted && !autoApplyImage && generatedImageUrl && generationDetails && !isLoading && !error) {
@@ -346,11 +393,29 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
         <>
           <label>
             Size (Gemini - Conceptual):
-            <Input type="text" value={genericSizeInput} onChange={(e) => setGenericSizeInput(e.target.value)} placeholder="e.g., 1024x1024" disabled={isLoading} />
+            <Input type="text" value={genericSizeInput} onChange={(e) => setGenericSizeInput(e.target.value)} placeholder="e.g., 1024x1024" disabled={isLoading || isGeminiModelsLoading} />
           </label>
           <label>
-            Gemini Model Name (Optional):
-            <Input type="text" value={geminiModelName} onChange={(e) => setGeminiModelName(e.target.value)} placeholder="e.g., gemini-pro-vision" disabled={isLoading} />
+            Gemini Model Name:
+            {isGeminiModelsLoading && <div className="loading-indicator-small">Loading Gemini models...</div>}
+            {geminiModelsError && <div className="error-message-small">{geminiModelsError}</div>}
+            {!isGeminiModelsLoading && !geminiModelsError && geminiModelsList.length === 0 && (
+              <div className="info-message-small">No Gemini models available.</div>
+            )}
+            <select
+              value={geminiModelName}
+              onChange={(e) => setGeminiModelName(e.target.value)}
+              disabled={isLoading || isGeminiModelsLoading || geminiModelsList.length === 0}
+            >
+              {geminiModelsList.map((model) => {
+                const modelIdWithoutPrefix = model.id.split('/')[1];
+                return (
+                  <option key={model.id} value={modelIdWithoutPrefix}>
+                    {model.name} ({modelIdWithoutPrefix})
+                  </option>
+                );
+              })}
+            </select>
           </label>
         </>
       );
