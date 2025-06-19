@@ -578,3 +578,113 @@ async def test_get_campaign_retrieves_theme_data(db_session: Session, test_user:
     for key, value in TEST_THEME_DATA.items():
         assert getattr(retrieved_campaign, key) == value
     assert retrieved_campaign.owner_id == test_user.id
+
+# --- Test for LLM selection in create_campaign ---
+from unittest.mock import patch, AsyncMock, ANY # For mocking get_llm_service
+
+@pytest.mark.asyncio
+@patch('app.crud.get_llm_service') # Patch get_llm_service where it's used in crud.py
+async def test_create_campaign_with_concept_generation_variations(
+    mock_get_llm_service: MagicMock,
+    db_session: Session,
+    test_user: ORMUser # ORMUser from fixture
+):
+    # Mock the LLM service and its concept generation method
+    mock_llm_instance = AsyncMock()
+    mock_llm_instance.generate_campaign_concept = AsyncMock(return_value="Test Concept from LLM")
+    mock_get_llm_service.return_value = mock_llm_instance
+
+    # Convert ORMUser to Pydantic User model for current_user_obj argument
+    # This requires careful attribute mapping if ORMUser and Pydantic User models differ significantly.
+    # Assuming Pydantic User has at least an 'id' field.
+    current_user_pydantic = crud.models.User(
+        id=test_user.id,
+        username=test_user.username,
+        email=test_user.email,
+        full_name=test_user.full_name,
+        disabled=test_user.disabled,
+        is_superuser=test_user.is_superuser,
+        # Add other fields required by Pydantic User model, e.g. API key status, campaigns, llm_configs
+        # For simplicity, if these are not strictly needed by generate_campaign_concept's current_user usage:
+        openai_api_key_provided=False, # Example default
+        sd_api_key_provided=False,     # Example default
+        gemini_api_key_provided=False, # Example default
+        other_llm_api_key_provided=False, # Example default
+        campaigns=[],                  # Example default
+        llm_configs=[]                 # Example default
+    )
+
+
+    # Scenario 1: campaign_payload.model_id_with_prefix_for_concept is provided
+    campaign_payload_scenario1 = crud.models.CampaignCreate(
+        title="Scenario 1 Campaign",
+        initial_user_prompt="Prompt for scenario 1",
+        model_id_with_prefix_for_concept="testprovider/testmodel"
+    )
+    await crud.create_campaign(db=db_session, campaign_payload=campaign_payload_scenario1, current_user_obj=current_user_pydantic)
+
+    mock_get_llm_service.assert_called_with(
+        db=db_session,
+        current_user_orm=test_user, # crud.py fetches this ORM user
+        provider_name="testprovider", # Extracted from payload's prefix
+        model_id_with_prefix="testprovider/testmodel", # Original prefix from payload
+        campaign=None
+    )
+    mock_llm_instance.generate_campaign_concept.assert_called_with(
+        user_prompt="Prompt for scenario 1",
+        db=db_session,
+        current_user=current_user_pydantic,
+        model="testmodel" # Model part from payload
+    )
+
+    # Reset mocks for the next scenario
+    mock_get_llm_service.reset_mock()
+    mock_llm_instance.generate_campaign_concept.reset_mock()
+
+    # Scenario 2: campaign_payload.model_id_with_prefix_for_concept is NOT provided (None)
+    campaign_payload_scenario2 = crud.models.CampaignCreate(
+        title="Scenario 2 Campaign",
+        initial_user_prompt="Prompt for scenario 2",
+        model_id_with_prefix_for_concept=None # Not provided
+    )
+    await crud.create_campaign(db=db_session, campaign_payload=campaign_payload_scenario2, current_user_obj=current_user_pydantic)
+
+    mock_get_llm_service.assert_called_with(
+        db=db_session,
+        current_user_orm=test_user,
+        provider_name=None, # No prefix, so None
+        model_id_with_prefix=None, # Not provided
+        campaign=None
+    )
+    mock_llm_instance.generate_campaign_concept.assert_called_with(
+        user_prompt="Prompt for scenario 2",
+        db=db_session,
+        current_user=current_user_pydantic,
+        model=None # No model specified
+    )
+
+    # Reset mocks for the next scenario
+    mock_get_llm_service.reset_mock()
+    mock_llm_instance.generate_campaign_concept.reset_mock()
+
+    # Scenario 3: campaign_payload.model_id_with_prefix_for_concept is just a model ID (no provider prefix)
+    campaign_payload_scenario3 = crud.models.CampaignCreate(
+        title="Scenario 3 Campaign",
+        initial_user_prompt="Prompt for scenario 3",
+        model_id_with_prefix_for_concept="justmodelid" # No provider prefix
+    )
+    await crud.create_campaign(db=db_session, campaign_payload=campaign_payload_scenario3, current_user_obj=current_user_pydantic)
+
+    mock_get_llm_service.assert_called_with(
+        db=db_session,
+        current_user_orm=test_user,
+        provider_name=None, # No prefix, so None
+        model_id_with_prefix="justmodelid",
+        campaign=None
+    )
+    mock_llm_instance.generate_campaign_concept.assert_called_with(
+        user_prompt="Prompt for scenario 3",
+        db=db_session,
+        current_user=current_user_pydantic,
+        model="justmodelid" # The model ID itself
+    )
