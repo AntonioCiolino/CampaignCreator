@@ -6,7 +6,7 @@ import uuid # Added for UUID assertion
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.services.image_generation_service import ImageGenerationService
+from app.services.image_generation_service import ImageGenerationService, LLMGenerationError, LLMServiceUnavailableError
 from app.core.config import settings
 from app.orm_models import GeneratedImage, User # User might not be needed directly if only user_id is used
 
@@ -708,35 +708,42 @@ async def test_get_gemini_api_key_decryption_fails_superuser_fallback(mock_setti
 
 @pytest.mark.asyncio
 @patch('app.services.image_generation_service.GeminiLLMService')
-async def test_generate_image_gemini_success(mock_gemini_llm_service_class, image_service: ImageGenerationService, mock_current_user: User, mock_db_session: Session):
+async def test_generate_image_gemini_raises_http_exception_for_unsupported_feature(mock_gemini_llm_service_class, image_service: ImageGenerationService, mock_current_user: User, mock_db_session: Session):
     # Arrange
-    prompt = "A test Gemini image"
-    expected_url = "http://example.com/gemini_image.png"
-    mock_image_bytes = b"gemini_image_data"
+    prompt = "A test Gemini image for unsupported feature"
+    unsupported_error_message = (
+        "Text-to-image generation with Gemini models is not currently supported with the configured SDK. "
+        "The 'gemini-1.5-flash' and 'gemini-pro-vision' models are intended for multimodal understanding, "
+        "not direct image generation through this service."
+    )
 
     # Mock _get_gemini_api_key_for_user to return a dummy key
     image_service._get_gemini_api_key_for_user = AsyncMock(return_value="dummy_gemini_key")
 
-    # Mock GeminiLLMService instance and its generate_image method
+    # Mock GeminiLLMService instance and its generate_image method to raise the specific LLMGenerationError
     mock_gemini_instance = AsyncMock()
-    mock_gemini_instance.generate_image = AsyncMock(return_value=mock_image_bytes)
-    mock_gemini_llm_service_class.return_value = mock_gemini_instance # When ImageGenerationService instantiates GeminiLLMService
+    mock_gemini_instance.generate_image = AsyncMock(side_effect=LLMGenerationError(unsupported_error_message))
+    mock_gemini_llm_service_class.return_value = mock_gemini_instance
 
-    # Mock _save_image_and_log_db
-    image_service._save_image_and_log_db = AsyncMock(return_value=expected_url)
+    # Mock _save_image_and_log_db to ensure it's not called
+    image_service._save_image_and_log_db = AsyncMock()
 
-    # Act
-    image_url = await image_service.generate_image_gemini(
-        prompt=prompt,
-        db=mock_db_session,
-        current_user=mock_current_user,
-        model="gemini-pro-vision", # Explicit model
-        size="1024x1024" # Conceptual size
-    )
+    # Act & Assert
+    with pytest.raises(HTTPException) as exc_info:
+        await image_service.generate_image_gemini(
+            prompt=prompt,
+            db=mock_db_session,
+            current_user=mock_current_user,
+            model="gemini-pro-vision", # Explicit model
+            size="1024x1024" # Conceptual size
+        )
 
-    # Assert
+    assert exc_info.value.status_code == 500
+    assert f"Failed to generate image with Gemini: {unsupported_error_message}" in exc_info.value.detail
+
+    # Assertions for what should NOT have happened
     image_service._get_gemini_api_key_for_user.assert_called_once_with(mock_current_user, mock_db_session)
-    mock_gemini_llm_service_class.assert_called_once_with() # Check GeminiLLMService was instantiated
+    mock_gemini_llm_service_class.assert_called_once_with(api_key="dummy_gemini_key") # Check instantiation with key
     mock_gemini_instance.generate_image.assert_called_once_with(
         prompt=prompt,
         current_user=mock_current_user,
@@ -744,16 +751,7 @@ async def test_generate_image_gemini_success(mock_gemini_llm_service_class, imag
         model="gemini-pro-vision",
         size="1024x1024"
     )
-    image_service._save_image_and_log_db.assert_called_once_with(
-        prompt=prompt,
-        model_used="gemini-pro-vision",
-        size_used="1024x1024", # This is the conceptual size passed for logging
-        db=mock_db_session,
-        image_bytes=mock_image_bytes,
-        user_id=mock_current_user.id,
-        original_filename_from_api="gemini_image.png"
-    )
-    assert image_url == expected_url
+    image_service._save_image_and_log_db.assert_not_called() # Crucial: this should not be called
 
 @pytest.mark.asyncio
 async def test_generate_image_gemini_key_error(image_service: ImageGenerationService, mock_current_user: User, mock_db_session: Session):
@@ -785,16 +783,21 @@ async def test_generate_image_gemini_service_unavailable_error(mock_gemini_llm_s
 @patch('app.services.image_generation_service.GeminiLLMService')
 async def test_generate_image_gemini_generation_error(mock_gemini_llm_service_class, image_service: ImageGenerationService, mock_current_user: User, mock_db_session: Session):
     # Arrange
+    specific_error_message = (
+        "Text-to-image generation with Gemini models is not currently supported with the configured SDK. "
+        "The 'gemini-1.5-flash' and 'gemini-pro-vision' models are intended for multimodal understanding, "
+        "not direct image generation through this service."
+    )
     image_service._get_gemini_api_key_for_user = AsyncMock(return_value="dummy_key")
     mock_gemini_instance = AsyncMock()
-    mock_gemini_instance.generate_image = AsyncMock(side_effect=LLMGenerationError("Bad prompt for Gemini"))
+    mock_gemini_instance.generate_image = AsyncMock(side_effect=LLMGenerationError(specific_error_message))
     mock_gemini_llm_service_class.return_value = mock_gemini_instance
 
     # Act & Assert
     with pytest.raises(HTTPException) as exc_info:
         await image_service.generate_image_gemini(prompt="test", db=mock_db_session, current_user=mock_current_user)
-    assert exc_info.value.status_code == 500 # Default for LLMGenerationError, could be 400 if specific check added
-    assert "Failed to generate image with Gemini: Bad prompt for Gemini" in exc_info.value.detail
+    assert exc_info.value.status_code == 500
+    assert f"Failed to generate image with Gemini: {specific_error_message}" in exc_info.value.detail
 
 @pytest.mark.asyncio
 @patch('app.services.image_generation_service.GeminiLLMService')

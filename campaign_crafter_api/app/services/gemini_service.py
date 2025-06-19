@@ -355,59 +355,14 @@ class GeminiLLMService(AbstractLLMService):
         # 'gemini-pro-vision' is primarily for understanding images.
         # This might need to be a specific image generation model (e.g., an Imagen model endpoint if accessible via Gemini SDK).
         # For now, we proceed with the specified model, assuming it might have some image generation capabilities or this is a placeholder.
-        model_instance = self._get_model_instance(model_id=model or "gemini-pro-vision")
+        # model_instance = self._get_model_instance(model_id=model or "gemini-pro-vision")
 
-        try:
-            # The structure of the API call for text-to-image generation needs to be confirmed.
-            # This is a conceptual implementation based on typical Gemini API patterns.
-            # We assume generate_content_async can produce images and the response format.
-            # Specific generation_config might be needed for image output, e.g., mime_type.
-            # genai.types.GenerationConfig(..., output_mime_type="image/png")
-
-            # Placeholder for actual API call parameters.
-            # The Gemini API for image generation might expect a different content structure or specific parameters.
-            # For example, some APIs might require a specific prompt format or configuration.
-            print(f"Attempting to generate image with model: {model_instance.model_name} using prompt: '{prompt[:50]}...'")
-
-            response = await model_instance.generate_content_async(
-                prompt
-                # generation_config=genai.types.GenerationConfig(
-                #     # Example: request PNG image if API supports mime_type specification
-                #     # This is speculative and depends on actual API features.
-                #     # response_mime_type="image/png"
-                # )
-            )
-
-            # Process the response to extract image bytes.
-            # This assumes the image data is in response.parts[0].inline_data.data.
-            # The actual structure might differ for image generation models.
-            if response.parts and response.parts[0].inline_data and response.parts[0].inline_data.data:
-                image_bytes = response.parts[0].inline_data.data
-                # mime_type = response.parts[0].inline_data.mime_type # Could be useful
-                return image_bytes
-            else:
-                # Log details if the response is not as expected.
-                error_message = "Gemini API call for image generation succeeded but returned no image data."
-                if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
-                    error_message += f" Prompt feedback: {response.prompt_feedback}"
-                if not response.candidates:
-                     error_message += " No candidates were generated."
-                # You might want to log the full response here for debugging if it's small enough
-                # print(f"Unexpected response structure from Gemini image generation: {response}")
-                raise LLMGenerationError(error_message)
-
-        except LLMGenerationError: # Re-raise if it's already our specific error
-            raise
-        except LLMServiceUnavailableError: # Re-raise
-            raise
-        except Exception as e:
-            # Handle potential errors from the API call (e.g., network issues, API errors)
-            # This could include errors if the model doesn't support image generation or the prompt is invalid.
-            # from google.api_core import exceptions as google_exceptions
-            # if isinstance(e, google_exceptions.InvalidArgument):
-            #     raise LLMGenerationError(f"Invalid prompt or parameters for Gemini image generation (model: {model_instance.model_name}): {e}")
-            print(f"Error during Gemini image generation (model: {model_instance.model_name}): {type(e).__name__} - {e}")
-            raise LLMGenerationError(f"Failed to generate image with Gemini model {model_instance.model_name}: {e}") from e
+        # Directly raise LLMGenerationError as text-to-image is not supported with this SDK configuration.
+        raise LLMGenerationError(
+            "Text-to-image generation with Gemini models is not currently supported with the configured SDK. "
+            "The 'gemini-1.5-flash' and 'gemini-pro-vision' models are intended for multimodal understanding, "
+            "not direct image generation through this service."
+        )
 
 
 if __name__ == '__main__':
