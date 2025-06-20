@@ -11,6 +11,8 @@ from app.models import User as UserModel # Added UserModel import
 from pathlib import Path # For the __main__ block
 import asyncio # For testing async methods in __main__
 
+from google.auth.exceptions import DefaultCredentialsError # Moved to top-level
+
 # Attempt to import new SDK errors, fall back or define if not available directly
 try:
     from google.generativeai.types import BlockedPromptError as NewBlockedPromptError
@@ -19,7 +21,6 @@ try:
     # these are usually under google.api_core.exceptions or similar,
     # but the new genai SDK might wrap them in new_genai.errors
     from google.api_core import exceptions as google_api_exceptions # For common API errors
-    from google.auth.exceptions import DefaultCredentialsError # Direct import
 except ImportError:
     # Define placeholder errors if new SDK doesn't have them named this way,
     # or rely on a general new_genai.errors.APIError
