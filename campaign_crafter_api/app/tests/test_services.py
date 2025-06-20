@@ -348,10 +348,17 @@ try:
 except ImportError:
     # Define dummy exceptions if google.api_core is not available in test env (should be)
     class MockGoogleAPIError(Exception): pass
-    google_api_exceptions = MagicMock()
+    google_api_exceptions = MagicMock() # Ensure it's a MagicMock for attribute assignment
     google_api_exceptions.PermissionDenied = type('PermissionDenied', (MockGoogleAPIError,), {})
     google_api_exceptions.InvalidArgument = type('InvalidArgument', (MockGoogleAPIError,), {})
-    google_api_exceptions.APIError = MockGoogleAPIError # General API error
+    google_api_exceptions.RetryError = type('RetryError', (MockGoogleAPIError,), {}) # Add RetryError if not present
+    google_api_exceptions.GoogleAPIError = MockGoogleAPIError # General base for Google API errors
+    # Ensure DefaultCredentialsError is available (it should be imported at top level now)
+    try:
+        from google.auth.exceptions import DefaultCredentialsError
+    except ImportError:
+        class DefaultCredentialsError(OSError): pass # Fallback if google-auth not really there
+
 
 # Fixtures for LLMService tests
 @pytest.fixture
@@ -610,6 +617,7 @@ async def test_gemini_is_available_api_error(mock_new_genai_client_constructor, 
     assert available is False
     mock_aio_models.list.assert_called_once_with(config={'page_size': 1})
 
+
 @pytest.mark.asyncio
 @patch('app.services.gemini_service.new_genai.Client')
 async def test_gemini_is_available_vertex_ai_default_credentials_error(mock_new_genai_client_constructor, mock_current_user, mock_db_session):
@@ -619,18 +627,8 @@ async def test_gemini_is_available_vertex_ai_default_credentials_error(mock_new_
          patch.object(settings, 'GOOGLE_CLOUD_LOCATION', "test-location"):
 
         mock_aio_models = AsyncMock()
-        # Ensure google_auth_exceptions is imported or defined for the test environment
-        # If not, this line would need adjustment or a broader exception type.
-        # Assuming google_auth_exceptions.DefaultCredentialsError is available as per previous steps.
-        try:
-            from google.auth import exceptions as google_auth_exceptions
-        except ImportError:
-            # Define a dummy if google.auth is not available (e.g. in a minimal test environment)
-            class DummyDefaultCredentialsError(Exception): pass
-            google_auth_exceptions = MagicMock()
-            google_auth_exceptions.DefaultCredentialsError = DummyDefaultCredentialsError
-
-        mock_aio_models.list = AsyncMock(side_effect=google_auth_exceptions.DefaultCredentialsError("ADC not found"))
+        # DefaultCredentialsError should be imported at the top level of the test file now
+        mock_aio_models.list = AsyncMock(side_effect=DefaultCredentialsError("ADC not found"))
 
         mock_client_instance = MagicMock()
         mock_client_instance.aio.models = mock_aio_models
@@ -641,8 +639,72 @@ async def test_gemini_is_available_vertex_ai_default_credentials_error(mock_new_
         with pytest.raises(LLMServiceUnavailableError) as exc_info:
             await service.is_available(current_user=mock_current_user, db=mock_db_session)
 
-        assert "Authentication failed for Vertex AI" in str(exc_info.value)
-        assert "Application Default Credentials are not set up correctly" in str(exc_info.value)
+        assert "Authentication failed for Vertex AI. Application Default Credentials are not set up correctly." in str(exc_info.value)
+        mock_aio_models.list.assert_called_once_with(config={'page_size': 1})
+
+@pytest.mark.asyncio
+@patch('app.services.gemini_service.new_genai.Client')
+async def test_gemini_is_available_vertex_ai_retry_error_wrapping_adc(mock_new_genai_client_constructor, mock_current_user, mock_db_session):
+    """Tests is_available handles RetryError wrapping DefaultCredentialsError for Vertex AI."""
+    with patch.object(settings, 'GOOGLE_GENAI_USE_VERTEXAI', True), \
+         patch.object(settings, 'GOOGLE_CLOUD_PROJECT', "test-project-id"), \
+         patch.object(settings, 'GOOGLE_CLOUD_LOCATION', "test-location"):
+
+        adc_error = DefaultCredentialsError("ADC issue")
+        # For google.api_core.exceptions.RetryError, the 'cause' is usually passed to the constructor if it's the direct cause,
+        # or set via __cause__ if it's an indirect cause of a higher-level RetryError.
+        # Let's assume the constructor takes it for simplicity in mocking.
+        # If not, we'd mock a situation where e.g. a network error leads to retry, and that network error was due to ADC.
+        # More directly, the service code checks e.__cause__.
+        retry_error = google_api_exceptions.RetryError("Retries exhausted due to ADC", cause=adc_error)
+        # To explicitly set __cause__ if the constructor doesn't take it:
+        # retry_error = google_api_exceptions.RetryError("Retries exhausted")
+        # retry_error.__cause__ = adc_error
+
+        mock_aio_models = AsyncMock()
+        mock_aio_models.list = AsyncMock(side_effect=retry_error)
+
+        mock_client_instance = MagicMock()
+        mock_client_instance.aio.models = mock_aio_models
+        mock_new_genai_client_constructor.return_value = mock_client_instance
+
+        service = GeminiLLMService(api_key=None)
+
+        with pytest.raises(LLMServiceUnavailableError) as exc_info:
+            await service.is_available(current_user=mock_current_user, db=mock_db_session)
+
+        assert "Authentication failed for Vertex AI (wrapped in RetryError)" in str(exc_info.value)
+        mock_aio_models.list.assert_called_once_with(config={'page_size': 1})
+
+@pytest.mark.asyncio
+@patch('app.services.gemini_service.new_genai.Client')
+async def test_gemini_is_available_vertex_ai_google_api_error_wrapping_adc(mock_new_genai_client_constructor, mock_current_user, mock_db_session):
+    """Tests is_available handles GoogleAPIError wrapping DefaultCredentialsError for Vertex AI."""
+    with patch.object(settings, 'GOOGLE_GENAI_USE_VERTEXAI', True), \
+         patch.object(settings, 'GOOGLE_CLOUD_PROJECT', "test-project-id"), \
+         patch.object(settings, 'GOOGLE_CLOUD_LOCATION', "test-location"):
+
+        adc_error = DefaultCredentialsError("ADC problem")
+        # Similar to RetryError, we'll set __cause__ for GoogleAPIError
+        # Note: google_api_exceptions.GoogleAPIError is the base for many others.
+        # We might need to use a more concrete subclass if GoogleAPIError itself is not typically raised directly with a cause.
+        # However, the service logic checks `isinstance(e.__cause__, DefaultCredentialsError)` on a GoogleAPIError.
+        api_error = google_api_exceptions.GoogleAPIError("Generic API failure due to ADC")
+        api_error.__cause__ = adc_error # Manually set the cause for the test
+
+        mock_aio_models = AsyncMock()
+        mock_aio_models.list = AsyncMock(side_effect=api_error)
+
+        mock_client_instance = MagicMock()
+        mock_client_instance.aio.models = mock_aio_models
+        mock_new_genai_client_constructor.return_value = mock_client_instance
+
+        service = GeminiLLMService(api_key=None)
+
+        with pytest.raises(LLMServiceUnavailableError) as exc_info:
+            await service.is_available(current_user=mock_current_user, db=mock_db_session)
+
+        assert "Authentication failed for Vertex AI (wrapped in GoogleAPIError)" in str(exc_info.value)
         mock_aio_models.list.assert_called_once_with(config={'page_size': 1})
 
 

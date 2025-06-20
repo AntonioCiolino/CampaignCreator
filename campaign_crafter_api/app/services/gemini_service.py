@@ -86,24 +86,43 @@ class GeminiLLMService(AbstractLLMService):
         if not self.configured_successfully or not self.client:
             return False
         try:
-            # Use a lightweight API call to check availability, e.g., listing top 1 model
-            # The new SDK uses self.client.models.list() or self.client.aio.models.list()
-            await self.client.aio.models.list(config={'page_size': 1}) # Test with async client
+            await self.client.aio.models.list(config={'page_size': 1})
             return True
-        except DefaultCredentialsError as e: # Specific handler for ADC issues, using direct import
+        except DefaultCredentialsError as e: # Catch it if raised directly
             print(f"Gemini service not available due to DefaultCredentialsError (Vertex AI setup issue): {e}")
-            # Re-raise as LLMServiceUnavailableError with a user-friendly message
             raise LLMServiceUnavailableError(
                 "Authentication failed for Vertex AI. Application Default Credentials are not set up correctly. "
                 "Please run 'gcloud auth application-default login' or ensure your environment is configured for ADC."
             ) from e
-        except google_api_exceptions.PermissionDenied as e: # More specific error for auth issues
-            print(f"Gemini service not available due to Permission Denied (API key issue?): {e}")
-            return False
-        except google_api_exceptions.Unauthenticated as e: # More specific error for auth issues
-            print(f"Gemini service not available due to Unauthenticated (API key issue?): {e}")
-            return False
-        except new_genai.errors.APIError as e: # Catch general new SDK API errors
+        except google_api_exceptions.RetryError as e: # Catch RetryError specifically
+            print(f"Gemini service API call failed after retries: {e}")
+            if isinstance(e.__cause__, DefaultCredentialsError):
+                print(f"Underlying cause was DefaultCredentialsError (Vertex AI setup issue): {e.__cause__}")
+                raise LLMServiceUnavailableError(
+                    "Authentication failed for Vertex AI (wrapped in RetryError). Application Default Credentials are not set up correctly. "
+                    "Please run 'gcloud auth application-default login' or ensure your environment is configured for ADC."
+                ) from e
+            # For other RetryErrors, raise a general error
+            raise LLMServiceUnavailableError(f"Gemini API call failed after retries: {e}") from e
+        except google_api_exceptions.GoogleAPIError as e: # Catch other GoogleAPIErrors
+            # Check if the cause of this GoogleAPIError is DefaultCredentialsError
+            if isinstance(e.__cause__, DefaultCredentialsError):
+                print(f"Gemini service not available due to DefaultCredentialsError wrapped in GoogleAPIError (Vertex AI setup issue): {e}")
+                raise LLMServiceUnavailableError(
+                    "Authentication failed for Vertex AI (wrapped in GoogleAPIError). Application Default Credentials are not set up correctly. "
+                    "Please run 'gcloud auth application-default login' or ensure your environment is configured for ADC."
+                ) from e
+            elif isinstance(e, google_api_exceptions.PermissionDenied):
+                print(f"Gemini service not available due to Permission Denied: {e}")
+                return False
+            elif isinstance(e, google_api_exceptions.Unauthenticated):
+                print(f"Gemini service not available due to Unauthenticated: {e}")
+                return False
+            else:
+                # For other GoogleAPIErrors that aren't DefaultCredentialsError, PermissionDenied, or Unauthenticated
+                print(f"Gemini service not available due to a GoogleAPIError: {e}")
+                return False
+        except new_genai.errors.APIError as e: # Catch general new SDK API errors (if not already a GoogleAPIError)
             print(f"Gemini service not available. New SDK API check failed: {e}")
             return False
         except Exception as e: # Catch other unexpected errors
