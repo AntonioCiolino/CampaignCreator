@@ -35,36 +35,48 @@ class GeminiLLMService(AbstractLLMService):
         super().__init__(api_key=api_key)
         self.effective_api_key = self.api_key
         if not self.effective_api_key:
-            self.effective_api_key = settings.GEMINI_API_KEY
+            self.effective_api_key = settings.GEMINI_API_KEY # System fallback for API key
 
-        self.client: Optional[new_genai.GenerativeServiceClient] = None # Updated type hint
+        self.client: Optional[new_genai.Client] = None # Correct type hint for the new SDK client
         self.configured_successfully = False
 
-        if self.effective_api_key and self.effective_api_key != "YOUR_GEMINI_API_KEY":
-            try:
-                # Initialize the new client
-                self.client = new_genai.GenerativeServiceClient(
-                    client_options={"api_key": self.effective_api_key}
-                )
-                # TODO: The new SDK might not have a direct equivalent to old_genai.configure(api_key=...).
-                # The API key is typically passed during client instantiation.
-                # We'll assume client instantiation is enough for now.
-                # If self.client.transport is an attribute, can check its type.
-                # For example, if it's a gRPC transport, it might have options for API key.
-                # The new SDK's Client() might be what we need instead of GenerativeServiceClient directly for higher level APIs
-                # Let's try with new_genai.Client(api_key=...)
-                self.client = new_genai.Client(api_key=self.effective_api_key)
-
-                self.configured_successfully = True
-                print("GeminiLLMService configured successfully with new SDK client.")
-            except Exception as e:
+        if settings.GOOGLE_GENAI_USE_VERTEXAI:
+            # Vertex AI Path
+            if settings.GOOGLE_CLOUD_PROJECT and settings.GOOGLE_CLOUD_LOCATION:
+                try:
+                    self.client = new_genai.Client(
+                        vertexai=True, # Enable Vertex AI mode
+                        project=settings.GOOGLE_CLOUD_PROJECT,
+                        location=settings.GOOGLE_CLOUD_LOCATION
+                        # For Vertex, API key is usually handled by Application Default Credentials (ADC)
+                        # and not passed directly to new_genai.Client constructor if vertexai=True.
+                        # If an API key is still needed for Vertex AI with this SDK, this might need adjustment.
+                    )
+                    self.configured_successfully = True
+                    print("GeminiLLMService configured successfully for Vertex AI with new SDK client.")
+                except Exception as e:
+                    self.client = None
+                    self.configured_successfully = False
+                    print(f"Error configuring Gemini client for Vertex AI with new SDK: {e}")
+            else:
                 self.client = None
                 self.configured_successfully = False
-                print(f"Error configuring Gemini client with new SDK: {e}")
+                print("Warning: GOOGLE_GENAI_USE_VERTEXAI is True, but GOOGLE_CLOUD_PROJECT or GOOGLE_CLOUD_LOCATION is not set.")
         else:
-            self.client = None
-            self.configured_successfully = False
-            print("Warning: Gemini API key (user or system) not configured or is a placeholder for new SDK.")
+            # Gemini API (API Key) Path
+            if self.effective_api_key and self.effective_api_key != "YOUR_GEMINI_API_KEY" and self.effective_api_key.strip(): # Check for placeholder and empty
+                try:
+                    self.client = new_genai.Client(api_key=self.effective_api_key)
+                    self.configured_successfully = True
+                    print("GeminiLLMService configured successfully for Gemini API (API Key) with new SDK client.")
+                except Exception as e:
+                    self.client = None
+                    self.configured_successfully = False
+                    print(f"Error configuring Gemini client for Gemini API (API Key) with new SDK: {e}")
+            else:
+                self.client = None
+                self.configured_successfully = False
+                print("Warning: Gemini API key (user or system) not configured or is a placeholder. Cannot initialize Gemini API client for Gemini Developer API.")
         
         self.feature_prompt_service = FeaturePromptService()
 

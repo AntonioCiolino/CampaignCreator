@@ -336,6 +336,7 @@ from unittest.mock import MagicMock, AsyncMock, patch # Ensure all mock types ar
 from app.services.llm_service import LLMService, LLMGenerationError, LLMServiceUnavailableError
 from app.services.gemini_service import GeminiLLMService
 from app.models import User as UserModel
+from app.core.config import settings # Added import for settings
 
 # Google GenAI SDK related imports (actual and for mocking)
 # We will mock 'app.services.gemini_service.new_genai' for most tests
@@ -420,34 +421,135 @@ def create_mock_sdk_model(name: str, display_name: str, supported_generation_met
 
 @pytest.mark.asyncio
 @patch('app.services.gemini_service.new_genai.Client')
-async def test_gemini_llm_service_init_success(mock_new_genai_client_constructor, mock_current_user, mock_db_session):
-    """Tests successful client creation with new_genai.Client."""
-    # Arrange
-    dummy_api_key = "test_gemini_key"
-    mock_client_instance = MagicMock()
-    mock_new_genai_client_constructor.return_value = mock_client_instance
+async def test_gemini_llm_service_init_success_api_key(MockNewGenAIClient, mock_current_user, mock_db_session):
+    """Tests successful client creation with API key when Vertex AI is False."""
+    valid_api_key = "test_gemini_api_key"
+    with patch.object(settings, 'GOOGLE_GENAI_USE_VERTEXAI', False), \
+         patch.object(settings, 'GEMINI_API_KEY', valid_api_key):
 
-    # Act
-    service = GeminiLLMService(api_key=dummy_api_key)
+        mock_client_instance = MagicMock()
+        MockNewGenAIClient.return_value = mock_client_instance
 
-    # Assert
-    assert service.configured_successfully is True
-    assert service.client == mock_client_instance
-    mock_new_genai_client_constructor.assert_called_once_with(api_key=dummy_api_key)
+        # Test with direct key
+        service_direct_key = GeminiLLMService(api_key=valid_api_key)
+        assert service_direct_key.configured_successfully is True
+        assert service_direct_key.client == mock_client_instance
+        MockNewGenAIClient.assert_called_once_with(api_key=valid_api_key)
+
+        MockNewGenAIClient.reset_mock()
+        # Test with system key (api_key=None to service constructor)
+        service_system_key = GeminiLLMService(api_key=None)
+        assert service_system_key.configured_successfully is True
+        assert service_system_key.client == mock_client_instance
+        MockNewGenAIClient.assert_called_once_with(api_key=valid_api_key)
+
 
 @pytest.mark.asyncio
-async def test_gemini_llm_service_init_no_key(mock_current_user, mock_db_session):
-    """Tests client creation failure if API key is missing/invalid."""
-    # Arrange (simulate settings.GEMINI_API_KEY is also None or placeholder)
-    with patch('app.services.gemini_service.settings') as mock_settings:
-        mock_settings.GEMINI_API_KEY = None # Ensure system fallback is also None
-        service = GeminiLLMService(api_key=None) # Pass no key
+@patch('app.services.gemini_service.new_genai.Client')
+async def test_gemini_llm_service_init_no_key_or_placeholder(MockNewGenAIClient, mock_current_user, mock_db_session):
+    """Tests client creation failure if API key is missing or placeholder when Vertex AI is False."""
+    with patch.object(settings, 'GOOGLE_GENAI_USE_VERTEXAI', False):
+        # Scenario 1: No key provided to constructor, and system key is None
+        with patch.object(settings, 'GEMINI_API_KEY', None):
+            service_no_key = GeminiLLMService(api_key=None)
+            assert service_no_key.configured_successfully is False
+            assert service_no_key.client is None
+            MockNewGenAIClient.assert_not_called()
+
+        # Scenario 2: Placeholder key provided to constructor
+        service_placeholder_direct = GeminiLLMService(api_key="YOUR_GEMINI_API_KEY")
+        assert service_placeholder_direct.configured_successfully is False
+        assert service_placeholder_direct.client is None
+        MockNewGenAIClient.assert_not_called()
+
+        # Scenario 3: No key provided to constructor, and system key is placeholder
+        with patch.object(settings, 'GEMINI_API_KEY', "YOUR_GEMINI_API_KEY"):
+            service_placeholder_system = GeminiLLMService(api_key=None)
+            assert service_placeholder_system.configured_successfully is False
+            assert service_placeholder_system.client is None
+            MockNewGenAIClient.assert_not_called()
+
+        # Scenario 4: Empty string API key
+        with patch.object(settings, 'GEMINI_API_KEY', ""): # System key is empty
+            service_empty_system = GeminiLLMService(api_key=None)
+            assert service_empty_system.configured_successfully is False
+            assert service_empty_system.client is None
+            MockNewGenAIClient.assert_not_called()
+
+        service_empty_direct = GeminiLLMService(api_key=" ") # Direct empty/whitespace key
+        assert service_empty_direct.configured_successfully is False
+        assert service_empty_direct.client is None
+        MockNewGenAIClient.assert_not_called()
+
+
+@pytest.mark.asyncio
+@patch('app.services.gemini_service.new_genai.Client')
+async def test_gemini_llm_service_init_vertex_ai_success(MockNewGenAIClient, mock_current_user, mock_db_session):
+    """Tests successful client creation for Vertex AI."""
+    with patch.object(settings, 'GOOGLE_GENAI_USE_VERTEXAI', True), \
+         patch.object(settings, 'GOOGLE_CLOUD_PROJECT', "test-project-id"), \
+         patch.object(settings, 'GOOGLE_CLOUD_LOCATION', "test-location"):
+
+        mock_vertex_client_instance = MagicMock()
+        MockNewGenAIClient.return_value = mock_vertex_client_instance
+
+        service = GeminiLLMService(api_key=None) # API key should be ignored for Vertex AI path
+
+        assert service.configured_successfully is True
+        assert service.client == mock_vertex_client_instance
+        MockNewGenAIClient.assert_called_once_with(
+            vertexai=True,
+            project="test-project-id",
+            location="test-location"
+        )
+
+@pytest.mark.asyncio
+@patch('app.services.gemini_service.new_genai.Client')
+async def test_gemini_llm_service_init_vertex_ai_missing_project(MockNewGenAIClient, mock_current_user, mock_db_session):
+    """Tests Vertex AI init failure if GOOGLE_CLOUD_PROJECT is missing."""
+    with patch.object(settings, 'GOOGLE_GENAI_USE_VERTEXAI', True), \
+         patch.object(settings, 'GOOGLE_CLOUD_PROJECT', None), \
+         patch.object(settings, 'GOOGLE_CLOUD_LOCATION', "test-location"):
+
+        service = GeminiLLMService(api_key=None)
+
         assert service.configured_successfully is False
         assert service.client is None
+        MockNewGenAIClient.assert_not_called()
 
-        service_placeholder = GeminiLLMService(api_key="YOUR_GEMINI_API_KEY") # Pass placeholder
-        assert service_placeholder.configured_successfully is False
-        assert service_placeholder.client is None
+@pytest.mark.asyncio
+@patch('app.services.gemini_service.new_genai.Client')
+async def test_gemini_llm_service_init_vertex_ai_missing_location(MockNewGenAIClient, mock_current_user, mock_db_session):
+    """Tests Vertex AI init failure if GOOGLE_CLOUD_LOCATION is missing."""
+    with patch.object(settings, 'GOOGLE_GENAI_USE_VERTEXAI', True), \
+         patch.object(settings, 'GOOGLE_CLOUD_PROJECT', "test-project-id"), \
+         patch.object(settings, 'GOOGLE_CLOUD_LOCATION', None):
+
+        service = GeminiLLMService(api_key=None)
+
+        assert service.configured_successfully is False
+        assert service.client is None
+        MockNewGenAIClient.assert_not_called()
+
+@pytest.mark.asyncio
+@patch('app.services.gemini_service.new_genai.Client')
+async def test_gemini_llm_service_init_vertex_ai_client_exception(MockNewGenAIClient, mock_current_user, mock_db_session):
+    """Tests Vertex AI init failure due to client instantiation exception."""
+    with patch.object(settings, 'GOOGLE_GENAI_USE_VERTEXAI', True), \
+         patch.object(settings, 'GOOGLE_CLOUD_PROJECT', "test-project-id"), \
+         patch.object(settings, 'GOOGLE_CLOUD_LOCATION', "test-location"):
+
+        MockNewGenAIClient.side_effect = Exception("Vertex AI Client Init Failed")
+
+        service = GeminiLLMService(api_key=None)
+
+        assert service.configured_successfully is False
+        assert service.client is None
+        MockNewGenAIClient.assert_called_once_with(
+            vertexai=True,
+            project="test-project-id",
+            location="test-location"
+        )
 
 
 @pytest.mark.asyncio
