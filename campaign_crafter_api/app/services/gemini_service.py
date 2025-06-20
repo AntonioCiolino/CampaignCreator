@@ -86,7 +86,7 @@ class GeminiLLMService(AbstractLLMService):
         try:
             # Use a lightweight API call to check availability, e.g., listing top 1 model
             # The new SDK uses self.client.models.list() or self.client.aio.models.list()
-            await self.client.aio.models.list(page_size=1) # Test with async client
+            await self.client.aio.models.list(config={'page_size': 1}) # Test with async client
             return True
         except google_api_exceptions.PermissionDenied as e: # More specific error for auth issues
             print(f"Gemini service not available due to Permission Denied (API key issue?): {e}")

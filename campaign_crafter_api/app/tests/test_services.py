@@ -571,7 +571,7 @@ async def test_gemini_is_available_success(mock_new_genai_client_constructor, mo
 
     # Assert
     assert available is True
-    mock_aio_models.list.assert_called_once_with(page_size=1)
+    mock_aio_models.list.assert_called_once_with(config={'page_size': 1})
 
 @pytest.mark.asyncio
 @patch('app.services.gemini_service.new_genai.Client')
@@ -587,6 +587,8 @@ async def test_gemini_is_available_permission_denied(mock_new_genai_client_const
     service = GeminiLLMService(api_key="fake_key")
     available = await service.is_available(current_user=mock_current_user, db=mock_db_session)
     assert available is False
+    mock_aio_models.list.assert_called_once_with(config={'page_size': 1})
+
 
 @pytest.mark.asyncio
 @patch('app.services.gemini_service.new_genai.Client')
@@ -606,6 +608,7 @@ async def test_gemini_is_available_api_error(mock_new_genai_client_constructor, 
     service = GeminiLLMService(api_key="fake_key")
     available = await service.is_available(current_user=mock_current_user, db=mock_db_session)
     assert available is False
+    mock_aio_models.list.assert_called_once_with(config={'page_size': 1})
 
 
 @pytest.mark.asyncio
