@@ -19,6 +19,7 @@ try:
     # these are usually under google.api_core.exceptions or similar,
     # but the new genai SDK might wrap them in new_genai.errors
     from google.api_core import exceptions as google_api_exceptions # For common API errors
+    from google.auth import exceptions as google_auth_exceptions # For DefaultCredentialsError
 except ImportError:
     # Define placeholder errors if new SDK doesn't have them named this way,
     # or rely on a general new_genai.errors.APIError
@@ -88,6 +89,13 @@ class GeminiLLMService(AbstractLLMService):
             # The new SDK uses self.client.models.list() or self.client.aio.models.list()
             await self.client.aio.models.list(config={'page_size': 1}) # Test with async client
             return True
+        except google_auth_exceptions.DefaultCredentialsError as e: # Specific handler for ADC issues
+            print(f"Gemini service not available due to DefaultCredentialsError (Vertex AI setup issue): {e}")
+            # Re-raise as LLMServiceUnavailableError with a user-friendly message
+            raise LLMServiceUnavailableError(
+                "Authentication failed for Vertex AI. Application Default Credentials are not set up correctly. "
+                "Please run 'gcloud auth application-default login' or ensure your environment is configured for ADC."
+            ) from e
         except google_api_exceptions.PermissionDenied as e: # More specific error for auth issues
             print(f"Gemini service not available due to Permission Denied (API key issue?): {e}")
             return False
@@ -97,7 +105,7 @@ class GeminiLLMService(AbstractLLMService):
         except new_genai.errors.APIError as e: # Catch general new SDK API errors
             print(f"Gemini service not available. New SDK API check failed: {e}")
             return False
-        except Exception as e:
+        except Exception as e: # Catch other unexpected errors
             print(f"Gemini service not available. Unexpected error during API check: {e}")
             return False
 
@@ -330,6 +338,9 @@ class GeminiLLMService(AbstractLLMService):
             api_models_iterator = await self.client.aio.models.list()
 
             async for sdk_model in api_models_iterator:
+                # DEBUG Logging for each SDK model
+                print(f"DEBUG SDK Model: Name={sdk_model.name}, Display={sdk_model.display_name}, Methods={sdk_model.supported_generation_methods}")
+
                 model_id_full = sdk_model.name # e.g., "models/gemini-1.5-pro-latest"
                 model_id_short = model_id_full.split('/')[-1]
                 model_name_display = sdk_model.display_name

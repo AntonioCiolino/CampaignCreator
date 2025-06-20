@@ -610,17 +610,55 @@ async def test_gemini_is_available_api_error(mock_new_genai_client_constructor, 
     assert available is False
     mock_aio_models.list.assert_called_once_with(config={'page_size': 1})
 
+@pytest.mark.asyncio
+@patch('app.services.gemini_service.new_genai.Client')
+async def test_gemini_is_available_vertex_ai_default_credentials_error(mock_new_genai_client_constructor, mock_current_user, mock_db_session):
+    """Tests is_available raises LLMServiceUnavailableError for DefaultCredentialsError in Vertex AI mode."""
+    with patch.object(settings, 'GOOGLE_GENAI_USE_VERTEXAI', True), \
+         patch.object(settings, 'GOOGLE_CLOUD_PROJECT', "test-project-id"), \
+         patch.object(settings, 'GOOGLE_CLOUD_LOCATION', "test-location"):
+
+        mock_aio_models = AsyncMock()
+        # Ensure google_auth_exceptions is imported or defined for the test environment
+        # If not, this line would need adjustment or a broader exception type.
+        # Assuming google_auth_exceptions.DefaultCredentialsError is available as per previous steps.
+        try:
+            from google.auth import exceptions as google_auth_exceptions
+        except ImportError:
+            # Define a dummy if google.auth is not available (e.g. in a minimal test environment)
+            class DummyDefaultCredentialsError(Exception): pass
+            google_auth_exceptions = MagicMock()
+            google_auth_exceptions.DefaultCredentialsError = DummyDefaultCredentialsError
+
+        mock_aio_models.list = AsyncMock(side_effect=google_auth_exceptions.DefaultCredentialsError("ADC not found"))
+
+        mock_client_instance = MagicMock()
+        mock_client_instance.aio.models = mock_aio_models
+        mock_new_genai_client_constructor.return_value = mock_client_instance
+
+        service = GeminiLLMService(api_key=None) # API key is ignored in Vertex AI mode
+
+        with pytest.raises(LLMServiceUnavailableError) as exc_info:
+            await service.is_available(current_user=mock_current_user, db=mock_db_session)
+
+        assert "Authentication failed for Vertex AI" in str(exc_info.value)
+        assert "Application Default Credentials are not set up correctly" in str(exc_info.value)
+        mock_aio_models.list.assert_called_once_with(config={'page_size': 1})
+
 
 @pytest.mark.asyncio
 @patch('app.services.gemini_service.new_genai.Client')
 async def test_gemini_list_available_models_success(mock_new_genai_client_constructor, mock_current_user, mock_db_session):
-    """Tests list_available_models successfully retrieves and maps models."""
+    """Tests list_available_models successfully retrieves and maps models, covering text and image types."""
+    # This test can cover both API key and Vertex AI modes implicitly,
+    # as the core logic of list_available_models post-client-initialization is the same.
     # Arrange
     mock_sdk_models_data = [
-        create_mock_sdk_model("models/gemini-1.5-pro-latest", "Gemini 1.5 Pro", ["generateContent"]),
-        create_mock_sdk_model("models/gemini-1.5-flash-latest", "Gemini 1.5 Flash", ["generateContent", "embedContent"]),
-        create_mock_sdk_model("models/imagen-005", "Imagen 005", ["generateImages"]),
-        create_mock_sdk_model("models/text-embedding-004", "Embedding Model 004", ["embedContent"]),
+        create_mock_sdk_model(name="models/gemini-1.5-pro-latest", display_name="Gemini 1.5 Pro", supported_generation_methods=['generateContent', 'embedContent']),
+        create_mock_sdk_model(name="models/gemini-1.5-flash", display_name="Gemini 1.5 Flash", supported_generation_methods=['generateContent']),
+        create_mock_sdk_model(name="models/imagen-005", display_name="Imagen 005", supported_generation_methods=['generateImages']),
+        create_mock_sdk_model(name="models/text-embedding-004", display_name="Embedding Model 004", supported_generation_methods=['embedContent']),
+        create_mock_sdk_model(name="models/aqa", display_name="Attributed Question Answering", supported_generation_methods=['generateAnswer']), # Example of another type
     ]
 
     # Mock the async iterator behavior for client.aio.models.list()
@@ -659,14 +697,21 @@ async def test_gemini_list_available_models_success(mock_new_genai_client_constr
     assert "embedding" in embedding_model["capabilities"]
     # Model type for embedding only might be 'chat' or 'other' depending on definition, check service logic
     # Current logic: model_type = "image" if "image_generation" in capabilities else "chat"
-    # So, an embedding-only model would be "chat". This might need refinement.
+    # An embedding-only model would be "chat".
+    # An 'generateAnswer' only model would also be "chat".
     assert embedding_model["model_type"] == "chat"
+
+    aqa_model = next(m for m in models_list if m["id"] == "aqa")
+    assert "generateAnswer" in aqa_model["capabilities"]
+    assert aqa_model["model_type"] == "chat"
 
 
 @pytest.mark.asyncio
 @patch('app.services.gemini_service.new_genai.Client')
 async def test_gemini_generate_text_success(mock_new_genai_client_constructor, mock_current_user, mock_db_session):
-    """Tests successful text generation."""
+    """Tests successful text generation, adaptable for API key or Vertex AI."""
+    # This test can cover both API key and Vertex AI modes implicitly,
+    # as the core logic of generate_text post-client-initialization is the same.
     # Arrange
     mock_aio_models_client = AsyncMock()
     mock_generate_content_response = MagicMock(text="Generated text from Gemini")
@@ -676,16 +721,21 @@ async def test_gemini_generate_text_success(mock_new_genai_client_constructor, m
     mock_genai_client_instance.aio.models = mock_aio_models_client
     mock_new_genai_client_constructor.return_value = mock_genai_client_instance
 
-    service = GeminiLLMService(api_key="fake_key")
-    service.is_available = AsyncMock(return_value=True)
+    # Simulate a successfully configured service (either API key or Vertex)
+    with patch.object(settings, 'GOOGLE_GENAI_USE_VERTEXAI', False), \
+         patch.object(settings, 'GEMINI_API_KEY', "fake_api_key_for_test"):
+        service = GeminiLLMService(api_key="fake_api_key_for_test") # Ensure it's configured
+
+    # If testing Vertex specific path, you'd set GOOGLE_GENAI_USE_VERTEXAI to True
+    # and mock GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION.
+    # The key is that service.client is correctly mocked after init.
+
+    service.is_available = AsyncMock(return_value=True) # Ensure service is "available"
 
     prompt = "Tell me a story."
     model_id = "gemini-1.5-flash-latest" # Short ID
 
     # Act
-    # Ensure google_types.GenerationConfig can be instantiated or is also mocked if needed
-    # For this test, we can assume it's fine or pass None for config if generate_text handles it.
-    # The service creates GenerationConfig internally.
     with patch('app.services.gemini_service.google_types.GenerationConfig') as mock_google_types_gen_config:
         mock_config_instance = MagicMock()
         mock_google_types_gen_config.return_value = mock_config_instance
@@ -702,9 +752,9 @@ async def test_gemini_generate_text_success(mock_new_genai_client_constructor, m
         # Assert
         assert generated_text == "Generated text from Gemini"
         mock_aio_models_client.generate_content.assert_called_once_with(
-            model=f"models/{model_id}",
+            model=f"models/{model_id}", # Service prefixes with "models/"
             contents=[prompt],
-            generation_config=mock_config_instance # Check that the config object was passed
+            generation_config=mock_config_instance
         )
         mock_google_types_gen_config.assert_called_once_with(temperature=0.5, max_output_tokens=100)
 
