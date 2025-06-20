@@ -454,7 +454,6 @@ class GeminiLLMService(AbstractLLMService):
 
     async def generate_image(self, prompt: str, current_user: UserModel, db: Session, model: Optional[str] = None, size: Optional[str] = None) -> bytes:
         """
-        """
         Generates an image using an Imagen model via the new Gemini SDK.
         The 'size' parameter is currently conceptual and not directly mapped to API.
         """
