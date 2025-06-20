@@ -19,7 +19,7 @@ try:
     # these are usually under google.api_core.exceptions or similar,
     # but the new genai SDK might wrap them in new_genai.errors
     from google.api_core import exceptions as google_api_exceptions # For common API errors
-    from google.auth import exceptions as google_auth_exceptions # For DefaultCredentialsError
+    from google.auth.exceptions import DefaultCredentialsError # Direct import
 except ImportError:
     # Define placeholder errors if new SDK doesn't have them named this way,
     # or rely on a general new_genai.errors.APIError
@@ -89,7 +89,7 @@ class GeminiLLMService(AbstractLLMService):
             # The new SDK uses self.client.models.list() or self.client.aio.models.list()
             await self.client.aio.models.list(config={'page_size': 1}) # Test with async client
             return True
-        except google_auth_exceptions.DefaultCredentialsError as e: # Specific handler for ADC issues
+        except DefaultCredentialsError as e: # Specific handler for ADC issues, using direct import
             print(f"Gemini service not available due to DefaultCredentialsError (Vertex AI setup issue): {e}")
             # Re-raise as LLMServiceUnavailableError with a user-friendly message
             raise LLMServiceUnavailableError(
