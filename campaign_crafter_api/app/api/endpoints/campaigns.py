@@ -84,6 +84,7 @@ async def read_campaign(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
+    print(f"Attempting to generate concept for campaign_id: {campaign_id}") # DEBUG PRINT
     db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
     if db_campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")

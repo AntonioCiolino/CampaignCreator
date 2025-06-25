@@ -38,24 +38,42 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <Logo className="app-logo" title="Campaign Crafter Logo" />
           <h1>Campaign Crafter</h1>
         </Link>
-        <button className="hamburger-menu" onClick={toggleMobileMenu} aria-label="Toggle navigation" aria-expanded={isMobileMenuOpen}>
+
+        {/* Hamburger menu button is now always controlling the main nav links */}
+        <button
+          className="hamburger-menu global-hamburger-menu" /* Added global class for distinct styling if needed */
+          onClick={toggleMobileMenu}
+          aria-label="Toggle navigation"
+          aria-expanded={isMobileMenuOpen}
+        >
           &#9776; {/* Hamburger icon */}
         </button>
+
+        {/* app-nav will now primarily be for the hamburger-controlled menu (nav-links-left) */}
+        {/* The UserDropdownMenu (nav-links-right) will be positioned separately if it's to remain always visible */}
         <nav className={`app-nav ${isMobileMenuOpen ? 'mobile-nav-active' : ''}`}>
-          <ul className="nav-links-left"> {/* Wrapper for left-aligned links */}
-            {token && user ? (
+          {/* This UL is for links that appear inside the hamburger menu */}
+          <ul className="nav-links-hamburger">
+            {/* Example: Future links would go here */}
+            {/* <li><Link to="/help" onClick={closeMobileMenu}>Help</Link></li> */}
+            {/* <li><Link to="/features" onClick={closeMobileMenu}>Features</Link></li> */}
+
+            {/* If Data Management & User Management were to be here (they are in UserDropdown as per last change) */}
+            {/* {token && user && (
               <>
-                {/* "User Management" and "Data Management" have been moved to UserDropdownMenu */}
-                {/* Add other main navigation links here if any (e.g., a "Help" or "Docs" link) */}
+                <li><Link to="/data-management" onClick={closeMobileMenu}>Data Management</Link></li>
+                {user.is_superuser && (
+                  <li><Link to="/users" onClick={closeMobileMenu}>User Management</Link></li>
+                )}
               </>
-            ) : (
-              // Non-authenticated users might see some links here or just login
-              <></>
-            )}
+            )} */}
           </ul>
-          <div className="nav-links-right"> {/* Wrapper for right-aligned items */}
-            {token && user ? (
-              <UserDropdownMenu user={user} onLogout={handleLogout} />
+        </nav>
+
+        {/* User Dropdown Menu - positioned to the right, independent of hamburger */}
+        <div className="user-actions-area">
+          {token && user ? (
+            <UserDropdownMenu user={user} onLogout={handleLogout} />
             ) : (
               <ul> {/* Ensure login is also in a ul for consistent structure if needed */}
                 <li><Link to="/login" onClick={closeMobileMenu}>Login</Link></li>

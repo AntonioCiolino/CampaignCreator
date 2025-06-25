@@ -1,9 +1,4 @@
 /* campaign_crafter_ui/src/components/common/Layout.css */
-/* Default styles for hamburger menu (hidden on desktop) */
-.hamburger-menu {
-  display: none;
-  order: 3; /* Ensure hamburger is last in flex order if title is not taking full space */
-}
 
 .app-layout {
   display: flex;
@@ -14,218 +9,149 @@
 .app-header {
   background-color: #333; /* var(--primary-color) */
   color: white; /* var(--text-color-on-primary) */
-  padding: 0.75rem 1.5rem; /* Adjusted padding from 2rem to 1.5rem to match UserDropdownMenu.css assumption */
+  padding: 0.75rem 1.5rem;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  /* position: sticky; top: 0; z-index: 1000; (Consider if these are defined elsewhere or needed) */
-}
-
-.app-logo {
-  height: 40px; /* Control logo size */
-  margin-right: 10px; /* Space between logo and title */
-  vertical-align: middle; /* Helps align if text is not perfectly centered by flex */
-  fill: currentColor; /* Make SVG logo use text color */
+  position: relative; /* For absolute positioning of the nav dropdown */
 }
 
 .app-title-link {
-  color: #FFFFFF; /* Lighten title color for better contrast */
+  color: #FFFFFF;
   text-decoration: none;
-  display: flex; /* Align logo and title */
-  align-items: center; /* Vertically center logo and title */
-  /* flex-shrink: 0; /* Prevent title link from shrinking if nav grows */
+  display: flex;
+  align-items: center;
+  margin-right: auto; /* Pushes other items (hamburger, user actions) to the right */
+}
+
+.app-logo {
+  height: 40px;
+  margin-right: 10px;
+  fill: currentColor;
 }
 
 .app-title-link h1 {
   margin: 0;
-  font-size: 1.5rem; /* Was 1.75em, then 1.5rem in previous version */
-  color: #FFFFFF; /* Ensure h1 color is also light */
+  font-size: 1.5rem;
+  color: #FFFFFF;
 }
 
-/* Nav container */
+.hamburger-menu {
+  display: block; /* Always visible */
+  background: none;
+  border: none;
+  color: white; /* var(--text-color-on-primary) */
+  font-size: 1.8rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  margin-left: 1rem; /* Space from title if title doesn't fill all space */
+}
+
+/* Nav container for hamburger menu content */
+/* This is the dropdown part */
 .app-nav {
-  display: flex;
-  justify-content: space-between; /* This will be key */
-  align-items: center;
-  flex-grow: 1; /* Allow nav to fill space */
-  margin-left: 2rem; /* Space between title area and nav links */
+  display: none; /* Hidden by default */
+  position: absolute;
+  top: 100%; /* Position below the header */
+  /* Calculate left position carefully if hamburger is not at the very edge */
+  /* For simplicity, let's assume it aligns left for now or near hamburger */
+  left: 1.5rem; /* Example: Align with header padding start, or adjust based on hamburger pos */
+  background-color: #333; /* var(--primary-color) */
+  z-index: 999;
+  min-width: 200px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  border-radius: 0 0 4px 4px;
 }
 
-/* ULs within the new div wrappers */
-.app-nav .nav-links-left ul,
-.app-nav .nav-links-right ul {
+.app-nav.mobile-nav-active { /* Reusing this class name for active state */
+  display: block;
+}
+
+.app-nav ul.nav-links-hamburger {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
-  align-items: center; /* Align items like UserDropdownMenu if it's not a list item */
-  gap: 10px; /* Use gap for spacing between LIs */
+  flex-direction: column;
+  align-items: stretch;
 }
 
-/* Individual nav items */
-.app-nav .nav-links-left li,
-.app-nav .nav-links-right li {
-  /* margin-left removed, gap on ul handles it */
+.app-nav ul.nav-links-hamburger li {
+  border-bottom: 1px solid #444; /* var(--primary-dark-color) */
+}
+.app-nav ul.nav-links-hamburger li:last-child {
+  border-bottom: none;
 }
 
-/* Links and button-like links in nav */
-.app-nav a,
-.app-nav .nav-link-button { /* If you still have button-styled links */
-  color: white;
+.app-nav ul.nav-links-hamburger a {
+  color: white; /* var(--text-color-on-primary) */
   text-decoration: none;
   font-size: 1rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  display: block;
   transition: background-color 0.2s ease-in-out;
 }
 
-.app-nav a:hover,
-.app-nav a:focus,
-.app-nav .nav-link-button:hover,
-.app-nav .nav-link-button:focus {
+.app-nav ul.nav-links-hamburger a:hover,
+.app-nav ul.nav-links-hamburger a:focus {
   background-color: #555; /* var(--primary-dark-color) */
+}
+
+/* User actions area (for UserDropdownMenu and Login link) */
+.user-actions-area {
+  display: flex;
+  align-items: center;
+  margin-left: 1rem; /* Space from the hamburger menu */
+}
+
+.user-actions-area > ul { /* For the Login link when user is not authenticated */
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.user-actions-area > ul > li > a {
+  color: white;
   text-decoration: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
 }
-
-.nav-links-right {
-  margin-left: auto; /* Critical for pushing user menu to the right */
+.user-actions-area > ul > li > a:hover {
+  background-color: #555;
 }
-
-/* Ensure UserDropdownMenu aligns well if it's directly in .nav-links-right */
-.nav-links-right > .user-dropdown-menu {
-  margin-left: 10px; /* Or use gap on .nav-links-right if it also becomes a flex container */
-}
-
 
 .app-main-content {
   flex-grow: 1;
-  padding: 20px; /* Add some padding to main content area */
+  padding: 20px;
 }
 
 .app-footer {
-  background-color: #f8f9fa; /* Light grey footer */
+  background-color: #f8f9fa;
   color: #333;
   text-align: center;
   padding: 1rem;
   border-top: 1px solid #e7e7e7;
 }
 
-/* Responsive adjustments for smaller screens */
+/* Responsive adjustments */
 @media (max-width: 768px) {
   .app-header {
-    padding: 0.75rem 1rem; /* Slightly reduce padding for smaller screens */
-    /* position: relative; /* For positioning the mobile nav menu if it's absolute */
-    /* flex-wrap: wrap; /* Allow hamburger to wrap if needed */
+    padding: 0.75rem 1rem;
+  }
+  .app-title-link h1 {
+    font-size: 1.3rem;
+  }
+  .hamburger-menu {
+    font-size: 1.6rem;
+    margin-left: 0.5rem;
+  }
+   .user-actions-area {
+    margin-left: 0.5rem;
   }
 
-  .app-title-link {
-     flex-grow: 1; /* Allow title to take available space, pushing hamburger */
-  }
-
-  .app-nav {
-    display: none; /* Hide nav container by default on mobile */
-    flex-direction: column; /* Stack .nav-links-left and .nav-links-right */
-    width: 100%;
-    position: absolute;
-    top: 100%; /* Position below the header */
+  /* Hamburger dropdown can be wider on mobile */
+  .app-nav.mobile-nav-active {
     left: 0;
     right: 0;
-    background-color: #333; /* Same as header */
-    z-index: 1000;
-    border-top: 1px solid #444;
-    margin-left: 0; /* Reset desktop margin */
-  }
-
-  .app-nav.mobile-nav-active {
-    display: flex; /* Show the nav container */
-  }
-
-  /* Both left and right link groups take full width and stack */
-  .app-nav .nav-links-left,
-  .app-nav .nav-links-right {
-    width: 100%;
-    margin-left: 0; /* Reset desktop margin-left: auto for right links */
-  }
-
-  .app-nav .nav-links-left ul,
-  .app-nav .nav-links-right ul,
-  .app-nav .nav-links-right .user-dropdown-menu { /* Target UserDropdownMenu directly */
-    display: flex;
-    flex-direction: column;
-    width: 100%; /* Ensure it takes full width */
-    gap: 0; /* Reset gap for vertical stacking */
-  }
-
-  .app-nav .nav-links-left li,
-  .app-nav .nav-links-right li { /* Targets LIs if they exist */
-    width: 100%;
-    border-bottom: 1px solid #444; /* Separator for items */
-  }
-
-  /* Special handling for UserDropdownMenu in mobile */
-  .app-nav .nav-links-right .user-dropdown-menu .dropdown-toggle {
-    width: 100%;
-    text-align: left;
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid #444;
+    min-width: 100%;
     border-radius: 0;
-    background-color: transparent; /* Match link appearance */
-  }
-  .app-nav .nav-links-right .user-dropdown-menu .dropdown-toggle:hover {
-    background-color: #555;
-  }
-  .app-nav .nav-links-right .user-dropdown-menu .dropdown-content {
-    position: static; /* Make dropdown content flow in document */
-    width: 100%;
-    box-shadow: none;
-    border-top: 1px solid #444; /* Separator from toggle */
-    border-bottom: 1px solid #444; /* Add border to bottom too */
-    border-left: none;
-    border-right: none;
-    border-radius: 0;
-  }
-   .app-nav .nav-links-right .user-dropdown-menu .dropdown-content li a,
-   .app-nav .nav-links-right .user-dropdown-menu .dropdown-content li .dropdown-logout-button {
-      padding: 1rem 1.5rem;
-      padding-left: 2.5rem; /* Indent dropdown items */
-   }
-
-
-  .app-nav .nav-links-left li:last-child,
-  .app-nav .nav-links-right li:last-child { /* If LIs are used */
-     /* border-bottom: none; /* No border for the last item in a list */
-  }
-  /* If UserDropdownMenu is the last, its internal last item shouldn't have border */
-  .app-nav .nav-links-right .user-dropdown-menu .dropdown-content li:last-child .dropdown-logout-button,
-  .app-nav .nav-links-right .user-dropdown-menu .dropdown-content li:last-child a {
-      /* border-bottom: none; /* Handled by UserDropdownMenu.css or here */
-  }
-
-
-  .app-nav a { /* General links within the mobile nav */
-    display: block; /* Make links take full width */
-    width: 100%;    /* Explicitly set width */
-    text-align: left;
-    padding: 1rem 1.5rem; /* Comfortable padding for touch */
-    font-size: 1.1rem; /* Slightly larger font for mobile nav items */
-  }
-  .app-nav .nav-links-left li a { /* Ensure links inside LI also have border */
-     border-bottom: 1px solid #444;
-  }
-  .app-nav .nav-links-left li:last-child a {
-      border-bottom: none;
-  }
-
-
-  /* Hamburger Menu Button Styles */
-  .hamburger-menu {
-    display: block; /* Show hamburger on mobile */
-    color: white;
-    font-size: 1.8rem; /* Adjust size as needed */
-    cursor: pointer;
-    background-color: transparent;
-    border: none;
-    padding: 0.25rem; /* Small padding for touch target */
-    /* order: -1; /* Ensure it can be positioned if header items are reordered, e.g. title centered */
   }
 }
