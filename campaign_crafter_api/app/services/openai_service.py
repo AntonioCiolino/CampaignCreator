@@ -56,7 +56,7 @@ class OpenAILLMService(AbstractLLMService):
             return preferred_model
         return self.DEFAULT_CHAT_MODEL if use_chat_model else self.DEFAULT_COMPLETION_MODEL
 
-    async def _perform_chat_completion(self, selected_model: str, messages: List[Dict[str,str]], temperature: float, max_tokens: int) -> str:
+    async def _perform_chat_completion(self, selected_model: str, messages: List[Dict[str,str]], temperature: float, max_tokens: int) -> str: # Removed api_key parameter
         if not self.client:
             raise LLMServiceUnavailableError("OpenAI client not initialized.")
         try:
@@ -82,7 +82,7 @@ class OpenAILLMService(AbstractLLMService):
             print(f"Unexpected error with model {selected_model} (ChatCompletion): {e}")
             raise LLMGenerationError(f"Unexpected error during OpenAI call: {str(e)}") from e
 
-    async def _perform_legacy_completion(self, selected_model: str, prompt: str, temperature: float, max_tokens: int) -> str:
+    async def _perform_legacy_completion(self, selected_model: str, prompt: str, temperature: float, max_tokens: int) -> str: # Removed api_key parameter
         if not self.client:
             raise LLMServiceUnavailableError("OpenAI client not initialized.")
         print(f"Warning: Using legacy completions endpoint for model {selected_model}. Consider migrating to chat completions if possible.")
@@ -184,8 +184,8 @@ class OpenAILLMService(AbstractLLMService):
         return parsed_toc_items
 
     async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> List[Dict[str, str]]:
-        openai_api_key = await self._get_openai_api_key_for_user(current_user, db) # Pass db
-        # Removed is_available check
+        if not await self.is_available(current_user, db): # Added is_available check
+            raise LLMServiceUnavailableError("OpenAI service not available or not configured.")
 
         if not campaign_concept:
             raise ValueError("Campaign concept cannot be empty.")
@@ -209,7 +209,8 @@ class OpenAILLMService(AbstractLLMService):
             {"role": "user", "content": display_final_prompt}
         ]
 
-        raw_toc_string = await self._perform_chat_completion(selected_model, display_messages, temperature=0.5, max_tokens=700, api_key=openai_api_key)
+        # api_key parameter already removed from the call in the previous step
+        raw_toc_string = await self._perform_chat_completion(selected_model, display_messages, temperature=0.5, max_tokens=700)
 
         if not raw_toc_string:
             # If Display TOC generation itself fails or returns empty, this is a problem.
@@ -389,8 +390,11 @@ class OpenAILLMService(AbstractLLMService):
         #     print("OpenAI AsyncClient closed.")
 
     async def generate_homebrewery_toc_from_sections(self, sections_summary: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
+        if not await self.is_available(current_user, db): # Added is_available check
+            raise LLMServiceUnavailableError("OpenAI service not available or not configured.")
+
         print(f"DEBUG OPENAI_HB_TOC: Received sections_summary: {sections_summary}")
-        openai_api_key = await self._get_openai_api_key_for_user(current_user, db)
+        # openai_api_key = await self._get_openai_api_key_for_user(current_user, db) # Removed
 
         if not sections_summary:
             # Return a basic empty TOC if no sections are provided, or raise an error.
@@ -412,7 +416,8 @@ class OpenAILLMService(AbstractLLMService):
             {"role": "user", "content": final_prompt}
         ]
 
-        generated_toc = await self._perform_chat_completion(selected_model, messages, temperature=0.3, max_tokens=1000, api_key=openai_api_key)
+        # api_key parameter already removed from the call in the previous step
+        generated_toc = await self._perform_chat_completion(selected_model, messages, temperature=0.3, max_tokens=1000)
         if not generated_toc:
             raise LLMGenerationError("OpenAI API call for Homebrewery TOC from sections succeeded but returned no usable content.")
 
