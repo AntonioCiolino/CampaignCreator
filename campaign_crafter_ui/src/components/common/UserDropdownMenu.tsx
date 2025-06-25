@@ -30,7 +30,9 @@ const UserDropdownMenu: React.FC<UserDropdownMenuProps> = ({ user, onLogout }) =
   return (
     <div className="user-dropdown-menu" ref={dropdownRef}>
       <button onClick={toggleDropdown} className="dropdown-toggle">
-        {user.username} ▼
+        <span className="user-icon-placeholder" aria-hidden="true">👤</span> {/* Basic user icon placeholder */}
+        <span className="user-username">{user.username}</span>
+        <span className="dropdown-arrow">▼</span>
       </button>
       {isOpen && (
         <ul className="dropdown-content">
@@ -42,9 +44,30 @@ const UserDropdownMenu: React.FC<UserDropdownMenuProps> = ({ user, onLogout }) =
           <li>
             {/* Placeholder for Subscription/Billing - links to '#' for now */}
             <Link to="#" onClick={() => setIsOpen(false)} style={{ opacity: 0.6, pointerEvents: 'none' }} title="Coming Soon!">
-              Subscription
+              My Subscription
             </Link>
           </li>
+
+          {/* Separator before Data Management */}
+          <li className="dropdown-separator"><hr /></li>
+
+          <li>
+            <Link to="/data-management" onClick={() => setIsOpen(false)}>
+              Data Management
+            </Link>
+          </li>
+
+          {user.is_superuser && (
+            // User Management is only for superusers
+            <li>
+              <Link to="/users" onClick={() => setIsOpen(false)}>
+                User Management
+              </Link>
+            </li>
+          )}
+
+          {/* Separator before Logout */}
+          <li className="dropdown-separator"><hr /></li>
           <li>
             <button onClick={() => { onLogout(); setIsOpen(false); }} className="dropdown-logout-button">
               Logout

@@ -45,13 +45,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <ul className="nav-links-left"> {/* Wrapper for left-aligned links */}
             {token && user ? (
               <>
-                {/* The "Dashboard" link is removed as per redundancy requirement */}
-                {/* User settings and logout are now in UserDropdownMenu */}
-                {user.is_superuser && (
-                  <li><Link to="/users" onClick={closeMobileMenu}>User Management</Link></li>
-                )}
-                <li><Link to="/data-management" onClick={closeMobileMenu}>Data Management</Link></li>
-                {/* Add other main navigation links here if any */}
+                {/* "User Management" and "Data Management" have been moved to UserDropdownMenu */}
+                {/* Add other main navigation links here if any (e.g., a "Help" or "Docs" link) */}
               </>
             ) : (
               // Non-authenticated users might see some links here or just login

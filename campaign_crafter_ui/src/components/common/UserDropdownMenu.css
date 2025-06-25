@@ -4,18 +4,40 @@
 }
 
 .dropdown-toggle {
-  background-color: var(--primary-color); /* Using existing CSS variable if available */
-  color: var(--text-color-on-primary, white); /* Using existing CSS variable */
-  padding: 10px 15px;
+  background-color: var(--primary-color, #007bff); /* Using existing CSS variable or a default */
+  color: var(--text-color-on-primary, white); /* Using existing CSS variable or a default */
+  padding: 8px 12px; /* Adjusted padding */
   font-size: 1em;
   border: none;
   cursor: pointer;
   border-radius: 4px;
+  display: flex; /* For aligning icon and text */
+  align-items: center; /* Vertically align items */
 }
 
 .dropdown-toggle:hover, .dropdown-toggle:focus {
-  background-color: var(--primary-dark-color); /* Using existing CSS variable if available */
+  background-color: var(--primary-dark-color, #0056b3); /* Using existing CSS variable or a default */
 }
+
+.user-icon-placeholder {
+  margin-right: 8px; /* Space between icon and username */
+  font-size: 1.2em; /* Slightly larger icon */
+  /* Basic styling for a div placeholder if not using a character:
+  width: 24px;
+  height: 24px;
+  background-color: #ccc;
+  border-radius: 50%;
+  display: inline-block;
+  text-align: center;
+  line-height: 24px;
+  */
+}
+
+.user-username {
+  margin-right: 5px; /* Space between username and arrow */
+}
+
+/* .dropdown-arrow can be styled if needed, e.g. margin-left: auto; if username should take available space */
 
 .dropdown-content {
   display: block;
@@ -52,4 +74,16 @@
 
 .dropdown-logout-button {
   cursor: pointer;
+}
+
+.dropdown-separator {
+  height: 1px;
+  background-color: #e0e0e0;
+  margin: 8px 0;
+  padding: 0; /* Ensure no padding interferes with height */
+  list-style-type: none; /* Just in case it inherits something unwanted */
+}
+
+.dropdown-separator hr {
+  display: none; /* Hide the default hr element as we are styling the li itself */
 }
