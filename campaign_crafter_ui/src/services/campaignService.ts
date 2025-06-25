@@ -55,7 +55,8 @@ export interface Campaign {
 
 export interface CampaignCreatePayload {
   title: string;
-  initial_user_prompt: string;
+  initial_user_prompt?: string; // Made optional as it can be undefined if skipping
+  skip_concept_generation?: boolean; // New field
   model_id_with_prefix_for_concept?: string | null; // Added based on backend changes
   badge_image_url?: string | null;
   selected_llm_id?: string | null;
@@ -514,3 +515,18 @@ export const regenerateCampaignSection = async (
 // The standalone getLLMModels function that used process.env and fetch directly has also been removed
 // to ensure consistency with API calls going through apiClient or services using getApiBaseUrl.
 // Functionality for fetching LLM models is available in llmService.ts via getAvailableLLMs.
+
+// Generate campaign concept manually
+export const generateCampaignConcept = async (
+  campaignId: string | number,
+  payload: LLMGenerationPayload // Reuse existing payload type for prompt & model
+): Promise<Campaign> => {
+  try {
+    // This endpoint will need to be created in the backend API
+    const response = await apiClient.post<Campaign>(`/api/v1/campaigns/${campaignId}/generate-concept`, payload);
+    return response.data;
+  } catch (error) {
+    console.error(`Error generating concept for campaign ID ${campaignId}:`, error);
+    throw error;
+  }
+};

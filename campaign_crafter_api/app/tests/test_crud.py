@@ -688,3 +688,87 @@ async def test_create_campaign_with_concept_generation_variations(
         current_user=current_user_pydantic,
         model="justmodelid" # The model ID itself
     )
+
+@pytest.mark.asyncio
+@patch('app.crud.get_llm_service') # Patching at the source where get_llm_service is defined or used by crud.py
+async def test_create_campaign_skip_concept_generation_flag(
+    mock_get_llm_service: MagicMock,
+    db_session: Session,
+    test_user: ORMUser # Fixture for ORMUser
+):
+    # Mock the LLM service and its concept generation method
+    mock_llm_instance = AsyncMock()
+    mock_llm_instance.generate_campaign_concept = AsyncMock(return_value="Mocked Concept")
+    mock_get_llm_service.return_value = mock_llm_instance
+
+    # Convert ORMUser to Pydantic User model for current_user_obj argument
+    current_user_pydantic = crud.models.User(
+        id=test_user.id, username=test_user.username, email=test_user.email,
+        full_name=test_user.full_name, disabled=test_user.disabled, is_superuser=test_user.is_superuser,
+        openai_api_key_provided=False, sd_api_key_provided=False,
+        gemini_api_key_provided=False, other_llm_api_key_provided=False,
+        campaigns=[], llm_configs=[]
+    )
+
+    # Scenario 1: skip_concept_generation = True
+    campaign_payload_skip_true = crud.models.CampaignCreate(
+        title="Skip True Campaign",
+        initial_user_prompt="This prompt should be ignored.",
+        skip_concept_generation=True
+    )
+    created_campaign_skip_true = await crud.create_campaign(
+        db=db_session,
+        campaign_payload=campaign_payload_skip_true,
+        current_user_obj=current_user_pydantic
+    )
+    assert created_campaign_skip_true.concept is None
+    mock_llm_instance.generate_campaign_concept.assert_not_called() # Key assertion
+
+    # Reset mock for next scenario
+    mock_get_llm_service.reset_mock() # Reset the main mock first
+    mock_llm_instance.generate_campaign_concept.reset_mock() # Then reset the method mock
+    # Re-assign return_value because resetting mock_get_llm_service might clear its return_value
+    mock_get_llm_service.return_value = mock_llm_instance
+
+
+    # Scenario 2: skip_concept_generation = False, with prompt
+    campaign_payload_skip_false = crud.models.CampaignCreate(
+        title="Skip False Campaign",
+        initial_user_prompt="Generate a concept for this.",
+        skip_concept_generation=False
+    )
+    created_campaign_skip_false = await crud.create_campaign(
+        db=db_session,
+        campaign_payload=campaign_payload_skip_false,
+        current_user_obj=current_user_pydantic
+    )
+    assert created_campaign_skip_false.concept == "Mocked Concept"
+    mock_llm_instance.generate_campaign_concept.assert_called_once_with(
+        user_prompt="Generate a concept for this.",
+        db=db_session,
+        current_user=current_user_pydantic,
+        model=None, # Assuming no model_id_with_prefix_for_concept was passed
+        # temperature=ANY # or the default if your method sets one
+    )
+
+    # Reset mock for next scenario
+    mock_get_llm_service.reset_mock()
+    mock_llm_instance.generate_campaign_concept.reset_mock()
+    mock_get_llm_service.return_value = mock_llm_instance
+
+    # Scenario 3: skip_concept_generation = False, but no prompt
+    campaign_payload_no_prompt = crud.models.CampaignCreate(
+        title="No Prompt Campaign",
+        initial_user_prompt=None, # Explicitly None
+        skip_concept_generation=False
+    )
+    created_campaign_no_prompt = await crud.create_campaign(
+        db=db_session,
+        campaign_payload=campaign_payload_no_prompt,
+        current_user_obj=current_user_pydantic
+    )
+    assert created_campaign_no_prompt.concept is None
+    # generate_campaign_concept should not be called because initial_user_prompt is None,
+    # even if skip_concept_generation is False. The conditional logic in crud.create_campaign is
+    # `if not campaign_payload.skip_concept_generation and campaign_payload.initial_user_prompt:`
+    mock_llm_instance.generate_campaign_concept.assert_not_called()

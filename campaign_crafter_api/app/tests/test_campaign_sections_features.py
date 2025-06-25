@@ -432,4 +432,3 @@ async def test_seed_sections_from_toc_sse_empty_toc(
         assert events[0].get("total_sections_processed") is None # Or 0, depending on backend logic for this case. The current SSE impl might not send it.
 
 # Consider adding pytest-asyncio and an event_loop fixture if not already configured.
-```

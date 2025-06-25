@@ -139,6 +139,11 @@ const CampaignEditorPage: React.FC = () => {
   const [activeEditorTab, setActiveEditorTab] = useState<string>('Details');
   const [sectionToExpand, setSectionToExpand] = useState<string | null>(null);
 
+  // State for manual concept generation
+  const [isGeneratingConceptManually, setIsGeneratingConceptManually] = useState<boolean>(false);
+  const [manualConceptError, setManualConceptError] = useState<string | null>(null);
+
+
   const handleTocLinkClick = useCallback((sectionIdFromLink: string | null) => {
     if (!sectionIdFromLink) return;
 
@@ -673,6 +678,42 @@ const CampaignEditorPage: React.FC = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editableMoodBoardUrls, campaignId, campaign, setCampaign]); // initialLoadCompleteRef.current is not needed as a dep, effect runs when it's true. campaign contains mood_board_image_urls.
+
+  const handleGenerateConceptManually = async () => {
+    if (!campaignId || !campaign) {
+      setManualConceptError("Campaign data not available.");
+      return;
+    }
+    // Prefer initial_user_prompt if available, otherwise a generic prompt.
+    const promptForConcept = campaign.initial_user_prompt || "Generate a compelling concept for this campaign.";
+
+    setIsGeneratingConceptManually(true);
+    setManualConceptError(null);
+    setSaveSuccess(null); // Clear other save messages
+
+    try {
+      // This service function will need to be created in campaignService.ts
+      // It will call a new API endpoint (e.g., POST /campaigns/{campaignId}/generate-concept)
+      const updatedCampaign = await campaignService.generateCampaignConcept(campaignId, {
+        prompt: promptForConcept,
+        // Optionally pass selected_llm_id and temperature if the endpoint supports it
+        // and if you want to use the campaign's current LLM settings
+        model_id_with_prefix: campaign.selected_llm_id || undefined,
+        // temperature: campaign.temperature || undefined, // API might use default
+      });
+      setCampaign(updatedCampaign);
+      setEditableConcept(updatedCampaign.concept || ''); // Update editable concept if editor was open
+      setSaveSuccess("Campaign concept generated successfully!");
+      setTimeout(() => setSaveSuccess(null), 3000);
+    } catch (err: any) {
+      console.error("Failed to generate concept manually:", err);
+      const detail = err.response?.data?.detail || err.message || "Failed to generate concept.";
+      setManualConceptError(detail);
+      setTimeout(() => setManualConceptError(null), 5000);
+    } finally {
+      setIsGeneratingConceptManually(false);
+    }
+  };
 
   const handleCancelSeeding = async () => {
     if (eventSourceRef.current) {
@@ -1432,6 +1473,26 @@ const CampaignEditorPage: React.FC = () => {
       {campaign && campaign.title && (
         <h1 className="campaign-main-title">{campaign.title}</h1>
       )}
+
+      {/* Manual Concept Generation Button Area */}
+      {campaign && !campaign.concept && !isConceptEditorVisible && (
+        <section className="campaign-detail-section editor-section page-level-concept generate-concept-area">
+          <Typography variant="body1" sx={{ mb: 1 }}>
+            This campaign does not have an AI-generated concept yet.
+          </Typography>
+          <Button
+            onClick={handleGenerateConceptManually}
+            disabled={isGeneratingConceptManually || !campaign.selected_llm_id}
+            variant="contained"
+            icon={<SettingsSuggestIcon />}
+            tooltip={!campaign.selected_llm_id ? "Select an LLM model from the Settings tab first" : "Generate the campaign concept using AI"}
+          >
+            {isGeneratingConceptManually ? 'Generating Concept...' : 'Generate Campaign Concept'}
+          </Button>
+          {manualConceptError && <p className="error-message feedback-message" style={{ marginTop: '10px' }}>{manualConceptError}</p>}
+        </section>
+      )}
+
       {campaign && campaign.concept && !isConceptEditorVisible && (
         <section className="campaign-detail-section read-only-section editor-section page-level-concept">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

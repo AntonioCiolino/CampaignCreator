@@ -1,6 +1,6 @@
 import pytest
-from campaign_crafter_api.app.core.security import encrypt_key, decrypt_key, _get_fernet_key
-from campaign_crafter_api.app.core.config import settings
+from app.core.security import encrypt_key, decrypt_key, _get_fernet_key
+from app.core.config import settings
 from cryptography.fernet import Fernet, InvalidToken
 
 # Test the underlying key derivation to ensure it's consistent for tests

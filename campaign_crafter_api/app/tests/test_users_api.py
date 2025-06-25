@@ -686,4 +686,3 @@ async def test_access_with_disabled_user():
     db.close()
 
 # Test for regular user trying superuser endpoint is covered by test_read_users_as_normal_user_forbidden
-```

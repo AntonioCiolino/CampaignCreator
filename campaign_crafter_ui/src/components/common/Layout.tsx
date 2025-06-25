@@ -1,8 +1,9 @@
 import React, { ReactNode, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom'; // Added useNavigate
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as Logo } from '../../logo_cc.svg';
 import './Layout.css';
-import { useAuth } from '../../contexts/AuthContext'; // Import useAuth
+import { useAuth } from '../../contexts/AuthContext';
+import UserDropdownMenu from './UserDropdownMenu'; // Import the new component
 
 interface LayoutProps {
   children: ReactNode;
@@ -10,7 +11,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, logout, token } = useAuth(); // Get auth state and functions
+  const { user, logout, token } = useAuth();
   const navigate = useNavigate();
 
   const toggleMobileMenu = () => {
@@ -19,14 +20,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login'); // Redirect to login page after logout
-    if(isMobileMenuOpen) setIsMobileMenuOpen(false); // Close mobile menu if open
+    navigate('/login');
+    if(isMobileMenuOpen) setIsMobileMenuOpen(false);
+  };
+
+  // Function to close mobile menu, can be passed to links if needed
+  const closeMobileMenu = () => {
+    if (isMobileMenuOpen) {
+      setIsMobileMenuOpen(false);
+    }
   };
 
   return (
     <div className="app-layout">
       <header className="app-header">
-        <Link to="/" className="app-title-link" onClick={() => isMobileMenuOpen && setIsMobileMenuOpen(false)}>
+        <Link to="/" className="app-title-link" onClick={closeMobileMenu}>
           <Logo className="app-logo" title="Campaign Crafter Logo" />
           <h1>Campaign Crafter</h1>
         </Link>
@@ -34,23 +42,31 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           &#9776; {/* Hamburger icon */}
         </button>
         <nav className={`app-nav ${isMobileMenuOpen ? 'mobile-nav-active' : ''}`}>
-          <ul>
+          <ul className="nav-links-left"> {/* Wrapper for left-aligned links */}
             {token && user ? (
               <>
-                <li><span className="welcome-message">Welcome, {user.username}!</span></li>
-                <li><Link to="/" onClick={() => setIsMobileMenuOpen(false)}>Dashboard</Link></li>
-                <li><Link to="/user-settings" onClick={() => setIsMobileMenuOpen(false)}>User Settings</Link></li> {/* New Link */}
-                {/* Add more authenticated user links here */}
+                {/* The "Dashboard" link is removed as per redundancy requirement */}
+                {/* User settings and logout are now in UserDropdownMenu */}
                 {user.is_superuser && (
-                  <li><Link to="/users" onClick={() => setIsMobileMenuOpen(false)}>User Management</Link></li>
+                  <li><Link to="/users" onClick={closeMobileMenu}>User Management</Link></li>
                 )}
-                <li><Link to="/data-management" onClick={() => setIsMobileMenuOpen(false)}>Data Management</Link></li>
-                <li><button onClick={handleLogout} className="nav-link-button">Logout</button></li>
+                <li><Link to="/data-management" onClick={closeMobileMenu}>Data Management</Link></li>
+                {/* Add other main navigation links here if any */}
               </>
             ) : (
-              <li><Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>Login</Link></li>
+              // Non-authenticated users might see some links here or just login
+              <></>
             )}
           </ul>
+          <div className="nav-links-right"> {/* Wrapper for right-aligned items */}
+            {token && user ? (
+              <UserDropdownMenu user={user} onLogout={handleLogout} />
+            ) : (
+              <ul> {/* Ensure login is also in a ul for consistent structure if needed */}
+                <li><Link to="/login" onClick={closeMobileMenu}>Login</Link></li>
+              </ul>
+            )}
+          </div>
         </nav>
       </header>
       <main className="app-main-content">

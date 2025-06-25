@@ -903,7 +903,7 @@ async def async_client() -> AsyncClient:
 def current_active_user_override(create_test_tables): # Add create_test_tables to ensure schema
     db = TestingSessionLocal()
     # Create an ORM user in the test database
-    orm_user = ORMUser(
+    orm_user_instance = ORMUser( # Renamed to avoid conflict with PydanticUser
         id=1,
         username="testuser",
         email="test@example.com",
@@ -912,7 +912,7 @@ def current_active_user_override(create_test_tables): # Add create_test_tables t
         disabled=False,
         is_superuser=False
     )
-    db.add(orm_user)
+    db.add(orm_user_instance)
     db.commit()
 
     # This is the Pydantic user model that the endpoint's current_user dependency will resolve to
@@ -937,7 +937,7 @@ def current_active_user_override(create_test_tables): # Add create_test_tables t
     original_dependency = app.dependency_overrides.get(get_current_active_user)
     app.dependency_overrides[get_current_active_user] = override_get_current_active_user
 
-    yield # Test runs here
+    yield pydantic_mock_user # Yield the user model for use in tests
 
     # Teardown: remove the override and the ORM user
     if original_dependency:
@@ -945,6 +945,124 @@ def current_active_user_override(create_test_tables): # Add create_test_tables t
     else:
         del app.dependency_overrides[get_current_active_user]
 
-    db.delete(orm_user)
+    db.delete(orm_user_instance) # Use the renamed variable
     db.commit()
     db.close()
+
+# Test campaign creation with skip_concept_generation flag
+@pytest.mark.asyncio
+@patch('app.crud.get_llm_service') # Patching where create_campaign in crud.py uses it
+async def test_create_campaign_api_skip_concept_generation(
+    mock_crud_get_llm_service: MagicMock, # Mock for the get_llm_service used by CRUD
+    async_client: AsyncClient,
+    current_active_user_override: PydanticUser # To ensure auth
+):
+    mock_llm_instance_crud = AsyncMock()
+    mock_llm_instance_crud.generate_campaign_concept = AsyncMock(return_value="Mocked Concept by CRUD LLM")
+    mock_crud_get_llm_service.return_value = mock_llm_instance_crud
+
+    # Scenario 1: skip_concept_generation = True
+    payload_skip_true = {
+        "title": "API Skip True Campaign",
+        "initial_user_prompt": "This prompt should be ignored by LLM.",
+        "skip_concept_generation": True
+    }
+    response_skip_true = await async_client.post("/api/v1/campaigns/", json=payload_skip_true)
+    assert response_skip_true.status_code == 200, response_skip_true.text
+    data_skip_true = response_skip_true.json()
+    assert data_skip_true["title"] == "API Skip True Campaign"
+    assert data_skip_true["concept"] is None
+    mock_llm_instance_crud.generate_campaign_concept.assert_not_called()
+
+    mock_crud_get_llm_service.reset_mock()
+    mock_llm_instance_crud.generate_campaign_concept.reset_mock()
+    mock_crud_get_llm_service.return_value = mock_llm_instance_crud
+
+
+    # Scenario 2: skip_concept_generation = False (or not provided, defaults to False)
+    payload_skip_false = {
+        "title": "API Skip False Campaign",
+        "initial_user_prompt": "Generate concept for this API test.",
+        "skip_concept_generation": False # Explicitly false
+    }
+    response_skip_false = await async_client.post("/api/v1/campaigns/", json=payload_skip_false)
+    assert response_skip_false.status_code == 200, response_skip_false.text
+    data_skip_false = response_skip_false.json()
+    assert data_skip_false["title"] == "API Skip False Campaign"
+    assert data_skip_false["concept"] == "Mocked Concept by CRUD LLM"
+    mock_llm_instance_crud.generate_campaign_concept.assert_called_once()
+
+
+# Test manual concept generation endpoint
+@pytest.mark.asyncio
+@patch('app.api.endpoints.campaigns.get_llm_service') # Patching where the endpoint uses it
+async def test_generate_concept_manually_api(
+    mock_endpoint_get_llm_service: MagicMock, # Mock for get_llm_service used by the endpoint
+    async_client: AsyncClient,
+    current_active_user_override: PydanticUser # To ensure auth
+):
+    # 1. Create a campaign first (e.g., with concept skipped or null)
+    # For simplicity, let's assume a campaign exists. We'll mock its retrieval.
+    db = TestingSessionLocal()
+    try:
+        # Create an ORM campaign directly for this test
+        test_orm_campaign = ORMCampaign(
+            id=123, # Example ID
+            title="Manual Concept Test Campaign",
+            owner_id=current_active_user_override.id, # Associated with the test user
+            concept=None, # Ensure concept is initially None
+            initial_user_prompt="Original prompt if any",
+            selected_llm_id="default_provider/default_model" # Assume some default
+        )
+        db.add(test_orm_campaign)
+        db.commit()
+        db.refresh(test_orm_campaign)
+        campaign_id_for_test = test_orm_campaign.id
+    finally:
+        db.close()
+
+    # Mock the LLM service for the endpoint
+    mock_llm_instance_endpoint = AsyncMock()
+    mock_llm_instance_endpoint.generate_concept = AsyncMock(return_value="Manually Generated Concept")
+    mock_endpoint_get_llm_service.return_value = mock_llm_instance_endpoint
+
+    # 2. Call the manual generation endpoint
+    generation_payload = {
+        "prompt": "New prompt for manual generation.",
+        "model_id_with_prefix": "openai/gpt-3.5-turbo-instruct" # Example model for this call
+    }
+    response = await async_client.post(
+        f"/api/v1/campaigns/{campaign_id_for_test}/generate-concept",
+        json=generation_payload
+    )
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["id"] == campaign_id_for_test
+    assert data["concept"] == "Manually Generated Concept"
+
+    # Assert LLM service was called correctly by the endpoint
+    mock_endpoint_get_llm_service.assert_called_once()
+    # Extract provider and model from the payload for assertion
+    expected_provider, expected_model = generation_payload["model_id_with_prefix"].split('/')
+
+    # Check call to get_llm_service
+    call_args_get_llm = mock_endpoint_get_llm_service.call_args
+    assert call_args_get_llm.kwargs['provider_name'] == expected_provider
+    assert call_args_get_llm.kwargs['model_id_with_prefix'] == generation_payload['model_id_with_prefix']
+
+    # Check call to llm_instance.generate_concept
+    mock_llm_instance_endpoint.generate_concept.assert_called_once()
+    call_args_generate_concept = mock_llm_instance_endpoint.generate_concept.call_args
+    assert call_args_generate_concept.kwargs['initial_user_prompt'] == generation_payload["prompt"]
+    assert call_args_generate_concept.kwargs['model'] == expected_model
+
+    # Clean up the test campaign
+    db = TestingSessionLocal()
+    try:
+        campaign_to_delete = db.query(ORMCampaign).filter(ORMCampaign.id == campaign_id_for_test).first()
+        if campaign_to_delete:
+            db.delete(campaign_to_delete)
+            db.commit()
+    finally:
+        db.close()

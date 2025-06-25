@@ -106,7 +106,9 @@ class CampaignBase(BaseModel):
     mood_board_image_urls: Optional[List[str]] = None
 
 class CampaignCreate(CampaignBase):
+    initial_user_prompt: Optional[str] = None # Already in CampaignBase, ensuring it's seen as optional here too
     model_id_with_prefix_for_concept: Optional[str] = None
+    skip_concept_generation: Optional[bool] = False # New field
 
 class Campaign(CampaignBase):
     id: int
