@@ -30,15 +30,24 @@ const UserDropdownMenu: React.FC<UserDropdownMenuProps> = ({ user, onLogout }) =
   return (
     <div className="user-dropdown-menu" ref={dropdownRef}>
       <button onClick={toggleDropdown} className="dropdown-toggle">
-        <span className="user-icon-placeholder" aria-hidden="true">👤</span> {/* Basic user icon placeholder */}
+        {user.avatar_url ? (
+          <img src={user.avatar_url} alt={`${user.username}'s avatar`} className="user-avatar-icon" />
+        ) : (
+          <span className="user-icon-placeholder" aria-hidden="true">👤</span>
+        )}
         <span className="user-username">{user.username}</span>
         <span className="dropdown-arrow">▼</span>
       </button>
       {isOpen && (
         <ul className="dropdown-content">
           <li>
+            <Link to="/" onClick={() => setIsOpen(false)}>
+              Dashboard
+            </Link>
+          </li>
+          <li>
             <Link to="/user-settings" onClick={() => setIsOpen(false)}>
-              User Settings
+              My Settings
             </Link>
           </li>
           <li>

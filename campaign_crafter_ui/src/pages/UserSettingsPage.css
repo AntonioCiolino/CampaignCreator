@@ -54,3 +54,132 @@
   margin-top: 1rem;
   align-self: flex-start;
 }
+
+/* Styles for the new tabbed layout */
+.modern-settings-layout .page-title { /* If you add a specific class for h2 like in my overwrite */
+  text-align: center;
+  margin-bottom: 1.5rem;
+  color: #333;
+}
+
+/* Assuming your Tabs component renders a container for tab buttons and a container for tab content */
+/* These are generic selectors; adjust if your Tabs component uses specific classes */
+.tabs-container { /* Class for the element holding the tab buttons */
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #ddd;
+}
+
+.tab-buttons { /* Class for the list of tab buttons */
+  display: flex;
+  gap: 0.5rem; /* Spacing between tab buttons */
+}
+
+.tab-button { /* Class for individual tab button */
+  padding: 0.75rem 1.25rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  background-color: #f0f0f0;
+  color: #555;
+  font-weight: 500;
+}
+
+.tab-button.active { /* Class for the active tab button */
+  background-color: #fff;
+  border-color: #ddd;
+  border-bottom-color: #fff; /* Makes it look like it's part of the content area */
+  color: #007bff; /* Or your primary color */
+}
+
+.settings-tab-content {
+  padding-top: 1rem; /* Space above content within a tab */
+}
+
+.settings-form-section {
+  margin-bottom: 2rem; /* Space below each form/section within a tab */
+  padding: 1.5rem;
+  background-color: #ffffff;
+  border: 1px solid #e7e7e7;
+  border-radius: 6px;
+}
+
+.settings-form-section h3,
+.settings-form-section h4 { /* More specific targeting for headers within sections */
+  margin-top: 0; /* Remove top margin if it's the first element */
+  margin-bottom: 1rem;
+  color: #444;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+/* Adjust overall page container if needed */
+.user-settings-page.modern-settings-layout {
+  max-width: 800px; /* Allow a bit more width for tabbed layout */
+  background-color: #f4f6f8; /* Slightly different page background */
+}
+
+/* Read-only info styling */
+.read-only-info .form-group { /* Assuming Input component wraps label/input in form-group */
+  margin-bottom: 0.5rem;
+}
+.read-only-info input[disabled] {
+  background-color: #e9ecef; /* Visually indicate disabled fields */
+  cursor: default;
+}
+
+.form-helper-text {
+  font-size: 0.85em;
+  color: #6c757d;
+  margin-top: 0.25rem;
+  display: block;
+}
+
+/* Styles for Profile Icon section */
+.profile-icon-section {
+  margin-top: 2rem; /* Add some space above this section */
+}
+
+.current-profile-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Center the icon placeholder */
+  margin-bottom: 1rem;
+  width: 100px; /* Example size */
+  height: 100px; /* Example size */
+  background-color: #e0e0e0; /* Placeholder background */
+  border-radius: 50%; /* Make it circular */
+  overflow: hidden; /* In case an image is larger */
+  border: 2px solid #ccc;
+}
+
+.user-icon-placeholder-large {
+  font-size: 3em; /* Larger placeholder character */
+  color: #777;
+}
+
+.change-icon-button {
+  display: block; /* Make button take its own line or adjust as needed */
+  margin: 0 auto; /* Center button if it's block */
+}
+
+.avatar-image-preview {
+  width: 100px; /* Same as placeholder */
+  height: 100px; /* Same as placeholder */
+  border-radius: 50%;
+  object-fit: cover;
+  display: block; /* Or inline-block if preferred */
+  margin: 0 auto 1rem auto; /* Center it and give some margin below */
+}
+
+.avatar-upload-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.profile-icon-section .message.error {
+  margin-top: 1rem;
+  text-align: center;
+}

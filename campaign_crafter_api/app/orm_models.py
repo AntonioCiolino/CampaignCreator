@@ -20,6 +20,7 @@ class User(Base):
     sd_engine_preference = Column(String, nullable=True)
     encrypted_gemini_api_key = Column(String, nullable=True)
     encrypted_other_llm_api_key = Column(String, nullable=True)
+    avatar_url = Column(String, nullable=True) # New field for user avatar
 
     campaigns = relationship("Campaign", back_populates="owner")
     llm_configs = relationship("LLMConfig", back_populates="owner")

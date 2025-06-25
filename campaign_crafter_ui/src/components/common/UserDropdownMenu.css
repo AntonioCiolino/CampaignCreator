@@ -22,8 +22,32 @@
 .user-icon-placeholder {
   margin-right: 8px; /* Space between icon and username */
   font-size: 1.2em; /* Slightly larger icon */
-  /* Basic styling for a div placeholder if not using a character:
-  width: 24px;
+  /* Basic styling for a div placeholder if not using a character: */
+  width: 24px; /* Ensure placeholder and image have similar dimensions */
+  height: 24px; /* Ensure placeholder and image have similar dimensions */
+  display: inline-flex; /* Aligns well with text */
+  justify-content: center;
+  align-items: center;
+  /*
+  background-color: #ccc;
+  border-radius: 50%;
+  display: inline-block;
+  text-align: center;
+  line-height: 24px;
+  */
+}
+
+.user-avatar-icon {
+  width: 24px; /* Match placeholder size */
+  height: 24px; /* Match placeholder size */
+  border-radius: 50%; /* Circular avatar */
+  object-fit: cover; /* Ensure image covers the area well */
+  margin-right: 8px; /* Space between icon and username */
+}
+
+.user-username {
+  margin-right: 5px; /* Space between username and arrow */
+}
   height: 24px;
   background-color: #ccc;
   border-radius: 50%;
