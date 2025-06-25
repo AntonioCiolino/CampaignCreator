@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as Logo } from '../../logo_cc.svg';
 import './Layout.css';
 import { useAuth } from '../../contexts/AuthContext';
-import UserDropdownMenu from './UserDropdownMenu'; // Import the new component
+import UserDropdownMenu from './UserDropdownMenu';
 
 interface LayoutProps {
   children: ReactNode;
@@ -21,10 +21,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const handleLogout = () => {
     logout();
     navigate('/login');
-    if(isMobileMenuOpen) setIsMobileMenuOpen(false);
+    if (isMobileMenuOpen) setIsMobileMenuOpen(false);
   };
 
-  // Function to close mobile menu, can be passed to links if needed
   const closeMobileMenu = () => {
     if (isMobileMenuOpen) {
       setIsMobileMenuOpen(false);
@@ -39,48 +38,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <h1>Campaign Crafter</h1>
         </Link>
 
-        {/* Hamburger menu button is now always controlling the main nav links */}
-        <button
-          className="hamburger-menu global-hamburger-menu" /* Added global class for distinct styling if needed */
-          onClick={toggleMobileMenu}
-          aria-label="Toggle navigation"
-          aria-expanded={isMobileMenuOpen}
-        >
-          &#9776; {/* Hamburger icon */}
-        </button>
+        {/* Hamburger menu button and its <nav> are now removed */}
+        {/* Mobile navigation will need to be re-thought if a hamburger is desired only for mobile. */}
+        {/* For now, this removes the hamburger functionality entirely. */}
 
-        {/* app-nav will now primarily be for the hamburger-controlled menu (nav-links-left) */}
-        {/* The UserDropdownMenu (nav-links-right) will be positioned separately if it's to remain always visible */}
-        <nav className={`app-nav ${isMobileMenuOpen ? 'mobile-nav-active' : ''}`}>
-          {/* This UL is for links that appear inside the hamburger menu */}
-          <ul className="nav-links-hamburger">
-            {/* Example: Future links would go here */}
-            {/* <li><Link to="/help" onClick={closeMobileMenu}>Help</Link></li> */}
-            {/* <li><Link to="/features" onClick={closeMobileMenu}>Features</Link></li> */}
-
-            {/* If Data Management & User Management were to be here (they are in UserDropdown as per last change) */}
-            {/* {token && user && (
-              <>
-                <li><Link to="/data-management" onClick={closeMobileMenu}>Data Management</Link></li>
-                {user.is_superuser && (
-                  <li><Link to="/users" onClick={closeMobileMenu}>User Management</Link></li>
-                )}
-              </>
-            )} */}
-          </ul>
-        </nav>
-
-        {/* User Dropdown Menu - positioned to the right, independent of hamburger */}
         <div className="user-actions-area">
           {token && user ? (
             <UserDropdownMenu user={user} onLogout={handleLogout} />
-            ) : (
-              <ul> {/* Ensure login is also in a ul for consistent structure if needed */}
-                <li><Link to="/login" onClick={closeMobileMenu}>Login</Link></li>
-              </ul>
-            )}
-          </div>
-        </nav>
+          ) : (
+            <ul>
+              <li><Link to="/login" onClick={closeMobileMenu}>Login</Link></li>
+            </ul>
+          )}
+        </div>
+        {/* The erroneous extra </nav> tag that was here previously has been removed. */}
       </header>
       <main className="app-main-content">
         {children}

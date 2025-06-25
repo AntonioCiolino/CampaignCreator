@@ -12,7 +12,7 @@
   padding: 0.75rem 1.5rem;
   display: flex;
   align-items: center;
-  position: relative; /* For absolute positioning of the nav dropdown */
+  justify-content: space-between; /* Title on left, user actions on right */
 }
 
 .app-title-link {
@@ -20,7 +20,7 @@
   text-decoration: none;
   display: flex;
   align-items: center;
-  margin-right: auto; /* Pushes other items (hamburger, user actions) to the right */
+  /* margin-right: auto; /* No longer needed if header is space-between */
 }
 
 .app-logo {
@@ -35,72 +35,18 @@
   color: #FFFFFF;
 }
 
-.hamburger-menu {
-  display: block; /* Always visible */
-  background: none;
-  border: none;
-  color: white; /* var(--text-color-on-primary) */
-  font-size: 1.8rem;
-  cursor: pointer;
-  padding: 0.25rem;
-  margin-left: 1rem; /* Space from title if title doesn't fill all space */
-}
+/* Hamburger-related styles are removed as the global hamburger is removed */
+/* .hamburger-menu { ... } */
+/* .app-nav { ... } */
+/* .app-nav.mobile-nav-active { ... } */
+/* .app-nav ul.nav-links-hamburger { ... } */
 
-/* Nav container for hamburger menu content */
-/* This is the dropdown part */
-.app-nav {
-  display: none; /* Hidden by default */
-  position: absolute;
-  top: 100%; /* Position below the header */
-  /* Calculate left position carefully if hamburger is not at the very edge */
-  /* For simplicity, let's assume it aligns left for now or near hamburger */
-  left: 1.5rem; /* Example: Align with header padding start, or adjust based on hamburger pos */
-  background-color: #333; /* var(--primary-color) */
-  z-index: 999;
-  min-width: 200px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  border-radius: 0 0 4px 4px;
-}
-
-.app-nav.mobile-nav-active { /* Reusing this class name for active state */
-  display: block;
-}
-
-.app-nav ul.nav-links-hamburger {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-}
-
-.app-nav ul.nav-links-hamburger li {
-  border-bottom: 1px solid #444; /* var(--primary-dark-color) */
-}
-.app-nav ul.nav-links-hamburger li:last-child {
-  border-bottom: none;
-}
-
-.app-nav ul.nav-links-hamburger a {
-  color: white; /* var(--text-color-on-primary) */
-  text-decoration: none;
-  font-size: 1rem;
-  padding: 0.75rem 1rem;
-  display: block;
-  transition: background-color 0.2s ease-in-out;
-}
-
-.app-nav ul.nav-links-hamburger a:hover,
-.app-nav ul.nav-links-hamburger a:focus {
-  background-color: #555; /* var(--primary-dark-color) */
-}
 
 /* User actions area (for UserDropdownMenu and Login link) */
 .user-actions-area {
   display: flex;
   align-items: center;
-  margin-left: 1rem; /* Space from the hamburger menu */
+  /* margin-left: 1rem; /* No longer needed if header is space-between */
 }
 
 .user-actions-area > ul { /* For the Login link when user is not authenticated */
@@ -132,26 +78,17 @@
 }
 
 /* Responsive adjustments */
+/* Styles for a mobile-specific hamburger would need to be re-added if that feature is desired. */
+/* For now, the header will simply have title and user actions. */
 @media (max-width: 768px) {
   .app-header {
     padding: 0.75rem 1rem;
+    /* flex-direction: column; /* Example if stacking is needed on mobile */
+    /* align-items: flex-start; */
   }
   .app-title-link h1 {
     font-size: 1.3rem;
   }
-  .hamburger-menu {
-    font-size: 1.6rem;
-    margin-left: 0.5rem;
-  }
-   .user-actions-area {
-    margin-left: 0.5rem;
-  }
-
-  /* Hamburger dropdown can be wider on mobile */
-  .app-nav.mobile-nav-active {
-    left: 0;
-    right: 0;
-    min-width: 100%;
-    border-radius: 0;
-  }
+  /* If UserDropdownMenu needs to be styled differently on mobile (e.g., take full width or hide behind a different mobile-only hamburger)
+     those styles would go here. For now, it will behave as a flex item. */
 }

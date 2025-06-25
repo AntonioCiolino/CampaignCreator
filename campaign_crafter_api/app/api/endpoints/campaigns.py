@@ -294,12 +294,15 @@ async def generate_campaign_concept_manually_endpoint(
         # The llm_service.generate_concept might need to be adjusted or a new method created
         # if it doesn't align with this usage pattern (e.g., if it always uses campaign.initial_user_prompt)
         # For now, assume generate_concept can take a direct prompt.
-        generated_concept_text = await llm_service.generate_concept(
-            initial_user_prompt=request_body.prompt, # Pass the prompt from the request
-            db=db, # Pass db
-            current_user=current_user, # Pass current_user
-            model=model_specific_id, # Pass the specific model ID
-            temperature=request_body.temperature if request_body.temperature is not None else db_campaign.temperature
+        generated_concept_text = await llm_service.generate_campaign_concept( # Corrected method name
+            user_prompt=request_body.prompt, # Pass the prompt from the request, use 'user_prompt'
+            db=db,
+            current_user=current_user,
+            model=model_specific_id,
+            # temperature is not directly supported by generate_campaign_concept signature in AbstractLLMService
+            # The service method itself would use campaign.temperature or a default.
+            # If temperature needs to be passed, the service method signature needs update.
+            # For now, removing it from this call to match the abstract method.
         )
 
         if not generated_concept_text:
