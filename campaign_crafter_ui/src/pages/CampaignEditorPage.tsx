@@ -1483,7 +1483,7 @@ const CampaignEditorPage: React.FC = () => {
           <Button
             onClick={handleGenerateConceptManually}
             disabled={isGeneratingConceptManually || !campaign.selected_llm_id}
-            variant="contained"
+            variant="primary"
             icon={<SettingsSuggestIcon />}
             tooltip={!campaign.selected_llm_id ? "Select an LLM model from the Settings tab first" : "Generate the campaign concept using AI"}
           >
