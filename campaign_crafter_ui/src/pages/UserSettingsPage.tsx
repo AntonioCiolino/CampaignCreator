@@ -176,6 +176,7 @@ const UserSettingsPage: React.FC = () => {
       setAvatarUploadError('No file selected or user not available.');
       return;
     }
+    console.log("Avatar file to upload:", avatarFile); // DEBUG LOG
     setIsAvatarUploading(true);
     setAvatarUploadError(null);
     setMessage(null); // Clear other messages
