@@ -66,8 +66,12 @@ def update_user(db: Session, db_user: orm_models.User, user_in: models.UserUpdat
 
     # Handle sd_engine_preference
     # Check if 'sd_engine_preference' was explicitly passed in the request data
-    if "sd_engine_preference" in update_data:
-        db_user.sd_engine_preference = user_in.sd_engine_preference
+    if "sd_engine_preference" in update_data: # Checks if key was in payload
+        db_user.sd_engine_preference = user_in.sd_engine_preference # Applies the value (could be None to clear)
+
+    # Handle avatar_url
+    if "avatar_url" in update_data: # Checks if key was in payload
+        db_user.avatar_url = user_in.avatar_url # Applies the value (could be None to clear)
 
     db.add(db_user)
     db.commit()
