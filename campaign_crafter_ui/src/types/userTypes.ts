@@ -10,6 +10,7 @@ export interface User {
   sd_engine_preference?: string;
   gemini_api_key_provided?: boolean;
   other_llm_api_key_provided?: boolean;
+  avatar_url?: string | null; // New field for avatar URL
 }
 
 export interface UserApiKeysPayload {

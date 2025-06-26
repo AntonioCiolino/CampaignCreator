@@ -20,3 +20,4 @@ azure-storage-blob
 azure-identity
 aiohttp
 certifi
+alembic

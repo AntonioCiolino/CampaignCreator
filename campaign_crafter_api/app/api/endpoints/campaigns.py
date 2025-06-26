@@ -44,13 +44,17 @@ async def create_new_campaign(
 ):
     owner_id = current_user.id # Use authenticated user's ID
     try:
+        # crud.create_campaign will now need to handle campaign_input.skip_concept_generation
         db_campaign = await crud.create_campaign(
-            db=db, 
-            campaign_payload=campaign_input,
-            current_user_obj=current_user # Pass the full current_user object
+            db=db,
+            campaign_payload=campaign_input, # This now includes skip_concept_generation
+            current_user_obj=current_user
         )
-        if db_campaign.concept is None and campaign_input.initial_user_prompt:
-            print(f"Campaign {db_campaign.id} created for user {owner_id}, but concept generation might have failed or was skipped.")
+        if campaign_input.skip_concept_generation:
+            print(f"Campaign {db_campaign.id} created for user {owner_id}. Concept generation was skipped by user.")
+        elif db_campaign.concept is None and campaign_input.initial_user_prompt:
+            # This condition implies an attempt was made to generate concept but it might have failed in CRUD
+            print(f"Campaign {db_campaign.id} created for user {owner_id}, but concept generation might have failed (or prompt was empty but not skipped).")
     # Note: crud.create_campaign now internally handles LLMServiceUnavailableError and LLMGenerationError
     # by logging them and returning a campaign without a concept.
     # The endpoint will only catch errors if crud.create_campaign re-raises them, or for other ValueErrors.
@@ -80,6 +84,7 @@ async def read_campaign(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
+    print(f"Attempting to generate concept for campaign_id: {campaign_id}") # DEBUG PRINT
     db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
     if db_campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
@@ -248,6 +253,82 @@ async def generate_campaign_titles_endpoint(
     if not generated_titles:
         raise HTTPException(status_code=500, detail="Title generation resulted in empty content.")
     return models.CampaignTitlesResponse(titles=generated_titles)
+
+@router.post("/{campaign_id}/generate-concept", response_model=models.Campaign, tags=["Campaigns", "LLM"])
+async def generate_campaign_concept_manually_endpoint(
+    campaign_id: int,
+    request_body: models.LLMGenerationRequest, # Reusing this for prompt and model_id
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+):
+    db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
+    if db_campaign is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    if db_campaign.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized for this campaign")
+
+    if not request_body.prompt:
+        raise HTTPException(status_code=400, detail="A prompt is required to generate the campaign concept.")
+
+    try:
+        current_user_orm = crud.get_user(db, user_id=current_user.id)
+        if not current_user_orm:
+            raise HTTPException(status_code=404, detail="Current user ORM object not found.")
+
+        # Determine LLM service and model ID
+        model_id_for_concept = request_body.model_id_with_prefix or db_campaign.selected_llm_id
+        if not model_id_for_concept:
+            raise HTTPException(status_code=400, detail="LLM model ID not specified in request or campaign settings. Cannot generate concept.")
+
+        provider_name, model_specific_id = _extract_provider_and_model(model_id_for_concept)
+
+        llm_service = get_llm_service(
+            db=db,
+            current_user_orm=current_user_orm,
+            provider_name=provider_name,
+            model_id_with_prefix=model_id_for_concept, # Use the resolved model_id_with_prefix
+            campaign=db_campaign
+        )
+
+        # Generate concept using the LLM service
+        # The llm_service.generate_concept might need to be adjusted or a new method created
+        # if it doesn't align with this usage pattern (e.g., if it always uses campaign.initial_user_prompt)
+        # For now, assume generate_concept can take a direct prompt.
+        generated_concept_text = await llm_service.generate_campaign_concept( # Corrected method name
+            user_prompt=request_body.prompt, # Pass the prompt from the request, use 'user_prompt'
+            db=db,
+            current_user=current_user,
+            model=model_specific_id,
+            # temperature is not directly supported by generate_campaign_concept signature in AbstractLLMService
+            # The service method itself would use campaign.temperature or a default.
+            # If temperature needs to be passed, the service method signature needs update.
+            # For now, removing it from this call to match the abstract method.
+        )
+
+        if not generated_concept_text:
+            raise LLMGenerationError("LLM generated empty content for the campaign concept.")
+
+        # Update the campaign with the new concept
+        campaign_update_payload = models.CampaignUpdate(concept=generated_concept_text)
+        updated_campaign = await crud.update_campaign(db=db, campaign_id=campaign_id, campaign_update=campaign_update_payload)
+
+        if updated_campaign is None:
+            # This should not happen if db_campaign was found earlier
+            raise HTTPException(status_code=500, detail="Failed to update campaign with the new concept.")
+
+        return updated_campaign
+
+    except LLMServiceUnavailableError as e:
+        raise HTTPException(status_code=503, detail=f"LLM Service Error for concept generation: {str(e)}")
+    except LLMGenerationError as e:
+        raise HTTPException(status_code=500, detail=f"LLM Generation Error for concept: {str(e)}")
+    except ValueError as ve: # Catches _extract_provider_and_model errors or other ValueErrors
+        raise HTTPException(status_code=400, detail=str(ve))
+    except NotImplementedError:
+        raise HTTPException(status_code=501, detail="Concept generation is not implemented for the selected LLM provider.")
+    except Exception as e:
+        print(f"Error during manual concept generation for campaign {campaign_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate campaign concept: {str(e)}")
 
 
 @router.post(

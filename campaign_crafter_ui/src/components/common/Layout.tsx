@@ -1,57 +1,54 @@
 import React, { ReactNode, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom'; // Added useNavigate
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as Logo } from '../../logo_cc.svg';
 import './Layout.css';
-import { useAuth } from '../../contexts/AuthContext'; // Import useAuth
+import { useAuth } from '../../contexts/AuthContext';
+import UserDropdownMenu from './UserDropdownMenu';
 
 interface LayoutProps {
   children: ReactNode;
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, logout, token } = useAuth(); // Get auth state and functions
+  // Removed isMobileMenuOpen state and toggleMobileMenu function
+  const { user, logout, token } = useAuth();
   const navigate = useNavigate();
-
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
 
   const handleLogout = () => {
     logout();
-    navigate('/login'); // Redirect to login page after logout
-    if(isMobileMenuOpen) setIsMobileMenuOpen(false); // Close mobile menu if open
+    navigate('/login');
+    // No need to manage isMobileMenuOpen here anymore
+  };
+
+  // closeMobileMenu is kept for now as links might still call it,
+  // but it effectively does nothing if isMobileMenuOpen is removed.
+  // Consider removing calls to closeMobileMenu if no mobile-specific menu is re-introduced.
+  const closeMobileMenu = () => {
+    // console.log("closeMobileMenu called, but no mobile menu state to change.");
   };
 
   return (
     <div className="app-layout">
       <header className="app-header">
-        <Link to="/" className="app-title-link" onClick={() => isMobileMenuOpen && setIsMobileMenuOpen(false)}>
+        <Link to="/" className="app-title-link" onClick={closeMobileMenu}>
           <Logo className="app-logo" title="Campaign Crafter Logo" />
           <h1>Campaign Crafter</h1>
         </Link>
-        <button className="hamburger-menu" onClick={toggleMobileMenu} aria-label="Toggle navigation" aria-expanded={isMobileMenuOpen}>
-          &#9776; {/* Hamburger icon */}
-        </button>
-        <nav className={`app-nav ${isMobileMenuOpen ? 'mobile-nav-active' : ''}`}>
-          <ul>
-            {token && user ? (
-              <>
-                <li><span className="welcome-message">Welcome, {user.username}!</span></li>
-                <li><Link to="/" onClick={() => setIsMobileMenuOpen(false)}>Dashboard</Link></li>
-                <li><Link to="/user-settings" onClick={() => setIsMobileMenuOpen(false)}>User Settings</Link></li> {/* New Link */}
-                {/* Add more authenticated user links here */}
-                {user.is_superuser && (
-                  <li><Link to="/users" onClick={() => setIsMobileMenuOpen(false)}>User Management</Link></li>
-                )}
-                <li><Link to="/data-management" onClick={() => setIsMobileMenuOpen(false)}>Data Management</Link></li>
-                <li><button onClick={handleLogout} className="nav-link-button">Logout</button></li>
-              </>
-            ) : (
-              <li><Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>Login</Link></li>
-            )}
-          </ul>
-        </nav>
+
+        {/* Hamburger menu button and its <nav> are now removed */}
+        {/* Mobile navigation will need to be re-thought if a hamburger is desired only for mobile. */}
+        {/* For now, this removes the hamburger functionality entirely. */}
+
+        <div className="user-actions-area">
+          {token && user ? (
+            <UserDropdownMenu user={user} onLogout={handleLogout} />
+          ) : (
+            <ul>
+              <li><Link to="/login" onClick={closeMobileMenu}>Login</Link></li>
+            </ul>
+          )}
+        </div>
+        {/* The erroneous extra </nav> tag that was here previously has been removed. */}
       </header>
       <main className="app-main-content">
         {children}

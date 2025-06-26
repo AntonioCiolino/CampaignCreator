@@ -66,8 +66,12 @@ def update_user(db: Session, db_user: orm_models.User, user_in: models.UserUpdat
 
     # Handle sd_engine_preference
     # Check if 'sd_engine_preference' was explicitly passed in the request data
-    if "sd_engine_preference" in update_data:
-        db_user.sd_engine_preference = user_in.sd_engine_preference
+    if "sd_engine_preference" in update_data: # Checks if key was in payload
+        db_user.sd_engine_preference = user_in.sd_engine_preference # Applies the value (could be None to clear)
+
+    # Handle avatar_url
+    if "avatar_url" in update_data: # Checks if key was in payload
+        db_user.avatar_url = user_in.avatar_url # Applies the value (could be None to clear)
 
     db.add(db_user)
     db.commit()
@@ -297,11 +301,10 @@ from app.services.llm_factory import get_llm_service, LLMServiceUnavailableError
 # --- Campaign CRUD functions ---
 async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, current_user_obj: models.User) -> orm_models.Campaign: # Changed owner_id to current_user_obj
     generated_concept = None
-    # Only attempt to generate a concept if there's an initial prompt
-    if campaign_payload.initial_user_prompt:
+
+    # Conditionally generate concept
+    if not campaign_payload.skip_concept_generation and campaign_payload.initial_user_prompt:
         current_user_orm_for_keys = get_user(db, user_id=current_user_obj.id)
-        # If current_user_orm_for_keys is None, it's an inconsistency.
-        # get_llm_service will use system keys if current_user_orm_for_keys is None.
         try:
             provider_name_for_concept = None
             model_specific_id_for_concept_crud = None
@@ -318,18 +321,23 @@ async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, 
                 model_id_with_prefix=campaign_payload.model_id_with_prefix_for_concept,
                 campaign=None  # Campaign doesn't exist yet
             )
-            generated_concept = await llm_service.generate_campaign_concept(
-                user_prompt=campaign_payload.initial_user_prompt,
+            generated_concept = await llm_service.generate_campaign_concept( # Assuming this method is generate_campaign_concept
+                user_prompt=campaign_payload.initial_user_prompt, # Use initial_user_prompt from payload
                 db=db,
-                current_user=current_user_obj, # Pass current_user object
-                model=model_specific_id_for_concept_crud
+                current_user=current_user_obj,
+                model=model_specific_id_for_concept_crud,
+                # temperature can be passed if llm_service.generate_campaign_concept supports it
+                # temperature=campaign_payload.temperature
             )
         except LLMServiceUnavailableError as e:
             print(f"LLM service unavailable for concept generation: {e}")
-            # Campaign will be created without a concept.
         except Exception as e:
             print(f"Error generating campaign concept from LLM: {e}")
-            # For now, we'll let the campaign be created with a None concept if LLM fails.
+    elif campaign_payload.skip_concept_generation:
+        print(f"Campaign creation: Skipping concept generation for campaign titled '{campaign_payload.title}'.")
+    else: # No prompt provided, and not explicitly skipping
+        print(f"Campaign creation: No initial prompt provided for campaign titled '{campaign_payload.title}'. Concept will be null.")
+
 
     db_campaign = orm_models.Campaign(
         title=campaign_payload.title,

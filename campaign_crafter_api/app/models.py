@@ -106,7 +106,9 @@ class CampaignBase(BaseModel):
     mood_board_image_urls: Optional[List[str]] = None
 
 class CampaignCreate(CampaignBase):
+    initial_user_prompt: Optional[str] = None # Already in CampaignBase, ensuring it's seen as optional here too
     model_id_with_prefix_for_concept: Optional[str] = None
+    skip_concept_generation: Optional[bool] = False # New field
 
 class Campaign(CampaignBase):
     id: int
@@ -155,6 +157,7 @@ class UserUpdate(BaseModel): # Changed from inheriting UserBase
     disabled: Optional[bool] = None
     is_superuser: Optional[bool] = None
     sd_engine_preference: Optional[str] = None
+    avatar_url: Optional[str] = None # New field for avatar URL
 
 class CampaignUpdate(BaseModel): # Assuming CampaignUpdate is for PATCH, all fields optional
     title: Optional[str] = None
@@ -192,6 +195,7 @@ class User(UserBase): # For responses
     sd_engine_preference: Optional[str] = None
     gemini_api_key_provided: Optional[bool] = None
     other_llm_api_key_provided: Optional[bool] = None
+    avatar_url: Optional[str] = None # New field for avatar URL
 
     campaigns: List[Campaign] = []
     llm_configs: List[LLMConfig] = []

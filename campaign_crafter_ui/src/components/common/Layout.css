@@ -1,8 +1,4 @@
 /* campaign_crafter_ui/src/components/common/Layout.css */
-/* Default styles for hamburger menu (hidden on desktop) */
-.hamburger-menu {
-  display: none;
-}
 
 .app-layout {
   display: flex;
@@ -11,136 +7,88 @@
 }
 
 .app-header {
-  background-color: #333;
-  color: white;
-  padding: 0.75rem 2rem; /* Adjusted padding */
+  background-color: #333; /* var(--primary-color) */
+  color: white; /* var(--text-color-on-primary) */
+  padding: 0.75rem 1.5rem;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-}
-
-.app-logo {
-  height: 40px; /* Control logo size */
-  margin-right: 10px; /* Space between logo and title */
-  vertical-align: middle; /* Helps align if text is not perfectly centered by flex */
+  justify-content: space-between; /* Title on left, user actions on right */
 }
 
 .app-title-link {
-  color: #FFFFFF; /* Lighten title color for better contrast */
+  color: #FFFFFF;
   text-decoration: none;
-  display: flex; /* Align logo and title */
-  align-items: center; /* Vertically center logo and title */
+  display: flex;
+  align-items: center;
+  /* margin-right: auto; /* No longer needed if header is space-between */
+}
+
+.app-logo {
+  height: 40px;
+  margin-right: 10px;
+  fill: currentColor;
 }
 
 .app-title-link h1 {
   margin: 0;
   font-size: 1.5rem;
-  color: #FFFFFF; /* Ensure h1 color is also light */
+  color: #FFFFFF;
 }
 
-.app-nav ul {
+/* Hamburger-related styles are removed as the global hamburger is removed */
+/* .hamburger-menu { ... } */
+/* .app-nav { ... } */
+/* .app-nav.mobile-nav-active { ... } */
+/* .app-nav ul.nav-links-hamburger { ... } */
+
+
+/* User actions area (for UserDropdownMenu and Login link) */
+.user-actions-area {
+  display: flex;
+  align-items: center;
+  /* margin-left: 1rem; /* No longer needed if header is space-between */
+}
+
+.user-actions-area > ul { /* For the Login link when user is not authenticated */
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  gap: 10px; /* Use gap for spacing */
 }
-
-.app-nav li {
-  /* margin-left: 20px; /* Removed as gap is used on ul */
-}
-
-.app-nav a {
+.user-actions-area > ul > li > a {
   color: white;
   text-decoration: none;
-  font-size: 1rem;
-  padding: 0.5rem 0.75rem; /* Added padding */
-  border-radius: 4px;     /* Added border-radius */
-  transition: background-color 0.2s ease-in-out; /* Smooth transition */
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
 }
-
-.app-nav a:hover,
-.app-nav a:focus { /* Added focus for accessibility */
-  background-color: #555; /* Changed hover effect */
-  text-decoration: none;  /* Ensure no underline on hover/focus */
+.user-actions-area > ul > li > a:hover {
+  background-color: #555;
 }
-
-/* Optional: Style for an 'active' link if NavLink is used later
-.app-nav a.active {
-  background-color: #007bff;
-  color: white;
-}
-*/
 
 .app-main-content {
   flex-grow: 1;
-  padding: 20px; /* Add some padding to main content area */
+  padding: 20px;
 }
 
 .app-footer {
-  background-color: #f8f9fa; /* Light grey footer */
+  background-color: #f8f9fa;
   color: #333;
   text-align: center;
   padding: 1rem;
   border-top: 1px solid #e7e7e7;
 }
 
-/* Responsive adjustments for smaller screens */
+/* Responsive adjustments */
+/* Styles for a mobile-specific hamburger would need to be re-added if that feature is desired. */
+/* For now, the header will simply have title and user actions. */
 @media (max-width: 768px) {
   .app-header {
-    padding: 0.75rem 1rem; /* Slightly reduce padding for smaller screens */
-    position: relative; /* For positioning the mobile nav menu if it's absolute */
+    padding: 0.75rem 1rem;
+    /* flex-direction: column; /* Example if stacking is needed on mobile */
+    /* align-items: flex-start; */
   }
-
-  .app-nav ul {
-    display: none; /* Hide nav by default on mobile */
-    position: absolute; /* Take nav out of flow */
-    top: 100%; /* Position below the header */
-    left: 0;
-    right: 0;
-    background-color: #333; /* Same as header */
-    z-index: 1000; /* Ensure it's above other content */
-    border-top: 1px solid #444; /* Separator from header */
+  .app-title-link h1 {
+    font-size: 1.3rem;
   }
-
-  .app-nav.mobile-nav-active ul {
-    display: flex;
-    flex-direction: column;
-    width: 100%; /* Ensure it takes full width */
-  }
-
-  .app-nav.mobile-nav-active ul li {
-    width: 100%;
-  }
-
-  .app-nav.mobile-nav-active ul li a {
-    display: block; /* Make links take full width */
-    width: 100%;    /* Explicitly set width */
-    text-align: left;
-    padding: 1rem 1.5rem; /* Comfortable padding for touch */
-    border-bottom: 1px solid #444; /* Separator for items */
-  }
-
-  .app-nav.mobile-nav-active ul li:last-child a {
-    border-bottom: none; /* No border for the last item */
-  }
-
-  .app-nav a {
-     font-size: 1.1rem; /* Slightly larger font for mobile nav items */
-  }
-
-  /* Hamburger Menu Button Styles */
-  .hamburger-menu {
-    display: block; /* Show hamburger on mobile */
-    color: white;
-    font-size: 1.8rem; /* Adjust size as needed */
-    cursor: pointer;
-    background-color: transparent;
-    border: none;
-    padding: 0.25rem; /* Small padding for touch target */
-    order: -1; /* Ensure it can be positioned if header items are reordered, e.g. title centered */
-  }
-  /* Hide on larger screens - this should be paired with a .tsx change
-     where the button is not rendered or hidden with a class */
-  /* .hamburger-menu { display: none; } /* Default to hide, then override above */
+  /* If UserDropdownMenu needs to be styled differently on mobile (e.g., take full width or hide behind a different mobile-only hamburger)
+     those styles would go here. For now, it will behave as a flex item. */
 }

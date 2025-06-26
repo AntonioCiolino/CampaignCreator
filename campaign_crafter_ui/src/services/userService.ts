@@ -38,6 +38,21 @@ export const getUsers = async (skip: number = 0, limit: number = 100): Promise<A
   }
 };
 
+// Upload user avatar
+export const uploadUserAvatar = async (formData: FormData): Promise<AppUser> => {
+  try {
+    const response = await apiClient.post<AppUser>('/api/v1/users/me/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error uploading user avatar:', error);
+    throw error;
+  }
+};
+
 // Interface for updating user API keys
 export interface UserApiKeysPayload {
   openai_api_key?: string | null; // Allow null to clear
