@@ -187,6 +187,7 @@ const UserSettingsPage: React.FC = () => {
     try {
       // This service function needs to be created in userService.ts
       const updatedUser = await uploadUserAvatar(formData); // Assuming a new service function
+      console.log('Updated user from API:', updatedUser); // DEBUG LOG
 
       if (setAuthUser) {
         setAuthUser(updatedUser); // Update user in AuthContext

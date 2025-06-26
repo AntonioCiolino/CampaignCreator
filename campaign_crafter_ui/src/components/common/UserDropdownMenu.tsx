@@ -12,6 +12,11 @@ const UserDropdownMenu: React.FC<UserDropdownMenuProps> = ({ user, onLogout }) =
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Log user from context to check avatar_url
+  useEffect(() => {
+    console.log('User in dropdown:', user);
+  }, [user]);
+
   const toggleDropdown = () => setIsOpen(!isOpen);
 
   useEffect(() => {
