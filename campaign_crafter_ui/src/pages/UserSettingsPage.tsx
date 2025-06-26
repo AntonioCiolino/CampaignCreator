@@ -1,5 +1,5 @@
-import React, { useState, useEffect, FormEvent } from 'react';
-import { getMe, updateUser, updateUserApiKeys, UserApiKeysPayload } from '../services/userService';
+import React, { useState, useEffect, FormEvent, useRef } from 'react'; // Added useRef
+import { getMe, updateUser, updateUserApiKeys, UserApiKeysPayload, uploadUserAvatar } from '../services/userService'; // Added uploadUserAvatar
 import { User } from '../types/userTypes';
 import { useAuth } from '../contexts/AuthContext';
 import Input from '../components/common/Input';
@@ -37,7 +37,7 @@ const UserSettingsPage: React.FC = () => {
   const [isSdSettingsLoading, setIsSdSettingsLoading] = useState(false);
 
   const { user: authUser, setUser: setAuthUser, token } = useAuth(); // Added token
-  const [activeTab, setActiveTab] = useState<string>('profile');
+  const [activeTab, setActiveTab] = useState<string>('Profile'); // Default to Profile tab
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarUploadError, setAvatarUploadError] = useState<string | null>(null);
@@ -185,7 +185,7 @@ const UserSettingsPage: React.FC = () => {
 
     try {
       // This service function needs to be created in userService.ts
-      const updatedUser = await /*userService.*/uploadUserAvatar(formData); // Assuming a new service function
+      const updatedUser = await uploadUserAvatar(formData); // Assuming a new service function
 
       if (setAuthUser) {
         setAuthUser(updatedUser); // Update user in AuthContext
@@ -221,7 +221,7 @@ const UserSettingsPage: React.FC = () => {
     }
     try {
       const updatedUser = await updateUser(currentUser.id, {
-        sd_engine_preference: sdEnginePreference === "" ? null : sdEnginePreference // Send null to clear
+        sd_engine_preference: sdEnginePreference === "" ? undefined : sdEnginePreference // Send undefined to clear
       });
       setSdSettingsMessage('Stable Diffusion settings updated successfully!');
       if (setAuthUser) setAuthUser(updatedUser);
@@ -367,15 +367,25 @@ const UserSettingsPage: React.FC = () => {
   );
 
   const tabItems: TabItem[] = [
-    { name: 'profile', label: 'Profile', content: profileTabContent },
-    { name: 'apiKeys', label: 'API Keys', content: apiKeysTabContent },
-    { name: 'preferences', label: 'Preferences', content: preferencesTabContent },
+    { name: 'Profile', content: profileTabContent }, // Use 'Profile' as name (and thus label)
+    { name: 'API Keys', content: apiKeysTabContent }, // Use 'API Keys' as name
+    { name: 'Preferences', content: preferencesTabContent }, // Use 'Preferences' as name
   ];
+
+  // Ensure activeTab state is initialized with one of these new names
+  // If `activeTab` was 'profile', it should now be 'Profile'
+  // This might require adjusting the initial state of activeTab if it was based on the old names.
+  // For simplicity, assuming Tabs component or its usage handles default active tab gracefully or
+  // the initial useState for activeTab is updated accordingly.
+  // Let's ensure the initial activeTab is 'Profile' to match the first item.
+  // The activeTab state is already initialized with 'profile'. We should update it to 'Profile'.
+  // This requires changing the initial useState for activeTab:
+  // const [activeTab, setActiveTab] = useState<string>('Profile'); // Changed from 'profile'
 
   return (
     <div className="user-settings-page modern-settings-layout container">
       <h2 className="page-title">My Settings</h2>
-      <Tabs tabs={tabItems} activeTabName={activeTab} onTabChange={setActiveTab} />
+      <Tabs tabs={tabItems} activeTabName={activeTab === 'profile' ? 'Profile' : activeTab} onTabChange={setActiveTab} />
     </div>
   );
 };

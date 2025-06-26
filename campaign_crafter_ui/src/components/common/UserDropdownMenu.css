@@ -48,18 +48,6 @@
 .user-username {
   margin-right: 5px; /* Space between username and arrow */
 }
-  height: 24px;
-  background-color: #ccc;
-  border-radius: 50%;
-  display: inline-block;
-  text-align: center;
-  line-height: 24px;
-  */
-}
-
-.user-username {
-  margin-right: 5px; /* Space between username and arrow */
-}
 
 /* .dropdown-arrow can be styled if needed, e.g. margin-left: auto; if username should take available space */
 

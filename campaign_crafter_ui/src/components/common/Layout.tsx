@@ -10,24 +10,21 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  // Removed isMobileMenuOpen state and toggleMobileMenu function
   const { user, logout, token } = useAuth();
   const navigate = useNavigate();
-
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
 
   const handleLogout = () => {
     logout();
     navigate('/login');
-    if (isMobileMenuOpen) setIsMobileMenuOpen(false);
+    // No need to manage isMobileMenuOpen here anymore
   };
 
+  // closeMobileMenu is kept for now as links might still call it,
+  // but it effectively does nothing if isMobileMenuOpen is removed.
+  // Consider removing calls to closeMobileMenu if no mobile-specific menu is re-introduced.
   const closeMobileMenu = () => {
-    if (isMobileMenuOpen) {
-      setIsMobileMenuOpen(false);
-    }
+    // console.log("closeMobileMenu called, but no mobile menu state to change.");
   };
 
   return (
