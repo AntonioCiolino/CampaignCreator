@@ -23,19 +23,28 @@ const CampaignCard: React.FC<CampaignCardProps> = ({ campaign }) => {
         <div className="campaign-card-content"> {/* This class from CampaignCard.css styles the inner content */}
           <div className="campaign-card-header">
             {campaign.badge_image_url ? (
-              <a 
-                href={campaign.badge_image_url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="campaign-card-badge-link" // Optional: for styling
-                onClick={(e) => e.stopPropagation()} // Prevent card click when clicking badge link
+              <span // Changed from <a> to <span>
+                className="campaign-card-badge-link" // Keep for styling (cursor: pointer)
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent card click
+                  window.open(campaign.badge_image_url, '_blank', 'noopener,noreferrer');
+                }}
+                onKeyDown={(e) => { // Add keyboard accessibility
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.stopPropagation();
+                    window.open(campaign.badge_image_url, '_blank', 'noopener,noreferrer');
+                  }
+                }}
+                role="link" // ARIA role
+                tabIndex={0} // Make it focusable
+                aria-label={`View badge for ${campaign.title}`}
               >
                 <img 
                   src={campaign.badge_image_url} 
                   alt={`${campaign.title} Badge`} 
                   className="campaign-card-badge-image"
                 />
-              </a>
+              </span>
             ) : (
               <div className="campaign-card-badge-placeholder">
                 {/* Optional: <span className="default-badge-icon">📷</span> */}
