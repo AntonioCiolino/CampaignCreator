@@ -82,37 +82,9 @@ const UserSettingsPage: React.FC = () => {
     fetchCurrentUser();
   }, [authUser, setAuthUser, avatarPreview]); // Added avatarPreview to prevent resetting preview during upload
 
-  // Effect to fetch user files when 'Files' tab is active
-  useEffect(() => {
-    const fetchUserFiles = async () => {
-      // Only fetch if the tab is 'Files', files aren't already loaded, and not currently loading
-      if (activeTab === 'Files' && userFiles.length === 0 && !filesLoading) {
-        setFilesLoading(true);
-        setFilesError(null);
-        try {
-          console.log("[UserSettingsPage] Fetching user files...");
-          const files = await getMyFiles();
-          setUserFiles(files);
-          console.log("[UserSettingsPage] User files fetched:", files);
-        } catch (err: any) {
-          const errorMsg = err.message || 'Failed to load files.';
-          setFilesError(errorMsg);
-          console.error('[UserSettingsPage] Error fetching user files:', err);
-        } finally {
-          setFilesLoading(false);
-        }
-      }
-    };
+  // Effect for fetching user files - ENTIRELY REMOVED as this logic moved to CampaignEditorPage
 
-    if (activeTab === 'Files') {
-        fetchUserFiles();
-    }
-    // Adding userFiles.length and filesLoading to dependencies to re-evaluate if tab is switched back
-    // and files were not loaded or an error occurred.
-  // }, [activeTab, userFiles.length, filesLoading]); // This useEffect is now REMOVED
-
-
-  // Helper function to format bytes - REMOVED
+  // Helper function to format bytes - REMOVED (this was already done in previous step, ensuring it's gone)
   // const formatBytes = (bytes: number, decimals: number = 2): string => {
   //   if (bytes === 0) return '0 Bytes';
   //   const k = 1024;
@@ -551,8 +523,7 @@ const UserSettingsPage: React.FC = () => {
     { name: 'Profile', content: profileTabContent },
     { name: 'API Keys', content: apiKeysTabContent },
     { name: 'Preferences', content: preferencesTabContent },
-    // { name: 'Files', content: filesTabContent }, // "Files" tab REMOVED
-  ];
+  ]; // "Files" tab was correctly removed from here in the previous step.
 
   // Ensure activeTab state is initialized with one of these new names
   // If `activeTab` was 'profile', it should now be 'Profile'

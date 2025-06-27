@@ -1469,11 +1469,12 @@ const CampaignEditorPage: React.FC = () => {
       )
     },
     { name: 'Settings', content: settingsTabContent },
-    { name: 'Files', content: filesTabContent }, // Added Files Tab
+    // Files tab will be added after filesTabContent is defined
   ];
 
+  // Define filesTabContent before tabItems array
   const filesTabContent = (
-    <div className="editor-section campaign-files-tab"> {/* Added campaign-files-tab class */}
+    <div className="editor-section campaign-files-tab">
       <h3>Campaign Files</h3>
       {campaignFilesLoading && (
         <div className="spinner-container files-loading-spinner" style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1486,7 +1487,7 @@ const CampaignEditorPage: React.FC = () => {
         <p style={{ marginTop: '20px' }}>No files found for this campaign.</p>
       )}
       {!campaignFilesLoading && !campaignFilesError && campaignFiles.length > 0 && (
-        <ul className="user-files-list"> {/* Re-using class from UserSettingsPage for now, can be specific */}
+        <ul className="user-files-list">
           {campaignFiles.map((file) => (
             <li key={file.name + file.last_modified} className="user-file-item">
               <span className="file-icon-container">
@@ -1512,6 +1513,9 @@ const CampaignEditorPage: React.FC = () => {
       )}
     </div>
   );
+
+  // Now add the Files tab to tabItems
+  tabItems.push({ name: 'Files', content: filesTabContent });
 
   return (
     <div className="campaign-editor-page">
