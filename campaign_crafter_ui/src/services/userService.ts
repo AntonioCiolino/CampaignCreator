@@ -38,6 +38,36 @@ export const getUsers = async (skip: number = 0, limit: number = 100): Promise<A
   }
 };
 
+// --- User Files ---
+import { BlobFileMetadata } from '../types/fileTypes'; // Import the new type
+
+/**
+ * Fetches the list of files for the currently authenticated user.
+ * @returns A promise that resolves to an array of BlobFileMetadata.
+ */
+export const getMyFiles = async (): Promise<BlobFileMetadata[]> => {
+  console.log('[userService.getMyFiles] Fetching user files...');
+  try {
+    // apiClient is used throughout this file and expects a generic for the type of response.data
+    const response = await apiClient.get<BlobFileMetadata[]>('/api/v1/users/me/files');
+    console.log('[userService.getMyFiles] Successfully fetched files:', response.data);
+    return response.data; // Consistent with other functions in this service
+  } catch (error: any) {
+    console.error('[userService.getMyFiles] Error fetching files:', error.response?.data || error.message || error);
+    const detail = error.response?.data?.detail;
+    let errorMessage = 'Failed to fetch user files.';
+    if (typeof detail === 'string') {
+      errorMessage = detail;
+    } else if (Array.isArray(detail) && detail.length > 0 && typeof detail[0].msg === 'string') {
+      errorMessage = detail[0].msg;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    throw new Error(errorMessage);
+  }
+};
+// --- End User Files ---
+
 // Upload user avatar
 export const uploadUserAvatar = async (formData: FormData): Promise<AppUser> => {
   try {

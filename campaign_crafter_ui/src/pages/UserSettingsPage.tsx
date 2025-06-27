@@ -1,8 +1,10 @@
 import React, { useState, useEffect, FormEvent, useRef } from 'react';
-import { getMe, updateUser, updateUserApiKeys, UserApiKeysPayload, uploadUserAvatar } from '../services/userService';
+import { getMe, updateUser, updateUserApiKeys, UserApiKeysPayload, uploadUserAvatar, getMyFiles } from '../services/userService'; // Added getMyFiles
 import { User } from '../types/userTypes';
+import { BlobFileMetadata } from '../types/fileTypes'; // Added BlobFileMetadata import
 import { useAuth } from '../contexts/AuthContext';
 import Input from '../components/common/Input';
+import LoadingSpinner from '../components/common/LoadingSpinner'; // Import LoadingSpinner
 import Button from '../components/common/Button';
 import Tabs, { TabItem } from '../components/common/Tabs';
 import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal'; // Import the new modal
@@ -45,7 +47,12 @@ const UserSettingsPage: React.FC = () => {
   const [avatarUploadError, setAvatarUploadError] = useState<string | null>(null);
   const [isAvatarUploading, setIsAvatarUploading] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [showImageGenerationModal, setShowImageGenerationModal] = useState<boolean>(false); // New state for the modal
+  const [showImageGenerationModal, setShowImageGenerationModal] = useState<boolean>(false);
+
+  // State for User Files Tab
+  const [userFiles, setUserFiles] = useState<BlobFileMetadata[]>([]);
+  const [filesLoading, setFilesLoading] = useState<boolean>(false);
+  const [filesError, setFilesError] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -57,11 +64,15 @@ const UserSettingsPage: React.FC = () => {
         } else {
           const user = await getMe();
           userToSet = user;
-          if (setAuthUser) setAuthUser(user);
+          if (setAuthUser) setAuthUser(user); // Make sure setAuthUser is called
         }
         setCurrentUser(userToSet);
         if (userToSet) {
           setSdEnginePreference(userToSet.sd_engine_preference || '');
+          // If avatar_url is present in the fetched user data, set the preview
+          if (userToSet.avatar_url && !avatarPreview) { // only set if not already previewing a new file
+            setAvatarPreview(userToSet.avatar_url);
+          }
         }
       } catch (err) {
         setError('Failed to fetch user data.');
@@ -69,7 +80,47 @@ const UserSettingsPage: React.FC = () => {
       }
     };
     fetchCurrentUser();
-  }, [authUser, setAuthUser]);
+  }, [authUser, setAuthUser, avatarPreview]); // Added avatarPreview to prevent resetting preview during upload
+
+  // Effect to fetch user files when 'Files' tab is active
+  useEffect(() => {
+    const fetchUserFiles = async () => {
+      // Only fetch if the tab is 'Files', files aren't already loaded, and not currently loading
+      if (activeTab === 'Files' && userFiles.length === 0 && !filesLoading) {
+        setFilesLoading(true);
+        setFilesError(null);
+        try {
+          console.log("[UserSettingsPage] Fetching user files...");
+          const files = await getMyFiles();
+          setUserFiles(files);
+          console.log("[UserSettingsPage] User files fetched:", files);
+        } catch (err: any) {
+          const errorMsg = err.message || 'Failed to load files.';
+          setFilesError(errorMsg);
+          console.error('[UserSettingsPage] Error fetching user files:', err);
+        } finally {
+          setFilesLoading(false);
+        }
+      }
+    };
+
+    if (activeTab === 'Files') {
+        fetchUserFiles();
+    }
+    // Adding userFiles.length and filesLoading to dependencies to re-evaluate if tab is switched back
+    // and files were not loaded or an error occurred.
+  }, [activeTab, userFiles.length, filesLoading]);
+
+
+  // Helper function to format bytes
+  const formatBytes = (bytes: number, decimals: number = 2): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  };
 
   const handlePasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -455,10 +506,52 @@ const UserSettingsPage: React.FC = () => {
     </div>
   );
 
+  const filesTabContent = (
+    <div className="settings-tab-content user-files-tab">
+      <h3>My Files</h3>
+      {filesLoading && (
+        <div className="spinner-container files-loading-spinner" style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <LoadingSpinner />
+          <p>Loading files...</p>
+        </div>
+      )}
+      {filesError && <div className="message error" style={{ marginTop: '20px' }}>{filesError}</div>}
+      {!filesLoading && !filesError && userFiles.length === 0 && (
+        <p style={{ marginTop: '20px' }}>No files found.</p>
+      )}
+      {!filesLoading && !filesError && userFiles.length > 0 && (
+        <ul className="user-files-list">
+          {userFiles.map((file) => (
+            <li key={file.name + file.last_modified} className="user-file-item"> {/* Added last_modified to key for more uniqueness */}
+              <a
+                href={file.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="user-file-link"
+                title={`Click to open ${file.name}`}
+                onClick={(e) => { // Optional: handle click if needed, e.g., for tracking or before opening
+                    console.log(`Opening file: ${file.name}, URL: ${file.url}`);
+                }}
+              >
+                {file.name}
+              </a>
+              <span className="file-metadata">
+                ({formatBytes(file.size)}
+                {file.content_type && `, ${file.content_type}`}
+                , Last Modified: {new Date(file.last_modified).toLocaleDateString()})
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+
   const tabItems: TabItem[] = [
-    { name: 'Profile', content: profileTabContent }, // Use 'Profile' as name (and thus label)
-    { name: 'API Keys', content: apiKeysTabContent }, // Use 'API Keys' as name
-    { name: 'Preferences', content: preferencesTabContent }, // Use 'Preferences' as name
+    { name: 'Profile', content: profileTabContent },
+    { name: 'API Keys', content: apiKeysTabContent },
+    { name: 'Preferences', content: preferencesTabContent },
+    { name: 'Files', content: filesTabContent }, // New "Files" tab
   ];
 
   // Ensure activeTab state is initialized with one of these new names
