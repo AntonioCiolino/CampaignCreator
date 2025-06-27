@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app import crud, models # Standardized import
 from app.db import get_db # Standardized import
 from app.services.auth_service import get_current_active_superuser, get_current_active_user # Standardized import
+from app.services.image_generation_service import ImageGenerationService # Added import
 
 router = APIRouter()
 
@@ -40,6 +41,9 @@ def update_my_api_keys(
     # The crud.update_user_api_keys should ideally return an ORM object that,
     # when converted by FastAPI to models.User, correctly populates these.
     return updated_user_orm
+
+# The old /me/files endpoint has been removed.
+# It will be replaced by /campaigns/{campaign_id}/files in campaigns.py.
 
 @router.post("/", response_model=models.User, status_code=status.HTTP_201_CREATED)
 def create_user_endpoint(

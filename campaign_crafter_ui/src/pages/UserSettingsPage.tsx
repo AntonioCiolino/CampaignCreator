@@ -1,10 +1,14 @@
-import React, { useState, useEffect, FormEvent, useRef } from 'react'; // Added useRef
-import { getMe, updateUser, updateUserApiKeys, UserApiKeysPayload, uploadUserAvatar } from '../services/userService'; // Added uploadUserAvatar
+import React, { useState, useEffect, FormEvent, useRef } from 'react';
+import { getMe, updateUser, updateUserApiKeys, UserApiKeysPayload, uploadUserAvatar } from '../services/userService'; // Removed getMyFiles
 import { User } from '../types/userTypes';
+// Removed BlobFileMetadata import as it's no longer used here
 import { useAuth } from '../contexts/AuthContext';
 import Input from '../components/common/Input';
+// LoadingSpinner import is confirmed removed as it's no longer used here.
 import Button from '../components/common/Button';
-import Tabs, { TabItem } from '../components/common/Tabs'; // Assuming Tabs component exists
+import Tabs, { TabItem } from '../components/common/Tabs';
+import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal';
+// Removed renderFileRepresentation import as it's no longer used here
 import './UserSettingsPage.css';
 
 const STABLE_DIFFUSION_ENGINE_OPTIONS = [
@@ -36,13 +40,19 @@ const UserSettingsPage: React.FC = () => {
   const [sdSettingsError, setSdSettingsError] = useState<string | null>(null);
   const [isSdSettingsLoading, setIsSdSettingsLoading] = useState(false);
 
-  const { user: authUser, setUser: setAuthUser, token } = useAuth(); // Added token
-  const [activeTab, setActiveTab] = useState<string>('Profile'); // Default to Profile tab
+  const { user: authUser, setUser: setAuthUser, token } = useAuth();
+  const [activeTab, setActiveTab] = useState<string>('Profile');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarUploadError, setAvatarUploadError] = useState<string | null>(null);
   const [isAvatarUploading, setIsAvatarUploading] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showImageGenerationModal, setShowImageGenerationModal] = useState<boolean>(false);
+
+  // State for User Files Tab - REMOVED
+  // const [userFiles, setUserFiles] = useState<BlobFileMetadata[]>([]);
+  // const [filesLoading, setFilesLoading] = useState<boolean>(false);
+  // const [filesError, setFilesError] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -54,11 +64,15 @@ const UserSettingsPage: React.FC = () => {
         } else {
           const user = await getMe();
           userToSet = user;
-          if (setAuthUser) setAuthUser(user);
+          if (setAuthUser) setAuthUser(user); // Make sure setAuthUser is called
         }
         setCurrentUser(userToSet);
         if (userToSet) {
           setSdEnginePreference(userToSet.sd_engine_preference || '');
+          // If avatar_url is present in the fetched user data, set the preview
+          if (userToSet.avatar_url && !avatarPreview) { // only set if not already previewing a new file
+            setAvatarPreview(userToSet.avatar_url);
+          }
         }
       } catch (err) {
         setError('Failed to fetch user data.');
@@ -66,7 +80,19 @@ const UserSettingsPage: React.FC = () => {
       }
     };
     fetchCurrentUser();
-  }, [authUser, setAuthUser]);
+  }, [authUser, setAuthUser, avatarPreview]); // Added avatarPreview to prevent resetting preview during upload
+
+  // Effect for fetching user files - ENTIRELY REMOVED as this logic moved to CampaignEditorPage
+
+  // Helper function to format bytes - REMOVED (this was already done in previous step, ensuring it's gone)
+  // const formatBytes = (bytes: number, decimals: number = 2): string => {
+  //   if (bytes === 0) return '0 Bytes';
+  //   const k = 1024;
+  //   const dm = decimals < 0 ? 0 : decimals;
+  //   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  //   const i = Math.floor(Math.log(bytes) / Math.log(k));
+  //   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  // };
 
   const handlePasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -185,18 +211,21 @@ const UserSettingsPage: React.FC = () => {
     formData.append('file', avatarFile);
 
     try {
-      // This service function needs to be created in userService.ts
-      const updatedUser = await uploadUserAvatar(formData); // Assuming a new service function
-      console.log('Updated user from API:', updatedUser); // DEBUG LOG
+      const updatedUser = await uploadUserAvatar(formData);
+      console.log('Updated user from API:', updatedUser);
 
       if (setAuthUser) {
-        setAuthUser(updatedUser); // Update user in AuthContext
+        setAuthUser(updatedUser);
       }
-      setCurrentUser(updatedUser); // Update local state for the page
+      setCurrentUser(updatedUser);
 
       setMessage('Avatar updated successfully!');
       setAvatarFile(null);
       setAvatarPreview(null);
+      // Clear file input value if it's still holding the old file
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     } catch (err: any) {
       let errorMessage = 'Failed to upload avatar.';
       if (err.response?.data?.detail) {
@@ -210,6 +239,86 @@ const UserSettingsPage: React.FC = () => {
     }
   };
 
+  // Function to handle setting avatar from generated URL
+  const handleSetGeneratedAvatar = async (imageUrl: string) => {
+    if (!currentUser || !token) {
+      setAvatarUploadError('User not available. Cannot set avatar.');
+      throw new Error('User not available');
+    }
+    console.log("Attempting to set generated avatar from URL:", imageUrl);
+    setIsAvatarUploading(true); // Use the same loading state
+    setAvatarUploadError(null);
+    setMessage(null);
+
+    try {
+      // 1. Fetch the image data from the URL
+      console.log(`[UserSettingsPage] handleSetGeneratedAvatar: Attempting to fetch image URL: ${imageUrl}`);
+      let fetchResponse;
+      try {
+        fetchResponse = await fetch(imageUrl);
+      } catch (fetchErr: any) {
+        console.error(`[UserSettingsPage] handleSetGeneratedAvatar: Raw fetch error for URL ${imageUrl}:`, fetchErr);
+        throw new Error(`Network error or CORS issue fetching image: ${fetchErr.message}`);
+      }
+
+      console.log(`[UserSettingsPage] handleSetGeneratedAvatar: Fetch response status: ${fetchResponse.status}, OK: ${fetchResponse.ok}`);
+      if (!fetchResponse.ok) {
+        // Log response body text if not OK, as it might contain error details from Azure/server
+        const errorText = await fetchResponse.text().catch(() => "Could not read error response body.");
+        console.error(`[UserSettingsPage] handleSetGeneratedAvatar: Fetch failed with status ${fetchResponse.status}. Response text:`, errorText);
+        throw new Error(`Failed to fetch generated image: ${fetchResponse.status} ${fetchResponse.statusText}. Server response: ${errorText}`);
+      }
+      const imageBlob = await fetchResponse.blob();
+      console.log(`[UserSettingsPage] handleSetGeneratedAvatar: Image blob fetched successfully. Type: ${imageBlob.type}, Size: ${imageBlob.size}`);
+
+      // 2. Convert blob to File object
+      // Try to get a filename from the URL, otherwise use a default
+      let filename = "generated_avatar.png"; // Default filename
+      try {
+        const urlPath = new URL(imageUrl).pathname;
+        const parts = urlPath.split('/');
+        if (parts.length > 0) {
+          const lastPart = parts[parts.length - 1];
+          if (lastPart.includes('.')) { // Basic check for extension
+            filename = lastPart;
+          }
+        }
+      } catch (e) {
+        console.warn("Could not parse filename from URL, using default.", e);
+      }
+
+      const imageFile = new File([imageBlob], filename, { type: imageBlob.type });
+      console.log("Converted generated image to File:", imageFile);
+
+      // 3. Call uploadUserAvatar (which expects FormData)
+      const formData = new FormData();
+      formData.append('file', imageFile);
+
+      const updatedUser = await uploadUserAvatar(formData);
+      console.log('User updated with generated avatar:', updatedUser);
+
+      if (setAuthUser) {
+        setAuthUser(updatedUser);
+      }
+      setCurrentUser(updatedUser);
+
+      setMessage('Avatar updated successfully with generated image!');
+      setAvatarPreview(updatedUser.avatar_url || null); // Update preview with the new URL, ensuring null if undefined
+      setShowImageGenerationModal(false); // Close modal on success
+    } catch (err: any) {
+      let errorMessage = 'Failed to set generated avatar.';
+      if (err.response?.data?.detail) {
+        errorMessage = typeof err.response.data.detail === 'string' ? err.response.data.detail : JSON.stringify(err.response.data.detail);
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      setAvatarUploadError(errorMessage); // Display error in the main page for now
+      console.error('Error setting generated avatar:', err);
+      throw err; // Re-throw to be caught by the modal if needed
+    } finally {
+      setIsAvatarUploading(false);
+    }
+  };
 
   const handleStableDiffusionSettingsSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -318,11 +427,12 @@ const UserSettingsPage: React.FC = () => {
         {/* Button for AI Generation (still stubbed) */}
         <Button
             variant="outline-secondary"
-            onClick={() => alert("AI Icon Generation: Coming Soon!")}
-            style={{marginTop: '10px', display: avatarFile ? 'none' : 'block' }} /* Hide if uploading */
+            onClick={() => setShowImageGenerationModal(true)} // Open the modal
+            style={{marginTop: '10px', display: avatarFile ? 'none' : 'block' }}
             className="generate-icon-button"
+            disabled={isAvatarUploading} // Disable if an upload is in progress
         >
-            Generate Icon with AI (Soon)
+            Generate Icon with AI
         </Button>
       </div>
     </div>
@@ -368,10 +478,12 @@ const UserSettingsPage: React.FC = () => {
     </div>
   );
 
+  // const filesTabContent = (...) Block fully removed.
+
   const tabItems: TabItem[] = [
-    { name: 'Profile', content: profileTabContent }, // Use 'Profile' as name (and thus label)
-    { name: 'API Keys', content: apiKeysTabContent }, // Use 'API Keys' as name
-    { name: 'Preferences', content: preferencesTabContent }, // Use 'Preferences' as name
+    { name: 'Profile', content: profileTabContent },
+    { name: 'API Keys', content: apiKeysTabContent },
+    { name: 'Preferences', content: preferencesTabContent },
   ];
 
   // Ensure activeTab state is initialized with one of these new names
@@ -385,10 +497,25 @@ const UserSettingsPage: React.FC = () => {
   // const [activeTab, setActiveTab] = useState<string>('Profile'); // Changed from 'profile'
 
   return (
-    <div className="user-settings-page modern-settings-layout container">
-      <h2 className="page-title">My Settings</h2>
-      <Tabs tabs={tabItems} activeTabName={activeTab === 'profile' ? 'Profile' : activeTab} onTabChange={setActiveTab} />
-    </div>
+    <>
+      <div className="user-settings-page modern-settings-layout container">
+        <h2 className="page-title">My Settings</h2>
+        <Tabs tabs={tabItems} activeTabName={activeTab === 'profile' ? 'Profile' : activeTab} onTabChange={setActiveTab} />
+      </div>
+      {showImageGenerationModal && (
+        <ImageGenerationModal
+          isOpen={showImageGenerationModal}
+          onClose={() => {
+            setShowImageGenerationModal(false);
+            setAvatarUploadError(null); // Clear any previous avatar errors when closing modal
+          }}
+          // Pass handleSetGeneratedAvatar to the correct prop based on ImageGenerationModal's definition
+          onImageSuccessfullyGenerated={handleSetGeneratedAvatar}
+          primaryActionText="Set as Avatar" // This text might be used if autoApply is false
+          autoApplyDefault={true} // We want to auto-apply for the avatar scenario
+        />
+      )}
+    </>
   );
 };
 

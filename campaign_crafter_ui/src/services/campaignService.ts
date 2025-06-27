@@ -160,6 +160,36 @@ export const updateCampaign = async (campaignId: string | number, campaignData: 
   }
 };
 
+// --- Campaign Files ---
+import { BlobFileMetadata } from '../types/fileTypes'; // Import the new type
+
+/**
+ * Fetches the list of files for a specific campaign.
+ * @param campaignId The ID of the campaign.
+ * @returns A promise that resolves to an array of BlobFileMetadata.
+ */
+export const getCampaignFiles = async (campaignId: string): Promise<BlobFileMetadata[]> => {
+  console.log(`[campaignService.getCampaignFiles] Fetching files for campaign ID: ${campaignId}`);
+  try {
+    const response = await apiClient.get<BlobFileMetadata[]>(`/api/v1/campaigns/${campaignId}/files`);
+    console.log(`[campaignService.getCampaignFiles] Successfully fetched files for campaign ${campaignId}:`, response.data);
+    return response.data; // Consistent with other functions in this service
+  } catch (error: any) {
+    console.error(`[campaignService.getCampaignFiles] Error fetching files for campaign ${campaignId}:`, error.response?.data || error.message || error);
+    const detail = error.response?.data?.detail;
+    let errorMessage = `Failed to fetch files for campaign ${campaignId}.`;
+    if (typeof detail === 'string') {
+      errorMessage = detail;
+    } else if (Array.isArray(detail) && detail.length > 0 && typeof detail[0].msg === 'string') {
+      errorMessage = detail[0].msg;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    throw new Error(errorMessage);
+  }
+};
+// --- End Campaign Files ---
+
 // Define the payload for updating a section
 // Removed ImageData interface
 

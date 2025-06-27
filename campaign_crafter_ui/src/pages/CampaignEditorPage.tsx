@@ -417,6 +417,126 @@ const CampaignEditorPage: React.FC = () => {
     };
   }, []);
 
+  // useEffect for auto-saving mood board URLs
+  useEffect(() => {
+    if (!initialLoadCompleteRef.current || !campaignId || !campaign) {
+      return;
+    }
+    if (JSON.stringify(editableMoodBoardUrls) === JSON.stringify(campaign.mood_board_image_urls || [])) {
+      return;
+    }
+    if (moodBoardDebounceTimer) {
+      clearTimeout(moodBoardDebounceTimer);
+    }
+    setIsAutoSavingMoodBoard(true);
+    setAutoSaveMoodBoardError(null);
+    setAutoSaveMoodBoardSuccess(null);
+    const newTimer = setTimeout(async () => {
+      if (!campaign || !campaign.id) {
+          setIsAutoSavingMoodBoard(false);
+          setAutoSaveMoodBoardError("Cannot auto-save mood board: Campaign data not available.");
+          return;
+      }
+      try {
+        console.log('Auto-saving mood board URLs:', editableMoodBoardUrls);
+        const payload: campaignService.CampaignUpdatePayload = {
+          mood_board_image_urls: editableMoodBoardUrls,
+        };
+        const updatedCampaign = await campaignService.updateCampaign(campaign.id, payload);
+        setCampaign(updatedCampaign);
+        setAutoSaveMoodBoardSuccess("Mood board auto-saved!");
+        setTimeout(() => setAutoSaveMoodBoardSuccess(null), 3000);
+      } catch (err) {
+        console.error("Failed to auto-save mood board URLs:", err);
+        setAutoSaveMoodBoardError("Failed to auto-save mood board. Changes might not be persisted.");
+      } finally {
+        setIsAutoSavingMoodBoard(false);
+      }
+    }, 1500);
+    setMoodBoardDebounceTimer(newTimer);
+    return () => {
+      if (newTimer) {
+        clearTimeout(newTimer);
+      }
+    };
+  }, [editableMoodBoardUrls, campaignId, campaign, setCampaign, moodBoardDebounceTimer, initialLoadCompleteRef, setIsAutoSavingMoodBoard, setAutoSaveMoodBoardError, setAutoSaveMoodBoardSuccess, setMoodBoardDebounceTimer]);
+
+  // Effect to fetch campaign files when 'Files' tab is active or campaignId changes
+  useEffect(() => {
+    let isMounted = true; // To prevent state updates on unmounted component
+
+    const fetchCampaignFiles = async () => {
+      if (!campaignId) {
+        if (isMounted) {
+          setCampaignFiles([]);
+          setCampaignFilesError(null);
+          setPrevCampaignIdForFiles(null); // Reset if campaignId is gone
+        }
+        return;
+      }
+
+      if (activeEditorTab !== 'Files') {
+        return;
+      }
+
+      const campaignChanged = campaignId !== prevCampaignIdForFiles;
+      const initialLoadForThisCampaign = (campaignFiles.length === 0 && !campaignFilesError && prevCampaignIdForFiles !== campaignId);
+
+      if ((campaignChanged || initialLoadForThisCampaign) && !campaignFilesLoading) {
+        if (isMounted) {
+          console.log(`[CampaignEditorPage] Conditions met to fetch/re-fetch files for campaign ID: ${campaignId}. Prev ID: ${prevCampaignIdForFiles}, Campaign Changed: ${campaignChanged}, InitialLoad/Retry: ${initialLoadForThisCampaign}`);
+          setCampaignFilesLoading(true);
+          setCampaignFilesError(null);
+          if (campaignChanged && campaignFiles.length > 0) {
+              console.log(`[CampaignEditorPage] Campaign ID changed. Clearing old files.`);
+              setCampaignFiles([]);
+          }
+        }
+
+        try {
+          if (campaignChanged && isMounted) {
+            setPrevCampaignIdForFiles(campaignId);
+          }
+          const files = await getCampaignFiles(campaignId);
+          if (isMounted) {
+            setCampaignFiles(files);
+            if (!campaignChanged) {
+                setPrevCampaignIdForFiles(campaignId);
+            }
+            console.log(`[CampaignEditorPage] Campaign files fetched for ${campaignId}:`, files);
+          }
+        } catch (err: any) {
+          if (isMounted) {
+            const errorMsg = err.message || 'Failed to load campaign files.';
+            setCampaignFilesError(errorMsg);
+            console.error(`[CampaignEditorPage] Error fetching campaign files for ${campaignId}:`, err);
+          }
+        } finally {
+          if (isMounted) {
+            setCampaignFilesLoading(false);
+          }
+        }
+      }
+    };
+
+    fetchCampaignFiles();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [
+    activeEditorTab,
+    campaignId,
+    prevCampaignIdForFiles,
+    campaignFilesLoading,
+    campaignFilesError, // Added campaignFilesError to allow refetch after error
+    campaignFiles.length, // Re-added campaignFiles.length with refined logic
+    setCampaignFiles,
+    setCampaignFilesError,
+    setCampaignFilesLoading,
+    setPrevCampaignIdForFiles
+  ]);
+
   useEffect(() => {
     if (!campaignId) {
       setError('Campaign ID is missing.');
@@ -1006,7 +1126,7 @@ const CampaignEditorPage: React.FC = () => {
     setEditableTitle(selectedTitle);
     setIsSuggestedTitlesModalOpen(false);
   };
-  
+
   const handleExportHomebrewery = async () => {
     if (!campaignId || !campaign) return;
     setIsPageLoading(true);
@@ -1025,7 +1145,7 @@ const CampaignEditorPage: React.FC = () => {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      setSaveSuccess("Campaign exported successfully!"); 
+      setSaveSuccess("Campaign exported successfully!");
       setTimeout(() => setSaveSuccess(null), 3000);
     } catch (err) {
       console.error('Failed to export campaign to Homebrewery:', err);
@@ -1039,7 +1159,7 @@ const CampaignEditorPage: React.FC = () => {
 
   const handleOpenBadgeImageModal = async () => {
     if (!campaign) return;
-    setIsBadgeImageModalOpen(true); 
+    setIsBadgeImageModalOpen(true);
   };
 
   const handleEditBadgeImageUrl = async () => {
@@ -1057,7 +1177,7 @@ const CampaignEditorPage: React.FC = () => {
     try {
       const updatedCampaignData = { badge_image_url: imageUrl.trim() === "" ? null : imageUrl.trim() };
       const updatedCampaign = await campaignService.updateCampaign(campaign.id, updatedCampaignData);
-      if (typeof setCampaign === 'function') { 
+      if (typeof setCampaign === 'function') {
           setCampaign(updatedCampaign);
           setCampaignBadgeImage(updatedCampaign.badge_image_url || '');
       } else {

@@ -38,6 +38,8 @@ export const getUsers = async (skip: number = 0, limit: number = 100): Promise<A
   }
 };
 
+// --- User Files (getMyFiles function removed, BlobFileMetadata import also removed as it's no longer used here) ---
+
 // Upload user avatar
 export const uploadUserAvatar = async (formData: FormData): Promise<AppUser> => {
   try {

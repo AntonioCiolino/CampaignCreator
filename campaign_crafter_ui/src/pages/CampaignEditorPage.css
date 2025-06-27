@@ -340,3 +340,105 @@
   line-height: 1;
   */
 }
+
+/* Styles for Campaign Files Tab */
+.campaign-files-tab { /* This class is on the root div of filesTabContent in CampaignEditorPage.tsx */
+  /* General styling for the content area of the files tab */
+}
+
+.user-files-list { /* This class is used in CampaignEditorPage.tsx */
+  list-style-type: none;
+  padding-left: 0;
+  margin-top: 15px;
+}
+
+.user-file-item { /* This class is used in CampaignEditorPage.tsx */
+  background-color: #f9f9f9; /* Assuming a light theme, might need adjustment for dark theme */
+  /* Consider using a CSS variable for background if theme changes background of .editor-section */
+  border: 1px solid var(--border-color-light, #eee); /* Use theme variable or fallback */
+  padding: 10px 15px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.user-file-item:hover {
+  background-color: var(--border-color-light, #f0f0f0); /* Use theme variable or fallback */
+}
+
+.file-icon-container { /* This class is used in CampaignEditorPage.tsx */
+  margin-right: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  /* background-color: #e0e0e0; /* Optional: placeholder for empty thumbnail */
+}
+
+.file-icon-container .file-thumbnail-image { /* This class is used in fileTypeUtils.tsx */
+  /* Inline styles from fileTypeUtils.tsx (width, height, objectFit, borderRadius) take precedence.
+     Add borders or other non-layout styles here if desired. */
+  /* Example: border: 1px solid var(--border-color, #ddd); */
+}
+
+.file-icon-container .MuiSvgIcon-root { /* Targeting MUI icons within the container */
+  font-size: 1.5rem; /* Or adjust to fit well within 40x40px */
+  color: var(--text-color-muted, #555); /* Use a theme variable or fallback */
+}
+
+.user-file-link { /* This class is used in CampaignEditorPage.tsx */
+  font-weight: 500;
+  color: var(--campaign-primary-color, var(--primary-color)); /* Use campaign or app primary color */
+  text-decoration: none;
+  word-break: break-all;
+  /* flex-grow: 1; /* Allow link to take up available space before metadata */
+}
+
+.user-file-link:hover {
+  text-decoration: underline;
+  color: var(--campaign-primary-color-dark, var(--primary-color-dark)); /* Darken on hover */
+}
+
+.file-metadata { /* This class is used in CampaignEditorPage.tsx */
+  font-size: 0.85em;
+  color: var(--text-color-muted, #666); /* Use theme variable or fallback */
+  margin-left: auto; /* Pushes metadata to the far right */
+  padding-left: 15px; /* Ensure space if filename is short */
+  white-space: nowrap;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.files-loading-spinner { /* This class is used in CampaignEditorPage.tsx */
+  /* Styles are applied inline in CampaignEditorPage.tsx for this specific layout,
+     but a general class could be: */
+  /* display: flex; */
+  /* align-items: center; */
+  /* gap: 10px; */
+  /* padding: 20px 0; */
+}
+
+/* Responsive adjustments for smaller screens if needed */
+@media (max-width: 768px) {
+  .user-file-item {
+    /* On smaller screens, allow metadata to wrap if needed, or stack */
+    /* flex-direction: column; */ /* Uncomment to stack items */
+    /* align-items: flex-start; */ /* Align to start when stacked */
+  }
+
+  .file-metadata {
+    /* margin-left: 0; */ /* Reset margin if stacking */
+    /* margin-top: 5px; */ /* Add top margin if stacking */
+    font-size: 0.8em;
+    white-space: normal; /* Allow metadata to wrap on small screens */
+  }
+
+  .user-file-link {
+    /* Adjust link properties if needed for stacked layout */
+  }
+}
