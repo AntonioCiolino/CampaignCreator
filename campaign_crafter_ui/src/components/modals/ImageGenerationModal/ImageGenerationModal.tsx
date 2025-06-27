@@ -28,6 +28,7 @@ interface ImageGenerationModalProps {
   onSetAsThematic?: (imageUrl: string, promptUsed: string) => void;
   primaryActionText?: string;
   autoApplyDefault?: boolean;
+  campaignId?: string; // Added campaignId prop
 }
 
 // Use ImageModelName from llmService.ts if it's exported, or redefine/align here
@@ -43,6 +44,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
   onSetAsThematic,
   primaryActionText,
   autoApplyDefault,
+  campaignId, // Destructure campaignId from props
 }) => {
   const [prompt, setPrompt] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<ImageModel>('dall-e');
@@ -86,6 +88,11 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
       prompt,
       model: selectedModel,
     };
+
+    // Add campaignId to params if it exists
+    if (campaignId) {
+      params.campaign_id = campaignId; // Type in llmService.ImageGenerationParams now includes campaign_id
+    }
 
     if (selectedModel === 'dall-e') {
       params.size = dalleSize;

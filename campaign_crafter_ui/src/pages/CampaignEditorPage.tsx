@@ -1805,6 +1805,7 @@ const CampaignEditorPage: React.FC = () => {
         onSetAsThematic={handleSetThematicImage}
         primaryActionText="Set as Badge Image"
         autoApplyDefault={true}
+        campaignId={campaignId} // Pass campaignId
       />
       <SuggestedTitlesModal
         isOpen={isSuggestedTitlesModalOpen}
@@ -1830,7 +1831,7 @@ const CampaignEditorPage: React.FC = () => {
         }}
         primaryActionText="Add to Mood Board" // Customize text for this instance
         autoApplyDefault={true} // Assume adding to mood board is the default desired action
-        // campaignId={campaignId} // If the modal needs campaignId for generation context (check modal props)
+        campaignId={campaignId} // Pass campaignId
         // selectedLLMId={selectedLLMId} // If the modal needs LLM context (check modal props)
       />
     </div>

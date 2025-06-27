@@ -116,6 +116,9 @@ export interface ImageGenerationParams { // Renamed from ImageGenerationRequest 
 
   // Gemini specific
   gemini_model_name?: string | null;
+
+  // Campaign ID for associating the image
+  campaign_id?: string; // Changed from campaignId to match backend snake_case
 }
 
 export interface ImageGenerationResponse {
@@ -162,6 +165,11 @@ export const generateImage = async (params: ImageGenerationParams): Promise<Imag
       // if (params.sd_model_checkpoint) requestBody.sd_model_checkpoint = params.sd_model_checkpoint;
     } else if (params.model === "gemini") {
       if (params.gemini_model_name) requestBody.gemini_model_name = params.gemini_model_name;
+    }
+
+    // Add campaign_id if present in params
+    if (params.campaign_id) {
+      requestBody.campaign_id = params.campaign_id;
     }
 
     const response = await apiClient.post<ImageGenerationResponse>('/api/v1/images/generate', requestBody);
