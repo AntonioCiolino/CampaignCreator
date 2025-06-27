@@ -1,5 +1,5 @@
 import React from 'react';
-import ImageIcon from '@mui/icons-material/Image';
+// import ImageIcon from '@mui/icons-material/Image'; // Removed as it's unused
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DescriptionIcon from '@mui/icons-material/Description'; // For .txt
 import ArticleIcon from '@mui/icons-material/Article'; // For .md or other documents

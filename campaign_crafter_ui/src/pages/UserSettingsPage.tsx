@@ -4,7 +4,7 @@ import { User } from '../types/userTypes';
 // Removed BlobFileMetadata import as it's no longer used here
 import { useAuth } from '../contexts/AuthContext';
 import Input from '../components/common/Input';
-// LoadingSpinner import will be removed as filesTabContent is removed.
+// LoadingSpinner import is confirmed removed as it's no longer used.
 import Button from '../components/common/Button';
 import Tabs, { TabItem } from '../components/common/Tabs';
 import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal';
@@ -481,52 +481,13 @@ const UserSettingsPage: React.FC = () => {
     </div>
   );
 
-  const filesTabContent = (
-    <div className="settings-tab-content user-files-tab">
-      <h3>My Files</h3>
-      {filesLoading && (
-        <div className="spinner-container files-loading-spinner" style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <LoadingSpinner />
-          <p>Loading files...</p>
-        </div>
-      )}
-      {filesError && <div className="message error" style={{ marginTop: '20px' }}>{filesError}</div>}
-      {!filesLoading && !filesError && userFiles.length === 0 && (
-        <p style={{ marginTop: '20px' }}>No files found.</p>
-      )}
-      {!filesLoading && !filesError && userFiles.length > 0 && (
-        <ul className="user-files-list">
-          {userFiles.map((file) => (
-            <li key={file.name + file.last_modified} className="user-file-item">
-              <span className="file-icon-container"> {/* Container for icon or thumbnail */}
-                {renderFileRepresentation(file)}
-              </span>
-              <a
-                href={file.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="user-file-link"
-                title={`Click to open ${file.name}`}
-              >
-                {file.name}
-              </a>
-              <span className="file-metadata">
-                ({formatBytes(file.size)}
-                {file.content_type && `, ${file.content_type}`}
-                , Last Modified: {new Date(file.last_modified).toLocaleDateString()})
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+  // const filesTabContent = (...) Block fully removed.
 
   const tabItems: TabItem[] = [
     { name: 'Profile', content: profileTabContent },
     { name: 'API Keys', content: apiKeysTabContent },
     { name: 'Preferences', content: preferencesTabContent },
-  ]; // "Files" tab was correctly removed from here in the previous step.
+  ];
 
   // Ensure activeTab state is initialized with one of these new names
   // If `activeTab` was 'profile', it should now be 'Profile'
