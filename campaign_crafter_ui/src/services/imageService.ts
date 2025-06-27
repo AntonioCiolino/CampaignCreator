@@ -133,11 +133,14 @@ export const generateAiImage = async (
     // If `apiClient.ts` `apiClient.post` returns the raw `fetch` response, then `response.json()` is needed.
     // Given the structure of `apiClient.ts` (it calls `response.json()` internally), `apiClient.post<T>` should return `T`.
 
-    // Final decision: apiClient.post<T> returns T directly.
-    console.log('[imageService.generateAiImage] Successfully generated image, data:', resultData);
-    return resultData;
+    // Final decision: apiClient.post<T> returns T directly. -> This assumption was wrong.
+    // Correcting based on the error and existing code pattern (e.g. in uploadImage).
+    // The apiClient.post<T> returns an object where `data` property holds T.
+    console.log('[imageService.generateAiImage] Successfully generated image, response object:', response);
+    return response.data; // Return the actual data part of the response.
 
   } catch (error: any) {
+    // error.response.data should contain the backend's error detail.
     console.error('[imageService.generateAiImage] Failed to generate image:', error.response?.data || error.message || error);
     const detail = error.response?.data?.detail; // Assumes error has a response.data.detail structure
     let errorMessage = 'Failed to generate AI image.';

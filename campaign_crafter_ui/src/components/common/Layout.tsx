@@ -1,4 +1,4 @@
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode } from 'react'; // Removed useState
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as Logo } from '../../logo_cc.svg';
 import './Layout.css';

@@ -6,7 +6,7 @@ import Input from '../components/common/Input';
 import Button from '../components/common/Button';
 import Tabs, { TabItem } from '../components/common/Tabs';
 import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal'; // Import the new modal
-import { imageService } from '../services/imageService'; // Import imageService
+// import { imageService } from '../services/imageService'; // Removed unused import
 import './UserSettingsPage.css';
 
 const STABLE_DIFFUSION_ENGINE_OPTIONS = [
@@ -267,7 +267,7 @@ const UserSettingsPage: React.FC = () => {
       setCurrentUser(updatedUser);
 
       setMessage('Avatar updated successfully with generated image!');
-      setAvatarPreview(updatedUser.avatar_url); // Update preview with the new URL
+      setAvatarPreview(updatedUser.avatar_url || null); // Update preview with the new URL, ensuring null if undefined
       setShowImageGenerationModal(false); // Close modal on success
     } catch (err: any) {
       let errorMessage = 'Failed to set generated avatar.';
