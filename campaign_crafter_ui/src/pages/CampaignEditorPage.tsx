@@ -435,6 +435,86 @@ const CampaignEditorPage: React.FC = () => {
     };
   }, []);
 
+  // useEffect for auto-saving mood board URLs
+  useEffect(() => {
+    if (!initialLoadCompleteRef.current || !campaignId || !campaign) {
+      return;
+    }
+    if (JSON.stringify(editableMoodBoardUrls) === JSON.stringify(campaign.mood_board_image_urls || [])) {
+      return;
+    }
+    if (moodBoardDebounceTimer) {
+      clearTimeout(moodBoardDebounceTimer);
+    }
+    setIsAutoSavingMoodBoard(true);
+    setAutoSaveMoodBoardError(null);
+    setAutoSaveMoodBoardSuccess(null);
+    const newTimer = setTimeout(async () => {
+      if (!campaign || !campaign.id) {
+          setIsAutoSavingMoodBoard(false);
+          setAutoSaveMoodBoardError("Cannot auto-save mood board: Campaign data not available.");
+          return;
+      }
+      try {
+        console.log('Auto-saving mood board URLs:', editableMoodBoardUrls);
+        const payload: campaignService.CampaignUpdatePayload = {
+          mood_board_image_urls: editableMoodBoardUrls,
+        };
+        const updatedCampaign = await campaignService.updateCampaign(campaign.id, payload);
+        setCampaign(updatedCampaign);
+        setAutoSaveMoodBoardSuccess("Mood board auto-saved!");
+        setTimeout(() => setAutoSaveMoodBoardSuccess(null), 3000);
+      } catch (err) {
+        console.error("Failed to auto-save mood board URLs:", err);
+        setAutoSaveMoodBoardError("Failed to auto-save mood board. Changes might not be persisted.");
+      } finally {
+        setIsAutoSavingMoodBoard(false);
+      }
+    }, 1500);
+    setMoodBoardDebounceTimer(newTimer);
+    return () => {
+      if (newTimer) {
+        clearTimeout(newTimer);
+      }
+    };
+  }, [editableMoodBoardUrls, campaignId, campaign, setCampaign, moodBoardDebounceTimer, initialLoadCompleteRef, setIsAutoSavingMoodBoard, setAutoSaveMoodBoardError, setAutoSaveMoodBoardSuccess, setMoodBoardDebounceTimer]);
+
+  // Effect to fetch campaign files when 'Files' tab is active or campaignId changes
+  useEffect(() => {
+    const fetchCampaignFiles = async () => {
+      if (!campaignId) {
+        setCampaignFiles([]);
+        setCampaignFilesError(null);
+        return;
+      }
+      if (campaignId !== prevCampaignIdForFiles && activeEditorTab === 'Files') {
+        console.log(`[CampaignEditorPage] Campaign ID changed from ${prevCampaignIdForFiles} to ${campaignId}. Resetting files for Files tab.`);
+        setCampaignFiles([]);
+        setCampaignFilesError(null);
+      }
+      if (activeEditorTab === 'Files' && (campaignFiles.length === 0 || campaignId !== prevCampaignIdForFiles) && !campaignFilesLoading) {
+        console.log(`[CampaignEditorPage] Fetching files for campaign ID: ${campaignId}`);
+        setPrevCampaignIdForFiles(campaignId);
+        setCampaignFilesLoading(true);
+        setCampaignFilesError(null);
+        try {
+          const files = await getCampaignFiles(campaignId);
+          setCampaignFiles(files);
+          console.log(`[CampaignEditorPage] Campaign files fetched for ${campaignId}:`, files);
+        } catch (err: any) {
+          const errorMsg = err.message || 'Failed to load campaign files.';
+          setCampaignFilesError(errorMsg);
+          console.error(`[CampaignEditorPage] Error fetching campaign files for ${campaignId}:`, err);
+        } finally {
+          setCampaignFilesLoading(false);
+        }
+      }
+    };
+    if (activeEditorTab === 'Files' && campaignId) {
+      fetchCampaignFiles();
+    }
+  }, [activeEditorTab, campaignId, prevCampaignIdForFiles, campaignFiles.length, campaignFilesLoading, setCampaignFiles, setCampaignFilesError, setCampaignFilesLoading, setPrevCampaignIdForFiles]);
+
   useEffect(() => {
     if (!campaignId) {
       setError('Campaign ID is missing.');
@@ -1726,115 +1806,4 @@ const CampaignEditorPage: React.FC = () => {
 };
 export default CampaignEditorPage;
 
-// Note: The redundant LLMModel type alias (campaignService.ModelInfo) was already addressed by using LLMModel from llmService.
-// Removed generateNavLinksFromToc function
-// Ensured handleUpdateSectionType is defined and passed correctly
-// Ensured TOC existence check in handleGenerateTOC uses .length
-// Ensured ensureLLMSettingsSaved is wrapped in useCallback and dependencies are correct for useEffects calling it.
-// Corrected error message in handleSaveChanges.
-// Added TOCEditor and related state/handlers.
-// Initialized editableDisplayTOC in useEffect and handleGenerateTOC.
-// Changed type of campaign and sections state variables to use direct imports.
-// Added EditIcon import and "Edit Table of Contents" button with conditional rendering.
-// Conditionally render TOCEditor section and added "Done Editing TOC" button.
-    // Note: For the moodBoardDebounceTimer useEffect (around line 572 in original request, now ~line 600),
-    // adding moodBoardDebounceTimer to its own dependency array would cause an infinite loop.
-    // The current dependencies [editableMoodBoardUrls, campaignId, campaign, setCampaign] are correct
-    // for triggering the debounce logic. The timer ID itself is an implementation detail managed by the effect.
-    // No change will be made to that dependency array based on this understanding.
-
-  // useEffect for auto-saving mood board URLs (EXISTING HOOK - THIS IS A REFERENCE POINT)
-  useEffect(() => {
-    if (!initialLoadCompleteRef.current || !campaignId || !campaign) {
-      return;
-    }
-
-    // Prevent saving if the urls haven't actually changed from what's in the campaign state
-    if (JSON.stringify(editableMoodBoardUrls) === JSON.stringify(campaign.mood_board_image_urls || [])) {
-      return;
-    }
-
-    if (moodBoardDebounceTimer) {
-      clearTimeout(moodBoardDebounceTimer);
-    }
-
-    setIsAutoSavingMoodBoard(true);
-    setAutoSaveMoodBoardError(null);
-    setAutoSaveMoodBoardSuccess(null);
-
-    const newTimer = setTimeout(async () => {
-      if (!campaign || !campaign.id) {
-          setIsAutoSavingMoodBoard(false);
-          setAutoSaveMoodBoardError("Cannot auto-save mood board: Campaign data not available.");
-          return;
-      }
-      try {
-        console.log('Auto-saving mood board URLs:', editableMoodBoardUrls);
-        const payload: campaignService.CampaignUpdatePayload = {
-          mood_board_image_urls: editableMoodBoardUrls,
-        };
-        const updatedCampaign = await campaignService.updateCampaign(campaign.id, payload);
-        setCampaign(updatedCampaign); // Update the main campaign state
-
-        setAutoSaveMoodBoardSuccess("Mood board auto-saved!");
-        setTimeout(() => setAutoSaveMoodBoardSuccess(null), 3000);
-      } catch (err) {
-        console.error("Failed to auto-save mood board URLs:", err);
-        setAutoSaveMoodBoardError("Failed to auto-save mood board. Changes might not be persisted.");
-        // Optionally, clear error after some time: setTimeout(() => setAutoSaveMoodBoardError(null), 5000);
-      } finally {
-        setIsAutoSavingMoodBoard(false);
-      }
-    }, 1500); // 1.5-second debounce delay
-
-    setMoodBoardDebounceTimer(newTimer);
-
-    return () => {
-      if (newTimer) {
-        clearTimeout(newTimer);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editableMoodBoardUrls, campaignId, campaign, setCampaign]); // initialLoadCompleteRef.current is not needed as a dep, effect runs when it's true. campaign contains mood_board_image_urls.
-
-  // Effect to fetch campaign files when 'Files' tab is active or campaignId changes (MOVED HERE - INSIDE COMPONENT)
-  useEffect(() => {
-    const fetchCampaignFiles = async () => {
-      if (!campaignId) { // campaignId is from useParams, available in component scope
-        setCampaignFiles([]);
-        setCampaignFilesError(null);
-        return;
-      }
-
-      // Reset files if campaignId has changed since last fetch for files tab
-      if (campaignId !== prevCampaignIdForFiles && activeEditorTab === 'Files') {
-        console.log(`[CampaignEditorPage] Campaign ID changed from ${prevCampaignIdForFiles} to ${campaignId}. Resetting files for Files tab.`);
-        setCampaignFiles([]);
-        setCampaignFilesError(null);
-      }
-
-      if (activeEditorTab === 'Files' && (campaignFiles.length === 0 || campaignId !== prevCampaignIdForFiles) && !campaignFilesLoading) {
-        console.log(`[CampaignEditorPage] Fetching files for campaign ID: ${campaignId}`);
-        setPrevCampaignIdForFiles(campaignId);
-        setCampaignFilesLoading(true);
-        setCampaignFilesError(null);
-        try {
-          const files = await getCampaignFiles(campaignId);
-          setCampaignFiles(files);
-          console.log(`[CampaignEditorPage] Campaign files fetched for ${campaignId}:`, files);
-        } catch (err: any) {
-          const errorMsg = err.message || 'Failed to load campaign files.';
-          setCampaignFilesError(errorMsg);
-          console.error(`[CampaignEditorPage] Error fetching campaign files for ${campaignId}:`, err);
-        } finally {
-          setCampaignFilesLoading(false);
-        }
-      }
-    };
-
-    if (activeEditorTab === 'Files' && campaignId) {
-      fetchCampaignFiles();
-    }
-  // Ensure all dependencies from component scope are listed, including state setters if strict linting is on.
-  }, [activeEditorTab, campaignId, prevCampaignIdForFiles, campaignFiles.length, campaignFilesLoading,
-      setCampaignFiles, setCampaignFilesError, setCampaignFilesLoading, setPrevCampaignIdForFiles]);
+// All misplaced useEffects and comments after export default have been removed.
