@@ -6,6 +6,7 @@ import LLMSelectionDialog from '../components/modals/LLMSelectionDialog';
 import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal';
 import SuggestedTitlesModal from '../components/modals/SuggestedTitlesModal';
 import * as campaignService from '../services/campaignService';
+import { getCampaignFiles } from '../services/campaignService'; // Added for getCampaignFiles
 import { Campaign, CampaignSection, TOCEntry, SeedSectionsProgressEvent, SeedSectionsCallbacks } from '../services/campaignService';
 import { getAvailableLLMs, LLMModel } from '../services/llmService';
 import ReactMarkdown from 'react-markdown';
@@ -35,6 +36,7 @@ import DetailedProgressDisplay from '../components/common/DetailedProgressDispla
 import TOCEditor from '../components/campaign_editor/TOCEditor';
 import CampaignThemeEditor, { CampaignThemeData } from '../components/campaign_editor/CampaignThemeEditor';
 import { applyThemeToDocument } from '../utils/themeUtils'; // Import the function
+import { BlobFileMetadata } from '../types/fileTypes'; // Added for CampaignFile type
 
 const CampaignEditorPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -142,6 +144,12 @@ const CampaignEditorPage: React.FC = () => {
   // State for manual concept generation
   const [isGeneratingConceptManually, setIsGeneratingConceptManually] = useState<boolean>(false);
   const [manualConceptError, setManualConceptError] = useState<string | null>(null);
+
+  // State for Campaign Files (as per plan step 1)
+  const [campaignFiles, setCampaignFiles] = useState<BlobFileMetadata[]>([]);
+  const [campaignFilesLoading, setCampaignFilesLoading] = useState<boolean>(false);
+  const [campaignFilesError, setCampaignFilesError] = useState<string | null>(null);
+  const [prevCampaignIdForFiles, setPrevCampaignIdForFiles] = useState<string | null>(null);
 
 
   const handleTocLinkClick = useCallback((sectionIdFromLink: string | null) => {
@@ -527,14 +535,12 @@ const CampaignEditorPage: React.FC = () => {
   }, [
     activeEditorTab,
     campaignId,
-    prevCampaignIdForFiles,
-    campaignFilesLoading,
-    campaignFilesError, // Added campaignFilesError to allow refetch after error
-    campaignFiles.length, // Re-added campaignFiles.length with refined logic
-    setCampaignFiles,
-    setCampaignFilesError,
-    setCampaignFilesLoading,
-    setPrevCampaignIdForFiles
+    prevCampaignIdForFiles, // This state variable indicates if we've fetched for this campaignId before
+    campaignFiles,          // Used to check .length for initial load condition
+    campaignFilesError,     // Used to allow refetch after error
+    campaignFilesLoading,   // Used to prevent multiple simultaneous fetches
+    getCampaignFiles        // Service function, include if not stable (though likely is)
+    // setCampaignFiles, setCampaignFilesError, setCampaignFilesLoading, setPrevCampaignIdForFiles are not needed
   ]);
 
   useEffect(() => {
@@ -743,7 +749,7 @@ const CampaignEditorPage: React.FC = () => {
     if (temperature !== null && temperature !== undefined && temperature !== campaign.temperature) {
       ensureLLMSettingsSaved();
     }
-  }, [temperature, campaign, ensureLLMSettingsSaved, initialLoadCompleteRef]); // Added initialLoadCompleteRef, though the guard already checks it. ESLint might prefer it if it's used in the condition.
+  }, [campaign, ensureLLMSettingsSaved, initialLoadCompleteRef, temperature]); // Added temperature
 
   // useEffect for auto-saving mood board URLs
   useEffect(() => {
