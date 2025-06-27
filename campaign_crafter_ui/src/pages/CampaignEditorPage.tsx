@@ -1797,11 +1797,11 @@ export default CampaignEditorPage;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editableMoodBoardUrls, campaignId, campaign, setCampaign]); // initialLoadCompleteRef.current is not needed as a dep, effect runs when it's true. campaign contains mood_board_image_urls.
 
-  // Effect to fetch campaign files when 'Files' tab is active or campaignId changes (MOVED HERE)
+  // Effect to fetch campaign files when 'Files' tab is active or campaignId changes (MOVED HERE - INSIDE COMPONENT)
   useEffect(() => {
     const fetchCampaignFiles = async () => {
-      if (!campaignId) {
-        setCampaignFiles([]); // Clear files if no campaignId
+      if (!campaignId) { // campaignId is from useParams, available in component scope
+        setCampaignFiles([]);
         setCampaignFilesError(null);
         return;
       }
@@ -1811,15 +1811,13 @@ export default CampaignEditorPage;
         console.log(`[CampaignEditorPage] Campaign ID changed from ${prevCampaignIdForFiles} to ${campaignId}. Resetting files for Files tab.`);
         setCampaignFiles([]);
         setCampaignFilesError(null);
-        // Note: setPrevCampaignIdForFiles will be updated when fetch actually runs for the new campaignId
       }
 
-      // Only fetch if the tab is 'Files', and files haven't been loaded for current campaignId or not currently loading
       if (activeEditorTab === 'Files' && (campaignFiles.length === 0 || campaignId !== prevCampaignIdForFiles) && !campaignFilesLoading) {
         console.log(`[CampaignEditorPage] Fetching files for campaign ID: ${campaignId}`);
-        setPrevCampaignIdForFiles(campaignId); // Update prevCampaignIdForFiles *before* starting fetch
+        setPrevCampaignIdForFiles(campaignId);
         setCampaignFilesLoading(true);
-        setCampaignFilesError(null); // Clear previous errors
+        setCampaignFilesError(null);
         try {
           const files = await getCampaignFiles(campaignId);
           setCampaignFiles(files);
@@ -1837,4 +1835,6 @@ export default CampaignEditorPage;
     if (activeEditorTab === 'Files' && campaignId) {
       fetchCampaignFiles();
     }
-  }, [activeEditorTab, campaignId, prevCampaignIdForFiles, campaignFiles.length, campaignFilesLoading]); // Added prevCampaignIdForFiles to deps
+  // Ensure all dependencies from component scope are listed, including state setters if strict linting is on.
+  }, [activeEditorTab, campaignId, prevCampaignIdForFiles, campaignFiles.length, campaignFilesLoading,
+      setCampaignFiles, setCampaignFilesError, setCampaignFilesLoading, setPrevCampaignIdForFiles]);

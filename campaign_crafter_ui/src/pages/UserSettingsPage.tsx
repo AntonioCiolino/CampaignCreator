@@ -4,15 +4,12 @@ import { User } from '../types/userTypes';
 // Removed BlobFileMetadata import as it's no longer used here
 import { useAuth } from '../contexts/AuthContext';
 import Input from '../components/common/Input';
-// LoadingSpinner import is confirmed removed as it's no longer used.
+// LoadingSpinner import is confirmed removed as it's no longer used here.
 import Button from '../components/common/Button';
 import Tabs, { TabItem } from '../components/common/Tabs';
 import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal';
 // Removed renderFileRepresentation import as it's no longer used here
 import './UserSettingsPage.css';
-
-// LoadingSpinner import removed from top, was:
-// import LoadingSpinner from '../components/common/LoadingSpinner';
 
 const STABLE_DIFFUSION_ENGINE_OPTIONS = [
   { value: "", label: "System Default" },
