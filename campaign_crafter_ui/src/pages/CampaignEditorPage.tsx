@@ -467,7 +467,8 @@ const CampaignEditorPage: React.FC = () => {
         clearTimeout(newTimer);
       }
     };
-  }, [editableMoodBoardUrls, campaignId, campaign, setCampaign, moodBoardDebounceTimer, initialLoadCompleteRef, setIsAutoSavingMoodBoard, setAutoSaveMoodBoardError, setAutoSaveMoodBoardSuccess, setMoodBoardDebounceTimer]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editableMoodBoardUrls, campaign]); // Corrected dependencies: only what triggers the save. campaignId is in campaign. initialLoadCompleteRef is read directly. Setters are stable.
 
   // Effect to fetch campaign files when 'Files' tab is active or campaignId changes
   useEffect(() => {
