@@ -562,14 +562,11 @@ const CampaignEditorPage: React.FC = () => {
       isMounted = false;
     };
   }, [
-    activeEditorTab,
-    campaignId,
-    prevCampaignIdForFiles,
-    campaignFiles, // campaignFiles.length is derived, so depend on campaignFiles
-    campaignFilesError,
-    campaignFilesLoading
-    // getCampaignFiles is stable
-    // setters are stable
+    activeEditorTab, // Re-run if tab changes
+    campaignId     // Re-run if campaignId changes
+    // prevCampaignIdForFiles, campaignFiles, campaignFilesError, campaignFilesLoading
+    // are internal to the effect's logic or set by it, so they should not be dependencies
+    // that would cause the effect to cleanup and re-run when they change.
   ]);
 
   useEffect(() => {
