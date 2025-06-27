@@ -538,8 +538,8 @@ const CampaignEditorPage: React.FC = () => {
     prevCampaignIdForFiles, // This state variable indicates if we've fetched for this campaignId before
     campaignFiles,          // Used to check .length for initial load condition
     campaignFilesError,     // Used to allow refetch after error
-    campaignFilesLoading,   // Used to prevent multiple simultaneous fetches
-    getCampaignFiles        // Service function, include if not stable (though likely is)
+    campaignFilesLoading   // Used to prevent multiple simultaneous fetches
+    // getCampaignFiles is stable as it's an import, so not needed as a dependency
     // setCampaignFiles, setCampaignFilesError, setCampaignFilesLoading, setPrevCampaignIdForFiles are not needed
   ]);
 
@@ -1559,6 +1559,28 @@ const CampaignEditorPage: React.FC = () => {
     </>
   );
 
+  // Placeholder for Files tab content
+  const filesTabContent = (
+    <div className="editor-section">
+      <Typography variant="h5" gutterBottom>Campaign Files</Typography>
+      {campaignFilesLoading && <LoadingSpinner />}
+      {campaignFilesError && <p className="error-message">{campaignFilesError}</p>}
+      {!campaignFilesLoading && !campaignFilesError && campaignFiles.length === 0 && (
+        <p>No files found for this campaign, or the "Files" tab was just enabled.</p>
+      )}
+      {!campaignFilesLoading && !campaignFilesError && campaignFiles.length > 0 && (
+        <ul>
+          {campaignFiles.map(file => (
+            <li key={file.name}>
+              <a href={file.url} target="_blank" rel="noopener noreferrer">{file.name}</a> ({file.size} bytes)
+            </li>
+          ))}
+        </ul>
+      )}
+      {/* TODO: Add UI for file upload/management */}
+    </div>
+  );
+
   const tabItems: TabItem[] = [
     { name: 'Details', content: detailsTabContent },
     { name: 'Sections', content: sectionsTabContent, disabled: !campaign?.concept?.trim() },
@@ -1577,6 +1599,7 @@ const CampaignEditorPage: React.FC = () => {
       )
     },
     { name: 'Settings', content: settingsTabContent },
+    { name: 'Files', content: filesTabContent }, // Added Files tab
   ];
 
   return (
