@@ -4,10 +4,11 @@ import { User } from '../types/userTypes';
 import { BlobFileMetadata } from '../types/fileTypes'; // Added BlobFileMetadata import
 import { useAuth } from '../contexts/AuthContext';
 import Input from '../components/common/Input';
-import LoadingSpinner from '../components/common/LoadingSpinner'; // Import LoadingSpinner
+import LoadingSpinner from '../components/common/LoadingSpinner';
 import Button from '../components/common/Button';
 import Tabs, { TabItem } from '../components/common/Tabs';
-import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal'; // Import the new modal
+import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal';
+import { getFileTypeIcon } from '../utils/fileTypeUtils'; // Import the icon utility
 // import { imageService } from '../services/imageService'; // Removed unused import
 import './UserSettingsPage.css';
 
@@ -522,16 +523,16 @@ const UserSettingsPage: React.FC = () => {
       {!filesLoading && !filesError && userFiles.length > 0 && (
         <ul className="user-files-list">
           {userFiles.map((file) => (
-            <li key={file.name + file.last_modified} className="user-file-item"> {/* Added last_modified to key for more uniqueness */}
+            <li key={file.name + file.last_modified} className="user-file-item">
+              <span className="file-icon-container"> {/* Container for icon */}
+                {getFileTypeIcon(file.name, file.content_type)}
+              </span>
               <a
                 href={file.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="user-file-link"
                 title={`Click to open ${file.name}`}
-                onClick={(e) => { // Optional: handle click if needed, e.g., for tracking or before opening
-                    console.log(`Opening file: ${file.name}, URL: ${file.url}`);
-                }}
               >
                 {file.name}
               </a>
