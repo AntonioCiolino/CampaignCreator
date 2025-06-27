@@ -1,5 +1,6 @@
 from typing import Optional, List, Dict
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl # Added HttpUrl
+from datetime import datetime # Added datetime
 
 # Removed ImageData model
 
