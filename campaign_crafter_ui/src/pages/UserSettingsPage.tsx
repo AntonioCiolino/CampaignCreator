@@ -229,11 +229,24 @@ const UserSettingsPage: React.FC = () => {
 
     try {
       // 1. Fetch the image data from the URL
-      const response = await fetch(imageUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch generated image: ${response.statusText}`);
+      console.log(`[UserSettingsPage] handleSetGeneratedAvatar: Attempting to fetch image URL: ${imageUrl}`);
+      let fetchResponse;
+      try {
+        fetchResponse = await fetch(imageUrl);
+      } catch (fetchErr: any) {
+        console.error(`[UserSettingsPage] handleSetGeneratedAvatar: Raw fetch error for URL ${imageUrl}:`, fetchErr);
+        throw new Error(`Network error or CORS issue fetching image: ${fetchErr.message}`);
       }
-      const imageBlob = await response.blob();
+
+      console.log(`[UserSettingsPage] handleSetGeneratedAvatar: Fetch response status: ${fetchResponse.status}, OK: ${fetchResponse.ok}`);
+      if (!fetchResponse.ok) {
+        // Log response body text if not OK, as it might contain error details from Azure/server
+        const errorText = await fetchResponse.text().catch(() => "Could not read error response body.");
+        console.error(`[UserSettingsPage] handleSetGeneratedAvatar: Fetch failed with status ${fetchResponse.status}. Response text:`, errorText);
+        throw new Error(`Failed to fetch generated image: ${fetchResponse.status} ${fetchResponse.statusText}. Server response: ${errorText}`);
+      }
+      const imageBlob = await fetchResponse.blob();
+      console.log(`[UserSettingsPage] handleSetGeneratedAvatar: Image blob fetched successfully. Type: ${imageBlob.type}, Size: ${imageBlob.size}`);
 
       // 2. Convert blob to File object
       // Try to get a filename from the URL, otherwise use a default
