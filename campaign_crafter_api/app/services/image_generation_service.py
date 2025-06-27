@@ -13,7 +13,7 @@ from azure.storage.blob import BlobServiceClient # Restored for Azure
 from azure.identity import DefaultAzureCredential # Restored for Azure
 
 # Added imports
-from app.models import User as UserModel # Changed import path
+from app.models import User as UserModel, BlobFileMetadata # Added BlobFileMetadata
 from ..core.security import decrypt_key # Changed to relative import
 # settings is already imported below
 # openai is already imported above
@@ -670,7 +670,7 @@ class ImageGenerationService:
         from their designated prefix in Azure Blob Storage.
         Returns a list of BlobFileMetadata objects.
         """
-        from app.models import BlobFileMetadata # Ensure import is present
+        # from app.models import BlobFileMetadata # Moved to top-level import
 
         blob_service_client = self._get_blob_service_client()
         container_name = settings.AZURE_STORAGE_CONTAINER_NAME
