@@ -145,12 +145,13 @@ class ImageGenerationService:
         temporary_url: Optional[str] = None,
         image_bytes: Optional[bytes] = None,
         user_id: Optional[int] = None,
+        campaign_id: Optional[int] = None, # Added campaign_id
         original_filename_from_api: Optional[str] = None
     ) -> str:
         """
         Downloads an image from a temporary URL or uses provided bytes,
-        uploads to Azure Blob Storage, logs it in the database,
-        and returns the permanent URL.
+        uploads to Azure Blob Storage (potentially under a campaign-specific path),
+        logs it in the database, and returns the permanent URL.
         """
         if user_id is None:
             raise ValueError("user_id cannot be None when saving an image")
@@ -198,7 +199,18 @@ class ImageGenerationService:
         if not file_extension.startswith(".") or len(file_extension) > 5: # Sanitize
             file_extension = ".png"
 
-        blob_name = f"user_uploads/{user_id}/{uuid.uuid4().hex}{file_extension}"
+        # Construct blob_name with campaign_id if provided
+        file_stem = uuid.uuid4().hex
+        if campaign_id is not None:
+            blob_name = f"user_uploads/{user_id}/campaigns/{campaign_id}/{file_stem}{file_extension}"
+        else:
+            # Fallback path if campaign_id is not provided (e.g., general user images not tied to a campaign)
+            # This case might need further review based on whether all images should be campaign-specific.
+            # For now, keeping a distinct path for non-campaign images if that's a valid scenario.
+            blob_name = f"user_uploads/{user_id}/general/{file_stem}{file_extension}"
+
+        print(f"Constructed blob name: {blob_name}") # For debugging path construction
+
         actual_image_bytes = None
         content_type = 'application/octet-stream' # Default
 
@@ -279,10 +291,11 @@ class ImageGenerationService:
         size: Optional[str] = None,
         quality: Optional[str] = None,
         model: Optional[str] = None,
-        user_id: Optional[int] = None # Kept for logging, will be derived from current_user if None
+        user_id: Optional[int] = None, # Kept for logging, will be derived from current_user if None
+        campaign_id: Optional[int] = None # Added campaign_id
     ) -> str:
         """
-        Generates an image using OpenAI's DALL-E API, saves it, logs to DB, and returns the permanent image URL.
+        Generates an image using OpenAI's DALL-E API, saves it (potentially campaign-specific), logs to DB, and returns the permanent image URL.
         """
         openai_api_key = await self._get_openai_api_key_for_user(current_user, db) # Pass db
         # Initialize client locally
@@ -343,7 +356,8 @@ class ImageGenerationService:
                     model_used=final_model_name,
                     size_used=final_size,
                     db=db,
-                    user_id=log_user_id # Use consistent user_id for logging
+                    user_id=log_user_id, # Use consistent user_id for logging
+                    campaign_id=campaign_id # Pass campaign_id
                 )
                 return permanent_url
                 # return temporary_url # Return temporary URL directly
@@ -384,11 +398,12 @@ class ImageGenerationService:
         steps: Optional[int] = None,
         cfg_scale: Optional[float] = None,
         user_id: Optional[int] = None, # Kept for logging, will be derived
+        campaign_id: Optional[int] = None, # Added campaign_id
         sd_model_checkpoint: Optional[str] = None,
         sd_engine_id: Optional[str] = None # New parameter for engine selection
     ) -> str:
         """
-        Generates an image using a Stable Diffusion API, saves it, logs to DB, and returns the permanent image URL.
+        Generates an image using a Stable Diffusion API, saves it (potentially campaign-specific), logs to DB, and returns the permanent image URL.
         """
         sd_api_key = await self._get_sd_api_key_for_user(current_user, db) # Pass db
 
@@ -475,6 +490,7 @@ class ImageGenerationService:
                     db=db,
                     image_bytes=image_bytes_sd,
                     user_id=log_user_id, # Use consistent user_id for logging
+                    campaign_id=campaign_id, # Pass campaign_id
                     original_filename_from_api=sd_filename_hint
                 )
                 return permanent_url
@@ -512,10 +528,11 @@ class ImageGenerationService:
         current_user: UserModel,
         size: Optional[str] = None,
         model: Optional[str] = "gemini-pro-vision", # Default model for Gemini image generation
-        user_id: Optional[int] = None
+        user_id: Optional[int] = None,
+        campaign_id: Optional[int] = None # Added campaign_id
     ) -> str:
         """
-        Generates an image using Gemini API, saves it, logs to DB, and returns the permanent image URL.
+        Generates an image using Gemini API, saves it (potentially campaign-specific), logs to DB, and returns the permanent image URL.
         """
         # Fetching the key here primarily validates if the user has access.
         # GeminiLLMService itself will load the key from settings or expect genai.configure()
@@ -560,6 +577,7 @@ class ImageGenerationService:
                     db=db,
                     image_bytes=image_bytes,
                     user_id=log_user_id,
+                    campaign_id=campaign_id, # Pass campaign_id
                     original_filename_from_api="gemini_image.png" # Placeholder filename
                 )
                 return permanent_url

@@ -1075,6 +1075,7 @@ async def upload_moodboard_image_for_campaign(
             db=db,
             image_bytes=image_bytes,
             user_id=current_user.id,
+            campaign_id=campaign_id, # Pass campaign_id here
             original_filename_from_api=file.filename
         )
     except HTTPException as e:
