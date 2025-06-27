@@ -1,12 +1,14 @@
 import React, { useState, useEffect, FormEvent, useMemo, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import axios from 'axios';
+import axios from 'axios'; // Keep if used elsewhere, otherwise can be removed if all API calls go via services
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import LLMSelectionDialog from '../components/modals/LLMSelectionDialog';
 import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal';
 import SuggestedTitlesModal from '../components/modals/SuggestedTitlesModal';
-import * as campaignService from '../services/campaignService';
-import { Campaign, CampaignSection, TOCEntry, SeedSectionsProgressEvent, SeedSectionsCallbacks } from '../services/campaignService';
+import * as campaignService from '../services/campaignService'; // campaignService will be used for getCampaignFiles
+import { Campaign, CampaignSection, TOCEntry, SeedSectionsProgressEvent, SeedSectionsCallbacks, getCampaignFiles } from '../services/campaignService'; // Added getCampaignFiles
+import { BlobFileMetadata } from '../types/fileTypes'; // Import BlobFileMetadata
+import { renderFileRepresentation } from '../utils/fileTypeUtils'; // Import renderFileRepresentation
 import { getAvailableLLMs, LLMModel } from '../services/llmService';
 import ReactMarkdown from 'react-markdown';
 import './CampaignEditorPage.css';
@@ -143,6 +145,22 @@ const CampaignEditorPage: React.FC = () => {
   const [isGeneratingConceptManually, setIsGeneratingConceptManually] = useState<boolean>(false);
   const [manualConceptError, setManualConceptError] = useState<string | null>(null);
 
+  // State for Campaign Files Tab
+  const [campaignFiles, setCampaignFiles] = useState<BlobFileMetadata[]>([]);
+  const [campaignFilesLoading, setCampaignFilesLoading] = useState<boolean>(false);
+  const [campaignFilesError, setCampaignFilesError] = useState<string | null>(null);
+  const [prevCampaignIdForFiles, setPrevCampaignIdForFiles] = useState<string | null>(null);
+
+
+  // Helper function to format bytes (can be moved to a utils file later)
+  const formatBytes = (bytes: number, decimals: number = 2): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  };
 
   const handleTocLinkClick = useCallback((sectionIdFromLink: string | null) => {
     if (!sectionIdFromLink) return;
@@ -1451,7 +1469,49 @@ const CampaignEditorPage: React.FC = () => {
       )
     },
     { name: 'Settings', content: settingsTabContent },
+    { name: 'Files', content: filesTabContent }, // Added Files Tab
   ];
+
+  const filesTabContent = (
+    <div className="editor-section campaign-files-tab"> {/* Added campaign-files-tab class */}
+      <h3>Campaign Files</h3>
+      {campaignFilesLoading && (
+        <div className="spinner-container files-loading-spinner" style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <LoadingSpinner />
+          <p>Loading campaign files...</p>
+        </div>
+      )}
+      {campaignFilesError && <div className="message error" style={{ marginTop: '20px' }}>{campaignFilesError}</div>}
+      {!campaignFilesLoading && !campaignFilesError && campaignFiles.length === 0 && (
+        <p style={{ marginTop: '20px' }}>No files found for this campaign.</p>
+      )}
+      {!campaignFilesLoading && !campaignFilesError && campaignFiles.length > 0 && (
+        <ul className="user-files-list"> {/* Re-using class from UserSettingsPage for now, can be specific */}
+          {campaignFiles.map((file) => (
+            <li key={file.name + file.last_modified} className="user-file-item">
+              <span className="file-icon-container">
+                {renderFileRepresentation(file)}
+              </span>
+              <a
+                href={file.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="user-file-link"
+                title={`Click to open ${file.name}`}
+              >
+                {file.name}
+              </a>
+              <span className="file-metadata">
+                ({formatBytes(file.size)}
+                {file.content_type && `, ${file.content_type}`}
+                , Last Modified: {new Date(file.last_modified).toLocaleDateString()})
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 
   return (
     <div className="campaign-editor-page">
@@ -1678,3 +1738,45 @@ export default CampaignEditorPage;
     // The current dependencies [editableMoodBoardUrls, campaignId, campaign, setCampaign] are correct
     // for triggering the debounce logic. The timer ID itself is an implementation detail managed by the effect.
     // No change will be made to that dependency array based on this understanding.
+
+  // Effect to fetch campaign files when 'Files' tab is active or campaignId changes
+  useEffect(() => {
+    const fetchCampaignFiles = async () => {
+      if (!campaignId) {
+        setCampaignFiles([]); // Clear files if no campaignId
+        setCampaignFilesError(null);
+        return;
+      }
+
+      // Reset files if campaignId has changed
+      if (campaignId !== prevCampaignIdForFiles) {
+        setCampaignFiles([]);
+        setCampaignFilesError(null);
+        setPrevCampaignIdForFiles(campaignId); // Update the tracked campaignId
+      }
+
+      // Only fetch if the tab is 'Files', and files aren't already loaded for current campaignId or not currently loading
+      if (activeEditorTab === 'Files' && (campaignFiles.length === 0 || campaignId !== prevCampaignIdForFiles) && !campaignFilesLoading) {
+        console.log(`[CampaignEditorPage] Fetching files for campaign ID: ${campaignId}`);
+        setCampaignFilesLoading(true);
+        setCampaignFilesError(null); // Clear previous errors
+        try {
+          const files = await getCampaignFiles(campaignId);
+          setCampaignFiles(files);
+          console.log(`[CampaignEditorPage] Campaign files fetched for ${campaignId}:`, files);
+        } catch (err: any) {
+          const errorMsg = err.message || 'Failed to load campaign files.';
+          setCampaignFilesError(errorMsg);
+          console.error(`[CampaignEditorPage] Error fetching campaign files for ${campaignId}:`, err);
+        } finally {
+          setCampaignFilesLoading(false);
+        }
+      }
+    };
+
+    if (activeEditorTab === 'Files' && campaignId) {
+      fetchCampaignFiles();
+    }
+  // prevCampaignIdForFiles is part of the condition logic, not a direct trigger for re-fetch unless campaignId changes.
+  // campaignFiles.length is used to check if files are already loaded.
+  }, [activeEditorTab, campaignId, campaignFiles.length, campaignFilesLoading, prevCampaignIdForFiles]);

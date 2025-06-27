@@ -1,15 +1,14 @@
 import React, { useState, useEffect, FormEvent, useRef } from 'react';
-import { getMe, updateUser, updateUserApiKeys, UserApiKeysPayload, uploadUserAvatar, getMyFiles } from '../services/userService'; // Added getMyFiles
+import { getMe, updateUser, updateUserApiKeys, UserApiKeysPayload, uploadUserAvatar } from '../services/userService'; // Removed getMyFiles
 import { User } from '../types/userTypes';
-import { BlobFileMetadata } from '../types/fileTypes'; // Added BlobFileMetadata import
+// Removed BlobFileMetadata import as it's no longer used here
 import { useAuth } from '../contexts/AuthContext';
 import Input from '../components/common/Input';
-import LoadingSpinner from '../components/common/LoadingSpinner';
+// Removed LoadingSpinner import if only used for Files tab, check other uses
 import Button from '../components/common/Button';
 import Tabs, { TabItem } from '../components/common/Tabs';
 import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal';
-import { renderFileRepresentation } from '../utils/fileTypeUtils'; // Updated import
-// import { imageService } from '../services/imageService'; // Removed unused import
+// Removed renderFileRepresentation import as it's no longer used here
 import './UserSettingsPage.css';
 
 const STABLE_DIFFUSION_ENGINE_OPTIONS = [
@@ -50,10 +49,10 @@ const UserSettingsPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showImageGenerationModal, setShowImageGenerationModal] = useState<boolean>(false);
 
-  // State for User Files Tab
-  const [userFiles, setUserFiles] = useState<BlobFileMetadata[]>([]);
-  const [filesLoading, setFilesLoading] = useState<boolean>(false);
-  const [filesError, setFilesError] = useState<string | null>(null);
+  // State for User Files Tab - REMOVED
+  // const [userFiles, setUserFiles] = useState<BlobFileMetadata[]>([]);
+  // const [filesLoading, setFilesLoading] = useState<boolean>(false);
+  // const [filesError, setFilesError] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -110,18 +109,18 @@ const UserSettingsPage: React.FC = () => {
     }
     // Adding userFiles.length and filesLoading to dependencies to re-evaluate if tab is switched back
     // and files were not loaded or an error occurred.
-  }, [activeTab, userFiles.length, filesLoading]);
+  // }, [activeTab, userFiles.length, filesLoading]); // This useEffect is now REMOVED
 
 
-  // Helper function to format bytes
-  const formatBytes = (bytes: number, decimals: number = 2): string => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-  };
+  // Helper function to format bytes - REMOVED
+  // const formatBytes = (bytes: number, decimals: number = 2): string => {
+  //   if (bytes === 0) return '0 Bytes';
+  //   const k = 1024;
+  //   const dm = decimals < 0 ? 0 : decimals;
+  //   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  //   const i = Math.floor(Math.log(bytes) / Math.log(k));
+  //   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  // };
 
   const handlePasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -552,7 +551,7 @@ const UserSettingsPage: React.FC = () => {
     { name: 'Profile', content: profileTabContent },
     { name: 'API Keys', content: apiKeysTabContent },
     { name: 'Preferences', content: preferencesTabContent },
-    { name: 'Files', content: filesTabContent }, // New "Files" tab
+    // { name: 'Files', content: filesTabContent }, // "Files" tab REMOVED
   ];
 
   // Ensure activeTab state is initialized with one of these new names
