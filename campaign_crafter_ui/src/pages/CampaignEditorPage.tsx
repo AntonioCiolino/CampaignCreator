@@ -471,76 +471,105 @@ const CampaignEditorPage: React.FC = () => {
 
   // Effect to fetch campaign files when 'Files' tab is active or campaignId changes
   useEffect(() => {
-    let isMounted = true; // To prevent state updates on unmounted component
+    let isMounted = true;
+    console.log('[FilesEffect] Running. Tab:', activeEditorTab, 'CampaignID:', campaignId);
 
     const fetchCampaignFiles = async () => {
       if (!campaignId) {
+        console.log('[FilesEffect] No campaignId, resetting files state.');
         if (isMounted) {
           setCampaignFiles([]);
           setCampaignFilesError(null);
-          setPrevCampaignIdForFiles(null); // Reset if campaignId is gone
+          setPrevCampaignIdForFiles(null);
         }
         return;
       }
 
       if (activeEditorTab !== 'Files') {
+        console.log('[FilesEffect] Not on Files tab, skipping fetch.');
         return;
       }
 
       const campaignChanged = campaignId !== prevCampaignIdForFiles;
-      const initialLoadForThisCampaign = (campaignFiles.length === 0 && !campaignFilesError && prevCampaignIdForFiles !== campaignId);
+      // Initial load: no files yet AND (no error OR previous fetch was for a different campaign)
+      const initialLoadForThisCampaign = campaignFiles.length === 0 && (!campaignFilesError || prevCampaignIdForFiles !== campaignId);
+      // Retry: if there was an error for the current campaignId
+      const shouldRetryAfterError = !!campaignFilesError && prevCampaignIdForFiles === campaignId;
 
-      if ((campaignChanged || initialLoadForThisCampaign) && !campaignFilesLoading) {
+      console.log(`[FilesEffect] campaignChanged: ${campaignChanged}, initialLoad: ${initialLoadForThisCampaign}, shouldRetry: ${shouldRetryAfterError}, loading: ${campaignFilesLoading}`);
+      console.log(`[FilesEffect] current campaignFiles.length: ${campaignFiles.length}, campaignFilesError: ${campaignFilesError}, prevCampaignIdForFiles: ${prevCampaignIdForFiles}`);
+
+
+      if ((campaignChanged || initialLoadForThisCampaign || shouldRetryAfterError) && !campaignFilesLoading) {
+        console.log(`[FilesEffect] Conditions met to fetch/re-fetch files for campaign ID: ${campaignId}.`);
         if (isMounted) {
-          console.log(`[CampaignEditorPage] Conditions met to fetch/re-fetch files for campaign ID: ${campaignId}. Prev ID: ${prevCampaignIdForFiles}, Campaign Changed: ${campaignChanged}, InitialLoad/Retry: ${initialLoadForThisCampaign}`);
+          console.log('[FilesEffect] Setting loading true.');
           setCampaignFilesLoading(true);
-          setCampaignFilesError(null);
-          if (campaignChanged && campaignFiles.length > 0) {
-              console.log(`[CampaignEditorPage] Campaign ID changed. Clearing old files.`);
-              setCampaignFiles([]);
+          setCampaignFilesError(null); // Clear previous errors on new fetch attempt
+
+          if (campaignChanged) {
+            console.log('[FilesEffect] Campaign ID changed. Clearing old files and setting prevCampaignId.');
+            setCampaignFiles([]); // Clear files from old campaign
+            setPrevCampaignIdForFiles(campaignId); // Set new prev ID as we are initiating fetch for it
           }
         }
 
         try {
-          if (campaignChanged && isMounted) {
-            setPrevCampaignIdForFiles(campaignId);
-          }
+          console.log(`[FilesEffect] Attempting to fetch files for campaignId: ${campaignId}`);
           const files = await getCampaignFiles(campaignId);
+          console.log(`[FilesEffect] Successfully fetched files:`, files);
           if (isMounted) {
+            console.log('[FilesEffect] isMounted true, setting campaign files.');
             setCampaignFiles(files);
+            // If campaign hasn't changed (e.g. retry or initial load for current ID), ensure prevId is set.
+            // If campaignChanged was true, it was already set above.
             if (!campaignChanged) {
-                setPrevCampaignIdForFiles(campaignId);
+                 console.log('[FilesEffect] Campaign ID did not change, ensuring prevCampaignIdForFiles is set.');
+                 setPrevCampaignIdForFiles(campaignId);
             }
-            console.log(`[CampaignEditorPage] Campaign files fetched for ${campaignId}:`, files);
+          } else {
+            console.log('[FilesEffect] Not mounted after fetch, not setting campaign files.');
           }
         } catch (err: any) {
+          console.error(`[FilesEffect] Error fetching campaign files for ${campaignId}:`, err);
           if (isMounted) {
+            console.log('[FilesEffect] isMounted true, setting campaign files error.');
             const errorMsg = err.message || 'Failed to load campaign files.';
             setCampaignFilesError(errorMsg);
-            console.error(`[CampaignEditorPage] Error fetching campaign files for ${campaignId}:`, err);
+            // Optional: Consider if prevCampaignIdForFiles should be reset or handled differently on error
+            // For now, it will retain the campaignId for which the fetch failed, allowing retry logic.
+          } else {
+            console.log('[FilesEffect] Not mounted after error, not setting campaign files error.');
           }
         } finally {
+          console.log('[FilesEffect] Entering finally block.');
           if (isMounted) {
+            console.log('[FilesEffect] isMounted true, setting loading false.');
             setCampaignFilesLoading(false);
+          } else {
+            console.log('[FilesEffect] Not mounted in finally, not setting loading false.');
           }
         }
+      } else {
+        console.log('[FilesEffect] Conditions not met for fetch or already loading.');
       }
     };
 
     fetchCampaignFiles();
 
     return () => {
+      console.log('[FilesEffect] Cleanup. Setting isMounted to false for campaignId:', campaignId);
       isMounted = false;
     };
   }, [
     activeEditorTab,
     campaignId,
-    prevCampaignIdForFiles, // This state variable indicates if we've fetched for this campaignId before
-    campaignFiles,          // Used to check .length for initial load condition
-    campaignFilesError,     // Used to allow refetch after error
-    campaignFilesLoading   // Used to prevent multiple simultaneous fetches
-    // getCampaignFiles is stable as it's an import, so not needed as a dependency
-    // setCampaignFiles, setCampaignFilesError, setCampaignFilesLoading, setPrevCampaignIdForFiles are not needed
+    prevCampaignIdForFiles,
+    campaignFiles, // campaignFiles.length is derived, so depend on campaignFiles
+    campaignFilesError,
+    campaignFilesLoading
+    // getCampaignFiles is stable
+    // setters are stable
   ]);
 
   useEffect(() => {
