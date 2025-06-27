@@ -212,15 +212,27 @@
 
 .file-icon-container {
   margin-right: 10px; /* Space between icon and filename */
-  display: inline-flex; /* Helps with consistent icon alignment */
-  align-items: center; /* Align icon within its container */
-  flex-shrink: 0; /* Prevent icon from shrinking if filename is long */
+  display: inline-flex; /* Helps with consistent icon/thumbnail alignment */
+  align-items: center; /* Align icon/thumbnail within its container */
+  justify-content: center; /* Center content if it's smaller than container */
+  flex-shrink: 0; /* Prevent icon/thumbnail container from shrinking */
+  width: 40px;  /* Match thumbnailStyle width from fileTypeUtils */
+  height: 40px; /* Match thumbnailStyle height from fileTypeUtils */
+  overflow: hidden; /* Hide parts of thumbnail that don't fit if object-fit is cover/contain */
+  /* background-color: #e0e0e0; /* Optional: placeholder bg for empty or loading thumbnail */
+}
+
+/* Style for the image thumbnail itself if it's an img tag */
+.file-icon-container .file-thumbnail-image {
+  /* Styles are applied inline via thumbnailStyle in fileTypeUtils.tsx,
+     but you can add overrides or additional styles here if needed.
+     e.g., border: 1px solid #ddd; */
 }
 
 /* MUI icons are SVG, can be sized with fontSize or width/height in their style prop.
    If direct styling on the SVG is needed, target like this: */
 .file-icon-container .MuiSvgIcon-root {
-  font-size: 1.3rem; /* Adjust icon size as needed */
+  font-size: 1.5rem; /* Adjust icon size as needed, maybe slightly larger than thumbnails */
   /* color: #555; /* Optional: set a default icon color */
 }
 

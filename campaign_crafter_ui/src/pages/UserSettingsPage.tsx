@@ -8,7 +8,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import Button from '../components/common/Button';
 import Tabs, { TabItem } from '../components/common/Tabs';
 import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal';
-import { getFileTypeIcon } from '../utils/fileTypeUtils'; // Import the icon utility
+import { renderFileRepresentation } from '../utils/fileTypeUtils'; // Updated import
 // import { imageService } from '../services/imageService'; // Removed unused import
 import './UserSettingsPage.css';
 
@@ -524,8 +524,8 @@ const UserSettingsPage: React.FC = () => {
         <ul className="user-files-list">
           {userFiles.map((file) => (
             <li key={file.name + file.last_modified} className="user-file-item">
-              <span className="file-icon-container"> {/* Container for icon */}
-                {getFileTypeIcon(file.name, file.content_type)}
+              <span className="file-icon-container"> {/* Container for icon or thumbnail */}
+                {renderFileRepresentation(file)}
               </span>
               <a
                 href={file.url}
