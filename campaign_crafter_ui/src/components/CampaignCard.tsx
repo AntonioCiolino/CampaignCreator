@@ -27,12 +27,16 @@ const CampaignCard: React.FC<CampaignCardProps> = ({ campaign }) => {
                 className="campaign-card-badge-link" // Keep for styling (cursor: pointer)
                 onClick={(e) => {
                   e.stopPropagation(); // Prevent card click
-                  window.open(campaign.badge_image_url, '_blank', 'noopener,noreferrer');
+                  if (campaign.badge_image_url) { // Explicit check for TS
+                    window.open(campaign.badge_image_url, '_blank', 'noopener,noreferrer');
+                  }
                 }}
                 onKeyDown={(e) => { // Add keyboard accessibility
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.stopPropagation();
-                    window.open(campaign.badge_image_url, '_blank', 'noopener,noreferrer');
+                    if (campaign.badge_image_url) { // Explicit check for TS
+                      window.open(campaign.badge_image_url, '_blank', 'noopener,noreferrer');
+                    }
                   }
                 }}
                 role="link" // ARIA role
