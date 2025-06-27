@@ -4,12 +4,15 @@ import { User } from '../types/userTypes';
 // Removed BlobFileMetadata import as it's no longer used here
 import { useAuth } from '../contexts/AuthContext';
 import Input from '../components/common/Input';
-// Removed LoadingSpinner import if only used for Files tab, check other uses
+// LoadingSpinner import will be removed as filesTabContent is removed.
 import Button from '../components/common/Button';
 import Tabs, { TabItem } from '../components/common/Tabs';
 import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal';
 // Removed renderFileRepresentation import as it's no longer used here
 import './UserSettingsPage.css';
+
+// LoadingSpinner import removed from top, was:
+// import LoadingSpinner from '../components/common/LoadingSpinner';
 
 const STABLE_DIFFUSION_ENGINE_OPTIONS = [
   { value: "", label: "System Default" },
@@ -40,7 +43,7 @@ const UserSettingsPage: React.FC = () => {
   const [sdSettingsError, setSdSettingsError] = useState<string | null>(null);
   const [isSdSettingsLoading, setIsSdSettingsLoading] = useState(false);
 
-  const { user: authUser, setUser: setAuthUser, token } = useAuth(); // Added token
+  const { user: authUser, setUser: setAuthUser, token } = useAuth();
   const [activeTab, setActiveTab] = useState<string>('Profile');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);

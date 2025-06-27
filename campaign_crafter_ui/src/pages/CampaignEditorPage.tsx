@@ -1743,7 +1743,61 @@ export default CampaignEditorPage;
     // for triggering the debounce logic. The timer ID itself is an implementation detail managed by the effect.
     // No change will be made to that dependency array based on this understanding.
 
-  // Effect to fetch campaign files when 'Files' tab is active or campaignId changes
+  // useEffect for auto-saving mood board URLs (EXISTING HOOK - THIS IS A REFERENCE POINT)
+  useEffect(() => {
+    if (!initialLoadCompleteRef.current || !campaignId || !campaign) {
+      return;
+    }
+
+    // Prevent saving if the urls haven't actually changed from what's in the campaign state
+    if (JSON.stringify(editableMoodBoardUrls) === JSON.stringify(campaign.mood_board_image_urls || [])) {
+      return;
+    }
+
+    if (moodBoardDebounceTimer) {
+      clearTimeout(moodBoardDebounceTimer);
+    }
+
+    setIsAutoSavingMoodBoard(true);
+    setAutoSaveMoodBoardError(null);
+    setAutoSaveMoodBoardSuccess(null);
+
+    const newTimer = setTimeout(async () => {
+      if (!campaign || !campaign.id) {
+          setIsAutoSavingMoodBoard(false);
+          setAutoSaveMoodBoardError("Cannot auto-save mood board: Campaign data not available.");
+          return;
+      }
+      try {
+        console.log('Auto-saving mood board URLs:', editableMoodBoardUrls);
+        const payload: campaignService.CampaignUpdatePayload = {
+          mood_board_image_urls: editableMoodBoardUrls,
+        };
+        const updatedCampaign = await campaignService.updateCampaign(campaign.id, payload);
+        setCampaign(updatedCampaign); // Update the main campaign state
+
+        setAutoSaveMoodBoardSuccess("Mood board auto-saved!");
+        setTimeout(() => setAutoSaveMoodBoardSuccess(null), 3000);
+      } catch (err) {
+        console.error("Failed to auto-save mood board URLs:", err);
+        setAutoSaveMoodBoardError("Failed to auto-save mood board. Changes might not be persisted.");
+        // Optionally, clear error after some time: setTimeout(() => setAutoSaveMoodBoardError(null), 5000);
+      } finally {
+        setIsAutoSavingMoodBoard(false);
+      }
+    }, 1500); // 1.5-second debounce delay
+
+    setMoodBoardDebounceTimer(newTimer);
+
+    return () => {
+      if (newTimer) {
+        clearTimeout(newTimer);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editableMoodBoardUrls, campaignId, campaign, setCampaign]); // initialLoadCompleteRef.current is not needed as a dep, effect runs when it's true. campaign contains mood_board_image_urls.
+
+  // Effect to fetch campaign files when 'Files' tab is active or campaignId changes (MOVED HERE)
   useEffect(() => {
     const fetchCampaignFiles = async () => {
       if (!campaignId) {
@@ -1752,16 +1806,18 @@ export default CampaignEditorPage;
         return;
       }
 
-      // Reset files if campaignId has changed
-      if (campaignId !== prevCampaignIdForFiles) {
+      // Reset files if campaignId has changed since last fetch for files tab
+      if (campaignId !== prevCampaignIdForFiles && activeEditorTab === 'Files') {
+        console.log(`[CampaignEditorPage] Campaign ID changed from ${prevCampaignIdForFiles} to ${campaignId}. Resetting files for Files tab.`);
         setCampaignFiles([]);
         setCampaignFilesError(null);
-        setPrevCampaignIdForFiles(campaignId); // Update the tracked campaignId
+        // Note: setPrevCampaignIdForFiles will be updated when fetch actually runs for the new campaignId
       }
 
-      // Only fetch if the tab is 'Files', and files aren't already loaded for current campaignId or not currently loading
+      // Only fetch if the tab is 'Files', and files haven't been loaded for current campaignId or not currently loading
       if (activeEditorTab === 'Files' && (campaignFiles.length === 0 || campaignId !== prevCampaignIdForFiles) && !campaignFilesLoading) {
         console.log(`[CampaignEditorPage] Fetching files for campaign ID: ${campaignId}`);
+        setPrevCampaignIdForFiles(campaignId); // Update prevCampaignIdForFiles *before* starting fetch
         setCampaignFilesLoading(true);
         setCampaignFilesError(null); // Clear previous errors
         try {
@@ -1781,6 +1837,4 @@ export default CampaignEditorPage;
     if (activeEditorTab === 'Files' && campaignId) {
       fetchCampaignFiles();
     }
-  // prevCampaignIdForFiles is part of the condition logic, not a direct trigger for re-fetch unless campaignId changes.
-  // campaignFiles.length is used to check if files are already loaded.
-  }, [activeEditorTab, campaignId, campaignFiles.length, campaignFilesLoading, prevCampaignIdForFiles]);
+  }, [activeEditorTab, campaignId, prevCampaignIdForFiles, campaignFiles.length, campaignFilesLoading]); // Added prevCampaignIdForFiles to deps
