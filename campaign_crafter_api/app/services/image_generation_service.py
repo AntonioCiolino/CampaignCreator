@@ -153,6 +153,8 @@ class ImageGenerationService:
         uploads to Azure Blob Storage (potentially under a campaign-specific path),
         logs it in the database, and returns the permanent URL.
         """
+        print(f"[_save_image_and_log_db] Called with user_id: {user_id}, campaign_id: {campaign_id}, original_filename: {original_filename_from_api}, has_image_bytes: {image_bytes is not None}, has_temporary_url: {temporary_url is not None}") # DIAGNOSTIC
+
         if user_id is None:
             raise ValueError("user_id cannot be None when saving an image")
 
