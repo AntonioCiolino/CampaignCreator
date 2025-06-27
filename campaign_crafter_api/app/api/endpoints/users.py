@@ -42,26 +42,8 @@ def update_my_api_keys(
     # when converted by FastAPI to models.User, correctly populates these.
     return updated_user_orm
 
-# New endpoint to list user's files from Azure Blob Storage
-@router.get("/me/files", response_model=list[models.BlobFileMetadata])
-async def list_my_files(
-    current_user: Annotated[models.User, Depends(get_current_active_user)],
-    image_service: Annotated[ImageGenerationService, Depends(ImageGenerationService)]
-):
-    """
-    Retrieve a list of files uploaded by the current user from Azure Blob Storage.
-    """
-    try:
-        # list_user_files was made async in the previous step.
-        files = await image_service.list_user_files(user_id=current_user.id)
-        return files
-    except HTTPException as http_exc:
-        # Re-raise HTTPExceptions from the service layer (e.g., Azure config issues)
-        raise http_exc
-    except Exception as e:
-        # Catch any other unexpected errors from the service layer
-        print(f"Error retrieving files for user {current_user.id}: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred while retrieving your files.")
+# The old /me/files endpoint has been removed.
+# It will be replaced by /campaigns/{campaign_id}/files in campaigns.py.
 
 @router.post("/", response_model=models.User, status_code=status.HTTP_201_CREATED)
 def create_user_endpoint(

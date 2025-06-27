@@ -110,9 +110,58 @@ async def update_existing_campaign(
     # updated_campaign will be None if not found by crud.update_campaign, already handled by initial get.
     return updated_campaign
 
-# --- LLM-Related Endpoints ---
+@router.delete("/{campaign_id}", response_model=models.Campaign, tags=["Campaigns"]) # Added a DELETE endpoint for campaigns
+async def delete_campaign_endpoint(
+    campaign_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+):
+    db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
+    if db_campaign is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    if db_campaign.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this campaign")
 
-@router.post("/{campaign_id}/toc", response_model=models.Campaign, tags=["Campaigns"])
+    deleted_campaign_orm = crud.delete_campaign(db=db, campaign_id=campaign_id)
+    if deleted_campaign_orm is None: # Should not happen if get_campaign found it
+        raise HTTPException(status_code=404, detail="Campaign not found during deletion attempt")
+    return deleted_campaign_orm # FastAPI will convert ORM to Pydantic model
+
+# --- Campaign Files Endpoint ---
+@router.get("/{campaign_id}/files", response_model=List[models.BlobFileMetadata], tags=["Campaigns", "Files"])
+async def list_campaign_files_endpoint(
+    campaign_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)],
+    image_service: Annotated[ImageGenerationService, Depends(ImageGenerationService)] # Re-use ImageGenerationService
+):
+    """
+    Retrieve a list of files associated with a specific campaign for the current user.
+    """
+    # Authorization: Check if campaign exists and belongs to the current user
+    db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
+    if db_campaign is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    if db_campaign.owner_id != current_user.id:
+        # Assuming no other access rules like shared campaigns for now
+        raise HTTPException(status_code=403, detail="Not authorized to access files for this campaign")
+
+    try:
+        # Call the service method (renamed to list_campaign_files)
+        files = await image_service.list_campaign_files(user_id=current_user.id, campaign_id=campaign_id)
+        return files
+    except HTTPException as http_exc:
+        # Re-raise HTTPExceptions from the service layer (e.g., Azure config issues)
+        raise http_exc
+    except Exception as e:
+        # Catch any other unexpected errors from the service layer
+        print(f"Error retrieving files for user {current_user.id}, campaign {campaign_id}: {e}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred while retrieving campaign files.")
+
+
+# --- LLM-Related Endpoints for Campaigns ---
+
+@router.post("/{campaign_id}/toc", response_model=models.Campaign, tags=["Campaigns", "LLM"])
 async def generate_campaign_toc_endpoint(
     campaign_id: int,
     request_body: models.LLMGenerationRequest, 

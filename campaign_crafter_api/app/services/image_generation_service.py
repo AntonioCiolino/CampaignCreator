@@ -664,38 +664,43 @@ class ImageGenerationService:
 
         raise HTTPException(status_code=500, detail="Cannot determine Azure account URL. Ensure AZURE_STORAGE_ACCOUNT_NAME or parsable AZURE_STORAGE_CONNECTION_STRING is set.")
 
-    async def list_user_files(self, user_id: int) -> list[UserModel]: # Changed UserModel to BlobFileMetadata
+    async def list_campaign_files(self, user_id: int, campaign_id: int) -> list[BlobFileMetadata]: # Renamed, added campaign_id
         """
-        Lists files for a given user_id from their designated prefix in Azure Blob Storage.
+        Lists files for a given campaign_id (and user_id for path construction)
+        from their designated prefix in Azure Blob Storage.
         Returns a list of BlobFileMetadata objects.
         """
-        # Correcting the return type in the signature and docstring
-        # from list[UserModel] to list[BlobFileMetadata]
-        # Also need to import BlobFileMetadata from app.models
-        from app.models import BlobFileMetadata # Import here or at top of file
+        from app.models import BlobFileMetadata # Ensure import is present
 
         blob_service_client = self._get_blob_service_client()
         container_name = settings.AZURE_STORAGE_CONTAINER_NAME
         container_client = blob_service_client.get_container_client(container_name)
 
-        user_prefix = f"user_uploads/{user_id}/"
+        # Updated prefix to include user_id and campaign_id
+        campaign_prefix = f"user_uploads/{user_id}/campaigns/{campaign_id}/"
         account_url_base = self._get_blob_account_url().strip('/')
 
         files_metadata: list[BlobFileMetadata] = []
 
         try:
-            blob_list = container_client.list_blobs(name_starts_with=user_prefix)
+            blob_list = container_client.list_blobs(name_starts_with=campaign_prefix)
             for blob in blob_list:
-                # blob.name includes the full path from the container root (e.g., "user_uploads/1/somefile.png")
-                # For display, we might want just the filename part.
-                # The name property of BlobProperties already gives the full path.
+                # Ensure we don't list "directory" blobs if the prefix itself is inadvertently treated as one
+                # or if the prefix matches a blob that acts as a folder marker.
+                # This check might be overly cautious if your storage doesn't use such markers,
+                # or if list_blobs already handles this well.
+                # A common check is if blob.name == campaign_prefix and blob.size == 0 (for some systems)
+                # For Azure, list_blobs typically doesn't return the prefix itself as a blob unless it actually exists as an empty blob.
+                # However, if a file is named exactly like the prefix (e.g. a file named "campaign_id/"), this could be an issue.
+                # The Path(blob.name).name will correctly extract the filename part.
+                if blob.name == campaign_prefix: # Skip if the blob name is exactly the prefix itself (folder marker)
+                    continue
 
-                # Get blob client to fetch properties like content_type if not directly available on blob item
                 blob_client = container_client.get_blob_client(blob.name)
                 properties = blob_client.get_blob_properties()
 
                 file_meta = BlobFileMetadata(
-                    name=Path(blob.name).name, # Get just the filename from the full blob path
+                    name=Path(blob.name).name,
                     url=f"{account_url_base}/{container_name}/{blob.name}",
                     size=properties.size,
                     last_modified=properties.last_modified,
@@ -703,9 +708,8 @@ class ImageGenerationService:
                 )
                 files_metadata.append(file_meta)
         except Exception as e:
-            print(f"Error listing blobs for user {user_id} with prefix '{user_prefix}': {e}")
-            # Depending on requirements, either raise an HTTPException or return empty list/partial list
-            raise HTTPException(status_code=500, detail=f"Failed to list user files from cloud storage: {str(e)}")
+            print(f"Error listing blobs for user {user_id}, campaign {campaign_id} with prefix '{campaign_prefix}': {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to list campaign files from cloud storage: {str(e)}")
 
         return files_metadata
 
