@@ -618,18 +618,102 @@ class ImageGenerationService:
         except Exception as e:
             # Check if the error is because the blob does not exist (Azure SDK typically raises ResourceNotFoundError)
             # For simplicity, checking common error message patterns. A more robust way is to check e.error_code or specific exception type
-            # from azure.core.exceptions import ResourceNotFoundError
-            if "BlobNotFound" in str(e) or "The specified blob does not exist" in str(e):
+            from azure.core.exceptions import ResourceNotFoundError # Import here for specific check
+            if isinstance(e, ResourceNotFoundError): # More specific check
                 print(f"Warning: Blob {blob_name} not found in container {settings.AZURE_STORAGE_CONTAINER_NAME}. Nothing to delete.")
                 # Not raising an exception as per requirements for "blob not existing"
             else:
                 print(f"Failed to delete blob {blob_name} from container {settings.AZURE_STORAGE_CONTAINER_NAME}: {e}")
                 raise HTTPException(status_code=500, detail=f"Failed to delete image from cloud storage: {str(e)}")
 
+    def _get_blob_service_client(self) -> BlobServiceClient:
+        """Helper to initialize and return BlobServiceClient based on settings."""
+        blob_service_client = None
+        if settings.AZURE_STORAGE_CONNECTION_STRING:
+            try:
+                blob_service_client = BlobServiceClient.from_connection_string(settings.AZURE_STORAGE_CONNECTION_STRING)
+            except Exception as e:
+                print(f"Failed to connect to Azure Storage with connection string: {e}")
+                raise HTTPException(status_code=500, detail="Azure Storage configuration error (connection string).")
+        elif settings.AZURE_STORAGE_ACCOUNT_NAME:
+            try:
+                account_url = f"https://{settings.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net"
+                default_credential = DefaultAzureCredential()
+                blob_service_client = BlobServiceClient(account_url, credential=default_credential)
+            except Exception as e:
+                print(f"Failed to connect to Azure Storage with DefaultAzureCredential: {e}")
+                raise HTTPException(status_code=500, detail="Azure Storage configuration error (account name/auth).")
+        else:
+            raise HTTPException(status_code=500, detail="Azure Storage is not configured (missing account name or connection string).")
+
+        if not blob_service_client:
+            # This case should be caught by the else above, but as a safeguard:
+            raise HTTPException(status_code=500, detail="Failed to initialize Azure BlobServiceClient.")
+        return blob_service_client
+
+    def _get_blob_account_url(self) -> str:
+        """Helper to determine the account URL for constructing blob URLs."""
+        if settings.AZURE_STORAGE_ACCOUNT_NAME:
+            return f"https://{settings.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net"
+        elif settings.AZURE_STORAGE_CONNECTION_STRING:
+            # Try to parse from connection string
+            conn_parts = {part.split('=', 1)[0].lower(): part.split('=', 1)[1] for part in settings.AZURE_STORAGE_CONNECTION_STRING.split(';') if '=' in part}
+            account_name_from_conn_str = conn_parts.get('accountname')
+            if account_name_from_conn_str:
+                return f"https://{account_name_from_conn_str}.blob.core.windows.net"
+
+        raise HTTPException(status_code=500, detail="Cannot determine Azure account URL. Ensure AZURE_STORAGE_ACCOUNT_NAME or parsable AZURE_STORAGE_CONNECTION_STRING is set.")
+
+    async def list_user_files(self, user_id: int) -> list[UserModel]: # Changed UserModel to BlobFileMetadata
+        """
+        Lists files for a given user_id from their designated prefix in Azure Blob Storage.
+        Returns a list of BlobFileMetadata objects.
+        """
+        # Correcting the return type in the signature and docstring
+        # from list[UserModel] to list[BlobFileMetadata]
+        # Also need to import BlobFileMetadata from app.models
+        from app.models import BlobFileMetadata # Import here or at top of file
+
+        blob_service_client = self._get_blob_service_client()
+        container_name = settings.AZURE_STORAGE_CONTAINER_NAME
+        container_client = blob_service_client.get_container_client(container_name)
+
+        user_prefix = f"user_uploads/{user_id}/"
+        account_url_base = self._get_blob_account_url().strip('/')
+
+        files_metadata: list[BlobFileMetadata] = []
+
+        try:
+            blob_list = container_client.list_blobs(name_starts_with=user_prefix)
+            for blob in blob_list:
+                # blob.name includes the full path from the container root (e.g., "user_uploads/1/somefile.png")
+                # For display, we might want just the filename part.
+                # The name property of BlobProperties already gives the full path.
+
+                # Get blob client to fetch properties like content_type if not directly available on blob item
+                blob_client = container_client.get_blob_client(blob.name)
+                properties = blob_client.get_blob_properties()
+
+                file_meta = BlobFileMetadata(
+                    name=Path(blob.name).name, # Get just the filename from the full blob path
+                    url=f"{account_url_base}/{container_name}/{blob.name}",
+                    size=properties.size,
+                    last_modified=properties.last_modified,
+                    content_type=properties.content_settings.content_type
+                )
+                files_metadata.append(file_meta)
+        except Exception as e:
+            print(f"Error listing blobs for user {user_id} with prefix '{user_prefix}': {e}")
+            # Depending on requirements, either raise an HTTPException or return empty list/partial list
+            raise HTTPException(status_code=500, detail=f"Failed to list user files from cloud storage: {str(e)}")
+
+        return files_metadata
+
 
 # Example Usage (for testing purposes, if run directly)
 # if __name__ == "__main__":
 #     import asyncio
+#     from app.models import BlobFileMetadata # Add this if testing standalone
 #     # This requires .env to be in the same directory or loaded, and OPENAI_API_KEY to be set
 #     # For direct execution, you might need to load dotenv explicitly if .env is not in project root relative to this script
 #     # from dotenv import load_dotenv

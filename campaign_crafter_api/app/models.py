@@ -271,6 +271,20 @@ class RollTable(RollTableBase):
     class Config:
         from_attributes = True
 
+
+# Pydantic model for representing file metadata from Azure Blob Storage
+class BlobFileMetadata(BaseModel):
+    name: str
+    url: HttpUrl
+    size: int  # Size in bytes
+    last_modified: datetime
+    content_type: Optional[str] = None
+
+    class Config:
+        orm_mode = True # Though this model won't directly map to an ORM table for listing purposes
+                        # it's good practice if some properties might be derived from ORM-like objects later.
+                        # More importantly, it ensures compatibility if it were ever needed.
+
 class LLMTextGenerationResponse(BaseModel):
     text: str  # Placeholder field; add more fields as needed
 
