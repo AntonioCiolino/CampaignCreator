@@ -1068,6 +1068,7 @@ async def upload_moodboard_image_for_campaign(
     size_used = "original" # Placeholder as actual size might vary
 
     try:
+        print(f"[MoodboardUpload] About to save image for campaign_id: {campaign_id}, user_id: {current_user.id}, filename: {file.filename}") # DIAGNOSTIC
         permanent_image_url = await image_service._save_image_and_log_db(
             prompt=prompt_text,
             model_used=model_used,
@@ -1075,6 +1076,7 @@ async def upload_moodboard_image_for_campaign(
             db=db,
             image_bytes=image_bytes,
             user_id=current_user.id,
+            campaign_id=campaign_id, # Pass campaign_id here
             original_filename_from_api=file.filename
         )
     except HTTPException as e:

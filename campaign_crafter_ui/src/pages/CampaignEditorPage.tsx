@@ -6,6 +6,7 @@ import LLMSelectionDialog from '../components/modals/LLMSelectionDialog';
 import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal';
 import SuggestedTitlesModal from '../components/modals/SuggestedTitlesModal';
 import * as campaignService from '../services/campaignService';
+import { getCampaignFiles } from '../services/campaignService'; // Added for getCampaignFiles
 import { Campaign, CampaignSection, TOCEntry, SeedSectionsProgressEvent, SeedSectionsCallbacks } from '../services/campaignService';
 import { getAvailableLLMs, LLMModel } from '../services/llmService';
 import ReactMarkdown from 'react-markdown';
@@ -35,6 +36,7 @@ import DetailedProgressDisplay from '../components/common/DetailedProgressDispla
 import TOCEditor from '../components/campaign_editor/TOCEditor';
 import CampaignThemeEditor, { CampaignThemeData } from '../components/campaign_editor/CampaignThemeEditor';
 import { applyThemeToDocument } from '../utils/themeUtils'; // Import the function
+import { BlobFileMetadata } from '../types/fileTypes'; // Added for CampaignFile type
 
 const CampaignEditorPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -142,6 +144,12 @@ const CampaignEditorPage: React.FC = () => {
   // State for manual concept generation
   const [isGeneratingConceptManually, setIsGeneratingConceptManually] = useState<boolean>(false);
   const [manualConceptError, setManualConceptError] = useState<string | null>(null);
+
+  // State for Campaign Files (as per plan step 1)
+  const [campaignFiles, setCampaignFiles] = useState<BlobFileMetadata[]>([]);
+  const [campaignFilesLoading, setCampaignFilesLoading] = useState<boolean>(false);
+  const [campaignFilesError, setCampaignFilesError] = useState<string | null>(null);
+  const [prevCampaignIdForFiles, setPrevCampaignIdForFiles] = useState<string | null>(null);
 
 
   const handleTocLinkClick = useCallback((sectionIdFromLink: string | null) => {
@@ -438,7 +446,7 @@ const CampaignEditorPage: React.FC = () => {
           return;
       }
       try {
-        console.log('Auto-saving mood board URLs:', editableMoodBoardUrls);
+        // console.log('Auto-saving mood board URLs:', editableMoodBoardUrls); // Debug log removed
         const payload: campaignService.CampaignUpdatePayload = {
           mood_board_image_urls: editableMoodBoardUrls,
         };
@@ -459,82 +467,101 @@ const CampaignEditorPage: React.FC = () => {
         clearTimeout(newTimer);
       }
     };
-  }, [editableMoodBoardUrls, campaignId, campaign, setCampaign, moodBoardDebounceTimer, initialLoadCompleteRef, setIsAutoSavingMoodBoard, setAutoSaveMoodBoardError, setAutoSaveMoodBoardSuccess, setMoodBoardDebounceTimer]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editableMoodBoardUrls, campaign]); // Corrected dependencies: only what triggers the save. campaignId is in campaign. initialLoadCompleteRef is read directly. Setters are stable.
 
   // Effect to fetch campaign files when 'Files' tab is active or campaignId changes
   useEffect(() => {
-    let isMounted = true; // To prevent state updates on unmounted component
+    let isMounted = true;
+    // console.log('[FilesEffect] Running. Tab:', activeEditorTab, 'CampaignID:', campaignId); // Removed
 
     const fetchCampaignFiles = async () => {
       if (!campaignId) {
+        // console.log('[FilesEffect] No campaignId, resetting files state.'); // Removed
         if (isMounted) {
           setCampaignFiles([]);
           setCampaignFilesError(null);
-          setPrevCampaignIdForFiles(null); // Reset if campaignId is gone
+          setPrevCampaignIdForFiles(null);
         }
         return;
       }
 
       if (activeEditorTab !== 'Files') {
+        // console.log('[FilesEffect] Not on Files tab, skipping fetch.'); // Removed
         return;
       }
 
       const campaignChanged = campaignId !== prevCampaignIdForFiles;
-      const initialLoadForThisCampaign = (campaignFiles.length === 0 && !campaignFilesError && prevCampaignIdForFiles !== campaignId);
+      const initialLoadForThisCampaign = campaignFiles.length === 0 && (!campaignFilesError || prevCampaignIdForFiles !== campaignId);
+      const shouldRetryAfterError = !!campaignFilesError && prevCampaignIdForFiles === campaignId;
 
-      if ((campaignChanged || initialLoadForThisCampaign) && !campaignFilesLoading) {
+      // console.log(`[FilesEffect] campaignChanged: ${campaignChanged}, initialLoad: ${initialLoadForThisCampaign}, shouldRetry: ${shouldRetryAfterError}, loading: ${campaignFilesLoading}`); // Removed
+      // console.log(`[FilesEffect] current campaignFiles.length: ${campaignFiles.length}, campaignFilesError: ${campaignFilesError}, prevCampaignIdForFiles: ${prevCampaignIdForFiles}`); // Removed
+
+
+      if ((campaignChanged || initialLoadForThisCampaign || shouldRetryAfterError) && !campaignFilesLoading) {
+        // console.log(`[FilesEffect] Conditions met to fetch/re-fetch files for campaign ID: ${campaignId}.`); // Removed
         if (isMounted) {
-          console.log(`[CampaignEditorPage] Conditions met to fetch/re-fetch files for campaign ID: ${campaignId}. Prev ID: ${prevCampaignIdForFiles}, Campaign Changed: ${campaignChanged}, InitialLoad/Retry: ${initialLoadForThisCampaign}`);
+          // console.log('[FilesEffect] Setting loading true.'); // Removed
           setCampaignFilesLoading(true);
           setCampaignFilesError(null);
-          if (campaignChanged && campaignFiles.length > 0) {
-              console.log(`[CampaignEditorPage] Campaign ID changed. Clearing old files.`);
-              setCampaignFiles([]);
+
+          if (campaignChanged) {
+            // console.log('[FilesEffect] Campaign ID changed. Clearing old files and setting prevCampaignId.'); // Removed
+            setCampaignFiles([]);
+            setPrevCampaignIdForFiles(campaignId);
           }
         }
 
         try {
-          if (campaignChanged && isMounted) {
-            setPrevCampaignIdForFiles(campaignId);
-          }
+          // console.log(`[FilesEffect] Attempting to fetch files for campaignId: ${campaignId}`); // Removed
           const files = await getCampaignFiles(campaignId);
+          // console.log(`[FilesEffect] Successfully fetched files:`, files); // Removed
           if (isMounted) {
+            // console.log('[FilesEffect] isMounted true, setting campaign files.'); // Removed
             setCampaignFiles(files);
             if (!campaignChanged) {
-                setPrevCampaignIdForFiles(campaignId);
+                 // console.log('[FilesEffect] Campaign ID did not change, ensuring prevCampaignIdForFiles is set.'); // Removed
+                 setPrevCampaignIdForFiles(campaignId);
             }
-            console.log(`[CampaignEditorPage] Campaign files fetched for ${campaignId}:`, files);
+          } else {
+            // console.log('[FilesEffect] Not mounted after fetch, not setting campaign files.'); // Removed
           }
         } catch (err: any) {
+          console.error(`[CampaignEditorPage] Error fetching campaign files for ${campaignId}:`, err); // Keep critical error logs
           if (isMounted) {
+            // console.log('[FilesEffect] isMounted true, setting campaign files error.'); // Removed
             const errorMsg = err.message || 'Failed to load campaign files.';
             setCampaignFilesError(errorMsg);
-            console.error(`[CampaignEditorPage] Error fetching campaign files for ${campaignId}:`, err);
+          } else {
+            // console.log('[FilesEffect] Not mounted after error, not setting campaign files error.'); // Removed
           }
         } finally {
+          // console.log('[FilesEffect] Entering finally block.'); // Removed
           if (isMounted) {
+            // console.log('[FilesEffect] isMounted true, setting loading false.'); // Removed
             setCampaignFilesLoading(false);
+          } else {
+            // console.log('[FilesEffect] Not mounted in finally, not setting loading false.'); // Removed
           }
         }
+      } else {
+        // console.log('[FilesEffect] Conditions not met for fetch or already loading.'); // Removed
       }
     };
 
     fetchCampaignFiles();
 
     return () => {
+      // console.log('[FilesEffect] Cleanup. Setting isMounted to false for campaignId:', campaignId); // Removed
       isMounted = false;
     };
   }, [
-    activeEditorTab,
-    campaignId,
-    prevCampaignIdForFiles,
-    campaignFilesLoading,
-    campaignFilesError, // Added campaignFilesError to allow refetch after error
-    campaignFiles.length, // Re-added campaignFiles.length with refined logic
-    setCampaignFiles,
-    setCampaignFilesError,
-    setCampaignFilesLoading,
-    setPrevCampaignIdForFiles
+    activeEditorTab, // Re-run if tab changes
+    campaignId     // Re-run if campaignId changes
+    // prevCampaignIdForFiles, campaignFiles, campaignFilesError, campaignFilesLoading
+    // are internal to the effect's logic or set by it, so they should not be dependencies
+    // that would cause the effect to cleanup and re-run when they change.
   ]);
 
   useEffect(() => {
@@ -743,7 +770,7 @@ const CampaignEditorPage: React.FC = () => {
     if (temperature !== null && temperature !== undefined && temperature !== campaign.temperature) {
       ensureLLMSettingsSaved();
     }
-  }, [temperature, campaign, ensureLLMSettingsSaved, initialLoadCompleteRef]); // Added initialLoadCompleteRef, though the guard already checks it. ESLint might prefer it if it's used in the condition.
+  }, [campaign, ensureLLMSettingsSaved, initialLoadCompleteRef, temperature]); // Added temperature
 
   // useEffect for auto-saving mood board URLs
   useEffect(() => {
@@ -1553,6 +1580,68 @@ const CampaignEditorPage: React.FC = () => {
     </>
   );
 
+  // Placeholder for Files tab content
+  const filesTabContent = (
+    <div className="editor-section">
+      <Typography variant="h5" gutterBottom>Campaign Files</Typography>
+      {campaignFilesLoading && <LoadingSpinner />}
+      {campaignFilesError && <p className="error-message">{campaignFilesError}</p>}
+      {!campaignFilesLoading && !campaignFilesError && campaignFiles.length === 0 && (
+        <p>No files found for this campaign.</p>
+      )}
+      {!campaignFilesLoading && !campaignFilesError && campaignFiles.length > 0 && (
+        <ul style={{ listStyleType: 'none', paddingLeft: 0 }}>
+          {campaignFiles.map(file => {
+            const extension = file.name.split('.').pop()?.toLowerCase() || '';
+            const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(extension);
+            const displayType = extension.toUpperCase();
+
+            return (
+              <li key={file.name} style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                {isImage ? (
+                  <img
+                    src={file.url}
+                    alt={file.name}
+                    style={{
+                      width: '30px',
+                      height: '30px',
+                      objectFit: 'contain',
+                      marginRight: '10px',
+                      border: '1px solid #eee'
+                    }}
+                  />
+                ) : (
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      width: '30px',
+                      height: '30px',
+                      marginRight: '10px',
+                      border: '1px solid #eee',
+                      backgroundColor: '#f0f0f0',
+                      textAlign: 'center',
+                      lineHeight: '30px',
+                      fontSize: '10px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                    title={displayType}
+                  >
+                    {displayType || 'FILE'}
+                  </span>
+                )}
+                <a href={file.url} target="_blank" rel="noopener noreferrer">{file.name}</a>
+                <span style={{ marginLeft: '8px', fontSize: '0.8em', color: '#777' }}>({(file.size / 1024).toFixed(2)} KB)</span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {/* TODO: Add UI for file upload/management */}
+    </div>
+  );
+
   const tabItems: TabItem[] = [
     { name: 'Details', content: detailsTabContent },
     { name: 'Sections', content: sectionsTabContent, disabled: !campaign?.concept?.trim() },
@@ -1571,6 +1660,7 @@ const CampaignEditorPage: React.FC = () => {
       )
     },
     { name: 'Settings', content: settingsTabContent },
+    { name: 'Files', content: filesTabContent }, // Added Files tab
   ];
 
   return (
@@ -1749,6 +1839,7 @@ const CampaignEditorPage: React.FC = () => {
         onSetAsThematic={handleSetThematicImage}
         primaryActionText="Set as Badge Image"
         autoApplyDefault={true}
+        campaignId={campaignId} // Pass campaignId
       />
       <SuggestedTitlesModal
         isOpen={isSuggestedTitlesModalOpen}
@@ -1774,7 +1865,7 @@ const CampaignEditorPage: React.FC = () => {
         }}
         primaryActionText="Add to Mood Board" // Customize text for this instance
         autoApplyDefault={true} // Assume adding to mood board is the default desired action
-        // campaignId={campaignId} // If the modal needs campaignId for generation context (check modal props)
+        campaignId={campaignId} // Pass campaignId
         // selectedLLMId={selectedLLMId} // If the modal needs LLM context (check modal props)
       />
     </div>

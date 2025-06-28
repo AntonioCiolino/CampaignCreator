@@ -25,6 +25,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit }) => {
           value={usernameOrEmail}
           onChange={(e) => setUsernameOrEmail(e.target.value)}
           required
+          autoComplete="username"
         />
       </div>
       <div>
@@ -35,6 +36,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit }) => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
+          autoComplete="current-password"
         />
       </div>
       <button type="submit">Login</button>
