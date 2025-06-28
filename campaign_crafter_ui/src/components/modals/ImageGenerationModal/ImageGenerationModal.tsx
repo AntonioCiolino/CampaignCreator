@@ -371,18 +371,18 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Generate Image">
       <div className="image-generation-modal-content">
-        <CollapsibleSection title="Image Generation Settings" initialCollapsed={isSettingsCollapsed} isManuallyCollapsed={isSettingsCollapsed} onToggle={() => setIsSettingsCollapsed(!isSettingsCollapsed)}>
-          <label>
-            Prompt:
-            <Input
-              type="text"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Enter a description for the image"
-              disabled={isLoading}
-            />
-          </label>
+        <label>
+          Prompt:
+          <Input
+            type="text"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Enter a description for the image"
+            disabled={isLoading}
+          />
+        </label>
 
+        <CollapsibleSection title="Advanced Settings" initialCollapsed={isSettingsCollapsed} isManuallyCollapsed={isSettingsCollapsed} onToggle={() => setIsSettingsCollapsed(!isSettingsCollapsed)}>
           <label>
             Model:
             <select

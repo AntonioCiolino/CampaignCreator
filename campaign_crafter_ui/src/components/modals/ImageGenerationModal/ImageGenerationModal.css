@@ -72,7 +72,27 @@
     padding-top: var(--global-spacing-unit, 1rem);
     border-top: 1px solid var(--border-color-light, #f1f3f5); /* Separator line */
 }
-/* Buttons within modal-actions are assumed to be MUI Buttons or use global .button styles */
+
+/* Styles for the post-generation action buttons */
+.generated-image-actions {
+    display: flex;
+    flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
+    justify-content: center; /* Center buttons by default */
+    gap: calc(var(--global-spacing-unit, 1rem) * 0.5); /* Consistent gap */
+    margin-top: calc(var(--global-spacing-unit, 1rem) * 0.75); /* Space above this button group */
+    padding: calc(var(--global-spacing-unit, 1rem) * 0.5) 0; /* Some vertical padding */
+}
+
+.generated-image-actions .btn { /* Target Button components if they use .btn class */
+    margin: calc(var(--global-spacing-unit, 1rem) * 0.25); /* Small margin around each button */
+    flex-grow: 0; /* Prevent buttons from growing too much */
+}
+
+/* Ensure main modal actions are also consistently styled if not already */
+.image-generation-modal-content .modal-actions .btn {
+    /* If using custom Button component that doesn't apply global .btn styles, adjust selector */
+    /* Example: specific styling for primary/secondary if needed */
+}
 
 .image-url-display {
     margin-top: var(--global-spacing-unit, 1rem);

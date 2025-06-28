@@ -188,6 +188,46 @@ export const getCampaignFiles = async (campaignId: string): Promise<BlobFileMeta
     throw new Error(errorMessage);
   }
 };
+
+/**
+ * Deletes a specific file from a campaign.
+ * @param campaignId The ID of the campaign.
+ * @param fileName The name of the file (blob_name) to delete.
+ * @returns A promise that resolves when the file is deleted.
+ */
+export const deleteCampaignFile = async (campaignId: string, fileName: string): Promise<void> => {
+  console.log(`[campaignService.deleteCampaignFile] Deleting file: ${fileName} for campaign ID: ${campaignId}`);
+  try {
+    // The backend endpoint expects the filename as a path parameter.
+    // Ensure the URL is correctly formed, e.g., /api/v1/campaigns/{campaign_id}/files/{file_name}
+    // The file_name path parameter in FastAPI needs to be able to handle paths with slashes if blob_name contains them.
+    // This might require the file_name to be URL-encoded if it contains special characters or slashes.
+    // However, if file.name from BlobFileMetadata is just the final segment (e.g., "image.png"), direct use is fine.
+    // If file.name is the full blob path (e.g., "user_uploads/.../image.png"), it needs to be handled carefully.
+    // Assuming for now `fileName` is the part that uniquely identifies the file to the backend endpoint.
+    // If the backend route is `/api/v1/campaigns/{campaign_id}/files/{blob_name:path}`, then `fileName` can be the full path.
+    // Let's assume `fileName` is the unique identifier the backend expects (e.g., the base name or full blob path if the route supports it).
+    // For a simple case where `fileName` is just the end part:
+    // const response = await apiClient.delete(`/api/v1/campaigns/${campaignId}/files/${encodeURIComponent(fileName)}`);
+    // If `fileName` is expected to be the full blob path and the route is set up for it (e.g. using :path converter):
+    const response = await apiClient.delete(`/api/v1/campaigns/${campaignId}/files/${fileName}`); // Assuming fileName is the blob_name
+
+    // console.log(`[campaignService.deleteCampaignFile] File "${fileName}" deleted successfully for campaign ${campaignId}. Status: ${response.status}`); // Backend returns 204
+    // No need to return response.data for a 204 No Content
+  } catch (error: any) {
+    console.error(`[campaignService.deleteCampaignFile] Error deleting file "${fileName}" for campaign ${campaignId}:`, error.response?.data || error.message || error);
+    const detail = error.response?.data?.detail;
+    let errorMessage = `Failed to delete file "${fileName}".`;
+    if (typeof detail === 'string') {
+      errorMessage = detail;
+    } else if (Array.isArray(detail) && detail.length > 0 && typeof detail[0].msg === 'string') {
+      errorMessage = detail[0].msg;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    throw new Error(errorMessage);
+  }
+};
 // --- End Campaign Files ---
 
 // Define the payload for updating a section

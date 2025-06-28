@@ -12,6 +12,7 @@ import { getAvailableLLMs, LLMModel } from '../services/llmService';
 import ReactMarkdown from 'react-markdown';
 import './CampaignEditorPage.css';
 import Button from '../components/common/Button';
+import ImagePreviewModal from '../components/modals/ImagePreviewModal'; // Added import
 
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
@@ -150,6 +151,8 @@ const CampaignEditorPage: React.FC = () => {
   const [campaignFilesLoading, setCampaignFilesLoading] = useState<boolean>(false);
   const [campaignFilesError, setCampaignFilesError] = useState<string | null>(null);
   const [prevCampaignIdForFiles, setPrevCampaignIdForFiles] = useState<string | null>(null);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState<boolean>(false); // State for image preview modal
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null); // State for image preview URL
 
 
   const handleTocLinkClick = useCallback((sectionIdFromLink: string | null) => {
@@ -1607,7 +1610,12 @@ const CampaignEditorPage: React.FC = () => {
                       height: '30px',
                       objectFit: 'contain',
                       marginRight: '10px',
-                      border: '1px solid #eee'
+                      border: '1px solid #eee',
+                      cursor: 'pointer' // Add cursor pointer for clickable images
+                    }}
+                    onClick={() => {
+                      setPreviewImageUrl(file.url);
+                      setIsPreviewModalOpen(true);
                     }}
                   />
                 ) : (
@@ -1633,6 +1641,38 @@ const CampaignEditorPage: React.FC = () => {
                 )}
                 <a href={file.url} target="_blank" rel="noopener noreferrer">{file.name}</a>
                 <span style={{ marginLeft: '8px', fontSize: '0.8em', color: '#777' }}>({(file.size / 1024).toFixed(2)} KB)</span>
+                {/* Basic Delete Button - Functionality to be added */}
+                <Button
+                  onClick={async () => {
+                    // Confirmation dialog
+                    if (window.confirm(`Are you sure you want to delete "${file.name}"? This action cannot be undone.`)) {
+                      try {
+                        if (!campaignId) {
+                          console.error("Campaign ID is missing, cannot delete file.");
+                          setCampaignFilesError("Campaign ID is missing, cannot delete file.");
+                          return;
+                        }
+                        // console.log(`Attempting to delete file: ${file.name} for campaign ${campaignId}`); // Removed
+                        await campaignService.deleteCampaignFile(campaignId, file.name); // Assuming file.name is the blob_name
+                        // console.log(`File "${file.name}" deleted successfully from backend.`); // Removed
+                        // Refresh file list or remove from local state
+                        setCampaignFiles(prevFiles => prevFiles.filter(f => f.name !== file.name));
+                        // console.log("Local file list updated."); // Removed
+                      } catch (err: any) {
+                        console.error(`Failed to delete file "${file.name}":`, err);
+                        setCampaignFilesError(`Failed to delete ${file.name}: ${err.message || 'Unknown error'}`);
+                        // Optionally, clear the error after some time
+                        // setTimeout(() => setCampaignFilesError(null), 5000);
+                      }
+                    }
+                  }}
+                  variant="danger"
+                  size="sm"
+                  style={{ marginLeft: 'auto', padding: '2px 6px' }} // Pushes button to the right, minimal padding
+                  tooltip={`Delete ${file.name}`}
+                >
+                  Delete
+                </Button>
               </li>
             );
           })}
@@ -1867,6 +1907,11 @@ const CampaignEditorPage: React.FC = () => {
         autoApplyDefault={true} // Assume adding to mood board is the default desired action
         campaignId={campaignId} // Pass campaignId
         // selectedLLMId={selectedLLMId} // If the modal needs LLM context (check modal props)
+      />
+      <ImagePreviewModal
+        isOpen={isPreviewModalOpen}
+        onClose={() => setIsPreviewModalOpen(false)}
+        imageUrl={previewImageUrl}
       />
     </div>
   );
