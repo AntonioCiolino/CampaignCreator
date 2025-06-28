@@ -1,6 +1,3 @@
-import React, { useState, ReactNode } from 'react';
-import './CollapsibleSection.css';
-
 import React, { useState, ReactNode, useEffect } from 'react'; // Added useEffect
 import './CollapsibleSection.css';
 
