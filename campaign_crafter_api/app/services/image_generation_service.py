@@ -204,12 +204,12 @@ class ImageGenerationService:
         # Construct blob_name with campaign_id if provided
         file_stem = uuid.uuid4().hex
         if campaign_id is not None:
-            blob_name = f"user_uploads/{user_id}/campaigns/{campaign_id}/{file_stem}{file_extension}"
+            blob_name = f"user_uploads/{user_id}/campaigns/{campaign_id}/files/{file_stem}{file_extension}"
         else:
             # Fallback path if campaign_id is not provided (e.g., general user images not tied to a campaign)
             # This case might need further review based on whether all images should be campaign-specific.
             # For now, keeping a distinct path for non-campaign images if that's a valid scenario.
-            blob_name = f"user_uploads/{user_id}/general/{file_stem}{file_extension}"
+            blob_name = f"user_uploads/{user_id}/general/files/{file_stem}{file_extension}" # Also adding /files here for consistency
 
         print(f"Constructed blob name: {blob_name}") # For debugging path construction
 

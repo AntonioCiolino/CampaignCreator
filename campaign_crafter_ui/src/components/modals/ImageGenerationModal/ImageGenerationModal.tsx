@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../../common/Modal';
 import Input from '../../common/Input';
 import Button from '../../common/Button';
+import CollapsibleSection from '../../common/CollapsibleSection'; // Added import
 // import apiClient from '../../../services/apiClient'; // Removed as generateImage service is used directly
 import { generateImage, ImageGenerationParams, ImageGenerationResponse, ImageModelName as BackendImageModelName } from '../../../services/llmService'; // Moved import to top
 import './ImageGenerationModal.css';
@@ -70,6 +71,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [generationCompleted, setGenerationCompleted] = useState<boolean>(false);
   const [autoApplyImage, setAutoApplyImage] = useState<boolean>(autoApplyDefault !== undefined ? autoApplyDefault : true);
+  const [isSettingsCollapsed, setIsSettingsCollapsed] = useState<boolean>(false); // Added state for collapsible section
   // Optional: store full response details if needed for display or callback
   // const [generationDetails, setGenerationDetails] = useState<ImageGenerationResponseData | null>(null);
 
@@ -118,6 +120,8 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
         if (autoApplyImage) {
           onImageSuccessfullyGenerated?.(responseData.image_url, prompt);
           onClose();
+        } else {
+          setIsSettingsCollapsed(true); // Collapse settings when image is generated and not auto-applied
         }
       } else {
         setError('Failed to generate image: Invalid response from server.');
@@ -225,7 +229,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
         .then(() => {
           // Optional: Show a success message
           alert('Image URL copied to clipboard!');
-          onClose(); // Close modal after action
+          // onClose(); // Close modal after action // Removed to keep modal open
         })
         .catch(err => {
           console.error('Failed to copy URL: ', err);
@@ -245,6 +249,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
       setError(null);
       setGenerationCompleted(false);
       setAutoApplyImage(autoApplyDefault !== undefined ? autoApplyDefault : true);
+      setIsSettingsCollapsed(false); // Reset collapsible state when modal opens
 
       // Reset model-specific fields to defaults
       setSelectedModel('dall-e');
@@ -276,12 +281,11 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
         <Button
           onClick={handleCopyToClipboard}
           disabled={!generatedImageUrl || generatedImageUrl.startsWith('data:')}
-          size="sm"
           style={{ marginLeft: '10px' }}
         >
           Copy URL
         </Button>
-        <Button onClick={handleDownloadImage} size="sm" style={{ marginLeft: '10px' }}>
+        <Button onClick={handleDownloadImage} style={{ marginLeft: '10px' }}>
           Download
         </Button>
         <Button
@@ -292,7 +296,6 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
             onClose();
           }}
           disabled={!generatedImageUrl || !generationDetails?.prompt_used || !onSetAsThematic}
-          size="sm"
           style={{ marginLeft: '10px' }}
         >
           Set as Thematic
@@ -368,43 +371,45 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Generate Image">
       <div className="image-generation-modal-content">
-        <label>
-          Prompt:
-          <Input
-            type="text"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Enter a description for the image"
-            disabled={isLoading}
-          />
-        </label>
-        
-        <label>
-          Model:
-          <select 
-            value={selectedModel} 
-            onChange={(e) => setSelectedModel(e.target.value as ImageModel)}
-            disabled={isLoading}
-          >
-            <option value="dall-e">DALL-E</option>
-            <option value="stable-diffusion">Stable Diffusion</option>
-            <option value="gemini">Gemini</option>
-          </select>
-        </label>
-
-        {renderModelSpecificOptions()}
-
-        <div style={{ margin: '10px 0' }}>
+        <CollapsibleSection title="Image Generation Settings" initialCollapsed={isSettingsCollapsed} isManuallyCollapsed={isSettingsCollapsed} onToggle={() => setIsSettingsCollapsed(!isSettingsCollapsed)}>
           <label>
-            <input
-              type="checkbox"
-              checked={autoApplyImage}
-              onChange={(e) => setAutoApplyImage(e.target.checked)}
+            Prompt:
+            <Input
+              type="text"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Enter a description for the image"
               disabled={isLoading}
             />
-            Auto-apply generated image
           </label>
-        </div>
+
+          <label>
+            Model:
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value as ImageModel)}
+              disabled={isLoading}
+            >
+              <option value="dall-e">DALL-E</option>
+              <option value="stable-diffusion">Stable Diffusion</option>
+              <option value="gemini">Gemini</option>
+            </select>
+          </label>
+
+          {renderModelSpecificOptions()}
+
+          <div style={{ margin: '10px 0' }}>
+            <label>
+              <input
+                type="checkbox"
+                checked={autoApplyImage}
+                onChange={(e) => setAutoApplyImage(e.target.checked)}
+                disabled={isLoading}
+              />
+              Auto-apply generated image
+            </label>
+          </div>
+        </CollapsibleSection>
 
         {isLoading && <div className="loading-indicator">Generating image...</div>}
         {error && <div className="error-message">{error}</div>}
