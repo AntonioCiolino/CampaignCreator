@@ -446,7 +446,7 @@ const CampaignEditorPage: React.FC = () => {
           return;
       }
       try {
-        console.log('Auto-saving mood board URLs:', editableMoodBoardUrls);
+        // console.log('Auto-saving mood board URLs:', editableMoodBoardUrls); // Debug log removed
         const payload: campaignService.CampaignUpdatePayload = {
           mood_board_image_urls: editableMoodBoardUrls,
         };
@@ -473,11 +473,11 @@ const CampaignEditorPage: React.FC = () => {
   // Effect to fetch campaign files when 'Files' tab is active or campaignId changes
   useEffect(() => {
     let isMounted = true;
-    console.log('[FilesEffect] Running. Tab:', activeEditorTab, 'CampaignID:', campaignId);
+    // console.log('[FilesEffect] Running. Tab:', activeEditorTab, 'CampaignID:', campaignId); // Removed
 
     const fetchCampaignFiles = async () => {
       if (!campaignId) {
-        console.log('[FilesEffect] No campaignId, resetting files state.');
+        // console.log('[FilesEffect] No campaignId, resetting files state.'); // Removed
         if (isMounted) {
           setCampaignFiles([]);
           setCampaignFilesError(null);
@@ -487,79 +487,73 @@ const CampaignEditorPage: React.FC = () => {
       }
 
       if (activeEditorTab !== 'Files') {
-        console.log('[FilesEffect] Not on Files tab, skipping fetch.');
+        // console.log('[FilesEffect] Not on Files tab, skipping fetch.'); // Removed
         return;
       }
 
       const campaignChanged = campaignId !== prevCampaignIdForFiles;
-      // Initial load: no files yet AND (no error OR previous fetch was for a different campaign)
       const initialLoadForThisCampaign = campaignFiles.length === 0 && (!campaignFilesError || prevCampaignIdForFiles !== campaignId);
-      // Retry: if there was an error for the current campaignId
       const shouldRetryAfterError = !!campaignFilesError && prevCampaignIdForFiles === campaignId;
 
-      console.log(`[FilesEffect] campaignChanged: ${campaignChanged}, initialLoad: ${initialLoadForThisCampaign}, shouldRetry: ${shouldRetryAfterError}, loading: ${campaignFilesLoading}`);
-      console.log(`[FilesEffect] current campaignFiles.length: ${campaignFiles.length}, campaignFilesError: ${campaignFilesError}, prevCampaignIdForFiles: ${prevCampaignIdForFiles}`);
+      // console.log(`[FilesEffect] campaignChanged: ${campaignChanged}, initialLoad: ${initialLoadForThisCampaign}, shouldRetry: ${shouldRetryAfterError}, loading: ${campaignFilesLoading}`); // Removed
+      // console.log(`[FilesEffect] current campaignFiles.length: ${campaignFiles.length}, campaignFilesError: ${campaignFilesError}, prevCampaignIdForFiles: ${prevCampaignIdForFiles}`); // Removed
 
 
       if ((campaignChanged || initialLoadForThisCampaign || shouldRetryAfterError) && !campaignFilesLoading) {
-        console.log(`[FilesEffect] Conditions met to fetch/re-fetch files for campaign ID: ${campaignId}.`);
+        // console.log(`[FilesEffect] Conditions met to fetch/re-fetch files for campaign ID: ${campaignId}.`); // Removed
         if (isMounted) {
-          console.log('[FilesEffect] Setting loading true.');
+          // console.log('[FilesEffect] Setting loading true.'); // Removed
           setCampaignFilesLoading(true);
-          setCampaignFilesError(null); // Clear previous errors on new fetch attempt
+          setCampaignFilesError(null);
 
           if (campaignChanged) {
-            console.log('[FilesEffect] Campaign ID changed. Clearing old files and setting prevCampaignId.');
-            setCampaignFiles([]); // Clear files from old campaign
-            setPrevCampaignIdForFiles(campaignId); // Set new prev ID as we are initiating fetch for it
+            // console.log('[FilesEffect] Campaign ID changed. Clearing old files and setting prevCampaignId.'); // Removed
+            setCampaignFiles([]);
+            setPrevCampaignIdForFiles(campaignId);
           }
         }
 
         try {
-          console.log(`[FilesEffect] Attempting to fetch files for campaignId: ${campaignId}`);
+          // console.log(`[FilesEffect] Attempting to fetch files for campaignId: ${campaignId}`); // Removed
           const files = await getCampaignFiles(campaignId);
-          console.log(`[FilesEffect] Successfully fetched files:`, files);
+          // console.log(`[FilesEffect] Successfully fetched files:`, files); // Removed
           if (isMounted) {
-            console.log('[FilesEffect] isMounted true, setting campaign files.');
+            // console.log('[FilesEffect] isMounted true, setting campaign files.'); // Removed
             setCampaignFiles(files);
-            // If campaign hasn't changed (e.g. retry or initial load for current ID), ensure prevId is set.
-            // If campaignChanged was true, it was already set above.
             if (!campaignChanged) {
-                 console.log('[FilesEffect] Campaign ID did not change, ensuring prevCampaignIdForFiles is set.');
+                 // console.log('[FilesEffect] Campaign ID did not change, ensuring prevCampaignIdForFiles is set.'); // Removed
                  setPrevCampaignIdForFiles(campaignId);
             }
           } else {
-            console.log('[FilesEffect] Not mounted after fetch, not setting campaign files.');
+            // console.log('[FilesEffect] Not mounted after fetch, not setting campaign files.'); // Removed
           }
         } catch (err: any) {
-          console.error(`[FilesEffect] Error fetching campaign files for ${campaignId}:`, err);
+          console.error(`[CampaignEditorPage] Error fetching campaign files for ${campaignId}:`, err); // Keep critical error logs
           if (isMounted) {
-            console.log('[FilesEffect] isMounted true, setting campaign files error.');
+            // console.log('[FilesEffect] isMounted true, setting campaign files error.'); // Removed
             const errorMsg = err.message || 'Failed to load campaign files.';
             setCampaignFilesError(errorMsg);
-            // Optional: Consider if prevCampaignIdForFiles should be reset or handled differently on error
-            // For now, it will retain the campaignId for which the fetch failed, allowing retry logic.
           } else {
-            console.log('[FilesEffect] Not mounted after error, not setting campaign files error.');
+            // console.log('[FilesEffect] Not mounted after error, not setting campaign files error.'); // Removed
           }
         } finally {
-          console.log('[FilesEffect] Entering finally block.');
+          // console.log('[FilesEffect] Entering finally block.'); // Removed
           if (isMounted) {
-            console.log('[FilesEffect] isMounted true, setting loading false.');
+            // console.log('[FilesEffect] isMounted true, setting loading false.'); // Removed
             setCampaignFilesLoading(false);
           } else {
-            console.log('[FilesEffect] Not mounted in finally, not setting loading false.');
+            // console.log('[FilesEffect] Not mounted in finally, not setting loading false.'); // Removed
           }
         }
       } else {
-        console.log('[FilesEffect] Conditions not met for fetch or already loading.');
+        // console.log('[FilesEffect] Conditions not met for fetch or already loading.'); // Removed
       }
     };
 
     fetchCampaignFiles();
 
     return () => {
-      console.log('[FilesEffect] Cleanup. Setting isMounted to false for campaignId:', campaignId);
+      // console.log('[FilesEffect] Cleanup. Setting isMounted to false for campaignId:', campaignId); // Removed
       isMounted = false;
     };
   }, [
@@ -1593,15 +1587,55 @@ const CampaignEditorPage: React.FC = () => {
       {campaignFilesLoading && <LoadingSpinner />}
       {campaignFilesError && <p className="error-message">{campaignFilesError}</p>}
       {!campaignFilesLoading && !campaignFilesError && campaignFiles.length === 0 && (
-        <p>No files found for this campaign, or the "Files" tab was just enabled.</p>
+        <p>No files found for this campaign.</p>
       )}
       {!campaignFilesLoading && !campaignFilesError && campaignFiles.length > 0 && (
-        <ul>
-          {campaignFiles.map(file => (
-            <li key={file.name}>
-              <a href={file.url} target="_blank" rel="noopener noreferrer">{file.name}</a> ({file.size} bytes)
-            </li>
-          ))}
+        <ul style={{ listStyleType: 'none', paddingLeft: 0 }}>
+          {campaignFiles.map(file => {
+            const extension = file.name.split('.').pop()?.toLowerCase() || '';
+            const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(extension);
+            const displayType = extension.toUpperCase();
+
+            return (
+              <li key={file.name} style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                {isImage ? (
+                  <img
+                    src={file.url}
+                    alt={file.name}
+                    style={{
+                      width: '30px',
+                      height: '30px',
+                      objectFit: 'contain',
+                      marginRight: '10px',
+                      border: '1px solid #eee'
+                    }}
+                  />
+                ) : (
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      width: '30px',
+                      height: '30px',
+                      marginRight: '10px',
+                      border: '1px solid #eee',
+                      backgroundColor: '#f0f0f0',
+                      textAlign: 'center',
+                      lineHeight: '30px',
+                      fontSize: '10px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                    title={displayType}
+                  >
+                    {displayType || 'FILE'}
+                  </span>
+                )}
+                <a href={file.url} target="_blank" rel="noopener noreferrer">{file.name}</a>
+                <span style={{ marginLeft: '8px', fontSize: '0.8em', color: '#777' }}>({(file.size / 1024).toFixed(2)} KB)</span>
+              </li>
+            );
+          })}
         </ul>
       )}
       {/* TODO: Add UI for file upload/management */}
