@@ -275,16 +275,15 @@ class RollTable(RollTableBase):
 
 # Pydantic model for representing file metadata from Azure Blob Storage
 class BlobFileMetadata(BaseModel):
-    name: str
+    name: str # This will store the base filename, e.g., "image.png"
+    blob_name: str # This will store the full path in blob storage, e.g., "user_uploads/.../image.png"
     url: HttpUrl
     size: int  # Size in bytes
     last_modified: datetime
     content_type: Optional[str] = None
 
     class Config:
-        orm_mode = True # Though this model won't directly map to an ORM table for listing purposes
-                        # it's good practice if some properties might be derived from ORM-like objects later.
-                        # More importantly, it ensures compatibility if it were ever needed.
+        from_attributes = True # Changed from orm_mode, as from_attributes is the Pydantic v2 equivalent for ORM compatibility
 
 class LLMTextGenerationResponse(BaseModel):
     text: str  # Placeholder field; add more fields as needed

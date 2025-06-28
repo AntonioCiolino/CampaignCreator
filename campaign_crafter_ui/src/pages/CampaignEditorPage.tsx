@@ -1652,11 +1652,11 @@ const CampaignEditorPage: React.FC = () => {
                           setCampaignFilesError("Campaign ID is missing, cannot delete file.");
                           return;
                         }
-                        // console.log(`Attempting to delete file: ${file.name} for campaign ${campaignId}`); // Removed
-                        await campaignService.deleteCampaignFile(campaignId, file.name); // Assuming file.name is the blob_name
-                        // console.log(`File "${file.name}" deleted successfully from backend.`); // Removed
+                        // console.log(`Attempting to delete file: ${file.blob_name} for campaign ${campaignId}`); // Changed file.name to file.blob_name
+                        await campaignService.deleteCampaignFile(campaignId, file.blob_name); // Use file.blob_name
+                        // console.log(`File "${file.blob_name}" deleted successfully from backend.`); // Changed file.name to file.blob_name
                         // Refresh file list or remove from local state
-                        setCampaignFiles(prevFiles => prevFiles.filter(f => f.name !== file.name));
+                        setCampaignFiles(prevFiles => prevFiles.filter(f => f.blob_name !== file.blob_name)); // Use blob_name for filtering
                         // console.log("Local file list updated."); // Removed
                       } catch (err: any) {
                         console.error(`Failed to delete file "${file.name}":`, err);

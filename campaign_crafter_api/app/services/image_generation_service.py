@@ -720,7 +720,8 @@ class ImageGenerationService:
                 properties = blob_client.get_blob_properties()
 
                 file_meta = BlobFileMetadata(
-                    name=Path(blob.name).name,
+                    name=Path(blob.name).name, # Base filename
+                    blob_name=blob.name,       # Full path in blob storage
                     url=f"{account_url_base}/{container_name}/{blob.name}",
                     size=properties.size,
                     last_modified=properties.last_modified,

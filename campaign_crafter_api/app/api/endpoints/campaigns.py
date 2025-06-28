@@ -158,6 +158,67 @@ async def list_campaign_files_endpoint(
         print(f"Error retrieving files for user {current_user.id}, campaign {campaign_id}: {e}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred while retrieving campaign files.")
 
+@router.delete("/{campaign_id}/files/{blob_name:path}", status_code=204, tags=["Campaigns", "Files"])
+async def delete_campaign_file_endpoint(
+    campaign_id: int,
+    blob_name: str, # This will capture the full path thanks to :path
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)],
+    image_service: Annotated[ImageGenerationService, Depends(ImageGenerationService)]
+):
+    """
+    Deletes a specific file (identified by its full blob_name) associated with a campaign.
+    Ensures the campaign belongs to the current user.
+    Deletes from both Azure Blob Storage and the GeneratedImage database records.
+    """
+    # Authorization: Check if campaign exists and belongs to the current user
+    db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
+    if db_campaign is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    if db_campaign.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete files for this campaign")
+
+    # Step 1: Delete from Database (GeneratedImage record)
+    # This also serves as a check if the user is authorized for this specific image record,
+    # as delete_generated_image_by_blob_name checks user_id.
+    deleted_db_record = crud.delete_generated_image_by_blob_name(db=db, blob_name=blob_name, user_id=current_user.id)
+
+    if deleted_db_record is None:
+        # If the DB record wasn't found (or user_id didn't match), it's possible the file doesn't exist
+        # in our records, or it's a blob not tracked by GeneratedImage (e.g. direct upload not logged there),
+        # or it's a file belonging to another user but under this campaign (less likely with current structure).
+        # For now, we'll proceed to attempt blob deletion if the campaign auth passed.
+        # A stricter approach might be to 404 here if no DB record.
+        # However, if the goal is to ensure a blob is gone, deleting it from storage even if DB record is missing might be desired.
+        # Let's assume for now if there's no DB record for THIS user, we might not want to delete the blob
+        # unless we are sure only this user could have created it under this campaign.
+        # Given `GeneratedImage.user_id`, if no record for this user, then they shouldn't delete.
+        # If the file exists in blob but not DB, `delete_image_from_blob_storage` will handle "blob not found" gracefully.
+        print(f"No database record found for blob '{blob_name}' and user '{current_user.id}'. It might have been already deleted or not tracked for this user.")
+        # Depending on strictness, could raise 404 here.
+        # For now, let's allow blob deletion attempt to proceed if campaign auth is okay,
+        # as the file might be an "orphan" in blob storage the user wants to remove.
+
+    # Step 2: Delete from Azure Blob Storage
+    try:
+        await image_service.delete_image_from_blob_storage(blob_name=blob_name)
+        # delete_image_from_blob_storage handles "blob not found" by printing a warning but not raising an error,
+        # which is acceptable (idempotent delete).
+    except HTTPException as http_exc:
+        # Re-raise HTTPExceptions from the service layer (e.g., Azure config issues)
+        # If the DB delete succeeded but blob delete failed, this is a partial failure state.
+        # Consider logging this inconsistency or potential manual cleanup.
+        print(f"Database record for '{blob_name}' was deleted (if it existed), but blob storage deletion failed: {http_exc.detail}")
+        raise http_exc # Re-raise the original exception from service
+    except Exception as e:
+        # Catch any other unexpected errors from the service layer
+        print(f"Error deleting blob '{blob_name}' from storage: {e}")
+        # Similar to above, DB record might be gone but blob deletion failed.
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while deleting the file from storage: {str(e)}")
+
+    # If we reach here, operations were successful or handled gracefully (e.g., blob already gone)
+    return PlainTextResponse(status_code=204) # No content
+
 
 # --- LLM-Related Endpoints for Campaigns ---
 

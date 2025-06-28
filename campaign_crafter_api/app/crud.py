@@ -568,3 +568,24 @@ async def update_section_order(db: Session, campaign_id: int, ordered_section_id
 
 def get_all_campaigns(db: Session):
     return db.query(orm_models.Campaign).all()
+
+# --- GeneratedImage CRUD Functions ---
+def delete_generated_image_by_blob_name(db: Session, blob_name: str, user_id: int) -> Optional[orm_models.GeneratedImage]:
+    """
+    Deletes a GeneratedImage record from the database based on its filename (blob_name)
+    and user_id for authorization.
+    Returns the deleted ORM object or None if not found or not authorized.
+    """
+    db_image = db.query(orm_models.GeneratedImage).filter(
+        orm_models.GeneratedImage.filename == blob_name,
+        orm_models.GeneratedImage.user_id == user_id
+    ).first()
+
+    if not db_image:
+        # Could also check if it exists at all and then if user_id matches to give a more specific error,
+        # but for deletion, "not found or not authorized" is often sufficient.
+        return None
+
+    db.delete(db_image)
+    db.commit()
+    return db_image
