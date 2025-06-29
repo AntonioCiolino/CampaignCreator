@@ -1,6 +1,7 @@
 import axios from 'axios';
 import apiClient from './apiClient';
 import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-source';
+import { BlobFileMetadata } from '../types/fileTypes'; // Moved import to top
 
 // Types matching backend Pydantic models
 export interface TOCEntry {
@@ -161,7 +162,7 @@ export const updateCampaign = async (campaignId: string | number, campaignData: 
 };
 
 // --- Campaign Files ---
-import { BlobFileMetadata } from '../types/fileTypes'; // Import the new type
+// Import { BlobFileMetadata } from '../types/fileTypes'; // Import the new type -- MOVED TO TOP
 
 /**
  * Fetches the list of files for a specific campaign.
