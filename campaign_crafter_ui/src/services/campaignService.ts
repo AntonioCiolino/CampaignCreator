@@ -2,7 +2,6 @@ import axios from 'axios';
 import apiClient from './apiClient';
 import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-source';
 import { BlobFileMetadata } from '../types/fileTypes'; // Moved import to top
-import { BlobFileMetadata } from '../types/fileTypes'; // Import the new type
 
 // Types matching backend Pydantic models
 export interface TOCEntry {
