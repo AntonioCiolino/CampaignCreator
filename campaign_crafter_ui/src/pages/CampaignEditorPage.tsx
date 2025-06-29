@@ -476,11 +476,9 @@ const CampaignEditorPage: React.FC = () => {
   // Effect to fetch campaign files when 'Files' tab is active or campaignId changes
   useEffect(() => {
     let isMounted = true;
-    // console.log('[FilesEffect] Running. Tab:', activeEditorTab, 'CampaignID:', campaignId); // Removed
 
     const fetchCampaignFiles = async () => {
       if (!campaignId) {
-        // console.log('[FilesEffect] No campaignId, resetting files state.'); // Removed
         if (isMounted) {
           setCampaignFiles([]);
           setCampaignFilesError(null);
@@ -490,7 +488,6 @@ const CampaignEditorPage: React.FC = () => {
       }
 
       if (activeEditorTab !== 'Files') {
-        // console.log('[FilesEffect] Not on Files tab, skipping fetch.'); // Removed
         return;
       }
 
@@ -498,73 +495,51 @@ const CampaignEditorPage: React.FC = () => {
       const initialLoadForThisCampaign = campaignFiles.length === 0 && (!campaignFilesError || prevCampaignIdForFiles !== campaignId);
       const shouldRetryAfterError = !!campaignFilesError && prevCampaignIdForFiles === campaignId;
 
-      // console.log(`[FilesEffect] campaignChanged: ${campaignChanged}, initialLoad: ${initialLoadForThisCampaign}, shouldRetry: ${shouldRetryAfterError}, loading: ${campaignFilesLoading}`); // Removed
-      // console.log(`[FilesEffect] current campaignFiles.length: ${campaignFiles.length}, campaignFilesError: ${campaignFilesError}, prevCampaignIdForFiles: ${prevCampaignIdForFiles}`); // Removed
-
-
       if ((campaignChanged || initialLoadForThisCampaign || shouldRetryAfterError) && !campaignFilesLoading) {
-        // console.log(`[FilesEffect] Conditions met to fetch/re-fetch files for campaign ID: ${campaignId}.`); // Removed
         if (isMounted) {
-          // console.log('[FilesEffect] Setting loading true.'); // Removed
           setCampaignFilesLoading(true);
           setCampaignFilesError(null);
 
           if (campaignChanged) {
-            // console.log('[FilesEffect] Campaign ID changed. Clearing old files and setting prevCampaignId.'); // Removed
             setCampaignFiles([]);
             setPrevCampaignIdForFiles(campaignId);
           }
         }
 
         try {
-          // console.log(`[FilesEffect] Attempting to fetch files for campaignId: ${campaignId}`); // Removed
           const files = await getCampaignFiles(campaignId);
-          // console.log(`[FilesEffect] Successfully fetched files:`, files); // Removed
           if (isMounted) {
-            // console.log('[FilesEffect] isMounted true, setting campaign files.'); // Removed
             setCampaignFiles(files);
             if (!campaignChanged) {
-                 // console.log('[FilesEffect] Campaign ID did not change, ensuring prevCampaignIdForFiles is set.'); // Removed
                  setPrevCampaignIdForFiles(campaignId);
             }
-          } else {
-            // console.log('[FilesEffect] Not mounted after fetch, not setting campaign files.'); // Removed
           }
         } catch (err: any) {
-          console.error(`[CampaignEditorPage] Error fetching campaign files for ${campaignId}:`, err); // Keep critical error logs
+          console.error(`[CampaignEditorPage] Error fetching campaign files for ${campaignId}:`, err);
           if (isMounted) {
-            // console.log('[FilesEffect] isMounted true, setting campaign files error.'); // Removed
             const errorMsg = err.message || 'Failed to load campaign files.';
             setCampaignFilesError(errorMsg);
-          } else {
-            // console.log('[FilesEffect] Not mounted after error, not setting campaign files error.'); // Removed
           }
         } finally {
-          // console.log('[FilesEffect] Entering finally block.'); // Removed
           if (isMounted) {
-            // console.log('[FilesEffect] isMounted true, setting loading false.'); // Removed
             setCampaignFilesLoading(false);
-          } else {
-            // console.log('[FilesEffect] Not mounted in finally, not setting loading false.'); // Removed
           }
         }
-      } else {
-        // console.log('[FilesEffect] Conditions not met for fetch or already loading.'); // Removed
       }
     };
 
     fetchCampaignFiles();
 
     return () => {
-      // console.log('[FilesEffect] Cleanup. Setting isMounted to false for campaignId:', campaignId); // Removed
       isMounted = false;
     };
   }, [
-    activeEditorTab, // Re-run if tab changes
-    campaignId     // Re-run if campaignId changes
-    // prevCampaignIdForFiles, campaignFiles, campaignFilesError, campaignFilesLoading
-    // are internal to the effect's logic or set by it, so they should not be dependencies
-    // that would cause the effect to cleanup and re-run when they change.
+    activeEditorTab,
+    campaignId,
+    prevCampaignIdForFiles,
+    campaignFiles.length,
+    campaignFilesError,
+    campaignFilesLoading
   ]);
 
   useEffect(() => {
@@ -773,7 +748,7 @@ const CampaignEditorPage: React.FC = () => {
     if (temperature !== null && temperature !== undefined && temperature !== campaign.temperature) {
       ensureLLMSettingsSaved();
     }
-  }, [campaign, ensureLLMSettingsSaved, initialLoadCompleteRef, temperature]); // Added temperature
+  }, [campaign, ensureLLMSettingsSaved, initialLoadCompleteRef, temperature]);
 
   // useEffect for auto-saving mood board URLs
   useEffect(() => {

@@ -209,9 +209,9 @@ export const deleteCampaignFile = async (campaignId: string, fileName: string): 
     // For a simple case where `fileName` is just the end part:
     // const response = await apiClient.delete(`/api/v1/campaigns/${campaignId}/files/${encodeURIComponent(fileName)}`);
     // If `fileName` is expected to be the full blob path and the route is set up for it (e.g. using :path converter):
-    const response = await apiClient.delete(`/api/v1/campaigns/${campaignId}/files/${fileName}`); // Assuming fileName is the blob_name
+    await apiClient.delete(`/api/v1/campaigns/${campaignId}/files/${fileName}`); // Assuming fileName is the blob_name
 
-    // console.log(`[campaignService.deleteCampaignFile] File "${fileName}" deleted successfully for campaign ${campaignId}. Status: ${response.status}`); // Backend returns 204
+    // console.log(`[campaignService.deleteCampaignFile] File "${fileName}" deleted successfully for campaign ${campaignId}.`); // Backend returns 204
     // No need to return response.data for a 204 No Content
   } catch (error: any) {
     console.error(`[campaignService.deleteCampaignFile] Error deleting file "${fileName}" for campaign ${campaignId}:`, error.response?.data || error.message || error);

@@ -136,6 +136,7 @@ export const generateAiImage = async (
     // Final decision: apiClient.post<T> returns T directly. -> This assumption was wrong.
     // Correcting based on the error and existing code pattern (e.g. in uploadImage).
     // The apiClient.post<T> returns an object where `data` property holds T.
+    // const resultData = response; // This line was unused and removed.
     console.log('[imageService.generateAiImage] Successfully generated image, response object:', response);
     return response.data; // Return the actual data part of the response.
 
