@@ -48,6 +48,16 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="login-page-container">
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="login-page-video-background"
+        src={`${process.env.PUBLIC_URL}/assets/videos/Dnd5e_realistic_high_202506282155_3836j.mp4`}
+      >
+        Your browser does not support the video tag.
+      </video>
       <div className="login-card">
         <h2>Login</h2>
         {error && <p className="login-error-message">{error}</p>}
