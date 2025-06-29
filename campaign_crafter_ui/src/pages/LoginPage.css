@@ -3,9 +3,22 @@
   justify-content: center; /* Center horizontally */
   align-items: center; /* Center vertically */
   min-height: 100vh; /* Full viewport height */
-  background-color: #f0f2f5; /* A light, neutral background */
+  background-color: #f0f2f5; /* Fallback background color */
   padding: 20px; /* Add some padding for smaller screens */
   box-sizing: border-box;
+  position: relative; /* Needed for positioning the video */
+  overflow: hidden; /* Hide video overflow */
+}
+
+.login-page-video-background {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Cover the entire container, cropping if necessary */
+  transform: translate(-50%, -50%);
+  z-index: -1; /* Place video behind other content */
 }
 
 .login-card {
