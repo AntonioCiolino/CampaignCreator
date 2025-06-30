@@ -15,8 +15,8 @@ const BASE_VIDEO_OPACITY = 0.2; // Target opacity for visible video
 // Ensure these files are in your `public/assets/videos/` directory
 const VIDEO_SOURCES = [
   `${process.env.PUBLIC_URL}/assets/videos/Dnd5e_realistic_high_202506282155_3836j.mp4`,
-  `${process.env.PUBLIC_URL}/assets/videos/The_goblin.mp4`, // Replace with actual file
-  `${process.env.PUBLIC_URL}/assets/videos/Dandelions_in_the_wind.mp4`, // Replace with actual file
+  `${process.env.PUBLIC_URL}/assets/videos/The_goblin.mp4`, 
+  `${process.env.PUBLIC_URL}/assets/videos/Dandelions_in_the_wind.mp4`,
 ];
 console.log('[LoginPage] Initial VIDEO_SOURCES:', VIDEO_SOURCES);
 
