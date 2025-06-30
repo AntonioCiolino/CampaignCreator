@@ -18,6 +18,7 @@ const VIDEO_SOURCES = [
   `${process.env.PUBLIC_URL}/assets/videos/loop2.mp4`, // Replace with actual file
   `${process.env.PUBLIC_URL}/assets/videos/loop3.mp4`, // Replace with actual file
 ];
+console.log('[LoginPage] Initial VIDEO_SOURCES:', VIDEO_SOURCES);
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -39,24 +40,33 @@ const LoginPage: React.FC = () => {
 
   // Initialize players
   useEffect(() => {
-    if (VIDEO_SOURCES.length === 0) return;
+    if (VIDEO_SOURCES.length === 0) {
+      console.log('[LoginPage Init] No video sources, exiting init.');
+      return;
+    }
+    console.log('[LoginPage Init] Initializing players...');
 
     setPlayers(prev => {
       const newPlayers = [...prev];
       newPlayers[0] = { ...newPlayers[0], src: VIDEO_SOURCES[0], key: Date.now(), isVisible: true };
+      console.log(`[LoginPage Init] Player 0 set to src: ${VIDEO_SOURCES[0]}`);
       if (VIDEO_SOURCES.length > 1) {
         newPlayers[1] = { ...newPlayers[1], src: VIDEO_SOURCES[1], key: Date.now() + 1, isVisible: false };
-        setCurrentSourceIndex(2 % VIDEO_SOURCES.length); // Next video for player 0 after player 1 finishes
+        setCurrentSourceIndex(2 % VIDEO_SOURCES.length);
+        console.log(`[LoginPage Init] Player 1 set to src: ${VIDEO_SOURCES[1]}, next currentSourceIndex: ${2 % VIDEO_SOURCES.length}`);
       } else {
         // Single video: player 1 won't be used for a different source initially
         newPlayers[1] = { ...newPlayers[1], src: '', key: Date.now() + 1, isVisible: false };
         setCurrentSourceIndex(0); // Points to the same video for reloading
+        console.log('[LoginPage Init] Single video setup. Player 1 empty, currentSourceIndex: 0');
       }
       return newPlayers;
     });
     setActivePlayerIndex(0);
+    console.log('[LoginPage Init] Initial activePlayerIndex: 0');
 
     return () => {
+      console.log('[LoginPage Unmount] Clearing transition timer.');
       if (transitionEndTimerRef.current) clearTimeout(transitionEndTimerRef.current);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -64,53 +74,65 @@ const LoginPage: React.FC = () => {
 
 
   const handleVideoEnded = (endedPlayerIndex: number) => {
+    console.log(`[handleVideoEnded] Called for player ID: ${endedPlayerIndex}. Current activePlayerIndex: ${activePlayerIndex}`);
     if (endedPlayerIndex !== activePlayerIndex || VIDEO_SOURCES.length === 0) {
+      console.log('[handleVideoEnded] Condition not met or no videos. Returning.');
       return;
     }
 
     if (transitionEndTimerRef.current) {
+      console.log('[handleVideoEnded] Clearing existing transitionEndTimerRef.');
       clearTimeout(transitionEndTimerRef.current);
     }
 
     if (VIDEO_SOURCES.length === 1) {
-      // Single video: just restart it by changing its key after a short delay (simulating a loop with fade)
+      console.log('[handleVideoEnded] Single video logic: Fading out and in.');
       setPlayers(prev => prev.map((p, i) => (i === activePlayerIndex ? { ...p, isVisible: false } : p)));
       transitionEndTimerRef.current = setTimeout(() => {
+        console.log('[handleVideoEnded] Single video logic: Fading in after FADE_DURATION_MS.');
         setPlayers(prev => prev.map((p, i) => (i === activePlayerIndex ? { ...p, key: Date.now(), isVisible: true } : p)));
-      }, FADE_DURATION_MS); // Fade out, then immediately fade back in
+      }, FADE_DURATION_MS);
       return;
     }
 
     const playerToFadeInIndex = (activePlayerIndex + 1) % 2;
     const playerToFadeOutIndex = activePlayerIndex;
+    console.log(`[handleVideoEnded] Multiple videos: playerToFadeInIndex: ${playerToFadeInIndex}, playerToFadeOutIndex: ${playerToFadeOutIndex}`);
+    console.log(`[handleVideoEnded] Current currentSourceIndex (for playerToFadeIn's preloaded src): (Not directly used here, playerToFadeIn should be ready)`);
 
-    // The playerToFadeInIndex should already have its src preloaded.
-    // Now, trigger the cross-fade.
+
     setPlayers(prevPlayers => {
       const newPlayers = [...prevPlayers];
       newPlayers[playerToFadeOutIndex] = { ...newPlayers[playerToFadeOutIndex], isVisible: false };
+      // Player B (playerToFadeInIndex) should already have its src set from the previous cycle's preload.
+      // We are just making it visible.
       newPlayers[playerToFadeInIndex] = { ...newPlayers[playerToFadeInIndex], isVisible: true };
+      console.log('[handleVideoEnded] SetPlayers for cross-fade. Intended new state:', newPlayers.map(p => ({src: p.src, vis: p.isVisible, key: p.key })));
       return newPlayers;
     });
 
     setActivePlayerIndex(playerToFadeInIndex);
+    console.log(`[handleVideoEnded] New activePlayerIndex: ${playerToFadeInIndex}`);
 
-    // After the fade duration, update the src of the now hidden player (playerToFadeOutIndex)
-    // so it starts preloading the next video in the sequence.
     transitionEndTimerRef.current = setTimeout(() => {
       const nextSrcForHiddenPlayer = VIDEO_SOURCES[currentSourceIndex];
+      console.log(`[handleVideoEnded] Timeout: Preparing player ${playerToFadeOutIndex} (now hidden) with next src: ${nextSrcForHiddenPlayer} (from currentSourceIndex: ${currentSourceIndex})`);
+
       setPlayers(prevPlayers => {
         const newPlayers = [...prevPlayers];
         newPlayers[playerToFadeOutIndex] = {
           ...newPlayers[playerToFadeOutIndex],
           src: nextSrcForHiddenPlayer,
-          key: Date.now(), // New key to ensure it reloads if src is the same
-          isVisible: false, // Stays hidden
+          key: Date.now(),
+          isVisible: false,
         };
+        console.log('[handleVideoEnded] Timeout: SetPlayers for preloading hidden player. Intended new state:', newPlayers.map(p => ({src: p.src, vis: p.isVisible, key: p.key })));
         return newPlayers;
       });
-      // Advance currentSourceIndex for the next cycle
-      setCurrentSourceIndex(prevSrcIndex => (prevSrcIndex + 1) % VIDEO_SOURCES.length);
+
+      const newCurrentSourceIndex = (currentSourceIndex + 1) % VIDEO_SOURCES.length;
+      setCurrentSourceIndex(newCurrentSourceIndex);
+      console.log(`[handleVideoEnded] Timeout: Advanced currentSourceIndex to: ${newCurrentSourceIndex}`);
     }, FADE_DURATION_MS);
   };
 
