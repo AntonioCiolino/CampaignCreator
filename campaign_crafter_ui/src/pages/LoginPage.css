@@ -19,7 +19,8 @@
   object-fit: cover; /* Cover the entire container, cropping if necessary */
   transform: translate(-50%, -50%);
   z-index: -1; /* Place video behind other content */
-  opacity: 0.2; /* Set video intensity */
+  opacity: 0.2; /* Base video intensity (though inline style will override during fades) */
+  transition: opacity 1000ms ease-in-out; /* Corresponds to FADE_DURATION_MS */
 }
 
 .login-card {
