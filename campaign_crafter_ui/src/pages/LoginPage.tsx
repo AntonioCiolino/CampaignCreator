@@ -8,7 +8,7 @@ import { AxiosError } from 'axios';
 
 // Configuration for video background
 const FADE_DURATION_MS = 1000; // 1 second fade
-const GAP_DURATION_MS = 2000;  // 2 seconds gap between videos
+// const GAP_DURATION_MS = 2000; // No longer used for a visible gap in cross-fade
 const BASE_VIDEO_OPACITY = 0.2; // Target opacity for visible video
 
 // Placeholder video sources - replace with your actual video paths
@@ -31,76 +31,13 @@ const LoginPage: React.FC = () => {
     { src: '', key: Date.now() + 1, isVisible: false, id: 1 },
   ]);
   const [activePlayerIndex, setActivePlayerIndex] = useState(0); // 0 or 1
-  const [currentSourceIndex, setCurrentSourceIndex] = useState(0); // Index for VIDEO_SOURCES - points to the *next* video to load
+  // currentSourceIndex will point to the video in VIDEO_SOURCES that the *inactive* player should load next.
+  const [currentSourceIndex, setCurrentSourceIndex] = useState(0);
 
   const videoRefs = [useRef<HTMLVideoElement>(null), useRef<HTMLVideoElement>(null)];
-  const fadeOutTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const gapTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const transitionEndTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleVideoEnded = (endedPlayerIndex: number) => {
-    if (endedPlayerIndex !== activePlayerIndex || VIDEO_SOURCES.length === 0) {
-      return;
-    }
-
-    // Clear any pending timers
-    if (fadeOutTimerRef.current) clearTimeout(fadeOutTimerRef.current);
-    if (gapTimerRef.current) clearTimeout(gapTimerRef.current);
-
-    // 1. Start fading out the current active player
-    setPlayers(prev => prev.map((p, i) => (i === activePlayerIndex ? { ...p, isVisible: false } : p)));
-
-    fadeOutTimerRef.current = setTimeout(() => {
-      // 2. After fade out, start the gap
-      gapTimerRef.current = setTimeout(() => {
-        // 3. After gap, prepare and fade in the next player
-        const playerToFadeInIndex = (activePlayerIndex + 1) % 2;
-
-        // Determine the next video source. currentSourceIndex already points to the *next* one to use.
-        const nextVideoSrc = VIDEO_SOURCES[currentSourceIndex];
-
-        setPlayers(prev => {
-          const newPlayers = [...prev];
-          // Update the player that will become visible
-          newPlayers[playerToFadeInIndex] = {
-            ...newPlayers[playerToFadeInIndex],
-            src: nextVideoSrc,
-            key: Date.now(),
-            isVisible: true, // This will trigger its fade-in via CSS transition
-          };
-          return newPlayers;
-        });
-
-        setActivePlayerIndex(playerToFadeInIndex);
-
-        // Update currentSourceIndex for the *next* cycle
-        const nextSrcForPreloadIndex = (currentSourceIndex + 1) % VIDEO_SOURCES.length;
-        setCurrentSourceIndex(nextSrcForPreloadIndex);
-
-        // Optional: Preload the video for the player that just faded out
-        // This happens after the new video has started its fade-in and gap.
-        // The player that just faded out is `endedPlayerIndex`.
-        // `currentSourceIndex` now points to the video that should be preloaded
-        // into the `endedPlayerIndex` player for the *next* cycle.
-        if (VIDEO_SOURCES.length > 1) {
-            const playerToPreloadIndex = endedPlayerIndex;
-            const srcForPreload = VIDEO_SOURCES[currentSourceIndex];
-
-            setPlayers(prev => {
-                const newPlayers = [...prev];
-                newPlayers[playerToPreloadIndex] = {
-                    ...newPlayers[playerToPreloadIndex],
-                    src: srcForPreload,
-                    key: Date.now() + 1,
-                    isVisible: false,
-                };
-                return newPlayers;
-            });
-        }
-      }, GAP_DURATION_MS);
-    }, FADE_DURATION_MS);
-  };
-
-  // useEffect for initializing players and starting the first video
+  // Initialize players
   useEffect(() => {
     if (VIDEO_SOURCES.length === 0) return;
 
@@ -109,21 +46,73 @@ const LoginPage: React.FC = () => {
       newPlayers[0] = { ...newPlayers[0], src: VIDEO_SOURCES[0], key: Date.now(), isVisible: true };
       if (VIDEO_SOURCES.length > 1) {
         newPlayers[1] = { ...newPlayers[1], src: VIDEO_SOURCES[1], key: Date.now() + 1, isVisible: false };
-        setCurrentSourceIndex(2 % VIDEO_SOURCES.length); // Next one to make visible will be VIDEO_SOURCES[2] (or wraps around)
+        setCurrentSourceIndex(2 % VIDEO_SOURCES.length); // Next video for player 0 after player 1 finishes
       } else {
-        newPlayers[1] = { ...newPlayers[1], src: '', key: Date.now() + 1, isVisible: false }; // No second video to preload
-        setCurrentSourceIndex(0); // If only one video, it will "load" itself again
+        // Single video: player 1 won't be used for a different source initially
+        newPlayers[1] = { ...newPlayers[1], src: '', key: Date.now() + 1, isVisible: false };
+        setCurrentSourceIndex(0); // Points to the same video for reloading
       }
       return newPlayers;
     });
     setActivePlayerIndex(0);
 
     return () => {
-      if (fadeOutTimerRef.current) clearTimeout(fadeOutTimerRef.current);
-      if (gapTimerRef.current) clearTimeout(gapTimerRef.current);
+      if (transitionEndTimerRef.current) clearTimeout(transitionEndTimerRef.current);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run once on mount
+  }, []);
+
+
+  const handleVideoEnded = (endedPlayerIndex: number) => {
+    if (endedPlayerIndex !== activePlayerIndex || VIDEO_SOURCES.length === 0) {
+      return;
+    }
+
+    if (transitionEndTimerRef.current) {
+      clearTimeout(transitionEndTimerRef.current);
+    }
+
+    if (VIDEO_SOURCES.length === 1) {
+      // Single video: just restart it by changing its key after a short delay (simulating a loop with fade)
+      setPlayers(prev => prev.map((p, i) => (i === activePlayerIndex ? { ...p, isVisible: false } : p)));
+      transitionEndTimerRef.current = setTimeout(() => {
+        setPlayers(prev => prev.map((p, i) => (i === activePlayerIndex ? { ...p, key: Date.now(), isVisible: true } : p)));
+      }, FADE_DURATION_MS); // Fade out, then immediately fade back in
+      return;
+    }
+
+    const playerToFadeInIndex = (activePlayerIndex + 1) % 2;
+    const playerToFadeOutIndex = activePlayerIndex;
+
+    // The playerToFadeInIndex should already have its src preloaded.
+    // Now, trigger the cross-fade.
+    setPlayers(prevPlayers => {
+      const newPlayers = [...prevPlayers];
+      newPlayers[playerToFadeOutIndex] = { ...newPlayers[playerToFadeOutIndex], isVisible: false };
+      newPlayers[playerToFadeInIndex] = { ...newPlayers[playerToFadeInIndex], isVisible: true };
+      return newPlayers;
+    });
+
+    setActivePlayerIndex(playerToFadeInIndex);
+
+    // After the fade duration, update the src of the now hidden player (playerToFadeOutIndex)
+    // so it starts preloading the next video in the sequence.
+    transitionEndTimerRef.current = setTimeout(() => {
+      const nextSrcForHiddenPlayer = VIDEO_SOURCES[currentSourceIndex];
+      setPlayers(prevPlayers => {
+        const newPlayers = [...prevPlayers];
+        newPlayers[playerToFadeOutIndex] = {
+          ...newPlayers[playerToFadeOutIndex],
+          src: nextSrcForHiddenPlayer,
+          key: Date.now(), // New key to ensure it reloads if src is the same
+          isVisible: false, // Stays hidden
+        };
+        return newPlayers;
+      });
+      // Advance currentSourceIndex for the next cycle
+      setCurrentSourceIndex(prevSrcIndex => (prevSrcIndex + 1) % VIDEO_SOURCES.length);
+    }, FADE_DURATION_MS);
+  };
 
   // This useEffect handles the login redirect
   useEffect(() => {
