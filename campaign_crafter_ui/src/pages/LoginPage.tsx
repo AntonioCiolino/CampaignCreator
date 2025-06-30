@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; // Add useEffect
+import React, { useState, useEffect, useRef } from 'react'; // Add useRef
 import './LoginPage.css'; // Import CSS
 import LoginForm from '../components/auth/LoginForm';
 import { useNavigate, useLocation } from 'react-router-dom'; // Add useLocation
