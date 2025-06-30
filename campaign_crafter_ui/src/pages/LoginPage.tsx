@@ -13,6 +13,11 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // New diagnostic useEffect
+  useEffect(() => {
+    console.log('[LoginPage] Auth state change detected: isLoading:', isLoading, 'token:', !!token, 'user:', !!user);
+  }, [isLoading, token, user]);
+
   useEffect(() => {
     // If user is already logged in (and not loading), redirect from login page
     if (!isLoading && token && user) {
