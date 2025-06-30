@@ -25,56 +25,107 @@ const LoginPage: React.FC = () => {
   const { login, user, isLoading, token } = useAuth(); // Get user, isLoading, token from AuthContext
   const [error, setError] = useState<string | null>(null);
 
-  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
-  const [isVideoFadingOut, setIsVideoFadingOut] = useState(true); // Start faded out, then fade in
-  const [videoKey, setVideoKey] = useState(Date.now()); // Used to force video remount
-  const fadeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const gapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // State for two video players for cross-fading
+  const [players, setPlayers] = useState([
+    { src: '', key: Date.now(), isVisible: false, id: 0 },
+    { src: '', key: Date.now() + 1, isVisible: false, id: 1 },
+  ]);
+  const [activePlayerIndex, setActivePlayerIndex] = useState(0); // 0 or 1
+  const [currentSourceIndex, setCurrentSourceIndex] = useState(0); // Index for VIDEO_SOURCES - points to the *next* video to load
 
-  const handleVideoEnded = () => {
-    if (VIDEO_SOURCES.length > 1) {
-      setIsVideoFadingOut(true);
-      if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
-      fadeTimeoutRef.current = setTimeout(() => {
-        setCurrentVideoIndex((prevIndex) => (prevIndex + 1) % VIDEO_SOURCES.length);
-        setVideoKey(Date.now()); // Ensures the new video loads and plays
+  const videoRefs = [useRef<HTMLVideoElement>(null), useRef<HTMLVideoElement>(null)];
+  const fadeOutTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const gapTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-        // The new video will start playing automatically due to autoPlay and new key.
-        // We need to fade it in after a short delay to allow it to load a bit (or use onLoadedData)
-        // For simplicity here, we'll fade in after the gap.
-        if (gapTimeoutRef.current) clearTimeout(gapTimeoutRef.current);
-        gapTimeoutRef.current = setTimeout(() => {
-          setIsVideoFadingOut(false); // Trigger fade-in
-        }, GAP_DURATION_MS);
-
-      }, FADE_DURATION_MS);
-    } else {
-      // If only one video, restart it by changing key (acts like a loop with a pause)
-      // Or simply add 'loop' attribute to video tag if no gap/fade is desired for single video.
-      // For consistency with multi-video logic including gap:
-      setIsVideoFadingOut(true);
-      if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
-      fadeTimeoutRef.current = setTimeout(() => {
-        setVideoKey(Date.now()); // Re-trigger load/play
-        if (gapTimeoutRef.current) clearTimeout(gapTimeoutRef.current);
-        gapTimeoutRef.current = setTimeout(() => {
-          setIsVideoFadingOut(false);
-        }, GAP_DURATION_MS);
-      }, FADE_DURATION_MS);
+  const handleVideoEnded = (endedPlayerIndex: number) => {
+    if (endedPlayerIndex !== activePlayerIndex || VIDEO_SOURCES.length === 0) {
+      return;
     }
+
+    // Clear any pending timers
+    if (fadeOutTimerRef.current) clearTimeout(fadeOutTimerRef.current);
+    if (gapTimerRef.current) clearTimeout(gapTimerRef.current);
+
+    // 1. Start fading out the current active player
+    setPlayers(prev => prev.map((p, i) => (i === activePlayerIndex ? { ...p, isVisible: false } : p)));
+
+    fadeOutTimerRef.current = setTimeout(() => {
+      // 2. After fade out, start the gap
+      gapTimerRef.current = setTimeout(() => {
+        // 3. After gap, prepare and fade in the next player
+        const playerToFadeInIndex = (activePlayerIndex + 1) % 2;
+
+        // Determine the next video source. currentSourceIndex already points to the *next* one to use.
+        const nextVideoSrc = VIDEO_SOURCES[currentSourceIndex];
+
+        setPlayers(prev => {
+          const newPlayers = [...prev];
+          // Update the player that will become visible
+          newPlayers[playerToFadeInIndex] = {
+            ...newPlayers[playerToFadeInIndex],
+            src: nextVideoSrc,
+            key: Date.now(),
+            isVisible: true, // This will trigger its fade-in via CSS transition
+          };
+          return newPlayers;
+        });
+
+        setActivePlayerIndex(playerToFadeInIndex);
+
+        // Update currentSourceIndex for the *next* cycle
+        const nextSrcForPreloadIndex = (currentSourceIndex + 1) % VIDEO_SOURCES.length;
+        setCurrentSourceIndex(nextSrcForPreloadIndex);
+
+        // Optional: Preload the video for the player that just faded out
+        // This happens after the new video has started its fade-in and gap.
+        // The player that just faded out is `endedPlayerIndex`.
+        // `currentSourceIndex` now points to the video that should be preloaded
+        // into the `endedPlayerIndex` player for the *next* cycle.
+        if (VIDEO_SOURCES.length > 1) {
+            const playerToPreloadIndex = endedPlayerIndex;
+            const srcForPreload = VIDEO_SOURCES[currentSourceIndex];
+
+            setPlayers(prev => {
+                const newPlayers = [...prev];
+                newPlayers[playerToPreloadIndex] = {
+                    ...newPlayers[playerToPreloadIndex],
+                    src: srcForPreload,
+                    key: Date.now() + 1,
+                    isVisible: false,
+                };
+                return newPlayers;
+            });
+        }
+      }, GAP_DURATION_MS);
+    }, FADE_DURATION_MS);
   };
 
+  // useEffect for initializing players and starting the first video
   useEffect(() => {
-    // Initial fade-in for the very first video
-    setIsVideoFadingOut(false);
+    if (VIDEO_SOURCES.length === 0) return;
+
+    setPlayers(prev => {
+      const newPlayers = [...prev];
+      newPlayers[0] = { ...newPlayers[0], src: VIDEO_SOURCES[0], key: Date.now(), isVisible: true };
+      if (VIDEO_SOURCES.length > 1) {
+        newPlayers[1] = { ...newPlayers[1], src: VIDEO_SOURCES[1], key: Date.now() + 1, isVisible: false };
+        setCurrentSourceIndex(2 % VIDEO_SOURCES.length); // Next one to make visible will be VIDEO_SOURCES[2] (or wraps around)
+      } else {
+        newPlayers[1] = { ...newPlayers[1], src: '', key: Date.now() + 1, isVisible: false }; // No second video to preload
+        setCurrentSourceIndex(0); // If only one video, it will "load" itself again
+      }
+      return newPlayers;
+    });
+    setActivePlayerIndex(0);
 
     return () => {
-      // Cleanup timeouts when component unmounts
-      if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
-      if (gapTimeoutRef.current) clearTimeout(gapTimeoutRef.current);
+      if (fadeOutTimerRef.current) clearTimeout(fadeOutTimerRef.current);
+      if (gapTimerRef.current) clearTimeout(gapTimerRef.current);
     };
-  }, []); // Run only once on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount
 
+  // This useEffect handles the login redirect
   useEffect(() => {
     // If user is already logged in (and not loading), redirect from login page
     if (!isLoading && token && user) {
@@ -111,19 +162,26 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="login-page-container">
-      <video
-        key={videoKey}
-        autoPlay
-        muted
-        playsInline
-        onEnded={handleVideoEnded}
-        className="login-page-video-background"
-        style={{ opacity: isVideoFadingOut ? 0 : BASE_VIDEO_OPACITY }}
-        src={VIDEO_SOURCES[currentVideoIndex]}
-      >
-        Your browser does not support the video tag.
-      </video>
-      <div className="login-card">
+      {players.map((player, index) => (
+        <video
+          ref={videoRefs[index]}
+          key={player.key}
+          autoPlay
+          muted
+          playsInline
+          onEnded={() => handleVideoEnded(player.id)}
+          className="login-page-video-background"
+          style={{
+            opacity: player.isVisible ? BASE_VIDEO_OPACITY : 0,
+            // zIndex is managed by order of rendering; last one with higher opacity will be on top.
+            // Or, ensure activePlayerIndex video has higher zIndex if needed, but opacity should handle it.
+          }}
+          src={player.src}
+        >
+          Your browser does not support the video tag.
+        </video>
+      ))}
+      <div className="login-card" style={{ zIndex: 10 }}> {/* Ensure login card is well above videos */}
         <h2>Login</h2>
         {error && <p className="login-error-message">{error}</p>}
         <LoginForm onSubmit={handleLogin} />
