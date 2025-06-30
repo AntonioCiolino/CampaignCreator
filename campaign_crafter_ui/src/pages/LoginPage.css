@@ -3,7 +3,7 @@
   justify-content: center; /* Center horizontally */
   align-items: center; /* Center vertically */
   min-height: 100vh; /* Full viewport height */
-  background-color: #f0f2f5; /* Fallback background color */
+  background-color: transparent; /* Fallback background color */
   padding: 20px; /* Add some padding for smaller screens */
   box-sizing: border-box;
   position: relative; /* Needed for positioning the video */
@@ -19,6 +19,7 @@
   object-fit: cover; /* Cover the entire container, cropping if necessary */
   transform: translate(-50%, -50%);
   z-index: -1; /* Place video behind other content */
+  opacity: 0.2; /* Set video intensity */
 }
 
 .login-card {

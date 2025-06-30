@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'; // Add useEffect and useRef
+import React, { useState, useEffect } from 'react'; // Add useEffect
 import './LoginPage.css'; // Import CSS
 import LoginForm from '../components/auth/LoginForm';
 import { useNavigate, useLocation } from 'react-router-dom'; // Add useLocation
@@ -11,12 +11,6 @@ const LoginPage: React.FC = () => {
   const location = useLocation(); // For redirecting after login
   const { login, user, isLoading, token } = useAuth(); // Get user, isLoading, token from AuthContext
   const [error, setError] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  // New diagnostic useEffect
-  useEffect(() => {
-    console.log('[LoginPage] Auth state change detected: isLoading:', isLoading, 'token:', !!token, 'user:', !!user);
-  }, [isLoading, token, user]);
 
   useEffect(() => {
     // If user is already logged in (and not loading), redirect from login page
@@ -25,14 +19,6 @@ const LoginPage: React.FC = () => {
       navigate(from, { replace: true });
     }
   }, [user, token, isLoading, navigate, location.state]);
-
-  useEffect(() => {
-    if (videoRef.current) {
-      console.log('Video Element from ref:', videoRef.current);
-      console.log('videoRef.current.muted PROPERTY:', videoRef.current.muted);
-      console.log('videoRef.current.hasAttribute("muted") METHOD:', videoRef.current.hasAttribute('muted'));
-    }
-  }, []); // Empty dependency array to run once on mount
 
   const handleLogin = async (username_or_email: string, password: string) => {
     setError(null);
@@ -63,7 +49,6 @@ const LoginPage: React.FC = () => {
   return (
     <div className="login-page-container">
       <video
-        ref={videoRef}
         autoPlay
         loop
         muted
