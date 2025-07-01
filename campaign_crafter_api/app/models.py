@@ -4,6 +4,10 @@ from datetime import datetime # Added datetime
 
 # Removed ImageData model
 
+class ChatMessage(BaseModel):
+    speaker: str
+    text: str
+
 class LLMConfigBase(BaseModel):
     name: str
     api_key: Optional[str] = None
@@ -34,6 +38,7 @@ class LLMGenerationRequest(BaseModel):
     model_id_with_prefix: Optional[str] = None
     temperature: Optional[float] = 0.7  # Defaulting as per llm_service.py abstract method
     max_tokens: Optional[int] = 500     # Defaulting as per llm_service.py abstract method
+    chat_history: Optional[List[ChatMessage]] = None
 
 class CampaignSectionUpdateInput(BaseModel):
     title: Optional[str] = None

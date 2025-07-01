@@ -5,6 +5,7 @@ import * as characterService from '../services/characterService';
 import { Character, CharacterStats, CharacterImageGenerationRequest, CharacterUpdate } from '../types/characterTypes';
 import * as campaignService from '../services/campaignService';
 import { Campaign } from '../types/campaignTypes';
+import { ChatMessage as CharacterChatMessage } from '../components/characters/CharacterChatPanel'; // Import ChatMessage type
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ImagePreviewModal from '../components/modals/ImagePreviewModal';
 import AlertMessage from '../components/common/AlertMessage';
@@ -123,6 +124,9 @@ const CharacterDetailPage: React.FC = () => {
 
     // Character Chat Panel State
     const [isChatPanelOpen, setIsChatPanelOpen] = useState<boolean>(false);
+
+      // Optional: const [chatPanelWidth, setChatPanelWidth] = useState<number>(350);
+    const [chatHistory, setChatHistory] = useState<Array<CharacterChatMessage>>([]);
 
     // DND Kit Sensors
     const sensors = useSensors(
@@ -366,13 +370,42 @@ const CharacterDetailPage: React.FC = () => {
         }
         setIsGeneratingResponse(true);
         setLlmError(null);
-        setLlmResponse(null);
+        // setLlmResponse(null); // Clear previous direct response, new one will come via history
+
+        const userMessage: CharacterChatMessage = { speaker: 'user', text: llmUserPrompt };
+        // Optimistically update UI with user's message
+        // Create a snapshot of history *before* this user message for the API call
+        const historyForApi = [...chatHistory];
+        setChatHistory(prevHistory => [...prevHistory, userMessage]);
+
+        const currentPrompt = llmUserPrompt; // Capture before clearing
+        setLlmUserPrompt(''); // Clear the input field immediately
+
         try {
-            const response = await characterService.generateCharacterResponse(character.id, { prompt: llmUserPrompt });
-            setLlmResponse(response.text);
+            // Send the history *before* the current user message for context,
+            // and the current user message as the new prompt.
+            // The backend is expected to handle the prompt and the history separately.
+            // The `historyForApi` is what the character is responding *to*, considering `currentPrompt` as the newest thing.
+            // However, the backend was updated to expect chat_history to include the latest user message.
+            // So, we send `chatHistory` including the just-added user message.
+            const updatedHistoryForApi = [...historyForApi, userMessage];
+
+            const response = await characterService.generateCharacterResponse(character.id, {
+                prompt: currentPrompt, // Still send the current prompt explicitly
+                chat_history: updatedHistoryForApi.map(msg => ({ // Ensure plain objects if service expects that
+                    speaker: msg.speaker,
+                    text: msg.text,
+                })),
+            });
+
+            const aiMessage: CharacterChatMessage = { speaker: character.name, text: response.text };
+            setChatHistory(prevHistory => [...prevHistory, aiMessage]);
+            setLlmResponse(null); // Ensure any old direct llmResponse is cleared
         } catch (err: any) {
             console.error("Failed to generate character response:", err);
             setLlmError(err.response?.data?.detail || "Failed to get response from character.");
+            // Optional: If user message failed to send, remove it from history
+            // setChatHistory(prevHistory => prevHistory.slice(0, -1));
         } finally {
             setIsGeneratingResponse(false);
         }
@@ -660,8 +693,9 @@ const CharacterDetailPage: React.FC = () => {
                     setLlmUserPrompt={setLlmUserPrompt}
                     handleGenerateCharacterResponse={handleGenerateCharacterResponse}
                     isGeneratingResponse={isGeneratingResponse}
-                    llmResponse={llmResponse}
+                    llmResponse={llmResponse} // This could be removed if panel solely relies on chatHistory
                     llmError={llmError}
+                    chatHistory={chatHistory} // Pass the chat history
                 />
             )}
         </div>
