@@ -696,7 +696,6 @@ async def generate_character_aspect_text_new(
     db_session_variable: Session,
     llm_service: LLMService,  # Placeholder for actual LLMService type
     some_model_variable: Optional[str] = None
-    # Assuming llm_service is available in this scope, e.g., passed as an argument or globally
 ):
     """
     Hypothetical function to generate character aspect text.
