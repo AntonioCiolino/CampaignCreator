@@ -2,114 +2,23 @@ import axios from 'axios';
 import apiClient from './apiClient';
 import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-source';
 import { BlobFileMetadata } from '../types/fileTypes'; // Moved import to top
+import {
+    Campaign,
+    CampaignCreatePayload,
+    CampaignUpdatePayload,
+    CampaignSection,
+    CampaignSectionCreatePayload,
+    CampaignSectionUpdatePayload,
+    CampaignTitlesResponse,
+    LLMGenerationPayload,
+    PrepareHomebreweryPostResponse,
+    SeedSectionsCallbacks,
+    SeedSectionsEvent, // This includes SeedSectionsProgressEvent and SeedSectionsCompleteEvent by union
+    SectionRegeneratePayload,
+    // TOCEntry and ModelInfo are also in campaignTypes but might not be directly used as return/param types here
+    // If they are, they should be added to this import list.
+} from '../types/campaignTypes';
 
-// Types matching backend Pydantic models
-export interface TOCEntry {
-  title: string;
-  type: string; // Could be 'unknown' or a specific type like 'NPC', 'Location'
-}
-
-export interface CampaignSection {
-  id: number;
-  title: string | null;
-  content: string;
-  order: number;
-  campaign_id: number;
-  type?: string; // Added type field, optional as it might not be present in all contexts initially
-}
-
-// Model information type from the backend /llm/models endpoint
-// This might be better placed in llmService.ts if not already there
-export interface ModelInfo {
-  id: string;
-  name: string;
-  capabilities: string[]; // Added field
-}
-
-export interface Campaign {
-  id: number;
-  title: string;
-  initial_user_prompt: string | null; 
-  concept: string | null;
-  homebrewery_toc: TOCEntry[] | null; // Changed from string | null
-  display_toc: TOCEntry[] | null; // Changed from string | null
-  badge_image_url?: string | null; // Added
-  thematic_image_url?: string | null;
-  thematic_image_prompt?: string | null;
-  selected_llm_id?: string | null;
-  temperature?: number | null;
-  // owner_id: number; 
-  // sections: CampaignSection[]; // Backend doesn't nest this in the Campaign Pydantic model by default
-
-  // New Theme Properties
-  theme_primary_color?: string | null;
-  theme_secondary_color?: string | null;
-  theme_background_color?: string | null;
-  theme_text_color?: string | null;
-  theme_font_family?: string | null;
-  theme_background_image_url?: string | null;
-  theme_background_image_opacity?: number | null;
-
-  // Mood Board URLs
-  mood_board_image_urls?: string[] | null;
-}
-
-export interface CampaignCreatePayload {
-  title: string;
-  initial_user_prompt?: string; // Made optional as it can be undefined if skipping
-  skip_concept_generation?: boolean; // New field
-  model_id_with_prefix_for_concept?: string | null; // Added based on backend changes
-  badge_image_url?: string | null;
-  selected_llm_id?: string | null;
-  temperature?: number | null;
-  thematic_image_url?: string | null;
-  thematic_image_prompt?: string | null;
-
-  // New Theme Properties
-  theme_primary_color?: string | null;
-  theme_secondary_color?: string | null;
-  theme_background_color?: string | null;
-  theme_text_color?: string | null;
-  theme_font_family?: string | null;
-  theme_background_image_url?: string | null;
-  theme_background_image_opacity?: number | null;
-
-  // Mood Board URLs
-  mood_board_image_urls?: string[] | null;
-}
-
-export interface CampaignUpdatePayload {
-  title?: string;
-  initial_user_prompt?: string;
-  badge_image_url?: string | null; // Added
-  thematic_image_url?: string | null;
-  thematic_image_prompt?: string | null;
-  selected_llm_id?: string | null;
-  temperature?: number | null;
-  display_toc?: TOCEntry[] | null; // Added
-  homebrewery_toc?: TOCEntry[] | null; // Added
-  concept?: string | null; // Added field for direct concept updates
-  // Concept is typically updated via specific generation endpoints // Comment might be partially outdated
-
-  // New Theme Properties
-  theme_primary_color?: string | null;
-  theme_secondary_color?: string | null;
-  theme_background_color?: string | null;
-  theme_text_color?: string | null;
-  theme_font_family?: string | null;
-  theme_background_image_url?: string | null;
-  theme_background_image_opacity?: number | null;
-
-  // Mood Board URLs
-  mood_board_image_urls?: string[] | null;
-}
-
-// For LLM Generation requests common to TOC, Titles, etc.
-export interface LLMGenerationPayload {
-    prompt: string;
-    model_id_with_prefix?: string | null;
-    // temperature?: number; // If you want to control this from client
-}
 
 // Fetch all campaigns
 export const getAllCampaigns = async (): Promise<Campaign[]> => {

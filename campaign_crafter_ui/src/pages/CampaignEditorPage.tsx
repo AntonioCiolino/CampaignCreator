@@ -38,6 +38,8 @@ import TOCEditor from '../components/campaign_editor/TOCEditor';
 import CampaignThemeEditor, { CampaignThemeData } from '../components/campaign_editor/CampaignThemeEditor';
 import { applyThemeToDocument } from '../utils/themeUtils'; // Import the function
 import { BlobFileMetadata } from '../types/fileTypes'; // Added for CampaignFile type
+import * as characterService from '../services/characterService'; // Import character service
+import { Character as FrontendCharacter } from '../types/characterTypes'; // Import Character type
 
 const CampaignEditorPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -153,6 +155,14 @@ const CampaignEditorPage: React.FC = () => {
   const [prevCampaignIdForFiles, setPrevCampaignIdForFiles] = useState<string | null>(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState<boolean>(false); // State for image preview modal
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null); // State for image preview URL
+
+  // State for Character Management within Campaign Editor
+  const [campaignCharacters, setCampaignCharacters] = useState<FrontendCharacter[]>([]); // Characters linked to this campaign
+  const [userCharacters, setUserCharacters] = useState<FrontendCharacter[]>([]); // All characters of the user, for selection
+  const [selectedUserCharacterToAdd, setSelectedUserCharacterToAdd] = useState<string>(''); // ID of character selected in dropdown
+  const [charactersLoading, setCharactersLoading] = useState<boolean>(false); // Loading state for character data
+  const [characterError, setCharacterError] = useState<string | null>(null); // Error messages for character operations
+  const [isLinkingCharacter, setIsLinkingCharacter] = useState<boolean>(false); // Loading state for link/unlink operations
 
 
   const handleTocLinkClick = useCallback((sectionIdFromLink: string | null) => {
@@ -554,22 +564,33 @@ const CampaignEditorPage: React.FC = () => {
 
       // Specifically manage LLM loading state
       setIsLLMsLoading(true);
+      // Manage character data loading state
+      setCharactersLoading(true);
+      setCharacterError(null);
 
       try {
         // Fetch all data concurrently
-        const [campaignDetails, campaignSectionsResponse, fetchedLLMs] = await Promise.all([
+        const [
+            campaignDetails,
+            campaignSectionsResponse,
+            fetchedLLMs,
+            fetchedCampaignCharacters,
+            fetchedUserCharacters
+        ] = await Promise.all([
           campaignService.getCampaignById(campaignId),
           campaignService.getCampaignSections(campaignId),
-          getAvailableLLMs().finally(() => setIsLLMsLoading(false)) // Set loading false when getAvailableLLMs finishes
+          getAvailableLLMs().finally(() => setIsLLMsLoading(false)), // LLM loading ends when this promise settles
+          characterService.getCampaignCharacters(parseInt(campaignId, 10)),
+          characterService.getUserCharacters()
         ]);
 
+        // Set campaign and section data
         setCampaign(campaignDetails);
         setEditableDisplayTOC(campaignDetails.display_toc || []);
-
         if (Array.isArray(campaignSectionsResponse)) {
             setSections(campaignSectionsResponse.sort((a, b) => a.order - b.order));
         } else {
-            console.warn("Campaign sections data (campaignSectionsResponse) was not an array as expected:", campaignSectionsResponse);
+            console.warn("Campaign sections data was not an array:", campaignSectionsResponse);
             setSections([]);
         }
         setEditableTitle(campaignDetails.title);
@@ -580,11 +601,18 @@ const CampaignEditorPage: React.FC = () => {
         } else {
             setTemperature(0.7);
         }
-        setAvailableLLMs(fetchedLLMs); // Set LLMs after fetch
-        let newSelectedLLMIdToSave: string | null = null;
-        setSelectedLLMId(campaignDetails.selected_llm_id || null); // Ensure it's null if backend sends empty or undefined
 
-        if (!campaignDetails.selected_llm_id) { // Only try to set a default if none is set from backend
+        // Set LLM data (availableLLMs already set by its own finally())
+        setAvailableLLMs(fetchedLLMs);
+        let newSelectedLLMIdToSave: string | null = null;
+        setSelectedLLMId(campaignDetails.selected_llm_id || null);
+
+        // Set character data
+        setCampaignCharacters(fetchedCampaignCharacters);
+        setUserCharacters(fetchedUserCharacters);
+        setCharactersLoading(false); // Character loading successful
+
+        if (!campaignDetails.selected_llm_id) { // Only try to set a default LLM if none is set from backend
             const preferredModelIds = ["openai/gpt-4.1-nano", "openai/gpt-3.5-turbo", "openai/gpt-4", "gemini/gemini-pro"];
             let newSelectedLLMId: string | null = null; // Initialize to null
             for (const preferredId of preferredModelIds) {
@@ -1269,6 +1297,50 @@ const CampaignEditorPage: React.FC = () => {
   const TocLinkRenderer = (props: any) => {
     const { href, children } = props;
     // href will be like "#section-container-123"
+  };
+
+  // --- Character Association Handlers ---
+  const handleLinkCharacterToCampaign = async () => {
+    if (!campaignId || !selectedUserCharacterToAdd) {
+      setCharacterError("Please select a character to add.");
+      return;
+    }
+    setIsLinkingCharacter(true);
+    setCharacterError(null);
+    try {
+      const charId = parseInt(selectedUserCharacterToAdd, 10);
+      await characterService.linkCharacterToCampaign(charId, parseInt(campaignId, 10));
+      // Refresh campaign characters list
+      const updatedCampaignCharacters = await characterService.getCampaignCharacters(parseInt(campaignId, 10));
+      setCampaignCharacters(updatedCampaignCharacters);
+      setSelectedUserCharacterToAdd(''); // Reset dropdown
+      // Optionally, show a success message
+    } catch (err: any) {
+      console.error("Failed to link character to campaign:", err);
+      setCharacterError(err.response?.data?.detail || "Failed to link character.");
+    } finally {
+      setIsLinkingCharacter(false);
+    }
+  };
+
+  const handleUnlinkCharacterFromCampaign = async (characterIdToUnlink: number) => {
+    if (!campaignId) return;
+    if (!window.confirm("Are you sure you want to remove this character from the campaign?")) {
+        return;
+    }
+    setIsLinkingCharacter(true); // Reuse loading state
+    setCharacterError(null);
+    try {
+      await characterService.unlinkCharacterFromCampaign(characterIdToUnlink, parseInt(campaignId, 10));
+      // Refresh campaign characters list
+      setCampaignCharacters(prev => prev.filter(char => char.id !== characterIdToUnlink));
+      // Optionally, show a success message
+    } catch (err: any) {
+      console.error("Failed to unlink character from campaign:", err);
+      setCharacterError(err.response?.data?.detail || "Failed to unlink character.");
+    } finally {
+      setIsLinkingCharacter(false);
+    }
     const sectionId = href && href.startsWith('#') ? href.substring(1) : null;
 
     if (sectionId) {
@@ -1678,6 +1750,90 @@ const CampaignEditorPage: React.FC = () => {
     { name: 'Files', content: filesTabContent }, // Added Files tab
   ];
 
+  const charactersTabContent = (
+    <div className="editor-section characters-management-section card-like">
+      <Typography variant="h5" gutterBottom>Manage Campaign Characters</Typography>
+
+      {charactersLoading && <LoadingSpinner />}
+      {characterError && <p className="error-message feedback-message">{characterError}</p>}
+
+      {!charactersLoading && !characterError && (
+        <>
+          {/* List of currently associated characters */}
+          <div className="mb-3">
+            <h6>Associated Characters:</h6>
+            {campaignCharacters.length > 0 ? (
+              <ul className="list-group">
+                {campaignCharacters.map(char => (
+                  <li key={char.id} className="list-group-item d-flex justify-content-between align-items-center">
+                    <Link to={`/characters/${char.id}`} target="_blank">{char.name}</Link>
+                    <Button
+                      onClick={() => handleUnlinkCharacterFromCampaign(char.id)}
+                      variant="danger"
+                      size="sm"
+                      disabled={isLinkingCharacter}
+                      tooltip={`Remove ${char.name} from this campaign`}
+                    >
+                      {isLinkingCharacter ? 'Processing...' : 'Unlink'}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-muted">No characters are currently associated with this campaign.</p>
+            )}
+          </div>
+
+          <hr />
+
+          {/* Add existing character to campaign */}
+          <div className="mt-3">
+            <h6>Add Existing Character to Campaign:</h6>
+            {userCharacters.length > 0 ? (
+              <div className="input-group">
+                <select
+                  className="form-select"
+                  value={selectedUserCharacterToAdd}
+                  onChange={(e) => setSelectedUserCharacterToAdd(e.target.value)}
+                  disabled={isLinkingCharacter}
+                >
+                  <option value="">Select a character to add...</option>
+                  {userCharacters
+                    .filter(uc => !campaignCharacters.some(cc => cc.id === uc.id)) // Filter out already linked characters
+                    .map(char => (
+                      <option key={char.id} value={char.id}>
+                        {char.name}
+                      </option>
+                  ))}
+                </select>
+                <Button
+                  onClick={handleLinkCharacterToCampaign}
+                  disabled={!selectedUserCharacterToAdd || isLinkingCharacter}
+                  variant="success"
+                  tooltip="Add the selected character to this campaign"
+                >
+                  {isLinkingCharacter ? 'Adding...' : 'Add to Campaign'}
+                </Button>
+              </div>
+            ) : (
+              <p className="text-muted">You have no other characters to add, or all your characters are already in this campaign.</p>
+            )}
+             {userCharacters.filter(uc => !campaignCharacters.some(cc => cc.id === uc.id)).length === 0 && userCharacters.length > 0 && (
+                <p className="text-muted small mt-1">All your available characters are already linked to this campaign.</p>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  // Add the new tab to tabItems
+  const finalTabItems: TabItem[] = [
+    ...tabItems, // Keep existing tabs
+    { name: 'Characters', content: charactersTabContent, disabled: !campaign } // Disable if no campaign loaded
+  ];
+
+
   return (
     <div className="campaign-editor-page">
       {isPageLoading && <LoadingSpinner />}
@@ -1811,7 +1967,7 @@ const CampaignEditorPage: React.FC = () => {
       )}
 
       <Tabs
-        tabs={tabItems}
+        tabs={finalTabItems}
         activeTabName={activeEditorTab}
         onTabChange={setActiveEditorTab}
       />
