@@ -343,7 +343,7 @@ const CharacterDetailPage: React.FC = () => {
                     {imageGenError && <p className="text-danger small">{imageGenError}</p>}
                     {character.image_urls && character.image_urls.length > 0 ? (
                         character.image_urls.map((url, index) => (
-                            <img key={index} src={url} alt={`${character.name} image ${index + 1}`} className="img-thumbnail me-2 mb-2" style={{ maxWidth: '200px', maxHeight: '200px' }} onError={(e) => (e.currentTarget.style.display = 'none')} />
+                                <img key={index} src={url} alt={`${character.name} ${index + 1}`} className="img-thumbnail me-2 mb-2" style={{ maxWidth: '200px', maxHeight: '200px' }} onError={(e) => (e.currentTarget.style.display = 'none')} />
                         ))
                     ) : (
                         !isGeneratingImage && <p className="text-muted">No images provided. Try generating one!</p>

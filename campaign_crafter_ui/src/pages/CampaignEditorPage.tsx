@@ -7,7 +7,15 @@ import ImageGenerationModal from '../components/modals/ImageGenerationModal/Imag
 import SuggestedTitlesModal from '../components/modals/SuggestedTitlesModal';
 import * as campaignService from '../services/campaignService';
 import { getCampaignFiles } from '../services/campaignService'; // Added for getCampaignFiles
-import { Campaign, CampaignSection, TOCEntry, SeedSectionsProgressEvent, SeedSectionsCallbacks } from '../services/campaignService';
+// Types are now imported from campaignTypes.ts
+import {
+    Campaign,
+    CampaignSection,
+    TOCEntry,
+    SeedSectionsProgressEvent,
+    SeedSectionsCallbacks,
+    CampaignUpdatePayload // Ensure this is imported if used directly with campaignService.
+} from '../types/campaignTypes';
 import { getAvailableLLMs, LLMModel } from '../services/llmService';
 import ReactMarkdown from 'react-markdown';
 import './CampaignEditorPage.css';
@@ -618,11 +626,11 @@ const CampaignEditorPage: React.FC = () => {
             const preferredModelIds = ["openai/gpt-4.1-nano", "openai/gpt-3.5-turbo", "openai/gpt-4", "gemini/gemini-pro"];
             let newSelectedLLMId: string | null = null; // Initialize to null
             for (const preferredId of preferredModelIds) {
-                const foundModel = fetchedLLMs.find(m => m.id === preferredId);
+                const foundModel = llmsData.find((m: LLMModel) => m.id === preferredId); // Use llmsData and type m
                 if (foundModel) { newSelectedLLMId = foundModel.id; break; }
             }
             if (!newSelectedLLMId) {
-                const potentialChatModels = fetchedLLMs.filter(model => model.capabilities && (model.capabilities.includes("chat") || model.capabilities.includes("chat-adaptable")));
+                const potentialChatModels = llmsData.filter((model: LLMModel) => model.capabilities && (model.capabilities.includes("chat") || model.capabilities.includes("chat-adaptable"))); // Use llmsData and type model
                 if (potentialChatModels.length > 0) {
                     const firstChatModel = potentialChatModels[0];
                     if (firstChatModel) { newSelectedLLMId = firstChatModel.id; }
@@ -1296,10 +1304,32 @@ const CampaignEditorPage: React.FC = () => {
     }
   };
 
-  const TocLinkRenderer = (props: any) => {
-    const { href, children } = props;
-    // href will be like "#section-container-123"
-  };
+interface TocLinkRendererProps {
+  href?: string;
+  children?: React.ReactNode;
+  [key: string]: any;
+}
+
+const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...otherProps }) => { // Destructure props
+  const sectionId = href && href.startsWith('#section-container-') ? href.substring('#section-container-'.length) : null;
+
+  if (sectionId) {
+    return (
+      <a
+        href={href}
+        onClick={(e) => {
+          e.preventDefault();
+          handleTocLinkClick(sectionId);
+        }}
+        style={{ cursor: 'pointer' }}
+        {...otherProps} // Spread remaining props
+      >
+        {children}
+      </a>
+    );
+  }
+  return <a href={href} {...otherProps}>{children}</a>; // Use destructured href and children
+};
 
   // --- Character Association Handlers ---
   const handleLinkCharacterToCampaign = async () => {

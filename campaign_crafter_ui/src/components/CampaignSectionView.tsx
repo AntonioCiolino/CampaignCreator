@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'; // Removed useRef
-import { CampaignSection } from '../services/campaignService';
+import { CampaignSection } from '../types/campaignTypes'; // Corrected import path
 import ReactMarkdown from 'react-markdown';
 import { Typography } from '@mui/material';
 import rehypeRaw from 'rehype-raw';

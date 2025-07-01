@@ -4,18 +4,20 @@ import * as characterService from '../services/characterService';
 import { Character } from '../types/characterTypes'; // Assuming this path is correct
 // It's good practice to have a specific CSS file for larger components or pages
 // import './CharacterListPage.css';
-
-const CharacterListPage: React.FC = () => {
-    const [characters, setCharacters] = useState<Character[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
-
 import LoadingSpinner from '../components/common/LoadingSpinner'; // Import LoadingSpinner
 
 const CharacterListPage: React.FC = () => {
     const [characters, setCharacters] = useState<Character[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+
+// This second const CharacterListPage declaration and its content was the result of a bad merge.
+// Removing it and ensuring the import is at the top.
+
+// const CharacterListPage: React.FC = () => {
+//    const [characters, setCharacters] = useState<Character[]>([]);
+//    const [loading, setLoading] = useState<boolean>(true); // REMOVE THIS LINE
+//    const [error, setError] = useState<string | null>(null); // REMOVE THIS LINE
 
     useEffect(() => {
         const fetchCharacters = async () => {

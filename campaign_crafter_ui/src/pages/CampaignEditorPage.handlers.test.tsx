@@ -11,7 +11,7 @@ jest.mock('../services/campaignService', () => ({
 }));
 
 import * as campaignService from '../services/campaignService';
-import { CampaignSection } from '../services/campaignService'; // Assuming type export
+import { CampaignSection } from '../types/campaignTypes'; // Corrected import path
 
 // Simplified representation of what handleUpdateSectionOrder does.
 // In a real scenario, you might need to refactor CampaignEditorPage

@@ -23,10 +23,10 @@ def create_new_character(
 
 @router.get("/", response_model=List[models.Character])
 def read_user_characters(
-    skip: int = 0,
-    limit: int = 100,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[models.User, Depends(get_current_active_user)]
+    current_user: Annotated[models.User, Depends(get_current_active_user)],
+    skip: int = 0,
+    limit: int = 100
 ):
     """
     Retrieve characters for the current user.
@@ -159,10 +159,10 @@ def unlink_character_from_campaign(
 @router.get("/campaign/{campaign_id}/characters", response_model=List[models.Character])
 def read_campaign_characters(
     campaign_id: int,
-    skip: int = 0,
-    limit: int = 100,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[models.User, Depends(get_current_active_user)]
+    current_user: Annotated[models.User, Depends(get_current_active_user)],
+    skip: int = 0,
+    limit: int = 100
 ):
     """
     Retrieve characters associated with a specific campaign.
