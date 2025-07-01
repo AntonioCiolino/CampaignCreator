@@ -550,33 +550,65 @@ const CampaignEditorPage: React.FC = () => {
   useEffect(() => {
     let isMounted = true;
     const fetchCampaignFiles = async () => {
-      if (!campaignId || activeEditorTab !== 'Files' || campaignFilesLoading) return;
-      if (campaignId === prevCampaignIdForFiles && campaignFiles.length > 0 && !campaignFilesError) return;
+      // Guard 1: Only run if campaignId exists, Files tab is active, and not already loading (campaignFilesLoading check is more of a protective measure here)
+      if (!campaignId || activeEditorTab !== 'Files' || campaignFilesLoading) {
+        // console.log(`[CampaignEditorPage] fetchCampaignFiles guard triggered: campaignId=${campaignId}, activeEditorTab=${activeEditorTab}, campaignFilesLoading=${campaignFilesLoading}`);
+        return;
+      }
+      // Guard 2: Only run if campaignId changed OR there are no files and no error (i.e. initial load for this campaignId)
+      if (campaignId === prevCampaignIdForFiles && campaignFiles.length > 0 && !campaignFilesError) {
+        // console.log(`[CampaignEditorPage] fetchCampaignFiles guard 2 triggered: already loaded for ${campaignId}`);
+        return;
+      }
 
       if (isMounted) {
-        setCampaignFilesLoading(true);
+        console.log("[CampaignEditorPage] Setting campaignFilesLoading to true for campaignId:", campaignId);
+        setCampaignFilesLoading(true); // SPINNER ON
         setCampaignFilesError(null);
+        // If campaignId changed, clear previous files.
         if (campaignId !== prevCampaignIdForFiles) {
           setCampaignFiles([]);
         }
+      } else {
+        console.log("[CampaignEditorPage] Attempted to set campaignFilesLoading to true, but component unmounted.");
+        return; // Don't proceed if unmounted
       }
+
       try {
+        console.log("[CampaignEditorPage] About to call getCampaignFiles for campaignId:", campaignId);
         const files = await getCampaignFiles(campaignId);
+        console.log("[CampaignEditorPage] getCampaignFiles returned:", files ? files.length : 'null/undefined');
         if (isMounted) {
           setCampaignFiles(files);
-          setPrevCampaignIdForFiles(campaignId);
+          setPrevCampaignIdForFiles(campaignId); // Store current campaignId for Guard 2
+          console.log("[CampaignEditorPage] State updated with files. isMounted:", isMounted);
+        } else {
+          console.log("[CampaignEditorPage] Component unmounted before files could be set.");
         }
       } catch (err: any) {
+        console.error("[CampaignEditorPage] Error in fetchCampaignFiles catch block:", err);
         if (isMounted) {
           setCampaignFilesError(err.message || 'Failed to load campaign files.');
         }
       } finally {
-        if (isMounted) setCampaignFilesLoading(false);
+        console.log("[CampaignEditorPage] In finally block. isMounted:", isMounted);
+        if (isMounted) {
+          setCampaignFilesLoading(false); // SPINNER OFF
+          console.log("[CampaignEditorPage] setCampaignFilesLoading(false) CALLED.");
+        } else {
+          console.log("[CampaignEditorPage] Component unmounted, setCampaignFilesLoading(false) SKIPPED in finally.");
+        }
       }
     };
+
+    console.log("[CampaignEditorPage] useEffect for fetchCampaignFiles triggered. activeEditorTab:", activeEditorTab, "campaignId:", campaignId, "campaignFilesLoading:", campaignFilesLoading);
     fetchCampaignFiles();
-    return () => { isMounted = false; };
-  }, [activeEditorTab, campaignId, prevCampaignIdForFiles, campaignFilesError, campaignFilesLoading]);
+
+    return () => {
+      console.log("[CampaignEditorPage] useEffect cleanup running for fetchCampaignFiles. Setting isMounted to false. campaignId at cleanup:", campaignId);
+      isMounted = false;
+    };
+  }, [activeEditorTab, campaignId, prevCampaignIdForFiles, campaignFilesError]);
 
 
   useEffect(() => {
@@ -802,7 +834,7 @@ const CampaignEditorPage: React.FC = () => {
       setIsPageLoading(false);
       throw err;
     } finally {
-      if(isPageLoading) setIsPageLoading(false);
+      setIsPageLoading(false);
     }
   };
 
