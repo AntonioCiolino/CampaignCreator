@@ -1,7 +1,7 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime, Float, JSON, Table
 from sqlalchemy.orm import relationship, Mapped, mapped_column # Ensure Mapped and mapped_column are imported
 from sqlalchemy.sql import func # For default datetime
-from typing import Optional # For Mapped[Optional[...]]
+from typing import Optional, Dict # For Mapped[Optional[...]] and Dict type hint
 
 from .db import Base # Import Base from app.db
 
