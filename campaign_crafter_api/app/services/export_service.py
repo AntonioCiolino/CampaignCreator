@@ -1,6 +1,7 @@
 import re
-from typing import List, Optional, Dict # Added Dict
-from app import orm_models, crud # Assuming orm_models.py contains Campaign and CampaignSection, added crud
+import math # For floor function
+from typing import List, Optional, Dict
+from app import orm_models, crud
 from app.services.llm_factory import get_llm_service
 from app.services.llm_service import LLMServiceUnavailableError, LLMGenerationError
 from sqlalchemy.orm import Session
@@ -89,37 +90,80 @@ VTCNP Enterprises
         # It's not intended for deep processing of general Markdown or complex section content.
         return processed_content
 
+    def _calculate_modifier(self, stat_value: Optional[int]) -> str:
+        if stat_value is None:
+            return "+0"
+        modifier = math.floor((stat_value - 10) / 2)
+        return f"+{modifier}" if modifier >= 0 else str(modifier)
+
     def _format_character_for_export(self, character: orm_models.Character) -> str:
         """
-        Formats a single character's details into a Markdown string for Homebrewery export.
+        Formats a single character's details into a Homebrewery Simple NPC stat block.
         """
-        char_parts = []
-        char_parts.append(f"### {character.name}\n")
+        output_parts = []
 
-        # Accessing stats via the .stats property of the ORM model
-        stats = character.stats
-        if stats:
-            stat_list = []
-            for key, value in stats.items():
-                if value is not None: # Only include stats that have a value
-                    stat_list.append(f"- **{key.capitalize()}**: {value}")
-            if stat_list:
-                char_parts.append("**Stats:**\n" + "\n".join(stat_list) + "\n")
-
-        if character.appearance_description and character.appearance_description.strip():
-            char_parts.append(f"**Appearance:** {character.appearance_description.strip()}\n")
-
-        if character.description and character.description.strip():
-            char_parts.append(f"**Description:** {character.description.strip()}\n")
-
-        # Add image if available, formatted for Homebrewery
+        # Add image first, if available
         if character.image_urls and len(character.image_urls) > 0:
-            image_url = character.image_urls[0] # Using the first image
+            image_url = character.image_urls[0]
             alt_text = f"{character.name} image" if character.name else "Character image"
-            # Ensure {width:100%} is on the same line as the markdown image tag
-            char_parts.append(f"![{alt_text}]({image_url}){{width:100%}}\n")
+            output_parts.append(f"![{alt_text}]({image_url}){{width:100%}}\n")
 
-        return "\n".join(char_parts)
+        # Start NPC Block
+        output_parts.append("{{monster,frame") # Simple frame, not wide
+
+        name = character.name if character.name and character.name.strip() else "Unnamed Character"
+        output_parts.append(f"## {name}")
+
+        # Type and Alignment (Placeholder)
+        output_parts.append(f"*Medium humanoid, alignment placeholder*")
+        output_parts.append("___")
+
+        # AC, HP, Speed (Placeholders)
+        output_parts.append(f"**Armor Class** :: 10 (Natural Armor)")
+        output_parts.append(f"**Hit Points** :: 10 (2d8+2)")
+        output_parts.append(f"**Speed** :: 30 ft.")
+        output_parts.append("___")
+
+        # Stats Table
+        stats = character.stats if character.stats else {}
+        str_val = stats.get('strength', 10)
+        dex_val = stats.get('dexterity', 10)
+        con_val = stats.get('constitution', 10)
+        int_val = stats.get('intelligence', 10)
+        wis_val = stats.get('wisdom', 10)
+        cha_val = stats.get('charisma', 10)
+
+        output_parts.append("|  STR  |  DEX  |  CON  |  INT  |  WIS  |  CHA  |")
+        output_parts.append("|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|")
+        output_parts.append(
+            f"|{str_val} ({self._calculate_modifier(str_val)})"
+            f"|{dex_val} ({self._calculate_modifier(dex_val)})"
+            f"|{con_val} ({self._calculate_modifier(con_val)})"
+            f"|{int_val} ({self._calculate_modifier(int_val)})"
+            f"|{wis_val} ({self._calculate_modifier(wis_val)})"
+            f"|{cha_val} ({self._calculate_modifier(cha_val)})|"
+        )
+        output_parts.append("___")
+
+        # Personality Trait
+        personality = "Personality placeholder."
+        if character.description and character.description.strip():
+            # Try to take the first sentence of the description for personality
+            # This is a simple approach; more complex parsing might be needed for ideal results
+            first_sentence_match = re.match(r"^([^.!?]+[.!?])", character.description.strip())
+            if first_sentence_match:
+                extracted_personality = first_sentence_match.group(1).strip()
+                if len(extracted_personality) < 150 : # Arbitrary length limit
+                    personality = extracted_personality
+            elif len(character.description.strip()) < 150: # If no sentence end, but short enough
+                 personality = character.description.strip()
+
+        output_parts.append(f"**Personality:** {personality}")
+
+        # End NPC Block
+        output_parts.append("}}")
+
+        return "\n".join(output_parts)
 
     async def format_campaign_for_homebrewery(self, campaign: orm_models.Campaign, sections: List[orm_models.CampaignSection], db: Session, current_user: UserModel) -> str: # Added db, current_user and async
         # TODO: Make page_image_url and stain_images configurable in the future, perhaps via campaign settings or user profile.
