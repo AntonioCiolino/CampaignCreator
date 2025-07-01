@@ -1,6 +1,6 @@
 import React from 'react';
 import LoadingSpinner from '../common/LoadingSpinner';
-// import './CharacterChatPanel.css'; // CSS will be created in the next step
+import './CharacterChatPanel.css'; // Uncommented CSS import
 
 export interface CharacterChatPanelProps {
     characterName: string;
