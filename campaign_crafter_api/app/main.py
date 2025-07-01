@@ -18,6 +18,7 @@ from app.api.endpoints import user_settings # Import for user_settings
 from app.api.endpoints import data_tables # New import for data_tables
 from app.api.endpoints import auth as auth_router # Import for auth
 from app.api.endpoints import file_uploads as file_uploads_router # Import for file uploads
+from app.api.endpoints import characters as characters_router # Import for characters
 
 
 @asynccontextmanager
@@ -74,6 +75,7 @@ app.include_router(auth_router.router, prefix="/api/v1/auth", tags=["Authenticat
 app.include_router(data_tables.router_features, prefix="/api/v1/features", tags=["Features"])
 app.include_router(data_tables.router_roll_tables, prefix="/api/v1/roll_tables", tags=["Rolltables"])
 app.include_router(file_uploads_router.router, prefix="/api/v1", tags=["File Uploads"]) # Added file_uploads router
+app.include_router(characters_router.router, prefix="/api/v1/characters", tags=["Characters"])
 
 @app.get("/", tags=["Root"])
 async def read_root():

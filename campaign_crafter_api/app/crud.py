@@ -260,6 +260,114 @@ def delete_roll_table(db: Session, roll_table_id: int) -> Optional[orm_models.Ro
     # For consistency with other delete functions, returning the object.
     return db_roll_table
 
+# --- Character CRUD Functions ---
+
+def create_character(db: Session, character: models.CharacterCreate, user_id: int) -> orm_models.Character:
+    """Creates a new character."""
+    char_data = character.model_dump(exclude_unset=True) # Get data from Pydantic model
+
+    # Handle stats separately if they are nested in the Pydantic model
+    stats_data = char_data.pop('stats', None) # Remove stats from char_data if present
+
+    db_character = orm_models.Character(**char_data, owner_id=user_id)
+
+    if stats_data: # If stats were provided in the input
+        for key, value in stats_data.items():
+            if hasattr(db_character, key) and value is not None:
+                setattr(db_character, key, value)
+
+    db.add(db_character)
+    db.commit()
+    db.refresh(db_character)
+    return db_character
+
+def get_character(db: Session, character_id: int) -> Optional[orm_models.Character]:
+    """Gets a single character by their ID."""
+    return db.query(orm_models.Character).filter(orm_models.Character.id == character_id).first()
+
+def get_characters_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100) -> List[orm_models.Character]:
+    """Gets all characters for a specific user."""
+    return db.query(orm_models.Character).filter(orm_models.Character.owner_id == user_id).offset(skip).limit(limit).all()
+
+def get_characters_by_campaign(db: Session, campaign_id: int, skip: int = 0, limit: int = 100) -> List[orm_models.Character]:
+    """Gets all characters associated with a specific campaign."""
+    return db.query(orm_models.Character).join(orm_models.Character.campaigns).filter(orm_models.Campaign.id == campaign_id).offset(skip).limit(limit).all()
+
+def update_character(db: Session, character_id: int, character_update: models.CharacterUpdate) -> Optional[orm_models.Character]:
+    """Updates an existing character."""
+    db_character = get_character(db, character_id)
+    if not db_character:
+        return None
+
+    update_data = character_update.model_dump(exclude_unset=True)
+
+    # Handle stats separately if they are part of the update
+    stats_update_data = update_data.pop('stats', None)
+
+    for key, value in update_data.items():
+        setattr(db_character, key, value)
+
+    if stats_update_data:
+        for key, value in stats_update_data.items():
+            if hasattr(db_character, key) and value is not None: # Ensure stat exists and value is provided
+                setattr(db_character, key, value)
+
+    db.add(db_character)
+    db.commit()
+    db.refresh(db_character)
+    return db_character
+
+def delete_character(db: Session, character_id: int) -> Optional[orm_models.Character]:
+    """Deletes a character."""
+    db_character = get_character(db, character_id)
+    if not db_character:
+        return None
+
+    # Note: Many-to-many relationships in SQLAlchemy might require explicit handling
+    # of association table entries before deleting the character, or rely on cascade settings.
+    # For now, assuming direct delete is sufficient or cascade is set up in ORM if needed.
+    # If association entries need explicit deletion, that logic would go here.
+    # Example: db_character.campaigns.clear() # If using SQLAlchemy's association proxy
+
+    db.delete(db_character)
+    db.commit()
+    return db_character
+
+def add_character_to_campaign(db: Session, character_id: int, campaign_id: int) -> Optional[orm_models.Character]:
+    """Adds an existing character to an existing campaign."""
+    db_character = get_character(db, character_id)
+    if not db_character:
+        # Consider raising an error or returning a specific status
+        return None
+
+    db_campaign = get_campaign(db, campaign_id) # Assuming get_campaign CRUD exists
+    if not db_campaign:
+        # Consider raising an error or returning a specific status
+        return None
+
+    # Check if the character is already in the campaign to prevent duplicates
+    if db_campaign not in db_character.campaigns:
+        db_character.campaigns.append(db_campaign)
+        db.commit()
+        db.refresh(db_character)
+    return db_character
+
+def remove_character_from_campaign(db: Session, character_id: int, campaign_id: int) -> Optional[orm_models.Character]:
+    """Removes a character from a campaign."""
+    db_character = get_character(db, character_id)
+    if not db_character:
+        return None
+
+    db_campaign = get_campaign(db, campaign_id)
+    if not db_campaign:
+        return None
+
+    if db_campaign in db_character.campaigns:
+        db_character.campaigns.remove(db_campaign)
+        db.commit()
+        db.refresh(db_character)
+    return db_character
+
 def copy_system_roll_table_to_user(db: Session, system_table: orm_models.RollTable, user_id: int) -> orm_models.RollTable:
     """
     Copies a system roll table (where user_id is None) to a specific user.
