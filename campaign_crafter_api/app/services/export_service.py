@@ -103,6 +103,9 @@ VTCNP Enterprises
         """
         output = [] # Using a list to join lines at the end
 
+        character_name_or_default = character.name if character.name and character.name.strip() else "Unnamed Character"
+        output.append(f"### {character_name_or_default}\n")
+
         # 1. Image (outside main stat block)
         if character.image_urls and len(character.image_urls) > 0:
             image_url = character.image_urls[0]
