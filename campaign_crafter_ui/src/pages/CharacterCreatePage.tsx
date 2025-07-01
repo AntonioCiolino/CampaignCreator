@@ -2,22 +2,19 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CharacterForm from '../components/characters/CharacterForm'; // Adjust path as needed
 import * as characterService from '../services/characterService';
-import { CharacterCreate } from '../types/characterTypes';
+import { CharacterCreate, CharacterUpdate } from '../types/characterTypes'; // Added CharacterUpdate to import
 
 const CharacterCreatePage: React.FC = () => {
     const navigate = useNavigate();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Accept the broader type from CharacterForm's onSubmit prop
-    const handleSubmit = async (data: CharacterCreate | CharacterUpdate) => {
+    const handleSubmit = async (data: CharacterCreate | CharacterUpdate) => { // Type already correct from previous attempt
         setIsSubmitting(true);
         setError(null);
         try {
             // When creating, the 'data' object will conform to CharacterCreate
             // because 'name' is required by the form.
-            // We can assert it or ensure CharacterForm passes CharacterCreate in this mode.
-            // For now, direct pass-through as characterService.createCharacter expects CharacterCreate.
             const newCharacter = await characterService.createCharacter(data as CharacterCreate);
             alert('Character created successfully!'); // Or use a more sophisticated notification system
             navigate(`/characters/${newCharacter.id}`); // Navigate to the new character's detail page
