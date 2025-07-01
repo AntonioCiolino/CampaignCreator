@@ -799,10 +799,16 @@ async def generate_character_aspect_text(
 
         # Assuming a generic text generation method on LLMService
         # We might need to adapt this if a more specific method is preferred
+        # Convert ORM user to Pydantic model for the service layer
+        current_user_pydantic = models.User.from_orm(current_user_orm)
+
         generated_text = await llm_service.generate_text(
             prompt=final_prompt,
-            max_tokens=300, # Sensible default for a description/appearance
-            temperature=0.7 # Default temperature
+            current_user=current_user_pydantic, # Pass Pydantic user model
+            db=db,                             # Pass DB session
+            model=model_specific_id_from_request, # Pass the specific model ID
+            max_tokens=request.max_tokens or 300,
+            temperature=request.temperature or 0.7
         )
         return generated_text.strip()
 

@@ -551,21 +551,28 @@ const CampaignEditorPage: React.FC = () => {
   useEffect(() => {
     let isMounted = true;
     const fetchCampaignFiles = async () => {
-      // Guard 1: Only run if campaignId exists, Files tab is active, and not already loading (campaignFilesLoading check is more of a protective measure here)
-      if (!campaignId || activeEditorTab !== 'Files' || campaignFilesLoading) {
-        // console.log(`[CampaignEditorPage] fetchCampaignFiles guard triggered: campaignId=${campaignId}, activeEditorTab=${activeEditorTab}, campaignFilesLoading=${campaignFilesLoading}`);
+      // Guard 1: Only run if campaignId exists, Files tab is active.
+      // The campaignFilesLoading check was removed from here as it's managed internally now.
+      if (!campaignId || activeEditorTab !== 'Files') {
+        // console.log(`[CampaignEditorPage] fetchCampaignFiles guard 1 (basic) triggered: campaignId=${campaignId}, activeEditorTab=${activeEditorTab}`);
         return;
       }
+
       // Guard 2: Only run if campaignId changed OR there are no files and no error (i.e. initial load for this campaignId)
-      if (campaignId === prevCampaignIdForFiles && campaignFiles.length > 0 && !campaignFilesError) {
-        // console.log(`[CampaignEditorPage] fetchCampaignFiles guard 2 triggered: already loaded for ${campaignId}`);
+      // OR if there was a previous error and we are trying again.
+      const shouldFetch = (campaignId !== prevCampaignIdForFiles) ||
+                          (campaignFiles.length === 0 && !campaignFilesError) ||
+                          (campaignFilesError !== null); // Added condition to refetch on error
+
+      if (!shouldFetch) {
+        // console.log(`[CampaignEditorPage] fetchCampaignFiles guard 2 (shouldFetch) triggered: already loaded for ${campaignId} or no error to retry.`);
         return;
       }
 
       if (isMounted) {
         console.log("[CampaignEditorPage] Setting campaignFilesLoading to true for campaignId:", campaignId);
         setCampaignFilesLoading(true); // SPINNER ON
-        setCampaignFilesError(null);
+        setCampaignFilesError(null); // Clear previous errors before fetching
         // If campaignId changed, clear previous files.
         if (campaignId !== prevCampaignIdForFiles) {
           setCampaignFiles([]);
@@ -581,7 +588,7 @@ const CampaignEditorPage: React.FC = () => {
         console.log("[CampaignEditorPage] getCampaignFiles returned:", files ? files.length : 'null/undefined');
         if (isMounted) {
           setCampaignFiles(files);
-          setPrevCampaignIdForFiles(campaignId); // Store current campaignId for Guard 2
+          setPrevCampaignIdForFiles(campaignId); // Store current campaignId
           console.log("[CampaignEditorPage] State updated with files. isMounted:", isMounted);
         } else {
           console.log("[CampaignEditorPage] Component unmounted before files could be set.");
@@ -602,10 +609,10 @@ const CampaignEditorPage: React.FC = () => {
       }
     };
 
-    console.log("[CampaignEditorPage] useEffect for fetchCampaignFiles triggered. activeEditorTab:", activeEditorTab, "campaignId:", campaignId, "campaignFilesLoading:", campaignFilesLoading);
+    console.log("[CampaignEditorPage] useEffect for fetchCampaignFiles triggered. activeEditorTab:", activeEditorTab, "campaignId:", campaignId);
     fetchCampaignFiles();
     return () => { isMounted = false; };
-  }, [activeEditorTab, campaignId, prevCampaignIdForFiles, campaignFilesError, campaignFilesLoading, campaignFiles.length]);
+  }, [activeEditorTab, campaignId, prevCampaignIdForFiles, campaignFilesError, campaignFiles.length]); // Removed campaignFilesLoading
 
   useEffect(() => {
     if (!initialLoadCompleteRef.current || !campaignId || !campaign || isLoading) return;
