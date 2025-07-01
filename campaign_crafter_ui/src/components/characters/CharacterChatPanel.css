@@ -96,6 +96,19 @@
     font-size: 0.95rem;
 }
 
+/* User messages styling */
+.chat-message.user-message {
+    background-color: var(--user-message-bg-color, #f0f0f0); /* A neutral grey */
+    border: 1px solid var(--user-message-border-color, #e0e0e0);
+    align-self: flex-end; /* Align user messages to the right */
+    color: var(--user-message-text-color, #212529); /* Standard text color */
+}
+.chat-message.user-message p {
+    margin: 0;
+    font-size: 0.95rem; /* Consistent with AI message text */
+}
+
+
 .chat-message.error-message p { /* Already has color: red inline, this is fallback/override */
     color: var(--danger-color-dark, #721c24);
     background-color: var(--danger-color-light, #f8d7da);

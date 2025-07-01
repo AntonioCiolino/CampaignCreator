@@ -261,6 +261,7 @@ async def generate_character_llm_response(
             character_name=db_character.name,
             character_notes=db_character.notes_for_llm or "", # Pass empty string if notes are None
             user_prompt=request_body.prompt,
+            chat_history=request_body.chat_history,
             current_user=current_user, # Pass Pydantic user model
             db=db,
             model=model_specific_id_from_request, # Pass only the model part if prefix was used

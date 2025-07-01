@@ -1,6 +1,12 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react'; // Added useEffect, useRef
 import LoadingSpinner from '../common/LoadingSpinner';
-import './CharacterChatPanel.css'; // Uncommented CSS import
+import './CharacterChatPanel.css';
+
+// Define ChatMessage interface
+export interface ChatMessage {
+    speaker: string; // 'user', or characterName for AI responses
+    text: string;
+}
 
 export interface CharacterChatPanelProps {
     characterName: string;
@@ -10,9 +16,10 @@ export interface CharacterChatPanelProps {
     setLlmUserPrompt: (value: string) => void;
     handleGenerateCharacterResponse: () => Promise<void>;
     isGeneratingResponse: boolean;
-    llmResponse: string | null;
+    llmResponse: string | null; // This will likely be removed or handled by parent adding to chatHistory
     llmError: string | null;
-    // Future: Add chatHistory: Array<{speaker: 'user' | 'ai', text: string}> if implementing history
+    chatHistory: Array<ChatMessage>; // Added chatHistory
+    // setChatHistory is managed by the parent component
 }
 
 const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
@@ -23,9 +30,18 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
     setLlmUserPrompt,
     handleGenerateCharacterResponse,
     isGeneratingResponse,
-    llmResponse,
+    llmResponse, // Keep for now, but ideally this becomes part of chatHistory via parent
     llmError,
+    chatHistory, // Added chatHistory
 }) => {
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        }
+    }, [chatHistory, isGeneratingResponse, llmError, llmResponse]); // Scroll on new messages or status changes
+
     if (!isOpen) {
         return null;
     }
@@ -34,12 +50,14 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        // User's message is added to chatHistory by the parent component
+        // inside handleGenerateCharacterResponse or its wrapper.
         handleGenerateCharacterResponse();
     };
 
     return (
         <div
-            className="character-chat-panel visible" // 'visible' class controls actual display via CSS
+            className="character-chat-panel visible"
             role="dialog"
             aria-labelledby="character-chat-panel-title"
             aria-modal="true"
@@ -58,26 +76,37 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
                     </button>
                 </div>
 
-                <div className="character-chat-panel-messages-area">
-                    {/*
-                        In a future iteration, this area would display a list of messages (chat history).
-                        For now, it will just display the latest AI response.
-                    */}
-                    {llmResponse && (
+                <div className="character-chat-panel-messages-area" ref={messagesContainerRef}>
+                    {chatHistory.map((msg, index) => (
+                        <div
+                            key={index}
+                            className={`chat-message ${
+                                msg.speaker === 'user' ? 'user-message' : 'ai-message'
+                            }`}
+                        >
+                            {msg.speaker !== 'user' && (
+                                <strong>{msg.speaker}:</strong>
+                            )}
+                            <p style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</p>
+                        </div>
+                    ))}
+                    {/* Displaying llmResponse directly here is temporary if parent doesn't immediately add to history */}
+                    {/* This should ideally be handled by parent adding to chatHistory */}
+                    {/* {llmResponse && !chatHistory.find(msg => msg.text === llmResponse && msg.speaker === characterName) && (
                         <div className="chat-message ai-message">
-                            <strong>{characterName} responds:</strong>
+                            <strong>{characterName}:</strong>
                             <p style={{ whiteSpace: 'pre-wrap' }}>{llmResponse}</p>
                         </div>
-                    )}
-                    {llmError && (
-                        <div className="chat-message error-message">
-                            <p style={{ color: 'red' }}>Error: {llmError}</p>
-                        </div>
-                    )}
-                    {isGeneratingResponse && !llmResponse && ( // Show loading only if there's no previous response displayed
+                    )} */}
+                    {isGeneratingResponse && (
                         <div className="chat-loading-indicator">
                             <LoadingSpinner />
-                            <p>Thinking...</p>
+                            <p>{characterName} is thinking...</p>
+                        </div>
+                    )}
+                     {llmError && (
+                        <div className="chat-message error-message">
+                            <p>Error: {llmError}</p>
                         </div>
                     )}
                 </div>
