@@ -8,16 +8,16 @@ The primary focus of current and future development is on:
 *   **`campaign_crafter_api`**: A Python-based backend API using FastAPI. It handles LLM integrations (OpenAI, Gemini, local models), data persistence, user authentication, image generation, and core business logic for content creation and management.
 *   **`campaign_crafter_ui`**: A React-based web interface that interacts with the `campaign_crafter_api` to provide a rich, web-based user experience for campaign editing, character management, and AI-assisted content generation.
 
-The project originated with an iOS application, **`TextEditorApp`** (formerly CampaignCreator iOS App), which is now a secondary component with its development de-prioritized in favor of the more comprehensive API and Web UI.
+The project originated with an iOS application, **`TextEditorApp`** (formerly CampaignCreator iOS App). Its development is now de-prioritized in favor of the API and Web UI, and it's considered a legacy component. For more details on the iOS app, see the `TextEditorApp/` directory.
 
 ### Root `requirements.txt` and `utils/`
 The `requirements.txt` file and scripts within the `utils/` directory in the root of the repository are primarily for standalone utility scripts (e.g., data migration, content processing) or potentially an internal dashboard. These are generally not part of the main API (`campaign_crafter_api`) or UI (`campaign_crafter_ui`) application stacks but may support their development or maintenance.
 
-## `TextEditorApp` (Formerly CampaignCreator iOS App)
+## `TextEditorApp` (Legacy iOS Application)
 
-The `TextEditorApp` (located in the `TextEditorApp/` directory) was the initial component of this project, offering local document editing and LLM-assisted content generation on iOS. While it remains a part of the ecosystem, its development is currently secondary to the API and web UI.
+The `TextEditorApp`, located in the `TextEditorApp/` directory, was the initial component of this project. It's an iOS application offering local document editing and LLM-assisted content generation.
 
-The iOS app features local document management and direct LLM integration (OpenAI GPT, Google Gemini) via API keys that would be configured in a `Secrets.swift` file (if used directly by the app). It also supports content import/export. Setup details are in the "Setup for Developers" section.
+**Status:** This application is considered **legacy** and is **not under active development**. The project's focus has shifted to the `campaign_crafter_api` and `campaign_crafter_ui`. The codebase remains as a reference. For specific details or if you intend to explore this legacy component, please refer to the information within the `TextEditorApp/` directory, including its own README if present.
 
 ## `campaign_crafter_api` (Backend API)
 
@@ -131,7 +131,7 @@ Ensure Node.js and npm (or yarn) are installed. The UI expects the `campaign_cra
 
 *   **`campaign_crafter_api`**: Actively developed and operational. This Python (FastAPI)-based API is central to the project's functionality, providing LLM integration, data management, and user authentication.
 *   **`campaign_crafter_ui`**: Actively developed and operational. This React-based web interface is the primary client for the `campaign_crafter_api`, offering a rich user experience for campaign creation and management.
-*   **`TextEditorApp` (iOS App)**: Core local editing features were functional. Development is currently de-prioritized in favor of the API and web UI. The codebase serves as a reference but is not actively maintained.
+*   **`TextEditorApp` (iOS App)**: Legacy component. Not actively maintained. See the `TextEditorApp/` directory for any historical information.
 
 ## Setup for Developers
 
@@ -145,23 +145,11 @@ Ensure Node.js and npm (or yarn) are installed. The UI expects the `campaign_cra
     *   **Primary setup instructions are in `campaign_crafter_api/README.md`.** This includes Python virtual environment setup, installing dependencies from `requirements.txt`, configuring the `.env` file, and running database migrations.
 3.  **Web UI (`campaign_crafter_ui`)**:
     *   Navigate to `campaign_crafter_ui/`.
-    *   **Primary setup instructions are in `campaign_crafter_ui/README.md`.** This includes Node.js environment setup, installing dependencies with `npm` or `yarn`, and configuring environment variables (e.g., `VITE_API_BASE_URL`).
-4.  **iOS App (`TextEditorApp`)** (Secondary Focus, Low Priority):
-    *   Navigate to the `TextEditorApp/` directory (contains the Xcode project).
-    *   Open the `TextEditorApp.xcodeproj` (or `.xcworkspace` if it exists) file in Xcode.
-    *   This app is not actively maintained. Its primary value is as a reference for past features or concepts.
-    *   If attempting to build, ensure you have a compatible Xcode version (e.g., Xcode 14.0 or later was previously recommended).
-    *   **API Keys (iOS App)**: If you were to adapt its direct LLM features, you would need to manage API keys, potentially via a `Secrets.swift` file in `TextEditorApp/TextEditorApp/` as originally designed:
-        ```swift
-        // TextEditorApp/TextEditorApp/Secrets.swift
-        import Foundation
-
-        struct Secrets {
-            static let openAIAPIKey = "YOUR_OPENAI_API_KEY" // Example
-            static let geminiAPIKey = "YOUR_GEMINI_API_KEY" // Example
-        }
-        ```
-    *   **Third-Party Libraries (iOS App)**: Dependencies like ZipFoundation were managed via Swift Package Manager.
+    *   **Primary setup instructions are in `campaign_crafter_ui/README.md`.** This includes Node.js environment setup, installing dependencies with `npm` or `yarn`, and configuring environment variables.
+4.  **iOS App (`TextEditorApp`)** (Legacy Component):
+    *   The `TextEditorApp` is an iOS application located in the `TextEditorApp/` directory.
+    *   It is **not actively maintained** and its development is de-prioritized.
+    *   For any historical context or if you choose to explore this legacy code, refer to the contents and any README within the `TextEditorApp/` directory.
 
 ## Future Goals (Overall Project)
 
