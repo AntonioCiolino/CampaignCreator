@@ -205,14 +205,65 @@ VTCNP Enterprises
 
         return "\n".join(output)
 
-    def _format_character_for_export(self, character: orm_models.Character) -> str:
+    def _format_character_simple_block(self, character: orm_models.Character) -> str:
         """
-        DEPRECATED: Formats a single character's details into a Homebrewery Simple NPC stat block.
-        This will be replaced by _format_character_complex_block.
-        For now, let's call the complex one.
+        Formats a single character's details into a Homebrewery Simple NPC stat block (Harlan-style).
         """
-        return self._format_character_complex_block(character)
+        output = []
+        character_name_or_default = character.name if character.name and character.name.strip() else "Unnamed Character"
 
+        output.append(f"### {character_name_or_default}\n")
+
+        if character.image_urls and len(character.image_urls) > 0:
+            image_url = character.image_urls[0]
+            alt_text = f"{character_name_or_default} image"
+            output.append(f"![{alt_text}]({image_url}){{width:100%}}\n")
+
+        output.append("{{monster,frame")
+        output.append(f"## {character_name_or_default}")
+        output.append(f"*Medium humanoid, alignment placeholder*")
+        output.append("___")
+        output.append(f"**Armor Class** :: 10 (Natural Armor)") # Placeholder
+        output.append(f"**Hit Points** :: 10 (2d8+2)") # Placeholder
+        output.append(f"**Speed** :: 30 ft.") # Placeholder
+        output.append("___")
+
+        stats_data = character.stats if character.stats else {}
+        str_val = stats_data.get('strength', 10)
+        dex_val = stats_data.get('dexterity', 10)
+        con_val = stats_data.get('constitution', 10)
+        int_val = stats_data.get('intelligence', 10)
+        wis_val = stats_data.get('wisdom', 10)
+        cha_val = stats_data.get('charisma', 10)
+
+        output.append("|  STR  |  DEX  |  CON  |  INT  |  WIS  |  CHA  |")
+        output.append("|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|")
+        output.append(
+            f"|  {str_val} ({self._calculate_modifier(str_val)}) "
+            f"| {dex_val} ({self._calculate_modifier(dex_val)}) "
+            f"| {con_val} ({self._calculate_modifier(con_val)}) "
+            f"| {int_val} ({self._calculate_modifier(int_val)}) "
+            f"| {wis_val} ({self._calculate_modifier(wis_val)}) "
+            f"| {cha_val} ({self._calculate_modifier(cha_val)}) |"
+        )
+        output.append("___")
+
+        personality = "Personality placeholder."
+        if character.description and character.description.strip():
+            first_sentence_match = re.match(r"^([^.!?]+[.!?])", character.description.strip())
+            if first_sentence_match:
+                extracted_personality = first_sentence_match.group(1).strip()
+                if len(extracted_personality) < 150:
+                    personality = extracted_personality
+            elif len(character.description.strip()) < 150:
+                 personality = character.description.strip()
+        output.append(f"**Personality:** {personality}")
+
+        output.append("}}")
+        return "\n".join(output)
+
+    # _format_character_for_export is being removed/renamed.
+    # Ensure calls are updated to _format_character_simple_block or _format_character_complex_block.
 
     async def format_campaign_for_homebrewery(self, campaign: orm_models.Campaign, sections: List[orm_models.CampaignSection], db: Session, current_user: UserModel) -> str: # Added db, current_user and async
         # TODO: Make page_image_url and stain_images configurable in the future, perhaps via campaign settings or user profile.
@@ -342,8 +393,11 @@ VTCNP Enterprises
             # homebrewery_content.append("Key characters featured in this campaign include:\n")
 
             for character in campaign.characters:
-                # Call the new complex block formatter directly
-                homebrewery_content.append(self._format_character_complex_block(character))
+                if character.export_format_preference == 'simple':
+                    homebrewery_content.append(self._format_character_simple_block(character))
+                else: # Default to complex if preference is 'complex', None, or any other value
+                    homebrewery_content.append(self._format_character_complex_block(character))
+
                 # Add a page break after each character's full block
                 homebrewery_content.append("\\page\n")
 

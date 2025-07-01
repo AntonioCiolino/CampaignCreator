@@ -50,6 +50,9 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
     const [isGeneratingAppearance, setIsGeneratingAppearance] = useState(false);
     const [appearanceGenError, setAppearanceGenError] = useState<string | null>(null);
 
+    // New state for export format preference
+    const [exportFormatPreference, setExportFormatPreference] = useState<string>('complex');
+
 
     useEffect(() => {
         if (initialData) {
@@ -59,6 +62,7 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
             setImageUrls((initialData.image_urls || []).join(', '));
             setVideoClipUrls((initialData.video_clip_urls || []).join(', '));
             setNotesForLlm(initialData.notes_for_llm || '');
+            setExportFormatPreference(initialData.export_format_preference || 'complex'); // Set from initialData
 
             if (initialData.stats) {
                 setStrength(initialData.stats.strength?.toString() || '10');
@@ -104,6 +108,7 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
             video_clip_urls: processedVideoClipUrls,
             notes_for_llm: notesForLlm || null,
             stats: characterStats,
+            export_format_preference: exportFormatPreference, // Add to payload
         };
 
         // If it's an update, ensure we only send fields that are meant to be updated.
@@ -284,6 +289,22 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
                     value={notesForLlm}
                     onChange={(e) => setNotesForLlm(e.target.value)}
                 ></textarea>
+            </div>
+
+            <div className="mb-3">
+                <label htmlFor="char-export-format" className="form-label">Export Format Preference</label>
+                <select
+                    className="form-select"
+                    id="char-export-format"
+                    value={exportFormatPreference}
+                    onChange={(e) => setExportFormatPreference(e.target.value)}
+                >
+                    <option value="complex">Complex Stat Block (Elara Style)</option>
+                    <option value="simple">Simple Stat Block (Harlan Style)</option>
+                </select>
+                <small className="form-text text-muted">
+                    Determines how this character appears in Homebrewery exports.
+                </small>
             </div>
 
             {/* Submit Button Area */}

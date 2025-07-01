@@ -178,6 +178,8 @@ class Character(Base):
     wisdom = Column(Integer, default=10)
     charisma = Column(Integer, default=10)
 
+    export_format_preference: Mapped[Optional[str]] = mapped_column(String, nullable=True, default='complex')
+
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     owner = relationship("User", backref="characters") # backref creates `characters` on User
 

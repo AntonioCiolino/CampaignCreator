@@ -334,9 +334,11 @@ class CharacterBase(BaseModel):
     video_clip_urls: Optional[List[str]] = None
     notes_for_llm: Optional[str] = None
     stats: Optional[CharacterStats] = None # Embed stats here
+    export_format_preference: Optional[str] = 'complex' # Default to complex for display
 
 class CharacterCreate(CharacterBase):
-    pass # All fields from CharacterBase are used for creation, stats can be provided optionally
+    export_format_preference: Optional[str] = None # Allow omission, CRUD applies default if needed
+    # All other fields from CharacterBase are used for creation
 
 class CharacterUpdate(BaseModel): # Separate model for updates
     name: Optional[str] = None
@@ -346,10 +348,12 @@ class CharacterUpdate(BaseModel): # Separate model for updates
     video_clip_urls: Optional[List[str]] = None
     notes_for_llm: Optional[str] = None
     stats: Optional[CharacterStats] = None
+    export_format_preference: Optional[str] = None # Allow explicit update
 
 class Character(CharacterBase):
     id: int
     owner_id: int
+    export_format_preference: Optional[str] = 'complex' # Ensure it's part of the response model
     # Campaigns will be a list of Campaign models, but handled via relationship in ORM
     # and potentially a separate response model if detailed campaign info is needed directly.
 
