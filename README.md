@@ -151,17 +151,17 @@ Ensure Node.js and npm (or yarn) are installed. The UI expects the `campaign_cra
     *   It is **not actively maintained** and its development is de-prioritized.
     *   For any historical context or if you choose to explore this legacy code, refer to the contents and any README within the `TextEditorApp/` directory.
 
-## Future Goals (Overall Project)
+## Potential Future Directions
 
-*   **Enhanced Web Capabilities**: Continue to enrich the `campaign_crafter_ui` with advanced editing features, collaborative tools, and deeper integration with API functionalities.
-*   **Expanded AI Features**: Introduce more sophisticated AI-driven tools for plot generation, character development, dialogue creation, and world consistency checking.
-*   **Plugin/Module System**: Explore a plugin architecture for the API and UI to allow for community contributions and extensibility.
-*   **Improved Import/Export**: Offer robust import/export options for various formats (e.g., Markdown, PDF, integration with other platforms like World Anvil), managed via the API.
-*   **Advanced LLM Management**: Provide more granular control over LLM model selection, parameters, and context management through the UI.
-*   **Performance and Scalability**: Continuously optimize the API and UI for performance and ensure the backend can scale to support a growing user base.
-*   **Mobile Companion App (Conceptual)**: Revisit the possibility of a streamlined mobile companion app that syncs with the `campaign_crafter_api`, focusing on content review and light editing.
-*   **Comprehensive Documentation**: Maintain and expand user and developer documentation for all components.
-*   **Deployment & DevOps**: Refine Docker configurations, CI/CD pipelines, and explore scalable hosting solutions.
+This section outlines some long-term aspirations and potential areas for future exploration. These are not on the immediate roadmap but represent ideas that could enhance the CampaignCreator suite.
+
+*   **Enhanced Web Capabilities**: Continue to enrich the `campaign_crafter_ui` with more advanced editing features (e.g., rich text formatting options beyond Markdown, advanced table editors), collaborative tools (real-time or asynchronous), and even deeper integration with evolving API functionalities.
+*   **Plugin/Module System**: Explore a plugin architecture for the API and UI. This could allow for community contributions, custom content types, or integrations with other world-building tools and platforms.
+*   **Improved Import/Export**: While basic import/export exists, robustly supporting a wider array of formats (e.g., advanced Markdown features, PDF with styling, direct integration with other platforms like World Anvil or Foundry VTT) remains a long-term goal.
+*   **Performance and Scalability**: As the user base and data complexity grow, continuously optimize the API and UI for performance. This includes database query optimization, efficient frontend rendering, and ensuring the backend can scale to support more users and larger campaigns.
+*   **Mobile Companion App (Conceptual)**: Revisit the possibility of a streamlined mobile companion app that syncs with the `campaign_crafter_api`. This would likely focus on content review, quick notes, and light editing rather than full-fledged campaign creation.
+*   **Comprehensive Documentation**: While documentation exists, continuously maintaining and expanding user guides, API documentation, and developer contribution guides is an ongoing effort.
+*   **Advanced CI/CD and Hosting**: While Docker support is available, further refining CI/CD pipelines for automated testing and deployment, and exploring more advanced or scalable hosting solutions, are ongoing considerations for operational maturity.
 
 ---
 
