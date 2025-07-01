@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import * as characterService from '../services/characterService';
-// Corrected import: CharacterImageGenerationRequest from characterTypes
-import { Character, CharacterStats, CharacterImageGenerationRequest } from '../types/characterTypes';
+// Corrected import: CharacterImageGenerationRequest and CharacterUpdate from characterTypes
+import { Character, CharacterStats, CharacterImageGenerationRequest, CharacterUpdate } from '../types/characterTypes';
 import * as campaignService from '../services/campaignService';
 import { Campaign } from '../types/campaignTypes';
 import LoadingSpinner from '../components/common/LoadingSpinner';
