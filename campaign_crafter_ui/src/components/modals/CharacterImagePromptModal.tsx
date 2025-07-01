@@ -128,6 +128,7 @@ const CharacterImagePromptModal: React.FC<CharacterImagePromptModalProps> = ({
         <>
           <label>
             Size (Gemini - Conceptual):
+            {/* Assuming form-input provides similar styling to text inputs in ImageGenerationModal.css for consistency */}
             <input type="text" className="form-input" value={genericSizeInput} onChange={(e) => setGenericSizeInput(e.target.value)} placeholder="e.g., 1024x1024" disabled={isGenerating} />
           </label>
           <label>
@@ -180,7 +181,7 @@ const CharacterImagePromptModal: React.FC<CharacterImagePromptModalProps> = ({
             value={additionalDetails}
             onChange={(e) => setAdditionalDetails(e.target.value)}
             placeholder="e.g., a castle in the background, specific clothing, dynamic pose"
-            rows={3}
+            rows={4} // Increased rows for more space
             disabled={isGenerating}
           />
         </label>

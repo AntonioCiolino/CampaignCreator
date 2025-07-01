@@ -9,12 +9,79 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import ImagePreviewModal from '../components/modals/ImagePreviewModal';
 import AlertMessage from '../components/common/AlertMessage';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
-import CharacterImagePromptModal, { CharacterImageGenSettings } from '../components/modals/CharacterImagePromptModal'; // Import the new modal
+import CharacterImagePromptModal, { CharacterImageGenSettings } from '../components/modals/CharacterImagePromptModal';
 import CharacterChatPanel from '../components/characters/CharacterChatPanel';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  rectSortingStrategy, // Or verticalListSortingStrategy if preferred for single column
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import './CharacterDetailPage.css';
-// import ChatIcon from '@mui/icons-material/Chat'; // Example using MUI icon
 
 const DEFAULT_PLACEHOLDER_IMAGE = '/logo_placeholder.svg';
+
+// New Sortable Item Component for Character Images
+interface SortableCharacterImageProps {
+  id: string; // Using image URL as ID
+  url: string;
+  characterName: string;
+  index: number;
+  onImageClick: (url: string) => void;
+}
+
+const SortableCharacterImage: React.FC<SortableCharacterImageProps> = ({ id, url, characterName, index, onImageClick }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging, // Added to provide dragging style
+  } = useSortable({ id });
+
+  const itemStyle = { // Renamed from style to avoid conflict if CharacterDetailPage itself has a 'style' const
+    transform: CSS.Transform.toString(transform),
+    transition,
+    cursor: 'grab',
+    // Opacity will be handled by CSS via the 'dragging' class
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={itemStyle}
+      {...attributes}
+      {...listeners}
+      className={`character-image-thumbnail-wrapper ${isDragging ? 'dragging' : ''}`} // Conditionally add 'dragging' class
+      onClick={() => onImageClick(url)}
+    >
+      <img
+        src={url}
+        alt={`${characterName} ${index + 1}`}
+        className="character-image-thumbnail" // Existing class
+        onError={(e) => {
+          const target = e.target as HTMLImageElement;
+          if (target.src !== DEFAULT_PLACEHOLDER_IMAGE) {
+            target.src = DEFAULT_PLACEHOLDER_IMAGE;
+            target.alt = "Placeholder image";
+          }
+        }}
+      />
+    </div>
+  );
+};
 
 const CharacterDetailPage: React.FC = () => {
     const { characterId } = useParams<{ characterId: string }>();
@@ -56,7 +123,46 @@ const CharacterDetailPage: React.FC = () => {
 
     // Character Chat Panel State
     const [isChatPanelOpen, setIsChatPanelOpen] = useState<boolean>(false);
-    // Optional: const [chatPanelWidth, setChatPanelWidth] = useState<number>(350);
+
+    // DND Kit Sensors
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (active.id !== over?.id && character && character.image_urls) {
+            const oldIndex = character.image_urls.findIndex(url => url === active.id);
+            const newIndex = character.image_urls.findIndex(url => url === over?.id);
+
+            if (oldIndex === -1 || newIndex === -1) return; // Should not happen if IDs are URLs
+
+            const newImageUrls = arrayMove(character.image_urls, oldIndex, newIndex);
+
+            // Optimistic update
+            setCharacter(prev => prev ? { ...prev, image_urls: newImageUrls } : null);
+
+            // Persist to backend
+            try {
+                const payload: CharacterUpdate = { image_urls: newImageUrls };
+                // Assuming character.id is available and correct
+                await characterService.updateCharacter(character.id, payload);
+                // Optionally show a success message or rely on optimistic update
+                setSuccessMessage("Image order saved.");
+                setTimeout(() => setSuccessMessage(null), 3000);
+            } catch (err) {
+                console.error("Failed to save image order:", err);
+                setError("Failed to save new image order. Reverting.");
+                // Revert optimistic update on error
+                setCharacter(prev => prev ? { ...prev, image_urls: character.image_urls } : null);
+                setTimeout(() => setError(null), 5000);
+            }
+        }
+    };
 
 
     const fetchCharacterAndCampaignData = useCallback(async () => {
@@ -397,31 +503,36 @@ const CharacterDetailPage: React.FC = () => {
                         </div>
                         <div className="card-body">
                             {imageGenError && <AlertMessage type="error" message={imageGenError} onClose={() => setImageGenError(null)} />}
-                            <div className="character-image-gallery">
-                                {character.image_urls && character.image_urls.length > 0 ? (
-                                    character.image_urls.map((url, index) => (
-                                        <div key={index} className="character-image-thumbnail-wrapper" onClick={() => handleImageClick(url)}>
-                                            <img
-                                                src={url}
-                                                alt={`${character.name} ${index + 1}`}
-                                                className="character-image-thumbnail"
-                                                onError={(e) => {
-                                                    const target = e.target as HTMLImageElement;
-                                                    if (target.src !== DEFAULT_PLACEHOLDER_IMAGE) {
-                                                        target.src = DEFAULT_PLACEHOLDER_IMAGE;
-                                                        target.alt = "Placeholder image";
-                                                    }
-                                                }}
-                                            />
-                                        </div>
-                                    ))
-                                ) : (
-                                    !isGeneratingImage && <p className="text-muted small">No images provided. Try generating one!</p>
-                                )}
-                                {isGeneratingImage && (!character.image_urls || character.image_urls.length === 0) &&
-                                    <div className="text-center w-100"><LoadingSpinner /> <p className="text-muted small mt-1">Generating first image...</p></div>
-                                }
-                            </div>
+                            <DndContext
+                                sensors={sensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={handleDragEnd}
+                            >
+                                <SortableContext
+                                    items={character.image_urls?.map(url => url) || []}
+                                    strategy={rectSortingStrategy} // Good for grids
+                                >
+                                    <div className="character-image-gallery">
+                                        {character.image_urls && character.image_urls.length > 0 ? (
+                                            character.image_urls.map((url, index) => (
+                                                <SortableCharacterImage
+                                                    key={url} // Use URL as key for DND
+                                                    id={url}  // Use URL as ID for DND
+                                                    url={url}
+                                                    characterName={character.name}
+                                                    index={index}
+                                                    onImageClick={handleImageClick}
+                                                />
+                                            ))
+                                        ) : (
+                                            !isGeneratingImage && <p className="text-muted small">No images provided. Try generating one!</p>
+                                        )}
+                                        {isGeneratingImage && (!character.image_urls || character.image_urls.length === 0) &&
+                                            <div className="text-center w-100"><LoadingSpinner /> <p className="text-muted small mt-1">Generating first image...</p></div>
+                                        }
+                                    </div>
+                                </SortableContext>
+                            </DndContext>
                         </div>
                     </div>
                 </div>

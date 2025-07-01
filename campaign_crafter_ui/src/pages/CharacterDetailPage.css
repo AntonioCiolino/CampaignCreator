@@ -258,3 +258,16 @@
         grid-template-columns: repeat(3, 1fr); /* Fixed 3 columns for very small screens */
     }
 }
+
+/* Drag and Drop Styles for Character Images */
+.character-image-thumbnail-wrapper.dragging {
+  opacity: 0.4; /* Make it more transparent when dragging */
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25); /* More pronounced shadow */
+  border: 2px dashed var(--primary-color, #007bff); /* Use primary color for dashed border */
+  transform: scale(1.03); /* Slightly enlarge the item being dragged */
+  z-index: 10; /* Ensure it's above other items */
+}
+
+/* Optional: Style for the drop placeholder or when hovering over a drop zone,
+   but @dnd-kit/sortable usually handles this well with transform.
+   If specific placeholder styling is needed, it would be more involved. */
