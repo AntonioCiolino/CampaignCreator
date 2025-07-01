@@ -112,11 +112,12 @@ VTCNP Enterprises
         if character.description and character.description.strip():
             char_parts.append(f"**Description:** {character.description.strip()}\n")
 
-        # Add image if available - basic implementation, just lists URL
-        # TODO: Future enhancement could be to format as `![alt text](url)` if appropriate
-        # For now, just listing the first image URL if present.
+        # Add image if available, formatted for Homebrewery
         if character.image_urls and len(character.image_urls) > 0:
-            char_parts.append(f"**Image:** {character.image_urls[0]}\n")
+            image_url = character.image_urls[0] # Using the first image
+            alt_text = f"{character.name} image" if character.name else "Character image"
+            # Ensure {width:100%} is on the same line as the markdown image tag
+            char_parts.append(f"![{alt_text}]({image_url}){{width:100%}}\n")
 
         return "\n".join(char_parts)
 
