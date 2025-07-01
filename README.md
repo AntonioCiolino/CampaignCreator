@@ -2,120 +2,136 @@
 
 ## Project Overview
 
-This repository hosts the "CampaignCreator" suite of tools, designed to assist creative writers, authors, and world-builders.
+This repository hosts the "CampaignCreator" suite of tools, designed to assist creative writers, authors, and world-builders in crafting rich narratives and campaign settings.
 The primary focus of current and future development is on:
 
-*   **`campaign_crafter_api`**: A Python-based backend API using FastAPI. It handles LLM integrations, data persistence, and core business logic.
-*   **`campaign_crafter_ui`**: A React-based web interface that interacts with the `campaign_crafter_api` to provide a rich, web-based user experience.
+*   **`campaign_crafter_api`**: A Python-based backend API using FastAPI. It handles LLM integrations (OpenAI, Gemini, local models), data persistence, user authentication, image generation, and core business logic for content creation and management.
+*   **`campaign_crafter_ui`**: A React-based web interface that interacts with the `campaign_crafter_api` to provide a rich, web-based user experience for campaign editing, character management, and AI-assisted content generation.
 
-The project originated with an iOS application, **CampaignCreator (iOS App)**, which is now a secondary component with its development de-prioritized in favor of the API and Web UI.
+The project originated with an iOS application, **`TextEditorApp`** (formerly CampaignCreator iOS App). Its development is now de-prioritized in favor of the API and Web UI, and it's considered a legacy component. For more details on the iOS app, see the `TextEditorApp/` directory.
 
-### Root `requirements.txt`
-The `requirements.txt` file in the root directory contains dependencies for separate utility scripts or an internal dashboard (e.g., using Streamlit, Pandas). These are not part of the main API (`campaign_crafter_api`) or UI (`campaign_crafter_ui`) application stacks.
+### Root `requirements.txt` and `utils/`
+The `requirements.txt` file and scripts within the `utils/` directory in the root of the repository are primarily for standalone utility scripts (e.g., data migration, content processing) or potentially an internal dashboard. These are generally not part of the main API (`campaign_crafter_api`) or UI (`campaign_crafter_ui`) application stacks but may support their development or maintenance.
 
-## CampaignCreator (iOS App)
+## `TextEditorApp` (Legacy iOS Application)
 
-The CampaignCreator iOS application was the initial component of this project, offering local document editing and LLM-assisted content generation. While it remains a part of the ecosystem, its development is currently secondary to the API and web UI.
+The `TextEditorApp`, located in the `TextEditorApp/` directory, was the initial component of this project. It's an iOS application offering local document editing and LLM-assisted content generation.
 
-The iOS app features local document management and direct LLM integration (OpenAI GPT, Google Gemini) via API keys in a `Secrets.swift` file. It also supports content import/export. Setup details are in the "Setup for Developers" section.
+**Status:** This application is considered **legacy** and is **not under active development**. The project's focus has shifted to the `campaign_crafter_api` and `campaign_crafter_ui`. The codebase remains as a reference. For specific details or if you intend to explore this legacy component, please refer to the information within the `TextEditorApp/` directory, including its own README if present.
 
-## campaign_crafter_api (Backend API)
+## `campaign_crafter_api` (Backend API)
 
 ### Purpose
 
 The `campaign_crafter_api` is a Python-based backend service built with **FastAPI**. It is designed to:
-*   Provide a centralized API for LLM interactions (OpenAI, Gemini, and potentially others).
-*   Manage user accounts and authentication (planned).
-*   Handle data storage and synchronization for web-based features (planned).
-*   Offer endpoints for features that are better suited for server-side implementation.
+*   Provide a centralized API for LLM interactions (OpenAI, Gemini, local/self-hosted models via an OpenAI-compatible interface).
+*   Manage user accounts, authentication, and authorization.
+*   Handle data storage for campaigns, characters, settings, and user-specific data.
+*   Offer endpoints for AI-driven content generation (text, images), campaign structuring, and other features.
+*   Support "Bring Your Own Key" (BYOK) for third-party LLM and image generation services.
 
 ### Tech Stack
 
 *   **Python**: Core programming language.
 *   **FastAPI**: Web framework for building the API.
-*   **pip & `requirements.txt`**: For dependency management (as per `campaign_crafter_api/README.md`).
-*   **(Planned) Docker**: For containerization and deployment.
+*   **SQLAlchemy**: ORM for database interactions.
+*   **Alembic**: For database migrations.
+*   **pip & `requirements.txt`**: For dependency management (as per `campaign_crafter_api/requirements.txt`).
+*   **Docker**: For containerization and deployment (setup available).
 
 ### Bring Your Own Key (BYOK) Support
 
-The Campaign Creator API now supports a "Bring Your Own Key" (BYOK) model for certain third-party services, enhancing user control and privacy. Currently, this applies to:
+The Campaign Creator API supports a "Bring Your Own Key" (BYOK) model for certain third-party services, enhancing user control and privacy. This applies to:
 
-*   **OpenAI API Key**: Used for text generation (e.g., GPT models) and image generation (DALL-E).
-*   **Google Gemini API Key**: Used for text generation and image generation with Gemini models.
-*   **Stable Diffusion API Key**: Used for alternative image generation capabilities.
+*   **OpenAI API Key**: For text generation (e.g., GPT models) and image generation (DALL-E).
+*   **Google Gemini API Key**: For text generation and image generation with Gemini models.
+*   **Stable Diffusion API Key**: For alternative image generation capabilities (e.g. via Stability AI).
+*   Other LLM provider keys as supported.
 
 **How it Works:**
 
 *   **User-Provided Keys**: Users can securely submit their personal API keys for these services via their User Settings page in the web interface (`campaign_crafter_ui`). These keys are encrypted in storage.
-*   **System Fallback for Superusers**: If a user is designated as a "superuser" and has not provided their own key for a specific service, the system will attempt to use a globally configured API key (set via environment variables like `OPENAI_API_KEY` or `STABLE_DIFFUSION_API_KEY`) for that superuser's requests.
+*   **System Fallback for Superusers**: If a user is designated as a "superuser" and has not provided their own key for a specific service, the system may attempt to use a globally configured API key (set via environment variables like `OPENAI_API_KEY` or `STABLE_DIFFUSION_API_KEY`) for that superuser's requests. This is configurable.
 *   **Feature Access**:
-    *   If a user (who is not a superuser) has not provided their own API key for a service, features relying on that service will be disabled for them.
-    *   Superusers can access features using either their own key or the system's key.
-    *   If a system key is not configured, even superusers will need to provide their own key to access the corresponding features.
+    *   If a user (who is not a superuser) has not provided their own API key for a service, features relying on that service will typically be disabled or limited for them.
+    *   Superusers can generally access features using either their own key or the system's key if available.
+    *   If a system key is not configured for a particular service, all users (including superusers) will need to provide their own key to access the corresponding features.
 
-This system allows users to leverage their own API subscriptions and manage their usage directly, while still enabling administrators to provide system-level access for authorized superusers.
+This system allows users to leverage their own API subscriptions and manage their usage directly, while still enabling administrators to provide system-level access for authorized superusers if desired.
 
 ### LLM Configuration for Content Generation
 
-For features like auto-populating campaign sections, generating titles, or other AI-powered content creation, the Campaign Creator API needs to connect to a Large Language Model (LLM). Users must configure at least one LLM provider to enable these capabilities.
+For features like auto-populating campaign sections, generating titles, or other AI-powered content creation, the Campaign Creator API needs to connect to a Large Language Model (LLM). Users must configure at least one LLM provider to enable these capabilities, either through their user settings (BYOK) or via system-level environment variables if they are superusers and system keys are provided.
 
-Configuration is typically managed by setting environment variables that the API reads on startup. Common examples include:
+Common environment variables read by the API on startup for system-level configuration include:
 
-*   `OPENAI_API_KEY`: Your personal API key for accessing OpenAI models (e.g., GPT-3.5, GPT-4 for text; DALL-E for images).
-*   `GEMINI_API_KEY`: Your API key for accessing Google's Gemini models (for text and image generation).
-*   `LOCAL_LLM_API_BASE_URL`: The base URL for a locally running LLM that exposes an OpenAI-compatible API (e.g., Ollama, LM Studio, Jan). For instance, `http://localhost:11434/v1`.
-    *   You might also want to set `LOCAL_LLM_DEFAULT_MODEL_ID` to specify the default model to be used with this local LLM service (e.g., `ollama/llama2` or your specific model identifier).
-    *   The `LOCAL_LLM_PROVIDER_NAME` (defaults to "local_llm") can be set if you want to customize the identifier for your local provider in API requests.
+*   `OPENAI_API_KEY`: System's API key for accessing OpenAI models.
+*   `GEMINI_API_KEY`: System's API key for accessing Google's Gemini models.
+*   `DEEPSEEK_API_KEY`: System's API key for DeepSeek models.
+*   `LOCAL_LLM_API_BASE_URL`: The base URL for a locally running LLM that exposes an OpenAI-compatible API (e.g., Ollama, LM Studio, Jan). Example: `http://localhost:11434/v1`.
+    *   `LOCAL_LLM_DEFAULT_MODEL_ID`: Default model for the local LLM service (e.g., `ollama/llama2`).
+    *   `LOCAL_LLM_PROVIDER_NAME`: Customizable identifier for the local provider.
 
-If no LLM provider is configured with a valid API key or URL, AI-driven content generation features will typically fall back to using placeholder text. The user interface may also display error messages guiding you to configure a provider in the application settings or by setting the appropriate environment variables. Please refer to the `campaign_crafter_api/.env.example` file for a more comprehensive list of configurable environment variables.
+If no LLM provider is configured (either by the user or the system), AI-driven content generation features will be limited or disabled. The user interface may guide users to configure a provider in their settings. Refer to `campaign_crafter_api/.env.example` for a comprehensive list of environment variables.
 
 ### Setup and Run
 
 **Detailed setup and run instructions are in `campaign_crafter_api/README.md`.**
-A quick start is typically:
+A typical quick start:
 ```bash
 cd campaign_crafter_api
+# Recommended: Create and activate a Python virtual environment
+# python -m venv venv
+# source venv/bin/activate (or .\venv\Scripts\activate on Windows)
 pip install -r requirements.txt
+# Copy .env.example to .env and configure your API keys and database settings
+cp .env.example .env
+# Run database migrations
+alembic upgrade head
 # To run the development server (with auto-reload):
 python -m uvicorn app.main:app --reload
 # Or, to run using the programmatic Uvicorn configuration in app/main.py:
 # python -m app.main
 ```
-Ensure you have Python installed. API keys for LLM services need to be configured as per the API's specific instructions (usually via a `.env` file).
+Ensure Python is installed. API keys for LLM services should be configured in the `.env` file as per `campaign_crafter_api/.env.example`.
 
-## campaign_crafter_ui (Web Interface)
+## `campaign_crafter_ui` (Web Interface)
 
 ### Purpose
 
-The `campaign_crafter_ui` is a React-based web application that will provide a user interface for interacting with the `campaign_crafter_api`. Its goals include:
-*   Offering a web-based editor for story and world-building.
+The `campaign_crafter_ui` is a React-based web application providing a user interface for interacting with the `campaign_crafter_api`. Its goals include:
+*   Offering a web-based editor for creating and managing campaigns, sections, characters, and other world-building elements.
 *   Allowing users to manage their content and projects via a web browser.
-*   Integrating with the backend API for LLM suggestions and other features.
-*   Allowing users to manage their account settings, including submitting their own API keys for integrated services (OpenAI, Stable Diffusion).
+*   Integrating with the backend API for LLM-powered suggestions, image generation, and other AI-assisted features.
+*   Enabling users to manage their account settings, including submitting their own API keys (BYOK) for integrated services.
 
 ### Tech Stack
 
-*   **JavaScript/TypeScript**: Core programming languages.
+*   **TypeScript/JavaScript**: Core programming languages.
 *   **React**: UI library for building the user interface.
-*   **Vite**: Frontend build tool.
-*   **(Planned) Redux/Zustand**: For state management.
+*   **Create React App (react-scripts)**: For project setup, development server, and build scripts.
+*   **React Router**: For client-side navigation.
+*   **Axios**: For making HTTP requests to the backend API.
+*   **React Context API** (and component state): For state management.
 
 ### Setup and Run
 
 **Detailed setup and run instructions are in `campaign_crafter_ui/README.md`.**
-A quick start is typically:
+A typical quick start:
 ```bash
 cd campaign_crafter_ui
 npm install # or yarn install
+# Ensure the campaign_crafter_api is running and accessible
+# Configure VITE_API_BASE_URL in campaign_crafter_ui/.env if necessary
 npm run dev # or yarn dev
 ```
-Ensure you have Node.js and npm (or yarn) installed.
+Ensure Node.js and npm (or yarn) are installed. The UI expects the `campaign_crafter_api` to be running and accessible.
 
 ## Project Status
 
-*   **`campaign_crafter_api`**: Under active development. This Python (FastAPI)-based API is central to the project's strategy.
-*   **`campaign_crafter_ui`**: Under active development. This React-based web interface is the primary client for the `campaign_crafter_api`.
-*   **CampaignCreator (iOS App)**: Core local editing features are functional. Future development is de-prioritized in favor of the API and web UI.
+*   **`campaign_crafter_api`**: Actively developed and operational. This Python (FastAPI)-based API is central to the project's functionality, providing LLM integration, data management, and user authentication.
+*   **`campaign_crafter_ui`**: Actively developed and operational. This React-based web interface is the primary client for the `campaign_crafter_api`, offering a rich user experience for campaign creation and management.
+*   **`TextEditorApp` (iOS App)**: Legacy component. Not actively maintained. See the `TextEditorApp/` directory for any historical information.
 
 ## Setup for Developers
 
@@ -126,42 +142,27 @@ Ensure you have Node.js and npm (or yarn) installed.
     ```
 2.  **Backend API (`campaign_crafter_api`)**:
     *   Navigate to `campaign_crafter_api/`.
-    *   **Primary setup instructions are in `campaign_crafter_api/README.md`.** This includes Python environment setup and installing dependencies from `requirements.txt`.
+    *   **Primary setup instructions are in `campaign_crafter_api/README.md`.** This includes Python virtual environment setup, installing dependencies from `requirements.txt`, configuring the `.env` file, and running database migrations.
 3.  **Web UI (`campaign_crafter_ui`)**:
     *   Navigate to `campaign_crafter_ui/`.
-    *   **Primary setup instructions are in `campaign_crafter_ui/README.md`.** This includes Node.js environment setup and installing dependencies with `npm` or `yarn`.
-4.  **iOS App (CampaignCreator)** (Secondary Focus):
-    *   Navigate to the `CampaignCreator` directory (contains the Xcode project).
-    *   Open the `CampaignCreator.xcworkspace` file in Xcode.
-    *   Recommended: Xcode 14.0 or later.
-    *   **iOS Target**: Currently targets iOS 14.0.
-    *   **API Keys (iOS App)**: For LLM features, create `Secrets.swift` in `CampaignCreator/CampaignCreator/` (this is specific to the iOS app's direct LLM access):
-        ```swift
-        // CampaignCreator/CampaignCreator/Secrets.swift
-        import Foundation
+    *   **Primary setup instructions are in `campaign_crafter_ui/README.md`.** This includes Node.js environment setup, installing dependencies with `npm` or `yarn`, and configuring environment variables.
+4.  **iOS App (`TextEditorApp`)** (Legacy Component):
+    *   The `TextEditorApp` is an iOS application located in the `TextEditorApp/` directory.
+    *   It is **not actively maintained** and its development is de-prioritized.
+    *   For any historical context or if you choose to explore this legacy code, refer to the contents and any README within the `TextEditorApp/` directory.
 
-        struct Secrets {
-            static let openAIAPIKey = "YOUR_OPENAI_API_KEY"
-            static let geminiAPIKey = "YOUR_GEMINI_API_KEY"
-        }
-        ```
-    *   **Third-Party Libraries (iOS App)**:
-        *   **ZipFoundation**: Used for some import features. If formally adding or updating, use Swift Package Manager in Xcode.
+## Potential Future Directions
 
+This section outlines some long-term aspirations and potential areas for future exploration. These are not on the immediate roadmap but represent ideas that could enhance the CampaignCreator suite.
 
-## Future Goals (Overall Project)
-
-*   **Expansion of Web Capabilities**: Prioritize bringing rich features to the web UI, leveraging the `campaign_crafter_api`. This includes adapting relevant concepts from the original iOS application.
-*   **Data Synchronization**: Enable users to access and manage their projects across different platforms (e.g., web and potentially mobile applications) through the central API.
-*   **World Anvil Export/Import**: Robust integration for both import and export with World Anvil, likely managed via the API and available to connected clients.
-*   **Flexible LLM Support**: Continue to support LLM integration via the API, exploring options for self-hosted models. On-device LLM capabilities for any client applications (like the existing iOS app) will be considered based on platform feasibility and project priorities.
-*   **Multi-User Collaboration**: Investigate real-time or asynchronous collaboration features, primarily focused on the web platform.
-*   **Advanced Editor Features**: Implement syntax highlighting for Markdown and richer text formatting options, with a primary focus on the web UI.
-*   **Comprehensive API Services**: Expand the `campaign_crafter_api` to support a wider range of functionalities.
-*   **Deployment & Scalability**:
-    *   Containerize the API and UI for easier deployment (e.g., using Docker).
-    *   Explore scalable hosting solutions.
+*   **Enhanced Web Capabilities**: Continue to enrich the `campaign_crafter_ui` with more advanced editing features (e.g., rich text formatting options beyond Markdown, advanced table editors), collaborative tools (real-time or asynchronous), and even deeper integration with evolving API functionalities.
+*   **Plugin/Module System**: Explore a plugin architecture for the API and UI. This could allow for community contributions, custom content types, or integrations with other world-building tools and platforms.
+*   **Improved Import/Export**: While basic import/export exists, robustly supporting a wider array of formats (e.g., advanced Markdown features, PDF with styling, direct integration with other platforms like World Anvil or Foundry VTT) remains a long-term goal.
+*   **Performance and Scalability**: As the user base and data complexity grow, continuously optimize the API and UI for performance. This includes database query optimization, efficient frontend rendering, and ensuring the backend can scale to support more users and larger campaigns.
+*   **Mobile Companion App (Conceptual)**: Revisit the possibility of a streamlined mobile companion app that syncs with the `campaign_crafter_api`. This would likely focus on content review, quick notes, and light editing rather than full-fledged campaign creation.
+*   **Comprehensive Documentation**: While documentation exists, continuously maintaining and expanding user guides, API documentation, and developer contribution guides is an ongoing effort.
+*   **Advanced CI/CD and Hosting**: While Docker support is available, further refining CI/CD pipelines for automated testing and deployment, and exploring more advanced or scalable hosting solutions, are ongoing considerations for operational maturity.
 
 ---
 
-*This README provides a general guide. Specific build instructions or dependency versions might evolve for each sub-project. Refer to individual project READMEs for more detailed information.*
+*This README provides a general guide. Specific build instructions, dependency versions, and configurations might evolve for each sub-project. Always refer to individual project READMEs (inside `campaign_crafter_api/` and `campaign_crafter_ui/`) for the most detailed and up-to-date information.*
