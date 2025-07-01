@@ -713,3 +713,78 @@ def delete_generated_image_by_blob_name(db: Session, blob_name: str, user_id: in
     db.delete(db_image)
     db.commit()
     return db_image
+
+async def generate_character_aspect_text(
+    db: Session,
+    current_user_orm: orm_models.User, # Expecting the ORM model for API key access
+    request: models.CharacterAspectGenerationRequest
+) -> str:
+    """
+    Generates text for a specific aspect of a character using an LLM.
+    """
+    prompt_parts = []
+    if request.character_name:
+        prompt_parts.append(f"Character Name: {request.character_name}")
+
+    context_info = []
+    if request.aspect_to_generate == "description":
+        if request.existing_appearance_description:
+            context_info.append(f"Current Appearance: {request.existing_appearance_description}")
+        prompt_parts.append(f"Generate a compelling character description.")
+    elif request.aspect_to_generate == "appearance_description":
+        if request.existing_description:
+            context_info.append(f"Current Description: {request.existing_description}")
+        prompt_parts.append(f"Generate a vivid appearance description for the character.")
+    elif request.aspect_to_generate == "backstory_snippet":
+        if request.existing_description:
+            context_info.append(f"Current Description: {request.existing_description}")
+        if request.existing_appearance_description:
+            context_info.append(f"Current Appearance: {request.existing_appearance_description}")
+        prompt_parts.append(f"Generate a brief backstory snippet (1-2 paragraphs) for the character.")
+    else:
+        # Fallback or error for unsupported aspect
+        prompt_parts.append(f"Generate content for the character aspect: {request.aspect_to_generate}.")
+
+    if context_info:
+        prompt_parts.append("Consider the following existing details: " + " | ".join(context_info))
+
+    if request.prompt_override:
+        prompt_parts.append(f"Specific instructions from user: {request.prompt_override}")
+
+    final_prompt = " ".join(prompt_parts)
+
+    # Determine LLM service and model
+    provider_name_from_request: Optional[str] = None
+    model_specific_id_from_request: Optional[str] = None
+    if request.model_id_with_prefix and "/" in request.model_id_with_prefix:
+        provider_name_from_request, model_specific_id_from_request = request.model_id_with_prefix.split("/", 1)
+    elif request.model_id_with_prefix:
+        model_specific_id_from_request = request.model_id_with_prefix
+
+    try:
+        llm_service: LLMService = get_llm_service(
+            db=db,
+            current_user_orm=current_user_orm,
+            provider_name=provider_name_from_request,
+            model_id_with_prefix=request.model_id_with_prefix, # Pass the full prefixed ID
+            campaign=None # No campaign context for character aspect generation
+        )
+
+        # Assuming a generic text generation method on LLMService
+        # We might need to adapt this if a more specific method is preferred
+        generated_text = await llm_service.generate_text(
+            prompt=final_prompt,
+            max_tokens=300, # Sensible default for a description/appearance
+            temperature=0.7 # Default temperature
+        )
+        return generated_text.strip()
+
+    except LLMServiceUnavailableError as e:
+        # Re-raise or handle as appropriate for the API layer
+        # For now, let's print and re-raise a more generic exception or specific HTTP error in endpoint
+        print(f"LLM Service Error for character aspect: {e}")
+        raise LLMServiceUnavailableError(f"LLM service unavailable: {str(e)}") # To be caught by API endpoint
+    except Exception as e:
+        print(f"Unexpected error during character aspect generation: {e}")
+        # Consider logging traceback: import traceback; traceback.print_exc()
+        raise Exception(f"Failed to generate character aspect: {str(e)}") # To be caught by API endpoint

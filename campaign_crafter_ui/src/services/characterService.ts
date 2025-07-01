@@ -3,12 +3,14 @@ import {
     Character,
     CharacterCreate,
     CharacterUpdate,
-    CharacterImageGenerationRequest, // Added import
+    CharacterImageGenerationRequest,
+    CharacterAspectGenerationRequestPayload, // New import
+    CharacterAspectGenerationResponseData, // New import
     // CharacterStats is used internally by other types but not directly as a param/return type of service functions here
     // CharacterBase is also implicitly handled by Character, CharacterCreate
 } from '../types/characterTypes';
-import { Campaign } from '../types/campaignTypes'; // Import Campaign type
-import { LLMTextGenerationParams, LLMTextGenerationResponse } from './llmService'; // Import types
+import { Campaign } from '../types/campaignTypes';
+import { LLMTextGenerationParams, LLMTextGenerationResponse } from './llmService';
 
 // --- API Service Functions ---
 
@@ -97,6 +99,19 @@ export const generateCharacterResponse = async (
     const response = await apiClient.post<LLMTextGenerationResponse>(
         `${CHARACTER_API_URL}/${characterId}/generate-response`,
         requestBody
+    );
+    return response.data;
+};
+
+/**
+ * Generates text for a specific aspect of a character (e.g., description, appearance).
+ */
+export const generateCharacterAspect = async (
+    payload: CharacterAspectGenerationRequestPayload
+): Promise<CharacterAspectGenerationResponseData> => {
+    const response = await apiClient.post<CharacterAspectGenerationResponseData>(
+        `${CHARACTER_API_URL}/generate-aspect`,
+        payload
     );
     return response.data;
 };

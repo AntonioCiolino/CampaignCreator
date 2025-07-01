@@ -373,3 +373,15 @@ class CharacterImageGenerationRequest(BaseModel):
 
     # campaign_id: Optional[int] = None # If we want to associate the image with a campaign context during generation
                                      # For now, character images are global to the character.
+
+# For Character Aspect Generation (e.g., description, appearance)
+class CharacterAspectGenerationRequest(BaseModel):
+    character_name: Optional[str] = None
+    aspect_to_generate: str  # e.g., "description", "appearance_description", "backstory_snippet"
+    existing_description: Optional[str] = None
+    existing_appearance_description: Optional[str] = None # Renamed for clarity
+    prompt_override: Optional[str] = None # Allow user to provide a more specific prompt
+    model_id_with_prefix: Optional[str] = None # To specify which LLM to use
+
+class CharacterAspectGenerationResponse(BaseModel):
+    generated_text: str

@@ -61,3 +61,17 @@ export interface CharacterImageGenerationRequest {
     cfg_scale?: number | null;      // For Stable Diffusion
     gemini_model_name?: string | null; // Specific model for Gemini image gen
 }
+
+// For Character Aspect Generation (e.g., description, appearance)
+export interface CharacterAspectGenerationRequestPayload {
+    character_name?: string | null;
+    aspect_to_generate: "description" | "appearance_description" | "backstory_snippet"; // Use a literal type for known aspects
+    existing_description?: string | null;
+    existing_appearance_description?: string | null;
+    prompt_override?: string | null;
+    model_id_with_prefix?: string | null;
+}
+
+export interface CharacterAspectGenerationResponseData {
+    generated_text: string;
+}

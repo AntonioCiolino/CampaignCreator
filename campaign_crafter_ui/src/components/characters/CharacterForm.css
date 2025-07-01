@@ -22,6 +22,40 @@
     font-size: 0.95rem; /* Slightly adjust label font size if needed */
 }
 
+/* Group for label and AI button */
+.form-label-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.625rem; /* Same as label's original margin-bottom */
+}
+
+.form-label-group .form-label {
+    margin-bottom: 0; /* Remove bottom margin as it's handled by the group */
+}
+
+.generate-ai-button {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    margin-left: 0.5rem; /* Space between label and button */
+}
+
+.generate-ai-button .loading-spinner-overlay {
+    background-color: transparent; /* Make spinner overlay transparent */
+    position: relative; /* Adjust spinner position if needed */
+    width: 1em; /* Size spinner relative to button font */
+    height: 1em;
+    display: inline-block;
+    vertical-align: middle;
+}
+.generate-ai-button .loading-spinner {
+    width: 1em;
+    height: 1em;
+    border-width: 0.15em; /* Adjust spinner border for smaller size */
+}
+
+
 .character-form-container .form-control {
     display: block;
     width: 100%;

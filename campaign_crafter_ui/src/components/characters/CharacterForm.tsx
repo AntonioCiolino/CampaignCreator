@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
-import { Character, CharacterStats, CharacterCreate, CharacterUpdate } from '../../types/characterTypes';
+import { useNavigate } from 'react-router-dom';
+import {
+    Character,
+    CharacterStats,
+    CharacterCreate,
+    CharacterUpdate,
+    CharacterAspectGenerationRequestPayload
+} from '../../types/characterTypes';
+import * as characterService from '../../services/characterService'; // Import character service
 import './CharacterForm.css';
+// import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'; // Example icon
+import LoadingSpinner from '../common/LoadingSpinner'; // For inline loading
 
 interface CharacterFormProps {
     initialData?: Character | null; // For editing
@@ -34,6 +43,13 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
     const [intelligence, setIntelligence] = useState<string>('10');
     const [wisdom, setWisdom] = useState<string>('10');
     const [charisma, setCharisma] = useState<string>('10');
+
+    // State for LLM generation
+    const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+    const [descriptionGenError, setDescriptionGenError] = useState<string | null>(null);
+    const [isGeneratingAppearance, setIsGeneratingAppearance] = useState(false);
+    const [appearanceGenError, setAppearanceGenError] = useState<string | null>(null);
+
 
     useEffect(() => {
         if (initialData) {
@@ -100,6 +116,49 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
         await onSubmit(dataPayload);
     };
 
+    const handleGenerateAspect = async (
+        aspect: "description" | "appearance_description" | "backstory_snippet"
+    ) => {
+        let setIsGenerating: React.Dispatch<React.SetStateAction<boolean>>;
+        let setErrorState: React.Dispatch<React.SetStateAction<string | null>>;
+        let setFieldState: React.Dispatch<React.SetStateAction<string>>;
+        let existingContext: Partial<CharacterAspectGenerationRequestPayload> = { character_name: name || undefined };
+
+        if (aspect === "description") {
+            setIsGenerating = setIsGeneratingDescription;
+            setErrorState = setDescriptionGenError;
+            setFieldState = setDescription;
+            existingContext.existing_appearance_description = appearanceDescription || undefined;
+        } else if (aspect === "appearance_description") {
+            setIsGenerating = setIsGeneratingAppearance;
+            setErrorState = setAppearanceGenError;
+            setFieldState = setAppearanceDescription;
+            existingContext.existing_description = description || undefined;
+        } else {
+            console.error("Unsupported aspect for generation:", aspect);
+            return; // Or handle other aspects if added later
+        }
+
+        setIsGenerating(true);
+        setErrorState(null);
+
+        try {
+            const payload: CharacterAspectGenerationRequestPayload = {
+                ...existingContext,
+                aspect_to_generate: aspect,
+                // model_id_with_prefix: "anthropic/claude-3-haiku-20240307" // Example, make this selectable or from settings
+            };
+            const response = await characterService.generateCharacterAspect(payload);
+            setFieldState(response.generated_text);
+        } catch (err: any) {
+            console.error(`Failed to generate ${aspect}:`, err);
+            setErrorState(err.response?.data?.detail || err.message || `An error occurred while generating ${aspect}.`);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+
     return (
         <form onSubmit={handleSubmit} className="character-form-container">
             {formError && <div className="alert alert-danger">{formError}</div>}
@@ -117,25 +176,49 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
             </div>
 
             <div className="mb-3">
-                <label htmlFor="char-description" className="form-label">Description</label>
+                <div className="form-label-group">
+                    <label htmlFor="char-description" className="form-label">Description</label>
+                    <button
+                        type="button"
+                        className="btn btn-outline-primary btn-sm generate-ai-button"
+                        onClick={() => handleGenerateAspect("description")}
+                        disabled={isGeneratingDescription || isSubmitting}
+                        title="Generate Description with AI"
+                    >
+                        {isGeneratingDescription ? <LoadingSpinner /> : '✨ Gen AI'}
+                    </button>
+                </div>
                 <textarea
                     className="form-control"
                     id="char-description"
-                    rows={3}
+                    rows={5} // Increased rows for better editing space
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                 ></textarea>
+                {descriptionGenError && <small className="text-danger d-block mt-1">{descriptionGenError}</small>}
             </div>
 
             <div className="mb-3">
-                <label htmlFor="char-appearance" className="form-label">Appearance Description</label>
+                <div className="form-label-group">
+                    <label htmlFor="char-appearance" className="form-label">Appearance Description</label>
+                    <button
+                        type="button"
+                        className="btn btn-outline-primary btn-sm generate-ai-button"
+                        onClick={() => handleGenerateAspect("appearance_description")}
+                        disabled={isGeneratingAppearance || isSubmitting}
+                        title="Generate Appearance Description with AI"
+                    >
+                        {isGeneratingAppearance ? <LoadingSpinner /> : '✨ Gen AI'}
+                    </button>
+                </div>
                 <textarea
                     className="form-control"
                     id="char-appearance"
-                    rows={3}
+                    rows={5} // Increased rows
                     value={appearanceDescription}
                     onChange={(e) => setAppearanceDescription(e.target.value)}
                 ></textarea>
+                {appearanceGenError && <small className="text-danger d-block mt-1">{appearanceGenError}</small>}
             </div>
 
             {/* Stats Section Wrapper - MOVED HERE */}
