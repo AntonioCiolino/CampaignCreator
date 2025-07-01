@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Character, CharacterStats, CharacterCreate, CharacterUpdate } from '../../types/characterTypes'; // Assuming path
+import './CharacterForm.css'; // Import the CSS file
 
 interface CharacterFormProps {
     initialData?: Character | null; // For editing
@@ -97,7 +98,7 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
     };
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="character-form-container">
             {formError && <div className="alert alert-danger">{formError}</div>}
 
             <div className="mb-3">

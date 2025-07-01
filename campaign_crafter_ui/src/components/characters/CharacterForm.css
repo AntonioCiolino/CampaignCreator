@@ -1,0 +1,101 @@
+/* Styles for CharacterForm.tsx */
+
+.character-form-container {
+    /* Add overall padding or margin for the form container if needed */
+    /* Example: padding: 1rem; */
+}
+
+/* General Form Group Spacing - assuming Bootstrap's .mb-3 is used,
+   or replace with a custom class if preferred */
+.character-form-container .form-group, /* If you use a custom .form-group class */
+.character-form-container .mb-3 { /* If using Bootstrap margin utility */
+    margin-bottom: 1.25rem; /* Consistent vertical spacing */
+}
+
+.character-form-container .form-label {
+    font-weight: 500; /* Slightly bolder labels */
+    margin-bottom: 0.375rem; /* Space between label and input */
+    color: var(--text-color, #333);
+}
+
+.character-form-container .form-control {
+    border-radius: var(--border-radius-sm, 0.25rem); /* Consistent border radius */
+    border-color: var(--border-color, #ced4da);
+    padding: 0.5rem 0.75rem; /* Standard padding */
+}
+
+.character-form-container .form-control:focus {
+    border-color: var(--primary-color, #007bff);
+    box-shadow: 0 0 0 0.2rem rgba(var(--primary-color-rgb, 0,123,255), 0.25); /* Use RGB for box-shadow color */
+}
+
+/* Styling for the stats section header */
+.character-form-container h5.mt-4 { /* Targets the "Stats" <h5> title */
+    margin-top: 1.5rem; /* Ensure some space above the "Stats" title */
+    margin-bottom: 1rem; /* Space below "Stats" title */
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color-light, #eee);
+    font-size: 1.25rem;
+    color: var(--text-color-headings, var(--text-color));
+}
+
+/* Direct targeting of the row containing stats */
+.character-form-container div.row > div[class*="col-"] > .form-label {
+    font-size: 0.9em;
+    display: block;
+    text-align: center;
+    margin-bottom: 0.25rem;
+}
+
+.character-form-container div.row > div[class*="col-"] > .form-control[type="number"] {
+    text-align: center;
+    padding-left: 0.5rem; /* Adjust padding if text centering makes it look off */
+    padding-right: 0.5rem;
+}
+
+/* Ensure consistent height for stat input wrappers if content varies, using flex */
+.character-form-container div.row > div[class*="col-"].mb-3 {
+    display: flex;
+    flex-direction: column;
+}
+
+.character-form-container div.row > div[class*="col-"].mb-3 > .form-control[type="number"] {
+    flex-grow: 1; /* Allow input to grow if label heights differ slightly */
+}
+
+
+/* Submit Button */
+.character-form-container button[type="submit"].btn-primary {
+    /* Ensure it uses the primary button styling from global/App.css */
+    /* Add any specific overrides if necessary */
+    padding: 0.6rem 1.25rem;
+    font-size: 1rem;
+}
+
+/* Error Message Styling */
+.character-form-container .alert-danger {
+    /* Ensure it uses styles from AlertMessage.css or global alert styles */
+    /* Add specific overrides if needed */
+    margin-bottom: 1.5rem; /* Space below error if it appears */
+}
+
+/* Responsive adjustments for the form */
+@media (max-width: 768px) {
+    .character-form-container .stats-grid-row .col-md-4 {
+        /* Example: stack to 2 columns on smaller screens if bootstrap .col-sm-6 is used,
+           or define custom behavior. If using .col-md-4, they will stack to full width by default.
+           If you want two columns on medium, then one: */
+        /* flex: 0 0 50%; max-width: 50%; */
+    }
+}
+
+@media (max-width: 576px) {
+    .character-form-container .stats-grid-row .col-md-4 {
+        /* Stack to single column on very small screens */
+        /* flex: 0 0 100%; max-width: 100%; */
+    }
+
+    .character-form-container h5.mt-4 {
+        font-size: 1.15rem;
+    }
+}
