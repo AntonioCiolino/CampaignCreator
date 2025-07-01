@@ -3,6 +3,7 @@ import {
     Character,
     CharacterCreate,
     CharacterUpdate,
+    CharacterImageGenerationRequest, // Added import
     // CharacterStats is used internally by other types but not directly as a param/return type of service functions here
     // CharacterBase is also implicitly handled by Character, CharacterCreate
 } from '../types/characterTypes';
@@ -96,6 +97,20 @@ export const generateCharacterResponse = async (
     const response = await apiClient.post<LLMTextGenerationResponse>(
         `${CHARACTER_API_URL}/${characterId}/generate-response`,
         requestBody
+    );
+    return response.data;
+};
+
+/**
+ * Generates an image for a character and returns the updated character data.
+ */
+export const generateCharacterImage = async (
+    characterId: number,
+    payload: CharacterImageGenerationRequest
+): Promise<Character> => {
+    const response = await apiClient.post<Character>(
+        `${CHARACTER_API_URL}/${characterId}/generate-image`,
+        payload
     );
     return response.data;
 };

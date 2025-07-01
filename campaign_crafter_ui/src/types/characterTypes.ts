@@ -49,3 +49,15 @@ export interface Character extends CharacterBase {
 //   title: string;
 //   // ... other campaign properties
 // }
+
+// Type for the payload when requesting character image generation
+// Corresponds to ImageModelName: "dall-e" | "stable-diffusion" | "gemini" from llmService.ts (consider moving ImageModelName to a shared types file)
+export interface CharacterImageGenerationRequest {
+    additional_prompt_details?: string | null;
+    model_name?: string | null;
+    size?: string | null;
+    quality?: string | null;        // For DALL-E
+    steps?: number | null;          // For Stable Diffusion
+    cfg_scale?: number | null;      // For Stable Diffusion
+    gemini_model_name?: string | null; // Specific model for Gemini image gen
+}

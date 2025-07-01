@@ -27,6 +27,10 @@ const CharacterDetailPage: React.FC = () => {
     const [llmResponse, setLlmResponse] = useState<string | null>(null);
     const [isGeneratingResponse, setIsGeneratingResponse] = useState<boolean>(false);
     const [llmError, setLlmError] = useState<string | null>(null);
+
+    // Image Generation State
+    const [isGeneratingImage, setIsGeneratingImage] = useState<boolean>(false);
+    const [imageGenError, setImageGenError] = useState<string | null>(null);
     // TODO: Consider adding state for selectedLLMModelForCharacterInteraction if implementing model selection UI
 
 
@@ -230,6 +234,27 @@ const CharacterDetailPage: React.FC = () => {
         );
     };
 
+    const handleGenerateNewImage = async () => {
+        if (!character) {
+            setImageGenError("Character data not available to generate image.");
+            return;
+        }
+        // For simplicity, no additional prompt or model selection in this first pass.
+        // Uses character's name and appearance_description by default from the backend.
+        setIsGeneratingImage(true);
+        setImageGenError(null);
+        try {
+            const updatedCharacter = await characterService.generateCharacterImage(character.id, {}); // Empty payload for now
+            setCharacter(updatedCharacter); // Update character state with new image_urls
+            // Optionally, add a success notification
+        } catch (err: any) {
+            console.error("Failed to generate character image:", err);
+            setImageGenError(err.response?.data?.detail || "Failed to generate image for character.");
+        } finally {
+            setIsGeneratingImage(false);
+        }
+    };
+
     const handleGenerateCharacterResponse = async () => {
         if (!character || !llmUserPrompt.trim()) {
             setLlmError("Please enter a prompt for the character.");
@@ -302,17 +327,30 @@ const CharacterDetailPage: React.FC = () => {
                 {renderStats(character.stats)}
             </div>
 
-            {character.image_urls && character.image_urls.length > 0 && (
-                <div className="card mb-3">
-                    <div className="card-header">Images</div>
-                    <div className="card-body">
-                        {character.image_urls.map((url, index) => (
-                            <img key={index} src={url} alt={`${character.name} image ${index + 1}`} className="img-thumbnail me-2 mb-2" style={{ maxWidth: '200px', maxHeight: '200px' }} onError={(e) => (e.currentTarget.style.display = 'none')} />
-                        ))}
-                         {character.image_urls.length === 0 && <p>No images provided.</p>}
-                    </div>
+            {/* Always show the Images card header and generate button */}
+            <div className="card mb-3">
+                <div className="card-header d-flex justify-content-between align-items-center">
+                    Images
+                    <button
+                        className="btn btn-sm btn-outline-success"
+                        onClick={handleGenerateNewImage}
+                        disabled={isGeneratingImage}
+                    >
+                        {isGeneratingImage ? 'Generating...' : 'Generate New Image'}
+                    </button>
                 </div>
-            )}
+                <div className="card-body">
+                    {imageGenError && <p className="text-danger small">{imageGenError}</p>}
+                    {character.image_urls && character.image_urls.length > 0 ? (
+                        character.image_urls.map((url, index) => (
+                            <img key={index} src={url} alt={`${character.name} image ${index + 1}`} className="img-thumbnail me-2 mb-2" style={{ maxWidth: '200px', maxHeight: '200px' }} onError={(e) => (e.currentTarget.style.display = 'none')} />
+                        ))
+                    ) : (
+                        !isGeneratingImage && <p className="text-muted">No images provided. Try generating one!</p>
+                    )}
+                    {isGeneratingImage && (!character.image_urls || character.image_urls.length === 0) && <p className="text-muted">Generating first image...</p> }
+                </div>
+            </div>
 
             {character.video_clip_urls && character.video_clip_urls.length > 0 && (
                  <div className="card mb-3">

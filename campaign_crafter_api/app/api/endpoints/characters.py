@@ -280,3 +280,105 @@ async def generate_character_llm_response(
         print(f"Unexpected error during character response generation: {type(e).__name__} - {str(e)}")
         # Consider logging traceback as well: import traceback; traceback.print_exc()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred while generating the character response.")
+
+@router.post("/{character_id}/generate-image", response_model=models.Character)
+async def generate_character_image_endpoint(
+    character_id: int,
+    request_body: models.CharacterImageGenerationRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)],
+    # Dependency inject ImageGenerationService
+    img_gen_service: Annotated[crud.ImageGenerationService, Depends(crud.ImageGenerationService)]
+):
+    """
+    Generates an image for a character based on their appearance description
+    and optional additional details. Adds the image URL to the character's image_urls list.
+    """
+    db_character = crud.get_character(db=db, character_id=character_id)
+    if db_character is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
+    if db_character.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to generate images for this character")
+
+    base_prompt = f"Character: {db_character.name}."
+    if db_character.appearance_description:
+        base_prompt += f" Appearance: {db_character.appearance_description}."
+    else:
+        base_prompt += " A typical fantasy character." # Fallback if no appearance desc
+
+    if request_body.additional_prompt_details:
+        base_prompt += f" Additional details: {request_body.additional_prompt_details}."
+
+    # Default to a common style if not overridden by other details
+    if "digital art" not in base_prompt.lower() and "photo" not in base_prompt.lower() and "illustration" not in base_prompt.lower():
+        base_prompt += " Style: detailed digital illustration."
+
+    image_url: Optional[str] = None
+    model_to_use = request_body.model_name or "dall-e" # Default to dall-e if not specified
+
+    try:
+        if model_to_use == "dall-e":
+            image_url = await img_gen_service.generate_image_dalle(
+                prompt=base_prompt,
+                db=db,
+                current_user=current_user,
+                size=request_body.size, # Will use service/settings default if None
+                quality=request_body.quality, # Will use service/settings default if None
+                user_id=current_user.id,
+                # campaign_id=None # Character images are not tied to a specific campaign context here
+            )
+        elif model_to_use == "stable-diffusion":
+            # Get user's SD engine preference or system default
+            user_orm = crud.get_user(db, current_user.id)
+            sd_engine_to_use = user_orm.sd_engine_preference if user_orm and user_orm.sd_engine_preference else settings.STABLE_DIFFUSION_DEFAULT_ENGINE
+
+            image_url = await img_gen_service.generate_image_stable_diffusion(
+                prompt=base_prompt,
+                db=db,
+                current_user=current_user,
+                size=request_body.size,
+                steps=request_body.steps,
+                cfg_scale=request_body.cfg_scale,
+                user_id=current_user.id,
+                sd_engine_id=sd_engine_to_use
+                # campaign_id=None
+            )
+        elif model_to_use == "gemini":
+             image_url = await img_gen_service.generate_image_gemini(
+                prompt=base_prompt,
+                db=db,
+                current_user=current_user,
+                size=request_body.size,
+                model=request_body.gemini_model_name, # Pass specific gemini model if provided
+                user_id=current_user.id
+                # campaign_id=None
+            )
+        else:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unsupported image generation model: {model_to_use}")
+
+        if not image_url:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Image generation succeeded but no URL was returned.")
+
+        # Append the new image URL to the character's image_urls list
+        updated_image_urls = list(db_character.image_urls) if db_character.image_urls else []
+        if image_url not in updated_image_urls: # Avoid duplicates, though unlikely with UUIDs
+            updated_image_urls.append(image_url)
+
+        character_update_payload = models.CharacterUpdate(image_urls=updated_image_urls)
+        updated_db_character = crud.update_character(
+            db=db,
+            character_id=character_id,
+            character_update=character_update_payload
+        )
+        if not updated_db_character:
+             # This should ideally not happen if character was fetched successfully before
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update character with new image URL.")
+
+        return updated_db_character
+
+    except HTTPException as e: # Re-raise HTTPExceptions from services or this function
+        raise e
+    except Exception as e:
+        print(f"Unexpected error during character image generation: {type(e).__name__} - {str(e)}")
+        # import traceback; traceback.print_exc() # For more detailed server-side logging if needed
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred while generating the character image.")

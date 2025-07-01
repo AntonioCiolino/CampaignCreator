@@ -359,3 +359,17 @@ class CharacterCampaignLink(BaseModel): # For linking/unlinking, might not be ne
 # This might be done via a separate response model or by adding List[Character] to Campaign model
 # For now, let's assume Character responses will list their campaigns if needed,
 # and Campaign responses might list their characters.
+
+# For Character Image Generation
+class CharacterImageGenerationRequest(BaseModel):
+    additional_prompt_details: Optional[str] = None
+    model_name: Optional[str] = None  # Corresponds to ImageModelName: "dall-e", "stable-diffusion", "gemini"
+    size: Optional[str] = None
+    # Add other relevant params from ImageGenerationParams if needed, e.g., quality, steps, cfg_scale
+    quality: Optional[str] = None # For DALL-E
+    steps: Optional[int] = None # For Stable Diffusion
+    cfg_scale: Optional[float] = None # For Stable Diffusion
+    gemini_model_name: Optional[str] = None # Specific model for Gemini image gen
+
+    # campaign_id: Optional[int] = None # If we want to associate the image with a campaign context during generation
+                                     # For now, character images are global to the character.

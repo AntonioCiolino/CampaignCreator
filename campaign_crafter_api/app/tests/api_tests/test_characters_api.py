@@ -422,3 +422,110 @@ async def test_generate_character_llm_response_api(
         json=request_payload
     )
     assert response_forbidden.status_code == 403
+
+@pytest.mark.asyncio
+@patch('app.api.endpoints.characters.crud.ImageGenerationService') # Patching the service where it's used by Depends
+async def test_generate_character_image_api(
+    MockImageGenerationService: AsyncMock, # Note: If ImageGenerationService methods are async, use AsyncMock for the class
+    async_test_client: AsyncClient,
+    authenticated_user_override: pydantic_models.User,
+    test_user_orm: ORMUser
+):
+    # Configure the mock instance that will be injected
+    mock_img_gen_instance = MockImageGenerationService.return_value
+    mock_img_gen_instance.generate_image_dalle = AsyncMock(return_value="http://example.com/dalle_image.png")
+    mock_img_gen_instance.generate_image_stable_diffusion = AsyncMock(return_value="http://example.com/sd_image.png")
+    mock_img_gen_instance.generate_image_gemini = AsyncMock(return_value="http://example.com/gemini_image.png")
+
+    db = TestingSessionLocal()
+    try:
+        char_create_payload = pydantic_models.CharacterCreate(
+            name="Picture Perfect Pete",
+            appearance_description="A handsome rogue with a charming smile.",
+            image_urls=["http://example.com/initial_image.png"] # Start with one image
+        )
+        pete = crud.create_character(db, char_create_payload, user_id=test_user_orm.id)
+        pete_id = pete.id
+    finally:
+        db.close()
+
+    # 1. Test DALL-E (default)
+    request_payload_dalle = {"additional_prompt_details": "wearing a pirate hat"}
+    response_dalle = await async_test_client.post(
+        f"/api/v1/characters/{pete_id}/generate-image",
+        json=request_payload_dalle
+    )
+    assert response_dalle.status_code == 200, response_dalle.text
+    data_dalle = response_dalle.json()
+    assert "http://example.com/dalle_image.png" in data_dalle["image_urls"]
+    assert "http://example.com/initial_image.png" in data_dalle["image_urls"]
+    assert len(data_dalle["image_urls"]) == 2
+    mock_img_gen_instance.generate_image_dalle.assert_called_once()
+    # Verify prompt construction (simplified check)
+    call_args_dalle = mock_img_gen_instance.generate_image_dalle.call_args
+    assert "Picture Perfect Pete" in call_args_dalle.kwargs['prompt']
+    assert "handsome rogue" in call_args_dalle.kwargs['prompt']
+    assert "pirate hat" in call_args_dalle.kwargs['prompt']
+    assert "digital illustration" in call_args_dalle.kwargs['prompt'] # Default style cue
+
+    # Reset mock for next call if necessary, or ensure it's instance-specific if Depends creates new one
+    mock_img_gen_instance.generate_image_dalle.reset_mock() # Reset this specific method
+
+    # 2. Test Stable Diffusion
+    request_payload_sd = {
+        "model_name": "stable-diffusion",
+        "additional_prompt_details": "underwater",
+        "size": "512x512", # Example param
+        "steps": 30
+    }
+    # Need to refresh Pete's state or re-fetch if the test client doesn't share DB session perfectly
+    # For this test, we assume the list grows from the previous state in memory if the endpoint returns the updated character
+    # Or, more robustly, fetch the character from DB after each update if not relying on response
+
+    response_sd = await async_test_client.post(
+        f"/api/v1/characters/{pete_id}/generate-image",
+        json=request_payload_sd
+    )
+    assert response_sd.status_code == 200, response_sd.text
+    data_sd = response_sd.json()
+    assert "http://example.com/sd_image.png" in data_sd["image_urls"]
+    assert "http://example.com/dalle_image.png" in data_sd["image_urls"] # From previous call
+    assert "http://example.com/initial_image.png" in data_sd["image_urls"]
+    assert len(data_sd["image_urls"]) == 3
+    mock_img_gen_instance.generate_image_stable_diffusion.assert_called_once()
+    call_args_sd = mock_img_gen_instance.generate_image_stable_diffusion.call_args
+    assert "underwater" in call_args_sd.kwargs['prompt']
+    assert call_args_sd.kwargs['size'] == "512x512"
+    assert call_args_sd.kwargs['steps'] == 30
+
+
+    # 3. Test with unsupported model
+    request_payload_unsupported = {"model_name": "unsupported-model"}
+    response_unsupported = await async_test_client.post(
+        f"/api/v1/characters/{pete_id}/generate-image",
+        json=request_payload_unsupported
+    )
+    assert response_unsupported.status_code == 400
+    assert "Unsupported image generation model" in response_unsupported.json()["detail"]
+
+    # 4. Test character not found
+    response_not_found = await async_test_client.post(
+        "/api/v1/characters/99999/generate-image",
+        json=request_payload_dalle
+    )
+    assert response_not_found.status_code == 404
+
+    # 5. Test unauthorized (character owned by another user)
+    db = TestingSessionLocal()
+    try:
+        other_user = crud.create_user(db, pydantic_models.UserCreate(username="otherimguser", email="oimg@example.com", password="p"))
+        other_char = crud.create_character(db, pydantic_models.CharacterCreate(name="Other's Img Char"), user_id=other_user.id)
+        other_char_id = other_char.id
+    finally:
+        db.close()
+
+    response_forbidden = await async_test_client.post(
+        f"/api/v1/characters/{other_char_id}/generate-image",
+        json=request_payload_dalle
+    )
+    assert response_forbidden.status_code == 403
