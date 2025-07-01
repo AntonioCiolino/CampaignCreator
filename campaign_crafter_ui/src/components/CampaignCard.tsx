@@ -1,7 +1,7 @@
 import React from 'react';
 // Link is not directly used here anymore if Card handles navigation via href
 // import { Link } from 'react-router-dom'; 
-import { Campaign } from '../types/campaignTypes'; // Corrected import path
+import { Campaign } from '../services/campaignService';
 import Card from './common/Card'; // Import the new Card component
 import './CampaignCard.css'; // CSS for specific content styling within the card
 

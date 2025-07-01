@@ -89,24 +89,6 @@ class AbstractLLMService(ABC):
         '''
         pass
 
-    @abstractmethod
-    async def generate_character_response(
-        self,
-        character_name: str,
-        character_notes: str, # This will contain personality, background, etc.
-        user_prompt: str,     # The query or situation the character should respond to
-        current_user: UserModel,
-        db: Session,
-        model: Optional[str] = None,
-        temperature: Optional[float] = 0.7,
-        max_tokens: Optional[int] = 300 # Default to a moderate length for dialogue/response
-    ) -> str:
-        """
-        Generates a response as if spoken or written by a specific character.
-        Uses character_notes to inform the LLM about the character's persona.
-        """
-        pass
-
 # --- Dummy LLMService for placeholder/testing, updated to match async and new signatures ---
 class LLMService(AbstractLLMService): # Note: This is a dummy implementation
     def __init__(self, api_key: Optional[str] = None):
@@ -164,21 +146,3 @@ class LLMService(AbstractLLMService): # Note: This is a dummy implementation
         if not sections_summary:
             return ""
         return f"Dummy Homebrewery TOC based on sections: {sections_summary}"
-
-    async def generate_character_response(
-        self,
-        character_name: str,
-        character_notes: str,
-        user_prompt: str,
-        current_user: UserModel,
-        db: Session,
-        model: Optional[str] = None,
-        temperature: Optional[float] = 0.7,
-        max_tokens: Optional[int] = 300
-    ) -> str:
-        print(f"Dummy LLMService: generate_character_response called for character '{character_name}' by user {current_user.id} with model {model}")
-        return (
-            f"As {character_name} (drawing from notes: '{character_notes[:50]}...'), "
-            f"I would respond to '{user_prompt}' by saying: "
-            f"'This is a dummy response from {self.__class__.__name__}.'"
-        )

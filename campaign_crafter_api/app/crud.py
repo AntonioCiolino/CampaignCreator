@@ -260,123 +260,6 @@ def delete_roll_table(db: Session, roll_table_id: int) -> Optional[orm_models.Ro
     # For consistency with other delete functions, returning the object.
     return db_roll_table
 
-# --- Character CRUD Functions ---
-
-def create_character(db: Session, character: models.CharacterCreate, user_id: int) -> orm_models.Character:
-    """Creates a new character."""
-    char_data = character.model_dump(exclude_unset=True) # Get data from Pydantic model
-
-    # Handle stats separately if they are nested in the Pydantic model
-    stats_data = char_data.pop('stats', None) # Remove stats from char_data if present
-
-    db_character = orm_models.Character(**char_data, owner_id=user_id)
-
-    if stats_data: # If stats were provided in the input
-        for key, value in stats_data.items():
-            if hasattr(db_character, key) and value is not None:
-                setattr(db_character, key, value)
-
-    db.add(db_character)
-    db.commit()
-    db.refresh(db_character)
-    return db_character
-
-def get_character(db: Session, character_id: int) -> Optional[orm_models.Character]:
-    """Gets a single character by their ID."""
-    return db.query(orm_models.Character).filter(orm_models.Character.id == character_id).first()
-
-def get_characters_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100) -> List[orm_models.Character]:
-    """Gets all characters for a specific user."""
-    return db.query(orm_models.Character).filter(orm_models.Character.owner_id == user_id).offset(skip).limit(limit).all()
-
-def get_characters_by_campaign(db: Session, campaign_id: int, skip: int = 0, limit: int = 100) -> List[orm_models.Character]:
-    """Gets all characters associated with a specific campaign."""
-    return db.query(orm_models.Character).join(orm_models.Character.campaigns).filter(orm_models.Campaign.id == campaign_id).offset(skip).limit(limit).all()
-
-def update_character(db: Session, character_id: int, character_update: models.CharacterUpdate) -> Optional[orm_models.Character]:
-    """Updates an existing character."""
-    db_character = get_character(db, character_id)
-    if not db_character:
-        return None
-
-    update_data = character_update.model_dump(exclude_unset=True)
-
-    # Handle stats separately if they are part of the update
-    stats_update_data = update_data.pop('stats', None)
-
-    for key, value in update_data.items():
-        setattr(db_character, key, value)
-
-    if stats_update_data:
-        for key, value in stats_update_data.items():
-            if hasattr(db_character, key) and value is not None: # Ensure stat exists and value is provided
-                setattr(db_character, key, value)
-
-    db.add(db_character)
-    db.commit()
-    db.refresh(db_character)
-    return db_character
-
-def delete_character(db: Session, character_id: int) -> Optional[orm_models.Character]:
-    """Deletes a character."""
-    db_character = get_character(db, character_id)
-    if not db_character:
-        return None
-
-    # Note: Many-to-many relationships in SQLAlchemy might require explicit handling
-    # of association table entries before deleting the character, or rely on cascade settings.
-    # For now, assuming direct delete is sufficient or cascade is set up in ORM if needed.
-    # If association entries need explicit deletion, that logic would go here.
-    # Example: db_character.campaigns.clear() # If using SQLAlchemy's association proxy
-
-    db.delete(db_character)
-    db.commit()
-    return db_character
-
-def add_character_to_campaign(db: Session, character_id: int, campaign_id: int) -> Optional[orm_models.Character]:
-    """Adds an existing character to an existing campaign."""
-    db_character = get_character(db, character_id)
-    if not db_character:
-        # Consider raising an error or returning a specific status
-        return None
-
-    db_campaign = get_campaign(db, campaign_id) # Assuming get_campaign CRUD exists
-    if not db_campaign:
-        # Consider raising an error or returning a specific status
-        return None
-
-    # Check if the character is already in the campaign to prevent duplicates
-    if db_campaign not in db_character.campaigns:
-        db_character.campaigns.append(db_campaign)
-        db.commit()
-        db.refresh(db_character)
-    return db_character
-
-def get_campaigns_for_character(db: Session, character_id: int) -> List[orm_models.Campaign]:
-    """
-    Retrieves all campaigns associated with a specific character.
-    Returns an empty list if the character is not found or has no associated campaigns.
-    """
-    db_character = get_character(db, character_id=character_id)
-    if not db_character:
-        return [] # Character not found
-    return list(db_character.campaigns) # Access the relationship
-def remove_character_from_campaign(db: Session, character_id: int, campaign_id: int) -> Optional[orm_models.Character]:
-    """Removes a character from a campaign."""
-    db_character = get_character(db, character_id)
-    if not db_character:
-        return None
-
-    db_campaign = get_campaign(db, campaign_id)
-    if not db_campaign:
-        return None
-
-    if db_campaign in db_character.campaigns:
-        db_character.campaigns.remove(db_campaign)
-        db.commit()
-        db.refresh(db_character)
-    return db_character
-
 def copy_system_roll_table_to_user(db: Session, system_table: orm_models.RollTable, user_id: int) -> orm_models.RollTable:
     """
     Copies a system roll table (where user_id is None) to a specific user.
@@ -685,6 +568,82 @@ async def update_section_order(db: Session, campaign_id: int, ordered_section_id
 
 def get_all_campaigns(db: Session):
     return db.query(orm_models.Campaign).all()
+
+# --- Character CRUD Functions ---
+def create_character(db: Session, character: models.CharacterCreate) -> orm_models.Character:
+    # Convert Pydantic CharacterImage models to ORM CharacterImage models
+    db_images = []
+    if character.images:
+        for img_data in character.images:
+            db_images.append(orm_models.CharacterImage(
+                url=str(img_data.url),  # Ensure URL is string
+                caption=img_data.caption
+            ))
+
+    db_character = orm_models.Character(
+        name=character.name,
+        icon_url=str(character.icon_url) if character.icon_url else None, # Ensure URL is string
+        stats=character.stats,
+        notes=character.notes,
+        chatbot_enabled=character.chatbot_enabled,
+        campaign_id=character.campaign_id,
+        images=db_images  # Assign the list of ORM images
+    )
+    db.add(db_character)
+    db.commit()
+    db.refresh(db_character)
+    return db_character
+
+def get_character(db: Session, character_id: int) -> Optional[orm_models.Character]:
+    return db.query(orm_models.Character).filter(orm_models.Character.id == character_id).first()
+
+def get_characters_by_campaign(db: Session, campaign_id: int, skip: int = 0, limit: int = 100) -> List[orm_models.Character]:
+    return db.query(orm_models.Character).filter(orm_models.Character.campaign_id == campaign_id).offset(skip).limit(limit).all()
+
+def update_character(db: Session, character_id: int, character_update: models.CharacterUpdate) -> Optional[orm_models.Character]:
+    db_character = get_character(db, character_id)
+    if not db_character:
+        return None
+
+    update_data = character_update.model_dump(exclude_unset=True)
+
+    if "images" in update_data and update_data["images"] is not None:
+        # Clear existing images for simplicity, or implement more complex diffing
+        db_character.images = []
+        for img_data_dict in update_data["images"]:
+            # Ensure img_data_dict is a dictionary if it's coming from Pydantic model
+            img_model = models.CharacterImage(**img_data_dict) # Validate with Pydantic model
+            db_character.images.append(orm_models.CharacterImage(
+                url=str(img_model.url), # Ensure URL is string
+                caption=img_model.caption
+            ))
+        del update_data["images"] # Remove images from update_data as it's handled
+
+    for key, value in update_data.items():
+        if key == "icon_url" and value is not None:
+            setattr(db_character, key, str(value)) # Ensure URL is string
+        else:
+            setattr(db_character, key, value)
+
+    db.add(db_character)
+    db.commit()
+    db.refresh(db_character)
+    return db_character
+
+def delete_character(db: Session, character_id: int) -> Optional[orm_models.Character]:
+    db_character = get_character(db, character_id)
+    if not db_character:
+        return None
+
+    # Manually delete associated images if cascade delete is not configured or reliable
+    # For M2M with association_proxy, SQLAlchemy might handle this if images are part of Character's children.
+    # If CharacterImage has a direct FK to Character and cascade is set, it's automatic.
+    # Assuming CharacterImage ORM has cascade="all, delete-orphan" on its relationship from Character.
+    # If not, you'd iterate db_character.images and delete them.
+
+    db.delete(db_character)
+    db.commit()
+    return db_character
 
 # --- GeneratedImage CRUD Functions ---
 def delete_generated_image_by_blob_name(db: Session, blob_name: str, user_id: int) -> Optional[orm_models.GeneratedImage]:

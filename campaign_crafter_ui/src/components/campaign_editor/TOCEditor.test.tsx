@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import TOCEditor from './TOCEditor';
-import { TOCEntry } from '../../types/campaignTypes'; // Corrected import path
+import { TOCEntry } from '../../services/campaignService'; // Assuming TOCEntry is exported here
 import { jest } from '@jest/globals'; // For mocking
 
 // Mock react-beautiful-dnd as it's not needed for these basic tests and can cause issues

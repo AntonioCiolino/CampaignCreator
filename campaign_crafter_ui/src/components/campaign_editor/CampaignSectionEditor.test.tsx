@@ -6,7 +6,7 @@ import CampaignSectionEditor from './CampaignSectionEditor';
 // For interaction tests like delete, we need to ensure the button within CampaignSectionView is found if delete is there.
 // However, the provided mock is fine for testing if CampaignSectionEditor passes props correctly.
 // The current test structure relies on the mock.
-import { CampaignSection } from '../../types/campaignTypes'; // Corrected import path
+import { CampaignSection } from '../../services/campaignService'; // Corrected import path
 
 // Mock CampaignSectionView as it's a child component and not the focus of this unit test
 jest.mock('../CampaignSectionView', () => {

@@ -9,11 +9,9 @@ import NotFoundPage from '../pages/NotFoundPage';
 import LoginPage from '../pages/LoginPage';
 import AboutPage from '../pages/AboutPage'; // Import for AboutPage
 import ProtectedRoute from './ProtectedRoute';
+import CharacterListPage from '../pages/CharacterListPage'; // Import CharacterListPage
+import CharacterEditorPage from '../pages/CharacterEditorPage'; // Import CharacterEditorPage
 // import CampaignCreatePage from '../pages/CampaignCreatePage'; // Placeholder
-import CharacterListPage from '../pages/CharacterListPage';
-import CharacterDetailPage from '../pages/CharacterDetailPage';
-import CharacterCreatePage from '../pages/CharacterCreatePage';
-import CharacterEditPage from '../pages/CharacterEditPage';
 
 const AppRoutes: React.FC = () => {
   return (
@@ -28,14 +26,12 @@ const AppRoutes: React.FC = () => {
         <Route path="/" element={<DashboardPage />} />
         {/* Assuming existing path /campaign/:campaignId is for editing */}
         <Route path="/campaign/:campaignId" element={<CampaignEditorPage />} />
+        {/* Character Routes - nested under a campaign context */}
+        <Route path="/campaign/:campaignId/characters" element={<CharacterListPage />} />
+        <Route path="/campaign/:campaignId/character/:characterId" element={<CharacterEditorPage />} />
+        {/* The :characterId can be 'new' or an actual ID */}
         {/* Add other routes that require any authenticated user, e.g., CampaignCreatePage */}
         {/* <Route path="/campaign/new" element={<CampaignCreatePage />} /> */}
-
-        {/* Character Management Routes */}
-        <Route path="/characters" element={<CharacterListPage />} />
-        <Route path="/characters/new" element={<CharacterCreatePage />} />
-        <Route path="/characters/:characterId" element={<CharacterDetailPage />} />
-        <Route path="/characters/:characterId/edit" element={<CharacterEditPage />} />
       </Route>
 
       {/* Protected Routes - Explicitly 'user' role (any authenticated user) */}

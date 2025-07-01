@@ -5,8 +5,8 @@ import { useParams } from 'react-router-dom';
 import CampaignEditorPage from './CampaignEditorPage';
 import * as campaignService from '../services/campaignService';
 import * as llmService from '../services/llmService';
-import { Campaign, CampaignSection, TOCEntry } from '../types/campaignTypes'; // Corrected import
-import { LLMModel } from '../services/llmService'; // LLMModel is likely from llmService or a shared llmTypes
+import { Campaign, CampaignSection, TOCEntry } from '../services/campaignService';
+import { LLMModel } from '../services/llmService';
 
 // Mock external services and hooks
 jest.mock('react-router-dom', () => ({

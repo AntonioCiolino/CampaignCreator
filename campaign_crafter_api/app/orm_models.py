@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime, Float, JSON, Table
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime, Float, JSON
 from sqlalchemy.orm import relationship, Mapped, mapped_column # Ensure Mapped and mapped_column are imported
 from sqlalchemy.sql import func # For default datetime
 from typing import Optional # For Mapped[Optional[...]]
@@ -73,11 +73,7 @@ class Campaign(Base):
 
     owner = relationship("User", back_populates="campaigns")
     sections = relationship("CampaignSection", back_populates="campaign", cascade="all, delete-orphan")
-    characters = relationship(
-        "Character",
-        secondary='character_campaign_association', # Use the string name of the table
-        back_populates="campaigns"
-    )
+    characters = relationship("Character", back_populates="campaign", cascade="all, delete-orphan") # New relationship
 
 class CampaignSection(Base):
     __tablename__ = "campaign_sections"
@@ -152,48 +148,28 @@ class RollTableItem(Base):
 
     roll_table = relationship("RollTable", back_populates="items")
 
-# Association table for Character and Campaign (many-to-many)
-character_campaign_association = Table(
-    'character_campaign_association', Base.metadata,
-    Column('character_id', Integer, ForeignKey('characters.id'), primary_key=True),
-    Column('campaign_id', Integer, ForeignKey('campaigns.id'), primary_key=True)
-)
+# Character and CharacterImage ORM Models
+class CharacterImage(Base):
+    __tablename__ = "character_images"
+
+    id = Column(Integer, primary_key=True, index=True)
+    url = Column(String, nullable=False)
+    caption = Column(String, nullable=True)
+    character_id = Column(Integer, ForeignKey("characters.id"), nullable=False)
+
+    character = relationship("Character", back_populates="images")
 
 class Character(Base):
     __tablename__ = "characters"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True, nullable=False)
-    description = Column(Text, nullable=True)
-    appearance_description = Column(Text, nullable=True)
-    image_urls = Column(JSON, nullable=True) # Storing list of strings as JSON
-    video_clip_urls = Column(JSON, nullable=True) # Storing list of strings as JSON
-    notes_for_llm = Column(Text, nullable=True)
+    icon_url = Column(String, nullable=True)
+    stats = Column(JSON, nullable=True) # Storing stats as JSON
+    notes = Column(Text, nullable=True)
+    chatbot_enabled = Column(Boolean, default=False)
 
-    # Stats - stored as individual columns for querying, can be grouped in Pydantic model
-    strength = Column(Integer, default=10)
-    dexterity = Column(Integer, default=10)
-    constitution = Column(Integer, default=10)
-    intelligence = Column(Integer, default=10)
-    wisdom = Column(Integer, default=10)
-    charisma = Column(Integer, default=10)
+    campaign_id = Column(Integer, ForeignKey("campaigns.id"), nullable=False)
+    campaign = relationship("Campaign", back_populates="characters")
 
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    owner = relationship("User", backref="characters") # backref creates `characters` on User
-
-    # Many-to-many relationship with Campaign
-    campaigns = relationship(
-        "Campaign",
-        secondary=character_campaign_association,
-        back_populates="characters" # Requires 'characters' relationship on Campaign model
-    )
-
-# Need to add 'characters' relationship to Campaign model
-# This will be done in a separate step if modifying Campaign ORM is complex,
-# or can be done now if simple. For now, assuming it will be added.
-# Example of what to add to Campaign ORM model:
-# characters = relationship(
-# "Character",
-# secondary=character_campaign_association,
-# back_populates="campaigns"
-# )
+    images = relationship("CharacterImage", back_populates="character", cascade="all, delete-orphan")

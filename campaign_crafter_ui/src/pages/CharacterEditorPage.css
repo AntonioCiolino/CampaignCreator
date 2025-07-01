@@ -1,0 +1,128 @@
+.character-editor-page {
+  padding: 1rem 2rem; /* Standard page padding */
+  max-width: 900px; /* Constrain width for better readability */
+  margin: 0 auto; /* Center the content */
+  color: var(--text-color-primary, #f0f0f0);
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--primary-color, #007bff);
+}
+
+.editor-header h2 {
+  font-size: 1.8rem;
+  color: var(--heading-color, #e0e0e0);
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem; /* Space between buttons in the header */
+}
+
+.editor-form {
+  background-color: var(--background-color-dark, #252525); /* Slightly lighter than page bg for contrast */
+  padding: 1.5rem;
+  border-radius: var(--border-radius-large, 12px);
+  box-shadow: var(--box-shadow-lg, 0 8px 25px rgba(0,0,0,0.25));
+  border: 1px solid var(--border-color, #555);
+}
+
+/* Styling for common/Input, common/Textarea, common/Checkbox if not globally sufficient */
+/* Example:
+.editor-form .form-group { margin-bottom: 1rem; }
+.editor-form .form-group label { display: block; margin-bottom: 0.3rem; font-weight: 500; }
+*/
+
+.form-section {
+  padding: 1rem 0; /* Padding within each tab's content area */
+}
+.form-section .input-component, /* Assuming common Input has .input-component */
+.form-section .textarea-component, /* Assuming common Textarea has .textarea-component */
+.form-section .checkbox-component { /* Assuming common Checkbox has .checkbox-component */
+  margin-bottom: 1.25rem;
+}
+
+
+.icon-preview-container {
+  margin-top: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding: 0.5rem;
+  border: 1px dashed var(--border-color-light, #444);
+  border-radius: var(--border-radius-small, 4px);
+  display: inline-block; /* So it doesn't take full width */
+  background-color: var(--background-color, #1e1e1e);
+}
+
+.icon-preview {
+  max-width: 150px;
+  max-height: 150px;
+  border-radius: var(--border-radius-small, 4px);
+  object-fit: contain;
+  display: block; /* Remove extra space below image */
+}
+
+.chatbot-placeholder {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: var(--background-color, #1e1e1e);
+  border: 1px dashed var(--info-color, #17a2b8);
+  border-radius: var(--border-radius-medium, 8px);
+  color: var(--text-color-secondary, #b0b0b0);
+  font-size: 0.9rem;
+}
+
+.chatbot-placeholder p {
+  margin: 0.5rem 0;
+}
+
+.form-actions {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color-light, #444);
+  display: flex;
+  justify-content: flex-end; /* Align save button to the right */
+}
+
+.form-actions .button-primary { /* Assuming common/Button uses .button-primary */
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+}
+
+.error-message.page-error { /* Already defined in CharacterListPage.css, ensure consistency or scope */
+  margin-bottom: 1.5rem; /* Space below page-level error */
+  text-align: center;
+  color: var(--danger-color, #dc3545);
+  background-color: rgba(220, 53, 69, 0.1);
+  padding: 1rem;
+  border-radius: var(--border-radius-medium, 8px);
+  border: 1px solid var(--danger-color, #dc3545);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .character-editor-page {
+    padding: 1rem;
+  }
+
+  .editor-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .editor-header h2 {
+    margin-bottom: 0.75rem;
+  }
+  .header-actions {
+    width: 100%;
+    justify-content: space-between; /* Space out buttons on mobile header */
+  }
+
+  .editor-form {
+    padding: 1rem;
+  }
+}

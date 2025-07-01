@@ -6,10 +6,9 @@ import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Checkbox from '../components/common/Checkbox'; // Import Checkbox component
 import './DashboardPage.css'; 
-import { Campaign, CampaignCreatePayload } from '../types/campaignTypes'; // Corrected import
 
 const DashboardPage: React.FC = () => {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]); // Use imported Campaign type
+  const [campaigns, setCampaigns] = useState<campaignService.Campaign[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,7 +51,7 @@ const DashboardPage: React.FC = () => {
     try {
       setIsCreating(true);
       setCreateError(null);
-      const newCampaignData: CampaignCreatePayload = { // Use imported CampaignCreatePayload type
+      const newCampaignData: campaignService.CampaignCreatePayload = {
         title: newCampaignTitle,
         initial_user_prompt: skipConceptGeneration ? undefined : newCampaignPrompt, // Send undefined if skipping
         skip_concept_generation: skipConceptGeneration, // Add the new flag

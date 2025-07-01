@@ -35,15 +35,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <h1>Campaign Crafter</h1>
         </Link>
 
-        <nav className="main-nav">
-          {token && user && (
-            <ul>
-              <li><Link to="/characters" onClick={closeMobileMenu}>Characters</Link></li>
-              {/* Add other main navigation links here if needed */}
-            </ul>
-          )}
-        </nav>
-
         {/* Hamburger menu button and its <nav> are now removed */}
         {/* Mobile navigation will need to be re-thought if a hamburger is desired only for mobile. */}
         {/* For now, this removes the hamburger functionality entirely. */}

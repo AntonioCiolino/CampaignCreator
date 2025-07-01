@@ -1,0 +1,195 @@
+.character-stats-editor {
+  padding: 1rem;
+  background-color: var(--background-color-light, #2a2a2a);
+  border-radius: var(--border-radius-medium, 8px);
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border-color, #555);
+}
+
+.character-stats-editor h4 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: var(--heading-color, #e0e0e0);
+  border-bottom: 1px solid var(--border-color-light, #444);
+  padding-bottom: 0.5rem;
+}
+
+.no-stats-message {
+  color: var(--text-color-secondary, #b0b0b0);
+  font-style: italic;
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.stats-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem 0;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column; /* Stack edit form items vertically */
+  justify-content: space-between;
+  align-items: stretch; /* Stretch items to fill width */
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--border-color-light, #444);
+  background-color: var(--background-color, #1e1e1e);
+  border-radius: var(--border-radius-small, 4px);
+  margin-bottom: 0.5rem;
+}
+
+.stat-item:last-child {
+  border-bottom: none;
+}
+
+.stat-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.stat-key {
+  font-weight: bold;
+  color: var(--primary-color-light, #66b2ff);
+  margin-right: 0.5rem;
+  flex-shrink: 0; /* Prevent key from shrinking too much */
+}
+
+.stat-value {
+  color: var(--text-color-primary, #f0f0f0);
+  word-break: break-all; /* Allow long values to wrap */
+  flex-grow: 1; /* Allow value to take available space */
+  text-align: left; /* Align value text to the left */
+}
+
+.stat-item-actions {
+  display: flex;
+  gap: 0.5rem; /* Space between buttons */
+  margin-left: 1rem; /* Space from the value */
+  flex-shrink: 0; /* Prevent buttons from shrinking */
+}
+
+.stat-edit-form {
+  display: flex;
+  flex-direction: column; /* For responsive stacking */
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.stat-edit-form .stat-input {
+  margin-bottom: 0; /* Remove bottom margin if it's from a global style */
+}
+
+
+.stat-input {
+  padding: 0.5rem;
+  border: 1px solid var(--input-border-color, #666);
+  background-color: var(--input-bg-color, #333);
+  color: var(--input-text-color, #f0f0f0);
+  border-radius: var(--border-radius-small, 4px);
+  font-size: 0.9rem;
+  flex-grow: 1;
+}
+
+.stat-input.key-input {
+  min-width: 120px; /* Ensure key input has some minimum width */
+}
+.stat-input.value-input {
+   min-width: 100px;
+}
+
+
+.stat-edit-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem; /* Space above buttons when stacked */
+}
+
+.add-stat-form {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color-light, #444);
+  display: flex;
+  flex-direction: column; /* Stack inputs and button */
+  gap: 0.75rem;
+}
+
+.add-stat-form .form-row {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+
+.stat-button {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  border: none;
+  border-radius: var(--border-radius-small, 4px);
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  color: var(--button-text-color, #fff);
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.stat-button:hover {
+  transform: scale(1.05);
+}
+
+.stat-button.add {
+  background-color: var(--success-color, #28a745);
+  width: 100%; /* Full width for the add button */
+}
+.stat-button.add:hover {
+  background-color: var(--success-color-dark, #218838);
+}
+.stat-button.add:disabled {
+  background-color: var(--button-disabled-bg-color, #555);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+
+.stat-button.edit, .stat-button.save {
+  background-color: var(--info-color, #17a2b8);
+}
+.stat-button.edit:hover, .stat-button.save:hover {
+  background-color: var(--info-color-dark, #138496);
+}
+
+.stat-button.remove, .stat-button.cancel {
+  background-color: var(--danger-color, #dc3545);
+}
+.stat-button.remove:hover, .stat-button.cancel:hover {
+  background-color: var(--danger-color-dark, #c82333);
+}
+
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 600px) {
+  .stat-display,
+  .add-stat-form .form-row,
+  .stat-edit-form {
+    flex-direction: column;
+    align-items: stretch; /* Make items take full width */
+  }
+
+  .stat-item-actions {
+    margin-left: 0; /* Remove left margin */
+    margin-top: 0.5rem; /* Add top margin for spacing */
+    justify-content: flex-start; /* Align buttons to the start */
+  }
+
+  .stat-edit-form .stat-input,
+  .add-stat-form .stat-input {
+    width: 100%; /* Full width for inputs */
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+  }
+
+  .stat-button.add {
+     margin-top: 0.5rem; /* Ensure some space if form-row also stacks */
+  }
+}

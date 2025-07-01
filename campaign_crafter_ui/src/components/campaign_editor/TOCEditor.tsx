@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TOCEntry } from '../../types/campaignTypes'; // Corrected import path
+import { TOCEntry } from '../../services/campaignService';
 import { TextField, Button, IconButton, List, Box, Typography, Paper, Autocomplete } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';

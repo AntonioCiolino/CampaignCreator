@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'; // Removed useRef
-import { CampaignSection } from '../types/campaignTypes'; // Corrected import path
+import { CampaignSection } from '../services/campaignService';
 import ReactMarkdown from 'react-markdown';
 import { Typography } from '@mui/material';
 import rehypeRaw from 'rehype-raw';
@@ -11,7 +11,7 @@ import Button from './common/Button'; // Added Button import
 import RandomTableRoller from './RandomTableRoller';
 import ImageGenerationModal from './modals/ImageGenerationModal/ImageGenerationModal'; // Import the new modal
 import './CampaignSectionView.css';
-import { CampaignSectionUpdatePayload } from '../../types/campaignTypes'; // Path was already correct, error might be elsewhere or stale
+import { CampaignSectionUpdatePayload } from '../services/campaignService';
 import { generateTextLLM, LLMTextGenerationParams } from '../services/llmService';
 import { getFeatures } from '../services/featureService'; // Added import
 import { Feature } from '../types/featureTypes'; // Added import

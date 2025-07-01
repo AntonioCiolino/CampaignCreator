@@ -1,116 +1,134 @@
 import apiClient from './apiClient';
-import {
-    Character,
-    CharacterCreate,
-    CharacterUpdate,
-    CharacterImageGenerationRequest, // Added import
-    // CharacterStats is used internally by other types but not directly as a param/return type of service functions here
-    // CharacterBase is also implicitly handled by Character, CharacterCreate
-} from '../types/characterTypes';
-import { Campaign } from '../types/campaignTypes'; // Import Campaign type
-import { LLMTextGenerationParams, LLMTextGenerationResponse } from './llmService'; // Import types
+import { PydanticCharacter, CharacterCreatePayload, CharacterUpdatePayload } from '../types/characterTypes'; // Assuming types will be defined here
 
-// --- API Service Functions ---
+const CHARACTER_API_BASE_PATH = '/api/v1'; // Adjusted base path if necessary
 
-const CHARACTER_API_URL = '/api/v1/characters';
-
-/**
- * Creates a new character.
- */
-export const createCharacter = async (characterData: CharacterCreate): Promise<Character> => {
-    const response = await apiClient.post<Character>(CHARACTER_API_URL + '/', characterData);
-    return response.data;
+// Helper function to construct URLs
+const urls = {
+  charactersForCampaign: (campaignId: number | string) =>
+    `${CHARACTER_API_BASE_PATH}/campaigns/${campaignId}/characters`,
+  characterById: (characterId: number | string) =>
+    `${CHARACTER_API_BASE_PATH}/characters/${characterId}`,
 };
 
 /**
- * Fetches all characters for the current user.
+ * Creates a new character for a specific campaign.
+ * @param campaignId - The ID of the campaign.
+ * @param characterData - The data for the new character.
+ * @returns A promise that resolves to the created character.
  */
-export const getUserCharacters = async (): Promise<Character[]> => {
-    const response = await apiClient.get<Character[]>(CHARACTER_API_URL + '/');
+export const createCharacter = async (
+  campaignId: number | string,
+  characterData: CharacterCreatePayload
+): Promise<PydanticCharacter> => {
+  try {
+    const response = await apiClient.post<PydanticCharacter>(
+      urls.charactersForCampaign(campaignId),
+      characterData
+    );
     return response.data;
+  } catch (error) {
+    console.error(`Error creating character for campaign ${campaignId}:`, error);
+    throw error; // Re-throw to allow caller to handle
+  }
+};
+
+/**
+ * Fetches all characters for a specific campaign.
+ * @param campaignId - The ID of the campaign.
+ * @returns A promise that resolves to a list of characters.
+ */
+export const getCharactersByCampaign = async (
+  campaignId: number | string
+): Promise<PydanticCharacter[]> => {
+  try {
+    const response = await apiClient.get<PydanticCharacter[]>(
+      urls.charactersForCampaign(campaignId)
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching characters for campaign ${campaignId}:`, error);
+    throw error;
+  }
 };
 
 /**
  * Fetches a single character by its ID.
+ * @param characterId - The ID of the character.
+ * @returns A promise that resolves to the character data.
  */
-export const getCharacterById = async (characterId: number): Promise<Character> => {
-    const response = await apiClient.get<Character>(`${CHARACTER_API_URL}/${characterId}`);
+export const getCharacterById = async (
+  characterId: number | string
+): Promise<PydanticCharacter> => {
+  try {
+    const response = await apiClient.get<PydanticCharacter>(
+      urls.characterById(characterId)
+    );
     return response.data;
+  } catch (error)
+ {
+    console.error(`Error fetching character ${characterId}:`, error);
+    throw error;
+  }
 };
 
 /**
  * Updates an existing character.
+ * @param characterId - The ID of the character to update.
+ * @param characterData - The data to update the character with.
+ * @returns A promise that resolves to the updated character.
  */
-export const updateCharacter = async (characterId: number, characterData: CharacterUpdate): Promise<Character> => {
-    const response = await apiClient.put<Character>(`${CHARACTER_API_URL}/${characterId}`, characterData);
+export const updateCharacter = async (
+  characterId: number | string,
+  characterData: CharacterUpdatePayload
+): Promise<PydanticCharacter> => {
+  try {
+    const response = await apiClient.put<PydanticCharacter>(
+      urls.characterById(characterId),
+      characterData
+    );
     return response.data;
+  } catch (error) {
+    console.error(`Error updating character ${characterId}:`, error);
+    throw error;
+  }
 };
 
 /**
  * Deletes a character by its ID.
+ * @param characterId - The ID of the character to delete.
+ * @returns A promise that resolves when the character is deleted.
  */
-export const deleteCharacter = async (characterId: number): Promise<void> => {
-    await apiClient.delete(`${CHARACTER_API_URL}/${characterId}`);
+export const deleteCharacter = async (
+  characterId: number | string
+): Promise<void> => {
+  try {
+    await apiClient.delete(urls.characterById(characterId));
+  } catch (error) {
+    console.error(`Error deleting character ${characterId}:`, error);
+    throw error;
+  }
 };
 
+// Example of a more specific function if needed, e.g., for exporting
 /**
- * Links a character to a campaign.
+ * Exports character data (placeholder - implement actual export logic if API supports it).
+ * @param characterId - The ID of the character to export.
+ * @returns A promise that resolves to the exported data (e.g., a JSON string or Blob).
  */
-export const linkCharacterToCampaign = async (characterId: number, campaignId: number): Promise<Character> => {
-    const response = await apiClient.post<Character>(`${CHARACTER_API_URL}/${characterId}/campaigns/${campaignId}`);
-    return response.data;
-};
-
-/**
- * Unlinks a character from a campaign.
- */
-export const unlinkCharacterFromCampaign = async (characterId: number, campaignId: number): Promise<Character> => {
-    const response = await apiClient.delete<Character>(`${CHARACTER_API_URL}/${characterId}/campaigns/${campaignId}`);
-    return response.data;
-};
-
-/**
- * Fetches all characters associated with a specific campaign.
- * Note: The endpoint in the backend plan was GET /characters/campaign/{campaign_id}/characters
- * Adjusting here to match that.
- */
-export const getCampaignCharacters = async (campaignId: number): Promise<Character[]> => {
-    const response = await apiClient.get<Character[]>(`${CHARACTER_API_URL}/campaign/${campaignId}/characters`);
-    return response.data;
-};
-
-/**
- * Fetches all campaigns associated with a specific character.
- */
-export const getCharacterCampaigns = async (characterId: number): Promise<Campaign[]> => {
-    const response = await apiClient.get<Campaign[]>(`${CHARACTER_API_URL}/${characterId}/campaigns`);
-    return response.data;
-};
-
-/**
- * Generates a text response from a character using an LLM.
- */
-export const generateCharacterResponse = async (
-    characterId: number,
-    requestBody: LLMTextGenerationParams // Use the imported type
-): Promise<LLMTextGenerationResponse> => { // Use the imported type
-    const response = await apiClient.post<LLMTextGenerationResponse>(
-        `${CHARACTER_API_URL}/${characterId}/generate-response`,
-        requestBody
-    );
-    return response.data;
-};
-
-/**
- * Generates an image for a character and returns the updated character data.
- */
-export const generateCharacterImage = async (
-    characterId: number,
-    payload: CharacterImageGenerationRequest
-): Promise<Character> => {
-    const response = await apiClient.post<Character>(
-        `${CHARACTER_API_URL}/${characterId}/generate-image`,
-        payload
-    );
-    return response.data;
+export const exportCharacterData = async (
+  characterId: number | string
+): Promise<any> => {
+  try {
+    // This is a placeholder. The actual implementation will depend on how
+    // the backend API supports character export (e.g., a specific endpoint).
+    // const response = await apiClient.get(`/api/v1/characters/${characterId}/export`);
+    // return response.data;
+    console.warn(`Export function for character ${characterId} is a placeholder.`);
+    const character = await getCharacterById(characterId);
+    return JSON.stringify(character, null, 2); // Example: return character data as JSON string
+  } catch (error) {
+    console.error(`Error exporting data for character ${characterId}:`, error);
+    throw error;
+  }
 };

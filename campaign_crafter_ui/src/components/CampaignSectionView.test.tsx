@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import CampaignSectionView from './CampaignSectionView';
 import { generateTextLLM } from '../services/llmService'; // Corrected path
-import { CampaignSection } from '../types/campaignTypes'; // Corrected import path
+import { CampaignSection } from '../services/campaignService'; // Added for defaultProps
 
 // Mock ../services/llmService
 jest.mock('../services/llmService', () => ({

@@ -409,64 +409,6 @@ class GeminiLLMService(AbstractLLMService):
             print(f"Error during Gemini image generation (model: {model_instance.model_name}): {type(e).__name__} - {e}")
             raise LLMGenerationError(f"Failed to generate image with Gemini model {model_instance.model_name}: {e}") from e
 
-    async def generate_character_response(
-        self,
-        character_name: str,
-        character_notes: str,
-        user_prompt: str,
-        current_user: UserModel,
-        db: Session,
-        model: Optional[str] = None,
-        temperature: Optional[float] = 0.7,
-        max_tokens: Optional[int] = 300
-    ) -> str:
-        if not await self.is_available(current_user=current_user, db=db):
-            raise LLMServiceUnavailableError("Gemini service is not available.")
-        if not user_prompt:
-            raise ValueError("User prompt cannot be empty for character response.")
-
-        model_instance = self._get_model_instance(model)
-
-        truncated_notes = (character_notes[:1000] + '...') if character_notes and len(character_notes) > 1000 else character_notes
-
-        # Gemini typically uses a direct instruction format rather than a separate system prompt for some models/use-cases.
-        # We will construct a detailed prompt that includes the character's persona.
-        # The prompt structure might need adjustment based on Gemini's best practices for role-playing.
-        # Example:
-        # "You are acting as the character '{character_name}'.
-        #  Your persona: '{character_notes}'.
-        #  Now, respond to the following as '{character_name}':
-        #  User's message: '{user_prompt}'
-        #  Your response:"
-
-        # For Gemini, it's often better to structure the prompt directly.
-        # The 'system' role is not as distinctly used as in OpenAI for chat models via `generate_content_async`'s direct string input.
-        # Instead, instructions are part of the main prompt or through specific multi-turn chat setup.
-        # For a single response, we build a comprehensive prompt.
-
-        full_prompt = (
-            f"**Instructions for AI:**\n"
-            f"You are to embody and respond as the character named **{character_name}**.\n"
-            f"**Character Persona & Background:**\n{truncated_notes if truncated_notes else 'This character has a generally neutral and adaptable persona.'}\n\n"
-            f"**Your Task:**\n"
-            f"Respond to the following user message *in the voice and personality of {character_name}*. "
-            f"Do not break character. Do not mention that you are an AI or a language model.\n\n"
-            f"**User's Message to {character_name}:**\n{user_prompt}\n\n"
-            f"**{character_name}'s Response:**"
-        )
-
-        # Use a slightly higher temperature for more creative/natural character responses by default
-        effective_temperature = temperature if temperature is not None else 0.75
-        effective_max_tokens = max_tokens or 300
-
-        return await self.generate_text(
-            prompt=full_prompt,
-            current_user=current_user,
-            db=db,
-            model=model_instance.model_name,
-            temperature=effective_temperature,
-            max_tokens=effective_max_tokens
-        )
 
 if __name__ == '__main__':
     from dotenv import load_dotenv

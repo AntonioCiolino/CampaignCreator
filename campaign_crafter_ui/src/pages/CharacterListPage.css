@@ -1,0 +1,99 @@
+.character-list-page {
+  padding: 1rem 2rem; /* Standard page padding */
+  max-width: 1200px;
+  margin: 0 auto;
+  color: var(--text-color-primary, #f0f0f0);
+}
+
+.character-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--primary-color, #007bff);
+}
+
+.character-list-header h1 {
+  font-size: 2rem;
+  color: var(--heading-color, #e0e0e0);
+  margin: 0;
+}
+
+/* Styling for the common Button component if used, or specific class */
+.add-character-button {
+  /* Assuming Button component takes variant="primary" or similar for styling */
+  /* Specific overrides if needed: */
+  padding: 0.6rem 1.2rem;
+  font-size: 0.9rem;
+}
+
+.character-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); /* Responsive grid */
+  gap: 1.5rem; /* Spacing between cards */
+  justify-items: center; /* Center cards if they don't fill the row */
+}
+
+.no-characters-message {
+  text-align: center;
+  padding: 3rem 1rem;
+  background-color: var(--background-color-light, #2a2a2a);
+  border-radius: var(--border-radius-medium, 8px);
+  margin-top: 2rem;
+  border: 1px dashed var(--border-color, #555);
+}
+
+.no-characters-message p {
+  font-size: 1.1rem;
+  color: var(--text-color-secondary, #b0b0b0);
+  margin-bottom: 0.5rem;
+}
+
+.error-message.page-error {
+  text-align: center;
+  color: var(--danger-color, #dc3545);
+  background-color: rgba(220, 53, 69, 0.1);
+  padding: 1rem;
+  border-radius: var(--border-radius-medium, 8px);
+  border: 1px solid var(--danger-color, #dc3545);
+}
+
+/* Responsive adjustments if needed */
+@media (max-width: 768px) {
+  .character-list-page {
+    padding: 1rem;
+  }
+
+  .character-list-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .character-list-header h1 {
+    margin-bottom: 1rem;
+  }
+
+  .add-character-button {
+    width: 100%;
+    text-align: center;
+  }
+
+  .character-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .character-grid {
+    grid-template-columns: 1fr; /* Single column on very small screens */
+    gap: 1rem;
+  }
+   .character-card { /* Ensure card takes full width in single column */
+    width: 90%;
+    max-width: 300px; /* Max width for single card */
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
