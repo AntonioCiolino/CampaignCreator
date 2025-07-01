@@ -222,10 +222,10 @@ const CharacterDetailPage: React.FC = () => {
         setIsCharImagePromptModalOpen(false); // Close modal on submit
 
         try {
-            const payload = {
-                additional_prompt_details: `${basePrompt}${additionalDetails ? ` ${additionalDetails}` : ''}`, // Combine base and additional for now, or send separately if backend distinguishes
-                model_name: settings.model_name,
-                size: settings.size,
+            // const payload = { // This variable was unused
+            //     additional_prompt_details: `${basePrompt}${additionalDetails ? ` ${additionalDetails}` : ''}`,
+            //     model_name: settings.model_name,
+            //     size: settings.size,
                 quality: settings.quality,
                 steps: settings.steps,
                 cfg_scale: settings.cfg_scale,

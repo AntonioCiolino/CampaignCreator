@@ -158,7 +158,7 @@ const CharacterImagePromptModal: React.FC<CharacterImagePromptModalProps> = ({
         <CollapsibleSection
           title="View/Edit Auto-Generated Base Prompt"
           initialCollapsed={true}
-          className="prompt-collapsible-section" // Optional: for specific styling of this collapsible
+          // className="prompt-collapsible-section" // Removed as it's not a valid prop
         >
           <label htmlFor="basePromptModalInput" className="sr-only">Base Prompt (auto-generated, feel free to edit):</label>
           <textarea
