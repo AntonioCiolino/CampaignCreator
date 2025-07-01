@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
+import CollapsibleSection from '../common/CollapsibleSection'; // Import CollapsibleSection
 import { Character } from '../../types/characterTypes';
-import { ImageModelName } from '../../services/llmService'; // Reusing type
+import { ImageModelName } from '../../services/llmService';
 import './ImageGenerationModal/ImageGenerationModal.css'; // Corrected path
 
 export interface CharacterImageGenSettings {
@@ -44,14 +45,17 @@ const CharacterImagePromptModal: React.FC<CharacterImagePromptModalProps> = ({
 
   useEffect(() => {
     if (isOpen && character) {
-      // Pre-fill base prompt from character data
       let autoPrompt = `Character: ${character.name}.`;
       if (character.appearance_description) {
         autoPrompt += ` Appearance: ${character.appearance_description}.`;
-      } else {
-        autoPrompt += " A typical fantasy character.";
       }
-      autoPrompt += " Style: detailed digital illustration."; // Add default style
+      if (character.description) {
+        autoPrompt += ` Description: ${character.description}.`;
+      }
+      if (character.notes_for_llm) {
+        autoPrompt += ` LLM Notes: ${character.notes_for_llm}.`;
+      }
+      autoPrompt += " Style: detailed digital illustration, fantasy art."; // Updated default style
       setBasePrompt(autoPrompt);
       setAdditionalDetails(''); // Reset additional details
     }
@@ -151,20 +155,25 @@ const CharacterImagePromptModal: React.FC<CharacterImagePromptModalProps> = ({
           )}
         </div>
 
-        <label htmlFor="basePromptModalInput">
-          Base Prompt (auto-generated, feel free to edit):
+        <CollapsibleSection
+          title="View/Edit Auto-Generated Base Prompt"
+          initialCollapsed={true}
+          className="prompt-collapsible-section" // Optional: for specific styling of this collapsible
+        >
+          <label htmlFor="basePromptModalInput" className="sr-only">Base Prompt (auto-generated, feel free to edit):</label>
           <textarea
             id="basePromptModalInput"
-            className="prompt-textarea"
+            className="prompt-textarea" // Existing class for styling
             value={basePrompt}
             onChange={(e) => setBasePrompt(e.target.value)}
-            rows={4}
+            rows={6} // Increased rows for better visibility when expanded
             disabled={isGenerating}
+            style={{ marginTop: '5px' }} // Add some space below the title when expanded
           />
-        </label>
+        </CollapsibleSection>
 
-        <label htmlFor="additionalDetailsModalInput" style={{ marginTop: '10px' }}>
-          Additional Details / Customizations (Optional):
+        <label htmlFor="additionalDetailsModalInput" style={{ marginTop: '15px', display: 'block' }}> {/* Added display:block for proper spacing */}
+          Additional Details / Customizations (Your Prompt):
           <textarea
             id="additionalDetailsModalInput"
             className="prompt-textarea"
@@ -177,24 +186,28 @@ const CharacterImagePromptModal: React.FC<CharacterImagePromptModalProps> = ({
         </label>
 
         {/* Settings Section - Can be made collapsible later */}
-        <div className="image-generation-settings" style={{ marginTop: '15px' }}>
-          <h4>Image Settings</h4>
-          <label>
-            Model:
-            <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value as ImageModelName)}
-              disabled={isGenerating}
-            >
-              <option value="dall-e">DALL-E</option>
-              <option value="stable-diffusion">Stable Diffusion</option>
-              <option value="gemini">Gemini</option>
-            </select>
-          </label>
-          {renderModelSpecificOptions()}
+        {/* Settings Section - Styled to match ImageGenerationModal's collapsible approach later */}
+        <div className="image-generation-settings" style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
+          <h4 style={{ marginTop: '0', marginBottom: '15px' }}>Image Generation Settings</h4>
+          <div className="settings-grid"> {/* Optional: Use a grid for better layout if needed */}
+            <label>
+              Model:
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value as ImageModelName)}
+                disabled={isGenerating}
+                className="form-select" // Added for styling consistency
+              >
+                <option value="dall-e">DALL-E</option>
+                <option value="stable-diffusion">Stable Diffusion</option>
+                <option value="gemini">Gemini</option>
+              </select>
+            </label>
+            {renderModelSpecificOptions()}
+          </div>
         </div>
 
-        <div className="modal-actions" style={{ marginTop: '20px' }}>
+        <div className="modal-actions"> {/* Ensure this class is styled like in ImageGenerationModal.css */}
           <Button onClick={handleSubmit} disabled={isGenerating || !basePrompt.trim()}>
             {isGenerating ? 'Generating...' : 'Generate Image'}
           </Button>
