@@ -188,6 +188,19 @@ class Character(Base):
         back_populates="characters" # Requires 'characters' relationship on Campaign model
     )
 
+    @property
+    def stats(self) -> Dict[str, Optional[int]]:
+        """Provides a dictionary view of the character's stats,
+           compatible with the Pydantic CharacterStats model."""
+        return {
+            "strength": self.strength,
+            "dexterity": self.dexterity,
+            "constitution": self.constitution,
+            "intelligence": self.intelligence,
+            "wisdom": self.wisdom,
+            "charisma": self.charisma,
+        }
+
 # Need to add 'characters' relationship to Campaign model
 # This will be done in a separate step if modifying Campaign ORM is complex,
 # or can be done now if simple. For now, assuming it will be added.

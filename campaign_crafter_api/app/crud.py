@@ -273,8 +273,15 @@ def create_character(db: Session, character: models.CharacterCreate, user_id: in
 
     if stats_data: # If stats were provided in the input
         for key, value in stats_data.items():
-            if hasattr(db_character, key) and value is not None:
-                setattr(db_character, key, value)
+            if hasattr(db_character, key): # Check if the attribute exists
+                # If value is None, explicitly set the ORM attribute to None to store NULL
+                # Otherwise, set it to the provided numerical value.
+                setattr(db_character, key, value if value is not None else None)
+            # If value is not None, it's set.
+            # If value is None (e.g. user cleared a stat field, or it was omitted and Pydantic defaulted to None),
+            # it will now correctly set the ORM attribute to None, leading to NULL in DB.
+            # This overrides the ORM Column(default=10) which applies at initial object creation
+            # if no value is provided by **char_data.
 
     db.add(db_character)
     db.commit()
