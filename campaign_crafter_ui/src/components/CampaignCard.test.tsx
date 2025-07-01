@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
 import CampaignCard from './CampaignCard';
-import { Campaign } from '../services/campaignService'; // Ensure this path is correct
+import { Campaign } from '../types/campaignTypes'; // Corrected import path
 
 const mockCampaignWithBadge: Campaign = {
   id: 1,

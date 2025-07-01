@@ -422,3 +422,48 @@ class OpenAILLMService(AbstractLLMService):
             raise LLMGenerationError("OpenAI API call for Homebrewery TOC from sections succeeded but returned no usable content.")
 
         return generated_toc
+
+    async def generate_character_response(
+        self,
+        character_name: str,
+        character_notes: str,
+        user_prompt: str,
+        current_user: UserModel,
+        db: Session,
+        model: Optional[str] = None,
+        temperature: Optional[float] = 0.7,
+        max_tokens: Optional[int] = 300
+    ) -> str:
+        if not await self.is_available(current_user, db):
+            raise LLMServiceUnavailableError("OpenAI service not available or not configured.")
+        if not user_prompt:
+            raise ValueError("User prompt cannot be empty for character response.")
+
+        selected_model = self._get_model(model, use_chat_model=True)
+
+        # Construct the persona and instruction for the LLM
+        # Ensure character_notes are not excessively long for the system prompt.
+        # A more sophisticated approach might summarize or truncate character_notes if they are very large.
+        truncated_notes = (character_notes[:1000] + '...') if character_notes and len(character_notes) > 1000 else character_notes
+
+        system_content = (
+            f"You are embodying the character named '{character_name}'. "
+            f"Your personality, background, and way of speaking are defined by the following notes: "
+            f"'{truncated_notes if truncated_notes else 'A typically neutral character.'}' "
+            f"Respond naturally as this character would. Do not break character. Do not mention that you are an AI."
+        )
+
+        messages = [
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": user_prompt} # The user's query TO the character
+        ]
+
+        # Use a slightly higher temperature for more creative/natural character responses by default
+        effective_temperature = temperature if temperature is not None else 0.75
+
+        return await self._perform_chat_completion(
+            selected_model,
+            messages,
+            temperature=effective_temperature,
+            max_tokens=max_tokens or 300
+        )

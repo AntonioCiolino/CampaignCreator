@@ -210,39 +210,6 @@ class UserAPIKeyUpdate(BaseModel):
     gemini_api_key: Optional[str] = None
     other_llm_api_key: Optional[str] = None
 
-# Character Models
-class CharacterImage(BaseModel):
-    url: HttpUrl
-    caption: Optional[str] = None
-    # Future fields: uploaded_at, tags, etc.
-
-class CharacterBase(BaseModel):
-    name: str
-    icon_url: Optional[HttpUrl] = None
-    stats: Optional[Dict[str, str]] = {} # Flexible key-value for stats
-    notes: Optional[str] = None
-    chatbot_enabled: Optional[bool] = False
-    # images will be handled by a separate list of CharacterImage objects or a linking table if complex relationships are needed
-    campaign_id: int # Foreign key to Campaign
-
-class CharacterCreate(CharacterBase):
-    images: Optional[List[CharacterImage]] = []
-
-class CharacterUpdate(BaseModel): # All fields optional for PATCH
-    name: Optional[str] = None
-    icon_url: Optional[HttpUrl] = None
-    stats: Optional[Dict[str, str]] = None
-    notes: Optional[str] = None
-    chatbot_enabled: Optional[bool] = None
-    images: Optional[List[CharacterImage]] = None # Allow updating the list of images
-
-class Character(CharacterBase):
-    id: int
-    images: List[CharacterImage] = [] # List of image objects
-
-    class Config:
-        from_attributes = True
-
 # Feature Models
 class FeatureBase(BaseModel):
     name: str
@@ -343,3 +310,66 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Optional[str] = None
+
+# Character Models
+
+class CharacterStats(BaseModel):
+    strength: Optional[int] = 10
+    dexterity: Optional[int] = 10
+    constitution: Optional[int] = 10
+    intelligence: Optional[int] = 10
+    wisdom: Optional[int] = 10
+    charisma: Optional[int] = 10
+
+class CharacterBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    appearance_description: Optional[str] = None
+    image_urls: Optional[List[str]] = None
+    video_clip_urls: Optional[List[str]] = None
+    notes_for_llm: Optional[str] = None
+    stats: Optional[CharacterStats] = None # Embed stats here
+
+class CharacterCreate(CharacterBase):
+    pass # All fields from CharacterBase are used for creation, stats can be provided optionally
+
+class CharacterUpdate(BaseModel): # Separate model for updates
+    name: Optional[str] = None
+    description: Optional[str] = None
+    appearance_description: Optional[str] = None
+    image_urls: Optional[List[str]] = None
+    video_clip_urls: Optional[List[str]] = None
+    notes_for_llm: Optional[str] = None
+    stats: Optional[CharacterStats] = None
+
+class Character(CharacterBase):
+    id: int
+    owner_id: int
+    # Campaigns will be a list of Campaign models, but handled via relationship in ORM
+    # and potentially a separate response model if detailed campaign info is needed directly.
+
+    class Config:
+        from_attributes = True
+
+class CharacterCampaignLink(BaseModel): # For linking/unlinking, might not be needed if using path params
+    character_id: int
+    campaign_id: int
+
+# Update Campaign model to potentially include characters
+# This might be done via a separate response model or by adding List[Character] to Campaign model
+# For now, let's assume Character responses will list their campaigns if needed,
+# and Campaign responses might list their characters.
+
+# For Character Image Generation
+class CharacterImageGenerationRequest(BaseModel):
+    additional_prompt_details: Optional[str] = None
+    model_name: Optional[str] = None  # Corresponds to ImageModelName: "dall-e", "stable-diffusion", "gemini"
+    size: Optional[str] = None
+    # Add other relevant params from ImageGenerationParams if needed, e.g., quality, steps, cfg_scale
+    quality: Optional[str] = None # For DALL-E
+    steps: Optional[int] = None # For Stable Diffusion
+    cfg_scale: Optional[float] = None # For Stable Diffusion
+    gemini_model_name: Optional[str] = None # Specific model for Gemini image gen
+
+    # campaign_id: Optional[int] = None # If we want to associate the image with a campaign context during generation
+                                     # For now, character images are global to the character.

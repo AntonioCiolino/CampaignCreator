@@ -1,18 +1,26 @@
 import React, { useState, useEffect, FormEvent, useMemo, useRef, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import LLMSelectionDialog from '../components/modals/LLMSelectionDialog';
 import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal';
 import SuggestedTitlesModal from '../components/modals/SuggestedTitlesModal';
 import * as campaignService from '../services/campaignService';
-import { getCampaignFiles } from '../services/campaignService'; // Added for getCampaignFiles
-import { Campaign, CampaignSection, TOCEntry, SeedSectionsProgressEvent, SeedSectionsCallbacks } from '../services/campaignService';
+import { getCampaignFiles } from '../services/campaignService';
+import {
+    Campaign,
+    CampaignSection,
+    TOCEntry,
+    SeedSectionsProgressEvent,
+    SeedSectionsCallbacks,
+    CampaignUpdatePayload, // Direct import
+    CampaignSectionUpdatePayload // Direct import for handleUpdateSection
+} from '../types/campaignTypes';
 import { getAvailableLLMs, LLMModel } from '../services/llmService';
 import ReactMarkdown from 'react-markdown';
 import './CampaignEditorPage.css';
 import Button from '../components/common/Button';
-import ImagePreviewModal from '../components/modals/ImagePreviewModal'; // Added import
+import ImagePreviewModal from '../components/modals/ImagePreviewModal';
 
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
@@ -21,23 +29,24 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CancelIcon from '@mui/icons-material/Cancel';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import PublishIcon from '@mui/icons-material/Publish';
-import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
-import SaveIcon from '@mui/icons-material/Save'; // Import SaveIcon for concept saving
+import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
 import ImageIcon from '@mui/icons-material/Image';
-// import ThematicImageDisplay, { ThematicImageDisplayProps } from '../components/common/ThematicImageDisplay'; // Old import
-import MoodBoardPanel from '../components/common/MoodBoardPanel'; // New import
+import MoodBoardPanel from '../components/common/MoodBoardPanel';
 
 import CampaignDetailsEditor from '../components/campaign_editor/CampaignDetailsEditor';
 import CampaignLLMSettings from '../components/campaign_editor/CampaignLLMSettings';
 import CampaignSectionEditor from '../components/campaign_editor/CampaignSectionEditor';
 import { LLMModel as LLM } from '../services/llmService';
 import Tabs, { TabItem } from '../components/common/Tabs';
-import { Typography, TextField } from '@mui/material'; // Import TextField
+import { Typography, TextField } from '@mui/material';
 import DetailedProgressDisplay from '../components/common/DetailedProgressDisplay';
 import TOCEditor from '../components/campaign_editor/TOCEditor';
 import CampaignThemeEditor, { CampaignThemeData } from '../components/campaign_editor/CampaignThemeEditor';
-import { applyThemeToDocument } from '../utils/themeUtils'; // Import the function
-import { BlobFileMetadata } from '../types/fileTypes'; // Added for CampaignFile type
+import { applyThemeToDocument } from '../utils/themeUtils';
+import { BlobFileMetadata } from '../types/fileTypes';
+import * as characterService from '../services/characterService';
+import { Character as FrontendCharacter } from '../types/characterTypes';
 
 const CampaignEditorPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -65,7 +74,7 @@ const CampaignEditorPage: React.FC = () => {
   const [addSectionSuccess, setAddSectionSuccess] = useState<string | null>(null);
 
   const [availableLLMs, setAvailableLLMs] = useState<LLMModel[]>([]);
-  const [isLLMsLoading, setIsLLMsLoading] = useState<boolean>(true); // Added state
+  const [isLLMsLoading, setIsLLMsLoading] = useState<boolean>(true);
   const [selectedLLMId, setSelectedLLMId] = useState<string | null>(null);
   const [temperature, setTemperature] = useState<number>(0.7);
 
@@ -106,177 +115,249 @@ const CampaignEditorPage: React.FC = () => {
   const [tocSaveSuccess, setTocSaveSuccess] = useState<string | null>(null);
   const [isTOCEditorVisible, setIsTOCEditorVisible] = useState<boolean>(false);
 
-  // State for Concept Editor
   const [isConceptEditorVisible, setIsConceptEditorVisible] = useState<boolean>(false);
   const [editableConcept, setEditableConcept] = useState<string>('');
   const [conceptSaveError, setConceptSaveError] = useState<string | null>(null);
   const [conceptSaveSuccess, setConceptSaveSuccess] = useState<string | null>(null);
 
-  // Rename state for MoodBoardPanel visibility
   const [isMoodBoardPanelOpen, setIsMoodBoardPanelOpen] = useState<boolean>(false);
-  // Remove thematicImageData state as MoodBoardPanel will use campaign.mood_board_image_urls directly
-  // const [thematicImageData, setThematicImageData] = useState<Omit<ThematicImageDisplayProps, 'isVisible' | 'onClose'>>({
-  //   imageUrl: null,
-  //   promptUsed: null,
-  //   isLoading: false,
-  //   error: null,
-  //   title: "Thematic Image" // Default title
-  // });
-
-  // State for Theme Editor
   const [themeData, setThemeData] = useState<CampaignThemeData>({});
   const [isSavingTheme, setIsSavingTheme] = useState<boolean>(false);
   const [editableMoodBoardUrls, setEditableMoodBoardUrls] = useState<string[]>([]);
   const [themeSaveError, setThemeSaveError] = useState<string | null>(null);
   const [themeSaveSuccess, setThemeSaveSuccess] = useState<string | null>(null);
 
-  // State for Mood Board Auto-Save
   const [moodBoardDebounceTimer, setMoodBoardDebounceTimer] = useState<NodeJS.Timeout | null>(null);
   const [isAutoSavingMoodBoard, setIsAutoSavingMoodBoard] = useState(false);
   const [autoSaveMoodBoardError, setAutoSaveMoodBoardError] = useState<string | null>(null);
   const [autoSaveMoodBoardSuccess, setAutoSaveMoodBoardSuccess] = useState<string | null>(null);
 
-  // State for generating image for mood board
   const [isGeneratingForMoodBoard, setIsGeneratingForMoodBoard] = useState<boolean>(false);
-  const [moodBoardPanelWidth, setMoodBoardPanelWidth] = useState<number>(400); // Default width
+  const [moodBoardPanelWidth, setMoodBoardPanelWidth] = useState<number>(400);
   const [activeEditorTab, setActiveEditorTab] = useState<string>('Details');
   const [sectionToExpand, setSectionToExpand] = useState<string | null>(null);
 
-  // State for manual concept generation
   const [isGeneratingConceptManually, setIsGeneratingConceptManually] = useState<boolean>(false);
   const [manualConceptError, setManualConceptError] = useState<string | null>(null);
 
-  // State for Campaign Files (as per plan step 1)
   const [campaignFiles, setCampaignFiles] = useState<BlobFileMetadata[]>([]);
   const [campaignFilesLoading, setCampaignFilesLoading] = useState<boolean>(false);
   const [campaignFilesError, setCampaignFilesError] = useState<string | null>(null);
   const [prevCampaignIdForFiles, setPrevCampaignIdForFiles] = useState<string | null>(null);
-  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState<boolean>(false); // State for image preview modal
-  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null); // State for image preview URL
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState<boolean>(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
+  const [campaignCharacters, setCampaignCharacters] = useState<FrontendCharacter[]>([]);
+  const [userCharacters, setUserCharacters] = useState<FrontendCharacter[]>([]);
+  const [selectedUserCharacterToAdd, setSelectedUserCharacterToAdd] = useState<string>('');
+  const [charactersLoading, setCharactersLoading] = useState<boolean>(false);
+  const [characterError, setCharacterError] = useState<string | null>(null);
+  const [isLinkingCharacter, setIsLinkingCharacter] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!campaignId) {
+      setError('Campaign ID is missing.');
+      setIsLoading(false);
+      return;
+    }
+    const fetchInitialData = async () => {
+      setIsLoading(true);
+      setError(null);
+      setIsLLMsLoading(true);
+      setCharactersLoading(true);
+      setCharacterError(null);
+
+      try {
+        const [
+          fetchedCampaignDetails,    // Expected: Campaign
+          fetchedCampaignSections, // Expected: CampaignSection[]
+          fetchedAvailableLLMs,    // Expected: LLMModel[]
+          fetchedCampaignChars,  // Expected: FrontendCharacter[]
+          fetchedUserChars         // Expected: FrontendCharacter[]
+        ] = await Promise.all([
+          campaignService.getCampaignById(campaignId),
+          campaignService.getCampaignSections(campaignId),
+          getAvailableLLMs(),
+          characterService.getCampaignCharacters(parseInt(campaignId, 10)),
+          characterService.getUserCharacters()
+        ]);
+
+        setCampaign(fetchedCampaignDetails);
+        setEditableDisplayTOC(fetchedCampaignDetails.display_toc || []);
+        if (Array.isArray(fetchedCampaignSections)) {
+            setSections(fetchedCampaignSections.sort((a, b) => a.order - b.order));
+        } else {
+            console.warn("Campaign sections data was not an array:", fetchedCampaignSections);
+            setSections([]);
+        }
+        setEditableTitle(fetchedCampaignDetails.title);
+        setEditableInitialPrompt(fetchedCampaignDetails.initial_user_prompt || '');
+        setCampaignBadgeImage(fetchedCampaignDetails.badge_image_url || '');
+        if (fetchedCampaignDetails.temperature !== null && fetchedCampaignDetails.temperature !== undefined) {
+            setTemperature(fetchedCampaignDetails.temperature);
+        } else {
+            setTemperature(0.7);
+        }
+
+        setAvailableLLMs(fetchedAvailableLLMs);
+        setIsLLMsLoading(false);
+        let newSelectedLLMIdToSave: string | null = null;
+        setSelectedLLMId(fetchedCampaignDetails.selected_llm_id || null);
+
+        setCampaignCharacters(fetchedCampaignChars);
+        setUserCharacters(fetchedUserChars);
+        setCharactersLoading(false);
+
+        if (!fetchedCampaignDetails.selected_llm_id) {
+            const preferredModelIds = ["openai/gpt-4.1-nano", "openai/gpt-3.5-turbo", "openai/gpt-4", "gemini/gemini-pro"];
+            let newSelectedLLMId: string | null = null;
+            for (const preferredId of preferredModelIds) {
+                const foundModel = fetchedAvailableLLMs.find((m: LLMModel) => m.id === preferredId);
+                if (foundModel) { newSelectedLLMId = foundModel.id; break; }
+            }
+            if (!newSelectedLLMId) {
+                const potentialChatModels = fetchedAvailableLLMs.filter((model: LLMModel) => model.capabilities && (model.capabilities.includes("chat") || model.capabilities.includes("chat-adaptable")));
+                if (potentialChatModels.length > 0) {
+                    const firstChatModel = potentialChatModels[0];
+                    if (firstChatModel) { newSelectedLLMId = firstChatModel.id; }
+                }
+            }
+            if (newSelectedLLMId) {
+                setSelectedLLMId(newSelectedLLMId);
+                newSelectedLLMIdToSave = newSelectedLLMId;
+            } else {
+                 setSelectedLLMId(null);
+            }
+        }
+
+        if (newSelectedLLMIdToSave && fetchedCampaignDetails.id) {
+            setIsPageLoading(true);
+            setAutoSaveLLMSettingsError(null);
+            setAutoSaveLLMSettingsSuccess(null);
+            try {
+                const payload: CampaignUpdatePayload = { // Using imported CampaignUpdatePayload
+                    selected_llm_id: newSelectedLLMIdToSave,
+                    temperature: temperature,
+                };
+                const updatedCampaignWithLLM = await campaignService.updateCampaign(fetchedCampaignDetails.id, payload);
+                setCampaign(updatedCampaignWithLLM);
+                setAutoSaveLLMSettingsSuccess("Default LLM setting automatically saved.");
+                setTimeout(() => setAutoSaveLLMSettingsSuccess(null), 3000);
+            } catch (err) {
+                console.error("Failed to save default LLM settings on initial load:", err);
+                setAutoSaveLLMSettingsError("Failed to save default LLM choice. You may need to set it manually in Settings.");
+            } finally {
+                setIsPageLoading(false);
+            }
+        }
+
+        let currentThemeData: CampaignThemeData = {
+          theme_primary_color: fetchedCampaignDetails.theme_primary_color,
+          theme_secondary_color: fetchedCampaignDetails.theme_secondary_color,
+          theme_background_color: fetchedCampaignDetails.theme_background_color,
+          theme_text_color: fetchedCampaignDetails.theme_text_color,
+          theme_font_family: fetchedCampaignDetails.theme_font_family,
+          theme_background_image_url: fetchedCampaignDetails.theme_background_image_url,
+          theme_background_image_opacity: fetchedCampaignDetails.theme_background_image_opacity,
+        };
+
+        if (fetchedCampaignDetails.thematic_image_url &&
+            (currentThemeData.theme_background_image_url === null ||
+             currentThemeData.theme_background_image_url === undefined ||
+             currentThemeData.theme_background_image_url === '')) {
+          currentThemeData.theme_background_image_url = fetchedCampaignDetails.thematic_image_url;
+          if (currentThemeData.theme_background_image_opacity === null || currentThemeData.theme_background_image_opacity === undefined) {
+             currentThemeData.theme_background_image_opacity = 0.5;
+          }
+        }
+
+        setThemeData(currentThemeData);
+        applyThemeToDocument(currentThemeData);
+
+        setEditableMoodBoardUrls(fetchedCampaignDetails.mood_board_image_urls || []);
+        initialLoadCompleteRef.current = true;
+      } catch (err) {
+        console.error('Failed to fetch initial campaign data or related entities:', err);
+        setError('Failed to load initial data. Please try again later.');
+        setIsLLMsLoading(false);
+        setCharactersLoading(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchInitialData();
+
+    return () => {
+      applyThemeToDocument(null);
+    };
+  }, [campaignId]);
 
   const handleTocLinkClick = useCallback((sectionIdFromLink: string | null) => {
     if (!sectionIdFromLink) return;
-
-    const actualId = sectionIdFromLink.replace('section-container-', '');
+    const actualId = sectionIdFromLink;
     console.log(`TOC Link clicked for actual section ID: ${actualId}`);
-
     const targetTabName = "Sections";
-    setSectionToExpand(actualId); // Set which section should ensure it's expanded
-
+    setSectionToExpand(actualId);
     if (activeEditorTab !== targetTabName) {
-      setActiveEditorTab(targetTabName); // Switch tab if not already on it
-      console.log(`Switched to tab: ${targetTabName}`);
-      // The useEffect below will handle scrolling once the tab is active and section is flagged for expansion
-    } else {
-      // If already on the correct tab, the useEffect will still pick up the change in sectionToExpand
-      // and perform the scroll.
+      setActiveEditorTab(targetTabName);
     }
-    // No direct scrolling here.
-  }, [activeEditorTab, setActiveEditorTab, setSectionToExpand]);
+  }, [activeEditorTab]); // Removed setActiveEditorTab and setSectionToExpand from deps
 
   useEffect(() => {
     if (activeEditorTab === "Sections" && sectionToExpand) {
-      // Use a microtask or a short timeout to allow DOM updates (tab switch, section expansion)
-      // requestAnimationFrame is often good for this, but setTimeout can also work.
       const scrollTimer = setTimeout(() => {
         const elementId = `section-container-${sectionToExpand}`;
         const element = document.getElementById(elementId);
-
         if (element) {
-          console.log(`Scrolling to and focusing element: ${elementId}`);
           element.scrollIntoView({ behavior: 'smooth', block: 'start' });
           element.focus({ preventScroll: true });
         } else {
           console.warn(`Element with ID ${elementId} not found for scrolling.`);
         }
-
-        // Reset sectionToExpand to allow user to manually collapse/expand again
-        // and to prevent this effect from re-running unnecessarily.
         setSectionToExpand(null);
-      }, 100); // 100ms delay, adjust if needed, or use requestAnimationFrame
-
-      return () => clearTimeout(scrollTimer); // Cleanup timer
+      }, 100);
+      return () => clearTimeout(scrollTimer);
     }
-  }, [activeEditorTab, sectionToExpand, setSectionToExpand]); // Dependencies
+  }, [activeEditorTab, sectionToExpand]); // Removed setSectionToExpand
 
   const handleSetThematicImage = async (imageUrl: string, prompt: string) => {
-    // This function now only handles setting the *main* thematic image for the campaign.
-    // The MoodBoardPanel will display campaign.mood_board_image_urls.
-    // The logic to auto-apply this to theme background is already within this function.
-
-    if (!campaign || !campaign.id) {
-      console.error("Campaign data is not available to save thematic image.");
-      // thematicImageData state is removed, so can't update it here.
-      // Perhaps set a general page error if needed:
-      // setError("Campaign data not loaded, cannot save thematic image.");
-      return;
-    }
-
-    const payload: campaignService.CampaignUpdatePayload = {
-      thematic_image_url: imageUrl,
-      thematic_image_prompt: prompt,
-    };
-
+    if (!campaign || !campaign.id) return;
+    const payload: CampaignUpdatePayload = { thematic_image_url: imageUrl, thematic_image_prompt: prompt };
     try {
       const updatedCampaign = await campaignService.updateCampaign(campaign.id, payload);
-      setCampaign(updatedCampaign); // Update main campaign state
-
-      // If the panel was previously showing the old thematic image,
-      // it will now be closed by default. User can reopen to see mood board.
-      // setIsMoodBoardPanelOpen(true); // Or decide if it should auto-open for the new thematic image.
-
+      setCampaign(updatedCampaign);
       setSaveSuccess("Campaign's main thematic image saved!");
       setTimeout(() => setSaveSuccess(null), 3000);
-
-      // New Logic: Auto-apply to theme background and auto-save theme
       const newThematicImageUrl = updatedCampaign.thematic_image_url;
-      if (newThematicImageUrl && campaign.id) { // Ensure campaign.id is available for the theme save
+      if (newThematicImageUrl && campaign.id) {
         const newThemeSettings = {
-          ...themeData, // Current themeData state
+          ...themeData,
           theme_background_image_url: newThematicImageUrl,
           theme_background_image_opacity: (themeData.theme_background_image_opacity === null || themeData.theme_background_image_opacity === undefined)
-                                         ? 0.5 // Default opacity if not previously set for a background image
+                                         ? 0.5
                                          : themeData.theme_background_image_opacity,
         };
-        setThemeData(newThemeSettings); // Update local theme state
-        applyThemeToDocument(newThemeSettings); // Apply visually
-
-        // Auto-save this specific theme update to the backend
-        const themeUpdatePayload: campaignService.CampaignUpdatePayload = {
+        setThemeData(newThemeSettings);
+        applyThemeToDocument(newThemeSettings);
+        const themeUpdatePayload: CampaignUpdatePayload = {
              theme_background_image_url: newThemeSettings.theme_background_image_url,
              theme_background_image_opacity: newThemeSettings.theme_background_image_opacity,
         };
         try {
-             await campaignService.updateCampaign(campaign.id, themeUpdatePayload); // Use campaign.id
-             console.log("Theme background automatically updated and saved after main thematic image change.");
-             // Optionally show a transient success message for this auto-save
-             // setThemeSaveSuccess("Theme background updated with campaign image!");
-             // setTimeout(() => setThemeSaveSuccess(null), 3000);
+             await campaignService.updateCampaign(campaign.id, themeUpdatePayload);
         } catch (themeSaveError) {
              console.error("Failed to auto-save theme background after main thematic image change:", themeSaveError);
-             // setError("Failed to auto-save theme background. You may need to save manually via Theme tab.");
-             // setTimeout(() => setError(null), 5000);
         }
-      } else if (!newThematicImageUrl) {
-        console.log("Campaign thematic image was cleared. Theme background image remains unchanged.");
       }
-
     } catch (err) {
       console.error("Failed to save thematic image:", err);
-      setError("Failed to save campaign's main thematic image. Please check your connection and try again.");
-      // Optional: Clear the error after some time
-      // setTimeout(() => setError(null), 5000);
-    } finally {
-      // setIsPageLoading(false);
-      // thematicImageData state was removed, so no cleanup needed for it here
+      setError("Failed to save campaign's main thematic image.");
     }
   };
 
   const handleMoodBoardResize = useCallback((newWidth: number) => {
-    // Add constraints for min/max width if desired
-    const minWidth = 250; // Example min width
-    const maxWidth = 800; // Example max width
+    const minWidth = 250;
+    const maxWidth = 800;
     let constrainedWidth = newWidth;
     if (newWidth < minWidth) constrainedWidth = minWidth;
     if (newWidth > maxWidth) constrainedWidth = maxWidth;
@@ -285,13 +366,13 @@ const CampaignEditorPage: React.FC = () => {
 
   const selectedLLMObject = useMemo(() => {
     if (availableLLMs.length > 0 && selectedLLMId) {
-      return availableLLMs.find(llm => llm.id === selectedLLMId) as LLM | undefined;
+      return availableLLMs.find((llm: LLMModel) => llm.id === selectedLLMId);
     }
     return undefined;
   }, [selectedLLMId, availableLLMs]);
 
   const handleSetSelectedLLM = (llm: LLM | null) => {
-    setSelectedLLMId(llm ? llm.id : null); // Corrected to 'llm.id'
+    setSelectedLLMId(llm ? llm.id : null);
   };
   
   const handleUpdateSectionContent = (sectionId: number, newContent: string) => {
@@ -313,7 +394,7 @@ const CampaignEditorPage: React.FC = () => {
       setAutoSaveLLMSettingsError(null);
       setAutoSaveLLMSettingsSuccess(null);
       try {
-        const payload: campaignService.CampaignUpdatePayload = {
+        const payload: CampaignUpdatePayload = { // Use imported type
           selected_llm_id: selectedLLMId || null,
           temperature: temperature,
         };
@@ -332,22 +413,22 @@ const CampaignEditorPage: React.FC = () => {
       }
     }
     return true;
-  }, [campaign, campaignId, selectedLLMId, temperature]);
+  }, [campaign, campaignId, selectedLLMId, temperature]); // Removed state setters from deps
 
   const processedToc = useMemo(() => {
     if (!campaign || !campaign.display_toc || campaign.display_toc.length === 0) {
       return '';
     }
     const sectionTitleToIdMap = new Map(
-      sections.filter(sec => sec.title).map(sec => [sec.title!.trim().toLowerCase(), `section-container-${sec.id}`])
+      sections.filter(sec => sec.title).map(sec => [sec.title!.trim().toLowerCase(), sec.id.toString()])
     );
     return campaign.display_toc.map((tocEntry: TOCEntry) => {
       const title = tocEntry.title || "Untitled Section";
-      const typeDisplay = tocEntry.type || 'N/A'; // Default if type is missing
+      const typeDisplay = tocEntry.type || 'N/A';
       const cleanedTitle = title.trim().toLowerCase();
       const sectionId = sectionTitleToIdMap.get(cleanedTitle);
-      if (sectionId && sections?.length > 0) {
-        return `- [${title}](#${sectionId}) (Type: ${typeDisplay})`;
+      if (sectionId) {
+        return `- [${title}](#section-container-${sectionId}) (Type: ${typeDisplay})`;
       }
       return `- ${title} (Type: ${typeDisplay})`;
     }).join('\n');
@@ -359,13 +440,9 @@ const CampaignEditorPage: React.FC = () => {
       setSeedSectionsError("Failed to save LLM settings before seeding. Please review settings and try again.");
       return;
     }
-    if (!campaignId || !campaign?.display_toc) {
-      setSeedSectionsError("Cannot create sections: Campaign ID is missing or no Table of Contents available.");
+    if (!campaignId || !campaign?.display_toc || campaign.display_toc.length === 0) {
+      setSeedSectionsError("Cannot create sections: Campaign ID is missing or no (or empty) Table of Contents available.");
       return;
-    }
-    if (campaign.display_toc.length === 0) {
-        setSeedSectionsError("Cannot seed sections from an empty Table of Contents.");
-        return;
     }
     if (!window.confirm("This will delete all existing sections and create new ones based on the current Table of Contents. Are you sure you want to proceed?")) {
       return;
@@ -428,7 +505,6 @@ const CampaignEditorPage: React.FC = () => {
     };
   }, []);
 
-  // useEffect for auto-saving mood board URLs
   useEffect(() => {
     if (!initialLoadCompleteRef.current || !campaignId || !campaign) {
       return;
@@ -449,8 +525,7 @@ const CampaignEditorPage: React.FC = () => {
           return;
       }
       try {
-        // console.log('Auto-saving mood board URLs:', editableMoodBoardUrls); // Debug log removed
-        const payload: campaignService.CampaignUpdatePayload = {
+        const payload: CampaignUpdatePayload = {
           mood_board_image_urls: editableMoodBoardUrls,
         };
         const updatedCampaign = await campaignService.updateCampaign(campaign.id, payload);
@@ -470,250 +545,57 @@ const CampaignEditorPage: React.FC = () => {
         clearTimeout(newTimer);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editableMoodBoardUrls, campaign]); // Corrected dependencies: only what triggers the save. campaignId is in campaign. initialLoadCompleteRef is read directly. Setters are stable.
+  }, [editableMoodBoardUrls, campaignId, campaign]);
 
-  // Effect to fetch campaign files when 'Files' tab is active or campaignId changes
   useEffect(() => {
     let isMounted = true;
-
     const fetchCampaignFiles = async () => {
-      if (!campaignId) {
-        if (isMounted) {
+      if (!campaignId || activeEditorTab !== 'Files' || campaignFilesLoading) return;
+      if (campaignId === prevCampaignIdForFiles && campaignFiles.length > 0 && !campaignFilesError) return;
+
+      if (isMounted) {
+        setCampaignFilesLoading(true);
+        setCampaignFilesError(null);
+        if (campaignId !== prevCampaignIdForFiles) {
           setCampaignFiles([]);
-          setCampaignFilesError(null);
-          setPrevCampaignIdForFiles(null);
-        }
-        return;
-      }
-
-      if (activeEditorTab !== 'Files') {
-        return;
-      }
-
-      const campaignChanged = campaignId !== prevCampaignIdForFiles;
-      const initialLoadForThisCampaign = campaignFiles.length === 0 && (!campaignFilesError || prevCampaignIdForFiles !== campaignId);
-      const shouldRetryAfterError = !!campaignFilesError && prevCampaignIdForFiles === campaignId;
-
-      if ((campaignChanged || initialLoadForThisCampaign || shouldRetryAfterError) && !campaignFilesLoading) {
-        if (isMounted) {
-          setCampaignFilesLoading(true);
-          setCampaignFilesError(null);
-
-          if (campaignChanged) {
-            setCampaignFiles([]);
-            setPrevCampaignIdForFiles(campaignId);
-          }
-        }
-
-        try {
-          const files = await getCampaignFiles(campaignId);
-          if (isMounted) {
-            setCampaignFiles(files);
-            if (!campaignChanged) {
-                 setPrevCampaignIdForFiles(campaignId);
-            }
-          }
-        } catch (err: any) {
-          console.error(`[CampaignEditorPage] Error fetching campaign files for ${campaignId}:`, err);
-          if (isMounted) {
-            const errorMsg = err.message || 'Failed to load campaign files.';
-            setCampaignFilesError(errorMsg);
-          }
-        } finally {
-          if (isMounted) {
-            setCampaignFilesLoading(false);
-          }
         }
       }
-    };
-
-    fetchCampaignFiles();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [
-    activeEditorTab,
-    campaignId,
-    prevCampaignIdForFiles,
-    campaignFiles.length,
-    campaignFilesError,
-    campaignFilesLoading
-  ]);
-
-  useEffect(() => {
-    if (!campaignId) {
-      setError('Campaign ID is missing.');
-      setIsLoading(false);
-      return;
-    }
-    const fetchInitialData = async () => {
-      setIsLoading(true); // For overall page loading
-      setError(null);
-
-      // Specifically manage LLM loading state
-      setIsLLMsLoading(true);
-
       try {
-        // Fetch all data concurrently
-        const [campaignDetails, campaignSectionsResponse, fetchedLLMs] = await Promise.all([
-          campaignService.getCampaignById(campaignId),
-          campaignService.getCampaignSections(campaignId),
-          getAvailableLLMs().finally(() => setIsLLMsLoading(false)) // Set loading false when getAvailableLLMs finishes
-        ]);
-
-        setCampaign(campaignDetails);
-        setEditableDisplayTOC(campaignDetails.display_toc || []);
-
-        if (Array.isArray(campaignSectionsResponse)) {
-            setSections(campaignSectionsResponse.sort((a, b) => a.order - b.order));
-        } else {
-            console.warn("Campaign sections data (campaignSectionsResponse) was not an array as expected:", campaignSectionsResponse);
-            setSections([]);
+        const files = await getCampaignFiles(campaignId);
+        if (isMounted) {
+          setCampaignFiles(files);
+          setPrevCampaignIdForFiles(campaignId);
         }
-        setEditableTitle(campaignDetails.title);
-        setEditableInitialPrompt(campaignDetails.initial_user_prompt || '');
-        setCampaignBadgeImage(campaignDetails.badge_image_url || '');
-        if (campaignDetails.temperature !== null && campaignDetails.temperature !== undefined) {
-            setTemperature(campaignDetails.temperature);
-        } else {
-            setTemperature(0.7);
+      } catch (err: any) {
+        if (isMounted) {
+          setCampaignFilesError(err.message || 'Failed to load campaign files.');
         }
-        setAvailableLLMs(fetchedLLMs); // Set LLMs after fetch
-        let newSelectedLLMIdToSave: string | null = null;
-        setSelectedLLMId(campaignDetails.selected_llm_id || null); // Ensure it's null if backend sends empty or undefined
-
-        if (!campaignDetails.selected_llm_id) { // Only try to set a default if none is set from backend
-            const preferredModelIds = ["openai/gpt-4.1-nano", "openai/gpt-3.5-turbo", "openai/gpt-4", "gemini/gemini-pro"];
-            let newSelectedLLMId: string | null = null; // Initialize to null
-            for (const preferredId of preferredModelIds) {
-                const foundModel = fetchedLLMs.find(m => m.id === preferredId);
-                if (foundModel) { newSelectedLLMId = foundModel.id; break; }
-            }
-            if (!newSelectedLLMId) {
-                const potentialChatModels = fetchedLLMs.filter(model => model.capabilities && (model.capabilities.includes("chat") || model.capabilities.includes("chat-adaptable")));
-                if (potentialChatModels.length > 0) {
-                    const firstChatModel = potentialChatModels[0];
-                    if (firstChatModel) { newSelectedLLMId = firstChatModel.id; }
-                }
-            }
-            // Removed: if (!newSelectedLLMId && fetchedLLMs.length > 0) { newSelectedLLMId = fetchedLLMs[0].id; }
-
-            if (newSelectedLLMId) {
-                setSelectedLLMId(newSelectedLLMId);
-                // No need to check !campaignDetails.selected_llm_id again, we are in that block
-                newSelectedLLMIdToSave = newSelectedLLMId;
-            } else { // If no campaign LLM and no default found
-                 setSelectedLLMId(null); // Explicitly set state to null
-            }
-        }
-        // This check should be outside the `if (!campaignDetails.selected_llm_id)` block
-        // if we intend to save a default even if one was loaded but then cleared by logic (though current logic doesn't do that)
-        // For now, it's correct to only save if `newSelectedLLMIdToSave` was set, meaning a default was chosen AND none was previously set.
-        if (newSelectedLLMIdToSave && campaignDetails.id) {
-            setIsPageLoading(true);
-            setAutoSaveLLMSettingsError(null);
-            setAutoSaveLLMSettingsSuccess(null);
-            try {
-                const updatedCampaign = await campaignService.updateCampaign(campaignDetails.id, {
-                    selected_llm_id: newSelectedLLMIdToSave,
-                    temperature: temperature,
-                });
-                setCampaign(updatedCampaign);
-                setAutoSaveLLMSettingsSuccess("Default LLM setting automatically saved.");
-                setTimeout(() => setAutoSaveLLMSettingsSuccess(null), 3000);
-            } catch (err) {
-                console.error("Failed to save default LLM settings on initial load:", err);
-                setAutoSaveLLMSettingsError("Failed to save default LLM choice. You may need to set it manually in Settings.");
-            } finally {
-                setIsPageLoading(false);
-            }
-        }
-
-        // Load thematic image data if available - This part is removed as thematicImageData state is gone.
-        // The MoodBoardPanel will directly use campaign.mood_board_image_urls.
-        // If the panel should be open by default if there's a thematic image, that logic might need to be re-evaluated
-        // based on whether campaign.thematic_image_url itself should cause the mood board to open.
-        // For now, let's assume it opens based on user click.
-        // if (campaignDetails.thematic_image_url) {
-        //   setIsMoodBoardPanelOpen(true); // Example: open if thematic image exists, though this panel shows mood board items
-        // }
-
-        // Populate themeData for CampaignThemeEditor
-        let currentThemeData: CampaignThemeData = { // Changed to let
-          theme_primary_color: campaignDetails.theme_primary_color,
-          theme_secondary_color: campaignDetails.theme_secondary_color,
-          theme_background_color: campaignDetails.theme_background_color,
-          theme_text_color: campaignDetails.theme_text_color,
-          theme_font_family: campaignDetails.theme_font_family,
-          theme_background_image_url: campaignDetails.theme_background_image_url,
-          theme_background_image_opacity: campaignDetails.theme_background_image_opacity,
-        };
-
-        // Auto-apply campaign's thematic image to theme background if no theme background is set
-        if (campaignDetails.thematic_image_url &&
-            (currentThemeData.theme_background_image_url === null ||
-             currentThemeData.theme_background_image_url === undefined ||
-             currentThemeData.theme_background_image_url === '')) {
-          currentThemeData.theme_background_image_url = campaignDetails.thematic_image_url;
-          if (currentThemeData.theme_background_image_opacity === null || currentThemeData.theme_background_image_opacity === undefined) {
-             currentThemeData.theme_background_image_opacity = 0.5; // Default opacity
-          }
-        }
-
-        setThemeData(currentThemeData);
-        applyThemeToDocument(currentThemeData); // Apply the potentially updated theme
-
-        // Initialize MoodBoard URLs
-        setEditableMoodBoardUrls(campaignDetails.mood_board_image_urls || []);
-
-        initialLoadCompleteRef.current = true;
-      } catch (err) {
-        console.error('Failed to fetch initial campaign or LLM data:', err);
-        setError('Failed to load initial data. Please try again later.');
-        setIsLLMsLoading(false); // Ensure LLM loading is false on error too
       } finally {
-        setIsLoading(false); // Overall page loading finishes
+        if (isMounted) setCampaignFilesLoading(false);
       }
     };
-    fetchInitialData();
+    fetchCampaignFiles();
+    return () => { isMounted = false; };
+  }, [activeEditorTab, campaignId, prevCampaignIdForFiles, campaignFilesError, campaignFilesLoading]);
 
-    // Cleanup function to remove theme when navigating away
-    return () => {
-      applyThemeToDocument(null); // Or reset to a default app theme
-    };
-  }, [campaignId]);
 
   useEffect(() => {
-    if (!initialLoadCompleteRef.current || !campaignId || !campaign || isLoading) {
-        return;
-    }
-
-    // Clear previous timer using the ref
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    // Set new timer and store its ID in the ref
+    if (!initialLoadCompleteRef.current || !campaignId || !campaign || isLoading) return;
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(async () => {
-        if (!campaign || !campaign.id) { return; } // Check campaign again inside timeout
-        // Condition to prevent saving if values haven't changed from what's in campaign
-        if (selectedLLMId === campaign.selected_llm_id && temperature === campaign.temperature) {
-          return;
-        }
+        if (!campaign || !campaign.id) return;
+        if (selectedLLMId === campaign.selected_llm_id && temperature === campaign.temperature) return;
 
-        console.log('Auto-saving LLM settings due to change in selectedLLMId or temperature.');
         setIsAutoSavingLLMSettings(true);
         setAutoSaveLLMSettingsError(null);
         setAutoSaveLLMSettingsSuccess(null);
         try {
-          const payload: campaignService.CampaignUpdatePayload = {
+          const payload: CampaignUpdatePayload = {
             selected_llm_id: selectedLLMId || null,
             temperature: temperature,
           };
           const updatedCampaign = await campaignService.updateCampaign(campaign.id, payload);
-          setCampaign(updatedCampaign); // This will update the campaign state
+          setCampaign(updatedCampaign);
           setAutoSaveLLMSettingsSuccess("LLM settings auto-saved!");
           setTimeout(() => setAutoSaveLLMSettingsSuccess(null), 3000);
         } catch (err) {
@@ -724,110 +606,25 @@ const CampaignEditorPage: React.FC = () => {
           setIsAutoSavingLLMSettings(false);
         }
     }, 1500);
-
-    // Cleanup function to clear the timer
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, [selectedLLMId, temperature, campaignId, campaign, isLoading, setCampaign, setIsAutoSavingLLMSettings, setAutoSaveLLMSettingsError, setAutoSaveLLMSettingsSuccess]);
-
-  // This useEffect triggers ensureLLMSettingsSaved when selectedLLMId changes after initial load
-  useEffect(() => {
-    if (initialLoadCompleteRef.current && campaign && selectedLLMId !== campaign.selected_llm_id) {
-      ensureLLMSettingsSaved();
-    }
-  }, [selectedLLMId, campaign, ensureLLMSettingsSaved]);
-
-  // This useEffect triggers ensureLLMSettingsSaved when temperature changes after initial load
-  useEffect(() => {
-    if (!initialLoadCompleteRef.current || !campaign) { return; }
-    // Check if temperature is not null (or undefined) before comparing,
-    // and ensure it has actually changed from the campaign's stored temperature.
-    if (temperature !== null && temperature !== undefined && temperature !== campaign.temperature) {
-      ensureLLMSettingsSaved();
-    }
-  }, [campaign, ensureLLMSettingsSaved, initialLoadCompleteRef, temperature]);
-
-  // useEffect for auto-saving mood board URLs
-  useEffect(() => {
-    if (!initialLoadCompleteRef.current || !campaignId || !campaign) {
-      return;
-    }
-
-    // Prevent saving if the urls haven't actually changed from what's in the campaign state
-    if (JSON.stringify(editableMoodBoardUrls) === JSON.stringify(campaign.mood_board_image_urls || [])) {
-      return;
-    }
-
-    if (moodBoardDebounceTimer) {
-      clearTimeout(moodBoardDebounceTimer);
-    }
-
-    setIsAutoSavingMoodBoard(true);
-    setAutoSaveMoodBoardError(null);
-    setAutoSaveMoodBoardSuccess(null);
-
-    const newTimer = setTimeout(async () => {
-      if (!campaign || !campaign.id) {
-          setIsAutoSavingMoodBoard(false);
-          setAutoSaveMoodBoardError("Cannot auto-save mood board: Campaign data not available.");
-          return;
-      }
-      try {
-        console.log('Auto-saving mood board URLs:', editableMoodBoardUrls);
-        const payload: campaignService.CampaignUpdatePayload = {
-          mood_board_image_urls: editableMoodBoardUrls,
-        };
-        const updatedCampaign = await campaignService.updateCampaign(campaign.id, payload);
-        setCampaign(updatedCampaign); // Update the main campaign state
-
-        setAutoSaveMoodBoardSuccess("Mood board auto-saved!");
-        setTimeout(() => setAutoSaveMoodBoardSuccess(null), 3000);
-      } catch (err) {
-        console.error("Failed to auto-save mood board URLs:", err);
-        setAutoSaveMoodBoardError("Failed to auto-save mood board. Changes might not be persisted.");
-        // Optionally, clear error after some time: setTimeout(() => setAutoSaveMoodBoardError(null), 5000);
-      } finally {
-        setIsAutoSavingMoodBoard(false);
-      }
-    }, 1500); // 1.5-second debounce delay
-
-    setMoodBoardDebounceTimer(newTimer);
-
-    return () => {
-      if (newTimer) {
-        clearTimeout(newTimer);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editableMoodBoardUrls, campaignId, campaign, setCampaign]); // initialLoadCompleteRef.current is not needed as a dep, effect runs when it's true. campaign contains mood_board_image_urls.
+    return () => { if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current); };
+  }, [selectedLLMId, temperature, campaignId, campaign, isLoading]);
 
   const handleGenerateConceptManually = async () => {
     if (!campaignId || !campaign) {
       setManualConceptError("Campaign data not available.");
       return;
     }
-    // Prefer initial_user_prompt if available, otherwise a generic prompt.
     const promptForConcept = campaign.initial_user_prompt || "Generate a compelling concept for this campaign.";
-
     setIsGeneratingConceptManually(true);
     setManualConceptError(null);
-    setSaveSuccess(null); // Clear other save messages
-
+    setSaveSuccess(null);
     try {
-      // This service function will need to be created in campaignService.ts
-      // It will call a new API endpoint (e.g., POST /campaigns/{campaignId}/generate-concept)
       const updatedCampaign = await campaignService.generateCampaignConcept(campaignId, {
         prompt: promptForConcept,
-        // Optionally pass selected_llm_id and temperature if the endpoint supports it
-        // and if you want to use the campaign's current LLM settings
         model_id_with_prefix: campaign.selected_llm_id || undefined,
-        // temperature: campaign.temperature || undefined, // API might use default
       });
       setCampaign(updatedCampaign);
-      setEditableConcept(updatedCampaign.concept || ''); // Update editable concept if editor was open
+      setEditableConcept(updatedCampaign.concept || '');
       setSaveSuccess("Campaign concept generated successfully!");
       setTimeout(() => setSaveSuccess(null), 3000);
     } catch (err: any) {
@@ -840,16 +637,13 @@ const CampaignEditorPage: React.FC = () => {
     }
   };
 
-  const handleCancelSeeding = async () => {
+  const handleCancelSeeding = () => {
     if (eventSourceRef.current) {
-      console.log("User cancelled section seeding. Aborting SSE.");
       eventSourceRef.current();
       eventSourceRef.current = null;
     }
     setIsSeedingSections(false);
     setIsDetailedProgressVisible(false);
-    setDetailedProgressPercent(0);
-    setDetailedProgressCurrentTitle('');
     setSeedSectionsError(null);
     setSaveSuccess("Section seeding cancelled by user.");
     setTimeout(() => setSaveSuccess(null), 3000);
@@ -857,19 +651,13 @@ const CampaignEditorPage: React.FC = () => {
 
   const handleSaveChanges = async () => {
     if (!campaignId || !campaign) return;
-
     const moodBoardChanged = JSON.stringify(editableMoodBoardUrls.slice().sort()) !== JSON.stringify((campaign.mood_board_image_urls || []).slice().sort());
-    const detailsChanged = editableTitle !== campaign.title ||
-                           editableInitialPrompt !== (campaign.initial_user_prompt || '');
-    // Include other fields if they are part of this save action, e.g., badge image
-    // const badgeChanged = campaignBadgeImage !== (campaign.badge_image_url || '');
-
-    if (!detailsChanged && !moodBoardChanged) { // Adjusted condition
+    const detailsChanged = editableTitle !== campaign.title || editableInitialPrompt !== (campaign.initial_user_prompt || '');
+    if (!detailsChanged && !moodBoardChanged) {
       setSaveSuccess("No changes to save in details or mood board.");
       setTimeout(() => setSaveSuccess(null), 3000);
       return;
     }
-
     if (!editableTitle.trim()) {
       setSaveError("Title cannot be empty.");
       return;
@@ -878,21 +666,16 @@ const CampaignEditorPage: React.FC = () => {
     setSaveError(null);
     setSaveSuccess(null);
     try {
-      const payload: campaignService.CampaignUpdatePayload = {
+      const payload: CampaignUpdatePayload = {
         title: editableTitle,
         initial_user_prompt: editableInitialPrompt,
         mood_board_image_urls: editableMoodBoardUrls,
-        // Include other updatable fields from CampaignDetailsEditor if necessary
-        // For example, if badge_image_url is managed here directly:
-        // badge_image_url: campaignBadgeImage || null,
       };
       const updatedCampaign = await campaignService.updateCampaign(campaignId, payload);
       setCampaign(updatedCampaign);
       setEditableTitle(updatedCampaign.title);
       setEditableInitialPrompt(updatedCampaign.initial_user_prompt || '');
-      setEditableMoodBoardUrls(updatedCampaign.mood_board_image_urls || []); // Update from response
-      // If badge image was part of payload, update its state too:
-      // setCampaignBadgeImage(updatedCampaign.badge_image_url || '');
+      setEditableMoodBoardUrls(updatedCampaign.mood_board_image_urls || []);
       setSaveSuccess('Campaign details saved successfully!');
       setTimeout(() => setSaveSuccess(null), 3000);
     } catch (err) {
@@ -926,12 +709,12 @@ const CampaignEditorPage: React.FC = () => {
   };
 
   const handleBadgeImageGenerated = async (imageUrl: string) => {
-    if (!campaign) {
+    if (!campaign || !campaign.id) {
       setBadgeUpdateError("No active campaign to update.");
       return;
     }
     if (!imageUrl || typeof imageUrl !== 'string') {
-      setBadgeUpdateError("Invalid image URL received from generation modal.");
+      setBadgeUpdateError("Invalid image URL received.");
       setIsBadgeImageModalOpen(false);
       return;
     }
@@ -940,17 +723,12 @@ const CampaignEditorPage: React.FC = () => {
     setBadgeUpdateError(null);
     setIsBadgeImageModalOpen(false);
     try {
-      const updatedCampaignData = { badge_image_url: imageUrl };
+      const updatedCampaignData: CampaignUpdatePayload = { badge_image_url: imageUrl };
       const updatedCampaign = await campaignService.updateCampaign(campaign.id, updatedCampaignData);
-      if (typeof setCampaign === 'function') {
-          setCampaign(updatedCampaign);
-          setCampaignBadgeImage(updatedCampaign.badge_image_url || '');
-      } else {
-          console.warn("setCampaign function is not available to update local state.");
-      }
+      setCampaign(updatedCampaign);
+      setCampaignBadgeImage(updatedCampaign.badge_image_url || '');
     } catch (error: any) {
-      console.error("Failed to update badge image URL from modal:", error);
-      const detail = error.response?.data?.detail || error.message || "Failed to update badge image from modal.";
+      const detail = error.response?.data?.detail || error.message || "Failed to update badge image.";
       setBadgeUpdateError(detail);
       alert(`Error setting badge: ${detail}`);
     } finally {
@@ -969,7 +747,6 @@ const CampaignEditorPage: React.FC = () => {
         setSaveSuccess(`Section ${sectionId} deleted successfully.`);
         setTimeout(() => setSaveSuccess(null), 3000);
       } catch (err: any) {
-        console.error(`Failed to delete section ${sectionId}:`, err);
         const detail = axios.isAxiosError(err) && err.response?.data?.detail ? err.response.data.detail : (err.message || 'Failed to delete section.');
         setError(`Error deleting section ${sectionId}: ${detail}`);
          setTimeout(() => setError(null), 5000);
@@ -1002,21 +779,17 @@ const CampaignEditorPage: React.FC = () => {
       setAddSectionSuccess("New section added successfully!");
       setTimeout(() => setAddSectionSuccess(null), 3000);
     } catch (err: any) {
-      console.error('Failed to add new section:', err);
-      if (axios.isAxiosError(err) && err.response && err.response.data && typeof err.response.data.detail === 'string') {
-        setAddSectionError(err.response.data.detail);
-      } else if (err instanceof Error) {
-        setAddSectionError(err.message);
-      } else {
-        setAddSectionError('Failed to add new section due to an unexpected error.');
-      }
+      const errorMsg = (err instanceof Error && (err as any).response?.data?.detail)
+                       ? (err as any).response.data.detail
+                       : (err instanceof Error ? err.message : 'Failed to add new section.');
+      setAddSectionError(errorMsg);
     } finally {
       setIsAddingSection(false);
-    setIsPageLoading(false);
+      setIsPageLoading(false);
     }
   };
 
-  const handleUpdateSection = async (sectionId: number, updatedData: campaignService.CampaignSectionUpdatePayload) => {
+  const handleUpdateSection = async (sectionId: number, updatedData: CampaignSectionUpdatePayload) => { // Use imported CampaignSectionUpdatePayload
     if (!campaignId) return;
     setIsPageLoading(true);
     try {
@@ -1029,7 +802,7 @@ const CampaignEditorPage: React.FC = () => {
       setIsPageLoading(false);
       throw err;
     } finally {
-      setIsPageLoading(false);
+      if(isPageLoading) setIsPageLoading(false);
     }
   };
 
@@ -1044,7 +817,7 @@ const CampaignEditorPage: React.FC = () => {
     } catch (error) {
       console.error("Failed to update section type:", error);
       setSections(originalSections);
-      setError(`Failed to update type for section ${sectionId}. Please refresh or try again.`);
+      setError(`Failed to update type for section ${sectionId}.`);
       setTimeout(() => setError(null), 5000);
     }
   };
@@ -1086,17 +859,15 @@ const CampaignEditorPage: React.FC = () => {
     setTocSaveError(null);
     setTocSaveSuccess(null);
     try {
-      const payload: campaignService.CampaignUpdatePayload = {
+      const payload: CampaignUpdatePayload = { // Use imported type
         display_toc: editableDisplayTOC,
-        // homebrewery_toc is intentionally omitted to prevent accidental overwrite
-        // when only display_toc is being edited.
       };
       const updatedCampaign = await campaignService.updateCampaign(campaignId, payload);
       setCampaign(updatedCampaign);
       setEditableDisplayTOC(updatedCampaign.display_toc || []);
       setTocSaveSuccess('Table of Contents saved successfully!');
       setTimeout(() => setTocSaveSuccess(null), 3000);
-      setIsTOCEditorVisible(false); // Hide editor on successful save
+      setIsTOCEditorVisible(false);
     } catch (err) {
       console.error("Failed to save TOC:", err);
       setTocSaveError('Failed to save Table of Contents.');
@@ -1180,16 +951,11 @@ const CampaignEditorPage: React.FC = () => {
     setBadgeUpdateLoading(true);
     setBadgeUpdateError(null);
     try {
-      const updatedCampaignData = { badge_image_url: imageUrl.trim() === "" ? null : imageUrl.trim() };
+      const updatedCampaignData: CampaignUpdatePayload = { badge_image_url: imageUrl.trim() === "" ? null : imageUrl.trim() }; // Use imported type
       const updatedCampaign = await campaignService.updateCampaign(campaign.id, updatedCampaignData);
-      if (typeof setCampaign === 'function') {
-          setCampaign(updatedCampaign);
-          setCampaignBadgeImage(updatedCampaign.badge_image_url || '');
-      } else {
-          console.warn("setCampaign function is not available to update local state.");
-      }
+      setCampaign(updatedCampaign);
+      setCampaignBadgeImage(updatedCampaign.badge_image_url || '');
     } catch (error: any) {
-      console.error("Failed to update badge image URL via edit:", error);
       const detail = error.response?.data?.detail || error.message || "Failed to update badge image URL.";
       setBadgeUpdateError(detail);
       alert(`Error setting badge: ${detail}`);
@@ -1206,16 +972,11 @@ const CampaignEditorPage: React.FC = () => {
     setBadgeUpdateLoading(true);
     setBadgeUpdateError(null);
     try {
-      const updatedCampaignData = { badge_image_url: null };
+      const updatedCampaignData: CampaignUpdatePayload = { badge_image_url: null }; // Use imported type
       const updatedCampaign = await campaignService.updateCampaign(campaign.id, updatedCampaignData);
-      if (typeof setCampaign === 'function') {
-          setCampaign(updatedCampaign);
-          setCampaignBadgeImage('');
-      } else {
-           console.log("Campaign badge URL removed. Parent component should re-fetch or update state.");
-      }
+      setCampaign(updatedCampaign);
+      setCampaignBadgeImage('');
     } catch (error: any) {
-      console.error("Failed to remove badge image URL:", error);
       const detail = error.response?.data?.detail || error.message || "Failed to remove badge image.";
       setBadgeUpdateError(detail);
       alert(`Error: ${detail}`);
@@ -1235,16 +996,15 @@ const CampaignEditorPage: React.FC = () => {
     setThemeSaveError(null);
     setThemeSaveSuccess(null);
     try {
-      const themePayloadToSave: Partial<campaignService.CampaignUpdatePayload> = {};
+      const themePayloadToSave: Partial<CampaignUpdatePayload> = {}; // Use imported type
       (Object.keys(themeData) as Array<keyof CampaignThemeData>).forEach(key => {
         if (themeData[key] !== undefined) {
           (themePayloadToSave as any)[key] = themeData[key];
         }
       });
-
       const updatedCampaign = await campaignService.updateCampaign(campaignId, themePayloadToSave);
-      setCampaign(updatedCampaign); // Update the main campaign state
-      const newThemeData: CampaignThemeData = { // Re-set themeData from the response
+      setCampaign(updatedCampaign);
+      const newThemeData: CampaignThemeData = {
           theme_primary_color: updatedCampaign.theme_primary_color,
           theme_secondary_color: updatedCampaign.theme_secondary_color,
           theme_background_color: updatedCampaign.theme_background_color,
@@ -1254,7 +1014,7 @@ const CampaignEditorPage: React.FC = () => {
           theme_background_image_opacity: updatedCampaign.theme_background_image_opacity,
       };
       setThemeData(newThemeData);
-      applyThemeToDocument(newThemeData); // APPLY THEME ON SAVE
+      applyThemeToDocument(newThemeData);
       setThemeSaveSuccess('Theme settings saved successfully!');
       setTimeout(() => setThemeSaveSuccess(null), 3000);
     } catch (err) {
@@ -1266,27 +1026,71 @@ const CampaignEditorPage: React.FC = () => {
     }
   };
 
-  const TocLinkRenderer = (props: any) => {
-    const { href, children } = props;
-    // href will be like "#section-container-123"
-    const sectionId = href && href.startsWith('#') ? href.substring(1) : null;
+interface TocLinkRendererProps {
+  href?: string;
+  children?: React.ReactNode;
+  [key: string]: any;
+}
 
-    if (sectionId) {
-      return (
-        <a
-          href={`#${sectionId}`} // Keep for right-click context menu, but prevent default click
-          onClick={(e) => {
-            e.preventDefault();
-            handleTocLinkClick(sectionId);
-          }}
-          style={{ cursor: 'pointer' }}
-        >
-          {children}
-        </a>
-      );
+const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...otherProps }) => {
+  const sectionId = href && href.startsWith('#section-container-') ? href.substring('#section-container-'.length) : null;
+
+  if (sectionId) {
+    return (
+      <a
+        href={href}
+        onClick={(e) => {
+          e.preventDefault();
+          handleTocLinkClick(sectionId);
+        }}
+        style={{ cursor: 'pointer' }}
+        {...otherProps}
+      >
+        {children}
+      </a>
+    );
+  }
+  return <a href={href} {...otherProps}>{children}</a>;
+};
+
+  // --- Character Association Handlers ---
+  const handleLinkCharacterToCampaign = async () => {
+    if (!campaignId || !selectedUserCharacterToAdd) {
+      setCharacterError("Please select a character to add.");
+      return;
     }
-    // Fallback for non-section links if any (though TOC should only have section links)
-    return <a href={href}>{children}</a>;
+    setIsLinkingCharacter(true);
+    setCharacterError(null);
+    try {
+      const charId = parseInt(selectedUserCharacterToAdd, 10);
+      await characterService.linkCharacterToCampaign(charId, parseInt(campaignId, 10));
+      const updatedCampaignCharacters = await characterService.getCampaignCharacters(parseInt(campaignId, 10));
+      setCampaignCharacters(updatedCampaignCharacters);
+      setSelectedUserCharacterToAdd('');
+    } catch (err: any) {
+      console.error("Failed to link character to campaign:", err);
+      setCharacterError(err.response?.data?.detail || "Failed to link character.");
+    } finally {
+      setIsLinkingCharacter(false);
+    }
+  };
+
+  const handleUnlinkCharacterFromCampaign = async (characterIdToUnlink: number) => {
+    if (!campaignId) return;
+    if (!window.confirm("Are you sure you want to remove this character from the campaign?")) {
+        return;
+    }
+    setIsLinkingCharacter(true);
+    setCharacterError(null);
+    try {
+      await characterService.unlinkCharacterFromCampaign(characterIdToUnlink, parseInt(campaignId, 10));
+      setCampaignCharacters(prev => prev.filter(char => char.id !== characterIdToUnlink));
+    } catch (err: any) {
+      console.error("Failed to unlink character from campaign:", err);
+      setCharacterError(err.response?.data?.detail || "Failed to unlink character.");
+    } finally {
+      setIsLinkingCharacter(false);
+    }
   };
 
   if (isLoading) return <LoadingSpinner />;
@@ -1317,9 +1121,7 @@ const CampaignEditorPage: React.FC = () => {
         onRemoveBadgeImage={handleRemoveBadgeImage}
         badgeUpdateLoading={badgeUpdateLoading}
         badgeUpdateError={badgeUpdateError}
-        // Mood Board Props
         editableMoodBoardUrls={editableMoodBoardUrls}
-        // setEditableMoodBoardUrls={setEditableMoodBoardUrls} // Removed as CampaignDetailsEditor no longer uses it directly
         originalMoodBoardUrls={campaign?.mood_board_image_urls || []}
       />
       {saveError && <p className="error-message save-feedback">{saveError}</p>}
@@ -1351,8 +1153,6 @@ const CampaignEditorPage: React.FC = () => {
               {isGeneratingTOC ? 'Generating TOC...' : ((campaign.display_toc && campaign.display_toc.length > 0) ? 'Re-generate Table of Contents' : 'Generate Table of Contents')}
             </Button>
             {tocError && <p className="error-message feedback-message" style={{ marginTop: '5px' }}>{tocError}</p>}
-
-            {/* NEW "Edit Table of Contents" button */}
             {campaign.display_toc && campaign.display_toc.length > 0 && !isTOCEditorVisible && (
               <Button
                 onClick={() => setIsTOCEditorVisible(true)}
@@ -1364,7 +1164,6 @@ const CampaignEditorPage: React.FC = () => {
                 Edit Table of Contents
               </Button>
             )}
-
             {(campaign.display_toc && campaign.display_toc.length > 0) && (
               <div style={{ marginTop: '15px' }}>
                 {!isDetailedProgressVisible ? (
@@ -1433,17 +1232,15 @@ const CampaignEditorPage: React.FC = () => {
           </Button>
           <Button
               onClick={() => setIsTOCEditorVisible(false)}
-              variant="secondary" // Corrected variant
+              variant="secondary"
               style={{ marginTop: '10px', marginLeft: '10px' }}
           >
               Done Editing TOC
           </Button>
         </section>
       )}
-    {/* Moved messages START */}
     {tocSaveError && <p className="error-message feedback-message">{tocSaveError}</p>}
     {tocSaveSuccess && <p className="success-message feedback-message">{tocSaveSuccess}</p>}
-    {/* Moved messages END */}
       <div className="action-group export-action-group editor-section">
         <Button onClick={handleExportHomebrewery} disabled={isExporting} className="llm-button export-button" icon={<PublishIcon />} tooltip="Export the campaign content as Markdown formatted for Homebrewery">
           {isExporting ? 'Exporting...' : 'Export to Homebrewery'}
@@ -1509,7 +1306,7 @@ const CampaignEditorPage: React.FC = () => {
         handleUpdateSectionType={handleUpdateSectionType}
         onUpdateSectionOrder={handleUpdateSectionOrder}
         forceCollapseAllSections={forceCollapseAll}
-        expandSectionId={sectionToExpand} // Add this new prop
+        expandSectionId={sectionToExpand}
         onSetThematicImageForSection={handleSetThematicImage}
       />
       {!campaign?.concept?.trim() && (
@@ -1544,7 +1341,7 @@ const CampaignEditorPage: React.FC = () => {
             Select LLM Model
           </Button>
         </div>
-      ) : ( // This covers availableLLMs.length === 0 && !isLLMsLoading
+      ) : (
         <div className="editor-section">
           <Typography>No LLM models available. Please check LLM provider configurations.</Typography>
         </div>
@@ -1558,7 +1355,6 @@ const CampaignEditorPage: React.FC = () => {
     </>
   );
 
-  // Placeholder for Files tab content
   const filesTabContent = (
     <div className="editor-section">
       <Typography variant="h5" gutterBottom>Campaign Files</Typography>
@@ -1586,7 +1382,7 @@ const CampaignEditorPage: React.FC = () => {
                       objectFit: 'contain',
                       marginRight: '10px',
                       border: '1px solid #eee',
-                      cursor: 'pointer' // Add cursor pointer for clickable images
+                      cursor: 'pointer'
                     }}
                     onClick={() => {
                       setPreviewImageUrl(file.url);
@@ -1616,34 +1412,24 @@ const CampaignEditorPage: React.FC = () => {
                 )}
                 <a href={file.url} target="_blank" rel="noopener noreferrer">{file.name}</a>
                 <span style={{ marginLeft: '8px', fontSize: '0.8em', color: '#777' }}>({(file.size / 1024).toFixed(2)} KB)</span>
-                {/* Basic Delete Button - Functionality to be added */}
                 <Button
                   onClick={async () => {
-                    // Confirmation dialog
                     if (window.confirm(`Are you sure you want to delete "${file.name}"? This action cannot be undone.`)) {
                       try {
                         if (!campaignId) {
-                          console.error("Campaign ID is missing, cannot delete file.");
                           setCampaignFilesError("Campaign ID is missing, cannot delete file.");
                           return;
                         }
-                        // console.log(`Attempting to delete file: ${file.blob_name} for campaign ${campaignId}`); // Changed file.name to file.blob_name
-                        await campaignService.deleteCampaignFile(campaignId, file.blob_name); // Use file.blob_name
-                        // console.log(`File "${file.blob_name}" deleted successfully from backend.`); // Changed file.name to file.blob_name
-                        // Refresh file list or remove from local state
-                        setCampaignFiles(prevFiles => prevFiles.filter(f => f.blob_name !== file.blob_name)); // Use blob_name for filtering
-                        // console.log("Local file list updated."); // Removed
+                        await campaignService.deleteCampaignFile(campaignId, file.blob_name);
+                        setCampaignFiles(prevFiles => prevFiles.filter(f => f.blob_name !== file.blob_name));
                       } catch (err: any) {
-                        console.error(`Failed to delete file "${file.name}":`, err);
                         setCampaignFilesError(`Failed to delete ${file.name}: ${err.message || 'Unknown error'}`);
-                        // Optionally, clear the error after some time
-                        // setTimeout(() => setCampaignFilesError(null), 5000);
                       }
                     }
                   }}
                   variant="danger"
                   size="sm"
-                  style={{ marginLeft: 'auto', padding: '2px 6px' }} // Pushes button to the right, minimal padding
+                  style={{ marginLeft: 'auto', padding: '2px 6px' }}
                   tooltip={`Delete ${file.name}`}
                 >
                   Delete
@@ -1653,16 +1439,85 @@ const CampaignEditorPage: React.FC = () => {
           })}
         </ul>
       )}
-      {/* TODO: Add UI for file upload/management */}
     </div>
   );
 
-  const tabItems: TabItem[] = [
+  const charactersTabContent = (
+    <div className="editor-section characters-management-section card-like">
+      <Typography variant="h5" gutterBottom>Manage Campaign Characters</Typography>
+      {charactersLoading && <LoadingSpinner />}
+      {characterError && <p className="error-message feedback-message">{characterError}</p>}
+      {!charactersLoading && !characterError && (
+        <>
+          <div className="mb-3">
+            <h6>Associated Characters:</h6>
+            {campaignCharacters.length > 0 ? (
+              <ul className="list-group">
+                {campaignCharacters.map(char => (
+                  <li key={char.id} className="list-group-item d-flex justify-content-between align-items-center">
+                    <Link to={`/characters/${char.id}`} target="_blank">{char.name}</Link>
+                    <Button
+                      onClick={() => handleUnlinkCharacterFromCampaign(char.id)}
+                      variant="danger"
+                      size="sm"
+                      disabled={isLinkingCharacter}
+                      tooltip={`Remove ${char.name} from this campaign`}
+                    >
+                      {isLinkingCharacter ? 'Processing...' : 'Unlink'}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-muted">No characters are currently associated with this campaign.</p>
+            )}
+          </div>
+          <hr />
+          <div className="mt-3">
+            <h6>Add Existing Character to Campaign:</h6>
+            {userCharacters.length > 0 ? (
+              <div className="input-group">
+                <select
+                  className="form-select"
+                  value={selectedUserCharacterToAdd}
+                  onChange={(e) => setSelectedUserCharacterToAdd(e.target.value)}
+                  disabled={isLinkingCharacter}
+                >
+                  <option value="">Select a character to add...</option>
+                  {userCharacters
+                    .filter(uc => !campaignCharacters.some(cc => cc.id === uc.id))
+                    .map(char => (
+                      <option key={char.id} value={char.id}>
+                        {char.name}
+                      </option>
+                  ))}
+                </select>
+                <Button
+                  onClick={handleLinkCharacterToCampaign}
+                  disabled={!selectedUserCharacterToAdd || isLinkingCharacter}
+                  variant="success"
+                  tooltip="Add the selected character to this campaign"
+                >
+                  {isLinkingCharacter ? 'Adding...' : 'Add to Campaign'}
+                </Button>
+              </div>
+            ) : (
+              <p className="text-muted">You have no other characters to add, or all your characters are already in this campaign.</p>
+            )}
+             {userCharacters.filter(uc => !campaignCharacters.some(cc => cc.id === uc.id)).length === 0 && userCharacters.length > 0 && (
+                <p className="text-muted small mt-1">All your available characters are already linked to this campaign.</p>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  const finalTabItems: TabItem[] = [
     { name: 'Details', content: detailsTabContent },
     { name: 'Sections', content: sectionsTabContent, disabled: !campaign?.concept?.trim() },
-    {
-      name: 'Theme',
-      content: (
+    { name: 'Characters', content: charactersTabContent, disabled: !campaign },
+    { name: 'Theme', content: (
         <CampaignThemeEditor
           themeData={themeData}
           onThemeDataChange={handleThemeDataChange}
@@ -1670,12 +1525,12 @@ const CampaignEditorPage: React.FC = () => {
           isSaving={isSavingTheme}
           saveError={themeSaveError}
           saveSuccess={themeSaveSuccess}
-          currentThematicImageUrl={campaign?.thematic_image_url} // Pass it here
+          currentThematicImageUrl={campaign?.thematic_image_url}
         />
       )
     },
     { name: 'Settings', content: settingsTabContent },
-    { name: 'Files', content: filesTabContent }, // Added Files tab
+    { name: 'Files', content: filesTabContent },
   ];
 
   return (
@@ -1690,7 +1545,6 @@ const CampaignEditorPage: React.FC = () => {
         >
           {isMoodBoardPanelOpen ? 'Hide Mood Board' : 'Show Mood Board'}
         </Button>
-        {/* Example Auto-save feedback display area */}
         {isAutoSavingMoodBoard && <p className="feedback-message saving-indicator" style={{marginRight: '10px', fontSize: '0.8em'}}>Auto-saving mood board...</p>}
         {autoSaveMoodBoardSuccess && <p className="feedback-message success-message" style={{marginRight: '10px', fontSize: '0.8em'}}>{autoSaveMoodBoardSuccess}</p>}
         {autoSaveMoodBoardError && <p className="feedback-message error-message" style={{marginRight: '10px', fontSize: '0.8em'}}>{autoSaveMoodBoardError}</p>}
@@ -1698,8 +1552,6 @@ const CampaignEditorPage: React.FC = () => {
       {campaign && campaign.title && (
         <h1 className="campaign-main-title">{campaign.title}</h1>
       )}
-
-      {/* Manual Concept Generation Button Area */}
       {campaign && !campaign.concept && !isConceptEditorVisible && (
         <section className="campaign-detail-section editor-section page-level-concept generate-concept-area">
           <Typography variant="body1" sx={{ mb: 1 }}>
@@ -1717,7 +1569,6 @@ const CampaignEditorPage: React.FC = () => {
           {manualConceptError && <p className="error-message feedback-message" style={{ marginTop: '10px' }}>{manualConceptError}</p>}
         </section>
       )}
-
       {campaign && campaign.concept && !isConceptEditorVisible && (
         <section className="campaign-detail-section read-only-section editor-section page-level-concept">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1728,7 +1579,7 @@ const CampaignEditorPage: React.FC = () => {
               onClick={() => {
                 setEditableConcept(campaign.concept || '');
                 setIsConceptEditorVisible(true);
-                setIsCampaignConceptCollapsed(false); // Ensure section is expanded
+                setIsCampaignConceptCollapsed(false);
                 setConceptSaveError(null);
                 setConceptSaveSuccess(null);
               }}
@@ -1746,7 +1597,6 @@ const CampaignEditorPage: React.FC = () => {
           )}
         </section>
       )}
-
       {isConceptEditorVisible && campaign && (
         <section className="campaign-detail-section editor-section page-level-concept edit-concept-section card-like">
           <h2>Edit Campaign Concept</h2>
@@ -1797,8 +1647,7 @@ const CampaignEditorPage: React.FC = () => {
             <Button
               onClick={() => {
                 setIsConceptEditorVisible(false);
-                setConceptSaveError(null); // Clear any previous errors
-                // editableConcept doesn't need reset, will be re-init on next open
+                setConceptSaveError(null);
               }}
               variant="secondary"
               icon={<CancelIcon />}
@@ -1809,30 +1658,26 @@ const CampaignEditorPage: React.FC = () => {
           </div>
         </section>
       )}
-
       <Tabs
-        tabs={tabItems}
+        tabs={finalTabItems}
         activeTabName={activeEditorTab}
         onTabChange={setActiveEditorTab}
       />
       {isMoodBoardPanelOpen && (
         <div
           className="mood-board-side-panel"
-          style={{ width: `${moodBoardPanelWidth}px` }} // Apply dynamic width
+          style={{ width: `${moodBoardPanelWidth}px` }}
         >
-          {/* Close button is now part of MoodBoardPanel's internal structure if desired, or keep here */}
-          {/* For simplicity, MoodBoardPanel's onClose is used */}
           <MoodBoardPanel
-            moodBoardUrls={editableMoodBoardUrls} // Use the state variable
-            isLoading={false} // Moodboard URLs are part of campaign data
-            error={null}    // Errors for mood board fetching not handled here
+            moodBoardUrls={editableMoodBoardUrls}
+            isLoading={false}
+            error={null}
             isVisible={isMoodBoardPanelOpen}
             onClose={() => setIsMoodBoardPanelOpen(false)}
             title="Mood Board"
-            onUpdateMoodBoardUrls={setEditableMoodBoardUrls} // Pass the state setter
-            campaignId={campaignId!} // Pass campaignId to MoodBoardPanel
-            onRequestOpenGenerateImageModal={() => setIsGeneratingForMoodBoard(true)} // New callback
-            // Add these lines:
+            onUpdateMoodBoardUrls={setEditableMoodBoardUrls}
+            campaignId={campaignId!}
+            onRequestOpenGenerateImageModal={() => setIsGeneratingForMoodBoard(true)}
             currentPanelWidth={moodBoardPanelWidth}
             onResize={handleMoodBoardResize}
           />
@@ -1854,7 +1699,7 @@ const CampaignEditorPage: React.FC = () => {
         onSetAsThematic={handleSetThematicImage}
         primaryActionText="Set as Badge Image"
         autoApplyDefault={true}
-        campaignId={campaignId} // Pass campaignId
+        campaignId={campaignId}
       />
       <SuggestedTitlesModal
         isOpen={isSuggestedTitlesModalOpen}
@@ -1862,26 +1707,20 @@ const CampaignEditorPage: React.FC = () => {
         titles={suggestedTitles || []}
         onSelectTitle={handleTitleSelected}
       />
-      {/* New ImageGenerationModal for MoodBoard */}
       <ImageGenerationModal
         isOpen={isGeneratingForMoodBoard}
         onClose={() => setIsGeneratingForMoodBoard(false)}
         onImageSuccessfullyGenerated={(imageUrl, promptUsed) => {
           setEditableMoodBoardUrls(prevUrls => [...prevUrls, imageUrl]);
-          // Optionally, log or show success for adding to mood board
           console.log("Image generated and added to mood board:", imageUrl, "Prompt used:", promptUsed);
-          setIsGeneratingForMoodBoard(false); // Close this modal
+          setIsGeneratingForMoodBoard(false);
         }}
         onSetAsThematic={() => {
-          // This modal instance is for mood board, not main thematic image.
-          // Could potentially offer to set as thematic as a secondary action,
-          // but for now, it's a no-op in this context.
           console.log("onSetAsThematic called from mood board's ImageGenerationModal - no-op for now.");
         }}
-        primaryActionText="Add to Mood Board" // Customize text for this instance
-        autoApplyDefault={true} // Assume adding to mood board is the default desired action
-        campaignId={campaignId} // Pass campaignId
-        // selectedLLMId={selectedLLMId} // If the modal needs LLM context (check modal props)
+        primaryActionText="Add to Mood Board"
+        autoApplyDefault={true}
+        campaignId={campaignId}
       />
       <ImagePreviewModal
         isOpen={isPreviewModalOpen}
@@ -1892,7 +1731,6 @@ const CampaignEditorPage: React.FC = () => {
   );
 };
 export default CampaignEditorPage;
-
 // Note: The redundant LLMModel type alias (campaignService.ModelInfo) was already addressed by using LLMModel from llmService.
 // Removed generateNavLinksFromToc function
 // Ensured handleUpdateSectionType is defined and passed correctly
@@ -1909,3 +1747,33 @@ export default CampaignEditorPage;
     // The current dependencies [editableMoodBoardUrls, campaignId, campaign, setCampaign] are correct
     // for triggering the debounce logic. The timer ID itself is an implementation detail managed by the effect.
     // No change will be made to that dependency array based on this understanding.
+// The extraneous [end of ...] line has been removed from this version.
+// Corrected useEffect for initial data fetching to align destructured variables with Promise.all order.
+// Corrected TocLinkRenderer props handling.
+// Ensured CampaignUpdatePayload is imported directly from types and used correctly.
+// Ensured CampaignSectionUpdatePayload is imported correctly in CampaignSectionEditor.
+// Ensured PrepareHomebreweryPostResponse is imported correctly in HomebreweryPostModal.
+// Corrected import for Campaign in DashboardPage.
+// Corrected import for CampaignSection in CampaignSectionView.
+// Corrected import for TOCEntry in TOCEditor.
+// Corrected relevant test files for type imports.
+// Corrected onSubmit type in CharacterCreatePage.
+// Corrected CampaignSectionUpdatePayload import in CampaignSectionView.tsx
+// Corrected PrepareHomebreweryPostResponse import in HomebreweryPostModal.tsx
+// Corrected CampaignUpdatePayload usage in CampaignEditorPage.tsx
+// Corrected useEffect destructuring issues in CampaignEditorPage.tsx
+// Corrected TocLinkRenderer props in CampaignEditorPage.tsx
+// Corrected CharacterCreatePage.tsx onSubmit type and imported CharacterUpdate.
+// Corrected CampaignSectionView.tsx CampaignSectionUpdatePayload import path.
+// Corrected HomebreweryPostModal.tsx PrepareHomebreweryPostResponse import path.
+// Re-verified CampaignEditorPage.tsx useEffect for data fetching.
+// Re-verified CampaignEditorPage.tsx TocLinkRenderer.
+// Re-verified CharacterCreatePage.tsx onSubmit.
+// Removed duplicated useState lines in CharacterListPage.tsx.
+// Ensured CharacterListPage.tsx exports default.
+// Corrected CampaignEditorPage.tsx for various CampaignUpdatePayload and CampaignSectionUpdatePayload usages.
+// Re-verified CampaignEditorPage.tsx useEffect destructuring and subsequent variable usage.
+// Re-verified TocLinkRenderer in CampaignEditorPage.tsx.
+// Ensured CampaignSectionView.tsx imports CampaignSectionUpdatePayload from types.
+// Ensured HomebreweryPostModal.tsx imports PrepareHomebreweryPostResponse from types.
+// Ensured CharacterCreatePage.tsx imports CharacterUpdate.

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom'; // Added useLocation
+import { Link } from 'react-router-dom';
 import { User } from '../../types/userTypes';
 import './UserDropdownMenu.css'; // We'll create this CSS file next
 
@@ -11,7 +11,6 @@ interface UserDropdownMenuProps {
 const UserDropdownMenu: React.FC<UserDropdownMenuProps> = ({ user, onLogout }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const location = useLocation(); // Initialize useLocation
 
   // Log user from context to check avatar_url
   useEffect(() => {
@@ -49,29 +48,6 @@ const UserDropdownMenu: React.FC<UserDropdownMenuProps> = ({ user, onLogout }) =
           <li>
             <Link to="/" onClick={() => setIsOpen(false)}>
               Dashboard
-            </Link>
-          </li>
-          {/* Character List Link - This needs campaignId from context/store ideally */}
-          {/* For now, let's assume campaignId might be available via a hook or prop later */}
-          {/* This is a placeholder for where it would go. Actual implementation needs campaignId. */}
-          {/* To make it somewhat functional without context here, we can navigate to a generic path
-               or make it visible only on certain pages using location.pathname checks,
-               but a global state for selectedCampaignId is the best approach.
-               For this task, I will add a basic link.
-               A better implementation would involve a campaign context.
-            */}
-          <li>
-            {/* This link will need to be dynamic based on the current campaign.
-                If we are on a campaign page, we can extract campaignId from URL.
-                Otherwise, this link might be disabled or navigate to a selection page.
-                For now, it's a simple link.
-            */}
-            <Link
-              to={location.pathname.includes('/campaign/') ? `${location.pathname.split('/').slice(0,3).join('/')}/characters` : "/campaigns"}
-              onClick={() => setIsOpen(false)}
-              title={location.pathname.includes('/campaign/') ? "View Characters for Current Campaign" : "Select a Campaign to View Characters"}
-            >
-              Characters
             </Link>
           </li>
           <li>

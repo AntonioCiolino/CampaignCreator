@@ -75,7 +75,7 @@ app.include_router(auth_router.router, prefix="/api/v1/auth", tags=["Authenticat
 app.include_router(data_tables.router_features, prefix="/api/v1/features", tags=["Features"])
 app.include_router(data_tables.router_roll_tables, prefix="/api/v1/roll_tables", tags=["Rolltables"])
 app.include_router(file_uploads_router.router, prefix="/api/v1", tags=["File Uploads"]) # Added file_uploads router
-app.include_router(characters_router.router, prefix="/api/v1", tags=["Characters"]) # Added characters router
+app.include_router(characters_router.router, prefix="/api/v1/characters", tags=["Characters"])
 
 @app.get("/", tags=["Root"])
 async def read_root():

@@ -1,62 +1,63 @@
-/**
- * Represents a single image associated with a character.
- * Corresponds to the CharacterImage Pydantic model.
- */
-export interface CharacterImage {
-  url: string; // HttpUrl is a string in TypeScript
-  caption?: string | null;
-  // Future fields: uploaded_at, tags, etc.
+// Contains all TypeScript interfaces related to Character data models.
+
+// Interface for character statistics, matching D&D style attributes.
+export interface CharacterStats {
+    strength?: number;
+    dexterity?: number;
+    constitution?: number;
+    intelligence?: number;
+    wisdom?: number;
+    charisma?: number;
 }
 
-/**
- * Base interface for character data.
- * Corresponds to the CharacterBase Pydantic model.
- */
+// Base interface for character data, used for creation and as part of the full Character model.
 export interface CharacterBase {
-  name: string;
-  icon_url?: string | null; // HttpUrl is a string
-  stats?: Record<string, string> | null; // Dict[str, str] becomes Record<string, string>
-  notes?: string | null;
-  chatbot_enabled?: boolean | null;
-  campaign_id: number; // Assuming campaign_id is always a number
+    name: string;
+    description?: string | null;
+    appearance_description?: string | null;
+    image_urls?: string[] | null;       // URLs for character images
+    video_clip_urls?: string[] | null;  // URLs for future video integration
+    notes_for_llm?: string | null;      // Notes for front-loading LLM interactions
+    stats?: CharacterStats | null;      // Embeds CharacterStats
 }
 
-/**
- * Interface for creating a new character.
- * Corresponds to the CharacterCreate Pydantic model.
- */
-export interface CharacterCreatePayload extends Omit<CharacterBase, 'campaign_id'> { // campaign_id will be part of the URL path
-  images?: CharacterImage[] | null;
+// Interface for creating a new character. Inherits all fields from CharacterBase.
+export interface CharacterCreate extends CharacterBase {}
+
+// Interface for updating an existing character. All fields are optional.
+export interface CharacterUpdate {
+    name?: string;
+    description?: string | null;
+    appearance_description?: string | null;
+    image_urls?: string[] | null;
+    video_clip_urls?: string[] | null;
+    notes_for_llm?: string | null;
+    stats?: CharacterStats | null;
 }
 
-/**
- * Interface for updating an existing character (all fields optional).
- * Corresponds to the CharacterUpdate Pydantic model.
- */
-export interface CharacterUpdatePayload {
-  name?: string | null;
-  icon_url?: string | null;
-  stats?: Record<string, string> | null;
-  notes?: string | null;
-  chatbot_enabled?: boolean | null;
-  images?: CharacterImage[] | null; // Allow updating the list of images
+// Full character interface, representing a character retrieved from the backend.
+export interface Character extends CharacterBase {
+    id: number;
+    owner_id: number;
+    // campaigns: Campaign[]; // Placeholder for potential future inclusion of campaign details
+                           // Requires Campaign type to be defined and imported if used.
 }
 
-/**
- * Full character data including its ID, as returned by the API.
- * Corresponds to the Character Pydantic model.
- */
-export interface PydanticCharacter extends CharacterBase {
-  id: number;
-  images: CharacterImage[]; // List of image objects
-}
-
-// Example of how you might use these types in a component state or prop:
-//
-// interface CharacterEditorProps {
-//   character?: PydanticCharacter; // For editing an existing character
-//   campaignId: number;
-//   onSave: (characterData: PydanticCharacter) => void;
+// Example of how Campaign might look if needed for the above (define elsewhere if used broadly)
+// export interface Campaign {
+//   id: number;
+//   title: string;
+//   // ... other campaign properties
 // }
-//
-// const [formData, setFormData] = useState<CharacterCreatePayload | CharacterUpdatePayload>({});
+
+// Type for the payload when requesting character image generation
+// Corresponds to ImageModelName: "dall-e" | "stable-diffusion" | "gemini" from llmService.ts (consider moving ImageModelName to a shared types file)
+export interface CharacterImageGenerationRequest {
+    additional_prompt_details?: string | null;
+    model_name?: string | null;
+    size?: string | null;
+    quality?: string | null;        // For DALL-E
+    steps?: number | null;          // For Stable Diffusion
+    cfg_scale?: number | null;      // For Stable Diffusion
+    gemini_model_name?: string | null; // Specific model for Gemini image gen
+}
