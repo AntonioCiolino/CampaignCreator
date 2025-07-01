@@ -1,19 +1,88 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import * as characterService from '../services/characterService';
+// Corrected import: CharacterImageGenerationRequest and CharacterUpdate from characterTypes
+import { Character, CharacterStats, CharacterImageGenerationRequest, CharacterUpdate } from '../types/characterTypes';
 import * as campaignService from '../services/campaignService';
-import { Character, CharacterStats } from '../types/characterTypes';
 import { Campaign } from '../types/campaignTypes';
 import { ChatMessage as CharacterChatMessage } from '../components/characters/CharacterChatPanel'; // Import ChatMessage type
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import ImagePreviewModal from '../components/modals/ImagePreviewModal'; // Import ImagePreviewModal
-import AlertMessage from '../components/common/AlertMessage'; // For potential error/success messages
+import ImagePreviewModal from '../components/modals/ImagePreviewModal';
+import AlertMessage from '../components/common/AlertMessage';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
-import CharacterChatPanel from '../components/characters/CharacterChatPanel'; // Import CharacterChatPanel
+import CharacterImagePromptModal, { CharacterImageGenSettings } from '../components/modals/CharacterImagePromptModal';
+import CharacterChatPanel from '../components/characters/CharacterChatPanel';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  rectSortingStrategy, // Or verticalListSortingStrategy if preferred for single column
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import './CharacterDetailPage.css';
-// import ChatIcon from '@mui/icons-material/Chat'; // Example using MUI icon
 
 const DEFAULT_PLACEHOLDER_IMAGE = '/logo_placeholder.svg';
+
+// New Sortable Item Component for Character Images
+interface SortableCharacterImageProps {
+  id: string; // Using image URL as ID
+  url: string;
+  characterName: string;
+  index: number;
+  onImageClick: (url: string) => void;
+}
+
+const SortableCharacterImage: React.FC<SortableCharacterImageProps> = ({ id, url, characterName, index, onImageClick }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging, // Added to provide dragging style
+  } = useSortable({ id });
+
+  const itemStyle = { // Renamed from style to avoid conflict if CharacterDetailPage itself has a 'style' const
+    transform: CSS.Transform.toString(transform),
+    transition,
+    cursor: 'grab',
+    // Opacity will be handled by CSS via the 'dragging' class
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={itemStyle}
+      {...attributes}
+      {...listeners}
+      className={`character-image-thumbnail-wrapper ${isDragging ? 'dragging' : ''}`} // Conditionally add 'dragging' class
+      onClick={() => onImageClick(url)}
+    >
+      <img
+        src={url}
+        alt={`${characterName} ${index + 1}`}
+        className="character-image-thumbnail" // Existing class
+        onError={(e) => {
+          const target = e.target as HTMLImageElement;
+          if (target.src !== DEFAULT_PLACEHOLDER_IMAGE) {
+            target.src = DEFAULT_PLACEHOLDER_IMAGE;
+            target.alt = "Placeholder image";
+          }
+        }}
+      />
+    </div>
+  );
+};
 
 const CharacterDetailPage: React.FC = () => {
     const { characterId } = useParams<{ characterId: string }>();
@@ -50,10 +119,60 @@ const CharacterDetailPage: React.FC = () => {
     const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
     const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
+    // New Modal State for Character Image Generation Prompt
+    const [isCharImagePromptModalOpen, setIsCharImagePromptModalOpen] = useState<boolean>(false);
+
     // Character Chat Panel State
     const [isChatPanelOpen, setIsChatPanelOpen] = useState<boolean>(false);
-    // Optional: const [chatPanelWidth, setChatPanelWidth] = useState<number>(350);
+
+      // Optional: const [chatPanelWidth, setChatPanelWidth] = useState<number>(350);
     const [chatHistory, setChatHistory] = useState<Array<CharacterChatMessage>>([]);
+
+    // DND Kit Sensors
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            // Require the mouse to move by 8 pixels before starting a drag
+            // Allows click events to fire if movement is less than this.
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (active.id !== over?.id && character && character.image_urls) {
+            const oldIndex = character.image_urls.findIndex(url => url === active.id);
+            const newIndex = character.image_urls.findIndex(url => url === over?.id);
+
+            if (oldIndex === -1 || newIndex === -1) return; // Should not happen if IDs are URLs
+
+            const newImageUrls = arrayMove(character.image_urls, oldIndex, newIndex);
+
+            // Optimistic update
+            setCharacter(prev => prev ? { ...prev, image_urls: newImageUrls } : null);
+
+            // Persist to backend
+            try {
+                const payload: CharacterUpdate = { image_urls: newImageUrls };
+                // Assuming character.id is available and correct
+                await characterService.updateCharacter(character.id, payload);
+                // Optionally show a success message or rely on optimistic update
+                setSuccessMessage("Image order saved.");
+                setTimeout(() => setSuccessMessage(null), 3000);
+            } catch (err) {
+                console.error("Failed to save image order:", err);
+                setError("Failed to save new image order. Reverting.");
+                // Revert optimistic update on error
+                setCharacter(prev => prev ? { ...prev, image_urls: character.image_urls } : null);
+                setTimeout(() => setError(null), 5000);
+            }
+        }
+    };
 
 
     const fetchCharacterAndCampaignData = useCallback(async () => {
@@ -202,23 +321,47 @@ const CharacterDetailPage: React.FC = () => {
 
     const handleGenerateNewImage = async () => {
         if (!character) {
-            setImageGenError("Character data not available to generate image.");
+            setImageGenError("Character data not available.");
+            return;
+        }
+        setIsCharImagePromptModalOpen(true); // Open the new modal instead of direct generation
+    };
+
+    const handleSubmitCharacterImageGeneration = async (basePrompt: string, additionalDetails: string, settings: CharacterImageGenSettings) => {
+        if (!character) {
+            setImageGenError("Character data not available for image generation.");
             return;
         }
         setIsGeneratingImage(true);
         setImageGenError(null);
         setSuccessMessage(null);
+        setIsCharImagePromptModalOpen(false); // Close modal on submit
+
         try {
-            const updatedCharacter = await characterService.generateCharacterImage(character.id, {});
-            setCharacter(updatedCharacter);
+            const finalAdditionalDetails = `${basePrompt} ${additionalDetails}`.trim();
+
+            const requestPayload: CharacterImageGenerationRequest = {
+                additional_prompt_details: finalAdditionalDetails, // This contains the user's full desired prompt info
+                model_name: settings.model_name,
+                size: settings.size,
+                quality: settings.quality,
+                steps: settings.steps,
+                cfg_scale: settings.cfg_scale,
+                gemini_model_name: settings.gemini_model_name,
+            };
+
+            const updatedCharacter = await characterService.generateCharacterImage(character.id, requestPayload);
+            setCharacter(updatedCharacter); // Update character state with the new image URL
             setSuccessMessage("New image generated successfully!");
-        } catch (err: any) {
+
+        } catch (err: any) { // Ensure this catch is correctly placed
             console.error("Failed to generate character image:", err);
             setImageGenError(err.response?.data?.detail || "Failed to generate image for character.");
         } finally {
             setIsGeneratingImage(false);
         }
     };
+
 
     const handleGenerateCharacterResponse = async () => {
         if (!character || !llmUserPrompt.trim()) {
@@ -399,31 +542,36 @@ const CharacterDetailPage: React.FC = () => {
                         </div>
                         <div className="card-body">
                             {imageGenError && <AlertMessage type="error" message={imageGenError} onClose={() => setImageGenError(null)} />}
-                            <div className="character-image-gallery">
-                                {character.image_urls && character.image_urls.length > 0 ? (
-                                    character.image_urls.map((url, index) => (
-                                        <div key={index} className="character-image-thumbnail-wrapper" onClick={() => handleImageClick(url)}>
-                                            <img
-                                                src={url}
-                                                alt={`${character.name} ${index + 1}`}
-                                                className="character-image-thumbnail"
-                                                onError={(e) => {
-                                                    const target = e.target as HTMLImageElement;
-                                                    if (target.src !== DEFAULT_PLACEHOLDER_IMAGE) {
-                                                        target.src = DEFAULT_PLACEHOLDER_IMAGE;
-                                                        target.alt = "Placeholder image";
-                                                    }
-                                                }}
-                                            />
-                                        </div>
-                                    ))
-                                ) : (
-                                    !isGeneratingImage && <p className="text-muted small">No images provided. Try generating one!</p>
-                                )}
-                                {isGeneratingImage && (!character.image_urls || character.image_urls.length === 0) &&
-                                    <div className="text-center w-100"><LoadingSpinner /> <p className="text-muted small mt-1">Generating first image...</p></div>
-                                }
-                            </div>
+                            <DndContext
+                                sensors={sensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={handleDragEnd}
+                            >
+                                <SortableContext
+                                    items={character.image_urls?.map(url => url) || []}
+                                    strategy={rectSortingStrategy} // Good for grids
+                                >
+                                    <div className="character-image-gallery">
+                                        {character.image_urls && character.image_urls.length > 0 ? (
+                                            character.image_urls.map((url, index) => (
+                                                <SortableCharacterImage
+                                                    key={url} // Use URL as key for DND
+                                                    id={url}  // Use URL as ID for DND
+                                                    url={url}
+                                                    characterName={character.name}
+                                                    index={index}
+                                                    onImageClick={handleImageClick}
+                                                />
+                                            ))
+                                        ) : (
+                                            !isGeneratingImage && <p className="text-muted small">No images provided. Try generating one!</p>
+                                        )}
+                                        {isGeneratingImage && (!character.image_urls || character.image_urls.length === 0) &&
+                                            <div className="text-center w-100"><LoadingSpinner /> <p className="text-muted small mt-1">Generating first image...</p></div>
+                                        }
+                                    </div>
+                                </SortableContext>
+                            </DndContext>
                         </div>
                     </div>
                 </div>
@@ -524,6 +672,16 @@ const CharacterDetailPage: React.FC = () => {
                     isConfirming={isDeleting}
                     confirmButtonVariant="danger"
                 />
+            )}
+
+            {character && (
+              <CharacterImagePromptModal
+                isOpen={isCharImagePromptModalOpen}
+                onClose={() => setIsCharImagePromptModalOpen(false)}
+                character={character}
+                onSubmit={handleSubmitCharacterImageGeneration}
+                isGenerating={isGeneratingImage}
+              />
             )}
 
             {character && (
