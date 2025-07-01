@@ -8,7 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Placeholder for future development.
+- Numerous features and improvements to `campaign_crafter_api` and `campaign_crafter_ui` (details should be filled in from commit history before a new release).
+- Full backend API with user authentication, CRUD operations for campaigns, characters, items, etc.
+- Web UI for interacting with the API, including campaign editing, character management, AI content generation.
+- BYOK support for OpenAI, Gemini, Stable Diffusion.
+- Local LLM support.
+- Image generation capabilities.
+
+### Changed
+- Project focus shifted significantly from the iOS app to the web API and UI.
+- iOS app (`TextEditorApp`) is no longer under active development and is considered legacy.
+
+### Removed
+- (If any major features were removed, list them here)
 
 ## [0.1.0] - 2024-07-27 CampaignCreator Initial Release
 
