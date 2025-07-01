@@ -3,7 +3,7 @@ import Modal from '../common/Modal';
 import Button from '../common/Button';
 import { Character } from '../../types/characterTypes';
 import { ImageModelName } from '../../services/llmService'; // Reusing type
-import './ImageGenerationModal.css'; // Can reuse some styles
+import './ImageGenerationModal/ImageGenerationModal.css'; // Corrected path
 
 export interface CharacterImageGenSettings {
   model_name: ImageModelName;

@@ -110,7 +110,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
     const params: ImageGenerationParams = {
       prompt: basePrompt, // Use basePrompt here
       model: selectedModel,
-      additional_prompt_details: additionalDetails.trim() || undefined, // Add additionalDetails
+      // additional_prompt_details: additionalDetails.trim() || undefined, // This line is removed
     };
 
     // Add campaignId to params if it exists

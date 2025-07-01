@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import * as characterService from '../services/characterService';
-import { CharacterImageGenerationRequestPayload } from '../services/characterService'; // Import the payload type
+// Corrected import: CharacterImageGenerationRequest from characterTypes
+import { Character, CharacterStats, CharacterImageGenerationRequest } from '../types/characterTypes';
 import * as campaignService from '../services/campaignService';
-import { Character, CharacterStats } from '../types/characterTypes';
 import { Campaign } from '../types/campaignTypes';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ImagePreviewModal from '../components/modals/ImagePreviewModal';
@@ -250,7 +250,7 @@ const CharacterDetailPage: React.FC = () => {
             const finalAdditionalDetails = `${basePrompt} ${additionalDetails}`.trim();
 
 
-            const requestPayload: characterService.CharacterImageGenerationRequestPayload = {
+            const requestPayload: CharacterImageGenerationRequest = { // Use the imported type directly
                 additional_prompt_details: finalAdditionalDetails,
                 model_name: settings.model_name,
                 size: settings.size,
