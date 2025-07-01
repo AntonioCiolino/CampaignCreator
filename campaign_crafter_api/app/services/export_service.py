@@ -89,6 +89,37 @@ VTCNP Enterprises
         # It's not intended for deep processing of general Markdown or complex section content.
         return processed_content
 
+    def _format_character_for_export(self, character: orm_models.Character) -> str:
+        """
+        Formats a single character's details into a Markdown string for Homebrewery export.
+        """
+        char_parts = []
+        char_parts.append(f"### {character.name}\n")
+
+        if character.appearance_description and character.appearance_description.strip():
+            char_parts.append(f"**Appearance:** {character.appearance_description.strip()}\n")
+
+        if character.description and character.description.strip():
+            char_parts.append(f"**Description:** {character.description.strip()}\n")
+
+        # Accessing stats via the .stats property of the ORM model
+        stats = character.stats
+        if stats:
+            stat_list = []
+            for key, value in stats.items():
+                if value is not None: # Only include stats that have a value
+                    stat_list.append(f"- **{key.capitalize()}**: {value}")
+            if stat_list:
+                char_parts.append("**Stats:**\n" + "\n".join(stat_list) + "\n")
+
+        # Add image if available - basic implementation, just lists URL
+        # TODO: Future enhancement could be to format as `![alt text](url)` if appropriate
+        # For now, just listing the first image URL if present.
+        if character.image_urls and len(character.image_urls) > 0:
+            char_parts.append(f"**Image:** {character.image_urls[0]}\n")
+
+        return "\n".join(char_parts)
+
     async def format_campaign_for_homebrewery(self, campaign: orm_models.Campaign, sections: List[orm_models.CampaignSection], db: Session, current_user: UserModel) -> str: # Added db, current_user and async
         # TODO: Make page_image_url and stain_images configurable in the future, perhaps via campaign settings or user profile.
         page_image_url = "https://www.gmbinder.com/images/b7OT9E4.png" # Example URL for title page background
@@ -208,6 +239,15 @@ VTCNP Enterprises
             # Add a Homebrewery page break after each section.
             # If users include \page within their section content for finer control, that will also take effect.
             homebrewery_content.append("\\page\n") 
+
+        # Character Appendix Section (Dramatis Personae)
+        if campaign.characters: # Check if there are any characters linked to the campaign
+            homebrewery_content.append("\\page\n") # Start characters on a new page
+            homebrewery_content.append("## Dramatis Personae\n")
+            for character in campaign.characters:
+                homebrewery_content.append(self._format_character_for_export(character))
+                homebrewery_content.append("\n") # Add a little space between characters
+            homebrewery_content.append("\\page\n") # Page break after the character appendix
 
         # Add decorative stains (example implementation)
         # This part can be made more sophisticated, e.g., user-selectable stains, random placement, etc.
