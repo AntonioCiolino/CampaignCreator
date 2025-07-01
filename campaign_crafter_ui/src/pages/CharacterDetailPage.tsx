@@ -222,36 +222,10 @@ const CharacterDetailPage: React.FC = () => {
         setIsCharImagePromptModalOpen(false); // Close modal on submit
 
         try {
-            // const payload = { // This variable was unused
-            //     additional_prompt_details: `${basePrompt}${additionalDetails ? ` ${additionalDetails}` : ''}`,
-            //     model_name: settings.model_name,
-            //     size: settings.size,
-                quality: settings.quality,
-                steps: settings.steps,
-                cfg_scale: settings.cfg_scale,
-                gemini_model_name: settings.gemini_model_name,
-            };
-            // Refinement: The backend's `additional_prompt_details` is for augmentation.
-            // The `base_prompt` from the modal (which is auto-generated + user edited) should be the main part.
-            // So, the payload for characterService.generateCharacterImage should be:
-            // prompt: basePrompt (this isn't a field in CharacterImageGenerationRequest)
-            // additional_prompt_details: additionalDetails
-            // The backend constructs its *own* base_prompt from character.name and character.appearance.
-            // Then it appends the request_body.additional_prompt_details.
-            // So, we should pass the modal's `basePrompt` + `additionalDetails` combined as `additional_prompt_details`
-            // OR, better, pass `basePrompt` as the *primary* prompt if the service could take it,
-            // and `additionalDetails` as `additional_prompt_details`.
-
-            // Current backend `generate_character_image_endpoint` builds its own base_prompt
-            // and only accepts `additional_prompt_details` from the request body to append.
-            // So, we should pass the user's *entire desired additions/modifications* via `additional_prompt_details`.
-            // The `basePrompt` from the modal (which includes character info + user edits) should become this.
-
             const finalAdditionalDetails = `${basePrompt} ${additionalDetails}`.trim();
 
-
-            const requestPayload: CharacterImageGenerationRequest = { // Use the imported type directly
-                additional_prompt_details: finalAdditionalDetails,
+            const requestPayload: CharacterImageGenerationRequest = {
+                additional_prompt_details: finalAdditionalDetails, // This contains the user's full desired prompt info
                 model_name: settings.model_name,
                 size: settings.size,
                 quality: settings.quality,
@@ -261,9 +235,10 @@ const CharacterDetailPage: React.FC = () => {
             };
 
             const updatedCharacter = await characterService.generateCharacterImage(character.id, requestPayload);
-            setCharacter(updatedCharacter);
+            setCharacter(updatedCharacter); // Update character state with the new image URL
             setSuccessMessage("New image generated successfully!");
-        } catch (err: any) {
+
+        } catch (err: any) { // Ensure this catch is correctly placed
             console.error("Failed to generate character image:", err);
             setImageGenError(err.response?.data?.detail || "Failed to generate image for character.");
         } finally {
