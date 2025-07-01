@@ -343,7 +343,7 @@ const CharacterDetailPage: React.FC = () => {
                                 onClick={handleGenerateNewImage}
                                 disabled={isGeneratingImage}
                             >
-                                {isGeneratingImage ? <><LoadingSpinner size="sm" /> Generating...</> : 'Generate New'}
+                                {isGeneratingImage ? <><LoadingSpinner /> Generating...</> : 'Generate New'}
                             </button>
                         </div>
                         <div className="card-body">
@@ -414,9 +414,9 @@ const CharacterDetailPage: React.FC = () => {
                         onClick={handleGenerateCharacterResponse}
                         disabled={isGeneratingResponse || !llmUserPrompt.trim()}
                     >
-                        {isGeneratingResponse ? <><LoadingSpinner size="sm" /> Getting Response...</> : `Ask ${character.name}`}
+                        {isGeneratingResponse ? <><LoadingSpinner /> Getting Response...</> : `Ask ${character.name}`}
                     </button>
-                    {llmError && <AlertMessage type="error" message={llmError} onClose={() => setLlmError(null)} customClasses="mt-3" />}
+                    {llmError && <AlertMessage type="error" message={llmError} onClose={() => setLlmError(null)} className="mt-3" />}
                     {llmResponse && (
                         <div className="mt-3 p-3 border rounded bg-light llm-response-area">
                             <strong>{character.name} responds:</strong>
@@ -442,7 +442,7 @@ const CharacterDetailPage: React.FC = () => {
                                         onClick={() => handleUnlinkCampaign(camp.id, camp.title)}
                                         disabled={isLinking}
                                     >
-                                        {isLinking ? <LoadingSpinner size="sm" /> : 'Unlink'}
+                                        {isLinking ? <LoadingSpinner /> : 'Unlink'}
                                     </button>
                                 </li>
                             ))}
@@ -471,7 +471,7 @@ const CharacterDetailPage: React.FC = () => {
                                 onClick={handleLinkCampaign}
                                 disabled={!selectedCampaignToLink || isLinking}
                             >
-                                {isLinking ? <><LoadingSpinner size="sm" /> Linking...</> : 'Link to Campaign'}
+                                {isLinking ? <><LoadingSpinner /> Linking...</> : 'Link to Campaign'}
                             </button>
                         </div>
                     ) : (

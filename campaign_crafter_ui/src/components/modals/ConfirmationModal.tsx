@@ -46,10 +46,12 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                 </Button>
                 <Button
                     onClick={onConfirm}
-                    isLoading={isConfirming}
+                    // isLoading={isConfirming} // Button.tsx does not have isLoading prop
+                    disabled={isConfirming} // Use disabled prop instead
                     variant={confirmButtonVariant}
                 >
-                    {confirmButtonText}
+                    {isConfirming ? 'Processing...' : confirmButtonText}
+                    {/* Optionally change text when confirming */}
                 </Button>
             </div>
         </Modal>

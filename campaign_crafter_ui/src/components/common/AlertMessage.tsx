@@ -5,17 +5,19 @@ interface AlertMessageProps {
     message: string | null;
     type: 'success' | 'error' | 'warning' | 'info';
     onClose?: () => void; // Optional: If the alert should be dismissible
+    className?: string; // Allow passing custom CSS classes
 }
 
-const AlertMessage: React.FC<AlertMessageProps> = ({ message, type, onClose }) => {
+const AlertMessage: React.FC<AlertMessageProps> = ({ message, type, onClose, className = '' }) => {
     if (!message) {
         return null;
     }
 
     const alertTypeClass = `alert-${type}`;
+    const combinedClassNames = `alert-message ${alertTypeClass} ${className}`.trim();
 
     return (
-        <div className={`alert-message ${alertTypeClass}`} role="alert">
+        <div className={combinedClassNames} role="alert">
             <span>{message}</span>
             {onClose && (
                 <button

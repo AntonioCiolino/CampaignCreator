@@ -505,6 +505,7 @@ const CampaignEditorPage: React.FC = () => {
     };
   }, []);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!initialLoadCompleteRef.current || !campaignId || !campaign) {
       return;
@@ -576,7 +577,7 @@ const CampaignEditorPage: React.FC = () => {
     };
     fetchCampaignFiles();
     return () => { isMounted = false; };
-  }, [activeEditorTab, campaignId, prevCampaignIdForFiles, campaignFilesError, campaignFilesLoading]);
+  }, [activeEditorTab, campaignId, prevCampaignIdForFiles, campaignFilesError, campaignFilesLoading, campaignFiles.length]);
 
 
   useEffect(() => {
