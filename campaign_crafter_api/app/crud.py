@@ -807,8 +807,8 @@ async def generate_character_aspect_text(
             current_user=current_user_pydantic, # Pass Pydantic user model
             db=db,                             # Pass DB session
             model=model_specific_id_from_request, # Pass the specific model ID
-            max_tokens=request.max_tokens or 300,
-            temperature=request.temperature or 0.7
+            max_tokens=300, # Use default value
+            temperature=0.7  # Use default value
         )
         return generated_text.strip()
 
