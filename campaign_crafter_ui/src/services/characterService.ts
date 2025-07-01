@@ -7,6 +7,7 @@ import {
     // CharacterBase is also implicitly handled by Character, CharacterCreate
 } from '../types/characterTypes';
 import { Campaign } from '../types/campaignTypes'; // Import Campaign type
+import { LLMTextGenerationParams, LLMTextGenerationResponse } from './llmService'; // Import types
 
 // --- API Service Functions ---
 
@@ -82,5 +83,19 @@ export const getCampaignCharacters = async (campaignId: number): Promise<Charact
  */
 export const getCharacterCampaigns = async (characterId: number): Promise<Campaign[]> => {
     const response = await apiClient.get<Campaign[]>(`${CHARACTER_API_URL}/${characterId}/campaigns`);
+    return response.data;
+};
+
+/**
+ * Generates a text response from a character using an LLM.
+ */
+export const generateCharacterResponse = async (
+    characterId: number,
+    requestBody: LLMTextGenerationParams // Use the imported type
+): Promise<LLMTextGenerationResponse> => { // Use the imported type
+    const response = await apiClient.post<LLMTextGenerationResponse>(
+        `${CHARACTER_API_URL}/${characterId}/generate-response`,
+        requestBody
+    );
     return response.data;
 };

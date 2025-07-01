@@ -173,6 +173,21 @@ class DeepSeekLLMService(AbstractLLMService):
         #     raise LLMGenerationError(f"{self.PROVIDER_NAME.title()} API call for Homebrewery TOC from sections succeeded but returned no usable content.")
         return generated_toc
 
+    async def generate_character_response(
+        self,
+        character_name: str,
+        character_notes: str,
+        user_prompt: str,
+        current_user: UserModel,
+        db: Session,
+        model: Optional[str] = None,
+        temperature: Optional[float] = 0.7,
+        max_tokens: Optional[int] = 300
+    ) -> str:
+        if not await self.is_available(current_user=current_user, db=db):
+            raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available.")
+        raise NotImplementedError(f"{self.PROVIDER_NAME.title()}LLMService.generate_character_response not implemented.")
+
 # if __name__ == '__main__':
 #     from app.core.config import settings
 #     from dotenv import load_dotenv

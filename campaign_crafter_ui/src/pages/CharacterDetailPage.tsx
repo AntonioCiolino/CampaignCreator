@@ -14,15 +14,20 @@ const CharacterDetailPage: React.FC = () => {
     const [character, setCharacter] = useState<Character | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+
+    // Campaign association state
     const [userCampaigns, setUserCampaigns] = useState<Campaign[]>([]);
     const [selectedCampaignToLink, setSelectedCampaignToLink] = useState<string>('');
     const [linkError, setLinkError] = useState<string | null>(null);
     const [isLinking, setIsLinking] = useState<boolean>(false);
-
-    // State for currently associated campaigns - this is the tricky part
-    // We don't get this from GET /characters/{id}
-    // For now, this will remain unpopulated. Unlinking UI won't be fully functional.
     const [associatedCampaigns, setAssociatedCampaigns] = useState<Campaign[]>([]);
+
+    // LLM Interaction state
+    const [llmUserPrompt, setLlmUserPrompt] = useState<string>('');
+    const [llmResponse, setLlmResponse] = useState<string | null>(null);
+    const [isGeneratingResponse, setIsGeneratingResponse] = useState<boolean>(false);
+    const [llmError, setLlmError] = useState<string | null>(null);
+    // TODO: Consider adding state for selectedLLMModelForCharacterInteraction if implementing model selection UI
 
 
     useEffect(() => {
@@ -225,6 +230,27 @@ const CharacterDetailPage: React.FC = () => {
         );
     };
 
+    const handleGenerateCharacterResponse = async () => {
+        if (!character || !llmUserPrompt.trim()) {
+            setLlmError("Please enter a prompt for the character.");
+            return;
+        }
+        setIsGeneratingResponse(true);
+        setLlmError(null);
+        setLlmResponse(null);
+        try {
+            // For simplicity, using default LLM settings from backend by not specifying model_id_with_prefix, temp, etc.
+            // These could be exposed to the user via more UI elements if desired.
+            const response = await characterService.generateCharacterResponse(character.id, { prompt: llmUserPrompt });
+            setLlmResponse(response.text);
+        } catch (err: any) {
+            console.error("Failed to generate character response:", err);
+            setLlmError(err.response?.data?.detail || "Failed to get response from character.");
+        } finally {
+            setIsGeneratingResponse(false);
+        }
+    };
+
     if (loading) {
         // return <div className="container mt-3"><p>Loading character details...</p></div>;
         return <div className="container mt-3 d-flex justify-content-center"><LoadingSpinner /></div>;
@@ -311,7 +337,40 @@ const CharacterDetailPage: React.FC = () => {
                 </div>
             )}
 
-            {/* Placeholder for Campaign Association Management - to be implemented later */}
+            {/* LLM Interaction Section */}
+            <div className="card mb-3">
+                <div className="card-header">Interact with {character.name}</div>
+                <div className="card-body">
+                    <div className="mb-3">
+                        <label htmlFor="llmUserPrompt" className="form-label">Your message to {character.name}:</label>
+                        <textarea
+                            id="llmUserPrompt"
+                            className="form-control"
+                            rows={3}
+                            value={llmUserPrompt}
+                            onChange={(e) => setLlmUserPrompt(e.target.value)}
+                            placeholder={`e.g., "What do you think about the recent dragon sightings?"`}
+                            disabled={isGeneratingResponse}
+                        />
+                    </div>
+                    <button
+                        className="btn btn-info"
+                        onClick={handleGenerateCharacterResponse}
+                        disabled={isGeneratingResponse || !llmUserPrompt.trim()}
+                    >
+                        {isGeneratingResponse ? 'Getting Response...' : `Ask ${character.name}`}
+                    </button>
+                    {llmError && <p className="text-danger mt-2">{llmError}</p>}
+                    {llmResponse && (
+                        <div className="mt-3 p-3 border rounded bg-light">
+                            <strong>{character.name} responds:</strong>
+                            <p style={{ whiteSpace: 'pre-wrap' }}>{llmResponse}</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Campaign Association Management */}
             <div className="card mb-3">
                 <div className="card-header">Campaign Associations</div>
                 <div className="card-body">

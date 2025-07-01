@@ -310,3 +310,115 @@ async def test_read_character_campaigns_api(async_test_client: AsyncClient, auth
 
     response_forbidden = await async_test_client.get(f"/api/v1/characters/{other_user_char_id}/campaigns")
     assert response_forbidden.status_code == 403 # User cannot access campaigns of a character they don't own
+
+@pytest.mark.asyncio
+@patch('app.api.endpoints.characters.crud.get_llm_service') # Patch where get_llm_service is used
+async def test_generate_character_llm_response_api(
+    mock_get_llm_service: AsyncMock, # Use AsyncMock if get_llm_service itself is async or returns async obj
+    async_test_client: AsyncClient,
+    authenticated_user_override: pydantic_models.User,
+    test_user_orm: ORMUser
+):
+    # Mock the LLM service instance and its method
+    mock_llm_instance = AsyncMock()
+    mock_llm_instance.generate_character_response = AsyncMock(return_value="The character wisely says: 'Indeed.'")
+    mock_get_llm_service.return_value = mock_llm_instance
+
+    db = TestingSessionLocal()
+    try:
+        # Create a character with notes
+        char_with_notes_create = pydantic_models.CharacterCreate(
+            name="Sage Whispero",
+            notes_for_llm="Very wise, speaks in riddles, loves tea."
+        )
+        char_with_notes = crud.create_character(db, char_with_notes_create, user_id=test_user_orm.id)
+        char_with_notes_id = char_with_notes.id
+
+        # Create a character without notes
+        char_no_notes_create = pydantic_models.CharacterCreate(name="Silent Bob")
+        char_no_notes = crud.create_character(db, char_no_notes_create, user_id=test_user_orm.id)
+        char_no_notes_id = char_no_notes.id
+    finally:
+        db.close()
+
+    request_payload = {
+        "prompt": "What is the meaning of life?",
+        "model_id_with_prefix": "openai/gpt-3.5-turbo" # Example
+    }
+
+    # 1. Test successful generation for character with notes
+    response_success = await async_test_client.post(
+        f"/api/v1/characters/{char_with_notes_id}/generate-response",
+        json=request_payload
+    )
+    assert response_success.status_code == 200, response_success.text
+    data_success = response_success.json()
+    assert data_success["text"] == "The character wisely says: 'Indeed.'"
+
+    mock_get_llm_service.assert_called_once() # Assuming get_llm_service is called once per request
+    # Check args for generate_character_response
+    # Note: current_user in generate_character_response is Pydantic model, db is Session
+    # model in generate_character_response is the specific model_id, not prefixed.
+    # provider_name in get_llm_service is "openai", model_id_with_prefix is "openai/gpt-3.5-turbo"
+
+    # Extracting call arguments for get_llm_service
+    get_llm_service_call_args = mock_get_llm_service.call_args
+    assert get_llm_service_call_args is not None
+    assert get_llm_service_call_args.kwargs['provider_name'] == 'openai'
+    assert get_llm_service_call_args.kwargs['model_id_with_prefix'] == 'openai/gpt-3.5-turbo'
+
+    # Extracting call arguments for generate_character_response
+    generate_char_response_call_args = mock_llm_instance.generate_character_response.call_args
+    assert generate_char_response_call_args is not None
+    assert generate_char_response_call_args.kwargs['character_name'] == "Sage Whispero"
+    assert generate_char_response_call_args.kwargs['character_notes'] == "Very wise, speaks in riddles, loves tea."
+    assert generate_char_response_call_args.kwargs['user_prompt'] == "What is the meaning of life?"
+    assert generate_char_response_call_args.kwargs['model'] == "gpt-3.5-turbo" # Model part
+    assert generate_char_response_call_args.kwargs['current_user'].id == authenticated_user_override.id
+
+
+    # Reset mocks for next call
+    mock_get_llm_service.reset_mock()
+    mock_llm_instance.generate_character_response.reset_mock()
+    mock_get_llm_service.return_value = mock_llm_instance # Re-assign after reset
+
+    # 2. Test successful generation for character without notes
+    response_no_notes = await async_test_client.post(
+        f"/api/v1/characters/{char_no_notes_id}/generate-response",
+        json=request_payload
+    )
+    assert response_no_notes.status_code == 200, response_no_notes.text
+    generate_char_response_call_args_no_notes = mock_llm_instance.generate_character_response.call_args
+    assert generate_char_response_call_args_no_notes is not None
+    assert generate_char_response_call_args_no_notes.kwargs['character_name'] == "Silent Bob"
+    assert generate_char_response_call_args_no_notes.kwargs['character_notes'] == "" # Expect empty string
+
+    # 3. Test with empty prompt
+    empty_prompt_payload = {"prompt": "", "model_id_with_prefix": "openai/gpt-3.5-turbo"}
+    response_empty_prompt = await async_test_client.post(
+        f"/api/v1/characters/{char_with_notes_id}/generate-response",
+        json=empty_prompt_payload
+    )
+    assert response_empty_prompt.status_code == 400
+
+    # 4. Test for non-existent character
+    response_char_not_found = await async_test_client.post(
+        "/api/v1/characters/99999/generate-response",
+        json=request_payload
+    )
+    assert response_char_not_found.status_code == 404
+
+    # 5. Test for character not owned by user
+    db = TestingSessionLocal()
+    try:
+        other_user = crud.create_user(db, pydantic_models.UserCreate(username="otherllmuser", email="ollm@example.com", password="p"))
+        other_user_char = crud.create_character(db, pydantic_models.CharacterCreate(name="Private Character"), user_id=other_user.id)
+        other_user_char_id = other_user_char.id
+    finally:
+        db.close()
+
+    response_forbidden = await async_test_client.post(
+        f"/api/v1/characters/{other_user_char_id}/generate-response",
+        json=request_payload
+    )
+    assert response_forbidden.status_code == 403

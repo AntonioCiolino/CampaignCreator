@@ -206,3 +206,77 @@ def read_character_campaigns(
     # If campaigns could be shared, further filtering might be needed here based on campaign ownership or sharing rules.
     # For now, assuming all campaigns a user's character is linked to are implicitly viewable in this context.
     return campaigns
+
+@router.post("/{character_id}/generate-response", response_model=models.LLMTextGenerationResponse)
+async def generate_character_llm_response(
+    character_id: int,
+    request_body: models.LLMGenerationRequest, # Reusing existing model
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+):
+    """
+    Generates a text response as if spoken or written by the specified character,
+    based on the provided prompt and character's notes.
+    """
+    db_character = crud.get_character(db=db, character_id=character_id)
+    if db_character is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
+    if db_character.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to generate responses for this character")
+
+    if not request_body.prompt:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Prompt cannot be empty.")
+
+    # Determine LLM service and model
+    # For character interaction, campaign context might be less relevant.
+    # We primarily use the user's general LLM settings or what's specified in the request.
+    # The get_llm_service factory can handle finding the appropriate service.
+    # No direct campaign object is passed to get_llm_service here, so it would use user/system defaults.
+
+    # Helper to extract provider and model from model_id_with_prefix
+    # This logic might be better in a shared utility or within get_llm_service itself if it's complex
+    provider_name_from_request: Optional[str] = None
+    model_specific_id_from_request: Optional[str] = None
+    if request_body.model_id_with_prefix and "/" in request_body.model_id_with_prefix:
+        provider_name_from_request, model_specific_id_from_request = request_body.model_id_with_prefix.split("/",1)
+    elif request_body.model_id_with_prefix:
+        model_specific_id_from_request = request_body.model_id_with_prefix
+        # provider_name_from_request will remain None, get_llm_service will try to infer or use default
+
+    try:
+        # Fetch ORM user for API key access within get_llm_service
+        orm_user = crud.get_user(db, current_user.id)
+        if not orm_user: # Should not happen if current_user is valid
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not retrieve user data for LLM service.")
+
+        llm_service = crud.get_llm_service( # crud.py re-exports get_llm_service from llm_factory
+            db=db,
+            current_user_orm=orm_user,
+            provider_name=provider_name_from_request,
+            model_id_with_prefix=request_body.model_id_with_prefix,
+            # campaign=None # Explicitly no campaign context for this generic character interaction
+        )
+
+        generated_text = await llm_service.generate_character_response(
+            character_name=db_character.name,
+            character_notes=db_character.notes_for_llm or "", # Pass empty string if notes are None
+            user_prompt=request_body.prompt,
+            current_user=current_user, # Pass Pydantic user model
+            db=db,
+            model=model_specific_id_from_request, # Pass only the model part if prefix was used
+            temperature=request_body.temperature,
+            max_tokens=request_body.max_tokens
+        )
+        return models.LLMTextGenerationResponse(text=generated_text)
+
+    except crud.LLMServiceUnavailableError as e: # crud.py re-exports this
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
+    except crud.LLMGenerationError as e: # crud.py re-exports this
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    except ValueError as e: # E.g. empty prompt if not caught earlier, or other validation
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        # Log the full error for debugging
+        print(f"Unexpected error during character response generation: {type(e).__name__} - {str(e)}")
+        # Consider logging traceback as well: import traceback; traceback.print_exc()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred while generating the character response.")
