@@ -1,0 +1,77 @@
+/* Styles for AlertMessage.tsx */
+
+.alert-message {
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+    border-radius: var(--border-radius, 0.25rem);
+    font-size: 0.95rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--box-shadow, 0 1px 3px rgba(0,0,0,0.1));
+}
+
+.alert-success {
+    color: var(--success-color-dark, #155724); /* Darker text for better contrast */
+    background-color: var(--success-color-light, #d4edda); /* Lighter background */
+    border-color: var(--success-color, #c3e6cb);
+}
+
+.alert-error {
+    color: var(--danger-color-dark, #721c24);
+    background-color: var(--danger-color-light, #f8d7da);
+    border-color: var(--danger-color, #f5c6cb);
+}
+
+.alert-warning {
+    color: var(--warning-color-dark, #856404);
+    background-color: var(--warning-color-light, #fff3cd);
+    border-color: var(--warning-color, #ffeeba);
+}
+
+.alert-info {
+    color: var(--info-color-dark, #0c5460);
+    background-color: var(--info-color-light, #d1ecf1);
+    border-color: var(--info-color, #bee5eb);
+}
+
+.alert-close-btn {
+    background: none;
+    border: none;
+    color: inherit; /* Inherits color from the parent alert type for better contrast */
+    font-size: 1.25rem;
+    font-weight: bold;
+    line-height: 1;
+    opacity: 0.7;
+    padding: 0 0.5rem;
+    cursor: pointer;
+    margin-left: 1rem;
+}
+
+.alert-close-btn:hover,
+.alert-close-btn:focus {
+    opacity: 1;
+    outline: none; /* Remove default focus outline if custom styling is preferred */
+}
+
+/* Define CSS variables if not already globally available or to provide local fallbacks */
+/* These are example variable names; adjust if your project uses a different naming scheme */
+:root {
+    /* Fallbacks in case these are not defined elsewhere (e.g. App.css or index.css) */
+    --success-color-dark: #155724;
+    --success-color-light: #d4edda;
+    --success-color: #28a745;
+
+    --danger-color-dark: #721c24;
+    --danger-color-light: #f8d7da;
+    --danger-color: #dc3545;
+
+    --warning-color-dark: #856404;
+    --warning-color-light: #fff3cd;
+    --warning-color: #ffc107;
+
+    --info-color-dark: #0c5460;
+    --info-color-light: #d1ecf1;
+    --info-color: #17a2b8;
+}

@@ -1,0 +1,241 @@
+/* Styles for Character Detail Page - campaign_crafter_ui/src/pages/CharacterDetailPage.css */
+
+.character-detail-page {
+    /* General page styling if needed */
+}
+
+.character-detail-page .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem; /* Consistent with list page */
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color, #eee);
+}
+
+.character-detail-page .page-header h1 {
+    margin-bottom: 0;
+    font-size: 2rem; /* Slightly smaller than global h1 if needed, or adjust global */
+}
+
+.character-detail-page .header-actions .btn {
+    font-size: 0.9rem; /* Slightly smaller buttons in header */
+}
+
+/* Grid layout for main content and sidebar */
+.character-content-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr; /* Main content takes 2/3, sidebar 1/3 */
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.character-main-column,
+.character-sidebar-column {
+    /* Styles for columns if needed, e.g., for background or padding */
+}
+
+/* Card styling for data sections */
+.data-card {
+    background-color: var(--surface-color, #fff);
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: var(--border-radius, 0.3rem);
+    box-shadow: var(--box-shadow, 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075));
+}
+
+.data-card .card-header {
+    background-color: var(--surface-color-secondary, #f8f9fa); /* Slightly different header bg */
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+    padding: 0.75rem 1.25rem;
+    font-weight: 500;
+    font-size: 1.1rem;
+}
+
+.data-card .card-body {
+    padding: 1.25rem;
+}
+
+.data-card .card-text.pre-wrap {
+    white-space: pre-wrap; /* Preserve line breaks and spaces in descriptions */
+    word-break: break-word;
+}
+
+
+/* Stats Grid */
+.character-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 1rem;
+    text-align: center;
+}
+
+.stat-item {
+    background-color: var(--background-color, #f8f9fa); /* Light background for each stat */
+    padding: 0.75rem 0.5rem;
+    border-radius: var(--border-radius-sm, 0.2rem);
+    border: 1px solid var(--border-color-light, #e9ecef);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-color-muted, #6c757d);
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color, #007bff); /* Highlight stat value */
+}
+
+/* Image Gallery */
+.character-image-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0.75rem;
+}
+
+.character-image-thumbnail-wrapper {
+    position: relative;
+    width: 100%;
+    padding-bottom: 100%; /* Creates a square aspect ratio */
+    cursor: pointer;
+    overflow: hidden;
+    border-radius: var(--border-radius-sm, 0.2rem);
+    border: 1px solid var(--border-color-light, #e9ecef);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+.character-image-thumbnail-wrapper:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0.25rem 0.75rem rgba(0,0,0,0.15);
+}
+
+.character-image-thumbnail {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Cover the area, cropping if necessary */
+}
+
+/* LLM Interaction Area */
+.llm-response-area {
+    background-color: var(--background-color, #f8f9fa); /* Slightly different background */
+    border-color: var(--border-color-light, #e9ecef);
+}
+.llm-response-area strong {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+.llm-response-area p.pre-wrap {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.95rem;
+    max-height: 300px; /* Example max height */
+    overflow-y: auto; /* Scroll for long responses */
+}
+
+/* Campaign Associations List */
+.character-detail-page .list-group-item {
+    padding-left: 0;
+    padding-right: 0;
+    background-color: transparent; /* If cards have their own bg */
+}
+.character-detail-page .list-group-item:first-child {
+    border-top: none;
+}
+.character-detail-page .list-group-item:last-child {
+    border-bottom: none;
+}
+
+
+/* Textarea styling for LLM prompt (if not globally defined sufficiently) */
+.character-detail-page textarea.form-control {
+    min-height: 80px;
+    font-size: 0.95rem;
+}
+
+/* Loading spinner within buttons */
+.btn .spinner-border-sm {
+    margin-right: 0.5em;
+}
+
+
+/* Responsive Adjustments */
+@media (max-width: 992px) { /* Medium devices (tablets, less than 992px) */
+    .character-content-grid {
+        grid-template-columns: 1fr; /* Stack columns */
+    }
+    .character-sidebar-column {
+        margin-top: 1.5rem; /* Add space when stacked */
+    }
+}
+
+@media (max-width: 768px) { /* Small devices (landscape phones, less than 768px) */
+    .character-detail-page .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .character-detail-page .page-header h1 {
+        font-size: 1.75rem;
+    }
+    .character-detail-page .header-actions {
+        width: 100%;
+        margin-top: 0.75rem;
+        display: flex;
+        justify-content: space-between;
+    }
+    .character-detail-page .header-actions .btn {
+        flex-grow: 1; /* Make buttons take equal space */
+    }
+    .character-detail-page .header-actions .btn.me-2 {
+        margin-right: 0.5rem !important; /* Ensure spacing */
+    }
+
+    .character-stats-grid {
+        grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+        gap: 0.5rem;
+    }
+    .stat-value {
+        font-size: 1.25rem;
+    }
+    .stat-label {
+        font-size: 0.7rem;
+    }
+
+    .character-image-gallery {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 0.5rem;
+    }
+
+    .data-card .card-header {
+        font-size: 1rem;
+        padding: 0.6rem 1rem;
+    }
+    .data-card .card-body {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 576px) { /* Extra small devices (portrait phones, less than 576px) */
+    .character-detail-page .header-actions {
+        flex-direction: column;
+    }
+    .character-detail-page .header-actions .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    .character-detail-page .header-actions .btn.me-2 {
+        margin-right: 0 !important;
+    }
+     .character-stats-grid {
+        grid-template-columns: repeat(3, 1fr); /* Fixed 3 columns for very small screens */
+    }
+}
