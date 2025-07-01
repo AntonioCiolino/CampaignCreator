@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict
 from sqlalchemy.orm import Session
-from app.models import User as UserModel # Added UserModel import
+from app import models # Changed import
+from app.models import User as UserModel
 
 class LLMServiceUnavailableError(Exception):
     """Custom exception for when an LLM service cannot be initialized or is unavailable."""
@@ -97,6 +98,7 @@ class AbstractLLMService(ABC):
         user_prompt: str,     # The query or situation the character should respond to
         current_user: UserModel,
         db: Session,
+        chat_history: Optional[List[models.ChatMessage]] = None, # Corrected type hint
         model: Optional[str] = None,
         temperature: Optional[float] = 0.7,
         max_tokens: Optional[int] = 300 # Default to a moderate length for dialogue/response
@@ -172,13 +174,37 @@ class LLMService(AbstractLLMService): # Note: This is a dummy implementation
         user_prompt: str,
         current_user: UserModel,
         db: Session,
+        chat_history: Optional[List[models.ChatMessage]] = None, # Corrected type hint
         model: Optional[str] = None,
         temperature: Optional[float] = 0.7,
         max_tokens: Optional[int] = 300
     ) -> str:
         print(f"Dummy LLMService: generate_character_response called for character '{character_name}' by user {current_user.id} with model {model}")
-        return (
-            f"As {character_name} (drawing from notes: '{character_notes[:50]}...'), "
-            f"I would respond to '{user_prompt}' by saying: "
-            f"'This is a dummy response from {self.__class__.__name__}.'"
+
+        messages = []
+        # System message incorporating character_notes
+        system_message = f"You are {character_name}. Your personality and background are: {character_notes}. Respond to the user's last message as {character_name}."
+        messages.append({"role": "system", "content": system_message})
+
+        if chat_history:
+            for message in chat_history:
+                role = "user" if message.speaker == "user" else "assistant"
+                # If speaker is the character_name, it's still 'assistant' from LLM's perspective
+                if message.speaker == character_name:
+                    role = "assistant"
+                messages.append({"role": role, "content": message.text})
+
+        # Current user prompt
+        messages.append({"role": "user", "content": user_prompt})
+
+        print(f"Constructed messages for LLM: {messages}")
+
+        # Dummy response generation
+        response_text = (
+            f"As {character_name}, responding to '{user_prompt}' (after reviewing history if any): "
+            f"'This is a dummy response from {self.__class__.__name__} considering the context. My instructions started with: {system_message[:100]}...'"
         )
+        if chat_history:
+            response_text += f" I recall {len(chat_history)} past messages."
+
+        return response_text

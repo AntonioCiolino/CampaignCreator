@@ -59,6 +59,7 @@ export interface LLMTextGenerationParams {
     model_id_with_prefix?: string | null; 
     temperature?: number;
     max_tokens?: number;
+    chat_history?: Array<{ speaker: string; text: string; }>; // Added chat_history
 }
 
 export interface LLMTextGenerationResponse {
@@ -79,6 +80,9 @@ export const generateTextLLM = async (params: LLMTextGenerationParams): Promise<
         }
         if (params.max_tokens !== undefined) {
             requestBody.max_tokens = params.max_tokens;
+        }
+        if (params.chat_history) { // Add chat_history to the request body if present
+            requestBody.chat_history = params.chat_history;
         }
 
         // New apiClient call:

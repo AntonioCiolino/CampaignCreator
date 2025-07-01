@@ -546,7 +546,7 @@ const CampaignEditorPage: React.FC = () => {
         clearTimeout(newTimer);
       }
     };
-  }, [editableMoodBoardUrls, campaignId, campaign]);
+  }, [editableMoodBoardUrls, campaignId, campaign]); // moodBoardDebounceTimer REMOVED
 
   useEffect(() => {
     let isMounted = true;
