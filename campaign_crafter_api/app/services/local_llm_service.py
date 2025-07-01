@@ -3,7 +3,8 @@ import re # Added import
 from typing import Optional, List, Dict, Any, AsyncGenerator
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from app.models import User as UserModel # Added UserModel import
+from app import models # Added models import
+from app.models import User as UserModel
 from app.core.config import settings
 from app.services.llm_service import AbstractLLMService, LLMGenerationError
 from app.services.feature_prompt_service import FeaturePromptService
@@ -337,6 +338,7 @@ class LocalLLMService(AbstractLLMService):
         user_prompt: str,
         current_user: UserModel,
         db: Session,
+        chat_history: Optional[List[models.ChatMessage]] = None,
         model: Optional[str] = None,
         temperature: Optional[float] = 0.7,
         max_tokens: Optional[int] = 300
@@ -361,9 +363,17 @@ class LocalLLMService(AbstractLLMService):
         )
 
         messages = [
-            {"role": "system", "content": system_content},
-            {"role": "user", "content": user_prompt}
+            {"role": "system", "content": system_content}
         ]
+
+        # Add chat history
+        if chat_history:
+            for message_item in chat_history:
+                role = "user" if message_item.speaker.lower() == "user" else "assistant"
+                messages.append({"role": role, "content": message_item.text})
+
+        # Add the current user prompt
+        messages.append({"role": "user", "content": user_prompt})
 
         effective_temperature = temperature if temperature is not None else 0.75
         effective_max_tokens = max_tokens or 300

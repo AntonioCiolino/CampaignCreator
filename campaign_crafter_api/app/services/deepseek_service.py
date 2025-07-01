@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError, LLMGenerationError
 from app.services.feature_prompt_service import FeaturePromptService
-from app.models import User as UserModel # Added UserModel import
+from app import models # Added models import
+from app.models import User as UserModel
 # Removed import from llm_factory: from app.services.llm_factory import LLMServiceUnavailableError
 # import os # For the __main__ block, commented out
 
@@ -180,13 +181,52 @@ class DeepSeekLLMService(AbstractLLMService):
         user_prompt: str,
         current_user: UserModel,
         db: Session,
+        chat_history: Optional[List[models.ChatMessage]] = None,
         model: Optional[str] = None,
         temperature: Optional[float] = 0.7,
         max_tokens: Optional[int] = 300
     ) -> str:
         if not await self.is_available(current_user=current_user, db=db):
             raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available.")
-        raise NotImplementedError(f"{self.PROVIDER_NAME.title()}LLMService.generate_character_response not implemented.")
+
+        # Construct messages list, similar to OpenAI
+        messages = []
+
+        # System message for character persona
+        # Ensure character_notes are not excessively long for the system prompt.
+        truncated_notes = (character_notes[:1000] + '...') if character_notes and len(character_notes) > 1000 else character_notes
+        system_content = (
+            f"You are embodying the character named '{character_name}'. "
+            f"Your personality, background, and way of speaking are defined by the following notes: "
+            f"'{truncated_notes if truncated_notes else 'A typically neutral character.'}' "
+            f"Respond naturally as this character would. Do not break character. Do not mention that you are an AI."
+        )
+        messages.append({"role": "system", "content": system_content})
+
+        # Add chat history
+        if chat_history:
+            for message_item in chat_history: # Renamed to avoid conflict with outer 'messages'
+                role = "user" if message_item.speaker.lower() == "user" else "assistant"
+                messages.append({"role": role, "content": message_item.text})
+
+        # Add the current user prompt
+        messages.append({"role": "user", "content": user_prompt})
+
+        # Here, you would typically call the DeepSeek API using the 'messages' list.
+        # For example, using an OpenAI-compatible client:
+        # client = AsyncOpenAI(api_key=self.effective_api_key, base_url="https://api.deepseek.com/v1")
+        # chat_completion = await client.chat.completions.create(
+        #     model=model or "deepseek-chat", # Or your preferred DeepSeek model
+        #     messages=messages,
+        #     temperature=temperature if temperature is not None else 0.7,
+        #     max_tokens=max_tokens or 300
+        # )
+        # return chat_completion.choices[0].message.content.strip()
+
+        raise NotImplementedError(
+            f"{self.PROVIDER_NAME.title()}LLMService.generate_character_response not implemented. "
+            f"Constructed messages: {messages}" # Log messages for debugging if needed
+        )
 
 # if __name__ == '__main__':
 #     from app.core.config import settings
