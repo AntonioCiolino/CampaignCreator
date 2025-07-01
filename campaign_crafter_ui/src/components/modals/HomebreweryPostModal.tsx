@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { prepareCampaignForHomebrewery, PrepareHomebreweryPostResponse } from '../../services/campaignService';
+import { prepareCampaignForHomebrewery } from '../../services/campaignService';
+import { PrepareHomebreweryPostResponse } from '../../types/campaignTypes'; // Corrected import path
 import Modal from '../common/Modal'; // Import the new Modal component
 import Button from '../common/Button'; // Import the new Button component
 import './HomebreweryPostModal.css'; // Import specific styles for this modal's content

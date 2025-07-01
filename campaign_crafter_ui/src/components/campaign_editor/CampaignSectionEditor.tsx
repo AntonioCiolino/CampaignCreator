@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator'; 
-import { CampaignSection, CampaignSectionUpdatePayload } from '../../services/campaignService'; // Corrected import
+import { CampaignSection, CampaignSectionUpdatePayload } from '../../types/campaignTypes'; // Corrected import
 import CampaignSectionView from '../CampaignSectionView';
 import { 
   DragDropContext, 

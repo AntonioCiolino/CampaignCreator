@@ -329,3 +329,84 @@ class LocalLLMService(AbstractLLMService):
             raise LLMGenerationError(f"{self.PROVIDER_NAME.title()} API call for Homebrewery TOC from sections succeeded but returned no usable content.")
 
         return generated_toc
+
+    async def generate_character_response(
+        self,
+        character_name: str,
+        character_notes: str,
+        user_prompt: str,
+        current_user: UserModel,
+        db: Session,
+        model: Optional[str] = None,
+        temperature: Optional[float] = 0.7,
+        max_tokens: Optional[int] = 300
+    ) -> str:
+        if not await self.is_available(current_user=current_user, db=db):
+            raise HTTPException(status_code=503, detail=f"{self.PROVIDER_NAME.title()} service is not available or configured.")
+        if not user_prompt:
+            raise ValueError("User prompt cannot be empty for character response.")
+
+        selected_model = model or self.default_model_id
+        if not selected_model:
+            raise HTTPException(status_code=400, detail=f"No model specified and no default model configured for {self.PROVIDER_NAME.title()}.")
+
+        truncated_notes = (character_notes[:1000] + '...') if character_notes and len(character_notes) > 1000 else character_notes
+
+        # For OpenAI-compatible local servers, use a system prompt
+        system_content = (
+            f"You are embodying the character named '{character_name}'. "
+            f"Your personality, background, and way of speaking are defined by the following notes: "
+            f"'{truncated_notes if truncated_notes else 'A typically neutral character.'}' "
+            f"Respond naturally as this character would. Do not break character. Do not mention that you are an AI."
+        )
+
+        messages = [
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": user_prompt}
+        ]
+
+        effective_temperature = temperature if temperature is not None else 0.75
+        effective_max_tokens = max_tokens or 300
+
+        payload = {
+            "model": selected_model,
+            "messages": messages,
+            "temperature": effective_temperature,
+            "max_tokens": effective_max_tokens,
+            "stream": False,
+        }
+        headers = {"Authorization": f"Bearer {LOCAL_LLM_DUMMY_API_KEY}"}
+
+        try:
+            response = await self.client.post("chat/completions", json=payload, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+            if data.get("choices") and isinstance(data["choices"], list) and len(data["choices"]) > 0:
+                message_content = data["choices"][0].get("message", {}).get("content")
+                if message_content:
+                    return message_content.strip()
+
+            error_detail = f"{self.PROVIDER_NAME.title()} API response format unexpected for character response: {data}"
+            print(error_detail)
+            raise HTTPException(status_code=500, detail=error_detail)
+
+        except httpx.HTTPStatusError as e:
+            error_detail = f"Error from {self.PROVIDER_NAME.title()} API: {e.response.status_code} - {e.response.text}"
+            try:
+                err_json = e.response.json()
+                if err_json.get("error") and isinstance(err_json["error"], dict) and err_json["error"].get("message"):
+                    error_detail = f"{self.PROVIDER_NAME.title()} API Error: {err_json['error']['message']}"
+                elif err_json.get("detail"):
+                     error_detail = f"{self.PROVIDER_NAME.title()} API Error: {err_json['detail']}"
+            except Exception:
+                pass
+            print(error_detail)
+            raise HTTPException(status_code=e.response.status_code, detail=error_detail)
+        except httpx.RequestError as e:
+            error_detail = f"Network error connecting to {self.PROVIDER_NAME.title()} API: {e}"
+            print(error_detail)
+            raise HTTPException(status_code=503, detail=error_detail)
+        except Exception as e:
+            error_detail = f"Unexpected error during {self.PROVIDER_NAME.title()} character response generation: {type(e).__name__} - {e}"
+            print(error_detail)
+            raise HTTPException(status_code=500, detail=error_detail)

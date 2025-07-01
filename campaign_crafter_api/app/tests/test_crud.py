@@ -772,3 +772,160 @@ async def test_create_campaign_skip_concept_generation_flag(
     # even if skip_concept_generation is False. The conditional logic in crud.create_campaign is
     # `if not campaign_payload.skip_concept_generation and campaign_payload.initial_user_prompt:`
     mock_llm_instance.generate_campaign_concept.assert_not_called()
+
+# --- Character CRUD Tests ---
+
+@pytest.fixture
+def test_character_stats_data() -> crud.models.CharacterStats:
+    return crud.models.CharacterStats(
+        strength=12,
+        dexterity=14,
+        constitution=10,
+        intelligence=16,
+        wisdom=8,
+        charisma=15
+    )
+
+@pytest.fixture
+def test_character_create_data(test_character_stats_data: crud.models.CharacterStats) -> crud.models.CharacterCreate:
+    return crud.models.CharacterCreate(
+        name="Sir Reginald Featherbottom",
+        description="A brave knight with an unfortunate allergy to pigeons.",
+        appearance_description="Tall, wears shiny armor, often seen sneezing.",
+        image_urls=["http://example.com/reginald.png"],
+        video_clip_urls=[],
+        notes_for_llm="Acts very chivalrous but is terrified of birds.",
+        stats=test_character_stats_data
+    )
+
+@pytest.fixture
+def test_character(db_session: Session, test_user: ORMUser, test_character_create_data: crud.models.CharacterCreate) -> ORMCampaign: # Corrected return type to ORMCharacter
+    # Need to import ORMCharacter
+    from app.orm_models import Character as ORMCharacter
+    return crud.create_character(db=db_session, character=test_character_create_data, user_id=test_user.id)
+
+
+def test_create_character(db_session: Session, test_user: ORMUser, test_character_create_data: crud.models.CharacterCreate, test_character_stats_data: crud.models.CharacterStats):
+    db_char = crud.create_character(db=db_session, character=test_character_create_data, user_id=test_user.id)
+    assert db_char.id is not None
+    assert db_char.name == test_character_create_data.name
+    assert db_char.owner_id == test_user.id
+    assert db_char.strength == test_character_stats_data.strength
+    assert db_char.appearance_description == test_character_create_data.appearance_description
+    assert db_char.image_urls == test_character_create_data.image_urls
+
+    # Test creation without explicit stats (should use defaults)
+    char_data_no_stats = crud.models.CharacterCreate(name="Default Stat Man")
+    db_char_no_stats = crud.create_character(db=db_session, character=char_data_no_stats, user_id=test_user.id)
+    assert db_char_no_stats.strength == 10 # Default ORM value
+    assert db_char_no_stats.constitution == 10
+
+def test_get_character(db_session: Session, test_character: ORMCampaign): # Corrected type hint
+    from app.orm_models import Character as ORMCharacter # Import for type check
+    retrieved_char = crud.get_character(db=db_session, character_id=test_character.id)
+    assert retrieved_char is not None
+    assert retrieved_char.id == test_character.id
+    assert retrieved_char.name == test_character.name
+    assert isinstance(retrieved_char, ORMCharacter)
+
+def test_get_characters_by_user(db_session: Session, test_user: ORMUser, test_character: ORMCampaign): # Corrected type hint
+    # Create another character for the same user
+    char_data2 = crud.models.CharacterCreate(name="Lady Annabelle Quickwit")
+    crud.create_character(db=db_session, character=char_data2, user_id=test_user.id)
+
+    # Create a character for another user
+    other_user_data = crud.models.UserCreate(email="other@example.com", password="password")
+    other_user = crud.create_user(db=db_session, user=other_user_data)
+    char_data_other_user = crud.models.CharacterCreate(name="Mysterious Stranger")
+    crud.create_character(db=db_session, character=char_data_other_user, user_id=other_user.id)
+
+    user_chars = crud.get_characters_by_user(db=db_session, user_id=test_user.id)
+    assert len(user_chars) == 2
+    char_names = {c.name for c in user_chars}
+    assert test_character.name in char_names
+    assert char_data2.name in char_names
+    assert "Mysterious Stranger" not in char_names
+
+def test_update_character(db_session: Session, test_character: ORMCampaign): # Corrected type hint
+    update_payload = crud.models.CharacterUpdate(
+        name="Sir Reginald the Bold",
+        description="He got over his pigeon allergy.",
+        stats=crud.models.CharacterStats(strength=18, wisdom=12)
+    )
+    updated_char = crud.update_character(db=db_session, character_id=test_character.id, character_update=update_payload)
+    assert updated_char is not None
+    assert updated_char.name == "Sir Reginald the Bold"
+    assert updated_char.description == "He got over his pigeon allergy."
+    assert updated_char.strength == 18
+    assert updated_char.wisdom == 12
+    assert updated_char.dexterity == test_character.dexterity # Unchanged stat
+
+    # Test updating only one stat
+    stat_only_update = crud.models.CharacterUpdate(stats=crud.models.CharacterStats(constitution=16))
+    further_updated_char = crud.update_character(db=db_session, character_id=test_character.id, character_update=stat_only_update)
+    assert further_updated_char.constitution == 16
+    assert further_updated_char.strength == 18 # Previous update should persist
+
+
+def test_delete_character(db_session: Session, test_character: ORMCampaign): # Corrected type hint
+    char_id = test_character.id
+    deleted_char = crud.delete_character(db=db_session, character_id=char_id)
+    assert deleted_char is not None
+    assert deleted_char.id == char_id
+
+    assert crud.get_character(db=db_session, character_id=char_id) is None
+
+@pytest.mark.asyncio # Needs async because test_campaign is async
+async def test_add_character_to_campaign(db_session: Session, test_character: ORMCampaign, test_campaign: ORMCampaign): # Corrected type hints
+    # Ensure campaign is created (it is by fixture)
+    assert test_campaign.id is not None
+
+    crud.add_character_to_campaign(db=db_session, character_id=test_character.id, campaign_id=test_campaign.id)
+
+    db_session.refresh(test_character) # Refresh to see relationship update
+    db_session.refresh(test_campaign)
+
+    assert test_campaign in test_character.campaigns
+    assert test_character in test_campaign.characters
+
+    # Test adding again (should not duplicate)
+    crud.add_character_to_campaign(db=db_session, character_id=test_character.id, campaign_id=test_campaign.id)
+    db_session.refresh(test_character)
+    assert len(test_character.campaigns) == 1
+
+
+@pytest.mark.asyncio # Needs async because test_campaign is async
+async def test_remove_character_from_campaign(db_session: Session, test_character: ORMCampaign, test_campaign: ORMCampaign): # Corrected type hints
+    # First, add the character to the campaign
+    crud.add_character_to_campaign(db=db_session, character_id=test_character.id, campaign_id=test_campaign.id)
+    db_session.refresh(test_character)
+    assert test_campaign in test_character.campaigns
+
+    # Now remove
+    crud.remove_character_from_campaign(db=db_session, character_id=test_character.id, campaign_id=test_campaign.id)
+    db_session.refresh(test_character)
+    db_session.refresh(test_campaign)
+
+    assert test_campaign not in test_character.campaigns
+    assert test_character not in test_campaign.characters
+
+@pytest.mark.asyncio # Needs async
+async def test_get_characters_by_campaign(db_session: Session, test_user: ORMUser, test_campaign: ORMCampaign): # Corrected type hint
+    char_data1 = crud.models.CharacterCreate(name="Char1 for Campaign Test")
+    char1 = crud.create_character(db=db_session, character=char_data1, user_id=test_user.id)
+
+    char_data2 = crud.models.CharacterCreate(name="Char2 for Campaign Test")
+    char2 = crud.create_character(db=db_session, character=char_data2, user_id=test_user.id)
+
+    char_data3 = crud.models.CharacterCreate(name="Char3 Not in Campaign") # Belongs to same user, but not linked
+    crud.create_character(db=db_session, character=char_data3, user_id=test_user.id)
+
+    crud.add_character_to_campaign(db=db_session, character_id=char1.id, campaign_id=test_campaign.id)
+    crud.add_character_to_campaign(db=db_session, character_id=char2.id, campaign_id=test_campaign.id)
+
+    campaign_chars = crud.get_characters_by_campaign(db=db_session, campaign_id=test_campaign.id)
+    assert len(campaign_chars) == 2
+    campaign_char_names = {c.name for c in campaign_chars}
+    assert char1.name in campaign_char_names
+    assert char2.name in campaign_char_names
+    assert char_data3.name not in campaign_char_names

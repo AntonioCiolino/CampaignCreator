@@ -10,6 +10,10 @@ import LoginPage from '../pages/LoginPage';
 import AboutPage from '../pages/AboutPage'; // Import for AboutPage
 import ProtectedRoute from './ProtectedRoute';
 // import CampaignCreatePage from '../pages/CampaignCreatePage'; // Placeholder
+import CharacterListPage from '../pages/CharacterListPage';
+import CharacterDetailPage from '../pages/CharacterDetailPage';
+import CharacterCreatePage from '../pages/CharacterCreatePage';
+import CharacterEditPage from '../pages/CharacterEditPage';
 
 const AppRoutes: React.FC = () => {
   return (
@@ -26,6 +30,12 @@ const AppRoutes: React.FC = () => {
         <Route path="/campaign/:campaignId" element={<CampaignEditorPage />} />
         {/* Add other routes that require any authenticated user, e.g., CampaignCreatePage */}
         {/* <Route path="/campaign/new" element={<CampaignCreatePage />} /> */}
+
+        {/* Character Management Routes */}
+        <Route path="/characters" element={<CharacterListPage />} />
+        <Route path="/characters/new" element={<CharacterCreatePage />} />
+        <Route path="/characters/:characterId" element={<CharacterDetailPage />} />
+        <Route path="/characters/:characterId/edit" element={<CharacterEditPage />} />
       </Route>
 
       {/* Protected Routes - Explicitly 'user' role (any authenticated user) */}

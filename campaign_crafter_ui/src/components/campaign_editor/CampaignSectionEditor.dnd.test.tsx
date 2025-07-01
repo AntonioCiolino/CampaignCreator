@@ -6,7 +6,7 @@ import '@testing-library/jest-dom';
 // For now, keeping imports minimal if they are not strictly necessary for the test code itself.
 import { DropResult } from 'react-beautiful-dnd'; 
 import CampaignSectionEditor from './CampaignSectionEditor';
-import { CampaignSection } from '../../services/campaignService'; // Corrected import path
+import { CampaignSection } from '../../types/campaignTypes'; // Corrected import path
 
 // Mock CampaignSectionView to simplify the test
 jest.mock('../CampaignSectionView', () => {
