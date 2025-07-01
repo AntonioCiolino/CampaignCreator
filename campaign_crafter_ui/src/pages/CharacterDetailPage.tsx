@@ -7,10 +7,12 @@ import { Campaign } from '../types/campaignTypes';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ImagePreviewModal from '../components/modals/ImagePreviewModal'; // Import ImagePreviewModal
 import AlertMessage from '../components/common/AlertMessage'; // For potential error/success messages
-import ConfirmationModal from '../components/modals/ConfirmationModal'; // For delete confirmation
-import './CharacterDetailPage.css'; // Import the CSS file
+import ConfirmationModal from '../components/modals/ConfirmationModal';
+import CharacterChatPanel from '../components/characters/CharacterChatPanel'; // Import CharacterChatPanel
+import './CharacterDetailPage.css';
+// import ChatIcon from '@mui/icons-material/Chat'; // Example using MUI icon
 
-const DEFAULT_PLACEHOLDER_IMAGE = '/logo_placeholder.svg'; // Define a default placeholder
+const DEFAULT_PLACEHOLDER_IMAGE = '/logo_placeholder.svg';
 
 const CharacterDetailPage: React.FC = () => {
     const { characterId } = useParams<{ characterId: string }>();
@@ -46,6 +48,10 @@ const CharacterDetailPage: React.FC = () => {
     // Delete Confirmation Modal State
     const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
     const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
+    // Character Chat Panel State
+    const [isChatPanelOpen, setIsChatPanelOpen] = useState<boolean>(false);
+    // Optional: const [chatPanelWidth, setChatPanelWidth] = useState<number>(350);
 
 
     const fetchCharacterAndCampaignData = useCallback(async () => {
@@ -291,8 +297,16 @@ const CharacterDetailPage: React.FC = () => {
                     <Link to={`/characters/${character.id}/edit`} className="btn btn-outline-primary me-2">
                         Edit Character
                     </Link>
-                    <button onClick={openDeleteModal} className="btn btn-outline-danger">
+                    <button onClick={openDeleteModal} className="btn btn-outline-danger me-2">
                         Delete Character
+                    </button>
+                    <button
+                        onClick={() => setIsChatPanelOpen(prev => !prev)}
+                        className="btn btn-outline-info"
+                        title={isChatPanelOpen ? "Close Chat" : "Chat with Character"}
+                    >
+                        {/* Use an icon here if available, e.g., <ChatIcon /> */}
+                        💬 Chat
                     </button>
                 </div>
             </div>
@@ -398,39 +412,7 @@ const CharacterDetailPage: React.FC = () => {
                 </div>
             )}
 
-
-            {/* LLM Interaction Section - Full Width Below Grid */}
-            <div className="card data-card mb-3">
-                <div className="card-header">Interact with {character.name} (AI)</div>
-                <div className="card-body">
-                    <div className="mb-3">
-                        <label htmlFor="llmUserPrompt" className="form-label">Your message to {character.name}:</label>
-                        <textarea
-                            id="llmUserPrompt"
-                            className="form-control"
-                            rows={3}
-                            value={llmUserPrompt}
-                            onChange={(e) => setLlmUserPrompt(e.target.value)}
-                            placeholder={`e.g., "What are your thoughts on the encroaching shadow in the North?"`}
-                            disabled={isGeneratingResponse}
-                        />
-                    </div>
-                    <button
-                        className="btn btn-info"
-                        onClick={handleGenerateCharacterResponse}
-                        disabled={isGeneratingResponse || !llmUserPrompt.trim()}
-                    >
-                        {isGeneratingResponse ? <><LoadingSpinner /> Getting Response...</> : `Ask ${character.name}`}
-                    </button>
-                    {llmError && <AlertMessage type="error" message={llmError} onClose={() => setLlmError(null)} className="mt-3" />}
-                    {llmResponse && (
-                        <div className="mt-3 p-3 border rounded bg-light llm-response-area">
-                            <strong>{character.name} responds:</strong>
-                            <p className="pre-wrap">{llmResponse}</p>
-                        </div>
-                    )}
-                </div>
-            </div>
+            {/* Old LLM Interaction Section - REMOVED */}
 
             {/* Campaign Association Management - Full Width */}
             <div className="card data-card mb-3">
@@ -510,6 +492,20 @@ const CharacterDetailPage: React.FC = () => {
                     cancelButtonText="Cancel"
                     isConfirming={isDeleting}
                     confirmButtonVariant="danger"
+                />
+            )}
+
+            {character && (
+                <CharacterChatPanel
+                    characterName={character.name}
+                    isOpen={isChatPanelOpen}
+                    onClose={() => setIsChatPanelOpen(false)}
+                    llmUserPrompt={llmUserPrompt}
+                    setLlmUserPrompt={setLlmUserPrompt}
+                    handleGenerateCharacterResponse={handleGenerateCharacterResponse}
+                    isGeneratingResponse={isGeneratingResponse}
+                    llmResponse={llmResponse}
+                    llmError={llmError}
                 />
             )}
         </div>
