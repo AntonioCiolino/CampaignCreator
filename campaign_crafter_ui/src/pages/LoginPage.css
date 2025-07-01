@@ -50,3 +50,18 @@
   font-size: 14px;
   text-align: left; /* Align error text to the left for readability */
 }
+
+.login-links {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.login-links a {
+  color: #007bff; /* Standard link blue */
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.login-links a:hover {
+  text-decoration: underline;
+}

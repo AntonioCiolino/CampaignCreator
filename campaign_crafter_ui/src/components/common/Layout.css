@@ -75,6 +75,27 @@
   text-align: center;
   padding: 1rem;
   border-top: 1px solid #e7e7e7;
+  display: flex; /* Use flexbox for alignment */
+  flex-direction: column; /* Stack items vertically */
+  align-items: center; /* Center items horizontally */
+}
+
+.app-footer p {
+  margin-bottom: 0.5rem; /* Add some space between paragraph and nav */
+}
+
+.footer-nav {
+  display: flex;
+  gap: 1rem; /* Space between links */
+}
+
+.footer-nav a {
+  color: #007bff; /* Standard link blue, or use a CSS variable if available */
+  text-decoration: none;
+}
+
+.footer-nav a:hover {
+  text-decoration: underline;
 }
 
 /* Responsive adjustments */

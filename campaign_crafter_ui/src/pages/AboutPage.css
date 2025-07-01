@@ -1,0 +1,34 @@
+.about-page-container {
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+  background-color: var(--background-color-primary); /* Assuming CSS variables are used for theming */
+  color: var(--text-color-primary); /* Assuming CSS variables are used for theming */
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.about-page-container h1 {
+  color: var(--primary-color); /* Assuming a primary color variable */
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.about-page-container h2 {
+  color: var(--secondary-color); /* Assuming a secondary color variable */
+  margin-top: 30px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border-color-soft); /* Assuming a border color variable */
+  padding-bottom: 5px;
+}
+
+.about-page-container ul {
+  list-style-type: disc;
+  margin-left: 20px;
+}
+
+.about-page-container p,
+.about-page-container li {
+  line-height: 1.6;
+  margin-bottom: 10px;
+}

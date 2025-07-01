@@ -55,6 +55,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </main>
       <footer className="app-footer">
         <p>&copy; {new Date().getFullYear()} Campaign Crafter. All rights reserved.</p>
+        <nav className="footer-nav">
+          <Link to="/about">About Us</Link>
+          {/* Add other footer links here if needed */}
+        </nav>
       </footer>
     </div>
   );
