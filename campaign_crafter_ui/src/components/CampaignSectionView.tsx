@@ -11,7 +11,7 @@ import Button from './common/Button'; // Added Button import
 import RandomTableRoller from './RandomTableRoller';
 import ImageGenerationModal from './modals/ImageGenerationModal/ImageGenerationModal'; // Import the new modal
 import './CampaignSectionView.css';
-import { CampaignSectionUpdatePayload } from '../services/campaignService';
+import { CampaignSectionUpdatePayload } from '../../types/campaignTypes'; // Corrected import path
 import { generateTextLLM, LLMTextGenerationParams } from '../services/llmService';
 import { getFeatures } from '../services/featureService'; // Added import
 import { Feature } from '../types/featureTypes'; // Added import

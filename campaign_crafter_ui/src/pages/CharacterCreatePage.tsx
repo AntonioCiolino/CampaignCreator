@@ -9,11 +9,16 @@ const CharacterCreatePage: React.FC = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const handleSubmit = async (data: CharacterCreate) => {
+    // Accept the broader type from CharacterForm's onSubmit prop
+    const handleSubmit = async (data: CharacterCreate | CharacterUpdate) => {
         setIsSubmitting(true);
         setError(null);
         try {
-            const newCharacter = await characterService.createCharacter(data);
+            // When creating, the 'data' object will conform to CharacterCreate
+            // because 'name' is required by the form.
+            // We can assert it or ensure CharacterForm passes CharacterCreate in this mode.
+            // For now, direct pass-through as characterService.createCharacter expects CharacterCreate.
+            const newCharacter = await characterService.createCharacter(data as CharacterCreate);
             alert('Character created successfully!'); // Or use a more sophisticated notification system
             navigate(`/characters/${newCharacter.id}`); // Navigate to the new character's detail page
         } catch (err: any) {
