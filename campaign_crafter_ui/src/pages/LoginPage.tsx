@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'; // Add useRef
 import './LoginPage.css'; // Import CSS
 import LoginForm from '../components/auth/LoginForm';
-import { useNavigate, useLocation } from 'react-router-dom'; // Add useLocation
+import { useNavigate, useLocation, Link } from 'react-router-dom'; // Add useLocation and Link
 import { useAuth } from '../contexts/AuthContext'; // Import useAuth
 import { AxiosError } from 'axios';
 
@@ -267,6 +267,9 @@ const LoginPage: React.FC = () => {
         <h2>Login</h2>
         {error && <p className="login-error-message">{error}</p>}
         <LoginForm onSubmit={handleLogin} />
+        <div className="login-links">
+          <Link to="/about">About Campaign Crafter</Link>
+        </div>
       </div>
     </div>
   );

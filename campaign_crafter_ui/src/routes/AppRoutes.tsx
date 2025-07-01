@@ -7,6 +7,7 @@ import DataManagementPage from '../pages/DataManagementPage';
 import UserSettingsPage from '../pages/UserSettingsPage'; // Added import
 import NotFoundPage from '../pages/NotFoundPage';
 import LoginPage from '../pages/LoginPage';
+import AboutPage from '../pages/AboutPage'; // Import for AboutPage
 import ProtectedRoute from './ProtectedRoute';
 // import CampaignCreatePage from '../pages/CampaignCreatePage'; // Placeholder
 
@@ -16,6 +17,7 @@ const AppRoutes: React.FC = () => {
     <Routes>
       {/* Public Routes */}
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/about" element={<AboutPage />} /> {/* Route for AboutPage */}
 
       {/* Protected Routes - Any authenticated user */}
       <Route element={<ProtectedRoute />}>
