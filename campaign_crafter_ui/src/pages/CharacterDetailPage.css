@@ -4,18 +4,35 @@
     /* General page styling if needed */
 }
 
+/* New navigation header for the back button */
+.character-detail-page .page-header-nav {
+    margin-bottom: 0.75rem; /* Space below the back button */
+}
+
+.character-detail-page .page-header-nav .btn-sm {
+    font-size: 0.875rem;
+    padding: 0.25rem 0.75rem;
+}
+
+/* Main page header adjustments */
 .character-detail-page .page-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem; /* Consistent with list page */
+    justify-content: space-between; /* Title on left, actions on right */
+    align-items: center; /* Vertically align items */
+    margin-bottom: 1.5rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--border-color, #eee);
 }
 
-.character-detail-page .page-header h1 {
+.character-detail-page .page-header .character-title { /* Target the h1 by its new class */
     margin-bottom: 0;
-    font-size: 2rem; /* Slightly smaller than global h1 if needed, or adjust global */
+    font-size: 2rem;
+    flex-grow: 1; /* Allow title to take available space */
+    padding-right: 1rem; /* Space between title and action buttons */
+}
+
+.character-detail-page .header-actions {
+    flex-shrink: 0; /* Prevent action buttons from shrinking */
 }
 
 .character-detail-page .header-actions .btn {
@@ -61,37 +78,39 @@
 }
 
 
-/* Stats Grid */
+/* Stats Grid - More Compact */
 .character-stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-    gap: 1rem;
+    /* Adjust minmax for potentially smaller items, e.g., 65px or 70px if fonts are smaller */
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    gap: 0.5rem; /* Reduced gap */
     text-align: center;
 }
 
 .stat-item {
-    background-color: var(--background-color, #f8f9fa); /* Light background for each stat */
-    padding: 0.75rem 0.5rem;
+    background-color: var(--background-color, #f8f9fa);
+    padding: 0.5rem 0.25rem; /* Reduced padding */
     border-radius: var(--border-radius-sm, 0.2rem);
     border: 1px solid var(--border-color-light, #e9ecef);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    line-height: 1.2; /* Tighter line height for compact look */
 }
 
 .stat-label {
-    font-size: 0.75rem;
+    font-size: 0.65rem; /* Smaller font for label */
     font-weight: 600;
     color: var(--text-color-muted, #6c757d);
     text-transform: uppercase;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.1rem; /* Reduced margin */
 }
 
 .stat-value {
-    font-size: 1.5rem;
+    font-size: 1.25rem; /* Smaller font for value */
     font-weight: 700;
-    color: var(--primary-color, #007bff); /* Highlight stat value */
+    color: var(--primary-color, #007bff);
 }
 
 /* Image Gallery */

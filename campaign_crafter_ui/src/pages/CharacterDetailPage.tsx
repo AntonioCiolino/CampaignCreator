@@ -279,8 +279,14 @@ const CharacterDetailPage: React.FC = () => {
 
     return (
         <div className="container mt-4 character-detail-page">
+            <div className="page-header-nav mb-3">
+                <Link to="/characters" className="btn btn-sm btn-outline-secondary">
+                    &larr; Back to Character List
+                </Link>
+            </div>
             <div className="page-header mb-4">
-                <h1>{character.name}</h1>
+                {/* Title now takes available space, actions are on the right */}
+                <h1 className="character-title">{character.name}</h1>
                 <div className="header-actions">
                     <Link to={`/characters/${character.id}/edit`} className="btn btn-outline-primary me-2">
                         Edit Character
@@ -482,11 +488,7 @@ const CharacterDetailPage: React.FC = () => {
                 </div>
             </div>
 
-            <div className="mt-4 mb-3 text-center">
-                <Link to="/characters" className="btn btn-secondary">
-                    Back to Character List
-                </Link>
-            </div>
+            {/* "Back to Character List" button removed from here */}
 
             {selectedImageUrl && (
                 <ImagePreviewModal
