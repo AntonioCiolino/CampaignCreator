@@ -126,7 +126,13 @@ const CharacterDetailPage: React.FC = () => {
 
     // DND Kit Sensors
     const sensors = useSensors(
-        useSensor(PointerSensor),
+        useSensor(PointerSensor, {
+            // Require the mouse to move by 8 pixels before starting a drag
+            // Allows click events to fire if movement is less than this.
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
         useSensor(KeyboardSensor, {
             coordinateGetter: sortableKeyboardCoordinates,
         })
