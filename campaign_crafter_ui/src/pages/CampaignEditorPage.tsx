@@ -1,5 +1,5 @@
 import React, { useState, useEffect, FormEvent, useMemo, useRef, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom'; // Added Link
 import axios from 'axios';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import LLMSelectionDialog from '../components/modals/LLMSelectionDialog';
@@ -572,47 +572,49 @@ const CampaignEditorPage: React.FC = () => {
         // Fetch all data concurrently
         const [
             campaignDetails,
-            campaignSectionsResponse,
-            fetchedLLMs,
-            fetchedCampaignCharacters,
-            fetchedUserCharacters
+            campaignData, // Renamed for clarity
+            sectionsData, // Renamed for clarity
+            llmsData,     // Renamed for clarity
+            campaignCharsData, // Renamed for clarity
+            userCharsData      // Renamed for clarity
         ] = await Promise.all([
           campaignService.getCampaignById(campaignId),
           campaignService.getCampaignSections(campaignId),
-          getAvailableLLMs().finally(() => setIsLLMsLoading(false)), // LLM loading ends when this promise settles
+          getAvailableLLMs(), // Removed .finally here, will handle setIsLLMsLoading after all promises
           characterService.getCampaignCharacters(parseInt(campaignId, 10)),
           characterService.getUserCharacters()
         ]);
 
         // Set campaign and section data
-        setCampaign(campaignDetails);
-        setEditableDisplayTOC(campaignDetails.display_toc || []);
-        if (Array.isArray(campaignSectionsResponse)) {
-            setSections(campaignSectionsResponse.sort((a, b) => a.order - b.order));
+        setCampaign(campaignData);
+        setEditableDisplayTOC(campaignData.display_toc || []);
+        if (Array.isArray(sectionsData)) {
+            setSections(sectionsData.sort((a, b) => a.order - b.order));
         } else {
-            console.warn("Campaign sections data was not an array:", campaignSectionsResponse);
+            console.warn("Campaign sections data was not an array:", sectionsData);
             setSections([]);
         }
-        setEditableTitle(campaignDetails.title);
-        setEditableInitialPrompt(campaignDetails.initial_user_prompt || '');
-        setCampaignBadgeImage(campaignDetails.badge_image_url || '');
-        if (campaignDetails.temperature !== null && campaignDetails.temperature !== undefined) {
-            setTemperature(campaignDetails.temperature);
+        setEditableTitle(campaignData.title);
+        setEditableInitialPrompt(campaignData.initial_user_prompt || '');
+        setCampaignBadgeImage(campaignData.badge_image_url || '');
+        if (campaignData.temperature !== null && campaignData.temperature !== undefined) {
+            setTemperature(campaignData.temperature);
         } else {
             setTemperature(0.7);
         }
 
-        // Set LLM data (availableLLMs already set by its own finally())
-        setAvailableLLMs(fetchedLLMs);
+        // Set LLM data
+        setAvailableLLMs(llmsData);
+        setIsLLMsLoading(false); // LLMs loaded
         let newSelectedLLMIdToSave: string | null = null;
-        setSelectedLLMId(campaignDetails.selected_llm_id || null);
+        setSelectedLLMId(campaignData.selected_llm_id || null);
 
         // Set character data
-        setCampaignCharacters(fetchedCampaignCharacters);
-        setUserCharacters(fetchedUserCharacters);
+        setCampaignCharacters(campaignCharsData);
+        setUserCharacters(userCharsData);
         setCharactersLoading(false); // Character loading successful
 
-        if (!campaignDetails.selected_llm_id) { // Only try to set a default LLM if none is set from backend
+        if (!campaignData.selected_llm_id) { // Only try to set a default LLM if none is set from backend
             const preferredModelIds = ["openai/gpt-4.1-nano", "openai/gpt-3.5-turbo", "openai/gpt-4", "gemini/gemini-pro"];
             let newSelectedLLMId: string | null = null; // Initialize to null
             for (const preferredId of preferredModelIds) {

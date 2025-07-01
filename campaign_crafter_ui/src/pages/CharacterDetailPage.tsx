@@ -71,6 +71,42 @@ const CharacterDetailPage: React.FC = () => {
         fetchPageData();
     }, [characterId]);
 
+    // REMOVE REDUNDANT USE EFFECT
+    // useEffect(() => {
+    //     if (characterId) {
+    //         const fetchCharacterDetails = async () => {
+    //             try {
+    //                 setLoading(true);
+    //                 const id = parseInt(characterId, 10);
+    //                 if (isNaN(id)) {
+    //                     setError("Invalid character ID.");
+    //                     setCharacter(null);
+    //                     return;
+    //                 }
+    //                 const fetchedCharacter = await characterService.getCharacterById(id);
+    //                 setCharacter(fetchedCharacter);
+    //                 setError(null);
+    //             } catch (err: any) {
+    //                 console.error("Failed to fetch character details:", err);
+    //                 if (err.response && err.response.status === 404) {
+    //                     setError('Character not found.');
+    //                 } else if (err.response && err.response.status === 403) {
+    //                     setError('You are not authorized to view this character.');
+    //                 } else {
+    //                     setError('Failed to load character details. Please try again later.');
+    //                 }
+    //                 setCharacter(null);
+    //             } finally {
+    //                 setLoading(false);
+    //             }
+    //         };
+    //         fetchCharacterDetails();
+    //     } else {
+    //         setError("No character ID provided.");
+    //         setLoading(false);
+    //     }
+    // }, [characterId]);
+
     const handleLinkCampaign = async () => {
         if (!character || !selectedCampaignToLink) {
             setLinkError("Please select a campaign to link.");
