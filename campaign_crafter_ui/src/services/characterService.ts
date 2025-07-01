@@ -6,6 +6,7 @@ import {
     // CharacterStats is used internally by other types but not directly as a param/return type of service functions here
     // CharacterBase is also implicitly handled by Character, CharacterCreate
 } from '../types/characterTypes';
+import { Campaign } from '../types/campaignTypes'; // Import Campaign type
 
 // --- API Service Functions ---
 
@@ -73,5 +74,13 @@ export const unlinkCharacterFromCampaign = async (characterId: number, campaignI
  */
 export const getCampaignCharacters = async (campaignId: number): Promise<Character[]> => {
     const response = await apiClient.get<Character[]>(`${CHARACTER_API_URL}/campaign/${campaignId}/characters`);
+    return response.data;
+};
+
+/**
+ * Fetches all campaigns associated with a specific character.
+ */
+export const getCharacterCampaigns = async (characterId: number): Promise<Campaign[]> => {
+    const response = await apiClient.get<Campaign[]>(`${CHARACTER_API_URL}/${characterId}/campaigns`);
     return response.data;
 };

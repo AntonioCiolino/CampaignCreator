@@ -352,6 +352,15 @@ def add_character_to_campaign(db: Session, character_id: int, campaign_id: int) 
         db.refresh(db_character)
     return db_character
 
+def get_campaigns_for_character(db: Session, character_id: int) -> List[orm_models.Campaign]:
+    """
+    Retrieves all campaigns associated with a specific character.
+    Returns an empty list if the character is not found or has no associated campaigns.
+    """
+    db_character = get_character(db, character_id=character_id)
+    if not db_character:
+        return [] # Character not found
+    return list(db_character.campaigns) # Access the relationship
 def remove_character_from_campaign(db: Session, character_id: int, campaign_id: int) -> Optional[orm_models.Character]:
     """Removes a character from a campaign."""
     db_character = get_character(db, character_id)

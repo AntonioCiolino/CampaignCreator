@@ -44,13 +44,13 @@ const CharacterDetailPage: React.FC = () => {
                     const campaigns = await campaignService.getAllCampaigns();
                     setUserCampaigns(campaigns);
 
-                    // TODO: Fetch campaigns character is ALREADY part of, if an endpoint exists
-                    // e.g., const linkedCampaigns = await characterService.getCharacterCampaigns(id);
-                    // setAssociatedCampaigns(linkedCampaigns);
+                    // Fetch campaigns this character is part of
+                    const linkedCampaigns = await characterService.getCharacterCampaigns(id);
+                    setAssociatedCampaigns(linkedCampaigns);
 
                     setError(null);
                 } catch (err: any) {
-                    console.error("Failed to fetch character details or campaigns:", err);
+                    console.error("Failed to fetch character details, user campaigns, or character's campaigns:", err);
                     if (err.response && err.response.status === 404) {
                         setError('Character not found.');
                     } else if (err.response && err.response.status === 403) {
@@ -119,8 +119,9 @@ const CharacterDetailPage: React.FC = () => {
             await characterService.linkCharacterToCampaign(character.id, campaignIdToLink);
             alert(`${character.name} successfully linked to campaign.`);
             setSelectedCampaignToLink(''); // Reset dropdown
-            // TODO: Refresh associated campaigns list here if it were displayed
-            // For now, the user has to manually verify or refresh the page (or navigate to campaign)
+            // Refresh associated campaigns
+            const updatedLinkedCampaigns = await characterService.getCharacterCampaigns(character.id);
+            setAssociatedCampaigns(updatedLinkedCampaigns);
         } catch (err: any) {
             console.error("Failed to link character to campaign:", err);
             setLinkError(err.response?.data?.detail || "Failed to link campaign.");
@@ -138,8 +139,8 @@ const CharacterDetailPage: React.FC = () => {
             try {
                 await characterService.unlinkCharacterFromCampaign(character.id, campaignIdToUnlink);
                 alert(`${character.name} successfully unlinked from campaign.`);
-                // TODO: Refresh associated campaigns list here
-                // setAssociatedCampaigns(prev => prev.filter(c => c.id !== campaignIdToUnlink));
+                // Refresh associated campaigns
+                setAssociatedCampaigns(prev => prev.filter(c => c.id !== campaignIdToUnlink));
             } catch (err: any) {
                 console.error("Failed to unlink character from campaign:", err);
                 setLinkError(err.response?.data?.detail || "Failed to unlink campaign.");
@@ -343,14 +344,15 @@ const CharacterDetailPage: React.FC = () => {
                                 className="form-select"
                                 value={selectedCampaignToLink}
                                 onChange={(e) => setSelectedCampaignToLink(e.target.value)}
-                                disabled={isLinking}
+                                disabled={isLinking || userCampaigns.filter(camp => !associatedCampaigns.some(ac => ac.id === camp.id)).length === 0}
                             >
                                 <option value="">Select a campaign...</option>
-                                {userCampaigns.map(camp => (
-                                    // Filter out campaigns the character might already be in, if associatedCampaigns was populated
-                                    // For now, this shows all user campaigns.
-                                    <option key={camp.id} value={camp.id}>{camp.title}</option>
-                                ))}
+                                {userCampaigns
+                                    .filter(camp => !associatedCampaigns.some(ac => ac.id === camp.id)) // Filter out already associated campaigns
+                                    .map(camp => (
+                                        <option key={camp.id} value={camp.id}>{camp.title}</option>
+                                    ))
+                                }
                             </select>
                             <button
                                 className="btn btn-outline-success"

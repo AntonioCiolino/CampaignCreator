@@ -176,3 +176,33 @@ def read_campaign_characters(
 
     characters = crud.get_characters_by_campaign(db=db, campaign_id=campaign_id, skip=skip, limit=limit)
     return characters
+
+@router.get("/{character_id}/campaigns", response_model=List[models.Campaign])
+def read_character_campaigns(
+    character_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+):
+    """
+    Retrieve all campaigns associated with a specific character.
+    Ensures the character belongs to the current user.
+    """
+    # First, verify the character exists and belongs to the current user
+    db_character = crud.get_character(db=db, character_id=character_id)
+    if db_character is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
+    if db_character.owner_id != current_user.id:
+        # This check ensures user can only query campaigns for their own characters
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access this character's campaigns")
+
+    # Now, fetch the campaigns for this character
+    campaigns = crud.get_campaigns_for_character(db=db, character_id=character_id)
+
+    # The campaigns returned by crud.get_campaigns_for_character are ORM models.
+    # FastAPI will automatically convert them to List[models.Campaign] Pydantic models.
+    # Note: The crud.get_campaigns_for_character itself doesn't filter by campaign ownership,
+    # but since we've verified character ownership, this implies the user has a right to know
+    # which of their campaigns this character (that they own) is part of.
+    # If campaigns could be shared, further filtering might be needed here based on campaign ownership or sharing rules.
+    # For now, assuming all campaigns a user's character is linked to are implicitly viewable in this context.
+    return campaigns

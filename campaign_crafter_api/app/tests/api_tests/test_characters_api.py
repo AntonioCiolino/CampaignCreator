@@ -244,3 +244,69 @@ async def test_link_and_unlink_character_campaign_api(async_test_client: AsyncCl
 
     response_link_other_campaign = await async_test_client.post(f"/api/v1/characters/{char_id}/campaigns/{other_campaign_id}")
     assert response_link_other_campaign.status_code == 403 # Forbidden, campaign belongs to other user
+
+@pytest.mark.asyncio
+async def test_read_character_campaigns_api(async_test_client: AsyncClient, authenticated_user_override: pydantic_models.User, test_user_orm: ORMUser):
+    db = TestingSessionLocal()
+    try:
+        # Create a character
+        char_create = pydantic_models.CharacterCreate(name="Campaign Explorer")
+        char = crud.create_character(db, char_create, user_id=test_user_orm.id)
+        char_id = char.id
+
+        # Create a couple of campaigns for this user
+        camp1_orm = ORMCampaign(title="Dungeon of Doom", owner_id=test_user_orm.id)
+        camp2_orm = ORMCampaign(title="Skies of Arcadia", owner_id=test_user_orm.id)
+        camp3_orm_other_user = ORMCampaign(title="Hidden Realm", owner_id=99) # Belongs to another user
+        db.add_all([camp1_orm, camp2_orm, camp3_orm_other_user])
+        db.commit()
+        camp1_id = camp1_orm.id
+        camp2_id = camp2_orm.id
+
+        # Link character to two of their campaigns
+        crud.add_character_to_campaign(db, char_id=char_id, campaign_id=camp1_id)
+        crud.add_character_to_campaign(db, char_id=char_id, campaign_id=camp2_id)
+    finally:
+        db.close()
+
+    # 1. Test getting campaigns for the character
+    response = await async_test_client.get(f"/api/v1/characters/{char_id}/campaigns")
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert len(data) == 2
+    campaign_titles = {c["title"] for c in data}
+    assert "Dungeon of Doom" in campaign_titles
+    assert "Skies of Arcadia" in campaign_titles
+
+    # 2. Test with a character that has no campaigns
+    db = TestingSessionLocal()
+    try:
+        lonely_char_create = pydantic_models.CharacterCreate(name="Solo Adventurer")
+        lonely_char = crud.create_character(db, lonely_char_create, user_id=test_user_orm.id)
+        lonely_char_id = lonely_char.id
+    finally:
+        db.close()
+
+    response_lonely = await async_test_client.get(f"/api/v1/characters/{lonely_char_id}/campaigns")
+    assert response_lonely.status_code == 200, response_lonely.text
+    assert response_lonely.json() == []
+
+    # 3. Test for non-existent character
+    response_char_not_found = await async_test_client.get("/api/v1/characters/99999/campaigns")
+    assert response_char_not_found.status_code == 404
+
+    # 4. Test for character not owned by current user
+    db = TestingSessionLocal()
+    try:
+        other_user = crud.create_user(db, pydantic_models.UserCreate(username="othercharowner", email="oco@example.com", password="p"))
+        other_user_char = crud.create_character(db, pydantic_models.CharacterCreate(name="Secret Character"), user_id=other_user.id)
+        other_user_char_id = other_user_char.id
+        # Link this other character to a campaign (can be any campaign, even one owned by test_user_orm for this test, as we are testing access to char's campaigns)
+        # camp_for_other_char = ORMCampaign(title="Other's Camp", owner_id=other_user.id) # or test_user_orm.id
+        # db.add(camp_for_other_char); db.commit()
+        # crud.add_character_to_campaign(db, other_user_char_id, camp_for_other_char.id)
+    finally:
+        db.close()
+
+    response_forbidden = await async_test_client.get(f"/api/v1/characters/{other_user_char_id}/campaigns")
+    assert response_forbidden.status_code == 403 # User cannot access campaigns of a character they don't own
