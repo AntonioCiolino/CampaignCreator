@@ -301,7 +301,7 @@ const CampaignEditorPage: React.FC = () => {
     if (activeEditorTab !== targetTabName) {
       setActiveEditorTab(targetTabName);
     }
-  }, [activeEditorTab, setSectionToExpand]); // Removed setActiveEditorTab from deps as it's a state setter
+  }, [activeEditorTab]); // Removed setActiveEditorTab and setSectionToExpand from deps
 
   useEffect(() => {
     if (activeEditorTab === "Sections" && sectionToExpand) {
