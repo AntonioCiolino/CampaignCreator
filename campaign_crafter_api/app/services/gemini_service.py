@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError, LLMGenerationError
 from app.services.feature_prompt_service import FeaturePromptService
-from app.models import User as UserModel # Added UserModel import
+from app import models # Added models import
+from app.models import User as UserModel
 # Removed import from llm_factory: from app.services.llm_factory import LLMServiceUnavailableError
 from pathlib import Path # For the __main__ block
 import asyncio # For testing async methods in __main__
@@ -416,6 +417,7 @@ class GeminiLLMService(AbstractLLMService):
         user_prompt: str,
         current_user: UserModel,
         db: Session,
+        chat_history: Optional[List[models.ChatMessage]] = None,
         model: Optional[str] = None,
         temperature: Optional[float] = 0.7,
         max_tokens: Optional[int] = 300
@@ -442,31 +444,104 @@ class GeminiLLMService(AbstractLLMService):
         # For Gemini, it's often better to structure the prompt directly.
         # The 'system' role is not as distinctly used as in OpenAI for chat models via `generate_content_async`'s direct string input.
         # Instead, instructions are part of the main prompt or through specific multi-turn chat setup.
-        # For a single response, we build a comprehensive prompt.
 
-        full_prompt = (
-            f"**Instructions for AI:**\n"
-            f"You are to embody and respond as the character named **{character_name}**.\n"
-            f"**Character Persona & Background:**\n{truncated_notes if truncated_notes else 'This character has a generally neutral and adaptable persona.'}\n\n"
-            f"**Your Task:**\n"
-            f"Respond to the following user message *in the voice and personality of {character_name}*. "
-            f"Do not break character. Do not mention that you are an AI or a language model.\n\n"
-            f"**User's Message to {character_name}:**\n{user_prompt}\n\n"
-            f"**{character_name}'s Response:**"
-        )
-
-        # Use a slightly higher temperature for more creative/natural character responses by default
         effective_temperature = temperature if temperature is not None else 0.75
         effective_max_tokens = max_tokens or 300
 
-        return await self.generate_text(
-            prompt=full_prompt,
-            current_user=current_user,
-            db=db,
-            model=model_instance.model_name,
-            temperature=effective_temperature,
-            max_tokens=effective_max_tokens
-        )
+        generation_config_params = {}
+        if effective_temperature is not None:
+            generation_config_params["temperature"] = max(0.0, min(effective_temperature, 1.0)) # Gemini temp is 0.0-1.0
+        if effective_max_tokens is not None:
+            generation_config_params["max_output_tokens"] = effective_max_tokens
+
+        final_generation_config = genai.types.GenerationConfig(**generation_config_params) if generation_config_params else None
+
+        if chat_history:
+            # Construct messages for multi-turn chat
+            # Gemini's chat history typically starts with a user message setting context, then model, then user, etc.
+            # The "system prompt" or character notes needs to be integrated into this flow.
+            # One way is to make the character notes part of the first user message to the model.
+            # Or, if the model supports a "system" like instruction at the beginning of `contents`.
+            # For `genai.GenerativeModel.start_chat(history=...)`, history is `Content` objects.
+            # `genai.GenerativeModel.generate_content_async(contents=...)` is more direct here.
+
+            contents = []
+            # Initial context setting for the character
+            # This can be a "user" turn that the "model" (character) implicitly understands as its persona.
+            initial_context = (
+                f"You are embodying the character named '{character_name}'. "
+                f"Your personality, background, and way of speaking are defined by the following notes: "
+                f"'{truncated_notes if truncated_notes else 'A typically neutral character.'}' "
+                f"Respond naturally as this character would. Do not break character. Do not mention that you are an AI. "
+                f"The conversation starts now."
+            )
+            # For Gemini, this initial instruction might be better as the first 'user' part of a two-part initial history,
+            # or as a general instruction before the user's actual first turn if the API supports a "system" role
+            # more directly in the `contents` list (which it does via a specific format if using ChatSession).
+            # Simpler for direct `generate_content_async`: prepend to history or make it the first user turn.
+
+            # Let's try to prepend the system-like message as the first user turn.
+            # If the model supports it, a system prompt can be passed differently.
+            # For now, we integrate it into the user/model turns.
+
+            # Option 1: Prepend character notes as a system instruction (if model understands this role in `contents`)
+            # contents.append({"role": "system", "parts": [{"text": initial_context}]}) # This role is not standard for contents list, it's user/model
+
+            # Option 2: More common for Gemini: start with user setting the context
+            # The first "user" message can be the character instructions.
+            # The model's first response would then be "Okay, I understand my role." (implicitly or explicitly if prompted for).
+            # Then the actual chat history begins. This is a bit complex for direct generation.
+
+            # Option 3: (Chosen) Build a history where the persona is an instruction, then replay chat.
+            # The `system_message` is implicitly handled by the `full_prompt` structure when not using chat_history.
+            # When using chat_history, we must ensure the persona is established.
+            # We'll build the `contents` list for `generate_content_async`.
+            # The `initial_context` acts as a hidden preamble/instruction.
+
+            contents.append({"role": "user", "parts": [{"text": initial_context}]})
+            # Gemini expects the next message to be from the model if we provide the above as 'user'
+            contents.append({"role": "model", "parts": [{"text": f"Understood. I am {character_name}. I will respond according to these instructions."}]})
+
+
+            for message in chat_history:
+                role = "user" if message.speaker.lower() == "user" else "model"
+                contents.append({"role": role, "parts": [{"text": message.text}]})
+
+            # Add the current user prompt
+            contents.append({"role": "user", "parts": [{"text": user_prompt}]})
+
+            try:
+                response = await model_instance.generate_content_async(contents, generation_config=final_generation_config)
+                if response.parts:
+                    return "".join(part.text for part in response.parts if hasattr(part, 'text'))
+                elif hasattr(response, 'text') and response.text:
+                    return response.text
+                else:
+                    raise LLMGenerationError(f"Gemini API call (character response with history) succeeded but returned no usable content. Model: {model_instance.model_name}")
+            except Exception as e:
+                print(f"Gemini API error (character response with history, model: {model_instance.model_name}): {type(e).__name__} - {e}")
+                raise LLMGenerationError(f"Failed to generate character response with Gemini (history) model {model_instance.model_name}: {str(e)}") from e
+
+        else:
+            # Original logic if no chat_history
+            full_prompt = (
+                f"**Instructions for AI:**\n"
+                f"You are to embody and respond as the character named **{character_name}**.\n"
+                f"**Character Persona & Background:**\n{truncated_notes if truncated_notes else 'This character has a generally neutral and adaptable persona.'}\n\n"
+                f"**Your Task:**\n"
+                f"Respond to the following user message *in the voice and personality of {character_name}*. "
+                f"Do not break character. Do not mention that you are an AI or a language model.\n\n"
+                f"**User's Message to {character_name}:**\n{user_prompt}\n\n"
+                f"**{character_name}'s Response:**"
+            )
+            return await self.generate_text(
+                prompt=full_prompt,
+                current_user=current_user,
+                db=db,
+                model=model_instance.model_name,
+                temperature=effective_temperature,
+                max_tokens=effective_max_tokens
+            )
 
 if __name__ == '__main__':
     from dotenv import load_dotenv
