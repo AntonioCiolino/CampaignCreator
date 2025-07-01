@@ -4,11 +4,13 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from typing import Generator, Optional, List, Dict, AsyncGenerator
+from unittest.mock import patch, AsyncMock # Added for mocking
 
 from app.main import app
 from app.db import Base, get_db
 from app.orm_models import User as ORMUser, Campaign as ORMCampaign, Character as ORMCharacter
 from app import crud, models as pydantic_models
+from app.models import ChatMessage # Import ChatMessage
 from app.services.auth_service import get_current_active_user
 
 # In-memory SQLite database for testing
@@ -375,6 +377,8 @@ async def test_generate_character_llm_response_api(
     assert generate_char_response_call_args.kwargs['user_prompt'] == "What is the meaning of life?"
     assert generate_char_response_call_args.kwargs['model'] == "gpt-3.5-turbo" # Model part
     assert generate_char_response_call_args.kwargs['current_user'].id == authenticated_user_override.id
+    # Assert that chat_history is None or empty when not provided
+    assert generate_char_response_call_args.kwargs.get('chat_history') is None or len(generate_char_response_call_args.kwargs['chat_history']) == 0
 
 
     # Reset mocks for next call
@@ -422,6 +426,67 @@ async def test_generate_character_llm_response_api(
         json=request_payload
     )
     assert response_forbidden.status_code == 403
+
+
+@pytest.mark.asyncio
+@patch('app.api.endpoints.characters.crud.get_llm_service')
+async def test_generate_character_llm_response_with_history(
+    mock_get_llm_service: AsyncMock,
+    async_test_client: AsyncClient,
+    authenticated_user_override: pydantic_models.User,
+    test_user_orm: ORMUser
+):
+    mock_llm_instance = AsyncMock()
+    mock_llm_instance.generate_character_response = AsyncMock(return_value="Mocked response considering history.")
+    mock_get_llm_service.return_value = mock_llm_instance
+
+    db = TestingSessionLocal()
+    try:
+        char_create = pydantic_models.CharacterCreate(name="Historian HUE", notes_for_llm="Loves to talk about the past.")
+        character = crud.create_character(db, char_create, user_id=test_user_orm.id)
+        char_id = character.id
+    finally:
+        db.close()
+
+    sample_chat_history = [
+        ChatMessage(speaker="user", text="Hello Historian Hue!"),
+        ChatMessage(speaker=character.name, text="Greetings seeker of knowledge!"), # Using character.name as speaker
+    ]
+
+    new_prompt = "Tell me about the ancient library."
+
+    request_payload_with_history = {
+        "prompt": new_prompt,
+        "chat_history": [msg.model_dump() for msg in sample_chat_history],
+        "model_id_with_prefix": "openai/gpt-4" # Example
+    }
+
+    response = await async_test_client.post(
+        f"/api/v1/characters/{char_id}/generate-response",
+        json=request_payload_with_history
+    )
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["text"] == "Mocked response considering history."
+
+    mock_get_llm_service.assert_called_once()
+    generate_char_response_call_args = mock_llm_instance.generate_character_response.call_args
+    assert generate_char_response_call_args is not None
+
+    assert generate_char_response_call_args.kwargs['character_name'] == "Historian HUE"
+    assert generate_char_response_call_args.kwargs['user_prompt'] == new_prompt
+    assert generate_char_response_call_args.kwargs['model'] == "gpt-4" # Model part
+
+    # Crucial: Check the chat_history passed to the service
+    passed_chat_history = generate_char_response_call_args.kwargs.get('chat_history')
+    assert passed_chat_history is not None
+    assert len(passed_chat_history) == len(sample_chat_history)
+    for i, history_msg in enumerate(passed_chat_history):
+        assert isinstance(history_msg, ChatMessage) # Should be Pydantic model instances
+        assert history_msg.speaker == sample_chat_history[i].speaker
+        assert history_msg.text == sample_chat_history[i].text
+    assert generate_char_response_call_args.kwargs['current_user'].id == authenticated_user_override.id
+
 
 @pytest.mark.asyncio
 @patch('app.api.endpoints.characters.crud.ImageGenerationService') # Patching the service where it's used by Depends

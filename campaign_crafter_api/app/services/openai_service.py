@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.core.security import decrypt_key
 from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError, LLMGenerationError
 from app.services.feature_prompt_service import FeaturePromptService
+from app import models # Added models import
 from app.models import User as UserModel
 from app import crud # Added crud import
 
@@ -430,6 +431,7 @@ class OpenAILLMService(AbstractLLMService):
         user_prompt: str,
         current_user: UserModel,
         db: Session,
+        chat_history: Optional[List[models.ChatMessage]] = None,
         model: Optional[str] = None,
         temperature: Optional[float] = 0.7,
         max_tokens: Optional[int] = 300
@@ -454,9 +456,20 @@ class OpenAILLMService(AbstractLLMService):
         )
 
         messages = [
-            {"role": "system", "content": system_content},
-            {"role": "user", "content": user_prompt} # The user's query TO the character
+            {"role": "system", "content": system_content}
         ]
+
+        # Add chat history
+        if chat_history:
+            for message in chat_history:
+                role = "user" if message.speaker.lower() == "user" else "assistant"
+                # If the AI/character spoke, it's 'assistant'
+                # This also correctly maps if message.speaker == character_name
+                messages.append({"role": role, "content": message.text})
+
+        # Add the current user prompt
+        messages.append({"role": "user", "content": user_prompt})
+
 
         # Use a slightly higher temperature for more creative/natural character responses by default
         effective_temperature = temperature if temperature is not None else 0.75
