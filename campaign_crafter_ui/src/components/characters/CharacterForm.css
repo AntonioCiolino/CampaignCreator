@@ -1,0 +1,248 @@
+/* Styles for CharacterForm.tsx - More Opinionated & Modern */
+
+.character-form-container {
+    background-color: var(--surface-color, #fff);
+    padding: 1.5rem 2rem; /* More padding */
+    border-radius: var(--border-radius-lg, 0.5rem); /* Larger radius for card effect */
+    box-shadow: var(--box-shadow-lg, 0 0.5rem 1rem rgba(0, 0, 0, 0.1)); /* Softer, larger shadow */
+    margin-top: 1rem; /* Space from page title */
+}
+
+/* General Form Group Styling */
+.character-form-container .form-group,
+.character-form-container .mb-3 { /* Standard Bootstrap class for form groups */
+    margin-bottom: 1.75rem; /* Increased spacing between form elements */
+}
+
+.character-form-container .form-label {
+    display: block; /* Ensure label takes full width */
+    font-weight: 600; /* Bolder labels */
+    margin-bottom: 0.625rem; /* More space between label and input (e.g., 10px if base is 16px) */
+    color: var(--text-color-headings, var(--text-color)); /* Use heading color or primary text color */
+    font-size: 0.95rem; /* Slightly adjust label font size if needed */
+}
+
+/* Group for label and AI button */
+.form-label-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.625rem; /* Same as label's original margin-bottom */
+}
+
+.form-label-group .form-label {
+    margin-bottom: 0; /* Remove bottom margin as it's handled by the group */
+}
+
+.generate-ai-button {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    margin-left: 0.5rem; /* Space between label and button */
+}
+
+.generate-ai-button .loading-spinner-overlay {
+    background-color: transparent; /* Make spinner overlay transparent */
+    position: relative; /* Adjust spinner position if needed */
+    width: 1em; /* Size spinner relative to button font */
+    height: 1em;
+    display: inline-block;
+    vertical-align: middle;
+}
+.generate-ai-button .loading-spinner {
+    width: 1em;
+    height: 1em;
+    border-width: 0.15em; /* Adjust spinner border for smaller size */
+}
+
+
+.character-form-container .form-control {
+    display: block;
+    width: 100%;
+    padding: 0.875rem 1.125rem; /* Increased padding for a modern feel */
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--text-color, #495057);
+    background-color: var(--background-color, #fff); /* Input background, could be slightly off-white */
+    background-clip: padding-box;
+    border: 1px solid var(--border-color, #ced4da);
+    appearance: none; /* Remove default system appearance */
+    border-radius: var(--border-radius, 0.3rem); /* Consistent border radius */
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.character-form-container .form-control:focus {
+    color: var(--text-color, #495057);
+    background-color: var(--surface-color, #fff);
+    border-color: var(--primary-color, #80bdff);
+    outline: 0;
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb, 0, 123, 255), 0.25); /* Use RGB for themeable shadow */
+}
+
+.character-form-container textarea.form-control {
+    min-height: 100px; /* Good default height for textareas */
+}
+
+
+/* Stats Section Specific Styling */
+.stats-section {
+    background-color: var(--background-color, #f8f9fa); /* Slightly different background for the section */
+    padding: 1.5rem;
+    border-radius: var(--border-radius-md, 0.4rem);
+    margin-top: 2rem; /* Space above the stats section */
+    margin-bottom: 2rem; /* Space below the stats section */
+    border: 1px solid var(--border-color-light, #e9ecef);
+}
+
+.stats-section h5 { /* Targets the "Stats" <h5> title within .stats-section */
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--primary-color, #007bff); /* Make stats title stand out */
+}
+
+/* New Flex Layout for Stats Inputs */
+.stats-input-row-layout {
+    display: flex;
+    flex-wrap: wrap; /* Allow items to wrap to the next line */
+    justify-content: space-around; /* Distribute space, or use space-between */
+    gap: 0.75rem; /* Gap between items */
+    align-items: flex-start; /* Align items to the start of the cross axis */
+}
+
+.stats-section .stat-input-item {
+    flex: 1 1 calc(16.666% - 0.75rem); /* Try to fit 6, accounting for gap. (100/6 = 16.666) */
+    /* Fallback for browsers not supporting calc in flex-basis well, or simpler approach: */
+    /* flex-grow: 1; flex-shrink: 1; flex-basis: 100px; */ /* Let them grow and shrink from a base */
+    min-width: 90px; /* Minimum width for an item before it becomes too small */
+    max-width: 120px; /* Maximum width to prevent them from becoming too large */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* margin-bottom: 0.5rem !important; /* Use gap instead of margin on item if possible */
+}
+
+.stats-section .stat-input-item .form-label {
+    font-size: 0.7rem; /* Even smaller label for compact row */
+    font-weight: 600; /* Make label bolder */
+    color: var(--text-color-muted, #6c757d);
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+    line-height: 1;
+    white-space: nowrap; /* Prevent label from wrapping */
+}
+
+.stats-section .stat-input-item .form-control[type="number"] {
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 500; /* Slightly less bold than display value */
+    padding: 0.4rem 0.25rem; /* Compact padding */
+    width: 100%; /* Make input take full width of .stat-input-item */
+    max-width: 75px; /* Max width of the input box itself */
+    height: auto;
+    border-radius: var(--border-radius-sm, 0.2rem);
+}
+
+/* Remove spinners from number inputs */
+.stats-section .stat-input-item .form-control[type="number"]::-webkit-outer-spin-button,
+.stats-section .stat-input-item .form-control[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.stats-section .stat-input-item .form-control[type="number"] {
+  -moz-appearance: textfield; /* Firefox */
+}
+
+/* Responsive adjustments for stats row */
+@media (max-width: 768px) { /* Tablets */
+    .stats-input-row-layout {
+        justify-content: space-around; /* Ensure good spacing for 3 items */
+    }
+    .stats-section .stat-input-item {
+        flex-basis: calc(33.333% - 0.75rem); /* 3 items per row */
+        min-width: 80px;
+    }
+}
+
+@media (max-width: 576px) { /* Mobile phones */
+    .stats-input-row-layout {
+        gap: 0.5rem; /* Tighter gap on mobile */
+    }
+    .stats-section .stat-input-item {
+        flex-basis: calc(33.333% - 0.5rem); /* Still aim for 3 items if possible, or they'll wrap to 2x3 */
+                                         /* Or change to calc(50% - 0.5rem) for 2 items per row explicitly */
+        min-width: 70px; /* Allow them to get smaller */
+    }
+    .stats-section .stat-input-item .form-label {
+        font-size: 0.65rem;
+    }
+    .stats-section .stat-input-item .form-control[type="number"] {
+        font-size: 0.95rem;
+        padding: 0.3rem 0.2rem;
+    }
+}
+
+
+/* Submit Button Area */
+.character-form-container .form-submit-area {
+    margin-top: 2rem; /* More space above the submit button */
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color-light, #eee);
+    text-align: right; /* Align button to the right, or center */
+}
+
+.character-form-container button[type="submit"].btn-primary {
+    padding: 0.75rem 1.5rem; /* Larger padding for primary action */
+    font-size: 1.05rem; /* Slightly larger font */
+    font-weight: 500;
+}
+
+/* Error Message Styling */
+.character-form-container .alert-danger {
+    background-color: var(--danger-color-light, #f8d7da);
+    color: var(--danger-color-dark, #721c24);
+    border-color: var(--danger-color, #f5c6cb);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    border-radius: var(--border-radius, 0.3rem);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .character-form-container {
+        padding: 1.5rem;
+    }
+
+    .stats-section {
+        padding: 1rem;
+    }
+
+    .stats-section h5 {
+        font-size: 1.2rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .character-form-container {
+        padding: 1rem;
+        box-shadow: none; /* Simpler look on very small screens */
+        border: none;
+        background-color: transparent;
+    }
+
+    .stats-section {
+        /* Bootstrap columns .col-md-4 will stack to full width automatically.
+           If we used .col-sm-6, they would be 2-up, then stack.
+           Current .col-md-4 is fine for stacking to 1-up. */
+    }
+
+    .character-form-container .form-submit-area {
+        text-align: center;
+    }
+    .character-form-container button[type="submit"].btn-primary {
+        width: 100%; /* Full width button on small screens */
+    }
+}

@@ -1,23 +1,38 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { User } from '../../types/userTypes';
-import './UserDropdownMenu.css'; // We'll create this CSS file next
+import './UserDropdownMenu.css';
+
+export interface AdditionalNavItem {
+  path: string;
+  label: string;
+  onClick?: () => void; // Optional click handler
+  isExternal?: boolean; // For external links if needed in future
+  separatorBefore?: boolean; // Add a separator before this item
+}
 
 interface UserDropdownMenuProps {
   user: User;
   onLogout: () => void;
+  additionalNavItems?: AdditionalNavItem[];
 }
 
-const UserDropdownMenu: React.FC<UserDropdownMenuProps> = ({ user, onLogout }) => {
+const UserDropdownMenu: React.FC<UserDropdownMenuProps> = ({ user, onLogout, additionalNavItems = [] }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Log user from context to check avatar_url
-  useEffect(() => {
-    console.log('User in dropdown:', user);
-  }, [user]);
+  // useEffect(() => {
+  //   // console.log('User in dropdown:', user); // Keep for debugging if necessary
+  // }, [user]);
 
   const toggleDropdown = () => setIsOpen(!isOpen);
+
+  const handleLinkClick = (itemClick?: () => void) => {
+    if (itemClick) {
+      itemClick();
+    }
+    setIsOpen(false);
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -34,56 +49,76 @@ const UserDropdownMenu: React.FC<UserDropdownMenuProps> = ({ user, onLogout }) =
 
   return (
     <div className="user-dropdown-menu" ref={dropdownRef}>
-      <button onClick={toggleDropdown} className="dropdown-toggle">
+      <button onClick={toggleDropdown} className="dropdown-toggle" aria-expanded={isOpen} aria-haspopup="true">
         {user.avatar_url ? (
           <img src={user.avatar_url} alt={`${user.username}'s avatar`} className="user-avatar-icon" />
         ) : (
           <span className="user-icon-placeholder" aria-hidden="true">👤</span>
         )}
         <span className="user-username">{user.username}</span>
-        <span className="dropdown-arrow">▼</span>
+        <span className={`dropdown-arrow ${isOpen ? 'open' : ''}`}>▼</span>
       </button>
       {isOpen && (
-        <ul className="dropdown-content">
+        <ul className="dropdown-content" role="menu">
           <li>
-            <Link to="/" onClick={() => setIsOpen(false)}>
+            <Link to="/" role="menuitem" onClick={() => handleLinkClick()}>
               Dashboard
             </Link>
           </li>
+
+          {/* Render Additional Nav Items */}
+          {additionalNavItems.map((item, index) => (
+            <React.Fragment key={`additional-${index}`}>
+              {item.separatorBefore && <li className="dropdown-separator" role="separator"><hr /></li>}
+              <li>
+                {item.isExternal ? (
+                  <a href={item.path} target="_blank" rel="noopener noreferrer" role="menuitem" onClick={() => handleLinkClick(item.onClick)}>
+                    {item.label}
+                  </a>
+                ) : (
+                  <Link to={item.path} role="menuitem" onClick={() => handleLinkClick(item.onClick)}>
+                    {item.label}
+                  </Link>
+                )}
+              </li>
+            </React.Fragment>
+          ))}
+
+          {additionalNavItems.length > 0 && !additionalNavItems[additionalNavItems.length -1].separatorBefore && (
+             <li className="dropdown-separator" role="separator"><hr /></li>
+          )}
+
+
           <li>
-            <Link to="/user-settings" onClick={() => setIsOpen(false)}>
+            <Link to="/user-settings" role="menuitem" onClick={() => handleLinkClick()}>
               My Settings
             </Link>
           </li>
           <li>
-            {/* Placeholder for Subscription/Billing - links to '#' for now */}
-            <Link to="#" onClick={() => setIsOpen(false)} style={{ opacity: 0.6, pointerEvents: 'none' }} title="Coming Soon!">
+            <Link to="#" role="menuitem" onClick={() => handleLinkClick()} style={{ opacity: 0.6, pointerEvents: 'none' }} title="Coming Soon!">
               My Subscription
             </Link>
           </li>
 
-          {/* Separator before Data Management */}
-          <li className="dropdown-separator"><hr /></li>
+          <li className="dropdown-separator" role="separator"><hr /></li>
 
           <li>
-            <Link to="/data-management" onClick={() => setIsOpen(false)}>
+            <Link to="/data-management" role="menuitem" onClick={() => handleLinkClick()}>
               Data Management
             </Link>
           </li>
 
           {user.is_superuser && (
-            // User Management is only for superusers
             <li>
-              <Link to="/users" onClick={() => setIsOpen(false)}>
+              <Link to="/users" role="menuitem" onClick={() => handleLinkClick()}>
                 User Management
               </Link>
             </li>
           )}
 
-          {/* Separator before Logout */}
-          <li className="dropdown-separator"><hr /></li>
+          <li className="dropdown-separator" role="separator"><hr /></li>
           <li>
-            <button onClick={() => { onLogout(); setIsOpen(false); }} className="dropdown-logout-button">
+            <button onClick={() => { onLogout(); setIsOpen(false); }} className="dropdown-logout-button" role="menuitem">
               Logout
             </button>
           </li>

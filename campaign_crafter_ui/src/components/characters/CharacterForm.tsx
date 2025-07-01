@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Character, CharacterStats, CharacterCreate, CharacterUpdate } from '../../types/characterTypes'; // Assuming path
+import { useNavigate } from 'react-router-dom';
+import {
+    Character,
+    CharacterStats,
+    CharacterCreate,
+    CharacterUpdate,
+    CharacterAspectGenerationRequestPayload
+} from '../../types/characterTypes';
+import * as characterService from '../../services/characterService'; // Import character service
+import './CharacterForm.css';
+// import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'; // Example icon
+import LoadingSpinner from '../common/LoadingSpinner'; // For inline loading
 
 interface CharacterFormProps {
     initialData?: Character | null; // For editing
@@ -16,6 +27,8 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
     submitButtonText = 'Submit',
     error: formError,
 }) => {
+    const navigate = useNavigate(); // Initialize useNavigate
+
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [appearanceDescription, setAppearanceDescription] = useState('');
@@ -30,6 +43,13 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
     const [intelligence, setIntelligence] = useState<string>('10');
     const [wisdom, setWisdom] = useState<string>('10');
     const [charisma, setCharisma] = useState<string>('10');
+
+    // State for LLM generation
+    const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+    const [descriptionGenError, setDescriptionGenError] = useState<string | null>(null);
+    const [isGeneratingAppearance, setIsGeneratingAppearance] = useState(false);
+    const [appearanceGenError, setAppearanceGenError] = useState<string | null>(null);
+
 
     useEffect(() => {
         if (initialData) {
@@ -96,8 +116,51 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
         await onSubmit(dataPayload);
     };
 
+    const handleGenerateAspect = async (
+        aspect: "description" | "appearance_description" | "backstory_snippet"
+    ) => {
+        let setIsGenerating: React.Dispatch<React.SetStateAction<boolean>>;
+        let setErrorState: React.Dispatch<React.SetStateAction<string | null>>;
+        let setFieldState: React.Dispatch<React.SetStateAction<string>>;
+        let existingContext: Partial<CharacterAspectGenerationRequestPayload> = { character_name: name || undefined };
+
+        if (aspect === "description") {
+            setIsGenerating = setIsGeneratingDescription;
+            setErrorState = setDescriptionGenError;
+            setFieldState = setDescription;
+            existingContext.existing_appearance_description = appearanceDescription || undefined;
+        } else if (aspect === "appearance_description") {
+            setIsGenerating = setIsGeneratingAppearance;
+            setErrorState = setAppearanceGenError;
+            setFieldState = setAppearanceDescription;
+            existingContext.existing_description = description || undefined;
+        } else {
+            console.error("Unsupported aspect for generation:", aspect);
+            return; // Or handle other aspects if added later
+        }
+
+        setIsGenerating(true);
+        setErrorState(null);
+
+        try {
+            const payload: CharacterAspectGenerationRequestPayload = {
+                ...existingContext,
+                aspect_to_generate: aspect,
+                // model_id_with_prefix: "anthropic/claude-3-haiku-20240307" // Example, make this selectable or from settings
+            };
+            const response = await characterService.generateCharacterAspect(payload);
+            setFieldState(response.generated_text);
+        } catch (err: any) {
+            console.error(`Failed to generate ${aspect}:`, err);
+            setErrorState(err.response?.data?.detail || err.message || `An error occurred while generating ${aspect}.`);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+
     return (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="character-form-container">
             {formError && <div className="alert alert-danger">{formError}</div>}
 
             <div className="mb-3">
@@ -113,25 +176,80 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
             </div>
 
             <div className="mb-3">
-                <label htmlFor="char-description" className="form-label">Description</label>
+                <div className="form-label-group">
+                    <label htmlFor="char-description" className="form-label">Description</label>
+                    <button
+                        type="button"
+                        className="btn btn-outline-primary btn-sm generate-ai-button"
+                        onClick={() => handleGenerateAspect("description")}
+                        disabled={isGeneratingDescription || isSubmitting}
+                        title="Generate Description with AI"
+                    >
+                        {isGeneratingDescription ? <LoadingSpinner /> : '✨ Gen AI'}
+                    </button>
+                </div>
                 <textarea
                     className="form-control"
                     id="char-description"
-                    rows={3}
+                    rows={5} // Increased rows for better editing space
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                 ></textarea>
+                {descriptionGenError && <small className="text-danger d-block mt-1">{descriptionGenError}</small>}
             </div>
 
             <div className="mb-3">
-                <label htmlFor="char-appearance" className="form-label">Appearance Description</label>
+                <div className="form-label-group">
+                    <label htmlFor="char-appearance" className="form-label">Appearance Description</label>
+                    <button
+                        type="button"
+                        className="btn btn-outline-primary btn-sm generate-ai-button"
+                        onClick={() => handleGenerateAspect("appearance_description")}
+                        disabled={isGeneratingAppearance || isSubmitting}
+                        title="Generate Appearance Description with AI"
+                    >
+                        {isGeneratingAppearance ? <LoadingSpinner /> : '✨ Gen AI'}
+                    </button>
+                </div>
                 <textarea
                     className="form-control"
                     id="char-appearance"
-                    rows={3}
+                    rows={5} // Increased rows
                     value={appearanceDescription}
                     onChange={(e) => setAppearanceDescription(e.target.value)}
                 ></textarea>
+                {appearanceGenError && <small className="text-danger d-block mt-1">{appearanceGenError}</small>}
+            </div>
+
+            {/* Stats Section Wrapper - MOVED HERE */}
+            <div className="stats-section">
+                <h5>Stats</h5>
+                <div className="stats-input-row-layout"> {/* New class for flex layout */}
+                    <div className="stat-input-item mb-3"> {/* Removed col-md-4, added mb-3 for consistency if items wrap */}
+                        <label htmlFor="char-strength" className="form-label">STR</label>
+                        <input type="number" className="form-control" id="char-strength" value={strength} onChange={(e) => setStrength(e.target.value)} />
+                    </div>
+                    <div className="stat-input-item mb-3">
+                        <label htmlFor="char-dexterity" className="form-label">DEX</label>
+                        <input type="number" className="form-control" id="char-dexterity" value={dexterity} onChange={(e) => setDexterity(e.target.value)} />
+                    </div>
+                    <div className="stat-input-item mb-3">
+                        <label htmlFor="char-constitution" className="form-label">CON</label>
+                        <input type="number" className="form-control" id="char-constitution" value={constitution} onChange={(e) => setConstitution(e.target.value)} />
+                    </div>
+                    <div className="stat-input-item mb-3">
+                        <label htmlFor="char-intelligence" className="form-label">INT</label>
+                        <input type="number" className="form-control" id="char-intelligence" value={intelligence} onChange={(e) => setIntelligence(e.target.value)} />
+                    </div>
+                    <div className="stat-input-item mb-3">
+                        <label htmlFor="char-wisdom" className="form-label">WIS</label>
+                        <input type="number" className="form-control" id="char-wisdom" value={wisdom} onChange={(e) => setWisdom(e.target.value)} />
+                    </div>
+                    <div className="stat-input-item mb-3">
+                        <label htmlFor="char-charisma" className="form-label">CHA</label>
+                        <input type="number" className="form-control" id="char-charisma" value={charisma} onChange={(e) => setCharisma(e.target.value)} />
+                    </div>
+                </div>
             </div>
 
             <div className="mb-3">
@@ -168,37 +286,26 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
                 ></textarea>
             </div>
 
-            <h5 className="mt-4">Stats</h5>
-            <div className="row">
-                <div className="col-md-4 mb-3">
-                    <label htmlFor="char-strength" className="form-label">Strength</label>
-                    <input type="number" className="form-control" id="char-strength" value={strength} onChange={(e) => setStrength(e.target.value)} />
-                </div>
-                <div className="col-md-4 mb-3">
-                    <label htmlFor="char-dexterity" className="form-label">Dexterity</label>
-                    <input type="number" className="form-control" id="char-dexterity" value={dexterity} onChange={(e) => setDexterity(e.target.value)} />
-                </div>
-                <div className="col-md-4 mb-3">
-                    <label htmlFor="char-constitution" className="form-label">Constitution</label>
-                    <input type="number" className="form-control" id="char-constitution" value={constitution} onChange={(e) => setConstitution(e.target.value)} />
-                </div>
-                <div className="col-md-4 mb-3">
-                    <label htmlFor="char-intelligence" className="form-label">Intelligence</label>
-                    <input type="number" className="form-control" id="char-intelligence" value={intelligence} onChange={(e) => setIntelligence(e.target.value)} />
-                </div>
-                <div className="col-md-4 mb-3">
-                    <label htmlFor="char-wisdom" className="form-label">Wisdom</label>
-                    <input type="number" className="form-control" id="char-wisdom" value={wisdom} onChange={(e) => setWisdom(e.target.value)} />
-                </div>
-                <div className="col-md-4 mb-3">
-                    <label htmlFor="char-charisma" className="form-label">Charisma</label>
-                    <input type="number" className="form-control" id="char-charisma" value={charisma} onChange={(e) => setCharisma(e.target.value)} />
-                </div>
+            {/* Submit Button Area */}
+            <div className="form-submit-area">
+                <button
+                    type="button"
+                    className="btn btn-secondary me-2" // Added me-2 for margin
+                    onClick={() => {
+                        if (initialData && initialData.id) {
+                            navigate(`/characters/${initialData.id}`); // Go to detail page if editing
+                        } else {
+                            navigate('/characters'); // Go to list page if creating
+                        }
+                    }}
+                    disabled={isSubmitting} // Disable cancel if main action is submitting
+                >
+                    Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                    {isSubmitting ? 'Submitting...' : submitButtonText}
+                </button>
             </div>
-
-            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-                {isSubmitting ? 'Submitting...' : submitButtonText}
-            </button>
         </form>
     );
 };

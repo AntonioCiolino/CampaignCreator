@@ -1,0 +1,55 @@
+/* Styles for Character List Page */
+
+.character-list-page .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem; /* Default was mb-4 which is 1.5rem with Bootstrap defaults */
+}
+
+.character-list-page .page-header h1 {
+    margin-bottom: 0; /* Remove bottom margin from h1 if it's in a flex container */
+}
+
+.character-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Responsive grid */
+    gap: 1.5rem; /* Space between cards */
+}
+
+/* Fallback for no characters message */
+.character-list-page .card.p-4 { /* Specificity for the "No Characters Yet!" card */
+    border: 1px dashed var(--border-color, #ccc);
+    background-color: var(--surface-color-secondary, #f9f9f9); /* Slightly different background */
+}
+
+.character-list-page .card.p-4 h4 {
+    color: var(--text-color-muted, #6c757d);
+}
+
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .character-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1rem;
+    }
+
+    .character-list-page .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .character-list-page .page-header .btn-primary {
+        margin-top: 0.75rem; /* Add some space below the title on mobile */
+        width: 100%; /* Make button full width */
+        text-align: center;
+    }
+}
+
+@media (max-width: 576px) {
+    .character-grid {
+        grid-template-columns: 1fr; /* Single column on very small screens */
+        gap: 1rem;
+    }
+}

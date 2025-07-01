@@ -1,0 +1,38 @@
+/* Styles for ConfirmationModal.tsx */
+
+.confirmation-modal-content {
+    padding: 1rem 0; /* Add some vertical padding if Modal doesn't provide it for children */
+    font-size: 1rem;
+    color: var(--text-color, #333); /* Ensure text color is readable */
+}
+
+.confirmation-modal-content p {
+    margin-bottom: 0; /* Remove default paragraph margin if it's just a single message */
+}
+
+.confirmation-modal-actions {
+    display: flex;
+    justify-content: flex-end; /* Align buttons to the right */
+    padding-top: 1rem; /* Space above the buttons */
+    border-top: 1px solid var(--border-color, #eee); /* Optional separator */
+}
+
+/* Ensure there's some space between buttons if using a generic Button component
+   that doesn't handle margins itself. The .me-2 class (margin-end 2) is often
+   used with Bootstrap-like utility classes. If your Button component or global
+   styles don't provide this, you might add:
+*/
+.confirmation-modal-actions .btn + .btn,
+.confirmation-modal-actions button + button {
+  margin-left: 0.5rem;
+}
+
+/* If your base Modal component doesn't have specific styling for header/title,
+   you might want to add some here or ensure it's handled by Modal.css
+*/
+/* Example:
+.modal-header h5 {
+    margin-bottom: 0;
+    font-size: 1.25rem;
+}
+*/

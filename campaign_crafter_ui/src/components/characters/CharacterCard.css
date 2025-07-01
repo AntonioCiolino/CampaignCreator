@@ -1,0 +1,110 @@
+/* Styles for CharacterCard.tsx */
+
+.character-card {
+    background-color: var(--surface-color, #fff);
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: var(--border-radius, 0.3rem);
+    margin-bottom: 1rem;
+    box-shadow: var(--box-shadow, 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075));
+    transition: box-shadow 0.2s ease-in-out;
+    display: flex; /* Use flexbox to align items */
+    flex-direction: column; /* Stack content vertically */
+    overflow: hidden; /* Ensures content respects border radius */
+}
+
+.character-card:hover {
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+}
+
+.character-card-link {
+    text-decoration: none;
+    color: inherit; /* Inherit text color from parent */
+    display: flex; /* Make the link itself a flex container for image and info */
+    align-items: center; /* Align items vertically */
+    padding: 1rem; /* Padding inside the link area */
+    flex-grow: 1; /* Allow link area to grow */
+}
+
+.character-card-link:hover {
+    text-decoration: none; /* No underline on hover for the whole card link */
+}
+
+.character-card-thumbnail-wrapper {
+    width: 80px; /* Fixed width for thumbnail container */
+    height: 80px; /* Fixed height for thumbnail container */
+    margin-right: 1rem;
+    flex-shrink: 0; /* Prevent wrapper from shrinking */
+    overflow: hidden; /* Clip image to the wrapper's bounds */
+    border-radius: var(--border-radius, 0.3rem); /* Rounded corners for the image wrapper */
+    background-color: var(--background-color, #f8f9fa); /* Background for empty space if image is smaller */
+}
+
+.character-card-thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Cover the area, cropping if necessary */
+    transition: transform 0.2s ease-in-out;
+}
+
+.character-card-link:hover .character-card-thumbnail {
+    transform: scale(1.05); /* Slight zoom on hover */
+}
+
+.character-card-info {
+    flex-grow: 1; /* Allow info section to take remaining space */
+    display: flex; /* Use flex to control content flow, e.g., align name */
+    flex-direction: column;
+    justify-content: center; /* Center name vertically if no other content */
+}
+
+.character-card-name {
+    font-size: 1.25rem;
+    font-weight: 500;
+    margin-bottom: 0.25rem; /* Small margin below name */
+    color: var(--text-color, #212529);
+}
+
+.character-card-description {
+    font-size: 0.9rem;
+    color: var(--text-color-muted, #6c757d);
+    margin-bottom: 0;
+}
+
+.character-card-actions {
+    padding: 0.75rem 1rem; /* Padding for the actions area */
+    border-top: 1px solid var(--border-color, #e9ecef); /* Separator line */
+    background-color: var(--surface-color, #fff); /* Ensure background matches card */
+    display: flex;
+    justify-content: flex-end; /* Align buttons to the right */
+}
+
+.character-card-actions .btn {
+    font-size: 0.875rem; /* Slightly smaller buttons */
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 576px) {
+    .character-card-link {
+        flex-direction: column; /* Stack thumbnail and info vertically */
+        align-items: flex-start; /* Align items to the start */
+    }
+
+    .character-card-thumbnail-wrapper {
+        width: 100%; /* Full width thumbnail */
+        height: 150px; /* Adjust height as needed */
+        margin-right: 0;
+        margin-bottom: 0.75rem; /* Space below thumbnail */
+    }
+
+    .character-card-info {
+        align-items: flex-start; /* Align text to the start */
+    }
+
+    .character-card-name {
+        font-size: 1.1rem;
+    }
+
+    .character-card-actions {
+        justify-content: space-around; /* Distribute buttons more evenly on small screens */
+    }
+}
