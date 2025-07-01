@@ -690,6 +690,34 @@ async def update_section_order(db: Session, campaign_id: int, ordered_section_id
 # def get_campaign_sections(db: Session, campaign_id: int, skip: int = 0, limit: int = 1000) -> list[orm_models.CampaignSection]:
 #     return db.query(orm_models.CampaignSection).filter(orm_models.CampaignSection.campaign_id == campaign_id).order_by(orm_models.CampaignSection.order).offset(skip).limit(limit).all()
 
+async def generate_character_aspect_text_new(
+    aspect_prompt: str,
+    current_user_orm_variable: orm_models.User, # Assuming this is the ORM model passed in
+    db_session_variable: Session,
+    llm_service: LLMService,  # Placeholder for actual LLMService type
+    some_model_variable: Optional[str] = None
+    # Assuming llm_service is available in this scope, e.g., passed as an argument or globally
+):
+    """
+    Hypothetical function to generate character aspect text.
+    """
+    # Convert ORM user to Pydantic model if necessary
+    # Based on the problem, current_user should be a Pydantic model.
+    # If current_user_orm_variable is what's available, we convert it.
+    current_user_pydantic_variable = models.User.from_orm(current_user_orm_variable)
+
+    # Placeholder for where aspect_prompt and some_model_variable would be defined or passed
+    # aspect_prompt = "Generate a detailed backstory for a rogue."
+    # some_model_variable = "gpt-4-turbo"
+
+    generated_text = await llm_service.generate_text(
+        prompt=aspect_prompt,
+        current_user=current_user_pydantic_variable, # Passed as Pydantic model
+        db=db_session_variable,                     # Passed as SQLAlchemy Session
+        model=some_model_variable
+    )
+    return generated_text
+
 def get_all_campaigns(db: Session):
     return db.query(orm_models.Campaign).all()
 
