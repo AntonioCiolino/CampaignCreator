@@ -314,12 +314,12 @@ class TokenData(BaseModel):
 # Character Models
 
 class CharacterStats(BaseModel):
-    strength: Optional[int] = 10
-    dexterity: Optional[int] = 10
-    constitution: Optional[int] = 10
-    intelligence: Optional[int] = 10
-    wisdom: Optional[int] = 10
-    charisma: Optional[int] = 10
+    strength: Optional[int] = None
+    dexterity: Optional[int] = None
+    constitution: Optional[int] = None
+    intelligence: Optional[int] = None
+    wisdom: Optional[int] = None
+    charisma: Optional[int] = None
 
 class CharacterBase(BaseModel):
     name: str
