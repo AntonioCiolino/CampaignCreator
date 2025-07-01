@@ -802,7 +802,7 @@ const CampaignEditorPage: React.FC = () => {
       setIsPageLoading(false);
       throw err;
     } finally {
-      if(isPageLoading) setIsPageLoading(false);
+      setIsPageLoading(false);
     }
   };
 
