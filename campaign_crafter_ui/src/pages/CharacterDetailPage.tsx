@@ -492,6 +492,14 @@ const CharacterDetailPage: React.FC = () => {
             <div className="character-content-grid">
                 {/* Left Column: Core Details */}
                 <div className="character-main-column">
+                    {/* Stats Card MOVED HERE - to be the first item in the main column */}
+                    <div className="card data-card mb-3">
+                        <div className="card-header">Stats</div>
+                        <div className="card-body">
+                            {renderStats(character.stats)}
+                        </div>
+                    </div>
+
                     {character.description && (
                         <div className="card data-card mb-3">
                             <div className="card-header">Description</div>
@@ -520,15 +528,8 @@ const CharacterDetailPage: React.FC = () => {
                     )}
                 </div>
 
-                {/* Right Column: Stats, Images, etc. */}
+                {/* Right Column: Images, etc. (Stats removed from here) */}
                 <div className="character-sidebar-column">
-                    <div className="card data-card mb-3">
-                        <div className="card-header">Stats</div>
-                        <div className="card-body">
-                            {renderStats(character.stats)}
-                        </div>
-                    </div>
-
                     <div className="card data-card mb-3">
                         <div className="card-header d-flex justify-content-between align-items-center">
                             Images

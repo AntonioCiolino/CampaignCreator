@@ -175,6 +175,37 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
                 />
             </div>
 
+            {/* Stats Section Wrapper - MOVED HERE */}
+            <div className="stats-section mb-3"> {/* Added mb-3 for spacing after stats section */}
+                <h5>Stats</h5>
+                <div className="stats-input-row-layout"> {/* New class for flex layout */}
+                    <div className="stat-input-item mb-3"> {/* Removed col-md-4, added mb-3 for consistency if items wrap */}
+                        <label htmlFor="char-strength" className="form-label">STR</label>
+                        <input type="number" className="form-control" id="char-strength" value={strength} onChange={(e) => setStrength(e.target.value)} />
+                    </div>
+                    <div className="stat-input-item mb-3">
+                        <label htmlFor="char-dexterity" className="form-label">DEX</label>
+                        <input type="number" className="form-control" id="char-dexterity" value={dexterity} onChange={(e) => setDexterity(e.target.value)} />
+                    </div>
+                    <div className="stat-input-item mb-3">
+                        <label htmlFor="char-constitution" className="form-label">CON</label>
+                        <input type="number" className="form-control" id="char-constitution" value={constitution} onChange={(e) => setConstitution(e.target.value)} />
+                    </div>
+                    <div className="stat-input-item mb-3">
+                        <label htmlFor="char-intelligence" className="form-label">INT</label>
+                        <input type="number" className="form-control" id="char-intelligence" value={intelligence} onChange={(e) => setIntelligence(e.target.value)} />
+                    </div>
+                    <div className="stat-input-item mb-3">
+                        <label htmlFor="char-wisdom" className="form-label">WIS</label>
+                        <input type="number" className="form-control" id="char-wisdom" value={wisdom} onChange={(e) => setWisdom(e.target.value)} />
+                    </div>
+                    <div className="stat-input-item mb-3">
+                        <label htmlFor="char-charisma" className="form-label">CHA</label>
+                        <input type="number" className="form-control" id="char-charisma" value={charisma} onChange={(e) => setCharisma(e.target.value)} />
+                    </div>
+                </div>
+            </div>
+
             <div className="mb-3">
                 <div className="form-label-group">
                     <label htmlFor="char-description" className="form-label">Description</label>
@@ -219,37 +250,6 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
                     onChange={(e) => setAppearanceDescription(e.target.value)}
                 ></textarea>
                 {appearanceGenError && <small className="text-danger d-block mt-1">{appearanceGenError}</small>}
-            </div>
-
-            {/* Stats Section Wrapper - MOVED HERE */}
-            <div className="stats-section">
-                <h5>Stats</h5>
-                <div className="stats-input-row-layout"> {/* New class for flex layout */}
-                    <div className="stat-input-item mb-3"> {/* Removed col-md-4, added mb-3 for consistency if items wrap */}
-                        <label htmlFor="char-strength" className="form-label">STR</label>
-                        <input type="number" className="form-control" id="char-strength" value={strength} onChange={(e) => setStrength(e.target.value)} />
-                    </div>
-                    <div className="stat-input-item mb-3">
-                        <label htmlFor="char-dexterity" className="form-label">DEX</label>
-                        <input type="number" className="form-control" id="char-dexterity" value={dexterity} onChange={(e) => setDexterity(e.target.value)} />
-                    </div>
-                    <div className="stat-input-item mb-3">
-                        <label htmlFor="char-constitution" className="form-label">CON</label>
-                        <input type="number" className="form-control" id="char-constitution" value={constitution} onChange={(e) => setConstitution(e.target.value)} />
-                    </div>
-                    <div className="stat-input-item mb-3">
-                        <label htmlFor="char-intelligence" className="form-label">INT</label>
-                        <input type="number" className="form-control" id="char-intelligence" value={intelligence} onChange={(e) => setIntelligence(e.target.value)} />
-                    </div>
-                    <div className="stat-input-item mb-3">
-                        <label htmlFor="char-wisdom" className="form-label">WIS</label>
-                        <input type="number" className="form-control" id="char-wisdom" value={wisdom} onChange={(e) => setWisdom(e.target.value)} />
-                    </div>
-                    <div className="stat-input-item mb-3">
-                        <label htmlFor="char-charisma" className="form-label">CHA</label>
-                        <input type="number" className="form-control" id="char-charisma" value={charisma} onChange={(e) => setCharisma(e.target.value)} />
-                    </div>
-                </div>
             </div>
 
             <div className="mb-3">

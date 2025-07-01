@@ -96,12 +96,6 @@ VTCNP Enterprises
         char_parts = []
         char_parts.append(f"### {character.name}\n")
 
-        if character.appearance_description and character.appearance_description.strip():
-            char_parts.append(f"**Appearance:** {character.appearance_description.strip()}\n")
-
-        if character.description and character.description.strip():
-            char_parts.append(f"**Description:** {character.description.strip()}\n")
-
         # Accessing stats via the .stats property of the ORM model
         stats = character.stats
         if stats:
@@ -111,6 +105,12 @@ VTCNP Enterprises
                     stat_list.append(f"- **{key.capitalize()}**: {value}")
             if stat_list:
                 char_parts.append("**Stats:**\n" + "\n".join(stat_list) + "\n")
+
+        if character.appearance_description and character.appearance_description.strip():
+            char_parts.append(f"**Appearance:** {character.appearance_description.strip()}\n")
+
+        if character.description and character.description.strip():
+            char_parts.append(f"**Description:** {character.description.strip()}\n")
 
         # Add image if available - basic implementation, just lists URL
         # TODO: Future enhancement could be to format as `![alt text](url)` if appropriate
