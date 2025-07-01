@@ -109,10 +109,10 @@ The `campaign_crafter_ui` is a React-based web application providing a user inte
 
 *   **TypeScript/JavaScript**: Core programming languages.
 *   **React**: UI library for building the user interface.
-*   **Vite**: Frontend build tool.
-*   **Zustand**: For state management.
-*   **React Router**: For navigation.
-*   **Axios**: For API communication.
+*   **Create React App (react-scripts)**: For project setup, development server, and build scripts.
+*   **React Router**: For client-side navigation.
+*   **Axios**: For making HTTP requests to the backend API.
+*   **React Context API** (and component state): For state management.
 
 ### Setup and Run
 

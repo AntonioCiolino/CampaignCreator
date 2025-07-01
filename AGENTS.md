@@ -22,10 +22,13 @@ This file provides guidelines and instructions for AI agents working on this pro
     *   Database migrations are handled by Alembic. Create new migration scripts for schema changes.
     *   Refer to `campaign_crafter_api/README.md` for detailed setup and contribution guidelines.
 *   **UI Development (`campaign_crafter_ui`)**:
+    *   The project is set up using **Create React App** (`react-scripts`).
     *   Develop components using React and TypeScript.
-    *   Manage state with Zustand.
-    *   Style components using CSS modules or a consistent styling approach.
-    *   Write component and integration tests (e.g., using Jest/React Testing Library).
+    *   State management is handled via **React Context API** and component-level state.
+    *   Navigation is managed by **React Router**.
+    *   API communication is done using **Axios**.
+    *   Style components using CSS modules or a consistent styling approach (e.g., as seen in `App.css`, `*.css` files per component).
+    *   Write component and integration tests (e.g., using Jest/React Testing Library, as configured by Create React App).
     *   Manage dependencies with `npm` or `yarn` and `package.json`.
     *   Refer to `campaign_crafter_ui/README.md` for detailed setup and contribution guidelines.
 *   **AI-Assisted Development**: This project has significantly benefited from AI-assisted development (e.g., using tools like GitHub Copilot, Aider, or similar agents like yourself, Jules).
