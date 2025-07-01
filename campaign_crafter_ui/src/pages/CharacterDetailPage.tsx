@@ -1,14 +1,16 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import * as characterService from '../services/characterService';
+import { CharacterImageGenerationRequestPayload } from '../services/characterService'; // Import the payload type
 import * as campaignService from '../services/campaignService';
 import { Character, CharacterStats } from '../types/characterTypes';
 import { Campaign } from '../types/campaignTypes';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import ImagePreviewModal from '../components/modals/ImagePreviewModal'; // Import ImagePreviewModal
-import AlertMessage from '../components/common/AlertMessage'; // For potential error/success messages
+import ImagePreviewModal from '../components/modals/ImagePreviewModal';
+import AlertMessage from '../components/common/AlertMessage';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
-import CharacterChatPanel from '../components/characters/CharacterChatPanel'; // Import CharacterChatPanel
+import CharacterImagePromptModal, { CharacterImageGenSettings } from '../components/modals/CharacterImagePromptModal'; // Import the new modal
+import CharacterChatPanel from '../components/characters/CharacterChatPanel';
 import './CharacterDetailPage.css';
 // import ChatIcon from '@mui/icons-material/Chat'; // Example using MUI icon
 
@@ -48,6 +50,9 @@ const CharacterDetailPage: React.FC = () => {
     // Delete Confirmation Modal State
     const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
     const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
+    // New Modal State for Character Image Generation Prompt
+    const [isCharImagePromptModalOpen, setIsCharImagePromptModalOpen] = useState<boolean>(false);
 
     // Character Chat Panel State
     const [isChatPanelOpen, setIsChatPanelOpen] = useState<boolean>(false);
@@ -200,14 +205,62 @@ const CharacterDetailPage: React.FC = () => {
 
     const handleGenerateNewImage = async () => {
         if (!character) {
-            setImageGenError("Character data not available to generate image.");
+            setImageGenError("Character data not available.");
+            return;
+        }
+        setIsCharImagePromptModalOpen(true); // Open the new modal instead of direct generation
+    };
+
+    const handleSubmitCharacterImageGeneration = async (basePrompt: string, additionalDetails: string, settings: CharacterImageGenSettings) => {
+        if (!character) {
+            setImageGenError("Character data not available for image generation.");
             return;
         }
         setIsGeneratingImage(true);
         setImageGenError(null);
         setSuccessMessage(null);
+        setIsCharImagePromptModalOpen(false); // Close modal on submit
+
         try {
-            const updatedCharacter = await characterService.generateCharacterImage(character.id, {});
+            const payload = {
+                additional_prompt_details: `${basePrompt}${additionalDetails ? ` ${additionalDetails}` : ''}`, // Combine base and additional for now, or send separately if backend distinguishes
+                model_name: settings.model_name,
+                size: settings.size,
+                quality: settings.quality,
+                steps: settings.steps,
+                cfg_scale: settings.cfg_scale,
+                gemini_model_name: settings.gemini_model_name,
+            };
+            // Refinement: The backend's `additional_prompt_details` is for augmentation.
+            // The `base_prompt` from the modal (which is auto-generated + user edited) should be the main part.
+            // So, the payload for characterService.generateCharacterImage should be:
+            // prompt: basePrompt (this isn't a field in CharacterImageGenerationRequest)
+            // additional_prompt_details: additionalDetails
+            // The backend constructs its *own* base_prompt from character.name and character.appearance.
+            // Then it appends the request_body.additional_prompt_details.
+            // So, we should pass the modal's `basePrompt` + `additionalDetails` combined as `additional_prompt_details`
+            // OR, better, pass `basePrompt` as the *primary* prompt if the service could take it,
+            // and `additionalDetails` as `additional_prompt_details`.
+
+            // Current backend `generate_character_image_endpoint` builds its own base_prompt
+            // and only accepts `additional_prompt_details` from the request body to append.
+            // So, we should pass the user's *entire desired additions/modifications* via `additional_prompt_details`.
+            // The `basePrompt` from the modal (which includes character info + user edits) should become this.
+
+            const finalAdditionalDetails = `${basePrompt} ${additionalDetails}`.trim();
+
+
+            const requestPayload: characterService.CharacterImageGenerationRequestPayload = {
+                additional_prompt_details: finalAdditionalDetails,
+                model_name: settings.model_name,
+                size: settings.size,
+                quality: settings.quality,
+                steps: settings.steps,
+                cfg_scale: settings.cfg_scale,
+                gemini_model_name: settings.gemini_model_name,
+            };
+
+            const updatedCharacter = await characterService.generateCharacterImage(character.id, requestPayload);
             setCharacter(updatedCharacter);
             setSuccessMessage("New image generated successfully!");
         } catch (err: any) {
@@ -217,6 +270,7 @@ const CharacterDetailPage: React.FC = () => {
             setIsGeneratingImage(false);
         }
     };
+
 
     const handleGenerateCharacterResponse = async () => {
         if (!character || !llmUserPrompt.trim()) {
@@ -493,6 +547,16 @@ const CharacterDetailPage: React.FC = () => {
                     isConfirming={isDeleting}
                     confirmButtonVariant="danger"
                 />
+            )}
+
+            {character && (
+              <CharacterImagePromptModal
+                isOpen={isCharImagePromptModalOpen}
+                onClose={() => setIsCharImagePromptModalOpen(false)}
+                character={character}
+                onSubmit={handleSubmitCharacterImageGeneration}
+                isGenerating={isGeneratingImage}
+              />
             )}
 
             {character && (

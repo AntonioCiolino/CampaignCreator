@@ -25,11 +25,17 @@ const sanitizeFilename = (text: string, maxLength = 50): string => {
 interface ImageGenerationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImageSuccessfullyGenerated?: (imageUrl: string, promptUsed: string) => void;
-  onSetAsThematic?: (imageUrl: string, promptUsed: string) => void;
+  onImageSuccessfullyGenerated?: (imageUrl: string, promptUsed: string, additionalDetailsUsed?: string) => void; // Added additionalDetailsUsed
+  onSetAsThematic?: (imageUrl: string, promptUsed: string, additionalDetailsUsed?: string) => void; // Added additionalDetailsUsed
   primaryActionText?: string;
   autoApplyDefault?: boolean;
-  campaignId?: string; // Added campaignId prop
+  campaignId?: string;
+  // New props for character context and augmenting prompt
+  characterName?: string;
+  characterAppearance?: string;
+  basePromptLabel?: string; // e.g., "Base Prompt (auto-generated)"
+  initialBasePromptValue?: string; // To pre-fill the main prompt
+  showCharacterContext?: boolean; // Default to false, set true from CharacterDetailPage
 }
 
 // Use ImageModelName from llmService.ts if it's exported, or redefine/align here
@@ -45,9 +51,16 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
   onSetAsThematic,
   primaryActionText,
   autoApplyDefault,
-  campaignId, // Destructure campaignId from props
+  campaignId,
+  // Destructure new props
+  characterName,
+  characterAppearance,
+  basePromptLabel,
+  initialBasePromptValue,
+  showCharacterContext = false, // Default to false
 }) => {
-  const [prompt, setPrompt] = useState<string>('');
+  const [basePrompt, setBasePrompt] = useState<string>(initialBasePromptValue || ''); // Renamed from prompt
+  const [additionalDetails, setAdditionalDetails] = useState<string>(''); // New state for additional details
   const [selectedModel, setSelectedModel] = useState<ImageModel>('dall-e');
 
   // DALL-E specific
@@ -71,13 +84,21 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [generationCompleted, setGenerationCompleted] = useState<boolean>(false);
   const [autoApplyImage, setAutoApplyImage] = useState<boolean>(autoApplyDefault !== undefined ? autoApplyDefault : true);
-  const [isSettingsCollapsed, setIsSettingsCollapsed] = useState<boolean>(false); // Added state for collapsible section
+  const [isSettingsCollapsed, setIsSettingsCollapsed] = useState<boolean>(false);
   // Optional: store full response details if needed for display or callback
   // const [generationDetails, setGenerationDetails] = useState<ImageGenerationResponseData | null>(null);
 
+  // Update initialBasePromptValue when prop changes and modal is open
+  useEffect(() => {
+    if (isOpen) {
+      setBasePrompt(initialBasePromptValue || '');
+      setAdditionalDetails(''); // Reset additional details too
+    }
+  }, [initialBasePromptValue, isOpen]);
+
   const handleGenerateImage = async () => {
-    if (!prompt.trim()) {
-      setError('Prompt cannot be empty.');
+    if (!basePrompt.trim()) {
+      setError('Base prompt cannot be empty.');
       return;
     }
     setIsLoading(true);
@@ -87,13 +108,14 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
     setGenerationDetails(null);
 
     const params: ImageGenerationParams = {
-      prompt,
+      prompt: basePrompt, // Use basePrompt here
       model: selectedModel,
+      additional_prompt_details: additionalDetails.trim() || undefined, // Add additionalDetails
     };
 
     // Add campaignId to params if it exists
     if (campaignId) {
-      params.campaign_id = campaignId; // Type in llmService.ImageGenerationParams now includes campaign_id
+      params.campaign_id = campaignId;
     }
 
     if (selectedModel === 'dall-e') {
@@ -118,7 +140,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
         setGenerationDetails(responseData); // Store full response
         setGenerationCompleted(true);
         if (autoApplyImage) {
-          onImageSuccessfullyGenerated?.(responseData.image_url, prompt);
+          onImageSuccessfullyGenerated?.(responseData.image_url, basePrompt, additionalDetails);
           onClose();
         } else {
           setIsSettingsCollapsed(true); // Collapse settings when image is generated and not auto-applied
@@ -154,7 +176,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
   const handleDownloadImage = () => {
     if (!generatedImageUrl) return;
 
-    const baseFileName = sanitizeFilename(prompt); // Use the 'prompt' state variable
+    const baseFileName = sanitizeFilename(basePrompt); // Use basePrompt for filename
 
     if (generatedImageUrl.startsWith('data:')) {
       // Handle Data URL
@@ -242,7 +264,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       // Reset common fields
-      setPrompt('');
+      // setBasePrompt(initialBasePromptValue || ''); // This is handled by the other useEffect for initialBasePromptValue
       setGeneratedImageUrl(null);
       setGenerationDetails(null);
       setIsLoading(false);
@@ -269,7 +291,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
         <Button
           onClick={() => {
             if (generatedImageUrl && generationDetails?.prompt_used) {
-              onImageSuccessfullyGenerated?.(generatedImageUrl, generationDetails.prompt_used);
+              onImageSuccessfullyGenerated?.(generatedImageUrl, generationDetails.prompt_used, additionalDetails);
             }
             onClose();
           }}
@@ -291,7 +313,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
         <Button
           onClick={() => {
             if (generatedImageUrl && generationDetails?.prompt_used) {
-              onSetAsThematic?.(generatedImageUrl, generationDetails.prompt_used);
+              onSetAsThematic?.(generatedImageUrl, generationDetails.prompt_used, additionalDetails);
             }
             onClose();
           }}
@@ -369,16 +391,38 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Generate Image">
+    <Modal isOpen={isOpen} onClose={onClose} title="Generate Image for Character">
       <div className="image-generation-modal-content">
-        <label>
-          Prompt:
-          <Input
-            type="text"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Enter a description for the image"
+        {showCharacterContext && (characterName || characterAppearance) && (
+          <div className="character-context-section">
+            {characterName && <p><strong>Character:</strong> {characterName}</p>}
+            {characterAppearance && <p className="pre-wrap"><strong>Appearance:</strong> {characterAppearance}</p>}
+          </div>
+        )}
+
+        <label htmlFor="basePromptInput">
+          {basePromptLabel || 'Base Prompt:'}
+          <textarea
+            id="basePromptInput"
+            className="prompt-textarea" // Use a class for styling
+            value={basePrompt}
+            onChange={(e) => setBasePrompt(e.target.value)}
+            placeholder="Enter the main subject or base description for the image"
             disabled={isLoading}
+            rows={3}
+          />
+        </label>
+
+        <label htmlFor="additionalDetailsInput" style={{ marginTop: '10px' }}>
+          Additional Details (Optional):
+          <textarea
+            id="additionalDetailsInput"
+            className="prompt-textarea" // Use a class for styling
+            value={additionalDetails}
+            onChange={(e) => setAdditionalDetails(e.target.value)}
+            placeholder="e.g., background elements, specific style, clothing details"
+            disabled={isLoading}
+            rows={3}
           />
         </label>
 
@@ -416,7 +460,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
 
         {generatedImageUrl && generationDetails && !isLoading && !error && (
           <div className="image-preview-area" style={{ textAlign: 'center', marginBottom: '15px' }}>
-            <p style={{fontSize: '0.8em', color: '#666'}}>
+            <p style={{fontSize: '0.8em', color: '#666', whiteSpace: 'normal', wordBreak: 'break-word'}}>
               Using model: {generationDetails.model_used}
               {generationDetails.model_used === 'gemini' && generationDetails.gemini_model_name_used && ` (${generationDetails.gemini_model_name_used})`}
               , Size: {generationDetails.size_used}
@@ -439,7 +483,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
         )}
 
         <div className="modal-actions">
-           <Button onClick={handleGenerateImage} disabled={isLoading || !prompt.trim()}>
+           <Button onClick={handleGenerateImage} disabled={isLoading || !basePrompt.trim()}>
             {isLoading ? 'Generating...' : (generationDetails ? 'Generate New' : 'Generate')}
           </Button>
            <Button onClick={onClose} variant="secondary" disabled={isLoading}>
