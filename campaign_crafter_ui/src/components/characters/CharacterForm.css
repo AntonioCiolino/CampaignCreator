@@ -70,34 +70,49 @@
     color: var(--primary-color, #007bff); /* Make stats title stand out */
 }
 
-/* Individual Stat Item styling (within the Bootstrap columns) */
-.stats-section .stat-input-item { /* Add this class to the div.col-md-4.mb-3 */
-    /* background-color: var(--surface-color, #fff); */
-    /* padding: 1rem; */
-    /* border: 1px solid var(--border-color-light, #e0e0e0); */
-    /* border-radius: var(--border-radius-sm, 0.25rem); */
-    /* box-shadow: var(--box-shadow-sm, 0 0.125rem 0.25rem rgba(0,0,0,0.05)); */
-    /* margin-bottom: 1rem; /* Ensure spacing even if Bootstrap's mb-3 is removed from column */
+/* New Flex Layout for Stats Inputs */
+.stats-input-row-layout {
+    display: flex;
+    flex-wrap: wrap; /* Allow items to wrap to the next line */
+    justify-content: space-around; /* Distribute space, or use space-between */
+    gap: 0.75rem; /* Gap between items */
+    align-items: flex-start; /* Align items to the start of the cross axis */
+}
+
+.stats-section .stat-input-item {
+    flex: 1 1 calc(16.666% - 0.75rem); /* Try to fit 6, accounting for gap. (100/6 = 16.666) */
+    /* Fallback for browsers not supporting calc in flex-basis well, or simpler approach: */
+    /* flex-grow: 1; flex-shrink: 1; flex-basis: 100px; */ /* Let them grow and shrink from a base */
+    min-width: 90px; /* Minimum width for an item before it becomes too small */
+    max-width: 120px; /* Maximum width to prevent them from becoming too large */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* margin-bottom: 0.5rem !important; /* Use gap instead of margin on item if possible */
 }
 
 .stats-section .stat-input-item .form-label {
-    font-size: 0.875rem; /* Smaller labels for stats */
-    font-weight: 500;
+    font-size: 0.7rem; /* Even smaller label for compact row */
+    font-weight: 600; /* Make label bolder */
     color: var(--text-color-muted, #6c757d);
-    text-align: center;
-    width: 100%;
-    margin-bottom: 0.3rem;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+    line-height: 1;
+    white-space: nowrap; /* Prevent label from wrapping */
 }
 
 .stats-section .stat-input-item .form-control[type="number"] {
     text-align: center;
-    font-size: 1.1rem; /* Slightly larger font for stat values */
-    font-weight: 600;
-    padding: 0.6rem 0.5rem; /* Adjust padding for number inputs */
-    /* Consider removing spinners for a cleaner look if desired, browser-specific CSS needed */
+    font-size: 1rem;
+    font-weight: 500; /* Slightly less bold than display value */
+    padding: 0.4rem 0.25rem; /* Compact padding */
+    width: 100%; /* Make input take full width of .stat-input-item */
+    max-width: 75px; /* Max width of the input box itself */
+    height: auto;
+    border-radius: var(--border-radius-sm, 0.2rem);
 }
 
-/* Remove spinners from number inputs (optional, browser-specific) */
+/* Remove spinners from number inputs */
 .stats-section .stat-input-item .form-control[type="number"]::-webkit-outer-spin-button,
 .stats-section .stat-input-item .form-control[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
@@ -105,6 +120,35 @@
 }
 .stats-section .stat-input-item .form-control[type="number"] {
   -moz-appearance: textfield; /* Firefox */
+}
+
+/* Responsive adjustments for stats row */
+@media (max-width: 768px) { /* Tablets */
+    .stats-input-row-layout {
+        justify-content: space-around; /* Ensure good spacing for 3 items */
+    }
+    .stats-section .stat-input-item {
+        flex-basis: calc(33.333% - 0.75rem); /* 3 items per row */
+        min-width: 80px;
+    }
+}
+
+@media (max-width: 576px) { /* Mobile phones */
+    .stats-input-row-layout {
+        gap: 0.5rem; /* Tighter gap on mobile */
+    }
+    .stats-section .stat-input-item {
+        flex-basis: calc(33.333% - 0.5rem); /* Still aim for 3 items if possible, or they'll wrap to 2x3 */
+                                         /* Or change to calc(50% - 0.5rem) for 2 items per row explicitly */
+        min-width: 70px; /* Allow them to get smaller */
+    }
+    .stats-section .stat-input-item .form-label {
+        font-size: 0.65rem;
+    }
+    .stats-section .stat-input-item .form-control[type="number"] {
+        font-size: 0.95rem;
+        padding: 0.3rem 0.2rem;
+    }
 }
 
 
