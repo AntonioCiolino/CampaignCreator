@@ -505,6 +505,7 @@ const CampaignEditorPage: React.FC = () => {
     };
   }, []);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!initialLoadCompleteRef.current || !campaignId || !campaign) {
       return;
@@ -603,13 +604,8 @@ const CampaignEditorPage: React.FC = () => {
 
     console.log("[CampaignEditorPage] useEffect for fetchCampaignFiles triggered. activeEditorTab:", activeEditorTab, "campaignId:", campaignId, "campaignFilesLoading:", campaignFilesLoading);
     fetchCampaignFiles();
-
-    return () => {
-      console.log("[CampaignEditorPage] useEffect cleanup running for fetchCampaignFiles. Setting isMounted to false. campaignId at cleanup:", campaignId);
-      isMounted = false;
-    };
-  }, [activeEditorTab, campaignId, prevCampaignIdForFiles, campaignFilesError]);
-
+    return () => { isMounted = false; };
+  }, [activeEditorTab, campaignId, prevCampaignIdForFiles, campaignFilesError, campaignFilesLoading, campaignFiles.length]);
 
   useEffect(() => {
     if (!initialLoadCompleteRef.current || !campaignId || !campaign || isLoading) return;

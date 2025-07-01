@@ -314,12 +314,12 @@ class TokenData(BaseModel):
 # Character Models
 
 class CharacterStats(BaseModel):
-    strength: Optional[int] = 10
-    dexterity: Optional[int] = 10
-    constitution: Optional[int] = 10
-    intelligence: Optional[int] = 10
-    wisdom: Optional[int] = 10
-    charisma: Optional[int] = 10
+    strength: Optional[int] = None
+    dexterity: Optional[int] = None
+    constitution: Optional[int] = None
+    intelligence: Optional[int] = None
+    wisdom: Optional[int] = None
+    charisma: Optional[int] = None
 
 class CharacterBase(BaseModel):
     name: str
@@ -373,3 +373,15 @@ class CharacterImageGenerationRequest(BaseModel):
 
     # campaign_id: Optional[int] = None # If we want to associate the image with a campaign context during generation
                                      # For now, character images are global to the character.
+
+# For Character Aspect Generation (e.g., description, appearance)
+class CharacterAspectGenerationRequest(BaseModel):
+    character_name: Optional[str] = None
+    aspect_to_generate: str  # e.g., "description", "appearance_description", "backstory_snippet"
+    existing_description: Optional[str] = None
+    existing_appearance_description: Optional[str] = None # Renamed for clarity
+    prompt_override: Optional[str] = None # Allow user to provide a more specific prompt
+    model_id_with_prefix: Optional[str] = None # To specify which LLM to use
+
+class CharacterAspectGenerationResponse(BaseModel):
+    generated_text: str

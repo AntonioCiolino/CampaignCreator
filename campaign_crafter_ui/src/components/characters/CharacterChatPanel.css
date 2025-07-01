@@ -1,0 +1,174 @@
+/* Styles for CharacterChatPanel.tsx */
+
+.character-chat-panel {
+    position: fixed;
+    top: 0; /* Or below a global header, e.g., var(--app-header-height, 60px) */
+    right: 0;
+    width: 350px; /* Default width, can be made resizable later */
+    max-width: 90vw; /* Max width on small screens */
+    height: 100vh; /* Or calc(100vh - var(--app-header-height, 60px)) */
+    background-color: var(--surface-color, #fff);
+    border-left: 1px solid var(--border-color, #dee2e6);
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 1040; /* Ensure it's above most content but potentially below modals if needed */
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+    opacity: 0; /* Start hidden for transition effect */
+}
+
+.character-chat-panel.visible {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.character-chat-panel-content-wrapper {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Important for containing children */
+}
+
+.character-chat-panel-header {
+    padding: 0.75rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+    background-color: var(--background-color, #f8f9fa);
+    flex-shrink: 0; /* Prevent header from shrinking */
+}
+
+.character-chat-panel-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-color-headings, var(--text-color));
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.character-chat-panel-close-button {
+    background: transparent;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-color-muted, #6c757d);
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    line-height: 1;
+}
+.character-chat-panel-close-button:hover {
+    color: var(--text-color, #212529);
+}
+
+.character-chat-panel-messages-area {
+    flex-grow: 1; /* Takes up available space */
+    overflow-y: auto; /* Allows scrolling for messages */
+    padding: 1rem;
+    display: flex;
+    flex-direction: column; /* Stack messages and loading indicator */
+    gap: 0.75rem; /* Space between messages */
+}
+
+.chat-message {
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--border-radius-md, 0.4rem);
+    max-width: 85%;
+    word-wrap: break-word;
+}
+
+.chat-message.ai-message {
+    background-color: var(--primary-color-light, #e7f3ff); /* Light blue for AI */
+    border: 1px solid var(--primary-color-border, #d0e7ff);
+    align-self: flex-start; /* AI messages on the left */
+    color: var(--primary-color-dark, #004085);
+}
+.chat-message.ai-message strong {
+    display: block;
+    font-size: 0.8em;
+    color: var(--primary-color, #0056b3);
+    margin-bottom: 0.25rem;
+}
+.chat-message.ai-message p {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.chat-message.error-message p { /* Already has color: red inline, this is fallback/override */
+    color: var(--danger-color-dark, #721c24);
+    background-color: var(--danger-color-light, #f8d7da);
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--border-radius-md, 0.4rem);
+    border: 1px solid var(--danger-color, #f5c6cb);
+    margin: 0;
+}
+
+.chat-loading-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    color: var(--text-color-muted, #6c757d);
+}
+.chat-loading-indicator .loading-spinner-overlay { /* If LoadingSpinner has an overlay */
+    position: static; /* Override if it's absolute/fixed by default */
+    background: none;
+}
+.chat-loading-indicator p {
+    margin-top: 0.5rem;
+    font-size: 0.9em;
+}
+
+
+.character-chat-panel-input-area {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--border-color, #dee2e6);
+    background-color: var(--surface-color, #fff); /* Can be slightly different if desired */
+    flex-shrink: 0; /* Prevent input area from shrinking */
+}
+
+.chat-input-form {
+    display: flex;
+    align-items: flex-start; /* Align items to the start for multi-line textarea */
+    gap: 0.5rem;
+}
+
+.chat-textarea {
+    flex-grow: 1;
+    resize: none; /* Prevent manual resize if desired */
+    min-height: 40px; /* Start with a smaller height */
+    max-height: 120px; /* Limit max height before scrolling within textarea */
+    font-size: 0.95rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--border-radius, 0.3rem);
+}
+
+.send-chat-button {
+    padding: 0.5rem 0.85rem; /* Adjust padding for btn-sm if needed */
+    height: 40px; /* Match initial textarea height approx */
+    align-self: flex-end; /* Align to bottom if textarea grows */
+}
+
+.send-chat-button .loading-spinner-overlay {
+    background-color: transparent;
+    position: relative;
+    width: 1em;
+    height: 1em;
+    display: inline-block;
+    vertical-align: middle;
+}
+.send-chat-button .loading-spinner {
+    width: 1em;
+    height: 1em;
+    border-width: 0.15em;
+}
+
+/* Define theme variables if not globally available or for fallback, example: */
+:root {
+    --primary-color-light: #e7f3ff;
+    --primary-color-border: #d0e7ff;
+    --primary-color-dark: #004085;
+}

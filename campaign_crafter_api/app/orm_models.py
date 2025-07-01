@@ -1,7 +1,7 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime, Float, JSON, Table
 from sqlalchemy.orm import relationship, Mapped, mapped_column # Ensure Mapped and mapped_column are imported
 from sqlalchemy.sql import func # For default datetime
-from typing import Optional # For Mapped[Optional[...]]
+from typing import Optional, Dict # For Mapped[Optional[...]] and Dict type hint
 
 from .db import Base # Import Base from app.db
 
@@ -187,6 +187,19 @@ class Character(Base):
         secondary=character_campaign_association,
         back_populates="characters" # Requires 'characters' relationship on Campaign model
     )
+
+    @property
+    def stats(self) -> Dict[str, Optional[int]]:
+        """Provides a dictionary view of the character's stats,
+           compatible with the Pydantic CharacterStats model."""
+        return {
+            "strength": self.strength,
+            "dexterity": self.dexterity,
+            "constitution": self.constitution,
+            "intelligence": self.intelligence,
+            "wisdom": self.wisdom,
+            "charisma": self.charisma,
+        }
 
 # Need to add 'characters' relationship to Campaign model
 # This will be done in a separate step if modifying Campaign ORM is complex,

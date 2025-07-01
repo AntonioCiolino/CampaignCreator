@@ -382,3 +382,35 @@ async def generate_character_image_endpoint(
         print(f"Unexpected error during character image generation: {type(e).__name__} - {str(e)}")
         # import traceback; traceback.print_exc() # For more detailed server-side logging if needed
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred while generating the character image.")
+
+@router.post("/generate-aspect", response_model=models.CharacterAspectGenerationResponse)
+async def generate_character_aspect(
+    request: models.CharacterAspectGenerationRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+):
+    """
+    Generates text for a specific aspect of a character (e.g., description, appearance)
+    using an LLM.
+    """
+    # Fetch the ORM user model as crud.generate_character_aspect_text expects it
+    # to potentially access API keys via relationships or direct attributes on the ORM model.
+    current_user_orm = crud.get_user(db, user_id=current_user.id)
+    if not current_user_orm:
+        # This should ideally not happen if current_user (Pydantic model) is valid
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User not found or not authorized.")
+
+    try:
+        generated_text = await crud.generate_character_aspect_text(
+            db=db,
+            current_user_orm=current_user_orm,
+            request=request
+        )
+        return models.CharacterAspectGenerationResponse(generated_text=generated_text)
+    except crud.LLMServiceUnavailableError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
+    except Exception as e:
+        # Log the full error for debugging on the server
+        # import traceback; traceback.print_exc(); # Consider for detailed logging
+        print(f"API Error in /generate-aspect: {type(e).__name__} - {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate character aspect: {str(e)}")
