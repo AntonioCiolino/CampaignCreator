@@ -217,6 +217,11 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
         prompt: finalPrompt,
         model_id_with_prefix: null, // Use default model
         // Add any other params like max_tokens, temperature if needed
+
+        // Add campaign context
+        campaign_id: Number(campaignId),
+        section_title_suggestion: section.title || 'Untitled Section',
+        section_type: section.type || 'generic',
       };
 
       const response = await generateTextLLM(params);
