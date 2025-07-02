@@ -978,35 +978,107 @@ async def regenerate_campaign_section_endpoint(
         current_title = "Untitled Section"
 
 
-    # Determine section type and prompt
-    final_prompt = section_input.new_prompt
+    # Determine title for regeneration (remains the same)
+    current_title = section_input.new_title if section_input.new_title is not None else db_section.title
+    if current_title is None:
+        current_title = "Untitled Section"
+
     # Prioritize input type, then existing DB type, then generic
-    determined_section_type_for_llm = section_input.section_type or db_section.type or "generic"
+    determined_section_type = section_input.section_type or db_section.type or "generic"
 
-    if not final_prompt:
-        # If type was not in input and still generic (i.e., db_section.type was also generic or None), try to infer from title
-        if not section_input.section_type and determined_section_type_for_llm.lower() in ["unknown", "generic", "other", ""]:
-            title_lower = current_title.lower()
-            if determined_section_type_for_llm.lower() in ["unknown", "generic", "other", ""]:
-                if "npc" in title_lower or "character" in title_lower:
-                    determined_section_type_for_llm = "NPC"
-                elif "location" in title_lower or "place" in title_lower:
-                    determined_section_type_for_llm = "Location"
-                elif "chapter" in title_lower or "quest" in title_lower or "adventure" in title_lower:
-                    determined_section_type_for_llm = "Chapter/Quest"
+    # Prepare comprehensive context from backend
+    backend_context = {
+        "campaign_concept": db_campaign.concept,
+        "campaign_title": db_campaign.title,
+        "section_title": current_title, # current_title of the section being regenerated
+        "section_type": determined_section_type, # current type of the section
+        # campaign_characters: needs to be fetched and summarized
+        # existing_sections_summary: needs to be fetched (excluding current section)
+    }
 
-        # Construct prompt based on determined type and title
-        if determined_section_type_for_llm == "NPC":
-            final_prompt = f"Generate a detailed description for an NPC named '{current_title}'. Include their appearance, personality, motivations, and potential plot hooks related to them."
-        elif determined_section_type_for_llm == "Location":
-            final_prompt = f"Describe the location '{current_title}'. Include its key features, atmosphere, inhabitants (if any), and any notable points of interest or secrets."
-        elif determined_section_type_for_llm == "Chapter/Quest":
-            final_prompt = f"Outline the main events and encounters for the adventure chapter titled '{current_title}'. Provide a brief overview of the objectives, challenges, and potential rewards."
-        else: # Generic or other specific types
-            final_prompt = f"Generate content for a section titled '{current_title}' of type '{determined_section_type_for_llm}' as part of a larger campaign document."
+    # Fetch and summarize campaign characters
+    campaign_chars = crud.get_characters_by_campaign(db, campaign_id=campaign_id)
+    if campaign_chars:
+        backend_context["campaign_characters"] = "; ".join([char.name + (f" ({char.description[:30]}...)" if char.description else "") for char in campaign_chars])
+    else:
+        backend_context["campaign_characters"] = "No specific characters defined for this campaign yet."
 
-    # Initialize LLM Service
-    llm_model_to_use = section_input.model_id_with_prefix if section_input.model_id_with_prefix else db_campaign.selected_llm_id
+    # Fetch and summarize other sections
+    all_campaign_sections_for_summary = crud.get_campaign_sections(db=db, campaign_id=campaign_id, limit=None)
+    other_sections_summary_list = [
+        s.title for s in all_campaign_sections_for_summary if s.id != section_id and s.title
+    ]
+    if other_sections_summary_list:
+        backend_context["existing_sections_summary"] = "; ".join(other_sections_summary_list)
+    else:
+        backend_context["existing_sections_summary"] = "This is the first section or other sections have no titles."
+
+
+    feature_template = None
+    final_context_for_template = {}
+
+    if section_input.feature_id:
+        # Snippet feature workflow
+        db_feature = crud.get_feature(db, feature_id=section_input.feature_id)
+        if not db_feature:
+            raise HTTPException(status_code=404, detail=f"Feature with ID {section_input.feature_id} not found.")
+        if db_feature.feature_category == "FullSection": # Basic check
+            print(f"Warning: Feature {db_feature.name} (ID: {db_feature.id}) is a FullSection feature but was called with a feature_id, likely for a snippet. Proceeding, but this might indicate a UI/logic mismatch.")
+
+        feature_template = db_feature.template
+        # Combine frontend context with backend context, frontend takes precedence for shared keys
+        final_context_for_template = {**backend_context, **(section_input.context_data or {})}
+        # Ensure selected_text from payload is used as the primary prompt for snippet if template expects it
+        # The feature_template itself should contain placeholders like {selected_text}
+        # The `section_input.new_prompt` (which is editorSelectionText) should be part of context_data if needed by template.
+        if 'selected_text' not in final_context_for_template and section_input.new_prompt:
+             final_context_for_template['selected_text'] = section_input.new_prompt
+
+        # For snippet features, the new_prompt from input is often the main subject.
+        # The feature template will dictate how it's used.
+        # We don't auto-generate a prompt like in the old logic here.
+
+    else:
+        # Type-driven full section generation workflow
+        master_feature = crud.get_master_feature_for_type(db, section_type=determined_section_type)
+        if not master_feature:
+            # Fallback to a very generic prompt if no master feature is found
+            print(f"Warning: No master feature found for section type '{determined_section_type}'. Using a generic generation prompt.")
+            # This is the old generic prompt logic
+            if determined_section_type == "NPC":
+                feature_template = "Generate a detailed description for an NPC named '{section_title}'. Include their appearance, personality, motivations, and potential plot hooks related to them. Campaign Context: {campaign_concept}. Other sections: {existing_sections_summary}. Characters: {campaign_characters}."
+            elif determined_section_type == "Location":
+                feature_template = "Describe the location '{section_title}'. Include its key features, atmosphere, inhabitants (if any), and any notable points of interest or secrets. Campaign Context: {campaign_concept}. Other sections: {existing_sections_summary}."
+            elif determined_section_type == "Chapter/Quest": # Assuming Chapter and Quest use similar master features
+                feature_template = "Outline the main events and encounters for the adventure chapter titled '{section_title}'. Provide a brief overview of the objectives, challenges, and potential rewards. Campaign Context: {campaign_concept}. Other sections: {existing_sections_summary}. Characters: {campaign_characters}."
+            else: # Generic
+                feature_template = "Generate content for a section titled '{section_title}' of type '{section_type}' as part of a larger campaign document. Campaign Context: {campaign_concept}. Other sections: {existing_sections_summary}. Characters: {campaign_characters}."
+        else:
+            feature_template = master_feature.template
+
+        # For full generation, context_data from payload is less likely to be used, backend context is primary
+        final_context_for_template = backend_context
+        # If section_input.new_prompt has content, it might be user's specific instruction for full gen.
+        # Add it to context if feature template is designed to use it e.g. as {user_instructions}
+        if section_input.new_prompt:
+            final_context_for_template['user_instructions'] = section_input.new_prompt
+
+
+    # Render the template
+    # A more robust templating engine like Jinja2 would be better for complex templates.
+    # For now, simple string replacement.
+    final_prompt_for_llm = feature_template
+    for key, value in final_context_for_template.items():
+        final_prompt_for_llm = final_prompt_for_llm.replace(f"{{{key}}}", str(value))
+
+    # Check for any unreplaced placeholders (optional, for debugging)
+    # unreplaced_placeholders = re.findall(r"\{[a-zA-Z0-9_]+\}", final_prompt_for_llm)
+    # if unreplaced_placeholders:
+    #     print(f"Warning: Unreplaced placeholders in final prompt: {unreplaced_placeholders}")
+
+
+    # Initialize LLM Service (remains similar)
+    llm_model_to_use = section_input.model_id_with_prefix or db_campaign.selected_llm_id
     if not llm_model_to_use:
         # Fallback if no model is specified in input or campaign defaults
         raise HTTPException(status_code=400, detail="LLM model ID not specified in request or campaign settings. Cannot regenerate section.")
@@ -1029,29 +1101,40 @@ async def regenerate_campaign_section_endpoint(
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=f"Invalid LLM model ID format ('{llm_model_to_use}'): {ve}")
 
-    # Fetch existing sections summary for context
-    all_campaign_sections = crud.get_campaign_sections(db=db, campaign_id=campaign_id, limit=None)
-    other_sections_summary = "; ".join(
-        [s.title for s in all_campaign_sections if s.id != section_id and s.title]
-    ) if all_campaign_sections else None
+    # Fetch existing sections summary for context -- This is now done above as part of backend_context
 
-    # Call LLM Service
+    # Call LLM Service using the generic generate_text method
     try:
-        print(f"Regenerating section '{current_title}' (ID: {section_id}) using LLM: {llm_model_to_use}")
-        generated_content = await llm_service.generate_section_content(
-            db_campaign=db_campaign, # Changed campaign_concept to db_campaign
+        print(f"Regenerating section '{current_title}' (ID: {section_id}) using LLM: {llm_model_to_use} with final prompt (first 100 chars): '{final_prompt_for_llm[:100]}...'")
+
+        # Convert current_user (Pydantic model) to ORM model if needed by get_llm_service,
+        # but llm_service.generate_text expects Pydantic user.
+        # current_user_orm is already fetched and available.
+
+        # The llm_service instance is already initialized.
+        # We need to ensure generate_text can use the fully constructed prompt (final_prompt_for_llm)
+        # and doesn't try to re-fetch campaign concept etc. if they are already in the prompt.
+        # The dummy generate_text tries to fill placeholders, which is what we want.
+
+        generated_content = await llm_service.generate_text(
+            prompt=final_prompt_for_llm, # This is the fully rendered template
+            current_user=current_user,   # Pass Pydantic user model
             db=db,
-            existing_sections_summary=other_sections_summary,
-            section_creation_prompt=final_prompt,
+            model=model_specific_id,     # Specific model ID for the provider
+            temperature=db_campaign.temperature if db_campaign.temperature is not None else 0.7, # Use campaign temp or default
+            # max_tokens can be default or configured
+            # Context fields for generate_text are not strictly needed if prompt is pre-rendered,
+            # but passing them for completeness or if service uses them for other logic.
+            db_campaign=db_campaign,
             section_title_suggestion=current_title,
-            section_type=determined_section_type_for_llm,
-            model=model_specific_id,
-            current_user=current_user # Add this
+            section_type=determined_section_type,
+            section_creation_prompt=section_input.new_prompt if section_input.feature_id else None # Pass original user prompt only if it's a snippet modification
         )
+
         if not generated_content:
             raise HTTPException(status_code=500, detail="LLM generated empty content during regeneration.")
 
-    except LLMGenerationError as e:
+    except LLMGenerationError as e: # This comes from the LLM service if it raises it
         raise HTTPException(status_code=500, detail=f"LLM Generation Error during regeneration: {str(e)}")
     except Exception as e:
         print(f"Unexpected error during LLM regeneration for section ID {section_id}: {e}")

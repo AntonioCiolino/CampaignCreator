@@ -135,6 +135,33 @@ def get_feature_by_name(db: Session, name: str, user_id: Optional[int] = None) -
         orm_models.Feature.user_id == None
     ).first()
 
+def get_master_feature_for_type(db: Session, section_type: str) -> Optional[orm_models.Feature]:
+    """
+    Retrieves a 'FullSection' feature compatible with the given section_type.
+    Tries to find a specific match first, then a generic 'FullSection' feature if no specific match.
+    """
+    # Attempt to find a feature specifically compatible with the section_type and categorized as FullSection
+    db_feature = db.query(orm_models.Feature).filter(
+        orm_models.Feature.feature_category == "FullSection",
+        orm_models.Feature.compatible_types.contains(f'"{section_type}"') # Assuming compatible_types is stored as JSON array string
+    ).first()
+
+    if db_feature:
+        return db_feature
+
+    # Fallback: If no specific match, try to find a generic "FullSection" feature that might be broadly compatible
+    # This could be one where compatible_types is NULL/empty or contains "Generic"
+    # For simplicity, let's look for one specifically named or a very generic one.
+    # This fallback logic might need refinement based on how generic features are defined.
+    # Example: A feature named "Generate Section Details - Generic" and category "FullSection"
+    db_generic_feature = db.query(orm_models.Feature).filter(
+        orm_models.Feature.feature_category == "FullSection",
+        orm_models.Feature.name == "Generate Section Details - Generic" # Example name
+    ).first()
+
+    return db_generic_feature
+
+
 def get_features(db: Session, skip: int = 0, limit: int = 100, user_id: Optional[int] = None) -> List[orm_models.Feature]:
     query = db.query(orm_models.Feature)
     if user_id is not None:

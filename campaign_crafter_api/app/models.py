@@ -232,8 +232,9 @@ class FeatureBase(BaseModel):
     name: str
     template: str
     user_id: Optional[int] = None
-    required_context: Optional[List[str]] = None  # New field for required context keys
-    compatible_types: Optional[List[str]] = None # New field for compatible section types
+    required_context: Optional[List[str]] = None
+    compatible_types: Optional[List[str]] = None
+    feature_category: Optional[str] = None # e.g., "FullSection", "Snippet"
 
 class FeatureCreate(FeatureBase):
     pass
@@ -243,6 +244,7 @@ class FeatureUpdate(FeatureBase):
     template: Optional[str] = None
     required_context: Optional[List[str]] = None
     compatible_types: Optional[List[str]] = None
+    feature_category: Optional[str] = None
 
 class Feature(FeatureBase):
     id: int
@@ -316,12 +318,16 @@ class FeaturePromptItem(BaseModel):
 class FeaturePromptListResponse(BaseModel):
     features: List[FeaturePromptItem]
 
+from typing import Any # Add Any for context_data
+
 # Input model for regenerating a section
 class SectionRegenerateInput(BaseModel):
-    new_prompt: Optional[str] = None
+    new_prompt: Optional[str] = None # User's direct input / selected text
     new_title: Optional[str] = None
     section_type: Optional[str] = None # E.g., "NPC", "Location", "Chapter/Quest", "Generic"
     model_id_with_prefix: Optional[str] = None
+    feature_id: Optional[int] = None # ID of the selected feature to guide generation
+    context_data: Optional[Dict[str, Any]] = None # Additional context data from frontend
 
 
 # Token models for authentication
