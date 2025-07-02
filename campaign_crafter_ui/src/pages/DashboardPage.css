@@ -30,11 +30,35 @@
   padding-top: 0.5rem; /* Space for card hover effects */
   padding-bottom: 1.5rem; /* Add padding for scrollbar visibility and aesthetics */
   gap: 1rem; /* Space between cards */
-  /* position: relative; -- Removed as ::before/::after for gradients are gone */
+  position: relative; /* Needed for pseudo-elements for gradients */
 
   /* Scrollbar styling: Default to styled scrollbars that appear per OS/browser behavior (usually on scroll) */
   scrollbar-width: thin; /* For Firefox: "auto" or "thin" */
   scrollbar-color: var(--scrollbar-thumb-color, #888) var(--scrollbar-track-color, #f1f1f1);
+}
+
+/* Gradient Fades for Scroll Indication */
+.horizontal-scroll-section::before,
+.horizontal-scroll-section::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 75px; /* Width of the fade effect */
+  pointer-events: none; /* Allow clicks/scrolls through the gradient */
+  z-index: 2; /* Ensure gradients are above the cards */
+}
+
+.horizontal-scroll-section::before {
+  left: 0;
+  background: linear-gradient(to right, var(--surface-color, white) 20%, transparent);
+  opacity: 1; /* Persistently visible */
+}
+
+.horizontal-scroll-section::after {
+  right: 0;
+  background: linear-gradient(to left, var(--surface-color, white) 20%, transparent);
+  opacity: 1; /* Persistently visible */
 }
 
 /* Style scrollbar for Webkit browsers */
