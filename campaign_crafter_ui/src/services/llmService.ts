@@ -65,6 +65,7 @@ export interface LLMTextGenerationParams {
     campaign_id?: number | null;
     section_title_suggestion?: string | null;
     section_type?: string | null;
+    section_creation_prompt?: string | null; // Added missing field
 }
 
 export interface LLMTextGenerationResponse {
