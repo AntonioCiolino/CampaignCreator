@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError, LLMGenerationError
 from app.services.feature_prompt_service import FeaturePromptService
-from app import models # Added models import
+from app import models, orm_models # Added models import, Added orm_models import
 from app.models import User as UserModel
 # Removed import from llm_factory: from app.services.llm_factory import LLMServiceUnavailableError
 
@@ -95,9 +95,9 @@ class LlamaLLMService(AbstractLLMService):
 
     async def generate_section_content(
         self, 
-        campaign_concept: str, 
+        db_campaign: orm_models.Campaign, # Changed campaign_concept to db_campaign
         db: Session,
-        current_user: UserModel, # Added current_user
+        current_user: UserModel,
         existing_sections_summary: Optional[str], 
         section_creation_prompt: Optional[str], 
         section_title_suggestion: Optional[str], 
@@ -106,7 +106,13 @@ class LlamaLLMService(AbstractLLMService):
     ) -> str:
         if not await self.is_available(current_user=current_user, db=db): # Pass corrected args
             raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available.")
-        # This method also directly raises NotImplementedError.
+
+        # campaign_concept = db_campaign.concept if db_campaign else "N/A"
+        # characters_info = "N/A"
+        # if db_campaign and db_campaign.characters:
+        #     characters_info = f"{len(db_campaign.characters)} characters associated."
+        # print(f"Llama generate_section_content called with campaign_id: {db_campaign.id if db_campaign else 'N/A'}, characters: {characters_info}")
+
         raise NotImplementedError(
             f"{self.PROVIDER_NAME.title()}LLMService.generate_section_content not implemented. "
             f"Received section_type: {section_type}"

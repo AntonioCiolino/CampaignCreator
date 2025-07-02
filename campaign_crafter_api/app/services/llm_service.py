@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict
 from sqlalchemy.orm import Session
-from app import models # Changed import
+from app import models, orm_models # Changed import, Added orm_models import
 from app.models import User as UserModel
 
 class LLMServiceUnavailableError(Exception):
@@ -64,11 +64,11 @@ class AbstractLLMService(ABC):
             pass
 
     @abstractmethod
-    async def generate_section_content( # Changed signature
+    async def generate_section_content(
         self, 
-        campaign_concept: str, 
+        db_campaign: orm_models.Campaign, # Changed: campaign_concept to db_campaign
         db: Session,
-        current_user: UserModel, # Added current_user
+        current_user: UserModel,
         existing_sections_summary: Optional[str], 
         section_creation_prompt: Optional[str], 
         section_title_suggestion: Optional[str], 
@@ -77,6 +77,7 @@ class AbstractLLMService(ABC):
     ) -> str:
         """
         Generates content for a new campaign section.
+        Accepts the full Campaign ORM object to allow access to characters.
         'section_type' can be used to tailor the generation (e.g., "NPC", "Location").
         The 'model' parameter is the specific model ID for the provider.
         """
@@ -147,7 +148,7 @@ class LLMService(AbstractLLMService): # Note: This is a dummy implementation
 
     async def generate_section_content(
         self,
-        campaign_concept: str,
+        db_campaign: orm_models.Campaign, # Changed campaign_concept to db_campaign
         db: Session,
         current_user: UserModel,
         existing_sections_summary: Optional[str],
@@ -156,10 +157,19 @@ class LLMService(AbstractLLMService): # Note: This is a dummy implementation
         model: Optional[str] = None,
         section_type: Optional[str] = None
     ) -> str:
-        print(f"Dummy LLMService: generate_section_content called for user {current_user.id} with model {model} and type {section_type}")
+        campaign_concept = db_campaign.concept if db_campaign else "Unknown Campaign Concept"
+        characters_info = "No character info available."
+        if db_campaign and db_campaign.characters:
+            characters_info = f"{len(db_campaign.characters)} characters in campaign."
+
+        print(f"Dummy LLMService: generate_section_content called for user {current_user.id}, campaign ID {db_campaign.id if db_campaign else 'N/A'}, model {model}, type {section_type}. Characters: {characters_info}")
+
+        base_response = f"Dummy section content for: {campaign_concept} - Title: {section_title_suggestion}."
         if section_type:
-            return f"Dummy section content for: {campaign_concept} (Type: {section_type}) - Title: {section_title_suggestion}"
-        return f"Dummy section content for: {campaign_concept} - Title: {section_title_suggestion}"
+            base_response += f" (Type: {section_type})"
+        if db_campaign and db_campaign.characters:
+            base_response += f" (Aware of {len(db_campaign.characters)} characters)."
+        return base_response
 
     async def generate_homebrewery_toc_from_sections(self, sections_summary: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
         print(f"Dummy LLMService: generate_homebrewery_toc_from_sections called for user {current_user.id} with model {model}")

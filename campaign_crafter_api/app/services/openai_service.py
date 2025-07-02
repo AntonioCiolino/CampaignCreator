@@ -8,7 +8,7 @@ from app.core.config import settings
 from app.core.security import decrypt_key
 from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError, LLMGenerationError
 from app.services.feature_prompt_service import FeaturePromptService
-from app import models # Added models import
+from app import models, orm_models # Added models import, Added orm_models import
 from app.models import User as UserModel
 from app import crud # Added crud import
 
@@ -242,7 +242,7 @@ class OpenAILLMService(AbstractLLMService):
 
     async def generate_section_content(
         self,
-        campaign_concept: str,
+        db_campaign: orm_models.Campaign, # Changed campaign_concept to db_campaign
         db: Session,
         current_user: UserModel,
         existing_sections_summary: Optional[str],
@@ -253,8 +253,10 @@ class OpenAILLMService(AbstractLLMService):
     ) -> str:
         if not await self.is_available(current_user, db):
             raise LLMServiceUnavailableError("OpenAI service not available or not configured.")
-        if not campaign_concept:
-            raise ValueError("Campaign concept is required.")
+
+        campaign_concept = db_campaign.concept if db_campaign else "A general creative writing piece."
+        if not campaign_concept: # Should ideally not happen if db_campaign is valid
+            raise ValueError("Campaign concept is required and missing from campaign data.")
 
         selected_model = self._get_model(model, use_chat_model=True)
         effective_section_prompt = section_creation_prompt
@@ -278,21 +280,54 @@ class OpenAILLMService(AbstractLLMService):
         elif not effective_section_prompt:
             effective_section_prompt = "Continue the story from where it left off, or introduce a new related event/location/character interaction."
 
+        # --- Character Information Injection ---
+        character_info_parts = []
+        if db_campaign.characters:
+            for char in db_campaign.characters:
+                char_details = f"Character Name: {char.name}"
+                if char.description:
+                    char_details += f"\n  Description: {char.description}"
+                if char.notes_for_llm:
+                    char_details += f"\n  LLM Notes: {char.notes_for_llm}"
+                character_info_parts.append(char_details)
+
+        campaign_characters_formatted = "This campaign has no explicitly defined characters yet."
+        if character_info_parts:
+            campaign_characters_formatted = "The following characters are part of this campaign:\n" + "\n\n".join(character_info_parts)
+        # --- End Character Information Injection ---
+
         custom_prompt_template = self.feature_prompt_service.get_prompt("Section Content", db=db)
+        final_prompt_for_user_role: str
+
         if custom_prompt_template:
-            final_prompt_for_user_role = custom_prompt_template.format(
-                campaign_concept=campaign_concept,
-                existing_sections_summary=existing_sections_summary or "N/A",
-                section_creation_prompt=effective_section_prompt,
-                section_title_suggestion=section_title_suggestion or "Next Chapter"
+            try:
+                final_prompt_for_user_role = custom_prompt_template.format(
+                    campaign_concept=campaign_concept,
+                    existing_sections_summary=existing_sections_summary or "N/A",
+                    section_creation_prompt=effective_section_prompt,
+                    section_title_suggestion=section_title_suggestion or "Next Chapter",
+                    campaign_characters=campaign_characters_formatted # Add new parameter
+                )
+            except KeyError as e:
+                print(f"Warning: Prompt template 'Section Content' is missing a key: {e}. Falling back to default prompt structure. Please update the template to include 'campaign_characters'.")
+                # Fallback structure if template is old
+                final_prompt_for_user_role = (
+                    f"Campaign Concept: {campaign_concept}\n"
+                    f"Relevant Characters in this Campaign:\n{campaign_characters_formatted}\n\n"
+                    f"Summary of existing sections: {existing_sections_summary or 'N/A'}\n"
+                    f"Instruction for new section (titled '{section_title_suggestion or 'Next Chapter'}', Type: '{section_type or 'Generic'}'): {effective_section_prompt}"
+                )
+        else: # Simplified default if no template found at all
+            final_prompt_for_user_role = (
+                f"Campaign Concept: {campaign_concept}\n"
+                f"Relevant Characters in this Campaign:\n{campaign_characters_formatted}\n\n"
             )
-        else:
-            final_prompt_for_user_role = f"Campaign Concept: {campaign_concept}\n"
             if existing_sections_summary:
                 final_prompt_for_user_role += f"Summary of existing sections: {existing_sections_summary}\n"
             final_prompt_for_user_role += f"Instruction for new section (titled '{section_title_suggestion or 'Next Chapter'}', Type: '{section_type or 'Generic'}'): {effective_section_prompt}"
 
         system_message_content = "You are an expert RPG writer, crafting a new section for an ongoing campaign. Ensure the content is engaging and fits the narrative style implied by the concept and existing sections."
+        system_message_content += f"\nTake into account these characters who are part of the campaign context:\n{campaign_characters_formatted}" # Also add to system prompt for emphasis
         if section_type and section_type.lower() not in ["generic", "unknown", "", None]:
             system_message_content += f" Pay special attention to the section type: {section_type}."
 

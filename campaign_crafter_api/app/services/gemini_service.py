@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError, LLMGenerationError
 from app.services.feature_prompt_service import FeaturePromptService
-from app import models # Added models import
+from app import models, orm_models # Added models import, Added orm_models import
 from app.models import User as UserModel
 # Removed import from llm_factory: from app.services.llm_factory import LLMServiceUnavailableError
 from pathlib import Path # For the __main__ block
@@ -179,9 +179,9 @@ class GeminiLLMService(AbstractLLMService):
         return titles[:count]
     async def generate_section_content(
         self,
-        campaign_concept: str,
+        db_campaign: orm_models.Campaign, # Changed from campaign_concept, added db_campaign type
         db: Session,
-        current_user: UserModel, # Added current_user
+        current_user: UserModel,
         existing_sections_summary: Optional[str],
         section_creation_prompt: Optional[str],
         section_title_suggestion: Optional[str],
@@ -190,8 +190,13 @@ class GeminiLLMService(AbstractLLMService):
     ) -> str:
         if not await self.is_available(current_user=current_user, db=db): # Pass args
             raise LLMServiceUnavailableError("Gemini service is not available.")
+
+        campaign_concept = db_campaign.concept # Get concept from db_campaign
         if not campaign_concept:
-            raise ValueError("Campaign concept is required.")
+            # Fallback if concept is somehow empty, though db_campaign should have it
+            campaign_concept = "A new creative piece."
+            # Or raise ValueError("Campaign concept is required and missing from db_campaign.")
+
         model_instance = self._get_model_instance(model)
         effective_section_prompt = section_creation_prompt
         type_based_instruction = ""
@@ -205,23 +210,56 @@ class GeminiLLMService(AbstractLLMService):
                 type_based_instruction = f"This section outlines a chapter or quest titled '{title_str}'. Describe the main events, objectives, challenges, potential rewards, and any key NPCs or locations involved."
             else: # Other specific types
                 type_based_instruction = f"This section is specifically about '{title_str}' which is a '{section_type}'. Generate detailed content appropriate for this type."
+
         if not effective_section_prompt and type_based_instruction:
             effective_section_prompt = type_based_instruction
         elif effective_section_prompt and type_based_instruction:
             effective_section_prompt = f"{type_based_instruction}\n\nFurther specific instructions for this section: {section_creation_prompt}"
         elif not effective_section_prompt:
             effective_section_prompt = "Continue the story logically, introducing new elements or developing existing ones."
+
+        # --- Character Information Injection ---
+        character_info_parts = []
+        if db_campaign.characters:
+            for char in db_campaign.characters:
+                char_details = f"Character Name: {char.name}"
+                if char.description:
+                    char_details += f"\n  Description: {char.description}"
+                if char.notes_for_llm:
+                    char_details += f"\n  LLM Notes: {char.notes_for_llm}"
+                character_info_parts.append(char_details)
+
+        campaign_characters_formatted = "This campaign has no explicitly defined characters yet."
+        if character_info_parts:
+            campaign_characters_formatted = "The following characters are part of this campaign:\n" + "\n\n".join(character_info_parts)
+        # --- End Character Information Injection ---
+
         custom_prompt_template = self.feature_prompt_service.get_prompt("Section Content", db=db)
         final_prompt_for_generation: str
+
         if custom_prompt_template:
-            final_prompt_for_generation = custom_prompt_template.format(
-                campaign_concept=campaign_concept,
-                existing_sections_summary=existing_sections_summary or "N/A",
-                section_creation_prompt=effective_section_prompt, # Use the refined prompt
-                section_title_suggestion=section_title_suggestion or "Next Part"
+            try:
+                final_prompt_for_generation = custom_prompt_template.format(
+                    campaign_concept=campaign_concept,
+                    existing_sections_summary=existing_sections_summary or "N/A",
+                    section_creation_prompt=effective_section_prompt,
+                    section_title_suggestion=section_title_suggestion or "Next Part",
+                    campaign_characters=campaign_characters_formatted # Add new parameter
+                )
+            except KeyError as e:
+                print(f"Warning: Prompt template 'Section Content' is missing a key: {e}. Falling back to default prompt structure. Please update the template to include 'campaign_characters'.")
+                # Fallback structure if template is old and doesn't have campaign_characters
+                final_prompt_for_generation = (
+                    f"Campaign Concept: {campaign_concept}\n"
+                    f"Relevant Characters in this Campaign:\n{campaign_characters_formatted}\n\n"
+                    f"Summary of existing sections: {existing_sections_summary or 'N/A'}\n"
+                    f"Instruction for new section (titled '{section_title_suggestion or 'Next Part'}', Type: '{section_type or 'Generic'}'): {effective_section_prompt}"
+                )
+        else: # Simplified default if no template found at all
+            final_prompt_for_generation = (
+                f"Campaign Concept: {campaign_concept}\n"
+                f"Relevant Characters in this Campaign:\n{campaign_characters_formatted}\n\n"
             )
-        else: # Simplified default
-            final_prompt_for_generation = f"Campaign Concept: {campaign_concept}\n"
             if existing_sections_summary:
                 final_prompt_for_generation += f"Summary of existing sections: {existing_sections_summary}\n"
             final_prompt_for_generation += f"Instruction for new section (titled '{section_title_suggestion or 'Next Part'}', Type: '{section_type or 'Generic'}'): {effective_section_prompt}"
