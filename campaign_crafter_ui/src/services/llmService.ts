@@ -60,6 +60,11 @@ export interface LLMTextGenerationParams {
     temperature?: number;
     max_tokens?: number;
     chat_history?: Array<{ speaker: string; text: string; }>; // Added chat_history
+
+    // New optional fields for campaign context
+    campaign_id?: number | null;
+    section_title_suggestion?: string | null;
+    section_type?: string | null;
 }
 
 export interface LLMTextGenerationResponse {
@@ -83,6 +88,17 @@ export const generateTextLLM = async (params: LLMTextGenerationParams): Promise<
         }
         if (params.chat_history) { // Add chat_history to the request body if present
             requestBody.chat_history = params.chat_history;
+        }
+
+        // Add new context fields if provided
+        if (params.campaign_id !== undefined && params.campaign_id !== null) {
+            requestBody.campaign_id = params.campaign_id;
+        }
+        if (params.section_title_suggestion) {
+            requestBody.section_title_suggestion = params.section_title_suggestion;
+        }
+        if (params.section_type) {
+            requestBody.section_type = params.section_type;
         }
 
         // New apiClient call:
