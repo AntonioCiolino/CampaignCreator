@@ -11,11 +11,10 @@ import Button from './common/Button'; // Added Button import
 import RandomTableRoller from './RandomTableRoller';
 import ImageGenerationModal from './modals/ImageGenerationModal/ImageGenerationModal'; // Import the new modal
 import './CampaignSectionView.css';
-import { CampaignSectionUpdatePayload } from '../types/campaignTypes'; // CORRECTED PATH
-import { generateTextLLM, LLMTextGenerationParams } from '../services/llmService';
-import { getFeatures } from '../services/featureService'; // Added import
-import { Feature } from '../types/featureTypes'; // Added import
-import * as campaignService from '../services/campaignService'; // Moved import to top
+import { CampaignSectionUpdatePayload, SectionRegeneratePayload } from '../types/campaignTypes'; // CORRECTED PATH, Added SectionRegeneratePayload
+import { getFeatures } from '../services/featureService';
+import { Feature } from '../types/featureTypes';
+import * as campaignService from '../services/campaignService';
 
 interface CampaignSectionViewProps {
   section: CampaignSection;
@@ -196,26 +195,15 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
         contextText = editedContent.substring(0, 2000); // Fallback and limit
       }
 
-      let finalPrompt = "";
-      if (selectedFeatureId) {
-        const selectedFeature = features.find(f => f.id.toString() === selectedFeatureId); // Ensure ID types are compared correctly
-        if (selectedFeature) {
-          if (selectedFeature.template.includes("{}")) {
-            finalPrompt = selectedFeature.template.replace("{}", contextText);
-          } else {
-            finalPrompt = selectedFeature.template; // Context from editor is ignored
-          }
-        } else {
-          // Fallback if selectedFeatureId is somehow invalid
-          finalPrompt = `Generate content based on the following context: ${contextText}`;
-        }
-      } else {
-        finalPrompt = `Generate content based on the following context: ${contextText}`;
-      }
+      // The `finalPrompt` variable and its logic related to `selectedFeatureId` have been removed.
+      // `contextText` (editor content) is now directly used as `new_prompt`.
+      // If feature selection should still influence the `new_prompt` (e.g., by prepending feature template content to `contextText`),
+      // that logic would need to be re-introduced here, acting on `contextText`.
+      // For now, `contextText` is the sole source for `new_prompt`.
 
-      // The `finalPrompt` (selected feature template, e.g. "Section Content") is NOT directly sent.
-      // Instead, `contextText` (editor content) is sent as `new_prompt` to the regenerate endpoint.
-      // The backend's regenerate endpoint will use its default logic for "Section Content" generation,
+      // The `selectedFeature.template` (which was `finalPrompt` if a feature is selected from dropdown)
+      // is NOT explicitly sent here. The backend's `regenerateCampaignSection` endpoint
+      // implies it will use the standard "Section Content" template logic by default
       // incorporating this `new_prompt` as the specific instruction.
 
       if (!section.id) {
