@@ -87,11 +87,11 @@ async def generate_text_endpoint( # Renamed to match existing, added db
             db=db,
             current_user_orm=current_user_orm,
             provider_name=provider_name,
-            model_id_with_prefix=request_body.model_id_with_prefix
-            # campaign object is not passed here, as this is a generic endpoint
+            model_id_with_prefix=request_body.model_id_with_prefix, # get_llm_service uses this to pick provider and potentially initial model
+            campaign=None # Explicitly None for factory, as we determine context next
         )
         
-        # Prepare context if campaign_id is provided in the request
+        # Prepare context and determine final model_specific_id
         db_campaign_for_context: Optional[orm_models.Campaign] = None
         if request_body.campaign_id:
             temp_db_campaign = crud.get_campaign(db=db, campaign_id=request_body.campaign_id)
@@ -99,13 +99,38 @@ async def generate_text_endpoint( # Renamed to match existing, added db
                 db_campaign_for_context = temp_db_campaign
             elif temp_db_campaign: # Campaign exists but user doesn't own it
                 raise HTTPException(status_code=403, detail="Not authorized to access context for the specified campaign.")
-            # If campaign not found, db_campaign_for_context remains None, service handles it or uses None context.
+            # If campaign not found, db_campaign_for_context remains None.
 
-        # Pass context to the generate_text method
-        # The generate_text method in services will need to be updated to accept these
+        # Determine the model_id to pass to the service's generate_text method
+        final_model_specific_id_to_use = model_specific_id # From request initially
+
+        if final_model_specific_id_to_use is None: # If no model in request
+            if db_campaign_for_context and db_campaign_for_context.selected_llm_id:
+                # Use campaign's selected model if available
+                _campaign_provider, campaign_model_id = _extract_provider_and_model(db_campaign_for_context.selected_llm_id)
+                # We need to ensure the provider matches the one selected by get_llm_service.
+                # get_llm_service prioritizes: request_provider -> campaign_provider -> user_provider -> system_default_provider
+                # If provider_name (from request) is None, get_llm_service would have used campaign's provider.
+                # If provider_name is set and different from _campaign_provider, it's a conflict best handled by client.
+                # For now, if no model in request, we'll trust campaign's model if campaign context is active.
+                if provider_name is None or provider_name == _campaign_provider : # if provider was inferred or matches campaign
+                    final_model_specific_id_to_use = campaign_model_id
+                else:
+                    # This case implies request specified a provider, but no model, and campaign has a different provider.
+                    # It's safer to let the service use its default model for the requested provider.
+                    print(f"Warning: Request provider '{provider_name}' differs from campaign's provider '{_campaign_provider}'. Using service default model for '{provider_name}'.")
+
+
+            # Placeholder for user preference (would come after campaign preference)
+            # elif current_user_orm.preferred_model_id:
+            #     _, user_model_id = _extract_provider_and_model(current_user_orm.preferred_model_id)
+            #     final_model_specific_id_to_use = user_model_id
+
+        # If final_model_specific_id_to_use is still None here, the service's _get_model() will use its default.
+
         text_content = await llm_service.generate_text(
             prompt=request_body.prompt, # This is the template string
-            model=model_specific_id,
+            model=final_model_specific_id_to_use, # Pass the determined model
             temperature=request_body.temperature,
             max_tokens=request_body.max_tokens,
             current_user=current_user, # pydantic_models.User
