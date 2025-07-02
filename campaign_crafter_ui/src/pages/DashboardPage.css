@@ -1,37 +1,98 @@
 /* DashboardPage.css */
 .dashboard-page {
   /* Using global .container for padding and max-width */
-  display: grid;
-  grid-template-columns: 1fr; /* Single column layout by default */
-  gap: 2rem; /* Consistent gap */
+  display: flex; /* Changed to flex for easier vertical stacking of sections */
+  flex-direction: column;
+  gap: 1rem; /* Consistent gap between page elements */
 }
 
-/* Create Campaign Section */
+.dashboard-section {
+  margin-bottom: 1rem; /* Space below each horizontal section */
+  /* background-color: var(--surface-color); */ /* Optional: if sections need distinct background */
+  /* padding: 1rem; */ /* Optional: padding for the entire section block */
+  /* border-radius: var(--border-radius); */
+  /* box-shadow: var(--box-shadow-soft); */
+}
+
+.dashboard-section-title {
+  font-size: 1.75rem;
+  margin-top: 0; /* Reset margin if .dashboard-section has padding */
+  margin-bottom: 1rem;
+  color: var(--text-color-emphasis, var(--text-color));
+  /* border-bottom: 2px solid var(--primary-color); */ /* Optional title underline */
+  /* padding-bottom: 0.5rem; */ /* Optional padding for underline */
+}
+
+.horizontal-scroll-section {
+  display: flex;
+  overflow-x: auto;
+  /* white-space: nowrap; */ /* Not strictly needed with flex, but doesn't hurt */
+  padding-top: 0.5rem; /* Space for card hover effects */
+  padding-bottom: 1.5rem; /* Add padding for scrollbar visibility and aesthetics */
+  gap: 1rem; /* Space between cards */
+}
+
+/* Hide scrollbar for a cleaner look, but ensure it's still scrollable */
+/* For Webkit browsers */
+.horizontal-scroll-section::-webkit-scrollbar {
+  height: 8px; /* Adjust height of scrollbar */
+}
+.horizontal-scroll-section::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-color, #ccc);
+  border-radius: 4px;
+}
+.horizontal-scroll-section::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color, #aaa);
+}
+.horizontal-scroll-section::-webkit-scrollbar-track {
+  background-color: var(--scrollbar-track-color, #f1f1f1);
+  border-radius: 4px;
+}
+/* For Firefox */
+.horizontal-scroll-section {
+  scrollbar-width: thin; /* "auto" or "thin" */
+  scrollbar-color: var(--scrollbar-thumb-color, #ccc) var(--scrollbar-track-color, #f1f1f1); /* thumb and track color */
+}
+
+
+.horizontal-scroll-section > .scroll-item-wrapper {
+  flex: 0 0 auto; /* Prevent flex items from growing or shrinking */
+  width: 300px; /* Default card width */
+  max-width: 90vw; /* Ensure card is not wider than viewport on very small screens */
+  display: flex; /* To allow the card child to take full height */
+}
+
+/* Ensure the Card component itself takes full height of the wrapper */
+.scroll-item-wrapper > * { /* Targets the direct child, which should be the Card component */
+  height: 100%;
+  width: 100%; /* Ensure card fills the wrapper */
+}
+
+
+/* Create Campaign Section - existing styles adapted */
 .create-campaign-section {
   background-color: var(--surface-color);
   padding: 1.5rem;
   border-radius: var(--border-radius);
   box-shadow: var(--box-shadow);
+  margin-top: 1rem; /* Space above this section */
 }
 
 .create-campaign-section h2 {
   margin-top: 0;
   margin-bottom: 1.25rem;
   color: var(--text-color);
-  font-size: 1.5rem; /* Adjusted size */
+  font-size: 1.5rem;
 }
 
-/* Uses global .form-group, .form-label, .form-input, .form-textarea from App.css */
-
 .create-campaign-form .create-button {
-  background-color: var(--success-color); /* Use theme variable */
+  background-color: var(--success-color);
   border-color: var(--success-color);
-  /* padding, font-size, etc., inherited from global button styles */
-  width: 100%; /* Full width button on mobile */
+  width: 100%;
 }
 
 .create-campaign-form .create-button:hover {
-  background-color: #1e7e34; /* Darker green for hover */
+  background-color: #1e7e34;
   border-color: #1e7e34;
 }
 
@@ -41,51 +102,45 @@
   opacity: 0.65;
 }
 
-/* Error message styling is global from App.css */
 .error-message.create-error { 
   margin-bottom: 1rem; 
 }
 
-
-/* Campaign List Section */
-.campaign-list-section h1 {
-  margin-top: 0;
-  margin-bottom: 1.25rem;
-  color: var(--text-color);
-  font-size: 1.75rem; /* Adjusted size */
-}
-
+/* Old .campaign-list-section and .campaign-list are no longer primary layout tools */
+/* .campaign-list-section h1 styling moved to .dashboard-section-title */
 .campaign-list {
+  /* This class is still on the <ul> in CampaignCard, but it's inside scroll-item-wrapper */
+  /* Most grid/layout styles are removed as horizontal-scroll-section handles it */
   list-style: none;
   padding: 0;
   margin: 0;
-  display: grid;
-  grid-template-columns: 1fr; /* Default to one column for mobile */
-  gap: 1rem; /* Gap between cards */
+  /* display: flex; */ /* The parent .scroll-item-wrapper is now the flex item */
+  /* width: 100%; */
 }
+
+.section-divider {
+  border: 0;
+  height: 1px;
+  background-color: var(--border-color-muted, var(--border-color, #ccc));
+  margin: 1.5rem 0; /* Adjusted margin */
+}
+
 
 /* Responsive adjustments */
-@media (min-width: 600px) { /* For small tablets and wider */
+@media (min-width: 600px) {
   .create-campaign-form .create-button {
-    width: auto; /* Auto width for button on larger screens */
+    width: auto;
   }
-
-  .campaign-list {
-    /* 2 columns for campaign cards on small tablets */
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1.5rem;
+  .horizontal-scroll-section > .scroll-item-wrapper {
+    width: 320px; /* Slightly wider cards on larger screens */
   }
 }
 
-@media (min-width: 992px) { /* For larger screens (desktops) */
-  .dashboard-page {
-    /* Optional: two-column layout for dashboard on larger screens */
-    /* grid-template-columns: 400px 1fr; */ /* Example: Create form on left, list on right */
-    /* align-items: start; */ /* Align items to the start of the grid track */
+@media (min-width: 992px) {
+  .horizontal-scroll-section > .scroll-item-wrapper {
+    width: 340px; /* Even wider cards on desktop */
   }
-
-  .campaign-list {
-    /* 3 columns for campaign cards on large screens, or adjust minmax */
-     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  .dashboard-page {
+    gap: 1.5rem; /* Adjust gap for larger screens */
   }
 }

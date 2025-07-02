@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom'; // BrowserRouter removed, it's in App.tsx
 import DashboardPage from '../pages/DashboardPage';
+import MyCampaignsPage from '../pages/MyCampaignsPage'; // Import MyCampaignsPage
 import CampaignEditorPage from '../pages/CampaignEditorPage';
 import UserManagementPage from '../pages/UserManagementPage';
 import DataManagementPage from '../pages/DataManagementPage';
@@ -26,6 +27,7 @@ const AppRoutes: React.FC = () => {
       {/* Protected Routes - Any authenticated user */}
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<DashboardPage />} />
+        <Route path="/campaigns" element={<MyCampaignsPage />} /> {/* New route for My Campaigns */}
         {/* Assuming existing path /campaign/:campaignId is for editing */}
         <Route path="/campaign/:campaignId" element={<CampaignEditorPage />} />
         {/* Add other routes that require any authenticated user, e.g., CampaignCreatePage */}

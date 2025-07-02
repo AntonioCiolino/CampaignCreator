@@ -65,6 +65,12 @@ const UserDropdownMenu: React.FC<UserDropdownMenuProps> = ({ user, onLogout, add
               Dashboard
             </Link>
           </li>
+          <li>
+            <Link to="/campaigns" role="menuitem" onClick={() => handleLinkClick()}>
+              My Campaigns
+            </Link>
+          </li>
+          <li className="dropdown-separator" role="separator"><hr /></li> {/* Separator */}
 
           {/* Render Additional Nav Items */}
           {additionalNavItems.map((item, index) => (

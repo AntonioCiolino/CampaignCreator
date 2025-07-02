@@ -1,78 +1,65 @@
 /* CampaignCard.css */
+/* Styles for the li wrapper and specific content within the CampaignCard */
+
 .campaign-card {
-  background-color: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  margin-bottom: 1rem; /* Use consistent spacing unit */
-  box-shadow: var(--box-shadow);
-  transition: box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
+  /* This class is on the <li> element wrapping the Card component. */
   list-style-type: none; 
-  display: flex; /* Allow card to grow if needed */
-  flex-direction: column;
+  /* margin-bottom: 1rem; */ /* Card.css provides margin-bottom, this could be redundant or additive. Review if spacing is too large. */
+                               /* If Card is the direct child, its margin should suffice. */
+  padding: 0; /* Remove padding from li if the Card component itself has padding. Card.css has padding: 1.25rem. */
+  /* display: flex; and flex-direction: column; are likely not needed here if the Card component handles its own layout. */
 }
 
-.campaign-card:hover {
-  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px); /* Subtle lift effect */
+/* Hover effects are handled by the interactive Card component. */
+
+/* .campaign-card-link is no longer used as the Card component is the link/container. */
+
+
+/* Styles for the content *inside* the Card (passed as children to Card) */
+/* .campaign-card-content is the div wrapping the actual content inside the Card */
+
+/* Styles for campaign-specific header layout (badge + title) */
+.campaign-card-header { /* This is a custom header div inside CampaignCard's content, not Card.tsx's .card-header prop */
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.75rem;
 }
 
-.campaign-card-link {
-  display: flex; /* Make link fill the card */
-  flex-direction: column;
-  flex-grow: 1; /* Ensure link content takes up space */
-  /* Padding is now handled by the generic Card component */
-  text-decoration: none;
-  color: inherit;
-}
-
-.campaign-card-content h3 {
+.campaign-card-title {
   margin-top: 0;
-  margin-bottom: 0.5rem; /* Space below title */
+  margin-bottom: 0; /* Title itself doesn't need bottom margin if campaign-card-header has it */
   color: var(--text-color);
-  font-size: 1.25rem; /* Adjusted size */
+  font-size: 1.25rem; 
 }
 
 .campaign-snippet {
-  font-size: 0.9rem; /* Adjusted size */
+  font-size: 0.9rem;
   color: var(--text-color-muted);
   line-height: var(--line-height-base);
-  margin-bottom: 0; 
-  flex-grow: 1; /* Allow snippet to take available space */
-}
-
-.campaign-card-header {
-  display: flex;
-  align-items: center; /* Vertically align badge and title */
-  margin-bottom: 0.75rem; /* Space below header (badge+title) */
-}
-
-.campaign-card-title { /* Renamed from campaign-card-content h3 for specificity */
-  margin-top: 0;
-  margin-bottom: 0; /* Remove bottom margin as header div has it */
-  color: var(--text-color);
-  font-size: 1.25rem; 
+  margin-bottom: 0; /* Snippet is often the last text element before Card padding ends */
+  flex-grow: 1; /* Allow snippet to take available space if card content is flex column */
 }
 
 .campaign-card-badge-image {
   width: 50px;
   height: 50px;
   object-fit: cover;
-  border-radius: 4px;
-  margin-right: 10px; 
-  border: 1px solid var(--border-color-light, #eee); /* Add a light border */
-  flex-shrink: 0; /* Prevent image from shrinking */
+  border-radius: 4px; /* Consider var(--border-radius-sm) or similar token if available */
+  margin-right: 10px; /* Or use theme spacing variable */
+  border: 1px solid var(--border-color-light, #eee);
+  flex-shrink: 0;
 }
 
 .campaign-card-badge-placeholder {
   width: 50px;
   height: 50px;
-  background-color: #f0f0f0; /* Consider var(--surface-muted-color) */
-  border-radius: 4px;
-  margin-right: 10px;
+  background-color: var(--surface-muted-color, #f0f0f0); /* Use theme variable if possible */
+  border-radius: 4px; /* Consider var(--border-radius-sm) */
+  margin-right: 10px; /* Or use theme spacing variable */
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ccc; /* Consider var(--text-color-placeholder) */
+  color: var(--text-color-placeholder, #ccc); /* Use theme variable if possible */
   /* font-size: 24px; Example for icon */
-  flex-shrink: 0; /* Prevent placeholder from shrinking */
+  flex-shrink: 0;
 }
