@@ -217,8 +217,8 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                                  // This will be used as `section_creation_prompt` by the backend's `generate_section_content`
         new_title: section.title || undefined, // Use current section's title (optional for backend)
         section_type: section.type || undefined, // Use current section's type (optional for backend)
-        model_id_with_prefix: null, // Or selected model if UI allows choosing one for regeneration
-                                    // If null, backend will use campaign's default or system default
+        model_id_with_prefix: undefined, // Changed from null to undefined
+                                    // If undefined, backend will use campaign's default or system default
       };
 
       // The `selectedFeature.template` (which is `finalPrompt` if a feature is selected from dropdown)
