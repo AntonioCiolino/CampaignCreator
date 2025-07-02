@@ -127,7 +127,10 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
         let setIsGenerating: React.Dispatch<React.SetStateAction<boolean>>;
         let setErrorState: React.Dispatch<React.SetStateAction<string | null>>;
         let setFieldState: React.Dispatch<React.SetStateAction<string>>;
-        let existingContext: Partial<CharacterAspectGenerationRequestPayload> = { character_name: name || undefined };
+        let existingContext: Partial<CharacterAspectGenerationRequestPayload> = {
+            character_name: name || undefined,
+            notes_for_llm: notesForLlm || undefined, // Include notesForLlm
+        };
 
         if (aspect === "description") {
             setIsGenerating = setIsGeneratingDescription;
@@ -211,6 +214,22 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
                 </div>
             </div>
 
+            {/* "Notes for LLM" moved here, after Stats and before Description/Appearance */}
+            <div className="mb-3">
+                <label htmlFor="char-llm-notes" className="form-label">Notes for LLM</label>
+                <textarea
+                    className="form-control"
+                    id="char-llm-notes"
+                    rows={3} // Adjusted rows
+                    value={notesForLlm}
+                    onChange={(e) => setNotesForLlm(e.target.value)}
+                    placeholder="Enter any notes, personality traits, or context for the LLM to consider when generating content or interacting as this character."
+                ></textarea>
+                <small className="form-text text-muted">
+                    These notes can influence AI generation for description, appearance, and character chat.
+                </small>
+            </div>
+
             <div className="mb-3">
                 <div className="form-label-group">
                     <label htmlFor="char-description" className="form-label">Description</label>
@@ -280,16 +299,7 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
                 />
             </div>
 
-            <div className="mb-3">
-                <label htmlFor="char-llm-notes" className="form-label">Notes for LLM</label>
-                <textarea
-                    className="form-control"
-                    id="char-llm-notes"
-                    rows={2}
-                    value={notesForLlm}
-                    onChange={(e) => setNotesForLlm(e.target.value)}
-                ></textarea>
-            </div>
+            {/* "Notes for LLM" was moved up, this is the original location, so it's removed from here. */}
 
             <div className="mb-3">
                 <label htmlFor="char-export-format" className="form-label">Export Format Preference</label>
