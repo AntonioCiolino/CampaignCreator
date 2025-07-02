@@ -30,10 +30,24 @@ class AbstractLLMService(ABC):
         pass
 
     @abstractmethod
-    async def generate_text(self, prompt: str, current_user: UserModel, db: Session, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str: # Changed signature
+    async def generate_text(
+        self,
+        prompt: str,
+        current_user: UserModel,
+        db: Session,
+        model: Optional[str] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 500,
+        # Context fields for generic endpoint to become context-aware
+        db_campaign: Optional[orm_models.Campaign] = None,
+        section_title_suggestion: Optional[str] = None,
+        section_type: Optional[str] = None
+        # existing_sections_summary, campaign_concept, campaign_characters are derived from db_campaign if provided
+    ) -> str:
         """
         Generates text using an LLM based on a generic prompt.
-        This is a general-purpose method. Specific generation tasks might have dedicated methods.
+        Can become context-aware if db_campaign and other context fields are provided,
+        allowing it to format the 'prompt' string if it contains placeholders.
         The 'model' parameter is the specific model ID for the provider (e.g., "gpt-3.5-turbo" for OpenAI).
         """
         pass
@@ -127,9 +141,63 @@ class LLMService(AbstractLLMService): # Note: This is a dummy implementation
             {"id": "dummy/model-2", "name": "Dummy Model 2"},
         ]
 
-    async def generate_text(self, prompt: str, current_user: UserModel, db: Session, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str:
-        print(f"Dummy LLMService: generate_text called for user {current_user.id} with model {model}")
-        return f"Dummy generated text for prompt: {prompt}"
+    async def generate_text(
+        self,
+        prompt: str,
+        current_user: UserModel,
+        db: Session,
+        model: Optional[str] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 500,
+        # Context fields
+        db_campaign: Optional[orm_models.Campaign] = None,
+        section_title_suggestion: Optional[str] = None,
+        section_type: Optional[str] = None
+    ) -> str:
+        formatted_prompt = prompt
+        if db_campaign:
+            # Simplified formatting for dummy service
+            campaign_concept_str = db_campaign.concept or "N/A Concept"
+
+            character_info_parts = []
+            if db_campaign.characters:
+                for char in db_campaign.characters:
+                    char_details = f"Character: {char.name}"
+                    if char.description: char_details += f" (Desc: {char.description[:20]}...)"
+                    if char.notes_for_llm: char_details += f" (LLM Notes: {char.notes_for_llm[:20]}...)"
+                    character_info_parts.append(char_details)
+            campaign_characters_str = "\n".join(character_info_parts) if character_info_parts else "No characters."
+
+            # Attempt to fill placeholders if they exist in the prompt template
+            try:
+                # Basic placeholder replacement attempt for the dummy
+                # A real implementation would be more robust or use a templating engine carefully
+                temp_prompt = prompt
+                if "{campaign_concept}" in temp_prompt:
+                    temp_prompt = temp_prompt.replace("{campaign_concept}", campaign_concept_str)
+                if "{campaign_characters}" in temp_prompt:
+                    temp_prompt = temp_prompt.replace("{campaign_characters}", campaign_characters_str)
+                if "{section_title_suggestion}" in temp_prompt and section_title_suggestion:
+                    temp_prompt = temp_prompt.replace("{section_title_suggestion}", section_title_suggestion)
+                if "{title}" in temp_prompt and section_title_suggestion: # common alternative
+                    temp_prompt = temp_prompt.replace("{title}", section_title_suggestion)
+                if "{section_type}" in temp_prompt and section_type:
+                    temp_prompt = temp_prompt.replace("{section_type}", section_type)
+                if "{section_type_for_llm}" in temp_prompt and section_type: # common alternative
+                    temp_prompt = temp_prompt.replace("{section_type_for_llm}", section_type)
+                # existing_sections_summary would require DB query, skipping for dummy
+                if "{existing_sections_summary}" in temp_prompt:
+                    temp_prompt = temp_prompt.replace("{existing_sections_summary}", "Dummy sections summary.")
+                formatted_prompt = temp_prompt
+            except Exception as e:
+                print(f"Dummy LLMService: Error trying to format prompt - {e}")
+                # Keep original prompt if formatting fails
+
+        print(f"Dummy LLMService: generate_text called for user {current_user.id} with model {model}. Campaign ID: {db_campaign.id if db_campaign else 'N/A'}")
+        if prompt != formatted_prompt:
+            print(f"Dummy LLMService: Original prompt was: '{prompt[:100]}...'")
+            print(f"Dummy LLMService: Formatted prompt is: '{formatted_prompt[:100]}...'")
+        return f"Dummy generated text for prompt: {formatted_prompt}"
 
     async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
         print(f"Dummy LLMService: generate_campaign_concept called for user {current_user.id} with model {model}")

@@ -110,32 +110,100 @@ class OpenAILLMService(AbstractLLMService):
             print(f"Unexpected error with model {selected_model} (Legacy Completion): {e}")
             raise LLMGenerationError(f"Unexpected error during OpenAI legacy completion call: {str(e)}") from e
 
-    async def generate_text(self, prompt: str, current_user: UserModel, db: Session, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str:
+    async def generate_text(
+        self,
+        prompt: str, # This is expected to be the template string if context is provided
+        current_user: UserModel,
+        db: Session,
+        model: Optional[str] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 500,
+        # Context fields
+        db_campaign: Optional[orm_models.Campaign] = None,
+        section_title_suggestion: Optional[str] = None,
+        section_type: Optional[str] = None
+    ) -> str:
         if not await self.is_available(current_user, db):
             raise LLMServiceUnavailableError("OpenAI service not available or not configured.")
-        if not prompt:
-            raise ValueError("Prompt cannot be empty.")
+
+        if not prompt: # Prompt here is the template string from the request
+            raise ValueError("Prompt template cannot be empty.")
 
         selected_model = self._get_model(model, use_chat_model=True)
         
-        if selected_model.endswith("-instruct") or "davinci" in selected_model or "curie" in selected_model or "babbage" in selected_model or "ada" in selected_model:
-            if selected_model in ["text-davinci-003", "text-davinci-002", "davinci", "curie", "babbage", "ada"]:
-                 return await self._perform_legacy_completion(selected_model, prompt, temperature, max_tokens)
-        
-        messages = [{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": prompt}]
-        if selected_model == "gpt-3.5-turbo-instruct": # This specific model might prefer user-only prompts for completion style
-            messages = [{"role": "user", "content": prompt}]
+        # This will be the string that might get formatted with context
+        prompt_to_format = prompt
+        system_message_content = "You are a helpful assistant." # Default system message
 
-        # --- DEBUG LOGGING for generate_text ---
+        if db_campaign:
+            # We have campaign context, so we should try to format the prompt (template)
+            # This logic is similar to generate_section_content's formatting part
+            campaign_concept_str = db_campaign.concept if db_campaign.concept else "Not specified."
+
+            character_info_parts = []
+            if db_campaign.characters:
+                for char in db_campaign.characters:
+                    char_details = f"Character Name: {char.name}"
+                    if char.description: char_details += f"\n  Description: {char.description}"
+                    if char.notes_for_llm: char_details += f"\n  LLM Notes: {char.notes_for_llm}"
+                    character_info_parts.append(char_details)
+            campaign_characters_str = "This campaign has no explicitly defined characters yet."
+            if character_info_parts:
+                campaign_characters_str = "The following characters are part of this campaign:\n" + "\n\n".join(character_info_parts)
+
+            # existing_sections_summary needs to be fetched if the placeholder is present
+            # For simplicity in generate_text, we'll assume if this placeholder exists,
+            # the caller (API endpoint) might need to pre-fill it or we make it simpler.
+            # Here, we'll just use a placeholder if the main prompt expects it.
+            # A more robust solution would involve fetching sections if the placeholder is found.
+            all_campaign_sections = crud.get_campaign_sections(db=db, campaign_id=db_campaign.id, limit=None)
+            existing_sections_summary_str = "; ".join(
+                [s.title for s in all_campaign_sections if s.title]
+            ) if all_campaign_sections else "No existing sections yet."
+
+            format_kwargs = {
+                "campaign_concept": campaign_concept_str,
+                "campaign_characters": campaign_characters_str,
+                "existing_sections_summary": existing_sections_summary_str,
+                "section_title_suggestion": section_title_suggestion or "N/A",
+                "title": section_title_suggestion or "N/A", # common alternative for title
+                "section_type": section_type or "N/A",
+                "section_type_for_llm": section_type or "N/A" # common alternative for type
+            }
+
+            try:
+                # Only try to format if there seems to be a placeholder
+                if any(f"{{{key}}}" in prompt_to_format for key in format_kwargs):
+                    prompt_to_format = prompt_to_format.format(**format_kwargs)
+                # Update system message if campaign context is available
+                system_message_content = "You are an expert RPG writer. Use the provided campaign context to generate content."
+                if campaign_characters_str != "This campaign has no explicitly defined characters yet.":
+                     system_message_content += f"\nConsider these characters:\n{campaign_characters_str}"
+
+            except KeyError as e:
+                print(f"Warning: Key error during prompt formatting in generate_text: {e}. Prompt may be partially formatted.")
+                # Continue with potentially partially formatted prompt_to_format
+
+        # --- DEBUG LOGGING for generate_text (now includes formatted prompt) ---
         print(f"--- DEBUG PROMPT START ({self.PROVIDER_NAME} - Generic Generate Text) ---")
         print(f"Model: {selected_model}")
-        print("Messages:")
-        for msg in messages:
-            print(f"  Role: {msg['role']}, Content: {msg['content'][:300]}...") # Print first 300 chars of content
-        if selected_model.endswith("-instruct") or "davinci" in selected_model: # For legacy, print the raw prompt
-            print(f"Raw Prompt (for legacy): {prompt[:300]}...")
+        print(f"System Message: {system_message_content}")
+        print(f"User Prompt (after potential formatting): {prompt_to_format[:500]}...") # Log potentially formatted prompt
+        if selected_model.endswith("-instruct") or "davinci" in selected_model:
+             # For legacy, the raw formatted prompt is used directly
+            print(f"Raw Prompt (for legacy, after potential formatting): {prompt_to_format[:500]}...")
         print(f"--- DEBUG PROMPT END ({self.PROVIDER_NAME} - Generic Generate Text) ---")
         # --- END DEBUG LOGGING ---
+
+        # Actual call to LLM
+        if selected_model.endswith("-instruct") or "davinci" in selected_model or "curie" in selected_model or "babbage" in selected_model or "ada" in selected_model:
+            if selected_model in ["text-davinci-003", "text-davinci-002", "davinci", "curie", "babbage", "ada"]:
+                 return await self._perform_legacy_completion(selected_model, prompt_to_format, temperature, max_tokens)
+
+        messages = [{"role": "system", "content": system_message_content}, {"role": "user", "content": prompt_to_format}]
+        # Handle gpt-3.5-turbo-instruct specifically if it prefers no system message, though unlikely with context.
+        # if selected_model == "gpt-3.5-turbo-instruct":
+        #     messages = [{"role": "user", "content": prompt_to_format}]
 
         return await self._perform_chat_completion(selected_model, messages, temperature, max_tokens)
 

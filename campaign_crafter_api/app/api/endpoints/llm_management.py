@@ -88,15 +88,33 @@ async def generate_text_endpoint( # Renamed to match existing, added db
             current_user_orm=current_user_orm,
             provider_name=provider_name,
             model_id_with_prefix=request_body.model_id_with_prefix
+            # campaign object is not passed here, as this is a generic endpoint
         )
         
+        # Prepare context if campaign_id is provided in the request
+        db_campaign_for_context: Optional[orm_models.Campaign] = None
+        if request_body.campaign_id:
+            temp_db_campaign = crud.get_campaign(db=db, campaign_id=request_body.campaign_id)
+            if temp_db_campaign and temp_db_campaign.owner_id == current_user.id:
+                db_campaign_for_context = temp_db_campaign
+            elif temp_db_campaign: # Campaign exists but user doesn't own it
+                raise HTTPException(status_code=403, detail="Not authorized to access context for the specified campaign.")
+            # If campaign not found, db_campaign_for_context remains None, service handles it or uses None context.
+
+        # Pass context to the generate_text method
+        # The generate_text method in services will need to be updated to accept these
         text_content = await llm_service.generate_text(
-            prompt=request_body.prompt,
+            prompt=request_body.prompt, # This is the template string
             model=model_specific_id,
-            temperature=request_body.temperature, # Will use default from Pydantic model if None
-            max_tokens=request_body.max_tokens,   # Will use default from Pydantic model if None
-            current_user=current_user,
-            db=db
+            temperature=request_body.temperature,
+            max_tokens=request_body.max_tokens,
+            current_user=current_user, # pydantic_models.User
+            db=db,
+            # New context parameters for generate_text:
+            db_campaign=db_campaign_for_context, # Pass the ORM campaign object if available
+            section_title_suggestion=request_body.section_title_suggestion,
+            section_type=request_body.section_type
+            # existing_sections_summary, campaign_concept, campaign_characters will be derived by the service from db_campaign
         )
 
         # The response model pydantic_models.LLMTextGenerationResponse is { text: str }
