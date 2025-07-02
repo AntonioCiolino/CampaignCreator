@@ -117,10 +117,9 @@ const DashboardPage: React.FC = () => {
       <section className="dashboard-section">
          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h1 className="dashboard-section-title" style={{marginBottom: 0}}>Your Characters</h1>
-            {/* Optional: Add a "+ New Character" button here if desired */}
-            {/* <Button variant="primary" onClick={() => navigate('/characters/new')}>
+            <Button variant="primary" onClick={() => navigate('/characters/new')}>
               + New Character
-            </Button> */}
+            </Button>
         </div>
         {isLoadingCharacters ? (
           <LoadingSpinner />
