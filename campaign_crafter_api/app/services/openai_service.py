@@ -123,6 +123,9 @@ class OpenAILLMService(AbstractLLMService):
         section_title_suggestion: Optional[str] = None,
         section_type: Optional[str] = None
     ) -> str:
+        # --- DEBUG: Log entry parameters ---
+        print(f"--- DEBUG OpenAI generate_text ENTRY: db_campaign_id: {db_campaign.id if db_campaign else 'None'}, title_suggestion: {section_title_suggestion}, section_type: {section_type} ---")
+        # --- END DEBUG ---
         if not await self.is_available(current_user, db):
             raise LLMServiceUnavailableError("OpenAI service not available or not configured.")
 
