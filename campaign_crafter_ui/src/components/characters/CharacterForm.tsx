@@ -50,6 +50,9 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
     const [isGeneratingAppearance, setIsGeneratingAppearance] = useState(false);
     const [appearanceGenError, setAppearanceGenError] = useState<string | null>(null);
 
+    // New state for export format preference
+    const [exportFormatPreference, setExportFormatPreference] = useState<string>('complex');
+
 
     useEffect(() => {
         if (initialData) {
@@ -59,6 +62,7 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
             setImageUrls((initialData.image_urls || []).join(', '));
             setVideoClipUrls((initialData.video_clip_urls || []).join(', '));
             setNotesForLlm(initialData.notes_for_llm || '');
+            setExportFormatPreference(initialData.export_format_preference || 'complex'); // Set from initialData
 
             if (initialData.stats) {
                 setStrength(initialData.stats.strength?.toString() || '10');
@@ -104,6 +108,7 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
             video_clip_urls: processedVideoClipUrls,
             notes_for_llm: notesForLlm || null,
             stats: characterStats,
+            export_format_preference: exportFormatPreference, // Add to payload
         };
 
         // If it's an update, ensure we only send fields that are meant to be updated.
@@ -175,6 +180,37 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
                 />
             </div>
 
+            {/* Stats Section Wrapper - MOVED HERE */}
+            <div className="stats-section mb-3"> {/* Added mb-3 for spacing after stats section */}
+                <h5>Stats</h5>
+                <div className="stats-input-row-layout"> {/* New class for flex layout */}
+                    <div className="stat-input-item mb-3"> {/* Removed col-md-4, added mb-3 for consistency if items wrap */}
+                        <label htmlFor="char-strength" className="form-label">STR</label>
+                        <input type="number" className="form-control" id="char-strength" value={strength} onChange={(e) => setStrength(e.target.value)} />
+                    </div>
+                    <div className="stat-input-item mb-3">
+                        <label htmlFor="char-dexterity" className="form-label">DEX</label>
+                        <input type="number" className="form-control" id="char-dexterity" value={dexterity} onChange={(e) => setDexterity(e.target.value)} />
+                    </div>
+                    <div className="stat-input-item mb-3">
+                        <label htmlFor="char-constitution" className="form-label">CON</label>
+                        <input type="number" className="form-control" id="char-constitution" value={constitution} onChange={(e) => setConstitution(e.target.value)} />
+                    </div>
+                    <div className="stat-input-item mb-3">
+                        <label htmlFor="char-intelligence" className="form-label">INT</label>
+                        <input type="number" className="form-control" id="char-intelligence" value={intelligence} onChange={(e) => setIntelligence(e.target.value)} />
+                    </div>
+                    <div className="stat-input-item mb-3">
+                        <label htmlFor="char-wisdom" className="form-label">WIS</label>
+                        <input type="number" className="form-control" id="char-wisdom" value={wisdom} onChange={(e) => setWisdom(e.target.value)} />
+                    </div>
+                    <div className="stat-input-item mb-3">
+                        <label htmlFor="char-charisma" className="form-label">CHA</label>
+                        <input type="number" className="form-control" id="char-charisma" value={charisma} onChange={(e) => setCharisma(e.target.value)} />
+                    </div>
+                </div>
+            </div>
+
             <div className="mb-3">
                 <div className="form-label-group">
                     <label htmlFor="char-description" className="form-label">Description</label>
@@ -221,37 +257,6 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
                 {appearanceGenError && <small className="text-danger d-block mt-1">{appearanceGenError}</small>}
             </div>
 
-            {/* Stats Section Wrapper - MOVED HERE */}
-            <div className="stats-section">
-                <h5>Stats</h5>
-                <div className="stats-input-row-layout"> {/* New class for flex layout */}
-                    <div className="stat-input-item mb-3"> {/* Removed col-md-4, added mb-3 for consistency if items wrap */}
-                        <label htmlFor="char-strength" className="form-label">STR</label>
-                        <input type="number" className="form-control" id="char-strength" value={strength} onChange={(e) => setStrength(e.target.value)} />
-                    </div>
-                    <div className="stat-input-item mb-3">
-                        <label htmlFor="char-dexterity" className="form-label">DEX</label>
-                        <input type="number" className="form-control" id="char-dexterity" value={dexterity} onChange={(e) => setDexterity(e.target.value)} />
-                    </div>
-                    <div className="stat-input-item mb-3">
-                        <label htmlFor="char-constitution" className="form-label">CON</label>
-                        <input type="number" className="form-control" id="char-constitution" value={constitution} onChange={(e) => setConstitution(e.target.value)} />
-                    </div>
-                    <div className="stat-input-item mb-3">
-                        <label htmlFor="char-intelligence" className="form-label">INT</label>
-                        <input type="number" className="form-control" id="char-intelligence" value={intelligence} onChange={(e) => setIntelligence(e.target.value)} />
-                    </div>
-                    <div className="stat-input-item mb-3">
-                        <label htmlFor="char-wisdom" className="form-label">WIS</label>
-                        <input type="number" className="form-control" id="char-wisdom" value={wisdom} onChange={(e) => setWisdom(e.target.value)} />
-                    </div>
-                    <div className="stat-input-item mb-3">
-                        <label htmlFor="char-charisma" className="form-label">CHA</label>
-                        <input type="number" className="form-control" id="char-charisma" value={charisma} onChange={(e) => setCharisma(e.target.value)} />
-                    </div>
-                </div>
-            </div>
-
             <div className="mb-3">
                 <label htmlFor="char-image-urls" className="form-label">Image URLs (comma-separated)</label>
                 <input
@@ -284,6 +289,22 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
                     value={notesForLlm}
                     onChange={(e) => setNotesForLlm(e.target.value)}
                 ></textarea>
+            </div>
+
+            <div className="mb-3">
+                <label htmlFor="char-export-format" className="form-label">Export Format Preference</label>
+                <select
+                    className="form-select"
+                    id="char-export-format"
+                    value={exportFormatPreference}
+                    onChange={(e) => setExportFormatPreference(e.target.value)}
+                >
+                    <option value="complex">Complex Stat Block (Elara Style)</option>
+                    <option value="simple">Simple Stat Block (Harlan Style)</option>
+                </select>
+                <small className="form-text text-muted">
+                    Determines how this character appears in Homebrewery exports.
+                </small>
             </div>
 
             {/* Submit Button Area */}

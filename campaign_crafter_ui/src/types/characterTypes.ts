@@ -19,10 +19,13 @@ export interface CharacterBase {
     video_clip_urls?: string[] | null;  // URLs for future video integration
     notes_for_llm?: string | null;      // Notes for front-loading LLM interactions
     stats?: CharacterStats | null;      // Embeds CharacterStats
+    export_format_preference?: string | null; // Added new field
 }
 
 // Interface for creating a new character. Inherits all fields from CharacterBase.
-export interface CharacterCreate extends CharacterBase {}
+export interface CharacterCreate extends CharacterBase {
+    export_format_preference?: string | null; // Explicitly add here for clarity, though CharacterBase has it
+}
 
 // Interface for updating an existing character. All fields are optional.
 export interface CharacterUpdate {
@@ -33,12 +36,14 @@ export interface CharacterUpdate {
     video_clip_urls?: string[] | null;
     notes_for_llm?: string | null;
     stats?: CharacterStats | null;
+    export_format_preference?: string | null; // Added new field
 }
 
 // Full character interface, representing a character retrieved from the backend.
 export interface Character extends CharacterBase {
     id: number;
     owner_id: number;
+    export_format_preference?: string | null; // Ensure it's part of the full Character type
     // campaigns: Campaign[]; // Placeholder for potential future inclusion of campaign details
                            // Requires Campaign type to be defined and imported if used.
 }

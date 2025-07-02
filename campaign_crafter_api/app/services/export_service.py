@@ -1,6 +1,7 @@
 import re
-from typing import List, Optional, Dict # Added Dict
-from app import orm_models, crud # Assuming orm_models.py contains Campaign and CampaignSection, added crud
+import math # For floor function
+from typing import List, Optional, Dict
+from app import orm_models, crud
 from app.services.llm_factory import get_llm_service
 from app.services.llm_service import LLMServiceUnavailableError, LLMGenerationError
 from sqlalchemy.orm import Session
@@ -88,6 +89,181 @@ VTCNP Enterprises
         # Note: This process_block is mostly for basic formatting of a dedicated TOC block.
         # It's not intended for deep processing of general Markdown or complex section content.
         return processed_content
+
+    def _calculate_modifier(self, stat_value: Optional[int]) -> str:
+        if stat_value is None:
+            stat_value = 10 # Default to 10 if None for modifier calculation
+        modifier = math.floor((stat_value - 10) / 2)
+        return f"+{modifier}" if modifier >= 0 else str(modifier)
+
+    def _format_character_complex_block(self, character: orm_models.Character) -> str:
+        """
+        Formats a single character's details into a Homebrewery Complex NPC stat block,
+        similar to the "Elara Brightshield" example.
+        """
+        output = [] # Using a list to join lines at the end
+
+        character_name_or_default = character.name if character.name and character.name.strip() else "Unnamed Character"
+        output.append(f"### {character_name_or_default}\n")
+
+        # 1. Image (outside main stat block)
+        if character.image_urls and len(character.image_urls) > 0:
+            image_url = character.image_urls[0]
+            alt_text = f"{character.name} image" if character.name and character.name.strip() else "Character image"
+            output.append(f"![]({image_url}){{width:325px}}\n") # Elara example uses 325px
+
+        # 2. {{note}} Block
+        note_content = "GM Notes: Add relevant plot hooks or secret information here."
+        if character.notes_for_llm and character.notes_for_llm.strip():
+            note_content = character.notes_for_llm.strip()
+        output.append(f"{{{{note\n{note_content}\n}}}}\n:") # Added colon as per Elara example after note
+
+        # 3. Descriptive Text (Appearance, Personality/Background)
+        if character.appearance_description and character.appearance_description.strip():
+            output.append(f"{character.appearance_description.strip()}\n")
+        if character.description and character.description.strip():
+            output.append(f"{character.description.strip()}\n")
+
+        # Add a separator if there was descriptive text before the monster block
+        if (character.appearance_description and character.appearance_description.strip()) or \
+           (character.description and character.description.strip()):
+            output.append(":\n")
+
+
+        # 4. {{monster,frame ...}} Block
+        output.append("{{monster,frame") # Not wide, similar to Elara's main stat block
+
+        name = character.name if character.name and character.name.strip() else "Unnamed Character"
+        output.append(f"## {name}")
+        output.append(f"*Medium humanoid, alignment placeholder*") # Placeholder
+        output.append(f"**Class**: Class placeholder (e.g., Warrior, Mage)") # Placeholder
+        output.append("___")
+        output.append(f"**Armor Class** :: AC placeholder (e.g., 16 (breastplate))") # Placeholder
+        output.append(f"**Hit Points** :: HP placeholder (e.g., 58 (9d8 + 18))") # Placeholder
+        output.append(f"**Speed** :: 30 ft.") # Placeholder
+        output.append("___")
+
+        # Stats Table
+        stats = character.stats if character.stats else {}
+        str_val = stats.get('strength', 10)
+        dex_val = stats.get('dexterity', 10)
+        con_val = stats.get('constitution', 10)
+        int_val = stats.get('intelligence', 10)
+        wis_val = stats.get('wisdom', 10)
+        cha_val = stats.get('charisma', 10)
+
+        output.append("|  STR  |  DEX  |  CON  |  INT  |  WIS  |  CHA  |")
+        output.append("|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|")
+        output.append(
+            f"|  {str_val} ({self._calculate_modifier(str_val)}) "
+            f"| {dex_val} ({self._calculate_modifier(dex_val)}) "
+            f"| {con_val} ({self._calculate_modifier(con_val)}) "
+            f"| {int_val} ({self._calculate_modifier(int_val)}) "
+            f"| {wis_val} ({self._calculate_modifier(wis_val)}) "
+            f"| {cha_val} ({self._calculate_modifier(cha_val)}) |"
+        )
+        output.append("___")
+
+        output.append(f"**Saving Throws** :: Saving Throws placeholder (e.g., Wis +5, Cha +6)") # Placeholder
+        output.append(f"**Skills** :: Skills placeholder (e.g., Perception +5, Persuasion +6)") # Placeholder
+        output.append(f"**Senses** :: passive Perception placeholder (e.g., 15)") # Placeholder
+        output.append(f"**Languages** :: Languages placeholder (e.g., Common, Celestial)") # Placeholder
+        output.append(f"**Challenge** :: Challenge placeholder (e.g., 1 (200 XP))") # Placeholder
+        output.append("___") # Elara example has this before spellcasting
+
+        # Spellcasting (Placeholder)
+        output.append("### Spellcasting") # Elara example has this unbolded, but typically these are bolded. Let's make it H3 bold.
+        output.append("Spellcasting placeholder. This character might have spellcasting abilities. Define spell save DC, attack bonus, and prepared spells here if applicable.")
+        output.append(":") # Elara example uses colon for list continuation
+        output.append("**1st Level (X slots):** Spell 1, Spell 2") # Placeholder
+        output.append("**2nd Level (Y slots):** Spell 3, Spell 4") # Placeholder
+        output.append("\n") # Spacing after spell list
+
+        # Actions (Placeholder)
+        output.append("### Actions")
+        output.append("***Multiattack.*** Action placeholder (e.g., The character makes two melee attacks.)")
+        output.append(":")
+        output.append("***Weapon Name.*** *Melee or Ranged Weapon Attack:* Attack bonus placeholder to hit, reach/range placeholder, one target. *Hit:* Damage placeholder (e.g., 7 (1d8 + 3) piercing damage).")
+        output.append("\n")
+
+        # Bonus Actions (Placeholder - simplified from Elara)
+        output.append("### Bonus Actions")
+        output.append("***Bonus Action Name.*** Description of bonus action placeholder.")
+        output.append("\n")
+
+        # Features and Traits (Placeholder - simplified from Elara)
+        output.append("### Features and Traits")
+        output.append("***Feature Name.*** Description of feature or trait placeholder.")
+        output.append("\n")
+
+        # Reactions (Placeholder - simplified from Elara)
+        output.append("### Reactions")
+        output.append("***Reaction Name.*** Description of reaction placeholder.")
+        # No final newline for the last item in the block.
+
+        output.append("}}") # End monster block
+
+        return "\n".join(output)
+
+    def _format_character_simple_block(self, character: orm_models.Character) -> str:
+        """
+        Formats a single character's details into a Homebrewery Simple NPC stat block (Harlan-style).
+        """
+        output = []
+        character_name_or_default = character.name if character.name and character.name.strip() else "Unnamed Character"
+
+        output.append(f"### {character_name_or_default}\n")
+
+        if character.image_urls and len(character.image_urls) > 0:
+            image_url = character.image_urls[0]
+            alt_text = f"{character_name_or_default} image"
+            output.append(f"![{alt_text}]({image_url}){{width:100%}}\n")
+
+        output.append("{{monster,frame")
+        output.append(f"## {character_name_or_default}")
+        output.append(f"*Medium humanoid, alignment placeholder*")
+        output.append("___")
+        output.append(f"**Armor Class** :: 10 (Natural Armor)") # Placeholder
+        output.append(f"**Hit Points** :: 10 (2d8+2)") # Placeholder
+        output.append(f"**Speed** :: 30 ft.") # Placeholder
+        output.append("___")
+
+        stats_data = character.stats if character.stats else {}
+        str_val = stats_data.get('strength', 10)
+        dex_val = stats_data.get('dexterity', 10)
+        con_val = stats_data.get('constitution', 10)
+        int_val = stats_data.get('intelligence', 10)
+        wis_val = stats_data.get('wisdom', 10)
+        cha_val = stats_data.get('charisma', 10)
+
+        output.append("|  STR  |  DEX  |  CON  |  INT  |  WIS  |  CHA  |")
+        output.append("|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|")
+        output.append(
+            f"|  {str_val} ({self._calculate_modifier(str_val)}) "
+            f"| {dex_val} ({self._calculate_modifier(dex_val)}) "
+            f"| {con_val} ({self._calculate_modifier(con_val)}) "
+            f"| {int_val} ({self._calculate_modifier(int_val)}) "
+            f"| {wis_val} ({self._calculate_modifier(wis_val)}) "
+            f"| {cha_val} ({self._calculate_modifier(cha_val)}) |"
+        )
+        output.append("___")
+
+        personality = "Personality placeholder."
+        if character.description and character.description.strip():
+            first_sentence_match = re.match(r"^([^.!?]+[.!?])", character.description.strip())
+            if first_sentence_match:
+                extracted_personality = first_sentence_match.group(1).strip()
+                if len(extracted_personality) < 150:
+                    personality = extracted_personality
+            elif len(character.description.strip()) < 150:
+                 personality = character.description.strip()
+        output.append(f"**Personality:** {personality}")
+
+        output.append("}}")
+        return "\n".join(output)
+
+    # _format_character_for_export is being removed/renamed.
+    # Ensure calls are updated to _format_character_simple_block or _format_character_complex_block.
 
     async def format_campaign_for_homebrewery(self, campaign: orm_models.Campaign, sections: List[orm_models.CampaignSection], db: Session, current_user: UserModel) -> str: # Added db, current_user and async
         # TODO: Make page_image_url and stain_images configurable in the future, perhaps via campaign settings or user profile.
@@ -208,6 +384,26 @@ VTCNP Enterprises
             # Add a Homebrewery page break after each section.
             # If users include \page within their section content for finer control, that will also take effect.
             homebrewery_content.append("\\page\n") 
+
+        # Character Appendix Section (Dramatis Personae)
+        if campaign.characters: # Check if there are any characters linked to the campaign
+            homebrewery_content.append("\\page\n") # Start Dramatis Personae on a new page
+            homebrewery_content.append("## Dramatis Personae\n")
+            # Add a general intro to Dramatis Personae before the first character, if desired
+            # homebrewery_content.append("Key characters featured in this campaign include:\n")
+
+            for character in campaign.characters:
+                if character.export_format_preference == 'simple':
+                    homebrewery_content.append(self._format_character_simple_block(character))
+                else: # Default to complex if preference is 'complex', None, or any other value
+                    homebrewery_content.append(self._format_character_complex_block(character))
+
+                # Add a page break after each character's full block
+                homebrewery_content.append("\\page\n")
+
+            # No page break needed here if the last character already added one.
+            # If Dramatis Personae had content AND there were characters, the last char added a page break.
+            # If there were no characters, this section wouldn't run.
 
         # Add decorative stains (example implementation)
         # This part can be made more sophisticated, e.g., user-selectable stains, random placement, etc.
