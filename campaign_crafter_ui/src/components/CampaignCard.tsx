@@ -8,7 +8,7 @@ import './CampaignCard.css'; // CSS for specific content styling within the card
 
 interface CampaignCardProps {
   campaign: Campaign;
-  onDelete: (campaignId: number, campaignTitle: string) => void;
+  onDelete?: (campaignId: number, campaignTitle: string) => void;
 }
 
 const CampaignCard: React.FC<CampaignCardProps> = ({ campaign, onDelete }) => {
@@ -62,20 +62,26 @@ const CampaignCard: React.FC<CampaignCardProps> = ({ campaign, onDelete }) => {
             <p className="campaign-snippet">{conceptSnippet}</p> :
             <p className="campaign-snippet">{promptSnippet}</p>
           }
-          <div className="campaign-card-actions">
-            {/* Placeholder for other actions like Edit */}
-            <Button
-                variant="danger" // Or "outline-danger"
-                size="sm" // Make it a small button
-                onClick={(e) => {
-                    e.stopPropagation(); // Prevent card click navigation
-                    onDelete(campaign.id, campaign.title);
-                }}
-                aria-label={`Delete campaign ${campaign.title}`}
-            >
-                Delete
-            </Button>
-          </div>
+          {onDelete && (
+            <div className="campaign-card-actions">
+              {/* Placeholder for other actions like Edit */}
+              <Button
+                  variant="danger" // Or "outline-danger"
+                  size="sm" // Make it a small button
+                  onClick={(e) => {
+                      e.stopPropagation(); // Prevent card click navigation
+                      // Check onDelete again inside to satisfy TypeScript strict null checks,
+                      // though the outer check onDelete && (...) should suffice.
+                      if (onDelete) {
+                        onDelete(campaign.id, campaign.title);
+                      }
+                  }}
+                  aria-label={`Delete campaign ${campaign.title}`}
+              >
+                  Delete
+              </Button>
+            </div>
+          )}
         </div>
       </Card>
     </li>

@@ -20,7 +20,7 @@ const mockCampaignsData: Campaign[] = [
     badge_image_url: null,
     selected_llm_id: 'openai/gpt-3.5-turbo',
     temperature: 0.7,
-    owner_id: 1,
+    // owner_id: 1, // Field removed
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     sections: [],
@@ -47,7 +47,7 @@ const mockCampaignsData: Campaign[] = [
     badge_image_url: null,
     selected_llm_id: 'openai/gpt-4',
     temperature: 0.5,
-    owner_id: 1,
+    // owner_id: 1, // Field removed
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     sections: [],

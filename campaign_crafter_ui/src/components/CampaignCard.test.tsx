@@ -37,7 +37,7 @@ describe('CampaignCard', () => {
   test('renders campaign title and snippet', () => {
     render(
       <MemoryRouter>
-        <CampaignCard campaign={mockCampaignWithBadge} />
+        <CampaignCard campaign={mockCampaignWithBadge} onDelete={jest.fn()} />
       </MemoryRouter>
     );
     expect(screen.getByText(mockCampaignWithBadge.title)).toBeInTheDocument();
@@ -48,7 +48,7 @@ describe('CampaignCard', () => {
     test('displays badge image as a clickable link when badge_image_url exists', () => {
       render(
         <MemoryRouter>
-          <CampaignCard campaign={mockCampaignWithBadge} />
+          <CampaignCard campaign={mockCampaignWithBadge} onDelete={jest.fn()} />
         </MemoryRouter>
       );
 
@@ -66,7 +66,7 @@ describe('CampaignCard', () => {
     test('displays placeholder when badge_image_url does not exist', () => {
       render(
         <MemoryRouter>
-          <CampaignCard campaign={mockCampaignWithoutBadge} />
+          <CampaignCard campaign={mockCampaignWithoutBadge} onDelete={jest.fn()} />
         </MemoryRouter>
       );
 
@@ -93,7 +93,7 @@ describe('CampaignCard', () => {
       
       render(
         <MemoryRouter>
-          <CampaignCard campaign={mockCampaignWithBadge} />
+          <CampaignCard campaign={mockCampaignWithBadge} onDelete={jest.fn()} />
         </MemoryRouter>
       );
 
