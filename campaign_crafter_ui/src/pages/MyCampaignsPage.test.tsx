@@ -23,7 +23,7 @@ const mockCampaignsData: Campaign[] = [
     // owner_id: 1, // Field removed
     // created_at: new Date().toISOString(), // Field removed
     // updated_at: new Date().toISOString(), // Field removed
-    sections: [],
+    // sections: [], // Field removed
     mood_board_image_urls: [],
     theme_primary_color: null,
     theme_secondary_color: null,
@@ -50,7 +50,7 @@ const mockCampaignsData: Campaign[] = [
     // owner_id: 1, // Field removed
     // created_at: new Date().toISOString(), // Field removed
     // updated_at: new Date().toISOString(), // Field removed
-    sections: [],
+    // sections: [], // Field removed
     mood_board_image_urls: [],
     theme_primary_color: null,
     theme_secondary_color: null,
