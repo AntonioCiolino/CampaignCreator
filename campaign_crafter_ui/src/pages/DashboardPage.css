@@ -30,123 +30,36 @@
   padding-top: 0.5rem; /* Space for card hover effects */
   padding-bottom: 1.5rem; /* Add padding for scrollbar visibility and aesthetics */
   gap: 1rem; /* Space between cards */
-  position: relative; /* Needed for pseudo-elements if used for indicators */
+  /* position: relative; -- Removed as ::before/::after for gradients are gone */
+
+  /* Scrollbar styling: Default to styled scrollbars that appear per OS/browser behavior (usually on scroll) */
+  scrollbar-width: thin; /* For Firefox: "auto" or "thin" */
+  scrollbar-color: var(--scrollbar-thumb-color, #888) var(--scrollbar-track-color, #f1f1f1);
 }
 
-.horizontal-scroll-section::before,
-.horizontal-scroll-section::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0; /* Adjust if scrollbar padding makes it look off (e.g., if scrollbar creates space) */
-  width: 75px; /* Increased width of the fade */
-  pointer-events: none; /* So it doesn't interfere with scrolling */
-  z-index: 2; /* Ensure it's above the content */
-}
-
-.horizontal-scroll-section::before {
-  left: 0;
-  background: linear-gradient(to right, var(--surface-color, var(--body-bg, white)) 20%, transparent); /* Ensure fallback for var(--surface-color) */
-  opacity: 0; /* Hidden by default */
-  transition: opacity 0.3s ease-in-out;
-}
-
-.horizontal-scroll-section.show-left-indicator::before {
-  opacity: 1;
-}
-
-.horizontal-scroll-section::after {
-  right: 0;
-  background: linear-gradient(to left, var(--surface-color, var(--body-bg, white)) 20%, transparent); /* Ensure fallback for var(--surface-color) */
-  opacity: 0; /* Hidden by default */
-  transition: opacity 0.3s ease-in-out;
-}
-
-.horizontal-scroll-section.show-right-indicator::after {
-  opacity: 1;
-}
-
-
-/*
-   The [data-scrollable="true"] and .potentially-scrollable selectors were placeholders
-   for JS-driven or more complex CSS logic. For a persistent CSS-only hint,
-   we make the ::after element visible by default.
-*/
-/*
-.horizontal-scroll-section[data-scrollable="true"]::after {
-  opacity: 1;
-}
-.horizontal-scroll-section.potentially-scrollable::after {
-    opacity: 1;
-}
-*/
-
-/* Hide scrollbar for a cleaner look, but ensure it's still scrollable */
-   A pure CSS way is harder to make perfect, but we can try based on overflow.
-   However, `overflow: auto` means it might not always be scrollable even if set.
-   A simpler CSS approach might be to always show it if overflow-x is auto and assume
-   it's likely to scroll. A more robust solution needs JavaScript.
-
-   For a CSS-only attempt, we might rely on the container having focus or hover,
-   but this is not ideal for discoverability.
-
-   Let's assume for now the user wants a *persistent* hint if the container *can* scroll.
-   The ::after element will be styled, and we'll rely on the `overflow-x: auto` behavior.
-   A JS solution would toggle a class that sets opacity to 1.
-
-   Given only CSS, a simple approach is to always show it, and it will only be
-   meaningful when scrolling is actually possible. Or, use a more complex CSS setup
-   involving checking scrollbar visibility, which is tricky and not universally supported.
-
-   Let's try a subtle, always-visible hint if overflow is possible.
-   The opacity transition is for a potential JS enhancement later.
-   For now, if we always show it:
-*/
-.horizontal-scroll-section[data-scrollable="true"]::after { /* Assume JS will add this attribute */
-  opacity: 1;
-}
-/* Fallback for non-JS or simpler CSS: Always show if it might scroll. */
-/* This is not ideal as it shows even if there are few items. */
-/* A better pure CSS approach is very difficult. */
-/* For now, I will add the ::after rule, but making it appear correctly
-   without JS dynamically checking scrollWidth vs clientWidth is tough.
-   The request implies a visual indicator when scrolling *is* possible.
-
-   Let's set opacity to 1 for now to make it visible if the CSS is applied,
-   and acknowledge that JS would be needed for perfect conditional visibility.
-*/
-.horizontal-scroll-section.potentially-scrollable::after { /* Default to visible if class applied */
-    opacity: 1;
-    /* This is a placeholder for a class that *could* be added if content *might* scroll.
-       Without JS, we can't know for sure from CSS if it *currently* is scrollable.
-       Let's assume for this step we just add the gradient and it will be visible.
-       If this is too intrusive when not scrollable, it would need JS.
-    */
-}
-
-
-/* Hide scrollbar for a cleaner look, but ensure it's still scrollable */
-/* For Webkit browsers */
+/* Style scrollbar for Webkit browsers */
 .horizontal-scroll-section::-webkit-scrollbar {
-  height: 8px; /* Adjust height of scrollbar */
-}
-.horizontal-scroll-section::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb-color, #ccc);
-  border-radius: 4px;
-}
-.horizontal-scroll-section::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover-color, #aaa);
-}
-.horizontal-scroll-section::-webkit-scrollbar-track {
-  background-color: var(--scrollbar-track-color, #f1f1f1);
-  border-radius: 4px;
-}
-/* For Firefox */
-.horizontal-scroll-section {
-  scrollbar-width: thin; /* "auto" or "thin" */
-  scrollbar-color: var(--scrollbar-thumb-color, #ccc) var(--scrollbar-track-color, #f1f1f1); /* thumb and track color */
+  /* display: block; */ /* Ensures scrollbar is styled if OS shows it. Can be omitted if default is fine. */
+  height: 8px;   /* Height of the horizontal scrollbar */
+  width: 8px;    /* Width for consistency if vertical scroll appears */
 }
 
+.horizontal-scroll-section::-webkit-scrollbar-track {
+  background: var(--scrollbar-track-color, #f1f1f1);
+  border-radius: 4px;
+}
+
+.horizontal-scroll-section::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-color, #888);
+  border-radius: 4px;
+  border: 2px solid var(--scrollbar-track-color, #f1f1f1); /* Creates padding effect */
+}
+
+.horizontal-scroll-section::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color, #555);
+}
+
+/* Removed ::before, ::after, and JS-driven indicator classes (show-left-indicator, etc.) */
 
 .horizontal-scroll-section > .scroll-item-wrapper {
   flex: 0 0 auto; /* Prevent flex items from growing or shrinking */
