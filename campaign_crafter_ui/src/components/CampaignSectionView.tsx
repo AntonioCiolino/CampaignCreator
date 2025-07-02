@@ -92,33 +92,60 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   const [isImageGenerationModalOpen, setIsImageGenerationModalOpen] = useState<boolean>(false);
   const [isGeneratingContent, setIsGeneratingContent] = useState<boolean>(false);
   const [contentGenerationError, setContentGenerationError] = useState<string | null>(null);
-  const [features, setFeatures] = useState<Feature[]>([]); // All available features
-  const [selectedFeatureId, setSelectedFeatureId] = useState<string>(""); // Stores the ID of the selected feature
-  const [featureFetchError, setFeatureFetchError] = useState<string | null>(null);
+  const [snippetFeatures, setSnippetFeatures] = useState<Feature[]>([]);
+  const [selectedSnippetFeatureId, setSelectedSnippetFeatureId] = useState<string>("");
+  const [snippetFeatureFetchError, setSnippetFeatureFetchError] = useState<string | null>(null);
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [regenerateError, setRegenerateError] = useState<string | null>(null);
 
-  // Filter features based on the current section type
-  const filteredFeatures = React.useMemo(() => {
-    if (!section.type || features.length === 0) {
-      return features; // Return all features if no type or no features loaded
-    }
-    const currentTypeLower = section.type.toLowerCase();
-    return features.filter(feature => {
-      if (!feature.compatible_types || feature.compatible_types.length === 0) {
-        return true; // Feature is compatible with all types
-      }
-      // Check if any of the feature's compatible types match the current section type (case-insensitive)
-      return feature.compatible_types.some(ct => ct.toLowerCase() === currentTypeLower);
-    });
-  }, [features, section.type]);
+  // Filter features will be handled by the context menu logic later
+  // const filteredFeatures = React.useMemo(() => { ... });
 
-  // Effect to reset selectedFeatureId if it's no longer in filteredFeatures
+  // Effect to reset selectedFeatureId will be handled by context menu logic
+  // useEffect(() => { ... });
+
+  const [currentSelection, setCurrentSelection] = useState<QuillRange | null>(null);
+
   useEffect(() => {
-    if (selectedFeatureId && !filteredFeatures.find(f => f.id.toString() === selectedFeatureId)) {
-      setSelectedFeatureId(""); // Reset if current selection is filtered out
+    if (isEditing && quillInstance) {
+      const selectionChangeHandler = (range: QuillRange, oldRange: QuillRange, source: string) => {
+        if (source === 'user') {
+          setCurrentSelection(range);
+          if (!range || range.length === 0) { // If selection is lost or empty
+            setSelectedSnippetFeatureId(""); // Reset snippet feature selection
+          }
+        }
+      };
+      quillInstance.on('selection-change', selectionChangeHandler);
+      return () => {
+        quillInstance.off('selection-change', selectionChangeHandler);
+      };
     }
-  }, [selectedFeatureId, filteredFeatures]);
+  }, [isEditing, quillInstance]);
+
+  useEffect(() => {
+    if (isEditing) { // Load snippet features when editing starts
+      const loadSnippetFeatures = async () => {
+        try {
+          setSnippetFeatureFetchError(null);
+          const allFeatures = await getFeatures();
+          const filteredForSnippets = allFeatures.filter(
+            f => f.feature_category === 'Snippet' || (!f.feature_category && f.name !== 'Campaign' && f.name !== 'TOC Homebrewery' && f.name !== 'TOC Display' && f.name !== 'Campaign Names') // crude fallback for older features
+          );
+          setSnippetFeatures(filteredForSnippets);
+        } catch (error) {
+          console.error("Failed to load snippet features:", error);
+          setSnippetFeatureFetchError(error instanceof Error ? error.message : "An unknown error occurred while fetching snippet features.");
+        }
+      };
+      loadSnippetFeatures();
+    } else {
+      setSnippetFeatures([]); // Clear when not editing
+      setSelectedSnippetFeatureId("");
+      setCurrentSelection(null);
+    }
+  }, [isEditing]);
+
   const [isTableRollerVisible, setIsTableRollerVisible] = useState<boolean>(false); // State for table roller visibility
   // Removed imageData state and imageIdCounter ref
 
@@ -146,24 +173,24 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
     }
   }, [expandSectionId, section.id, isCollapsed, setIsCollapsed]); // Add dependencies
 
-  useEffect(() => {
-    if (isEditing && features.length === 0 && !featureFetchError) {
-      const loadFeatures = async () => {
-        try {
-          setFeatureFetchError(null);
-          const fetchedFeatures = await getFeatures();
-          setFeatures(fetchedFeatures);
-        } catch (error) {
-          console.error("Failed to load features:", error);
-          setFeatureFetchError(error instanceof Error ? error.message : "An unknown error occurred while fetching features.");
-        }
-      };
-      loadFeatures();
-    } else if (!isEditing) {
-      // Optional: Clear features or selected feature when not editing
-      // setSelectedFeatureId("");
-    }
-  }, [isEditing, features.length, featureFetchError]);
+  // useEffect(() => { // This useEffect for loading all features will be moved or adapted for snippet features context menu
+  //   if (isEditing && features.length === 0 && !featureFetchError) {
+  //     const loadFeatures = async () => {
+  //       try {
+  //         setFeatureFetchError(null);
+  //         const fetchedFeatures = await getFeatures();
+  //         setFeatures(fetchedFeatures);
+  //       } catch (error) {
+  //         console.error("Failed to load features:", error);
+  //         setFeatureFetchError(error instanceof Error ? error.message : "An unknown error occurred while fetching features.");
+  //       }
+  //     };
+  //     loadFeatures();
+  //   } else if (!isEditing) {
+  //     // Optional: Clear features or selected feature when not editing
+  //     // setSelectedFeatureId("");
+  //   }
+  // }, [isEditing, features.length, featureFetchError]);
   
   const handleEdit = () => {
     setIsCollapsed(false); // Expand section on edit
@@ -200,20 +227,20 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   const handleGenerateContent = async () => {
     setIsGeneratingContent(true);
     setContentGenerationError(null);
-    let initialSelectionRange: QuillRange | null = null;
+    // initialSelectionRange is now currentSelection state
 
     try {
       let editorSelectionText = '';
-      if (quillInstance) {
-        initialSelectionRange = quillInstance.getSelection();
-        if (initialSelectionRange && initialSelectionRange.length > 0) {
-          editorSelectionText = quillInstance.getText(initialSelectionRange.index, initialSelectionRange.length);
-        } else {
-          const fullText = quillInstance.getText();
-          editorSelectionText = fullText.substring(0, 2000); // Limit context if no selection
-        }
-      } else {
-        editorSelectionText = editedContent.substring(0, 2000); // Fallback
+      let isTextActuallySelected = false;
+
+      if (quillInstance && currentSelection && currentSelection.length > 0) {
+        editorSelectionText = quillInstance.getText(currentSelection.index, currentSelection.length);
+        isTextActuallySelected = true;
+      } else if (quillInstance) { // No specific selection, use full text for potential user_instructions
+        const fullText = quillInstance.getText();
+        editorSelectionText = fullText.substring(0, 2000); // Limit context
+      } else { // Fallback if no quillInstance
+        editorSelectionText = editedContent.substring(0, 2000);
       }
 
       if (!section.id) {
@@ -222,42 +249,46 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
         return;
       }
 
-      const selectedFeature = features.find(f => f.id.toString() === selectedFeatureId);
-      let contextDataForBackend: { [key: string]: any } = {};
       let featureIdForBackend: number | undefined = undefined;
+      let contextDataForBackend: { [key: string]: any } = {};
+      let operationType = "Full Section Generation"; // For logging
 
-      if (selectedFeature) {
-        featureIdForBackend = selectedFeature.id;
-        // Prepare context_data (actual data fetching will be more complex)
-        if (selectedFeature.required_context) {
-          selectedFeature.required_context.forEach(key => {
-            // Placeholder: actual data fetching logic will be needed here
-            // For example, if key is 'campaign_concept', we'd need to get it from props or a context
-            if (key === 'selected_text') {
-              contextDataForBackend[key] = editorSelectionText;
-            } else if (key === 'npc_name' && section.type === 'NPC' && section.title) {
-              contextDataForBackend[key] = section.title; // Assuming NPC name is section title
-            } else if (key === 'location_name' && section.type === 'Location' && section.title) {
-              contextDataForBackend[key] = section.title; // Assuming Location name is section title
-            } else if (key === 'quest_title' && section.type === 'Quest' && section.title) {
-              contextDataForBackend[key] = section.title;
-            } else {
-              // For other keys like 'campaign_concept', 'campaign_characters', 'existing_sections_summary'
-              // we'll need to pass this data down or fetch it.
-              // For now, we'll log that it's needed.
-              console.log(`Context key '${key}' for feature '${selectedFeature.name}' would need to be fetched.`);
-              contextDataForBackend[key] = `{${key}_placeholder}`; // Send placeholder
-            }
-          });
+      // Check if a snippet feature is selected AND text is actually highlighted
+      if (selectedSnippetFeatureId && isTextActuallySelected) {
+        const snippetFeature = snippetFeatures.find(f => f.id.toString() === selectedSnippetFeatureId);
+        if (snippetFeature) {
+          featureIdForBackend = snippetFeature.id;
+          operationType = `Snippet: ${snippetFeature.name}`;
+          contextDataForBackend['selected_text'] = editorSelectionText; // Key for snippet features
+          // Add other context from snippetFeature.required_context if needed (similar to old logic)
+          if (snippetFeature.required_context) {
+            snippetFeature.required_context.forEach(key => {
+              if (key !== 'selected_text') { // selected_text is already primary
+                 // Placeholder for other context keys if snippet needs them
+                console.log(`Snippet feature '${snippetFeature.name}' also requires '${key}'. This needs to be fetched/passed.`);
+                contextDataForBackend[key] = `{${key}_placeholder_for_snippet}`;
+              }
+            });
+          }
+        } else {
+          // Selected snippet feature ID is invalid, treat as full generation
+          setSelectedSnippetFeatureId(""); // Reset invalid selection
         }
-        // If the feature template itself is simple and only needs the selected text,
-        // new_prompt might still be the template with {selected_text} replaced.
-        // However, the plan is to let backend handle template filling using context_data.
-        // So, new_prompt should primarily be the editor's selected text or full content.
+      }
+
+      // If not a snippet operation (or invalid snippet selected), it's a full generation
+      if (!featureIdForBackend) { // This means it's a full section generation
+        operationType = "Full Section Generation (Type-driven)";
+        // For full section generation, feature_id is undefined.
+        // Backend will determine master feature based on section.type.
+        // editorSelectionText (full editor content if nothing was selected) can be passed in context_data.
+        if (editorSelectionText && !isTextActuallySelected) { // Full content available, no specific selection
+          contextDataForBackend['user_instructions'] = editorSelectionText;
+        }
       }
 
       const regeneratePayload: SectionRegeneratePayload = {
-        new_prompt: editorSelectionText, // Primary input from the editor
+        new_prompt: editorSelectionText, // Main text input (selected for snippet, full for potential user_instructions)
         new_title: section.title || undefined,
         section_type: section.type || undefined,
         model_id_with_prefix: undefined, // Backend handles default
@@ -265,19 +296,25 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
         context_data: contextDataForBackend,
       };
 
-      console.log("Regenerate Payload:", regeneratePayload); // For debugging
+      console.log(`Regenerate Payload for ${operationType}:`, regeneratePayload);
 
       const updatedSection = await campaignService.regenerateCampaignSection(Number(campaignId), section.id, regeneratePayload);
       const generatedText = updatedSection.content;
 
       if (quillInstance) {
-        // For regeneration, replace the entire content of the editor.
-        const delta = quillInstance.clipboard.convert(generatedText); // Convert HTML/text to Delta
-        quillInstance.setContents(delta, 'user'); // Set content using Delta
-        setEditedContent(quillInstance.root.innerHTML); // Update state from Quill
-        onSectionUpdated(updatedSection); // Notify parent
+        if (isTextActuallySelected && featureIdForBackend && currentSelection) {
+          // Snippet operation: replace only selected text
+          quillInstance.deleteText(currentSelection.index, currentSelection.length, 'user');
+          quillInstance.insertText(currentSelection.index, generatedText, 'user');
+          quillInstance.setSelection(currentSelection.index + generatedText.length, 0, 'user');
+        } else {
+          // Full generation: replace all content
+          const delta = quillInstance.clipboard.convert(generatedText);
+          quillInstance.setContents(delta, 'user');
+        }
+        setEditedContent(quillInstance.root.innerHTML);
+        onSectionUpdated(updatedSection);
       } else {
-        // Fallback for non-Quill (should ideally not happen in edit mode)
         setEditedContent(generatedText);
         onSectionUpdated(updatedSection);
       }
@@ -496,31 +533,34 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                 <Button onClick={handleSave} className="editor-button" disabled={isSaving || isGeneratingContent}>
                   {isSaving ? 'Saving...' : 'Save Content'}
                 </Button>
-                {/* Feature selector moved here, before Generate Content button */}
-                {isEditing && (
-                  <div className="feature-selector-group" style={{ marginRight: '10px', display: 'inline-block', verticalAlign: 'middle' }}>
+
+                {/* Snippet Feature Selector - Shown only when text is selected */}
+                {isEditing && currentSelection && currentSelection.length > 0 && snippetFeatures.length > 0 && (
+                  <div className="snippet-feature-selector-group" style={{ marginRight: '10px', display: 'inline-block', verticalAlign: 'middle' }}>
                     <select
-                      value={selectedFeatureId}
-                      onChange={(e) => setSelectedFeatureId(e.target.value)}
-                      disabled={isGeneratingContent || isSaving || filteredFeatures.length === 0}
+                      value={selectedSnippetFeatureId}
+                      onChange={(e) => setSelectedSnippetFeatureId(e.target.value)}
+                      disabled={isGeneratingContent || isSaving}
                       style={{ padding: '8px 12px', borderRadius: '4px', border: '1px solid #ccc', height: '38px', boxSizing: 'border-box' }}
-                      title={filteredFeatures.length === 0 && !featureFetchError ? (features.length === 0 ? "Loading features..." : "No features compatible with this section type.") : (featureFetchError ? "Error loading features" : "Select a feature to guide content generation")}
+                      title={snippetFeatureFetchError ? "Error loading snippet features" : "Select a snippet feature to apply to highlighted text"}
                     >
-                      <option value="">-- No Specific Feature --</option>
-                      {filteredFeatures.map(feature => (
-                        <option key={feature.id} value={feature.id}>
+                      <option value="">-- Apply Snippet Feature --</option>
+                      {snippetFeatures.map(feature => (
+                        <option key={feature.id} value={feature.id.toString()}>
                           {feature.name}
                         </option>
                       ))}
                     </select>
-                    {featureFetchError && <p className="error-message" style={{fontSize: '0.8em', color: 'red', marginTop: '2px'}}>{featureFetchError}</p>}
-                    { selectedFeatureId && filteredFeatures.find(f => f.id.toString() === selectedFeatureId)?.required_context && filteredFeatures.find(f => f.id.toString() === selectedFeatureId)!.required_context!.length > 0 && (
+                    {snippetFeatureFetchError && <p className="error-message" style={{fontSize: '0.8em', color: 'red', marginTop: '2px'}}>{snippetFeatureFetchError}</p>}
+                     { selectedSnippetFeatureId && snippetFeatures.find(f => f.id.toString() === selectedSnippetFeatureId)?.required_context &&
+                       snippetFeatures.find(f => f.id.toString() === selectedSnippetFeatureId)!.required_context!.filter(rc => rc !== 'selected_text').length > 0 && (
                       <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'text.secondary', fontSize: '0.75rem' }}>
-                        Requires: {filteredFeatures.find(f => f.id.toString() === selectedFeatureId)!.required_context!.join(', ')}
+                        Also uses: {snippetFeatures.find(f => f.id.toString() === selectedSnippetFeatureId)!.required_context!.filter(rc => rc !== 'selected_text').join(', ')}
                       </Typography>
                     )}
                   </div>
                 )}
+
                 <Button
                   onClick={handleGenerateContent}
                   className="editor-button"
