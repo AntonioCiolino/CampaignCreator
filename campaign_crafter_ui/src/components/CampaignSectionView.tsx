@@ -253,7 +253,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
     setContentGenerationError(null); // Clear content generation error on cancel
   };
 
-  const handleGenerateContent = async () => {
+  const handleGenerateContent = async (overrideSnippetFeatureId?: string) => {
     setIsGeneratingContent(true);
     setContentGenerationError(null);
     // initialSelectionRange is now currentSelection state
