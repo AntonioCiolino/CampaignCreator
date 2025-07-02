@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react'; // Removed FormEvent as it's now in modal
+import React, { useState, useEffect, useRef } from 'react'; // Removed FormEvent, Added useRef
 import { useNavigate } from 'react-router-dom';
 import * as campaignService from '../services/campaignService';
+import useScrollIndicators from '../hooks/useScrollIndicators'; // Import the custom hook
 import * as characterService from '../services/characterService';
 import CampaignCard from '../components/CampaignCard';
 import CharacterCard from '../components/characters/CharacterCard';
@@ -21,6 +22,14 @@ const DashboardPage: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false); // State for modal
 
   const navigate = useNavigate();
+
+  // Refs for scrollable sections
+  const campaignsScrollRef = useRef<HTMLDivElement>(null);
+  const charactersScrollRef = useRef<HTMLDivElement>(null);
+
+  // Get scroll indicator states
+  const campaignScrollIndicators = useScrollIndicators(campaignsScrollRef);
+  const characterScrollIndicators = useScrollIndicators(charactersScrollRef);
 
   // Function to fetch all data
   const fetchAllData = async () => {
@@ -102,7 +111,10 @@ const DashboardPage: React.FC = () => {
         ) : campaigns.length === 0 ? (
           <p>No campaigns yet. Click "+ New Campaign" to get started!</p>
         ) : (
-          <div className="horizontal-scroll-section">
+          <div
+            ref={campaignsScrollRef}
+            className={`horizontal-scroll-section ${campaignScrollIndicators.showLeftIndicator ? 'show-left-indicator' : ''} ${campaignScrollIndicators.showRightIndicator ? 'show-right-indicator' : ''}`}
+          >
             {campaigns.map((campaign) => (
               <div key={campaign.id} className="scroll-item-wrapper">
                 <CampaignCard campaign={campaign} />
@@ -128,7 +140,10 @@ const DashboardPage: React.FC = () => {
         ): characters.length === 0 ? (
           <p>No characters yet. <a href="/characters/new">Create a character!</a></p>
         ) : (
-          <div className="horizontal-scroll-section">
+          <div
+            ref={charactersScrollRef}
+            className={`horizontal-scroll-section ${characterScrollIndicators.showLeftIndicator ? 'show-left-indicator' : ''} ${characterScrollIndicators.showRightIndicator ? 'show-right-indicator' : ''}`}
+          >
             {characters.map((character) => (
               <div key={character.id} className="scroll-item-wrapper">
                 <CharacterCard character={character} onDelete={handleDeleteCharacter} showActions={false} />

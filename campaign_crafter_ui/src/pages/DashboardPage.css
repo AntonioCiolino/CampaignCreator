@@ -46,20 +46,24 @@
 
 .horizontal-scroll-section::before {
   left: 0;
-  background: linear-gradient(to right, var(--surface-color, white) 20%, transparent); /* Fade from page background */
-  /* Initially hide left gradient; would need JS to show when scrolled */
-  /* For CSS-only persistent hint, it would be opacity: 1 like ::after */
-  /* Given the feedback, we want a persistent hint. But ::before should only show if actually scrolled.
-     This part is hard with pure CSS. For now, to show *potential*, both will be visible.
-     A JS solution would toggle opacity based on scrollLeft.
-  */
-  opacity: 1; /* Made always visible for now as a persistent hint */
+  background: linear-gradient(to right, var(--surface-color, var(--body-bg, white)) 20%, transparent); /* Ensure fallback for var(--surface-color) */
+  opacity: 0; /* Hidden by default */
+  transition: opacity 0.3s ease-in-out;
+}
+
+.horizontal-scroll-section.show-left-indicator::before {
+  opacity: 1;
 }
 
 .horizontal-scroll-section::after {
   right: 0;
-  background: linear-gradient(to left, var(--surface-color, white) 20%, transparent); /* Fade to page background */
-  opacity: 1; /* Always visible to indicate potential for scrolling */
+  background: linear-gradient(to left, var(--surface-color, var(--body-bg, white)) 20%, transparent); /* Ensure fallback for var(--surface-color) */
+  opacity: 0; /* Hidden by default */
+  transition: opacity 0.3s ease-in-out;
+}
+
+.horizontal-scroll-section.show-right-indicator::after {
+  opacity: 1;
 }
 
 
