@@ -8,7 +8,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import AlertMessage from '../components/common/AlertMessage';
 import Button from '../components/common/Button';
 import CreateCampaignModal from '../components/modals/CreateCampaignModal'; // For creating new campaign
-// import ConfirmationModal from '../components/modals/ConfirmationModal'; // If delete functionality is added
+import ConfirmationModal from '../components/modals/ConfirmationModal'; // If delete functionality is added
 import './MyCampaignsPage.css'; // Create this CSS file
 
 const MyCampaignsPage: React.FC = () => {
@@ -21,9 +21,9 @@ const MyCampaignsPage: React.FC = () => {
     const navigate = useNavigate();
 
     // State for delete confirmation modal (if implementing delete)
-    // const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
-    // const [campaignToDelete, setCampaignToDelete] = useState<{ id: number; title: string } | null>(null);
-    // const [isDeleting, setIsDeleting] = useState<boolean>(false);
+    const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+    const [campaignToDelete, setCampaignToDelete] = useState<{ id: number; title: string } | null>(null);
+    const [isDeleting, setIsDeleting] = useState<boolean>(false); // Keep this for later
 
     const fetchCampaigns = useCallback(async () => {
         setLoading(true);
@@ -49,12 +49,12 @@ const MyCampaignsPage: React.FC = () => {
     };
 
     // Delete functionality (optional, can be added later)
-    /*
+
     const openDeleteModal = (campaignId: number, campaignTitle: string) => {
         setCampaignToDelete({ id: campaignId, title: campaignTitle });
         setShowDeleteModal(true);
-        setSuccessMessage(null);
-        setError(null);
+        // setSuccessMessage(null); // Uncomment if success messages are used
+        setError(null); // Clear previous errors
     };
 
     const closeDeleteModal = () => {
@@ -64,12 +64,27 @@ const MyCampaignsPage: React.FC = () => {
 
     const handleDeleteCampaign = async () => {
         if (!campaignToDelete) return;
+
         setIsDeleting(true);
-        // ... implementation for deleting campaign ...
-        setIsDeleting(false);
-        closeDeleteModal();
+        setError(null); // Clear previous errors
+        // setSuccessMessage(null); // Clear previous success messages if you use them
+
+        try {
+            await campaignService.deleteCampaign(campaignToDelete.id);
+            // setSuccessMessage(`Campaign "${campaignToDelete.title}" deleted successfully.`); // Optional success message
+            // Option 1: Refetch campaigns list
+            fetchCampaigns();
+            // Option 2: Filter out the deleted campaign from local state (faster UI update)
+            // setCampaigns(prevCampaigns => prevCampaigns.filter(c => c.id !== campaignToDelete.id));
+        } catch (err: any) {
+            console.error("Failed to delete campaign:", err);
+            setError(err.response?.data?.detail || `Failed to delete campaign "${campaignToDelete.title}". Please try again.`);
+        } finally {
+            setIsDeleting(false);
+            closeDeleteModal(); // Close modal regardless of success or failure
+        }
     };
-    */
+
 
     if (loading && campaigns.length === 0) {
         return (
@@ -111,13 +126,13 @@ const MyCampaignsPage: React.FC = () => {
                             key={campaign.id}
                             campaign={campaign}
                             // Add onDelete prop to CampaignCard if delete functionality is desired directly on card
-                            // onDelete={() => openDeleteModal(campaign.id, campaign.title)}
+                            onDelete={openDeleteModal}
                         />
                     ))}
                 </div>
             )}
 
-            {/* {campaignToDelete && (
+            {campaignToDelete && (
                 <ConfirmationModal
                     isOpen={showDeleteModal}
                     title="Confirm Deletion"
@@ -129,7 +144,7 @@ const MyCampaignsPage: React.FC = () => {
                     isConfirming={isDeleting}
                     confirmButtonVariant="danger"
                 />
-            )} */}
+            )}
 
             <CreateCampaignModal
                 isOpen={isCreateModalOpen}

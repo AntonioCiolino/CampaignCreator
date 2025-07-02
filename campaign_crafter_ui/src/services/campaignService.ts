@@ -35,6 +35,17 @@ export const getAllCampaigns = async (): Promise<Campaign[]> => {
   }
 };
 
+// Delete a campaign by ID
+export const deleteCampaign = async (campaignId: string | number): Promise<void> => {
+    try {
+        await apiClient.delete(`/api/v1/campaigns/${campaignId}`);
+    } catch (error) {
+        console.error(`Error deleting campaign with ID ${campaignId}:`, error);
+        // Re-throw the error so the component can handle it
+        throw error;
+    }
+};
+
 // Fetch a single campaign by ID
 export const getCampaignById = async (campaignId: string | number): Promise<Campaign> => {
     try {
