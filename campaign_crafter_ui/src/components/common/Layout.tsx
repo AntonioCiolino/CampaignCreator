@@ -24,17 +24,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   //   // console.log("closeMobileMenu called, but no mobile menu state to change.");
   // };
 
-  const userDropdownNavItems: AdditionalNavItem[] = [];
-  if (token && user) {
-    userDropdownNavItems.push({
-      path: '/characters',
-      label: 'My Characters',
-      // onClick: closeMobileMenu, // Not needed if closeMobileMenu does nothing or is removed
-      separatorBefore: false, // Characters link will appear after Dashboard, before the next separator
-    });
-    // Add more items here if needed, e.g.
-    // userDropdownNavItems.push({ path: '/campaigns', label: 'My Campaigns', separatorBefore: true });
-  }
+  // const userDropdownNavItems: AdditionalNavItem[] = []; // This can be kept if other dynamic items are needed
+  // For now, since "My Characters" and "My Campaigns" are hardcoded in UserDropdownMenu,
+  // we don't need to push them here. If other items were dynamically added, this array would be used.
+  // If (token && user) {
+    // Example of a truly additional item:
+    // userDropdownNavItems.push({ path: '/help', label: 'Help Center', separatorBefore: true });
+  // }
+  const userDropdownNavItems: AdditionalNavItem[] = []; // Initialize as empty if no other dynamic items for now
 
 
   return (
