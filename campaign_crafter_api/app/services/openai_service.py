@@ -126,6 +126,17 @@ class OpenAILLMService(AbstractLLMService):
         if selected_model == "gpt-3.5-turbo-instruct": # This specific model might prefer user-only prompts for completion style
             messages = [{"role": "user", "content": prompt}]
 
+        # --- DEBUG LOGGING for generate_text ---
+        print(f"--- DEBUG PROMPT START ({self.PROVIDER_NAME} - Generic Generate Text) ---")
+        print(f"Model: {selected_model}")
+        print("Messages:")
+        for msg in messages:
+            print(f"  Role: {msg['role']}, Content: {msg['content'][:300]}...") # Print first 300 chars of content
+        if selected_model.endswith("-instruct") or "davinci" in selected_model: # For legacy, print the raw prompt
+            print(f"Raw Prompt (for legacy): {prompt[:300]}...")
+        print(f"--- DEBUG PROMPT END ({self.PROVIDER_NAME} - Generic Generate Text) ---")
+        # --- END DEBUG LOGGING ---
+
         return await self._perform_chat_completion(selected_model, messages, temperature, max_tokens)
 
     async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
