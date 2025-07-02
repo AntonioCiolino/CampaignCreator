@@ -95,8 +95,8 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   const [snippetFeatures, setSnippetFeatures] = useState<Feature[]>([]);
   const [selectedSnippetFeatureId, setSelectedSnippetFeatureId] = useState<string>("");
   const [snippetFeatureFetchError, setSnippetFeatureFetchError] = useState<string | null>(null);
-  const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
-  const [regenerateError, setRegenerateError] = useState<string | null>(null);
+  // const [isRegenerating, setIsRegenerating] = useState<boolean>(false); // Removed
+  // const [regenerateError, setRegenerateError] = useState<string | null>(null); // Removed
 
   // Filter features will be handled by the context menu logic later
   // const filteredFeatures = React.useMemo(() => { ... });
@@ -430,28 +430,28 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
     }
   };
 
-  const handleRegenerateClick = async () => {
-    if (!campaignId || !section?.id) {
-      setRegenerateError("Missing campaign or section ID for regeneration.");
-      return;
-    }
-    setIsRegenerating(true);
-    setRegenerateError(null);
-    try {
-      // Using an empty payload for now, as per plan
-      const updatedSection = await campaignService.regenerateCampaignSection(campaignId, section.id, {});
-      onSectionUpdated(updatedSection); // Notify parent of the update
-      // Update local state as well, e.g., editedContent if it was based on section.content
-      setEditedContent(updatedSection.content || '');
-      // If title can be regenerated and shown in this component directly:
-      // setSectionTitle(updatedSection.title); // Assuming you add local state for title if it's editable here
-    } catch (error: any) {
-      console.error("Failed to regenerate section:", error);
-      setRegenerateError(error.message || 'An unexpected error occurred during regeneration.');
-    } finally {
-      setIsRegenerating(false);
-    }
-  };
+  // const handleRegenerateClick = async () => { // Removed
+  //   if (!campaignId || !section?.id) {
+  //     setRegenerateError("Missing campaign or section ID for regeneration.");
+  //     return;
+  //   }
+  //   setIsRegenerating(true);
+  //   setRegenerateError(null);
+  //   try {
+  //     // Using an empty payload for now, as per plan
+  //     const updatedSection = await campaignService.regenerateCampaignSection(campaignId, section.id, {});
+  //     onSectionUpdated(updatedSection); // Notify parent of the update
+  //     // Update local state as well, e.g., editedContent if it was based on section.content
+  //     setEditedContent(updatedSection.content || '');
+  //     // If title can be regenerated and shown in this component directly:
+  //     // setSectionTitle(updatedSection.title); // Assuming you add local state for title if it's editable here
+  //   } catch (error: any) {
+  //     console.error("Failed to regenerate section:", error);
+  //     setRegenerateError(error.message || 'An unexpected error occurred during regeneration.');
+  //   } finally {
+  //     setIsRegenerating(false);
+  //   }
+  // };
 
   return (
     <div id={`section-container-${section.id}`} className="campaign-section-view" tabIndex={-1}>
@@ -618,7 +618,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                   Delete Section
                 </Button>
               </div>
-              {regenerateError && <p className="error-message editor-feedback" style={{ marginTop: '5px' }}>{regenerateError}</p>}
+              {/* regenerateError display removed as state and handler are removed */}
             </>
           )}
         </>

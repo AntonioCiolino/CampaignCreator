@@ -4,8 +4,9 @@ export interface Feature {
   name: string;
   template: string;
   user_id?: number;
-  required_context?: string[]; // Added from backend model
-  compatible_types?: string[]; // Added from backend model
+  required_context?: string[];
+  compatible_types?: string[];
+  feature_category?: string; // Added field
 }
 
 export interface FeatureCreate {
@@ -13,6 +14,7 @@ export interface FeatureCreate {
   template: string;
   required_context?: string[];
   compatible_types?: string[];
+  feature_category?: string; // Added field
 }
 
 export interface FeatureUpdate {
@@ -20,4 +22,5 @@ export interface FeatureUpdate {
   template?: string;
   required_context?: string[];
   compatible_types?: string[];
+  feature_category?: string; // Added field
 }
