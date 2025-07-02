@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react'; // Removed FormEvent, Added useRef
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as campaignService from '../services/campaignService';
-import useScrollIndicators from '../hooks/useScrollIndicators'; // Import the custom hook
+// import useScrollIndicators from '../hooks/useScrollIndicators'; // Removed
 import * as characterService from '../services/characterService';
 import CampaignCard from '../components/CampaignCard';
 import CharacterCard from '../components/characters/CharacterCard';
@@ -23,13 +23,13 @@ const DashboardPage: React.FC = () => {
 
   const navigate = useNavigate();
 
-  // Refs for scrollable sections
+  // Refs for scrollable sections - still useful if direct manipulation is ever needed, but not for indicators now
   const campaignsScrollRef = useRef<HTMLDivElement>(null);
   const charactersScrollRef = useRef<HTMLDivElement>(null);
 
-  // Get scroll indicator states
-  const campaignScrollIndicators = useScrollIndicators(campaignsScrollRef);
-  const characterScrollIndicators = useScrollIndicators(charactersScrollRef);
+  // Get scroll indicator states - REMOVED
+  // const campaignScrollIndicators = useScrollIndicators(campaignsScrollRef);
+  // const characterScrollIndicators = useScrollIndicators(charactersScrollRef);
 
   // Function to fetch all data
   const fetchAllData = async () => {
@@ -113,7 +113,7 @@ const DashboardPage: React.FC = () => {
         ) : (
           <div
             ref={campaignsScrollRef}
-            className={`horizontal-scroll-section ${campaignScrollIndicators.showLeftIndicator ? 'show-left-indicator' : ''} ${campaignScrollIndicators.showRightIndicator ? 'show-right-indicator' : ''}`}
+            className="horizontal-scroll-section" // Removed conditional classes for indicators
           >
             {campaigns.map((campaign) => (
               <div key={campaign.id} className="scroll-item-wrapper">
@@ -142,7 +142,7 @@ const DashboardPage: React.FC = () => {
         ) : (
           <div
             ref={charactersScrollRef}
-            className={`horizontal-scroll-section ${characterScrollIndicators.showLeftIndicator ? 'show-left-indicator' : ''} ${characterScrollIndicators.showRightIndicator ? 'show-right-indicator' : ''}`}
+            className="horizontal-scroll-section" // Removed conditional classes for indicators
           >
             {characters.map((character) => (
               <div key={character.id} className="scroll-item-wrapper">
