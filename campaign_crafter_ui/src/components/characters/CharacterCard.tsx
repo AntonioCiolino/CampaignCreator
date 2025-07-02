@@ -1,39 +1,62 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Character } from '../../types/characterTypes';
-import './CharacterCard.css'; // Styles for this component
+import Card from '../common/Card'; // Import the generic Card component
+import './CharacterCard.css';
 
-// Placeholder image URL - replace with a proper one or logic to generate/fetch
-const DEFAULT_THUMBNAIL = '/logo_placeholder.svg'; // Or any other placeholder image path
+const DEFAULT_THUMBNAIL = '/logo_placeholder.svg';
 
 interface CharacterCardProps {
     character: Character;
-    onDelete: (characterId: number, characterName: string) => void; // Function to call when delete is clicked
+    onDelete: (characterId: number, characterName: string) => void;
+    showActions?: boolean; // New prop to control visibility of action buttons
 }
 
-const CharacterCard: React.FC<CharacterCardProps> = ({ character, onDelete }) => {
+const CharacterCard: React.FC<CharacterCardProps> = ({ character, onDelete, showActions = true }) => {
     const thumbnailUrl = character.image_urls && character.image_urls.length > 0
-        ? character.image_urls[0] // Use the first image as thumbnail
+        ? character.image_urls[0]
         : DEFAULT_THUMBNAIL;
 
     const handleDeleteClick = (event: React.MouseEvent) => {
-        event.preventDefault(); // Prevent navigation when clicking delete button
-        event.stopPropagation(); // Stop event from bubbling up to the Link
+        event.preventDefault();
+        event.stopPropagation();
         onDelete(character.id, character.name);
     };
 
+    const cardActions = (
+        <div className="character-card-actions">
+            <Link
+                to={`/characters/${character.id}/edit`}
+                className="btn btn-sm btn-outline-primary me-2"
+                onClick={(e) => e.stopPropagation()}
+            >
+                Edit
+            </Link>
+            <button
+                onClick={handleDeleteClick}
+                className="btn btn-sm btn-outline-danger"
+            >
+                Delete
+            </button>
+        </div>
+    );
+
     return (
-        <div className="character-card">
-            <Link to={`/characters/${character.id}`} className="character-card-link">
+        <Card
+            href={`/characters/${character.id}`}
+            interactive
+            className="character-card" // Keep for specific styling overrides or additions
+            footerContent={showActions ? cardActions : undefined} // Conditionally render footer
+        >
+            <div className="character-card-link-content"> {/* New wrapper for content that was inside the old Link */}
                 <div className="character-card-thumbnail-wrapper">
                     <img
                         src={thumbnailUrl}
                         alt={`${character.name} thumbnail`}
                         className="character-card-thumbnail"
                         onError={(e) => {
-                            // Fallback if the primary image fails to load
                             const target = e.target as HTMLImageElement;
-                            if (target.src !== DEFAULT_THUMBNAIL) { // Prevent infinite loop if placeholder also fails
+                            if (target.src !== DEFAULT_THUMBNAIL) {
                                 target.src = DEFAULT_THUMBNAIL;
                                 target.alt = "Placeholder image";
                             }
@@ -45,23 +68,8 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ character, onDelete }) =>
                     {/* Optional: Add a snippet of description or other info here */}
                     {/* <p className="character-card-description">{character.description?.substring(0, 50) || 'No description'}...</p> */}
                 </div>
-            </Link>
-            <div className="character-card-actions">
-                <Link
-                    to={`/characters/${character.id}/edit`}
-                    className="btn btn-sm btn-outline-primary me-2"
-                    onClick={(e) => e.stopPropagation()} // Prevent Link's navigation if card is also a link
-                >
-                    Edit
-                </Link>
-                <button
-                    onClick={handleDeleteClick}
-                    className="btn btn-sm btn-outline-danger"
-                >
-                    Delete
-                </button>
             </div>
-        </div>
+        </Card>
     );
 };
 

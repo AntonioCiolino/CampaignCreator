@@ -1,0 +1,46 @@
+/* campaign_crafter_ui/src/pages/MyCampaignsPage.css */
+.my-campaigns-page {
+    /* General page styling, can inherit from a global page style or define specifics */
+}
+
+.my-campaigns-page .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    /* margin-bottom will be handled by utility class mb-4 from bootstrap or similar */
+}
+
+.my-campaigns-page .page-header h1 {
+    margin-bottom: 0; /* Remove bottom margin if flex alignment handles spacing */
+}
+
+.campaign-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Responsive grid for cards */
+    gap: 1.5rem; /* Space between cards */
+    padding-top: 1rem; /* Space above the grid */
+}
+
+/* If CampaignCard itself is an <li>, the ul/parent might need list-style: none; padding: 0; */
+/* However, CampaignCard.tsx currently renders an <li> wrapping a <Card> */
+/* So campaign-grid can directly contain these <li> items if CampaignCard is used as is. */
+
+@media (max-width: 576px) {
+    .my-campaigns-page .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .my-campaigns-page .page-header h1 {
+        margin-bottom: 1rem; /* Add space below title when stacked */
+    }
+
+    .my-campaigns-page .page-header .btn {
+        width: 100%; /* Full width button on small screens */
+    }
+
+    .campaign-grid {
+        grid-template-columns: 1fr; /* Single column on very small screens */
+        gap: 1rem;
+    }
+}

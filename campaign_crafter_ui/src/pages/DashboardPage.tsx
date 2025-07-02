@@ -1,149 +1,165 @@
-import React, { useState, useEffect, FormEvent } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as campaignService from '../services/campaignService';
+// import useScrollIndicators from '../hooks/useScrollIndicators'; // Removed
+import * as characterService from '../services/characterService';
 import CampaignCard from '../components/CampaignCard';
+import CharacterCard from '../components/characters/CharacterCard';
 import Button from '../components/common/Button';
-import Input from '../components/common/Input';
-import Checkbox from '../components/common/Checkbox'; // Import Checkbox component
-import './DashboardPage.css'; 
-import { Campaign, CampaignCreatePayload } from '../types/campaignTypes'; // Corrected import
+// Input and Checkbox are now part of the modal
+import './DashboardPage.css';
+import { Campaign } from '../types/campaignTypes'; // CampaignCreatePayload is now in modal
+import { Character } from '../types/characterTypes';
+import LoadingSpinner from '../components/common/LoadingSpinner';
+import CreateCampaignModal from '../components/modals/CreateCampaignModal'; // Import the modal
 
 const DashboardPage: React.FC = () => {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]); // Use imported Campaign type
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [characters, setCharacters] = useState<Character[]>([]);
+  const [isLoadingCampaigns, setIsLoadingCampaigns] = useState<boolean>(true);
+  const [isLoadingCharacters, setIsLoadingCharacters] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
-  // For new campaign form
-  const [newCampaignTitle, setNewCampaignTitle] = useState<string>('');
-  const [newCampaignPrompt, setNewCampaignPrompt] = useState<string>('');
-  const [skipConceptGeneration, setSkipConceptGeneration] = useState<boolean>(false); // New state for the checkbox
-  const [isCreating, setIsCreating] = useState<boolean>(false);
-  const [createError, setCreateError] = useState<string | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false); // State for modal
 
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchCampaigns = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const fetchedCampaigns = await campaignService.getAllCampaigns();
-        setCampaigns(fetchedCampaigns);
-      } catch (err) {
-        console.error('Failed to fetch campaigns:', err);
-        setError('Failed to load campaigns. Please try again later.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchCampaigns();
-  }, []);
+  // Refs for scrollable sections - still useful if direct manipulation is ever needed, but not for indicators now
+  const campaignsScrollRef = useRef<HTMLDivElement>(null);
+  const charactersScrollRef = useRef<HTMLDivElement>(null);
 
-  const handleCreateCampaign = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!newCampaignTitle.trim()) {
-      setCreateError('Campaign title is required.');
-      return;
-    }
-    if (createError === 'Campaign title is required.' && newCampaignTitle.trim()) {
-        setCreateError(null);
+  // Get scroll indicator states - REMOVED
+  // const campaignScrollIndicators = useScrollIndicators(campaignsScrollRef);
+  // const characterScrollIndicators = useScrollIndicators(charactersScrollRef);
+
+  // Function to fetch all data
+  const fetchAllData = async () => {
+    setIsLoadingCampaigns(true);
+    setIsLoadingCharacters(true);
+    setError(null);
+    let campaignError = null;
+    let characterError = null;
+
+    try {
+      const fetchedCampaigns = await campaignService.getAllCampaigns();
+      setCampaigns(fetchedCampaigns);
+    } catch (err) {
+      console.error('Failed to fetch campaigns:', err);
+      campaignError = 'Failed to load campaigns.';
+    } finally {
+      setIsLoadingCampaigns(false);
     }
 
     try {
-      setIsCreating(true);
-      setCreateError(null);
-      const newCampaignData: CampaignCreatePayload = { // Use imported CampaignCreatePayload type
-        title: newCampaignTitle,
-        initial_user_prompt: skipConceptGeneration ? undefined : newCampaignPrompt, // Send undefined if skipping
-        skip_concept_generation: skipConceptGeneration, // Add the new flag
-        // model_id_with_prefix_for_concept can be added here if LLMSelector is part of this form
-      };
-      const createdCampaign = await campaignService.createCampaign(newCampaignData);
-      navigate(`/campaign/${createdCampaign.id}`);
+      const fetchedCharacters = await characterService.getUserCharacters();
+      setCharacters(fetchedCharacters);
     } catch (err) {
-      console.error('Failed to create campaign:', err);
-      const errorMessage = (err instanceof Error && (err as any).response?.data?.detail) 
-                           ? (err as any).response.data.detail
-                           : 'Failed to create campaign. Please try again.';
-      setCreateError(errorMessage);
+      console.error('Failed to fetch characters:', err);
+      characterError = 'Failed to load characters.';
     } finally {
-      setIsCreating(false);
+      setIsLoadingCharacters(false);
+    }
+
+    if (campaignError && characterError) {
+      setError(`${campaignError} ${characterError}`);
+    } else {
+      setError(campaignError || characterError);
     }
   };
 
-  if (isLoading) {
-    return <div className="container"><p>Loading campaigns...</p></div>;
-  }
 
-  if (error) {
-    return <div className="container"><p className="error-message" style={{textAlign: 'center'}}>{error}</p></div>;
+  useEffect(() => {
+    fetchAllData();
+  }, []);
+
+  // Handler for when a new campaign is created via the modal
+  const handleCampaignCreated = (createdCampaign: Campaign) => {
+    // Option 1: Navigate to the new campaign
+    navigate(`/campaign/${createdCampaign.id}`);
+    // Option 2: Or, refresh the campaigns list on the dashboard (and characters if relevant)
+    // fetchAllData(); // This would re-fetch everything
+    // Or, more optimistically:
+    // setCampaigns(prev => [createdCampaign, ...prev]);
+    // For simplicity, navigation is often preferred after creation.
+  };
+
+  // Dummy delete handler for CharacterCard
+  const handleDeleteCharacter = (characterId: number, characterName: string) => {
+    console.log(`Attempting to delete character: ${characterName} (ID: ${characterId}) - Not implemented on Dashboard`);
+    setCharacters(prev => prev.filter(char => char.id !== characterId));
+    // alert(`Character "${characterName}" would be deleted (front-end only demo).`);
+    // TODO: Show a toast/notification instead of alert
+  };
+
+
+  if (error && !isLoadingCampaigns && !isLoadingCharacters && campaigns.length === 0 && characters.length === 0) {
+    return <div className="container"><p className="error-message" style={{ textAlign: 'center' }}>{error}</p></div>;
   }
 
   return (
     <div className="dashboard-page container">
-      <section className="campaign-list-section">
-        <h1>Your Campaigns</h1>
-        {campaigns.length === 0 && !isLoading ? (
-          <p>No campaigns yet. Create one below to get started!</p>
+      <section className="dashboard-section">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h1 className="dashboard-section-title" style={{marginBottom: 0}}>Your Campaigns</h1>
+          <Button variant="primary" onClick={() => setIsCreateModalOpen(true)}>
+            + New Campaign
+          </Button>
+        </div>
+        {isLoadingCampaigns ? (
+          <LoadingSpinner />
+        ) : error && campaigns.length === 0 ? (
+          <p className="error-message">Could not load campaigns.</p>
+        ) : campaigns.length === 0 ? (
+          <p>No campaigns yet. Click "+ New Campaign" to get started!</p>
         ) : (
-          <ul className="campaign-list">
+          <div
+            ref={campaignsScrollRef}
+            className="horizontal-scroll-section" // Removed conditional classes for indicators
+          >
             {campaigns.map((campaign) => (
-              <CampaignCard key={campaign.id} campaign={campaign} />
+              <div key={campaign.id} className="scroll-item-wrapper">
+                <CampaignCard campaign={campaign} />
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </section>
 
-      <section className="create-campaign-section">
-        <h2>Create New Campaign</h2>
-        <form onSubmit={handleCreateCampaign} className="create-campaign-form">
-          <Input
-            id="newCampaignTitle"
-            name="newCampaignTitle"
-            label="Campaign Title:"
-            value={newCampaignTitle}
-            onChange={(e) => setNewCampaignTitle(e.target.value)}
-            placeholder="Enter the title for your new campaign"
-            required
-          />
-          
-          <div className="form-group">
-            <label htmlFor="newCampaignPrompt" className="form-label">Initial Prompt (Optional if skipping AI concept):</label>
-            <textarea
-              id="newCampaignPrompt"
-              name="newCampaignPrompt"
-              value={newCampaignPrompt}
-              onChange={(e) => setNewCampaignPrompt(e.target.value)}
-              rows={4}
-              placeholder="Describe the core idea or starting point for your campaign..."
-              className="form-textarea"
-              disabled={skipConceptGeneration} // Disable if skipping generation
-            />
-          </div>
+      {/* <hr className="section-divider" />  Removed as per feedback */}
 
-          <Checkbox
-            id="skipConceptGeneration"
-            label="Skip initial AI concept generation"
-            checked={skipConceptGeneration}
-            onChange={(e) => setSkipConceptGeneration(e.target.checked)}
-            className="skip-concept-checkbox" // Added for specific styling if needed
-          />
-
-          {/* TODO: Add LLMSelector here if users should choose a model for initial concept generation,
-                       and ensure it's disabled if skipConceptGeneration is true. */}
-
-          {createError && <p className="error-message create-error">{createError}</p>}
-          
-          <Button 
-            type="submit" 
-            disabled={isCreating} 
-            variant="success"
-            className="create-button"
+      <section className="dashboard-section">
+         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h1 className="dashboard-section-title" style={{marginBottom: 0}}>Your Characters</h1>
+            <Button variant="primary" onClick={() => navigate('/characters/new')}>
+              + New Character
+            </Button>
+        </div>
+        {isLoadingCharacters ? (
+          <LoadingSpinner />
+        ) : error && characters.length === 0 ? (
+           <p className="error-message">Could not load characters.</p>
+        ): characters.length === 0 ? (
+          <p>No characters yet. <a href="/characters/new">Create a character!</a></p>
+        ) : (
+          <div
+            ref={charactersScrollRef}
+            className="horizontal-scroll-section" // Removed conditional classes for indicators
           >
-            {isCreating ? 'Creating...' : 'Create Campaign & Start Editing'}
-          </Button>
-        </form>
+            {characters.map((character) => (
+              <div key={character.id} className="scroll-item-wrapper">
+                <CharacterCard character={character} onDelete={handleDeleteCharacter} showActions={false} />
+              </div>
+            ))}
+          </div>
+        )}
       </section>
+
+      {/* The old create-campaign-section is now replaced by the modal button and the modal itself */}
+
+      <CreateCampaignModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCampaignCreated={handleCampaignCreated}
+      />
     </div>
   );
 };

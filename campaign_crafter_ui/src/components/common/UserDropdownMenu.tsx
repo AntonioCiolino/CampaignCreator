@@ -65,6 +65,19 @@ const UserDropdownMenu: React.FC<UserDropdownMenuProps> = ({ user, onLogout, add
               Dashboard
             </Link>
           </li>
+          <li className="dropdown-separator" role="separator"><hr /></li> {/* Separator 1: After Dashboard */}
+          <li>
+            <Link to="/campaigns" role="menuitem" onClick={() => handleLinkClick()}>
+              My Campaigns
+            </Link>
+          </li>
+          <li>
+            <Link to="/characters" role="menuitem" onClick={() => handleLinkClick()}>
+              My Characters
+            </Link>
+          </li>
+
+          <li className="dropdown-separator" role="separator"><hr /></li> {/* Separator restored after My Characters */}
 
           {/* Render Additional Nav Items */}
           {additionalNavItems.map((item, index) => (
@@ -84,10 +97,17 @@ const UserDropdownMenu: React.FC<UserDropdownMenuProps> = ({ user, onLogout, add
             </React.Fragment>
           ))}
 
-          {additionalNavItems.length > 0 && !additionalNavItems[additionalNavItems.length -1].separatorBefore && (
+          {/* Conditional Separator 3: Only if additionalNavItems exist and the last one didn't request a separator.
+              This separates additionalNavItems from the My Settings block.
+              If no additionalNavItems, Separator 2 already handles the division from My Characters.
+          */}
+          {additionalNavItems.length > 0 && !additionalNavItems[additionalNavItems.length - 1].separatorBefore && (
              <li className="dropdown-separator" role="separator"><hr /></li>
           )}
-
+          {/* If additionalNavItems is empty, Separator 2 (after My Characters) effectively separates My Characters from My Settings.
+              If additionalNavItems exist, the logic above handles separation.
+              The existing separator before "Data Management" further groups "My Settings" and "My Subscription".
+          */}
 
           <li>
             <Link to="/user-settings" role="menuitem" onClick={() => handleLinkClick()}>
