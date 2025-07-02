@@ -41,7 +41,8 @@ class AbstractLLMService(ABC):
         # Context fields for generic endpoint to become context-aware
         db_campaign: Optional[orm_models.Campaign] = None,
         section_title_suggestion: Optional[str] = None,
-        section_type: Optional[str] = None
+        section_type: Optional[str] = None,
+        section_creation_prompt: Optional[str] = None # Added
         # existing_sections_summary, campaign_concept, campaign_characters are derived from db_campaign if provided
     ) -> str:
         """
@@ -152,7 +153,8 @@ class LLMService(AbstractLLMService): # Note: This is a dummy implementation
         # Context fields
         db_campaign: Optional[orm_models.Campaign] = None,
         section_title_suggestion: Optional[str] = None,
-        section_type: Optional[str] = None
+        section_type: Optional[str] = None,
+        section_creation_prompt: Optional[str] = None # Added
     ) -> str:
         formatted_prompt = prompt
         if db_campaign:
@@ -188,6 +190,8 @@ class LLMService(AbstractLLMService): # Note: This is a dummy implementation
                 # existing_sections_summary would require DB query, skipping for dummy
                 if "{existing_sections_summary}" in temp_prompt:
                     temp_prompt = temp_prompt.replace("{existing_sections_summary}", "Dummy sections summary.")
+                if "{section_creation_prompt}" in temp_prompt and section_creation_prompt:
+                    temp_prompt = temp_prompt.replace("{section_creation_prompt}", section_creation_prompt)
                 formatted_prompt = temp_prompt
             except Exception as e:
                 print(f"Dummy LLMService: Error trying to format prompt - {e}")

@@ -121,10 +121,11 @@ class OpenAILLMService(AbstractLLMService):
         # Context fields
         db_campaign: Optional[orm_models.Campaign] = None,
         section_title_suggestion: Optional[str] = None,
-        section_type: Optional[str] = None
+        section_type: Optional[str] = None,
+        section_creation_prompt: Optional[str] = None # Added
     ) -> str:
         # --- DEBUG: Log entry parameters ---
-        print(f"--- DEBUG OpenAI generate_text ENTRY: db_campaign_id: {db_campaign.id if db_campaign else 'None'}, title_suggestion: {section_title_suggestion}, section_type: {section_type} ---")
+        print(f"--- DEBUG OpenAI generate_text ENTRY: db_campaign_id: {db_campaign.id if db_campaign else 'None'}, title_suggestion: {section_title_suggestion}, section_type: {section_type}, section_creation_prompt: {section_creation_prompt[:50] if section_creation_prompt else 'None'}... ---")
         # --- END DEBUG ---
         if not await self.is_available(current_user, db):
             raise LLMServiceUnavailableError("OpenAI service not available or not configured.")
@@ -171,7 +172,8 @@ class OpenAILLMService(AbstractLLMService):
                 "section_title_suggestion": section_title_suggestion or "N/A",
                 "title": section_title_suggestion or "N/A", # common alternative for title
                 "section_type": section_type or "N/A",
-                "section_type_for_llm": section_type or "N/A" # common alternative for type
+                "section_type_for_llm": section_type or "N/A", # common alternative for type
+                "section_creation_prompt": section_creation_prompt or "Please continue the narrative or generate content for the section based on the overall context." # Added
             }
 
             try:

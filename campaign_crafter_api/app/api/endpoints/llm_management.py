@@ -138,7 +138,8 @@ async def generate_text_endpoint( # Renamed to match existing, added db
             # New context parameters for generate_text:
             db_campaign=db_campaign_for_context, # Pass the ORM campaign object if available
             section_title_suggestion=request_body.section_title_suggestion,
-            section_type=request_body.section_type
+            section_type=request_body.section_type,
+            section_creation_prompt=request_body.section_creation_prompt # Pass this through
             # existing_sections_summary, campaign_concept, campaign_characters will be derived by the service from db_campaign
         )
 

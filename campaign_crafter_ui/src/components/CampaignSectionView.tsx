@@ -222,6 +222,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
         campaign_id: Number(campaignId),
         section_title_suggestion: section.title || 'Untitled Section',
         section_type: section.type || 'generic',
+        section_creation_prompt: contextText, // Pass editor content as specific instructions
       };
 
       const response = await generateTextLLM(params);

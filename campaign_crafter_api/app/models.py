@@ -43,6 +43,7 @@ class LLMGenerationRequest(BaseModel):
     campaign_id: Optional[int] = None
     section_title_suggestion: Optional[str] = None
     section_type: Optional[str] = None
+    section_creation_prompt: Optional[str] = None # For specific user instructions / editor content
     # The following are less likely to be directly passed by a simple generic call,
     # but included for completeness if a template expects them.
     # The service layer will be responsible for fetching these if campaign_id is provided.
