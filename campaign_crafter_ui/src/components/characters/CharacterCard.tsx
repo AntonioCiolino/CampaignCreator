@@ -9,9 +9,10 @@ const DEFAULT_THUMBNAIL = '/logo_placeholder.svg';
 interface CharacterCardProps {
     character: Character;
     onDelete: (characterId: number, characterName: string) => void;
+    showActions?: boolean; // New prop to control visibility of action buttons
 }
 
-const CharacterCard: React.FC<CharacterCardProps> = ({ character, onDelete }) => {
+const CharacterCard: React.FC<CharacterCardProps> = ({ character, onDelete, showActions = true }) => {
     const thumbnailUrl = character.image_urls && character.image_urls.length > 0
         ? character.image_urls[0]
         : DEFAULT_THUMBNAIL;
@@ -45,7 +46,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ character, onDelete }) =>
             href={`/characters/${character.id}`}
             interactive
             className="character-card" // Keep for specific styling overrides or additions
-            footerContent={cardActions}
+            footerContent={showActions ? cardActions : undefined} // Conditionally render footer
         >
             <div className="character-card-link-content"> {/* New wrapper for content that was inside the old Link */}
                 <div className="character-card-thumbnail-wrapper">

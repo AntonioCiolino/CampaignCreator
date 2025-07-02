@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // Import useNavigate
 import * as characterService from '../services/characterService';
 import { Character } from '../types/characterTypes';
+import Button from '../components/common/Button'; // Import Button component
 import CharacterCard from '../components/characters/CharacterCard'; // Import CharacterCard
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ConfirmationModal from '../components/modals/ConfirmationModal'; // Assuming a generic confirmation modal exists
@@ -18,6 +19,7 @@ const CharacterListPage: React.FC = () => {
     const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
     const [characterToDelete, setCharacterToDelete] = useState<{ id: number; name: string } | null>(null);
     const [isDeleting, setIsDeleting] = useState<boolean>(false);
+    const navigate = useNavigate(); // Initialize useNavigate
 
     const fetchCharacters = useCallback(async () => {
         setLoading(true);
@@ -81,9 +83,9 @@ const CharacterListPage: React.FC = () => {
         <div className="container mt-3 character-list-page">
             <div className="page-header mb-4">
                 <h1>Your Characters</h1>
-                <Link to="/characters/new" className="btn btn-primary">
-                    Create New Character
-                </Link>
+                <Button variant="primary" onClick={() => navigate('/characters/new')}>
+                    + Create New Character
+                </Button>
             </div>
 
             {error && <AlertMessage type="error" message={error} onClose={() => setError(null)} />}

@@ -48,6 +48,12 @@
   margin-right: 10px; /* Or use theme spacing variable */
   border: 1px solid var(--border-color-light, #eee);
   flex-shrink: 0;
+  transition: transform 0.2s ease-in-out; /* Add transition for smooth pop */
+}
+
+/* The Card component itself is interactive, this targets the badge image inside */
+.campaign-card:hover .campaign-card-badge-image {
+  transform: scale(1.08); /* Pop effect for badge image */
 }
 
 .campaign-card-badge-placeholder {

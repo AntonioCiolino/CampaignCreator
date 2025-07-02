@@ -112,7 +112,7 @@ const DashboardPage: React.FC = () => {
         )}
       </section>
 
-      <hr className="section-divider" />
+      {/* <hr className="section-divider" />  Removed as per feedback */}
 
       <section className="dashboard-section">
          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -132,7 +132,7 @@ const DashboardPage: React.FC = () => {
           <div className="horizontal-scroll-section">
             {characters.map((character) => (
               <div key={character.id} className="scroll-item-wrapper">
-                <CharacterCard character={character} onDelete={handleDeleteCharacter} />
+                <CharacterCard character={character} onDelete={handleDeleteCharacter} showActions={false} />
               </div>
             ))}
           </div>

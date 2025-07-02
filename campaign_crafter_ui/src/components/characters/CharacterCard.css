@@ -20,8 +20,8 @@
     /* padding: 1rem; */ /* This padding was on the old character-card-link */
 }
 
-.character-card-link-content:hover .character-card-thumbnail { /* Keep thumbnail zoom on hover */
-    transform: scale(1.05);
+.character-card-link-content:hover .character-card-thumbnail { /* Thumbnail zoom on hover */
+    transform: scale(1.08); /* Increased pop effect */
 }
 
 .character-card-thumbnail-wrapper {
