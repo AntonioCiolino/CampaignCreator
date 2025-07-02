@@ -122,9 +122,10 @@ async def delete_campaign_endpoint(
     if db_campaign.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to delete this campaign")
 
-    deleted_campaign_orm = crud.delete_campaign(db=db, campaign_id=campaign_id)
-    if deleted_campaign_orm is None: # Should not happen if get_campaign found it
-        raise HTTPException(status_code=404, detail="Campaign not found during deletion attempt")
+    # crud.delete_campaign is now an async function and requires user_id
+    deleted_campaign_orm = await crud.delete_campaign(db=db, campaign_id=campaign_id, user_id=current_user.id)
+    if deleted_campaign_orm is None: # This check remains relevant
+        raise HTTPException(status_code=404, detail="Campaign not found during deletion attempt, or deletion failed.")
     return deleted_campaign_orm # FastAPI will convert ORM to Pydantic model
 
 # --- Campaign Files Endpoint ---

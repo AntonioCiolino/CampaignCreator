@@ -3,13 +3,15 @@ import React from 'react';
 // import { Link } from 'react-router-dom'; 
 import { Campaign } from '../types/campaignTypes'; // Corrected import path
 import Card from './common/Card'; // Import the new Card component
+import Button from './common/Button'; // Import Button
 import './CampaignCard.css'; // CSS for specific content styling within the card
 
 interface CampaignCardProps {
   campaign: Campaign;
+  onDelete: (campaignId: number, campaignTitle: string) => void;
 }
 
-const CampaignCard: React.FC<CampaignCardProps> = ({ campaign }) => {
+const CampaignCard: React.FC<CampaignCardProps> = ({ campaign, onDelete }) => {
   const conceptSnippet = campaign.concept ? `${campaign.concept.substring(0, 100)}...` : 'No concept yet.';
   const promptSnippet = campaign.initial_user_prompt ? `${campaign.initial_user_prompt.substring(0, 100)}...` : 'No initial prompt.';
 
@@ -60,6 +62,20 @@ const CampaignCard: React.FC<CampaignCardProps> = ({ campaign }) => {
             <p className="campaign-snippet">{conceptSnippet}</p> :
             <p className="campaign-snippet">{promptSnippet}</p>
           }
+          <div className="campaign-card-actions">
+            {/* Placeholder for other actions like Edit */}
+            <Button
+                variant="danger" // Or "outline-danger"
+                size="sm" // Make it a small button
+                onClick={(e) => {
+                    e.stopPropagation(); // Prevent card click navigation
+                    onDelete(campaign.id, campaign.title);
+                }}
+                aria-label={`Delete campaign ${campaign.title}`}
+            >
+                Delete
+            </Button>
+          </div>
         </div>
       </Card>
     </li>
