@@ -764,8 +764,8 @@ async def generate_character_aspect_text(
     elif request.aspect_to_generate == "appearance_description":
         if request.existing_description:
             context_info.append(f"Current Description: {request.existing_description}")
-        # Modified prompt for succinctness
-        prompt_parts.append(f"Generate a succinct (1-2 sentences) but vivid physical appearance description for the character, focusing on key distinguishing features.")
+        # Updated prompt for more specific visual appearance
+        prompt_parts.append(f"Describe the character's physical appearance in 1-2 sentences. Focus only on what can be visually observed: their build, facial features, clothing, gear, and any distinguishing marks or items they carry. What does this character look like?")
     elif request.aspect_to_generate == "backstory_snippet":
         if request.existing_description:
             context_info.append(f"Current Description: {request.existing_description}")
