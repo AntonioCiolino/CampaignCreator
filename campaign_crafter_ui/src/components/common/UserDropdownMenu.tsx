@@ -77,8 +77,7 @@ const UserDropdownMenu: React.FC<UserDropdownMenuProps> = ({ user, onLogout, add
             </Link>
           </li>
 
-          {/* Separator 2: After My Characters, always present before the next block (additional or settings) */}
-          <li className="dropdown-separator" role="separator"><hr /></li>
+          {/* Separator removed from here. The next separator will be conditional based on additionalNavItems or before My Settings block */}
 
           {/* Render Additional Nav Items */}
           {additionalNavItems.map((item, index) => (
