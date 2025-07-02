@@ -213,67 +213,58 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
         finalPrompt = `Generate content based on the following context: ${contextText}`;
       }
 
-      const params: LLMTextGenerationParams = {
-        prompt: finalPrompt,
-        model_id_with_prefix: null, // Use default model
-        // Add any other params like max_tokens, temperature if needed
+      // The `finalPrompt` (selected feature template, e.g. "Section Content") is NOT directly sent.
+      // Instead, `contextText` (editor content) is sent as `new_prompt` to the regenerate endpoint.
+      // The backend's regenerate endpoint will use its default logic for "Section Content" generation,
+      // incorporating this `new_prompt` as the specific instruction.
 
-        // Add campaign context
-        campaign_id: Number(campaignId),
-        section_title_suggestion: section.title || 'Untitled Section',
-        section_type: section.type || 'generic',
-        section_creation_prompt: contextText, // Pass editor content as specific instructions
+      if (!section.id) {
+        setContentGenerationError("Section ID is missing. Cannot regenerate content for an unsaved section view.");
+        setIsGeneratingContent(false);
+        return;
+      }
+
+      const regeneratePayload: SectionRegeneratePayload = {
+        new_prompt: contextText, // This is the specific instruction from the editor (Quill content)
+                                 // This will be used as `section_creation_prompt` by the backend's `generate_section_content`
+        new_title: section.title || undefined, // Use current section's title (optional for backend)
+        section_type: section.type || undefined, // Use current section's type (optional for backend)
+        model_id_with_prefix: null, // Or selected model if UI allows choosing one for regeneration
+                                    // If null, backend will use campaign's default or system default
       };
 
-      const response = await generateTextLLM(params);
-      const generatedText = response.text; // Changed generated_text to text
+      // The `selectedFeature.template` (which is `finalPrompt` if a feature is selected from dropdown)
+      // is NOT explicitly sent here. The backend's `regenerateCampaignSection` endpoint
+      // implies it will use the standard "Section Content" template logic by default
+      // when it calls `generate_section_content`.
+      // If `finalPrompt` (the template string from the selected feature) was *different*
+      // from the standard "Section Content" template, and we wanted to use *that specific template*
+      // for regeneration, the backend regenerate endpoint would need to accept a `template_override` parameter.
+      // For now, we assume regeneration uses the default "Section Content" template logic, guided by `new_prompt`.
+
+      const updatedSection = await campaignService.regenerateCampaignSection(Number(campaignId), section.id, regeneratePayload);
+      const generatedText = updatedSection.content; // Content is now part of the updated section
 
       if (quillInstance) {
-        // initialSelectionRange was captured at the beginning of the function.
-        // We use it to decide the mode of operation (insert after selection, or append to end).
-
-        if (initialSelectionRange && initialSelectionRange.length > 0) {
-          // Insert generated text AFTER the selected text
-          const insertionPoint = initialSelectionRange.index + initialSelectionRange.length;
-          const textToInsert = " " + generatedText; // Prepend with a space
-
-          quillInstance.insertText(insertionPoint, textToInsert, 'user');
-          // Set cursor to the end of the newly inserted text
-          quillInstance.setSelection(insertionPoint + textToInsert.length, 0, 'user');
-        } else {
-          // No initial selection, so insert at the current cursor position
-          const currentCursorSelection = quillInstance.getSelection(); // Get current cursor
-          let insertionPoint = currentCursorSelection ? currentCursorSelection.index : (quillInstance.getLength() -1);
-          // Ensure insertionPoint is not negative if getLength() was 0 or 1.
-          if (insertionPoint < 0) insertionPoint = 0;
-
-          // For inserting at cursor, we might not need a leading newline by default,
-          // unless cursor is at the very start of an empty line or end of doc.
-          // For simplicity now, just insert the text. User can add spaces/newlines.
-          // const textToInsert = generatedText;
-          // Consider adding a space if the preceding character isn't a space, similar to random item insertion.
-          let textToInsert = generatedText;
-          if (insertionPoint > 0) {
-            const textBefore = quillInstance.getText(insertionPoint - 1, 1);
-            if (textBefore !== ' ' && textBefore !== '\n') {
-              textToInsert = " " + generatedText;
-            }
-          }
-
-          quillInstance.insertText(insertionPoint, textToInsert, 'user');
-          // Move cursor to the end of the inserted text
-          quillInstance.setSelection(insertionPoint + textToInsert.length, 0, 'user');
-        }
-        setEditedContent(quillInstance.root.innerHTML);
+        // For regeneration, replace the entire content of the editor.
+        const delta = quillInstance.clipboard.convert(generatedText); // Convert HTML/text to Delta
+        quillInstance.setContents(delta, 'user'); // Set content using Delta
+        setEditedContent(quillInstance.root.innerHTML); // Update state from Quill
+        onSectionUpdated(updatedSection); // Notify parent
       } else {
-        // Fallback: Append to editedContent state
-        // This won't handle replacing selected text if quillInstance was initially null.
-        setEditedContent(prev => prev + "\n" + generatedText);
+        // Fallback for non-Quill (should ideally not happen in edit mode)
+        setEditedContent(generatedText);
+        onSectionUpdated(updatedSection);
       }
 
     } catch (error) {
       console.error("Failed to generate content:", error);
-      setContentGenerationError('Failed to generate content. An error occurred.');
+      // Ensure error is an instance of Error before accessing message
+      if (error instanceof Error) {
+        setContentGenerationError(`Failed to generate content: ${error.message}`);
+      } else {
+        setContentGenerationError('Failed to generate content. An unknown error occurred.');
+      }
     } finally {
       setIsGeneratingContent(false);
     }

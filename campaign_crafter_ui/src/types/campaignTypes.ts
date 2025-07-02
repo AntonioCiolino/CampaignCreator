@@ -103,8 +103,9 @@ export interface CampaignSectionUpdatePayload {
 
 export interface CampaignSectionCreatePayload {
   title?: string | null;
-  prompt?: string | null;
+  prompt?: string | null; // This will map to the backend's section_creation_prompt for the LLM
   model_id_with_prefix?: string | null;
+  type?: string | null; // Added to align with backend CampaignSectionCreateInput
 }
 
 export interface PrepareHomebreweryPostResponse {

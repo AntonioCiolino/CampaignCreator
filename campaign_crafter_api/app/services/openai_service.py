@@ -420,13 +420,20 @@ class OpenAILLMService(AbstractLLMService):
             {"role": "user", "content": final_prompt_for_user_role}
         ]
 
-        # --- DEBUG LOGGING ---
-        print(f"--- DEBUG PROMPT START ({self.PROVIDER_NAME} - Section Content) ---")
-        print("System Message:")
+        # --- DEBUG LOGGING for generate_section_content ---
+        print(f"--- DEBUG PROMPT START ({self.PROVIDER_NAME} - generate_section_content) ---")
+        print(f"Campaign ID: {db_campaign.id}, Model: {selected_model}")
+        print(f"Section Title Suggestion: {section_title_suggestion}")
+        print(f"Section Type: {section_type}")
+        print(f"Section Creation Prompt (effective_section_prompt): {effective_section_prompt[:300]}...")
+        print(f"Campaign Concept: {campaign_concept[:300]}...")
+        print(f"Characters: {campaign_characters_formatted[:300]}...")
+        print(f"Existing Sections Summary: {existing_sections_summary[:300] if existing_sections_summary else 'N/A'}...")
+        print("\nFinal System Message:")
         print(system_message_content)
-        print("\nUser Message (Final Prompt):")
+        print("\nFinal User Role Prompt:")
         print(final_prompt_for_user_role)
-        print(f"--- DEBUG PROMPT END ({self.PROVIDER_NAME} - Section Content) ---")
+        print(f"--- DEBUG PROMPT END ({self.PROVIDER_NAME} - generate_section_content) ---")
         # --- END DEBUG LOGGING ---
 
         return await self._perform_chat_completion(selected_model, messages, temperature=0.7, max_tokens=1500)
