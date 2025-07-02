@@ -128,6 +128,9 @@ const CharacterDetailPage: React.FC = () => {
       // Optional: const [chatPanelWidth, setChatPanelWidth] = useState<number>(350);
     const [chatHistory, setChatHistory] = useState<Array<CharacterChatMessage>>([]);
 
+    // State for LLM Notes visibility
+    const [showLlmNotes, setShowLlmNotes] = useState<boolean>(true); // Default to shown
+
     // DND Kit Sensors
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -500,6 +503,32 @@ const CharacterDetailPage: React.FC = () => {
                         </div>
                     </div>
 
+                    {/* "Notes for LLM" moved here, after Stats */}
+                    {character.notes_for_llm && (
+                        <div className="card data-card mb-3">
+                            <div className="card-header d-flex justify-content-between align-items-center">
+                                Notes for LLM
+                                <button
+                                    className="btn btn-sm btn-outline-secondary"
+                                    onClick={() => setShowLlmNotes(!showLlmNotes)}
+                                    title={showLlmNotes ? "Hide Notes" : "Show Notes"}
+                                >
+                                    {showLlmNotes ? <i className="bi bi-eye-slash-fill"></i> : <i className="bi bi-eye-fill"></i>}
+                                </button>
+                            </div>
+                            {showLlmNotes && (
+                                <div className="card-body">
+                                    <p className="card-text pre-wrap">{character.notes_for_llm}</p>
+                                </div>
+                            )}
+                            {!showLlmNotes && (
+                                <div className="card-body text-muted small">
+                                    (Notes are hidden)
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {character.description && (
                         <div className="card data-card mb-3">
                             <div className="card-header">Description</div>
@@ -514,15 +543,6 @@ const CharacterDetailPage: React.FC = () => {
                             <div className="card-header">Appearance</div>
                             <div className="card-body">
                                 <p className="card-text pre-wrap">{character.appearance_description}</p>
-                            </div>
-                        </div>
-                    )}
-
-                    {character.notes_for_llm && (
-                        <div className="card data-card mb-3">
-                            <div className="card-header">Notes for LLM</div>
-                            <div className="card-body">
-                                <p className="card-text pre-wrap">{character.notes_for_llm}</p>
                             </div>
                         </div>
                     )}
