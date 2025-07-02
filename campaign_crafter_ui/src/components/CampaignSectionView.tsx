@@ -92,11 +92,33 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   const [isImageGenerationModalOpen, setIsImageGenerationModalOpen] = useState<boolean>(false);
   const [isGeneratingContent, setIsGeneratingContent] = useState<boolean>(false);
   const [contentGenerationError, setContentGenerationError] = useState<string | null>(null);
-  const [features, setFeatures] = useState<Feature[]>([]);
-  const [selectedFeatureId, setSelectedFeatureId] = useState<string>("");
+  const [features, setFeatures] = useState<Feature[]>([]); // All available features
+  const [selectedFeatureId, setSelectedFeatureId] = useState<string>(""); // Stores the ID of the selected feature
   const [featureFetchError, setFeatureFetchError] = useState<string | null>(null);
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [regenerateError, setRegenerateError] = useState<string | null>(null);
+
+  // Filter features based on the current section type
+  const filteredFeatures = React.useMemo(() => {
+    if (!section.type || features.length === 0) {
+      return features; // Return all features if no type or no features loaded
+    }
+    const currentTypeLower = section.type.toLowerCase();
+    return features.filter(feature => {
+      if (!feature.compatible_types || feature.compatible_types.length === 0) {
+        return true; // Feature is compatible with all types
+      }
+      // Check if any of the feature's compatible types match the current section type (case-insensitive)
+      return feature.compatible_types.some(ct => ct.toLowerCase() === currentTypeLower);
+    });
+  }, [features, section.type]);
+
+  // Effect to reset selectedFeatureId if it's no longer in filteredFeatures
+  useEffect(() => {
+    if (selectedFeatureId && !filteredFeatures.find(f => f.id.toString() === selectedFeatureId)) {
+      setSelectedFeatureId(""); // Reset if current selection is filtered out
+    }
+  }, [selectedFeatureId, filteredFeatures]);
   const [isTableRollerVisible, setIsTableRollerVisible] = useState<boolean>(false); // State for table roller visibility
   // Removed imageData state and imageIdCounter ref
 
@@ -178,61 +200,75 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   const handleGenerateContent = async () => {
     setIsGeneratingContent(true);
     setContentGenerationError(null);
-    let initialSelectionRange: QuillRange | null = null; // Use QuillRange
+    let initialSelectionRange: QuillRange | null = null;
 
     try {
-      let contextText = '';
+      let editorSelectionText = '';
       if (quillInstance) {
         initialSelectionRange = quillInstance.getSelection();
         if (initialSelectionRange && initialSelectionRange.length > 0) {
-          contextText = quillInstance.getText(initialSelectionRange.index, initialSelectionRange.length);
+          editorSelectionText = quillInstance.getText(initialSelectionRange.index, initialSelectionRange.length);
         } else {
-          // Get all text if no selection, but trim it to avoid overly long contexts.
-          // Or consider a configurable max context length.
           const fullText = quillInstance.getText();
-          contextText = fullText.substring(0, 2000); // Limit context length
+          editorSelectionText = fullText.substring(0, 2000); // Limit context if no selection
         }
       } else {
-        contextText = editedContent.substring(0, 2000); // Fallback and limit
+        editorSelectionText = editedContent.substring(0, 2000); // Fallback
       }
 
-      // The `finalPrompt` variable and its logic related to `selectedFeatureId` have been removed.
-      // `contextText` (editor content) is now directly used as `new_prompt`.
-      // If feature selection should still influence the `new_prompt` (e.g., by prepending feature template content to `contextText`),
-      // that logic would need to be re-introduced here, acting on `contextText`.
-      // For now, `contextText` is the sole source for `new_prompt`.
-
-      // The `selectedFeature.template` (which was `finalPrompt` if a feature is selected from dropdown)
-      // is NOT explicitly sent here. The backend's `regenerateCampaignSection` endpoint
-      // implies it will use the standard "Section Content" template logic by default
-      // incorporating this `new_prompt` as the specific instruction.
-
       if (!section.id) {
-        setContentGenerationError("Section ID is missing. Cannot regenerate content for an unsaved section view.");
+        setContentGenerationError("Section ID is missing. Cannot generate content.");
         setIsGeneratingContent(false);
         return;
       }
 
+      const selectedFeature = features.find(f => f.id.toString() === selectedFeatureId);
+      let contextDataForBackend: { [key: string]: any } = {};
+      let featureIdForBackend: number | undefined = undefined;
+
+      if (selectedFeature) {
+        featureIdForBackend = selectedFeature.id;
+        // Prepare context_data (actual data fetching will be more complex)
+        if (selectedFeature.required_context) {
+          selectedFeature.required_context.forEach(key => {
+            // Placeholder: actual data fetching logic will be needed here
+            // For example, if key is 'campaign_concept', we'd need to get it from props or a context
+            if (key === 'selected_text') {
+              contextDataForBackend[key] = editorSelectionText;
+            } else if (key === 'npc_name' && section.type === 'NPC' && section.title) {
+              contextDataForBackend[key] = section.title; // Assuming NPC name is section title
+            } else if (key === 'location_name' && section.type === 'Location' && section.title) {
+              contextDataForBackend[key] = section.title; // Assuming Location name is section title
+            } else if (key === 'quest_title' && section.type === 'Quest' && section.title) {
+              contextDataForBackend[key] = section.title;
+            } else {
+              // For other keys like 'campaign_concept', 'campaign_characters', 'existing_sections_summary'
+              // we'll need to pass this data down or fetch it.
+              // For now, we'll log that it's needed.
+              console.log(`Context key '${key}' for feature '${selectedFeature.name}' would need to be fetched.`);
+              contextDataForBackend[key] = `{${key}_placeholder}`; // Send placeholder
+            }
+          });
+        }
+        // If the feature template itself is simple and only needs the selected text,
+        // new_prompt might still be the template with {selected_text} replaced.
+        // However, the plan is to let backend handle template filling using context_data.
+        // So, new_prompt should primarily be the editor's selected text or full content.
+      }
+
       const regeneratePayload: SectionRegeneratePayload = {
-        new_prompt: contextText, // This is the specific instruction from the editor (Quill content)
-                                 // This will be used as `section_creation_prompt` by the backend's `generate_section_content`
-        new_title: section.title || undefined, // Use current section's title (optional for backend)
-        section_type: section.type || undefined, // Use current section's type (optional for backend)
-        model_id_with_prefix: undefined, // Changed from null to undefined
-                                    // If undefined, backend will use campaign's default or system default
+        new_prompt: editorSelectionText, // Primary input from the editor
+        new_title: section.title || undefined,
+        section_type: section.type || undefined,
+        model_id_with_prefix: undefined, // Backend handles default
+        feature_id: featureIdForBackend,
+        context_data: contextDataForBackend,
       };
 
-      // The `selectedFeature.template` (which is `finalPrompt` if a feature is selected from dropdown)
-      // is NOT explicitly sent here. The backend's `regenerateCampaignSection` endpoint
-      // implies it will use the standard "Section Content" template logic by default
-      // when it calls `generate_section_content`.
-      // If `finalPrompt` (the template string from the selected feature) was *different*
-      // from the standard "Section Content" template, and we wanted to use *that specific template*
-      // for regeneration, the backend regenerate endpoint would need to accept a `template_override` parameter.
-      // For now, we assume regeneration uses the default "Section Content" template logic, guided by `new_prompt`.
+      console.log("Regenerate Payload:", regeneratePayload); // For debugging
 
       const updatedSection = await campaignService.regenerateCampaignSection(Number(campaignId), section.id, regeneratePayload);
-      const generatedText = updatedSection.content; // Content is now part of the updated section
+      const generatedText = updatedSection.content;
 
       if (quillInstance) {
         // For regeneration, replace the entire content of the editor.
@@ -402,21 +438,27 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
           {onSectionTypeUpdate && ( // Only show if handler is provided
             <div style={{ padding: '5px 10px', display: 'flex', alignItems: 'center', backgroundColor: '#f9f9f9' }}>
               <label htmlFor={`section-type-${section.id}`} style={{ marginRight: '8px', fontSize: '0.9em', fontWeight: 'bold' }}>Type:</label>
-              <input
+              <select
                 id={`section-type-${section.id}`}
-                type="text"
-                value={section.type || ''}
+                value={section.type || 'Generic'} // Default to 'Generic' if type is undefined
                 onChange={(e) => onSectionTypeUpdate(section.id, e.target.value)}
-                placeholder="e.g., NPC, Location, Quest"
-                title="Defines the category of the section (e.g., NPC, Location, Quest, Item, Monster, Chapter, Note, Generic). This helps in organizing and can assist AI content generation."
+                title="Defines the category of the section. This helps in organizing and can assist AI content generation."
                 style={{
                   flexGrow: 1,
                   padding: '6px 10px',
                   border: '1px solid #ccc',
                   borderRadius: '4px',
-                  fontSize: '0.9em'
+                  fontSize: '0.9em',
+                  height: '38px', // Match feature dropdown height
+                  boxSizing: 'border-box',
                 }}
-              />
+              >
+                {['NPC', 'Character', 'Location', 'Item', 'Quest', 'Monster', 'Chapter', 'Note', 'World Detail', 'Generic'].map(typeOption => (
+                  <option key={typeOption} value={typeOption}>
+                    {typeOption}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 
@@ -454,23 +496,29 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                 <Button onClick={handleSave} className="editor-button" disabled={isSaving || isGeneratingContent}>
                   {isSaving ? 'Saving...' : 'Save Content'}
                 </Button>
+                {/* Feature selector moved here, before Generate Content button */}
                 {isEditing && (
                   <div className="feature-selector-group" style={{ marginRight: '10px', display: 'inline-block', verticalAlign: 'middle' }}>
                     <select
                       value={selectedFeatureId}
                       onChange={(e) => setSelectedFeatureId(e.target.value)}
-                      disabled={isGeneratingContent || isSaving || features.length === 0}
+                      disabled={isGeneratingContent || isSaving || filteredFeatures.length === 0}
                       style={{ padding: '8px 12px', borderRadius: '4px', border: '1px solid #ccc', height: '38px', boxSizing: 'border-box' }}
-                      title={features.length === 0 && !featureFetchError ? "Loading features..." : (featureFetchError ? "Error loading features" : "Select a feature to guide content generation")}
+                      title={filteredFeatures.length === 0 && !featureFetchError ? (features.length === 0 ? "Loading features..." : "No features compatible with this section type.") : (featureFetchError ? "Error loading features" : "Select a feature to guide content generation")}
                     >
                       <option value="">-- No Specific Feature --</option>
-                      {features.map(feature => (
+                      {filteredFeatures.map(feature => (
                         <option key={feature.id} value={feature.id}>
                           {feature.name}
                         </option>
                       ))}
                     </select>
                     {featureFetchError && <p className="error-message" style={{fontSize: '0.8em', color: 'red', marginTop: '2px'}}>{featureFetchError}</p>}
+                    { selectedFeatureId && filteredFeatures.find(f => f.id.toString() === selectedFeatureId)?.required_context && filteredFeatures.find(f => f.id.toString() === selectedFeatureId)!.required_context!.length > 0 && (
+                      <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'text.secondary', fontSize: '0.75rem' }}>
+                        Requires: {filteredFeatures.find(f => f.id.toString() === selectedFeatureId)!.required_context!.join(', ')}
+                      </Typography>
+                    )}
                   </div>
                 )}
                 <Button
@@ -508,6 +556,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                 >
                   Edit Section Content
                 </Button>
+                {/* Regenerate button hidden as per requirements
                 <Button
                   size="sm"
                   variant="secondary"
@@ -518,6 +567,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                   {isRegenerating && <LoadingSpinner />}
                   <span>{isRegenerating ? 'Regenerating...' : 'Regenerate'}</span>
                 </Button>
+                */}
                 <Button
                   onClick={() => onDelete(section.id)}
                   variant="danger"

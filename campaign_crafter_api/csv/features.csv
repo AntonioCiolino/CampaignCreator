@@ -1,4 +1,5 @@
-Campaign,"Create a campaign based on the following concepts: {user_prompt}###"
+Name,Template,RequiredContext,CompatibleTypes
+Campaign,"Create a campaign based on the following concepts: {user_prompt}###",user_prompt,""
 TOC Homebrewery,"Based on the following list of campaign section titles (in order), generate a detailed Table of Contents suitable for an RPG campaign book strictly following Homebrewery Markdown formatting. Use 'PAGENUM' as a placeholder for all page numbers, like '{{PAGENUM}}' and '(#pPAGENUM)'.
 
 The structure should be:
@@ -11,7 +12,7 @@ The structure should be:
 End the Table of Contents with }}}}
 
 Current Campaign Sections (titles, in order):
-{sections_summary}"
+{sections_summary}",sections_summary,""
 TOC Display,"Based on the campaign concept provided below, generate a user-friendly Table of Contents for on-screen display.
 For each suggested section title, also determine its most appropriate type from the following list:
 [monster, character, npc, location, item, quest, chapter, note, world_detail, generic].
@@ -28,37 +29,18 @@ For example:
 Focus on clear section titles. Subsections can be nested with indentation if appropriate, following the same format.
 
 Campaign Concept:
-{campaign_concept}"
-Campaign Names,"Based on the campaign concept: {campaign_concept}, generate {count} alternative, catchy campaign titles. Use sensory language and hyperbole and metaphor. List each title on a new line."
-Unused, "-- All of these following are currently unused --"
-Simile,"create a Simile from the following sentence:
-{}"
----
-Metaphor,"create a Metaphor from the following sentence:
-{}"
----
-Hyperbole,"create a Hyperbole from the following sentence:
-{}"
----
-Summarize,"Summarize the following:
----
-{}
----
-Rewritten as a summary:"
-Allegory,"create a Allegory from the following sentence:
-{}"
----
-Stanza,"create a stanza from the following sentence:
-{}"
----
-Thought,"create a thought from the following sentence:
-{}"
----
-Idea,"create a idea from the following sentence:
-{}"
----
-Proposal,"create a proposal from the following sentence:
-{}"
----
-Dialogue,"Generate a dialogue between characters.
-{}"
+{campaign_concept}",campaign_concept,""
+Campaign Names,"Based on the campaign concept: {campaign_concept}, generate {count} alternative, catchy campaign titles. Use sensory language and hyperbole and metaphor. List each title on a new line.",campaign_concept;count,""
+Generate NPC Details,"Flesh out the details for an NPC named {npc_name} including their motivations, appearance, and potential plot hooks. Consider the overall {campaign_concept} and existing characters: {campaign_characters}. You can also use {existing_sections_summary} for context.","npc_name;campaign_concept;campaign_characters;existing_sections_summary","NPC;Character"
+Describe Location,"Provide a vivid description of {location_name}. What does it look like, sound like, smell like? What is its atmosphere? Consider the {campaign_concept}.","location_name;campaign_concept","Location;World Detail"
+Create Quest Outline,"Outline a quest titled '{quest_title}' that fits within the {campaign_concept}. Detail the main objectives, key NPCs involved ({campaign_characters}), and potential rewards.","quest_title;campaign_concept;campaign_characters","Quest;Chapter"
+Simile,"Create a Simile from the following sentence: {selected_text}",selected_text,"Generic;Note"
+Metaphor,"Create a Metaphor from the following sentence: {selected_text}",selected_text,"Generic;Note"
+Hyperbole,"Create a Hyperbole from the following sentence: {selected_text}",selected_text,"Generic;Note"
+Summarize,"Summarize the following: {selected_text}",selected_text,"Generic;Note"
+Allegory,"Create an Allegory from the following sentence: {selected_text}",selected_text,"Generic;Note"
+Stanza,"Create a stanza from the following sentence: {selected_text}",selected_text,"Generic;Note"
+Thought,"Create a thought from the following sentence: {selected_text}",selected_text,"Generic;Note"
+Idea,"Create an idea from the following sentence: {selected_text}",selected_text,"Generic;Note"
+Proposal,"Create a proposal from the following sentence: {selected_text}",selected_text,"Generic;Note"
+Dialogue,"Generate a dialogue between characters based on this prompt: {selected_text}. Consider existing characters: {campaign_characters}",selected_text;campaign_characters,"Generic;Note;NPC;Character"

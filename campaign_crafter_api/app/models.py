@@ -232,6 +232,8 @@ class FeatureBase(BaseModel):
     name: str
     template: str
     user_id: Optional[int] = None
+    required_context: Optional[List[str]] = None  # New field for required context keys
+    compatible_types: Optional[List[str]] = None # New field for compatible section types
 
 class FeatureCreate(FeatureBase):
     pass
@@ -239,6 +241,8 @@ class FeatureCreate(FeatureBase):
 class FeatureUpdate(FeatureBase):
     name: Optional[str] = None
     template: Optional[str] = None
+    required_context: Optional[List[str]] = None
+    compatible_types: Optional[List[str]] = None
 
 class Feature(FeatureBase):
     id: int

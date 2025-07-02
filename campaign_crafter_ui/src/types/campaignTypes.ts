@@ -140,8 +140,10 @@ export interface SeedSectionsCallbacks {
 }
 
 export interface SectionRegeneratePayload {
-  new_prompt?: string;
-  new_title?: string;
-  section_type?: string;
-  model_id_with_prefix?: string;
+  new_prompt?: string; // This will be the selected text or full content from editor
+  new_title?: string; // Current section title
+  section_type?: string; // Current section type
+  model_id_with_prefix?: string; // LLM model to use
+  feature_id?: number; // ID of the selected feature to guide generation
+  context_data?: { [key: string]: any }; // Additional context data required by the feature
 }

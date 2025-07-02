@@ -20,47 +20,73 @@ def seed_features(db: Session):
 
         with open(FEATURES_CSV_PATH, mode='r', encoding='utf-8') as csvfile:
             reader = csv.reader(csvfile)
-            header = next(reader, None) 
-            if not header or len(header) < 2:
-                print("ERROR: Invalid CSV header for features. Expected at least 'Feature Name' and 'Template'.")
+            header = next(reader, None)
+            if not header or len(header) < 4: # Expect Name, Template, RequiredContext, CompatibleTypes
+                print("ERROR: Invalid CSV header for features. Expected 'Name', 'Template', 'RequiredContext', 'CompatibleTypes'.")
                 return
             
+            name_idx, template_idx, context_idx, types_idx = header.index("Name"), header.index("Template"), header.index("RequiredContext"), header.index("CompatibleTypes")
+
             processed_count = 0
             created_count = 0
-            updated_count = 0 # Initialize updated_count
+            updated_count = 0
             skipped_malformed = 0
             for row_num, row in enumerate(reader, 1):
                 processed_count += 1
-                if len(row) < 2:
-                    print(f"Skipping malformed row {row_num} in features.csv: Insufficient columns. Content: {row}")
+                if len(row) < 4:
+                    print(f"Skipping malformed row {row_num} in features.csv: Insufficient columns. Expected 4, got {len(row)}. Content: {row}")
                     skipped_malformed +=1
                     continue
                 
-                feature_name, feature_template = row[0].strip(), row[1].strip()
+                feature_name = row[name_idx].strip()
+                feature_template = row[template_idx].strip()
+                required_context_str = row[context_idx].strip()
+                compatible_types_str = row[types_idx].strip()
 
                 if not feature_name or not feature_template:
                     print(f"Skipping row {row_num} in features.csv: Empty name or template. Content: {row}")
                     skipped_malformed +=1
                     continue
 
+                required_context_list = [ctx.strip() for ctx in required_context_str.split(';') if ctx.strip()] if required_context_str else []
+                compatible_types_list = [ctype.strip() for ctype in compatible_types_str.split(';') if ctype.strip()] if compatible_types_str else []
+
                 existing_feature = crud.get_feature_by_name(db, name=feature_name)
+                feature_data_dict = {
+                    "name": feature_name,
+                    "template": feature_template,
+                    "required_context": required_context_list,
+                    "compatible_types": compatible_types_list
+                }
+
                 if existing_feature:
+                    needs_update = False
                     if existing_feature.template != feature_template:
-                        print(f"Feature '{feature_name}' already exists. Updating template.")
                         existing_feature.template = feature_template
+                        needs_update = True
+                    if existing_feature.required_context != required_context_list: # Assuming ORM model stores it as list or JSON that compares well
+                        existing_feature.required_context = required_context_list
+                        needs_update = True
+                    if existing_feature.compatible_types != compatible_types_list:
+                        existing_feature.compatible_types = compatible_types_list
+                        needs_update = True
+
+                    if needs_update:
+                        print(f"Feature '{feature_name}' already exists. Updating fields.")
                         db.add(existing_feature) # Stage the change for commit
                         updated_count += 1
                     else:
-                        print(f"Feature '{feature_name}' already exists and template is identical. Skipping update.")
+                        print(f"Feature '{feature_name}' already exists and fields are identical. Skipping update.")
                 else:
-                    feature_data = models.FeatureCreate(name=feature_name, template=feature_template)
-                    crud.create_feature(db, feature=feature_data)
+                    feature_create_obj = models.FeatureCreate(**feature_data_dict)
+                    crud.create_feature(db, feature=feature_create_obj)
                     created_count += 1
-                    print(f"Created feature: '{feature_name}'")
+                    print(f"Created feature: '{feature_name}' with context: {required_context_list} and types: {compatible_types_list}")
+
         print(f"--- Feature Seeding Finished ---")
         print(f"Processed {processed_count} data rows. Created {created_count} new features. Updated {updated_count} existing features. Skipped {skipped_malformed} malformed rows.")
 
-    except FileNotFoundError: # More specific error handling
+    except FileNotFoundError:
         print(f"ERROR: Features CSV file not found at {FEATURES_CSV_PATH}. Please ensure the file exists.")
     except Exception as e:
         print(f"An error occurred during feature seeding: {e}")

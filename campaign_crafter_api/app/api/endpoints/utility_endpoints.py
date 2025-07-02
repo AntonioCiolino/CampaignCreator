@@ -3,10 +3,14 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from app.db import get_db
 
-from app import models
-from app.models import FeaturePromptItem, FeaturePromptListResponse
+from app import models # Keep this for other models if used
+# Explicitly import Feature related Pydantic models from app.models
+from app.models import Feature as PydanticFeature, FeatureCreate, FeatureUpdate # Using PydanticFeature to avoid conflict with ORM Feature
 from app.services.random_table_service import RandomTableService, TableNotFoundError
 from app.services.feature_prompt_service import FeaturePromptService
+# No, the FeaturePromptItem and FeaturePromptListResponse are fine for the response.
+# The `models.Feature` Pydantic model is what we need to return, not FeaturePromptItem.
+# Let's adjust the response model of the list_feature_prompts endpoint.
 
 router = APIRouter()
 
@@ -20,7 +24,6 @@ async def list_random_table_names(db: Annotated[Session, Depends(get_db)]):
         table_names = random_table_service.get_available_table_names(db=db)
         return models.TableNameListResponse(table_names=table_names)
     except Exception as e:
-        # Catch-all for unexpected errors during service operation (e.g., if CSV was malformed beyond _load_tables handling)
         print(f"Error listing random table names: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve list of random tables due to an internal error.")
 
@@ -35,25 +38,38 @@ async def get_random_table_item(table_name: str, db: Annotated[Session, Depends(
         print(f"Error getting random item from table '{table_name}': {e}")
         raise HTTPException(status_code=500, detail=f"Failed to retrieve item from table '{table_name}' due to an internal error.")
 
-@router.get("/features", response_model=FeaturePromptListResponse, tags=["Utilities"])
-async def list_feature_prompts(db: Annotated[Session, Depends(get_db)]):
+# The response model should be a list of the Pydantic Feature model
+@router.get("/features", response_model=List[PydanticFeature], tags=["Utilities"])
+async def list_features(db: Annotated[Session, Depends(get_db)]): # Renamed function for clarity
     try:
-        db_features = feature_prompt_service.get_all_features(db=db)
-        feature_items = [FeaturePromptItem(name=feature.name, template=feature.template) for feature in db_features]
-        return FeaturePromptListResponse(features=feature_items)
+        # feature_prompt_service.get_all_features(db) returns List[orm_models.Feature]
+        # These ORM objects will be automatically converted to List[PydanticFeature]
+        # by FastAPI because the response_model is List[PydanticFeature] and PydanticFeature.Config.from_attributes = True
+        db_features_orm = feature_prompt_service.get_all_features(db=db)
+        return db_features_orm # FastAPI handles the conversion
     except Exception as e:
-        print(f"Error listing feature prompts: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve list of feature prompts due to an internal error.")
+        print(f"Error listing features: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve list of features due to an internal error.")
 
-@router.get("/features/{feature_name}", response_model=FeaturePromptItem, tags=["Utilities"])
-async def get_feature_prompt(feature_name: str, db: Annotated[Session, Depends(get_db)]):
+@router.get("/features/{feature_name}", response_model=PydanticFeature, tags=["Utilities"])
+async def get_feature(feature_name: str, db: Annotated[Session, Depends(get_db)]): # Renamed function
     try:
-        prompt_template = feature_prompt_service.get_prompt(feature_name, db=db)
-        if prompt_template is None:
-            raise HTTPException(status_code=404, detail=f"Feature prompt '{feature_name}' not found.")
-        return FeaturePromptItem(name=feature_name, template=prompt_template)
+        # crud.get_feature_by_name returns an orm_models.Feature or None
+        db_feature_orm = feature_prompt_service.get_prompt(feature_name, db=db) # get_prompt actually returns the template string or None
+                                                                              # We need the full feature object.
+                                                                              # Let's use crud directly or add a method to service.
+
+        # Correct approach: get the full feature ORM object
+        from app import crud as main_crud # Alias to avoid confusion if crud is imported elsewhere in this file
+        db_feature_orm_full = main_crud.get_feature_by_name(db, name=feature_name)
+
+        if db_feature_orm_full is None:
+            raise HTTPException(status_code=404, detail=f"Feature '{feature_name}' not found.")
+
+        # FastAPI will convert db_feature_orm_full to PydanticFeature
+        return db_feature_orm_full
     except HTTPException as http_exc:
         raise http_exc
     except Exception as e:
-        print(f"Error getting feature prompt '{feature_name}': {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve feature prompt '{feature_name}' due to an internal error.")
+        print(f"Error getting feature '{feature_name}': {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve feature '{feature_name}' due to an internal error.")
