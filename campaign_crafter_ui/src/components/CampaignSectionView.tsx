@@ -438,7 +438,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
               {/* Toggle Button for RandomTableRoller */}
               <Button
                 onClick={() => setIsTableRollerVisible(!isTableRollerVisible)}
-                variant="outlined"
+                variant="outline-secondary"
                 size="sm"
                 style={{ marginTop: '10px', marginBottom: '5px' }}
               >
