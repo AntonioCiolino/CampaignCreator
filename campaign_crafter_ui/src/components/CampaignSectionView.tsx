@@ -612,7 +612,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                 {/* Snippet Feature Dropdown removed from here. Context menu will replace it. */}
 
                 <Button
-                  onClick={handleGenerateContent}
+                  onClick={() => handleGenerateContent()} // Changed to call without event arg
                   className="editor-button"
                   disabled={isGeneratingContent || isSaving}
                   style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
