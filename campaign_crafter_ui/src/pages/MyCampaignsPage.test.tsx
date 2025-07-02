@@ -21,8 +21,8 @@ const mockCampaignsData: Campaign[] = [
     selected_llm_id: 'openai/gpt-3.5-turbo',
     temperature: 0.7,
     // owner_id: 1, // Field removed
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    // created_at: new Date().toISOString(), // Field removed
+    // updated_at: new Date().toISOString(), // Field removed
     sections: [],
     mood_board_image_urls: [],
     theme_primary_color: null,
@@ -48,8 +48,8 @@ const mockCampaignsData: Campaign[] = [
     selected_llm_id: 'openai/gpt-4',
     temperature: 0.5,
     // owner_id: 1, // Field removed
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    // created_at: new Date().toISOString(), // Field removed
+    // updated_at: new Date().toISOString(), // Field removed
     sections: [],
     mood_board_image_urls: [],
     theme_primary_color: null,
