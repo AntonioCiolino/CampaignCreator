@@ -3,7 +3,7 @@ import re # Added import
 from typing import Optional, List, Dict, Any, AsyncGenerator
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from app import models # Added models import
+from app import models, orm_models # Added models import, Added orm_models import
 from app.models import User as UserModel
 from app.core.config import settings
 from app.services.llm_service import AbstractLLMService, LLMGenerationError
@@ -250,15 +250,16 @@ class LocalLLMService(AbstractLLMService):
 
     async def generate_section_content(
         self,
-        campaign_concept: str,
+        db_campaign: orm_models.Campaign, # Changed campaign_concept to db_campaign
         db: Session,
-        current_user: UserModel, # Added current_user
+        current_user: UserModel,
         existing_sections_summary: Optional[str],
         section_creation_prompt: Optional[str],
         section_title_suggestion: Optional[str],
         model: Optional[str] = None,
         section_type: Optional[str] = None
     ) -> str:
+        campaign_concept = db_campaign.concept if db_campaign else "A general creative writing piece."
         effective_section_prompt = section_creation_prompt
         type_based_instruction = ""
 
@@ -280,18 +281,52 @@ class LocalLLMService(AbstractLLMService):
         elif not effective_section_prompt:
             effective_section_prompt = "Continue the story logically, introducing new elements or developing existing ones."
 
+        # --- Character Information Injection ---
+        character_info_parts = []
+        if db_campaign.characters:
+            for char in db_campaign.characters:
+                char_details = f"Character Name: {char.name}"
+                if char.description:
+                    char_details += f"\n  Description: {char.description}"
+                if char.notes_for_llm:
+                    char_details += f"\n  LLM Notes: {char.notes_for_llm}"
+                character_info_parts.append(char_details)
+
+        campaign_characters_formatted = "This campaign has no explicitly defined characters yet."
+        if character_info_parts:
+            campaign_characters_formatted = "The following characters are part of this campaign:\n" + "\n\n".join(character_info_parts)
+        # --- End Character Information Injection ---
+
         custom_prompt_template = self.feature_prompt_service.get_prompt("Section Content", db=db)
         final_prompt_for_generation: str
+
         if custom_prompt_template:
-            final_prompt_for_generation = custom_prompt_template.format(
-                campaign_concept=campaign_concept,
-                existing_sections_summary=existing_sections_summary or "N/A",
-                section_creation_prompt=effective_section_prompt, # Use the refined prompt
-                section_title_suggestion=section_title_suggestion or "Untitled Section"
-            )
-        else: # Fallback default prompt construction
+            try:
+                final_prompt_for_generation = custom_prompt_template.format(
+                    campaign_concept=campaign_concept,
+                    existing_sections_summary=existing_sections_summary or "N/A",
+                    section_creation_prompt=effective_section_prompt,
+                    section_title_suggestion=section_title_suggestion or "Untitled Section",
+                    campaign_characters=campaign_characters_formatted # Add new parameter
+                )
+            except KeyError as e:
+                print(f"Warning: Prompt template 'Section Content' is missing a key: {e}. Falling back to default prompt structure. Please update the template to include 'campaign_characters'.")
+                # Fallback structure if template is old and doesn't have campaign_characters
+                prompt_parts = ["You are writing a new section for a tabletop role-playing game campaign."]
+                prompt_parts.append(f"The overall campaign concept is:\n{campaign_concept}\n")
+                prompt_parts.append(f"Relevant Characters in this Campaign:\n{campaign_characters_formatted}\n\n")
+                if existing_sections_summary:
+                    prompt_parts.append(f"So far, the campaign includes these sections (titles or brief summaries):\n{existing_sections_summary}\n")
+                title_display = section_title_suggestion or "Untitled Section"
+                type_display = section_type or "Generic"
+                prompt_parts.append(f"This new section is titled '{title_display}' and is of type '{type_display}'.\n")
+                prompt_parts.append(f"The specific instructions or starting prompt for this section are: {effective_section_prompt}\n")
+                prompt_parts.append("Generate detailed and engaging content for this new section.")
+                final_prompt_for_generation = "\n".join(prompt_parts)
+        else: # Fallback default prompt construction if no template found
             prompt_parts = ["You are writing a new section for a tabletop role-playing game campaign."]
             prompt_parts.append(f"The overall campaign concept is:\n{campaign_concept}\n")
+            prompt_parts.append(f"Relevant Characters in this Campaign:\n{campaign_characters_formatted}\n\n")
             if existing_sections_summary:
                 prompt_parts.append(f"So far, the campaign includes these sections (titles or brief summaries):\n{existing_sections_summary}\n")
 

@@ -11,11 +11,10 @@ import Button from './common/Button'; // Added Button import
 import RandomTableRoller from './RandomTableRoller';
 import ImageGenerationModal from './modals/ImageGenerationModal/ImageGenerationModal'; // Import the new modal
 import './CampaignSectionView.css';
-import { CampaignSectionUpdatePayload } from '../types/campaignTypes'; // CORRECTED PATH
-import { generateTextLLM, LLMTextGenerationParams } from '../services/llmService';
-import { getFeatures } from '../services/featureService'; // Added import
-import { Feature } from '../types/featureTypes'; // Added import
-import * as campaignService from '../services/campaignService'; // Moved import to top
+import { CampaignSectionUpdatePayload, SectionRegeneratePayload } from '../types/campaignTypes'; // CORRECTED PATH, Added SectionRegeneratePayload
+import { getFeatures } from '../services/featureService';
+import { Feature } from '../types/featureTypes';
+import * as campaignService from '../services/campaignService';
 
 interface CampaignSectionViewProps {
   section: CampaignSection;
@@ -98,6 +97,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   const [featureFetchError, setFeatureFetchError] = useState<string | null>(null);
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [regenerateError, setRegenerateError] = useState<string | null>(null);
+  const [isTableRollerVisible, setIsTableRollerVisible] = useState<boolean>(false); // State for table roller visibility
   // Removed imageData state and imageIdCounter ref
 
 
@@ -196,78 +196,64 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
         contextText = editedContent.substring(0, 2000); // Fallback and limit
       }
 
-      let finalPrompt = "";
-      if (selectedFeatureId) {
-        const selectedFeature = features.find(f => f.id.toString() === selectedFeatureId); // Ensure ID types are compared correctly
-        if (selectedFeature) {
-          if (selectedFeature.template.includes("{}")) {
-            finalPrompt = selectedFeature.template.replace("{}", contextText);
-          } else {
-            finalPrompt = selectedFeature.template; // Context from editor is ignored
-          }
-        } else {
-          // Fallback if selectedFeatureId is somehow invalid
-          finalPrompt = `Generate content based on the following context: ${contextText}`;
-        }
-      } else {
-        finalPrompt = `Generate content based on the following context: ${contextText}`;
+      // The `finalPrompt` variable and its logic related to `selectedFeatureId` have been removed.
+      // `contextText` (editor content) is now directly used as `new_prompt`.
+      // If feature selection should still influence the `new_prompt` (e.g., by prepending feature template content to `contextText`),
+      // that logic would need to be re-introduced here, acting on `contextText`.
+      // For now, `contextText` is the sole source for `new_prompt`.
+
+      // The `selectedFeature.template` (which was `finalPrompt` if a feature is selected from dropdown)
+      // is NOT explicitly sent here. The backend's `regenerateCampaignSection` endpoint
+      // implies it will use the standard "Section Content" template logic by default
+      // incorporating this `new_prompt` as the specific instruction.
+
+      if (!section.id) {
+        setContentGenerationError("Section ID is missing. Cannot regenerate content for an unsaved section view.");
+        setIsGeneratingContent(false);
+        return;
       }
 
-      const params: LLMTextGenerationParams = {
-        prompt: finalPrompt,
-        model_id_with_prefix: null, // Use default model
-        // Add any other params like max_tokens, temperature if needed
+      const regeneratePayload: SectionRegeneratePayload = {
+        new_prompt: contextText, // This is the specific instruction from the editor (Quill content)
+                                 // This will be used as `section_creation_prompt` by the backend's `generate_section_content`
+        new_title: section.title || undefined, // Use current section's title (optional for backend)
+        section_type: section.type || undefined, // Use current section's type (optional for backend)
+        model_id_with_prefix: undefined, // Changed from null to undefined
+                                    // If undefined, backend will use campaign's default or system default
       };
 
-      const response = await generateTextLLM(params);
-      const generatedText = response.text; // Changed generated_text to text
+      // The `selectedFeature.template` (which is `finalPrompt` if a feature is selected from dropdown)
+      // is NOT explicitly sent here. The backend's `regenerateCampaignSection` endpoint
+      // implies it will use the standard "Section Content" template logic by default
+      // when it calls `generate_section_content`.
+      // If `finalPrompt` (the template string from the selected feature) was *different*
+      // from the standard "Section Content" template, and we wanted to use *that specific template*
+      // for regeneration, the backend regenerate endpoint would need to accept a `template_override` parameter.
+      // For now, we assume regeneration uses the default "Section Content" template logic, guided by `new_prompt`.
+
+      const updatedSection = await campaignService.regenerateCampaignSection(Number(campaignId), section.id, regeneratePayload);
+      const generatedText = updatedSection.content; // Content is now part of the updated section
 
       if (quillInstance) {
-        // initialSelectionRange was captured at the beginning of the function.
-        // We use it to decide the mode of operation (insert after selection, or append to end).
-
-        if (initialSelectionRange && initialSelectionRange.length > 0) {
-          // Insert generated text AFTER the selected text
-          const insertionPoint = initialSelectionRange.index + initialSelectionRange.length;
-          const textToInsert = " " + generatedText; // Prepend with a space
-
-          quillInstance.insertText(insertionPoint, textToInsert, 'user');
-          // Set cursor to the end of the newly inserted text
-          quillInstance.setSelection(insertionPoint + textToInsert.length, 0, 'user');
-        } else {
-          // No initial selection, so insert at the current cursor position
-          const currentCursorSelection = quillInstance.getSelection(); // Get current cursor
-          let insertionPoint = currentCursorSelection ? currentCursorSelection.index : (quillInstance.getLength() -1);
-          // Ensure insertionPoint is not negative if getLength() was 0 or 1.
-          if (insertionPoint < 0) insertionPoint = 0;
-
-          // For inserting at cursor, we might not need a leading newline by default,
-          // unless cursor is at the very start of an empty line or end of doc.
-          // For simplicity now, just insert the text. User can add spaces/newlines.
-          // const textToInsert = generatedText;
-          // Consider adding a space if the preceding character isn't a space, similar to random item insertion.
-          let textToInsert = generatedText;
-          if (insertionPoint > 0) {
-            const textBefore = quillInstance.getText(insertionPoint - 1, 1);
-            if (textBefore !== ' ' && textBefore !== '\n') {
-              textToInsert = " " + generatedText;
-            }
-          }
-
-          quillInstance.insertText(insertionPoint, textToInsert, 'user');
-          // Move cursor to the end of the inserted text
-          quillInstance.setSelection(insertionPoint + textToInsert.length, 0, 'user');
-        }
-        setEditedContent(quillInstance.root.innerHTML);
+        // For regeneration, replace the entire content of the editor.
+        const delta = quillInstance.clipboard.convert(generatedText); // Convert HTML/text to Delta
+        quillInstance.setContents(delta, 'user'); // Set content using Delta
+        setEditedContent(quillInstance.root.innerHTML); // Update state from Quill
+        onSectionUpdated(updatedSection); // Notify parent
       } else {
-        // Fallback: Append to editedContent state
-        // This won't handle replacing selected text if quillInstance was initially null.
-        setEditedContent(prev => prev + "\n" + generatedText);
+        // Fallback for non-Quill (should ideally not happen in edit mode)
+        setEditedContent(generatedText);
+        onSectionUpdated(updatedSection);
       }
 
     } catch (error) {
       console.error("Failed to generate content:", error);
-      setContentGenerationError('Failed to generate content. An error occurred.');
+      // Ensure error is an instance of Error before accessing message
+      if (error instanceof Error) {
+        setContentGenerationError(`Failed to generate content: ${error.message}`);
+      } else {
+        setContentGenerationError('Failed to generate content. An unknown error occurred.');
+      }
     } finally {
       setIsGeneratingContent(false);
     }
@@ -448,8 +434,21 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
               <Typography variant="caption" display="block" sx={{ mt: 1, color: 'text.secondary' }}>
                 Tip: For a horizontal line, use three dashes (`---`) on a line by themselves, surrounded by blank lines.
               </Typography>
-              {/* Random Table Roller Integration */}
-              <RandomTableRoller onInsertItem={handleInsertRandomItem} />
+
+              {/* Toggle Button for RandomTableRoller */}
+              <Button
+                onClick={() => setIsTableRollerVisible(!isTableRollerVisible)}
+                variant="outline-secondary"
+                size="sm"
+                style={{ marginTop: '10px', marginBottom: '5px' }}
+              >
+                {isTableRollerVisible ? 'Hide Random Tables' : 'Show Random Tables'}
+              </Button>
+
+              {/* Conditionally Rendered Random Table Roller Integration */}
+              {isTableRollerVisible && (
+                <RandomTableRoller onInsertItem={handleInsertRandomItem} />
+              )}
               
               <div className="editor-actions">
                 <Button onClick={handleSave} className="editor-button" disabled={isSaving || isGeneratingContent}>

@@ -578,9 +578,9 @@ async def seed_sections_from_toc_endpoint(
                     print(f"Attempting LLM generation for section: '{title}' (Type for LLM: {section_type_for_llm})")
                     _, model_specific_id_for_call = _extract_provider_and_model(db_campaign.selected_llm_id)
                     generated_llm_content = await llm_service_instance.generate_section_content(
-                        campaign_concept=db_campaign.concept,
+                        db_campaign=db_campaign, # Changed campaign_concept to db_campaign
                         db=db,
-                        current_user=current_user, # Add this line
+                        current_user=current_user,
                         existing_sections_summary=None,
                         section_creation_prompt=prompt,
                         section_title_suggestion=title,
@@ -745,7 +745,7 @@ async def create_new_campaign_section_endpoint(
             # Placeholder for user preference logic
 
         generated_content = await llm_service.generate_section_content(
-            campaign_concept=db_campaign.concept or "A general creative writing piece.",
+            db_campaign=db_campaign, # Changed campaign_concept to db_campaign
             db=db,
             existing_sections_summary=existing_sections_summary,
             section_creation_prompt=section_input.prompt,
@@ -1039,7 +1039,7 @@ async def regenerate_campaign_section_endpoint(
     try:
         print(f"Regenerating section '{current_title}' (ID: {section_id}) using LLM: {llm_model_to_use}")
         generated_content = await llm_service.generate_section_content(
-            campaign_concept=db_campaign.concept,
+            db_campaign=db_campaign, # Changed campaign_concept to db_campaign
             db=db,
             existing_sections_summary=other_sections_summary,
             section_creation_prompt=final_prompt,

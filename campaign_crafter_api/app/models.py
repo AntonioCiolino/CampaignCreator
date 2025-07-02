@@ -39,6 +39,18 @@ class LLMGenerationRequest(BaseModel):
     temperature: Optional[float] = 0.7  # Defaulting as per llm_service.py abstract method
     max_tokens: Optional[int] = 500     # Defaulting as per llm_service.py abstract method
     chat_history: Optional[List[ChatMessage]] = None
+    # Fields for context-aware generic generation
+    campaign_id: Optional[int] = None
+    section_title_suggestion: Optional[str] = None
+    section_type: Optional[str] = None
+    section_creation_prompt: Optional[str] = None # For specific user instructions / editor content
+    # The following are less likely to be directly passed by a simple generic call,
+    # but included for completeness if a template expects them.
+    # The service layer will be responsible for fetching these if campaign_id is provided.
+    # existing_sections_summary: Optional[str] = None # Better derived by backend if campaign_id given
+    # campaign_concept: Optional[str] = None # Better derived by backend if campaign_id given
+    # campaign_characters: Optional[str] = None # Better derived by backend if campaign_id given
+
 
 class CampaignSectionUpdateInput(BaseModel):
     title: Optional[str] = None
