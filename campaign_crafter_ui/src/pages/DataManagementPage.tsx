@@ -216,6 +216,7 @@ const DataManagementPage: React.FC = () => {
               <thead>
                 <tr>
                   <th>Name</th>
+                  <th>Category</th>
                   <th>Template (excerpt)</th>
                   <th>Actions</th>
                 </tr>
@@ -224,6 +225,7 @@ const DataManagementPage: React.FC = () => {
                 {features.map((feature) => (
                   <tr key={feature.id}>
                     <td>{feature.name}</td>
+                    <td>{feature.feature_category || 'N/A'}</td>
                     <td>{feature.template.substring(0, 100)}{feature.template.length > 100 ? '...' : ''}</td>
                     <td className="actions-cell">
                       {(() => {
