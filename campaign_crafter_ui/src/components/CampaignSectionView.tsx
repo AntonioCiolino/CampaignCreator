@@ -97,6 +97,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   const [featureFetchError, setFeatureFetchError] = useState<string | null>(null);
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [regenerateError, setRegenerateError] = useState<string | null>(null);
+  const [isTableRollerVisible, setIsTableRollerVisible] = useState<boolean>(false); // State for table roller visibility
   // Removed imageData state and imageIdCounter ref
 
 
@@ -433,8 +434,21 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
               <Typography variant="caption" display="block" sx={{ mt: 1, color: 'text.secondary' }}>
                 Tip: For a horizontal line, use three dashes (`---`) on a line by themselves, surrounded by blank lines.
               </Typography>
-              {/* Random Table Roller Integration */}
-              <RandomTableRoller onInsertItem={handleInsertRandomItem} />
+
+              {/* Toggle Button for RandomTableRoller */}
+              <Button
+                onClick={() => setIsTableRollerVisible(!isTableRollerVisible)}
+                variant="outlined"
+                size="sm"
+                style={{ marginTop: '10px', marginBottom: '5px' }}
+              >
+                {isTableRollerVisible ? 'Hide Random Tables' : 'Show Random Tables'}
+              </Button>
+
+              {/* Conditionally Rendered Random Table Roller Integration */}
+              {isTableRollerVisible && (
+                <RandomTableRoller onInsertItem={handleInsertRandomItem} />
+              )}
               
               <div className="editor-actions">
                 <Button onClick={handleSave} className="editor-button" disabled={isSaving || isGeneratingContent}>
