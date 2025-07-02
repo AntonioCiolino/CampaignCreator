@@ -580,14 +580,33 @@ const CharacterDetailPage: React.FC = () => {
 
 
             {character.video_clip_urls && character.video_clip_urls.length > 0 && (
-                 <div className="card data-card mb-3">
+                <div className="card data-card mb-3">
                     <div className="card-header">Video Clips</div>
                     <div className="card-body">
-                        <ul className="list-unstyled">
-                        {character.video_clip_urls.map((url, index) => (
-                            <li key={index}><a href={url} target="_blank" rel="noopener noreferrer">{url}</a></li>
-                        ))}
-                        </ul>
+                        <table className="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>URL</th>
+                                    <th style={{ width: '100px' }}>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {character.video_clip_urls.map((url, index) => (
+                                    <tr key={index}>
+                                        <td>
+                                            <a href={url} target="_blank" rel="noopener noreferrer" title={url}>
+                                                {url.length > 70 ? `${url.substring(0, 67)}...` : url}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <a href={url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline-primary">
+                                                Open
+                                            </a>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             )}

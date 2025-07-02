@@ -754,6 +754,9 @@ async def generate_character_aspect_text(
         prompt_parts.append(f"Character Name: {request.character_name}")
 
     context_info = []
+    if request.notes_for_llm: # Incorporate notes_for_llm
+        context_info.append(f"Relevant character notes: {request.notes_for_llm}")
+
     if request.aspect_to_generate == "description":
         if request.existing_appearance_description:
             context_info.append(f"Current Appearance: {request.existing_appearance_description}")
@@ -761,7 +764,8 @@ async def generate_character_aspect_text(
     elif request.aspect_to_generate == "appearance_description":
         if request.existing_description:
             context_info.append(f"Current Description: {request.existing_description}")
-        prompt_parts.append(f"Generate a vivid appearance description for the character.")
+        # Modified prompt for succinctness
+        prompt_parts.append(f"Generate a succinct (1-2 sentences) but vivid physical appearance description for the character, focusing on key distinguishing features.")
     elif request.aspect_to_generate == "backstory_snippet":
         if request.existing_description:
             context_info.append(f"Current Description: {request.existing_description}")

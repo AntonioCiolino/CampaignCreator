@@ -73,6 +73,7 @@ export interface CharacterAspectGenerationRequestPayload {
     aspect_to_generate: "description" | "appearance_description" | "backstory_snippet"; // Use a literal type for known aspects
     existing_description?: string | null;
     existing_appearance_description?: string | null;
+    notes_for_llm?: string | null; // Added field for LLM notes
     prompt_override?: string | null;
     model_id_with_prefix?: string | null;
 }

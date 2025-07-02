@@ -389,6 +389,7 @@ class CharacterAspectGenerationRequest(BaseModel):
     aspect_to_generate: str  # e.g., "description", "appearance_description", "backstory_snippet"
     existing_description: Optional[str] = None
     existing_appearance_description: Optional[str] = None # Renamed for clarity
+    notes_for_llm: Optional[str] = None # Added field for LLM notes
     prompt_override: Optional[str] = None # Allow user to provide a more specific prompt
     model_id_with_prefix: Optional[str] = None # To specify which LLM to use
 
