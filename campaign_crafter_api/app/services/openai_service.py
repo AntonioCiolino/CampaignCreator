@@ -335,6 +335,16 @@ class OpenAILLMService(AbstractLLMService):
             {"role": "system", "content": system_message_content},
             {"role": "user", "content": final_prompt_for_user_role}
         ]
+
+        # --- DEBUG LOGGING ---
+        print(f"--- DEBUG PROMPT START ({self.PROVIDER_NAME} - Section Content) ---")
+        print("System Message:")
+        print(system_message_content)
+        print("\nUser Message (Final Prompt):")
+        print(final_prompt_for_user_role)
+        print(f"--- DEBUG PROMPT END ({self.PROVIDER_NAME} - Section Content) ---")
+        # --- END DEBUG LOGGING ---
+
         return await self._perform_chat_completion(selected_model, messages, temperature=0.7, max_tokens=1500)
 
     async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, any]]:
