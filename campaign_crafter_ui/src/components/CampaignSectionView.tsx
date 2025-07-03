@@ -338,7 +338,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
       let featureIdForBackend: number | undefined = undefined;
       let contextDataForBackend: { [key: string]: any } = {};
       let operationType = "Full Section Generation";
-      let selectionToReplace: { index: number, length: number } | null = null;
+      // selectionToReplace is already declared at the top of the try block
 
       if (featureIdToUseForSnippet && isTextActuallySelected && currentSelection) {
         const snippetFeature = snippetFeatures.find(f => f.id.toString() === featureIdToUseForSnippet);
@@ -347,6 +347,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
           featureIdForBackend = snippetFeature.id;
           operationType = `Snippet: ${snippetFeature.name}`;
           contextDataForBackend['selected_text'] = editorSelectionText;
+          // Assign to existing selectionToReplace, do not redeclare
           selectionToReplace = { index: currentSelection.index, length: currentSelection.length };
 
           if (snippetFeature.required_context) {
@@ -625,7 +626,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                           if (quillInstance && currentSelection && currentSelection.length > 0) {
                             const text = quillInstance.getText(currentSelection.index, currentSelection.length);
                             const range = { index: currentSelection.index, length: currentSelection.length };
-                            // setSelectedSnippetFeatureId(feature.id.toString()); // No longer strictly needed if passing ID directly
+                            // setSelectedSnippetFeatureId(feature.id.toString()); // REMOVED - ID is passed directly
                             await handleGenerateContent(feature.id.toString(), text, range);
                           } else {
                             // Should not happen if menu is only shown on selection, but as a safeguard:
