@@ -64,6 +64,7 @@ describe('CampaignSectionEditor', () => {
     onUpdateSectionOrder: mockOnUpdateSectionOrder,
     handleUpdateSectionType: mockHandleUpdateSectionType, // Add new prop to defaultProps
     campaignId: 'test-campaign-id-default',
+    selectedLLMId: null, // Add selectedLLMId
     expandSectionId: null, // <--- Add this line
   };
 

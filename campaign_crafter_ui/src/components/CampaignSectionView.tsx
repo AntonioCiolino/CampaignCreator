@@ -98,6 +98,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   const [isGeneratingContent, setIsGeneratingContent] = useState<boolean>(false);
   const [contentGenerationError, setContentGenerationError] = useState<string | null>(null);
   const [snippetFeatures, setSnippetFeatures] = useState<Feature[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedSnippetFeatureId, setSelectedSnippetFeatureId] = useState<string>(""); // This will be set by the context menu
   const [snippetFeatureFetchError, setSnippetFeatureFetchError] = useState<string | null>(null);
   const [isSnippetContextMenuOpen, setIsSnippetContextMenuOpen] = useState<boolean>(false);
@@ -123,7 +124,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
           // Don't open menu here anymore, only update selection state
           if (!range || range.length === 0) {
             setIsSnippetContextMenuOpen(false); // Close if selection is lost
-            setSelectedSnippetFeatureId("");
+            // setSelectedSnippetFeatureId(""); // Commented out as selectedSnippetFeatureId is not used
           }
         }
       };
@@ -200,7 +201,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
       loadSnippetFeatures();
     } else {
       setSnippetFeatures([]); // Clear when not editing
-      setSelectedSnippetFeatureId("");
+      // setSelectedSnippetFeatureId(""); // Commented out as selectedSnippetFeatureId is not used
       setCurrentSelection(null);
     }
   }, [isEditing]);
@@ -362,7 +363,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
           }
         } else {
           console.warn(`[HGC] Selected snippet feature ID ${featureIdToUseForSnippet} not found in snippetFeatures list. Proceeding with full generation.`);
-          if(overrideSnippetFeatureId) setSelectedSnippetFeatureId("");
+          // if(overrideSnippetFeatureId) setSelectedSnippetFeatureId(""); // Commented out as selectedSnippetFeatureId is not used
         }
       }
 

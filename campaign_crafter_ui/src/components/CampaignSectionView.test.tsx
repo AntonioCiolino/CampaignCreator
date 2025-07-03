@@ -128,6 +128,7 @@ const defaultProps: React.ComponentProps<typeof CampaignSectionView> = {
   forceCollapse: false,
   campaignId: 1, // Assuming campaignId is number
   onSectionUpdated: jest.fn(),
+  selectedLLMId: null, // Add selectedLLMId
   // onSectionTypeUpdate: jest.fn(), // Optional, add if tests require it
   expandSectionId: null, // <--- Add this line
   // onSetThematicImageFromSection: jest.fn(), // Optional, add if tests require it

@@ -50,6 +50,7 @@ describe('CampaignSectionEditor Drag and Drop', () => {
         onUpdateSectionOrder={mockOnUpdateSectionOrder}
         handleUpdateSectionType={mockHandleUpdateSectionType} // Pass the new mock prop
         campaignId="test-dnd-campaign-id"
+        selectedLLMId={null} // Add selectedLLMId
         expandSectionId={null} // <--- Add this line
       />
     );
