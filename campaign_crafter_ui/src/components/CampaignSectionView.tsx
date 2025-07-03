@@ -113,21 +113,23 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   useEffect(() => {
     if (isEditing && quillInstance) {
       const selectionChangeHandler = (range: QuillRange, oldRange: QuillRange, source: string) => {
+        console.log('[CampaignSectionView] selectionChangeHandler - range:', range, 'source:', source);
         if (source === 'user') {
           setCurrentSelection(range);
           if (range && range.length > 0) {
             const bounds = quillInstance.getBounds(range.index, range.length);
-            // Position menu below selection; consider editor's scroll position
-            // This might need adjustment based on actual editor container and scrolling
-            const editorContainer = quillInstance.container.getBoundingClientRect();
-            setContextMenuPosition({
-              x: bounds.left + editorContainer.left, // Adjust if Quill's bounds are relative to viewport
-              y: bounds.bottom + editorContainer.top + window.scrollY + 5 // 5px offset below
-            });
+            const editorContainerRect = quillInstance.container.getBoundingClientRect();
+            const calculatedX = bounds.left; // Assuming getBounds is relative to viewport for x
+            const calculatedY = bounds.bottom + window.scrollY + 5; // Position below selection, accounting for page scroll
+
+            console.log('[CampaignSectionView] selectionChangeHandler - bounds:', bounds, 'editorContainerRect:', editorContainerRect, 'calculatedX:', calculatedX, 'calculatedY:', calculatedY);
+            setContextMenuPosition({ x: calculatedX, y: calculatedY });
             setIsSnippetContextMenuOpen(true);
+            console.log('[CampaignSectionView] selectionChangeHandler - setIsSnippetContextMenuOpen(true)');
           } else {
             setIsSnippetContextMenuOpen(false);
-            setSelectedSnippetFeatureId(""); // Reset snippet feature selection
+            setSelectedSnippetFeatureId("");
+            console.log('[CampaignSectionView] selectionChangeHandler - setIsSnippetContextMenuOpen(false), cleared selection');
           }
         }
       };
@@ -156,14 +158,17 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
     if (isEditing) { // Load snippet features when editing starts
       const loadSnippetFeatures = async () => {
         try {
+          console.log('[CampaignSectionView] loadSnippetFeatures - Attempting to fetch features.');
           setSnippetFeatureFetchError(null);
           const allFeatures = await getFeatures();
+          console.log('[CampaignSectionView] loadSnippetFeatures - allFeatures fetched:', allFeatures);
           const filteredForSnippets = allFeatures.filter(
             f => f.feature_category === 'Snippet' || (!f.feature_category && f.name !== 'Campaign' && f.name !== 'TOC Homebrewery' && f.name !== 'TOC Display' && f.name !== 'Campaign Names') // crude fallback for older features
           );
+          console.log('[CampaignSectionView] loadSnippetFeatures - filteredForSnippets:', filteredForSnippets);
           setSnippetFeatures(filteredForSnippets);
         } catch (error) {
-          console.error("Failed to load snippet features:", error);
+          console.error("[CampaignSectionView] Failed to load snippet features:", error);
           setSnippetFeatureFetchError(error instanceof Error ? error.message : "An unknown error occurred while fetching snippet features.");
         }
       };
@@ -482,6 +487,8 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   //   }
   // };
 
+  console.log('[CampaignSectionView] Render state - isEditing:', isEditing, 'isSnippetContextMenuOpen:', isSnippetContextMenuOpen, 'contextMenuPosition:', contextMenuPosition, 'snippetFeatures.length:', snippetFeatures.length, 'currentSelection:', currentSelection);
+
   return (
     <div id={`section-container-${section.id}`} className="campaign-section-view" tabIndex={-1}>
       {section.title && (
@@ -539,7 +546,9 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                 className="quill-editor"
                 ref={setQuillRef} // Set the ref to get Quill instance
               />
-              {isSnippetContextMenuOpen && contextMenuPosition && snippetFeatures.length > 0 && (
+              {isSnippetContextMenuOpen && contextMenuPosition && snippetFeatures.length > 0 && (() => {
+                console.log("[CampaignSectionView] Rendering Snippet Context Menu with position:", contextMenuPosition, "and features:", snippetFeatures.length);
+                return (
                 <div
                   className="snippet-context-menu"
                   style={{
@@ -584,7 +593,8 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                     ))}
                   </ul>
                 </div>
-              )}
+                );
+              })()}
               <Typography variant="caption" display="block" sx={{ mt: 1, color: 'text.secondary' }}>
                 Tip: For a horizontal line, use three dashes (`---`) on a line by themselves, surrounded by blank lines.
               </Typography>
