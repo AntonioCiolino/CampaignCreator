@@ -52,6 +52,7 @@ describe('CampaignSectionEditor Drag and Drop', () => {
         campaignId="test-dnd-campaign-id"
         selectedLLMId={null} // Add selectedLLMId
         expandSectionId={null} // <--- Add this line
+        campaignCharacters={[]} // Added missing prop
       />
     );
   };

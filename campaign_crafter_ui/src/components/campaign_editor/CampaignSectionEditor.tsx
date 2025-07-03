@@ -12,10 +12,11 @@ import {
   Paper,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-import DragIndicatorIcon from '@mui/icons-material/DragIndicator'; 
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import { CampaignSection, CampaignSectionUpdatePayload } from '../../types/campaignTypes'; // Corrected import
+import { Character as FrontendCharacter } from '../../types/characterTypes'; // Import FrontendCharacter
 import CampaignSectionView from '../CampaignSectionView';
-import { 
+import {
   DragDropContext, 
   Droppable, 
   Draggable, 
