@@ -121,7 +121,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
             // Position menu relative to the Quill editor container.
             // .section-editor has position: relative, so these coords will be relative to it.
             const calculatedX = bounds.left;
-            const calculatedY = bounds.bottom + 5; // 5px offset below selection
+            const calculatedY = bounds.bottom + 15; // Increased offset to 15px below selection
 
             console.log('[CampaignSectionView] selectionChangeHandler - bounds:', bounds, 'calculatedX:', calculatedX, 'calculatedY:', calculatedY);
             setContextMenuPosition({ x: calculatedX, y: calculatedY });
