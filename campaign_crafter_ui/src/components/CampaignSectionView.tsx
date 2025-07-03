@@ -299,13 +299,12 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
 
   const handleGenerateContent = async (
     overrideSnippetFeatureId?: string,
-    // explicitSelectedText?: string, // No longer passed directly
-    // explicitSelectionRange?: { index: number, length: number } | null // No longer passed directly
+    explicitSelectionRange?: QuillRange | null // Added new optional parameter
   ) => {
     // Log raw parameters
-    console.log('[HGC] Raw params - overrideSnippetFeatureId:', overrideSnippetFeatureId);
+    console.log('[HGC] Raw params - overrideSnippetFeatureId:', overrideSnippetFeatureId, 'explicitSelectionRange:', explicitSelectionRange);
 
-    console.log('[HGC] Start. overrideSnippetFeatureId:', overrideSnippetFeatureId); // Simplified log
+    console.log('[HGC] Start. overrideSnippetFeatureId:', overrideSnippetFeatureId, 'explicitSelectionRange:', explicitSelectionRange); // Updated log
     setIsGeneratingContent(true);
     setContentGenerationError(null);
 
@@ -319,34 +318,53 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
 
       // Logic for determining editorSelectionText, isTextActuallySelected, and selectionToReplace
       if (featureIdToUseForSnippet) {
-        const storedSelection = contextMenuTriggerSelectionRef.current;
-        if (quillInstance && storedSelection && storedSelection.length > 0) {
-          editorSelectionText = quillInstance.getText(storedSelection.index, storedSelection.length);
+        // If an explicit selection is passed (from context menu action), prioritize it
+        if (quillInstance && explicitSelectionRange && explicitSelectionRange.length > 0) {
+          console.log('[HGC] Using explicitSelectionRange for snippet:', explicitSelectionRange);
+          editorSelectionText = quillInstance.getText(explicitSelectionRange.index, explicitSelectionRange.length);
           isTextActuallySelected = true;
-          selectionToReplace = { index: storedSelection.index, length: storedSelection.length };
+          selectionToReplace = { index: explicitSelectionRange.index, length: explicitSelectionRange.length };
         } else {
-          // Not a valid snippet call if no selection from ref, treat as full generation
-          isTextActuallySelected = false;
-          if (quillInstance) editorSelectionText = quillInstance.getText().substring(0,2000);
-          else editorSelectionText = editedContent.substring(0,2000);
+          // Fallback for safety, though ideally explicitSelectionRange should always be valid if provided for a snippet
+          // Or this path could be hit if explicitSelectionRange was somehow invalid (e.g. length 0)
+          console.log('[HGC] ExplicitSelectionRange not valid or not provided for snippet. Falling back to contextMenuTriggerSelectionRef or full generation.');
+          const storedSelection = contextMenuTriggerSelectionRef.current;
+          if (quillInstance && storedSelection && storedSelection.length > 0) {
+            console.log('[HGC] Using storedSelection (contextMenuTriggerSelectionRef) for snippet:', storedSelection);
+            editorSelectionText = quillInstance.getText(storedSelection.index, storedSelection.length);
+            isTextActuallySelected = true;
+            selectionToReplace = { index: storedSelection.index, length: storedSelection.length };
+          } else {
+            // Not a valid snippet call if no selection from ref either, treat as full generation
+            console.log('[HGC] No valid selection for snippet (explicit or stored). Treating as full generation.');
+            isTextActuallySelected = false;
+            if (quillInstance) editorSelectionText = quillInstance.getText().substring(0,2000);
+            else editorSelectionText = editedContent.substring(0,2000);
+          }
         }
-      } else { // Not a snippet call (e.g., "Generate Content" button)
+      } else { // Not a snippet call (e.g., "Generate Content" button clicked directly)
+        console.log('[HGC] Not a snippet call. Checking current editor selection for user_instructions or full content.');
         if (quillInstance) {
           const currentQuillSel = quillInstance.getSelection();
           if (currentQuillSel && currentQuillSel.length > 0) {
             editorSelectionText = quillInstance.getText(currentQuillSel.index, currentQuillSel.length);
-            isTextActuallySelected = true; // This text will become user_instructions
+            isTextActuallySelected = true; // This text will become user_instructions for full generation
+            console.log('[HGC] Using current editor selection for full generation user_instructions.');
           } else {
+            // No text selected, use full content for context (or as prompt if user_instructions is empty)
             editorSelectionText = quillInstance.getText().substring(0, 2000);
             isTextActuallySelected = false;
+            console.log('[HGC] No editor selection for full generation, using existing content as context.');
           }
         } else {
+          // Fallback if quillInstance is somehow not available
           editorSelectionText = editedContent.substring(0, 2000);
           isTextActuallySelected = false;
+          console.log('[HGC] Quill instance not available, using editedContent for full generation context.');
         }
       }
       // Log after all evaluations for editorSelectionText and isTextActuallySelected
-      console.log('[HGC] After initial selection processing - featureIdToUseForSnippet:', featureIdToUseForSnippet, 'isTextActuallySelected:', isTextActuallySelected, 'editorSelectionText:', editorSelectionText ? editorSelectionText.substring(0,30) : "N/A");
+      console.log('[HGC] After selection processing - featureIdToUseForSnippet:', featureIdToUseForSnippet, 'isTextActuallySelected:', isTextActuallySelected, 'selectionToReplace:', selectionToReplace, 'editorSelectionText:', editorSelectionText ? editorSelectionText.substring(0,30) + '...' : "N/A");
 
 
       if (!section.id) {
@@ -669,8 +687,8 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                                 const text = quill.getText(selectionToUse.index, selectionToUse.length);
                                 const rangeToProcess = { index: selectionToUse.index, length: selectionToUse.length };
                                 setIsSnippetContextMenuOpen(false);
-                                console.log("[CampaignSectionView] Snippet item onMouseDown: Calling HGC for feature:", feature.id.toString());
-                                await handleGenerateContent(feature.id.toString());
+                                console.log("[CampaignSectionView] Snippet item onMouseDown: Calling HGC for feature:", feature.id.toString(), "with selectionToUse:", selectionToUse);
+                                await handleGenerateContent(feature.id.toString(), selectionToUse); // Pass selectionToUse
                               } else {
                                 console.warn("[CampaignSectionView] Snippet item onMouseDown: No valid ref selection or Quill. Quill:", quill, "RefSelection:", selectionToUse);
                                 setIsSnippetContextMenuOpen(false);
