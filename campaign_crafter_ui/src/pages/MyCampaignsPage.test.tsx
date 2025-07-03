@@ -32,7 +32,7 @@ const mockCampaignsData: Campaign[] = [
     theme_font_family: null,
     theme_background_image_url: null,
     theme_background_image_opacity: null,
-    homebrewery_export: null,
+    // homebrewery_export: null, // Field removed
     thematic_image_url: null,
     thematic_image_prompt: null,
 
@@ -59,7 +59,7 @@ const mockCampaignsData: Campaign[] = [
     theme_font_family: null,
     theme_background_image_url: null,
     theme_background_image_opacity: null,
-    homebrewery_export: null,
+    // homebrewery_export: null, // Field removed
     thematic_image_url: null,
     thematic_image_prompt: null,
   },
