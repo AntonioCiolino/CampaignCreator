@@ -299,14 +299,18 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
 
   const handleGenerateContent = async (
     overrideSnippetFeatureId?: string,
-    explicitSelectedText?: string,
-    explicitSelectionRange?: { index: number, length: number } | null
+    overrideSnippetFeatureId?: string // Remove explicitSelectedText and explicitSelectionRange from params
+    // explicitSelectedText?: string, // No longer passed directly
+    // explicitSelectionRange?: { index: number, length: number } | null // No longer passed directly
   ) => {
-    console.log('[HGC] Start. overrideSnippetFeatureId:', overrideSnippetFeatureId, 'explicitSelectedText:', explicitSelectedText ? explicitSelectedText.substring(0,30)+'...' : 'N/A', 'explicitSelectionRange:', explicitSelectionRange);
+    // Log raw parameters
+    console.log('[HGC] Raw params - overrideSnippetFeatureId:', overrideSnippetFeatureId);
+
+    console.log('[HGC] Start. overrideSnippetFeatureId:', overrideSnippetFeatureId); // Simplified log
     setIsGeneratingContent(true);
     setContentGenerationError(null);
 
-    const featureIdToUseForSnippet = overrideSnippetFeatureId; // No fallback to selectedSnippetFeatureId state for this direct call path
+    const featureIdToUseForSnippet = overrideSnippetFeatureId;
     console.log('[HGC] featureIdToUseForSnippet (from override):', featureIdToUseForSnippet);
 
     try {
@@ -314,35 +318,37 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
       let isTextActuallySelected = false;
       let selectionToReplace: { index: number, length: number } | null = null;
 
-      if (featureIdToUseForSnippet && explicitSelectedText !== undefined && explicitSelectionRange) {
-        // This is a snippet operation called from the context menu
-        editorSelectionText = explicitSelectedText;
-        isTextActuallySelected = true;
-        selectionToReplace = explicitSelectionRange;
-        console.log('[HGC] Snippet Call Path. Selected Text:', editorSelectionText.substring(0,50)+"...", 'Range:', selectionToReplace);
-      } else if (quillInstance) { // Full generation or main button click without specific snippet context
-        const currentQuillSelection = quillInstance.getSelection();
-        if (currentQuillSelection && currentQuillSelection.length > 0) {
-          // This case should ideally not happen if snippets are always called with explicit params.
-          // But if main "Generate Content" is clicked while text is selected, this path is taken.
-          // For now, we will treat this as intending a snippet if a snippet ID was somehow selected via state (fallback, less ideal)
-          // OR as user_instructions if no snippet ID is active.
-          editorSelectionText = quillInstance.getText(currentQuillSelection.index, currentQuillSelection.length);
-          isTextActuallySelected = true; // Text is selected
-          selectionToReplace = currentQuillSelection; // Potentially use this for a snippet if selectedSnippetFeatureId (state) is active
-          console.log('[HGC] Main button clicked WITH selection. Text:', editorSelectionText.substring(0,50)+"...");
+      // Logic for determining editorSelectionText, isTextActuallySelected, and selectionToReplace
+      if (featureIdToUseForSnippet) {
+        const storedSelection = contextMenuTriggerSelectionRef.current;
+        if (quillInstance && storedSelection && storedSelection.length > 0) {
+          editorSelectionText = quillInstance.getText(storedSelection.index, storedSelection.length);
+          isTextActuallySelected = true;
+          selectionToReplace = { index: storedSelection.index, length: storedSelection.length };
         } else {
-          const fullText = quillInstance.getText();
-          editorSelectionText = fullText.substring(0, 2000);
-          isTextActuallySelected = false; // Full content, not a specific selection for snippet replacement
-          console.log('[HGC] Main button clicked with NO selection. Using full editor text for new_prompt / user_instructions.');
+          // Not a valid snippet call if no selection from ref, treat as full generation
+          featureIdToUseForSnippet = undefined;
+          isTextActuallySelected = false;
+          if (quillInstance) editorSelectionText = quillInstance.getText().substring(0,2000);
+          else editorSelectionText = editedContent.substring(0,2000);
         }
-      } else { // Fallback if no quillInstance (should be rare in edit mode)
-        editorSelectionText = editedContent.substring(0, 2000);
-        isTextActuallySelected = false;
-        console.log('[HGC] Quill instance not available. Using editedContent.');
+      } else { // Not a snippet call (e.g., "Generate Content" button)
+        if (quillInstance) {
+          const currentQuillSel = quillInstance.getSelection();
+          if (currentQuillSel && currentQuillSel.length > 0) {
+            editorSelectionText = quillInstance.getText(currentQuillSel.index, currentQuillSel.length);
+            isTextActuallySelected = true; // This text will become user_instructions
+          } else {
+            editorSelectionText = quillInstance.getText().substring(0, 2000);
+            isTextActuallySelected = false;
+          }
+        } else {
+          editorSelectionText = editedContent.substring(0, 2000);
+          isTextActuallySelected = false;
+        }
       }
-      console.log('[HGC] Determined isTextActuallySelected:', isTextActuallySelected, 'selectionToReplace:', selectionToReplace);
+      // Log after all evaluations for editorSelectionText and isTextActuallySelected
+      console.log('[HGC] After initial selection processing - featureIdToUseForSnippet:', featureIdToUseForSnippet, 'isTextActuallySelected:', isTextActuallySelected, 'editorSelectionText:', editorSelectionText ? editorSelectionText.substring(0,30) : "N/A");
 
 
       if (!section.id) {
@@ -354,18 +360,18 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
       let featureIdForBackend: number | undefined = undefined;
       let contextDataForBackend: { [key: string]: any } = {};
       let operationType = "Full Section Generation";
-      // selectionToReplace is already declared at the top of the try block
+      // selectionToReplace is already set if it's a snippet operation with valid ref selection
 
-      if (featureIdToUseForSnippet && isTextActuallySelected && currentSelection) {
+      // This block determines if it's a snippet for payload:
+      if (featureIdToUseForSnippet && isTextActuallySelected) { // isTextActuallySelected is now correctly true for snippets from ref
         const snippetFeature = snippetFeatures.find(f => f.id.toString() === featureIdToUseForSnippet);
-        console.log('[HGC] Attempting snippet path. Found snippetFeature:', snippetFeature);
+        console.log('[HGC] Attempting snippet path. Found snippetFeature:', snippetFeature); // Added
         if (snippetFeature) {
           featureIdForBackend = snippetFeature.id;
           operationType = `Snippet: ${snippetFeature.name}`;
-          contextDataForBackend['selected_text'] = editorSelectionText;
-          // Assign to existing selectionToReplace, do not redeclare
-          selectionToReplace = { index: currentSelection.index, length: currentSelection.length };
-
+          contextDataForBackend['selected_text'] = editorSelectionText; // editorSelectionText is from ref for snippets
+          console.log('[HGC] Snippet feature identified. featureIdForBackend:', featureIdForBackend, 'contextData.selected_text:', contextDataForBackend['selected_text']); // Added
+          // selectionToReplace is already set from storedSelection if this path is taken
           if (snippetFeature.required_context) {
             snippetFeature.required_context.forEach(key => {
               if (key !== 'selected_text') {
@@ -375,23 +381,32 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
             });
           }
         } else {
-          console.warn(`[HGC] Selected snippet feature ID ${featureIdToUseForSnippet} not found in snippetFeatures list. Proceeding with full generation.`);
-          // if(overrideSnippetFeatureId) setSelectedSnippetFeatureId(""); // Commented out as selectedSnippetFeatureId is not used
+          console.warn(`[HGC] Snippet feature ID ${featureIdToUseForSnippet} not found in snippetFeatures. Proceeding as full generation.`);
+          // This case means featureIdToUseForSnippet was set, but feature not found. Fallback to full gen.
+          featureIdForBackend = undefined; // Ensure it's undefined for the next block
         }
       }
+
+      console.log('[HGC] Before final check, featureIdForBackend is:', featureIdForBackend); // Added
 
       if (!featureIdForBackend) {
         operationType = "Full Section Generation (Type-driven)";
-        console.log('[HGC] No featureIdForBackend, proceeding as Full Section Generation.');
-        if (editorSelectionText && !isTextActuallySelected) {
+        console.log('[HGC] Not a snippet operation or feature not found, proceeding as Full Section Generation.');
+        // For "Generate Content" button:
+        // If text was selected, it's in editorSelectionText and isTextActuallySelected is true.
+        // If no text selected, editorSelectionText is full content, isTextActuallySelected is false.
+        if (editorSelectionText) { // If there's any text at all (selected or full)
           contextDataForBackend['user_instructions'] = editorSelectionText;
-          console.log('[HGC] Added full editor text as user_instructions.');
+          console.log('[HGC] Added editor text as user_instructions for full generation.');
         }
       }
+      // Ensure new_prompt is cleared if it's a feature call, as backend might use it if present
+      const finalPromptForPayload = featureIdForBackend ? undefined : editorSelectionText;
+
       console.log('[HGC] Final featureIdForBackend:', featureIdForBackend);
 
       const regeneratePayload: SectionRegeneratePayload = {
-        new_prompt: editorSelectionText,
+        new_prompt: finalPromptForPayload, // Use selected_text via context_data for features
         new_title: section.title || undefined,
         section_type: section.type || undefined,
         model_id_with_prefix: selectedLLMId || undefined,
