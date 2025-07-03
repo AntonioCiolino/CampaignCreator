@@ -281,31 +281,52 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
     setContentGenerationError(null); // Clear content generation error on cancel
   };
 
-  const handleGenerateContent = async (overrideSnippetFeatureId?: string) => {
-    console.log('[HGC] Start. overrideSnippetFeatureId:', overrideSnippetFeatureId, 'selectedSnippetFeatureId (state):', selectedSnippetFeatureId);
+  const handleGenerateContent = async (
+    overrideSnippetFeatureId?: string,
+    explicitSelectedText?: string,
+    explicitSelectionRange?: { index: number, length: number } | null
+  ) => {
+    console.log('[HGC] Start. overrideSnippetFeatureId:', overrideSnippetFeatureId, 'explicitSelectedText:', explicitSelectedText ? explicitSelectedText.substring(0,30)+'...' : 'N/A', 'explicitSelectionRange:', explicitSelectionRange);
     setIsGeneratingContent(true);
     setContentGenerationError(null);
 
-    const featureIdToUseForSnippet = overrideSnippetFeatureId || selectedSnippetFeatureId;
-    console.log('[HGC] featureIdToUseForSnippet:', featureIdToUseForSnippet);
+    const featureIdToUseForSnippet = overrideSnippetFeatureId; // No fallback to selectedSnippetFeatureId state for this direct call path
+    console.log('[HGC] featureIdToUseForSnippet (from override):', featureIdToUseForSnippet);
 
     try {
       let editorSelectionText = '';
       let isTextActuallySelected = false;
+      let selectionToReplace: { index: number, length: number } | null = null;
 
-      if (quillInstance && currentSelection && currentSelection.length > 0) {
-        editorSelectionText = quillInstance.getText(currentSelection.index, currentSelection.length);
+      if (featureIdToUseForSnippet && explicitSelectedText !== undefined && explicitSelectionRange) {
+        // This is a snippet operation called from the context menu
+        editorSelectionText = explicitSelectedText;
         isTextActuallySelected = true;
-        console.log('[HGC] Text IS selected. Length:', currentSelection.length, 'Text:', editorSelectionText.substring(0,50) + "...");
-      } else if (quillInstance) {
-        const fullText = quillInstance.getText();
-        editorSelectionText = fullText.substring(0, 2000);
-        console.log('[HGC] Text NOT selected (or zero length). Using full editor text (max 2000 chars) for new_prompt / user_instructions. Length:', editorSelectionText.length);
-      } else {
+        selectionToReplace = explicitSelectionRange;
+        console.log('[HGC] Snippet Call Path. Selected Text:', editorSelectionText.substring(0,50)+"...", 'Range:', selectionToReplace);
+      } else if (quillInstance) { // Full generation or main button click without specific snippet context
+        const currentQuillSelection = quillInstance.getSelection();
+        if (currentQuillSelection && currentQuillSelection.length > 0) {
+          // This case should ideally not happen if snippets are always called with explicit params.
+          // But if main "Generate Content" is clicked while text is selected, this path is taken.
+          // For now, we will treat this as intending a snippet if a snippet ID was somehow selected via state (fallback, less ideal)
+          // OR as user_instructions if no snippet ID is active.
+          editorSelectionText = quillInstance.getText(currentQuillSelection.index, currentQuillSelection.length);
+          isTextActuallySelected = true; // Text is selected
+          selectionToReplace = currentQuillSelection; // Potentially use this for a snippet if selectedSnippetFeatureId (state) is active
+          console.log('[HGC] Main button clicked WITH selection. Text:', editorSelectionText.substring(0,50)+"...");
+        } else {
+          const fullText = quillInstance.getText();
+          editorSelectionText = fullText.substring(0, 2000);
+          isTextActuallySelected = false; // Full content, not a specific selection for snippet replacement
+          console.log('[HGC] Main button clicked with NO selection. Using full editor text for new_prompt / user_instructions.');
+        }
+      } else { // Fallback if no quillInstance (should be rare in edit mode)
         editorSelectionText = editedContent.substring(0, 2000);
-        console.log('[HGC] Quill instance not available. Using editedContent for new_prompt / user_instructions.');
+        isTextActuallySelected = false;
+        console.log('[HGC] Quill instance not available. Using editedContent.');
       }
-      console.log('[HGC] isTextActuallySelected:', isTextActuallySelected, 'currentSelection:', currentSelection);
+      console.log('[HGC] Determined isTextActuallySelected:', isTextActuallySelected, 'selectionToReplace:', selectionToReplace);
 
 
       if (!section.id) {
@@ -599,19 +620,18 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                         key={feature.id}
                         style={{ padding: '5px 10px', cursor: 'pointer' }}
                         onMouseDown={(event) => event.stopPropagation()} // Prevent mousedown from closing menu via document listener
-                        onClick={async (event) => { // Accept event here if needed, though not strictly for current logic
-                          // event.stopPropagation(); // Can also be here, but onMouseDown is more direct for this issue
-                          setSelectedSnippetFeatureId(feature.id.toString());
-                          // It's better to call handleGenerateContent AFTER state updates in some cases,
-                          // but since handleGenerateContent reads selectedSnippetFeatureId,
-                          // we might need to pass the id directly or use a useEffect.
-                          // For simplicity now, setting state then calling. React might batch.
-                          // A more robust way: call a wrapper that sets state and then calls handleGenerateContent in a useEffect or callback.
-                          // Or pass feature.id directly to handleGenerateContent.
-
-                          // To ensure handleGenerateContent uses the just-set ID, we can pass it:
-                          await handleGenerateContent(feature.id.toString());
-                          setIsSnippetContextMenuOpen(false); // Close menu after action
+                        onClick={async (event) => {
+                          event.stopPropagation(); // Good practice
+                          if (quillInstance && currentSelection && currentSelection.length > 0) {
+                            const text = quillInstance.getText(currentSelection.index, currentSelection.length);
+                            const range = { index: currentSelection.index, length: currentSelection.length };
+                            // setSelectedSnippetFeatureId(feature.id.toString()); // No longer strictly needed if passing ID directly
+                            await handleGenerateContent(feature.id.toString(), text, range);
+                          } else {
+                            // Should not happen if menu is only shown on selection, but as a safeguard:
+                            console.warn("Snippet feature clicked but no active selection found in Quill.");
+                          }
+                          setIsSnippetContextMenuOpen(false);
                         }}
                         onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f0f0f0')}
                         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'white')}
