@@ -451,10 +451,17 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
           quillInstance.setContents(delta, 'user');
         }
         setEditedContent(quillInstance.root.innerHTML);
-        onSectionUpdated(updatedSection);
+        // Ensure the parent gets the full updated content, not just the snippet from updatedSection.content
+        const fullContentPlainText = convertQuillHtmlToPlainText(quillInstance.root.innerHTML);
+        const sectionWithFullContent: CampaignSection = {
+          ...updatedSection,
+          content: fullContentPlainText,
+        };
+        onSectionUpdated(sectionWithFullContent);
       } else {
+        // This case should ideally not be hit if Quill is always available during editing
         setEditedContent(generatedText);
-        onSectionUpdated(updatedSection);
+        onSectionUpdated(updatedSection); // Here, updatedSection.content is just the snippet
       }
 
     } catch (error) {
