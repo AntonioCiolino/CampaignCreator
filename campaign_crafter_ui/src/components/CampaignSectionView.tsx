@@ -639,10 +639,11 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                             // don't interfere with the data we've already captured.
                             setIsSnippetContextMenuOpen(false);
 
+    console.log("[CampaignSectionView] Snippet click: Calling handleGenerateContent with feature ID:", feature.id.toString()); // Added log
                             // Now call handleGenerateContent with the captured, fresh data
                             await handleGenerateContent(feature.id.toString(), text, rangeToProcess);
                           } else {
-                            console.warn("[CampaignSectionView] Snippet click: No active selection or Quill instance at the moment of click logic.");
+    console.warn("[CampaignSectionView] Snippet click: No active selection or Quill instance at the moment of click logic. Quill:", quillInstance, "Selection:", activeSelection); // Enhanced log
                             setIsSnippetContextMenuOpen(false); // Still close menu
                           }
                         }}
