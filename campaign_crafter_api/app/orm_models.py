@@ -127,6 +127,9 @@ class Feature(Base):
     template = Column(Text, nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=True, index=True)
     owner = relationship('User', backref='features')
+    required_context = Column(JSON, nullable=True)  # Stores list of strings
+    compatible_types = Column(JSON, nullable=True) # Stores list of strings
+    feature_category = Column(String, nullable=True) # Stores category e.g., "FullSection", "Snippet"
 
 
 class RollTable(Base):

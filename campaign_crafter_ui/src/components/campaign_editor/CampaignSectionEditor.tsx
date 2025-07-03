@@ -37,6 +37,7 @@ interface CampaignSectionEditorProps {
   onUpdateSectionOrder: (orderedSectionIds: number[]) => Promise<void>;
   forceCollapseAllSections?: boolean; // Added new prop
   campaignId: string | number; // Added campaignId prop
+  selectedLLMId: string | null; // Add selectedLLMId
   expandSectionId: string | null; // Add this
   onSetThematicImageForSection?: (imageUrl: string, promptUsed: string) => void;
 }
@@ -51,6 +52,7 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
   onUpdateSectionOrder,
   forceCollapseAllSections, // Destructure the new prop
   campaignId, // Destructure campaignId
+  selectedLLMId, // Destructure selectedLLMId
   expandSectionId, // Add this
   onSetThematicImageForSection,
 }) => {
@@ -167,6 +169,7 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
                               }}
                               expandSectionId={expandSectionId} // Add this new prop
                               onSetThematicImageFromSection={onSetThematicImageForSection}
+                               selectedLLMId={selectedLLMId} // Pass selectedLLMId
                             />
                           </Box>
                           <IconButton

@@ -546,7 +546,7 @@ const CampaignEditorPage: React.FC = () => {
         clearTimeout(newTimer);
       }
     };
-  }, [editableMoodBoardUrls, campaignId, campaign]); // moodBoardDebounceTimer REMOVED
+  }, [editableMoodBoardUrls, campaignId, campaign, moodBoardDebounceTimer]);
 
   useEffect(() => {
     let isMounted = true;
@@ -642,7 +642,7 @@ const CampaignEditorPage: React.FC = () => {
         }
     }, 1500);
     return () => { if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current); };
-  }, [selectedLLMId, temperature, campaignId, campaign, isLoading]);
+  }, [selectedLLMId, temperature, campaignId, campaign, isLoading, debounceTimerRef]);
 
   const handleGenerateConceptManually = async () => {
     if (!campaignId || !campaign) {
@@ -1341,6 +1341,7 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
         handleUpdateSectionType={handleUpdateSectionType}
         onUpdateSectionOrder={handleUpdateSectionOrder}
         forceCollapseAllSections={forceCollapseAll}
+        selectedLLMId={selectedLLMId} // Pass selectedLLMId here
         expandSectionId={sectionToExpand}
         onSetThematicImageForSection={handleSetThematicImage}
       />

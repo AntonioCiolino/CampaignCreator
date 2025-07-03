@@ -1,4 +1,5 @@
-Campaign,"Create a campaign based on the following concepts: {user_prompt}###"
+Name,Template,RequiredContext,CompatibleTypes,FeatureCategory
+Campaign,"Create a campaign based on the following concepts: {user_prompt}###",user_prompt,"",System
 TOC Homebrewery,"Based on the following list of campaign section titles (in order), generate a detailed Table of Contents suitable for an RPG campaign book strictly following Homebrewery Markdown formatting. Use 'PAGENUM' as a placeholder for all page numbers, like '{{PAGENUM}}' and '(#pPAGENUM)'.
 
 The structure should be:
@@ -11,7 +12,7 @@ The structure should be:
 End the Table of Contents with }}}}
 
 Current Campaign Sections (titles, in order):
-{sections_summary}"
+{sections_summary}",sections_summary,"",System
 TOC Display,"Based on the campaign concept provided below, generate a user-friendly Table of Contents for on-screen display.
 For each suggested section title, also determine its most appropriate type from the following list:
 [monster, character, npc, location, item, quest, chapter, note, world_detail, generic].
@@ -28,37 +29,26 @@ For example:
 Focus on clear section titles. Subsections can be nested with indentation if appropriate, following the same format.
 
 Campaign Concept:
-{campaign_concept}"
-Campaign Names,"Based on the campaign concept: {campaign_concept}, generate {count} alternative, catchy campaign titles. Use sensory language and hyperbole and metaphor. List each title on a new line."
-Unused, "-- All of these following are currently unused --"
-Simile,"create a Simile from the following sentence:
-{}"
----
-Metaphor,"create a Metaphor from the following sentence:
-{}"
----
-Hyperbole,"create a Hyperbole from the following sentence:
-{}"
----
-Summarize,"Summarize the following:
----
-{}
----
-Rewritten as a summary:"
-Allegory,"create a Allegory from the following sentence:
-{}"
----
-Stanza,"create a stanza from the following sentence:
-{}"
----
-Thought,"create a thought from the following sentence:
-{}"
----
-Idea,"create a idea from the following sentence:
-{}"
----
-Proposal,"create a proposal from the following sentence:
-{}"
----
-Dialogue,"Generate a dialogue between characters.
-{}"
+{campaign_concept}",campaign_concept,"",System
+Campaign Names,"Based on the campaign concept: {campaign_concept}, generate {count} alternative, catchy campaign titles. Use sensory language and hyperbole and metaphor. List each title on a new line.",campaign_concept;count,"",System
+Generate Section Details - Generic,"Develop content for a section titled '{section_title}' of type '{section_type}'. Consider the overall campaign concept: {campaign_concept}, and a summary of existing sections: {existing_sections_summary}. If relevant, also use character information: {campaign_characters}. Provide general information suitable for this type of section.","section_title;section_type;campaign_concept;existing_sections_summary;campaign_characters","Generic;Note",FullSection
+Generate NPC Details,"Flesh out the details for an NPC named '{section_title}'. Include their motivations, appearance, personality, relationships, and potential plot hooks. Consider the overall {campaign_concept}, existing characters: {campaign_characters}, and a summary of other sections: {existing_sections_summary}.","section_title;campaign_concept;campaign_characters;existing_sections_summary;section_type","NPC;Character",FullSection
+Describe Location,"Provide a vivid description of the location '{section_title}'. What does it look like, sound like, smell like? What is its atmosphere, history, and significance? Note any inhabitants, points of interest, or secrets. Context: {campaign_concept}, {existing_sections_summary}.","section_title;campaign_concept;existing_sections_summary;section_type","Location;World Detail",FullSection
+Create Quest Outline,"Outline a quest titled '{section_title}'. Detail the main objectives, key NPCs involved ({campaign_characters}), steps or stages, potential challenges, and rewards. Context: {campaign_concept}, {existing_sections_summary}.","section_title;campaign_concept;campaign_characters;existing_sections_summary;section_type","Quest;Chapter",FullSection
+Generate Item Details,"Describe the item '{section_title}'. Detail its appearance, magical properties (if any), history, value, how it's used or worn, and any associated quests or where it might be found. Consider the campaign concept: {campaign_concept}.","section_title;campaign_concept;section_type","Item",FullSection
+Generate Monster Details,"Describe the monster or creature '{section_title}'. Include its physical appearance, abilities, typical behavior, habitat or lair, combat tactics, and any notable lore or weaknesses. Context: {campaign_concept}.","section_title;campaign_concept;section_type","Monster",FullSection
+Simile,"From the following: {selected_text}, create a simile.",selected_text,"",Snippet
+Metaphor,"From the following: {selected_text}, create a metaphor.",selected_text,"",Snippet
+Hyperbole,"From the following: {selected_text}, create a hyperbole.",selected_text,"",Snippet
+Summarize,"Summarize this: {selected_text}",selected_text,"",Snippet
+Allegory,"Create an allegory based on: {selected_text}",selected_text,"",Snippet
+Stanza,"Create a stanza from: {selected_text}",selected_text,"",Snippet
+Thought,"Generate a thought related to: {selected_text}",selected_text,"",Snippet
+Idea,"Expand this into an idea: {selected_text}",selected_text,"",Snippet
+Proposal,"Formulate a proposal based on: {selected_text}",selected_text,"",Snippet
+Dialogue,"Generate a dialogue between characters based on this prompt: {selected_text}. Consider existing characters: {campaign_characters}",selected_text;campaign_characters,"",Snippet
+Expand Text,"Expand on the following text, adding more detail and context: {selected_text}",selected_text,"",Snippet
+Shorten Text,"Make the following text more concise: {selected_text}",selected_text,"",Snippet
+Change Tone - Formal,"Rewrite the following text in a more formal tone: {selected_text}",selected_text,"",Snippet
+Change Tone - Casual,"Rewrite the following text in a more casual tone: {selected_text}",selected_text,"",Snippet
+Change Tone - Humorous,"Rewrite the following text in a more humorous tone: {selected_text}",selected_text,"",Snippet

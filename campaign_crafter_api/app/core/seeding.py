@@ -20,47 +20,86 @@ def seed_features(db: Session):
 
         with open(FEATURES_CSV_PATH, mode='r', encoding='utf-8') as csvfile:
             reader = csv.reader(csvfile)
-            header = next(reader, None) 
-            if not header or len(header) < 2:
-                print("ERROR: Invalid CSV header for features. Expected at least 'Feature Name' and 'Template'.")
+            header = next(reader, None)
+            expected_cols = ["Name", "Template", "RequiredContext", "CompatibleTypes", "FeatureCategory"]
+            if not header or not all(col in header for col in expected_cols):
+                print(f"ERROR: Invalid CSV header for features. Expected all of: {', '.join(expected_cols)}. Got: {header}")
                 return
             
+            name_idx = header.index("Name")
+            template_idx = header.index("Template")
+            context_idx = header.index("RequiredContext")
+            types_idx = header.index("CompatibleTypes")
+            category_idx = header.index("FeatureCategory")
+
             processed_count = 0
             created_count = 0
-            updated_count = 0 # Initialize updated_count
+            updated_count = 0
             skipped_malformed = 0
             for row_num, row in enumerate(reader, 1):
                 processed_count += 1
-                if len(row) < 2:
-                    print(f"Skipping malformed row {row_num} in features.csv: Insufficient columns. Content: {row}")
+                if len(row) <= max(name_idx, template_idx, context_idx, types_idx, category_idx): # Check if all expected indices are within row bounds
+                    print(f"Skipping malformed row {row_num} in features.csv: Insufficient columns. Expected at least {max(name_idx, template_idx, context_idx, types_idx, category_idx) + 1}, got {len(row)}. Content: {row}")
                     skipped_malformed +=1
                     continue
                 
-                feature_name, feature_template = row[0].strip(), row[1].strip()
+                feature_name = row[name_idx].strip()
+                feature_template = row[template_idx].strip()
+                required_context_str = row[context_idx].strip()
+                compatible_types_str = row[types_idx].strip()
+                feature_category_str = row[category_idx].strip()
 
                 if not feature_name or not feature_template:
                     print(f"Skipping row {row_num} in features.csv: Empty name or template. Content: {row}")
                     skipped_malformed +=1
                     continue
 
+                required_context_list = [ctx.strip() for ctx in required_context_str.split(';') if ctx.strip()] if required_context_str else []
+                compatible_types_list = [ctype.strip() for ctype in compatible_types_str.split(';') if ctype.strip()] if compatible_types_str else []
+                # Ensure feature_category is None if the string is empty, otherwise use the string
+                feature_category = feature_category_str if feature_category_str else None
+
+
                 existing_feature = crud.get_feature_by_name(db, name=feature_name)
+                feature_data_dict = {
+                    "name": feature_name,
+                    "template": feature_template,
+                    "required_context": required_context_list,
+                    "compatible_types": compatible_types_list,
+                    "feature_category": feature_category
+                }
+
                 if existing_feature:
+                    needs_update = False
                     if existing_feature.template != feature_template:
-                        print(f"Feature '{feature_name}' already exists. Updating template.")
                         existing_feature.template = feature_template
-                        db.add(existing_feature) # Stage the change for commit
+                        needs_update = True
+                    if existing_feature.required_context != required_context_list:
+                        existing_feature.required_context = required_context_list
+                        needs_update = True
+                    if existing_feature.compatible_types != compatible_types_list:
+                        existing_feature.compatible_types = compatible_types_list
+                        needs_update = True
+                    if existing_feature.feature_category != feature_category:
+                        existing_feature.feature_category = feature_category
+                        needs_update = True
+
+                    if needs_update:
+                        print(f"Feature '{feature_name}' already exists. Updating fields.")
+                        db.add(existing_feature)
                         updated_count += 1
                     else:
-                        print(f"Feature '{feature_name}' already exists and template is identical. Skipping update.")
+                        print(f"Feature '{feature_name}' already exists and fields are identical. Skipping update.")
                 else:
-                    feature_data = models.FeatureCreate(name=feature_name, template=feature_template)
-                    crud.create_feature(db, feature=feature_data)
+                    feature_create_obj = models.FeatureCreate(**feature_data_dict)
+                    crud.create_feature(db, feature=feature_create_obj)
                     created_count += 1
-                    print(f"Created feature: '{feature_name}'")
+                    print(f"Created feature: '{feature_name}' Category: '{feature_category}' Context: {required_context_list} Types: {compatible_types_list}")
+
         print(f"--- Feature Seeding Finished ---")
         print(f"Processed {processed_count} data rows. Created {created_count} new features. Updated {updated_count} existing features. Skipped {skipped_malformed} malformed rows.")
 
-    except FileNotFoundError: # More specific error handling
+    except FileNotFoundError:
         print(f"ERROR: Features CSV file not found at {FEATURES_CSV_PATH}. Please ensure the file exists.")
     except Exception as e:
         print(f"An error occurred during feature seeding: {e}")
