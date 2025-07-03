@@ -595,8 +595,12 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                       {snippetFeatureFetchError && <p className="error-message" style={{fontSize: '0.8em', color: 'red', margin: '0 0 5px 0'}}>{snippetFeatureFetchError}</p>}
                       <ul style={{ listStyleType: 'none', margin: 0, padding: 0 }}>
                     {snippetFeatures.map(feature => (
-                      <li key={feature.id} style={{ padding: '5px 10px', cursor: 'pointer' }}
-                        onClick={async () => { // Make async if needed
+                      <li
+                        key={feature.id}
+                        style={{ padding: '5px 10px', cursor: 'pointer' }}
+                        onMouseDown={(event) => event.stopPropagation()} // Prevent mousedown from closing menu via document listener
+                        onClick={async (event) => { // Accept event here if needed, though not strictly for current logic
+                          // event.stopPropagation(); // Can also be here, but onMouseDown is more direct for this issue
                           setSelectedSnippetFeatureId(feature.id.toString());
                           // It's better to call handleGenerateContent AFTER state updates in some cases,
                           // but since handleGenerateContent reads selectedSnippetFeatureId,
