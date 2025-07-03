@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'; // Removed useRef
+import React, { useState, useEffect, useRef } from 'react'; // Added useRef
+import ReactDOM from 'react-dom'; // Added ReactDOM for createPortal
 import { CampaignSection } from '../types/campaignTypes'; // Corrected import path
 import ReactMarkdown from 'react-markdown';
 import { Typography } from '@mui/material';
@@ -109,51 +110,72 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   // useEffect(() => { ... });
 
   const [currentSelection, setCurrentSelection] = useState<QuillRange | null>(null);
+  const snippetContextMenuRef = useRef<HTMLDivElement>(null); // Ref for the context menu div
 
+  // Effect for Quill selection changes (just to update currentSelection state)
   useEffect(() => {
     if (isEditing && quillInstance) {
       const selectionChangeHandler = (range: QuillRange, oldRange: QuillRange, source: string) => {
-        console.log('[CampaignSectionView] selectionChangeHandler - range:', range, 'source:', source);
         if (source === 'user') {
-          setCurrentSelection(range);
-          if (range && range.length > 0) {
-            const bounds = quillInstance.getBounds(range.index, range.length);
-            // Position menu relative to the Quill editor container.
-            // .section-editor has position: relative, so these coords will be relative to it.
-            const calculatedX = bounds.left;
-            const calculatedY = bounds.bottom + 15; // Increased offset to 15px below selection
-
-            console.log('[CampaignSectionView] selectionChangeHandler - bounds:', bounds, 'calculatedX:', calculatedX, 'calculatedY:', calculatedY);
-            setContextMenuPosition({ x: calculatedX, y: calculatedY });
-            setIsSnippetContextMenuOpen(true);
-            console.log('[CampaignSectionView] selectionChangeHandler - setIsSnippetContextMenuOpen(true)');
-          } else {
-            setIsSnippetContextMenuOpen(false);
+          setCurrentSelection(range); // Update current selection state
+          // Don't open menu here anymore, only update selection state
+          if (!range || range.length === 0) {
+            setIsSnippetContextMenuOpen(false); // Close if selection is lost
             setSelectedSnippetFeatureId("");
-            console.log('[CampaignSectionView] selectionChangeHandler - setIsSnippetContextMenuOpen(false), cleared selection');
           }
         }
       };
       quillInstance.on('selection-change', selectionChangeHandler);
-
-      // Close context menu on editor blur or scroll
-      const handleEditorBlur = () => setIsSnippetContextMenuOpen(false);
-      quillInstance.on('editor-change', (eventName: string) => { // editor-change can signify blur
-        if (eventName === 'selection-change' && !quillInstance.hasFocus()) {
-            // setIsSnippetContextMenuOpen(false); // Covered by selection-change with null range
-        }
-      });
-      // A more robust way to handle clicks outside to close the menu might be needed,
-      // e.g. a global click listener when menu is open.
-
       return () => {
         quillInstance.off('selection-change', selectionChangeHandler);
-        // quillInstance.off('editor-change', handleEditorBlur); // if used
       };
-    } else {
-      setIsSnippetContextMenuOpen(false); // Ensure menu is closed if not editing
     }
   }, [isEditing, quillInstance]);
+
+  // Effect for handling contextmenu event on the editor
+  useEffect(() => {
+    if (isEditing && quillInstance && quillInstance.root) { // quillInstance.root is the editor container
+      const editorNode = quillInstance.root;
+      const handleContextMenu = (event: MouseEvent) => {
+        event.preventDefault();
+        console.log('[CampaignSectionView] contextmenu event triggered');
+        const selection = quillInstance.getSelection();
+        if (selection && selection.length > 0) {
+          const posX = event.clientX + 10; // Offset 10px to the right of the click
+          const posY = event.clientY + 5;  // Offset 5px down from the click
+          console.log('[CampaignSectionView] Text selected, opening context menu at viewport X:', event.clientX, 'Y:', event.clientY, 'Menu Pos X:', posX, 'Y:', posY);
+          setContextMenuPosition({ x: posX, y: posY });
+          setIsSnippetContextMenuOpen(true);
+        } else {
+          console.log('[CampaignSectionView] No text selected on right-click, not opening menu.');
+          setIsSnippetContextMenuOpen(false);
+        }
+      };
+      editorNode.addEventListener('contextmenu', handleContextMenu);
+      return () => {
+        editorNode.removeEventListener('contextmenu', handleContextMenu);
+      };
+    } else {
+      setIsSnippetContextMenuOpen(false); // Ensure menu is closed if not editing or quill not ready
+    }
+  }, [isEditing, quillInstance]);
+
+  // Effect for handling "click outside" to close the context menu
+  useEffect(() => {
+    if (!isSnippetContextMenuOpen) return;
+
+    function handleClickOutside(event: MouseEvent) {
+      if (snippetContextMenuRef.current && !snippetContextMenuRef.current.contains(event.target as Node)) {
+        console.log('[CampaignSectionView] Clicked outside context menu, closing.');
+        setIsSnippetContextMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isSnippetContextMenuOpen]);
+
 
   useEffect(() => {
     if (isEditing) { // Load snippet features when editing starts
@@ -547,25 +569,23 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                 className="quill-editor"
                 ref={setQuillRef} // Set the ref to get Quill instance
               />
-              {isSnippetContextMenuOpen && contextMenuPosition && snippetFeatures.length > 0 && (() => {
-                console.log("[CampaignSectionView] Rendering Snippet Context Menu with position:", contextMenuPosition, "and features:", snippetFeatures.length);
-                return (
-                <div
-                  className="snippet-context-menu"
-                  style={{
-                    position: 'absolute', // Positioned relative to section-editor
-                    left: `${contextMenuPosition.x}px`,
-                    top: `${contextMenuPosition.y}px`,
-                    // Basic styling, can be moved to CSS
-                    border: '1px solid #ccc',
-                    backgroundColor: 'white',
-                    padding: '5px',
-                    zIndex: 1000, // Ensure it's above other elements
-                    boxShadow: '2px 2px 5px rgba(0,0,0,0.2)',
-                  }}
-                >
-                  {snippetFeatureFetchError && <p className="error-message" style={{fontSize: '0.8em', color: 'red', margin: '0 0 5px 0'}}>{snippetFeatureFetchError}</p>}
-                  <ul style={{ listStyleType: 'none', margin: 0, padding: 0 }}>
+              {isSnippetContextMenuOpen && contextMenuPosition && snippetFeatures.length > 0 && ReactDOM.createPortal(
+                (() => { // IIFE to keep console.log easily
+                  console.log("[CampaignSectionView] Rendering Snippet Context Menu via Portal with position:", contextMenuPosition, "and features:", snippetFeatures.length);
+                  return (
+                    <div
+                      ref={snippetContextMenuRef} // Attach ref here
+                      className="snippet-context-menu" // CSS will handle actual styling
+                      style={{
+                        position: 'fixed', // For portal, use fixed to position relative to viewport
+                        left: `${contextMenuPosition.x}px`,
+                        top: `${contextMenuPosition.y}px`,
+                        // Basic styling moved to CSS, but zIndex is important here
+                        zIndex: 1050, // Ensure it's above most other elements, including modals if any
+                      }}
+                    >
+                      {snippetFeatureFetchError && <p className="error-message" style={{fontSize: '0.8em', color: 'red', margin: '0 0 5px 0'}}>{snippetFeatureFetchError}</p>}
+                      <ul style={{ listStyleType: 'none', margin: 0, padding: 0 }}>
                     {snippetFeatures.map(feature => (
                       <li key={feature.id} style={{ padding: '5px 10px', cursor: 'pointer' }}
                         onClick={async () => { // Make async if needed
@@ -595,7 +615,9 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                   </ul>
                 </div>
                 );
-              })()}
+              })(), // End of IIFE
+              document.body // Target container for the portal
+              )}
               <Typography variant="caption" display="block" sx={{ mt: 1, color: 'text.secondary' }}>
                 Tip: For a horizontal line, use three dashes (`---`) on a line by themselves, surrounded by blank lines.
               </Typography>
