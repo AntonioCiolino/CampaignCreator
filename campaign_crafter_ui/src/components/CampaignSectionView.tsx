@@ -621,18 +621,27 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                         key={feature.id}
                         style={{ padding: '5px 10px', cursor: 'pointer' }}
                         onMouseDown={(event) => event.stopPropagation()} // Prevent mousedown from closing menu via document listener
-                        onClick={async (event) => {
-                          event.stopPropagation(); // Good practice
-                          if (quillInstance && currentSelection && currentSelection.length > 0) {
-                            const text = quillInstance.getText(currentSelection.index, currentSelection.length);
-                            const range = { index: currentSelection.index, length: currentSelection.length };
-                            // setSelectedSnippetFeatureId(feature.id.toString()); // REMOVED - ID is passed directly
-                            await handleGenerateContent(feature.id.toString(), text, range);
+                        onClick={async (event: React.MouseEvent) => {
+                          event.stopPropagation();
+                          event.preventDefault();
+
+                          const activeSelection = quillInstance?.getSelection();
+
+                          if (quillInstance && activeSelection && activeSelection.length > 0) {
+                            const text = quillInstance.getText(activeSelection.index, activeSelection.length);
+                            const rangeToProcess = { index: activeSelection.index, length: activeSelection.length };
+
+                            // It's important to set the menu to closed BEFORE the await,
+                            // so that any state changes related to selection being lost (due to focus shift)
+                            // don't interfere with the data we've already captured.
+                            setIsSnippetContextMenuOpen(false);
+
+                            // Now call handleGenerateContent with the captured, fresh data
+                            await handleGenerateContent(feature.id.toString(), text, rangeToProcess);
                           } else {
-                            // Should not happen if menu is only shown on selection, but as a safeguard:
-                            console.warn("Snippet feature clicked but no active selection found in Quill.");
+                            console.warn("[CampaignSectionView] Snippet click: No active selection or Quill instance at the moment of click logic.");
+                            setIsSnippetContextMenuOpen(false); // Still close menu
                           }
-                          setIsSnippetContextMenuOpen(false);
                         }}
                         onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f0f0f0')}
                         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'white')}
