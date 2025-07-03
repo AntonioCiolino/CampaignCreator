@@ -118,11 +118,12 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
           setCurrentSelection(range);
           if (range && range.length > 0) {
             const bounds = quillInstance.getBounds(range.index, range.length);
-            const editorContainerRect = quillInstance.container.getBoundingClientRect();
-            const calculatedX = bounds.left; // Assuming getBounds is relative to viewport for x
-            const calculatedY = bounds.bottom + window.scrollY + 5; // Position below selection, accounting for page scroll
+            // Position menu relative to the Quill editor container.
+            // .section-editor has position: relative, so these coords will be relative to it.
+            const calculatedX = bounds.left;
+            const calculatedY = bounds.bottom + 5; // 5px offset below selection
 
-            console.log('[CampaignSectionView] selectionChangeHandler - bounds:', bounds, 'editorContainerRect:', editorContainerRect, 'calculatedX:', calculatedX, 'calculatedY:', calculatedY);
+            console.log('[CampaignSectionView] selectionChangeHandler - bounds:', bounds, 'calculatedX:', calculatedX, 'calculatedY:', calculatedY);
             setContextMenuPosition({ x: calculatedX, y: calculatedY });
             setIsSnippetContextMenuOpen(true);
             console.log('[CampaignSectionView] selectionChangeHandler - setIsSnippetContextMenuOpen(true)');
