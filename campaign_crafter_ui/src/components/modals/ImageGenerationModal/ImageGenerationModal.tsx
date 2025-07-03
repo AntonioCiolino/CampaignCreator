@@ -318,6 +318,7 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
             onClose();
           }}
           disabled={!generatedImageUrl || !generationDetails?.prompt_used || !onSetAsThematic}
+          variant="secondary" // Added variant
           style={{ marginLeft: '10px' }}
         >
           Set as Thematic
@@ -483,7 +484,11 @@ const ImageGenerationModal: React.FC<ImageGenerationModalProps> = ({
         )}
 
         <div className="modal-actions">
-           <Button onClick={handleGenerateImage} disabled={isLoading || !basePrompt.trim()}>
+           <Button
+            onClick={handleGenerateImage}
+            variant="primary" // Added variant
+            disabled={isLoading || !basePrompt.trim()}
+           >
             {isLoading ? 'Generating...' : (generationDetails ? 'Generate New' : 'Generate')}
           </Button>
            <Button onClick={onClose} variant="secondary" disabled={isLoading}>

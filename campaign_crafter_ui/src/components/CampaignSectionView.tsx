@@ -2,7 +2,14 @@ import React, { useState, useEffect, useRef } from 'react'; // Added useRef
 import ReactDOM from 'react-dom'; // Added ReactDOM for createPortal
 import { CampaignSection } from '../types/campaignTypes'; // Corrected import path
 import ReactMarkdown from 'react-markdown';
-import { Typography } from '@mui/material';
+import { Typography, IconButton, Tooltip } from '@mui/material'; // Import IconButton and Tooltip
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'; // Import ExpandMoreIcon
+import ExpandLessIcon from '@mui/icons-material/ExpandLess'; // Import ExpandLessIcon
+import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
+import SaveIcon from '@mui/icons-material/Save'; // Import SaveIcon
+import CancelIcon from '@mui/icons-material/Cancel'; // Import CancelIcon
+import DeleteIcon from '@mui/icons-material/Delete'; // Import DeleteIcon
+import CasinoIcon from '@mui/icons-material/Casino'; // Import CasinoIcon
 import rehypeRaw from 'rehype-raw';
 import ReactQuill from 'react-quill';
 import LoadingSpinner from './common/LoadingSpinner'; // Adjust path if necessary
@@ -574,15 +581,42 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   return (
     <div id={`section-container-${section.id}`} className="campaign-section-view" tabIndex={-1}>
       {section.title && (
-        <div className="section-title-header" onClick={() => setIsCollapsed(!isCollapsed)}>
-          <h3 className="section-title">
-            {isCollapsed ? '▶' : '▼'} {section.title}
+        <div
+          className="section-title-header"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} // Added styles for alignment
+        >
+          <IconButton
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent parent div's onClick
+              setIsCollapsed(!isCollapsed);
+            }}
+            size="small"
+            aria-label={isCollapsed ? "expand section" : "collapse section"}
+            sx={{ mr: 1 }} // Add some margin to the right of the icon
+          >
+            {isCollapsed ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+          </IconButton>
+          <h3 className="section-title" style={{ margin: 0 }}> {/* Removed margin from h3 for better alignment */}
+            {section.title}
           </h3>
           {/* Display Section Type if not editing title area */}
           {!isEditing && section.type && (
             <span style={{ marginLeft: '10px', fontSize: '0.8em', color: '#666', fontStyle: 'italic' }}>
               ({section.type})
             </span>
+          )}
+          {!isEditing && (
+            <Tooltip title="Edit Section Content">
+              <IconButton
+                onClick={handleEdit}
+                size="small"
+                aria-label="edit section content"
+                sx={{ ml: 1 }} // Adjust margin as needed
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
           )}
         </div>
       )}
@@ -702,6 +736,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                 onClick={() => setIsTableRollerVisible(!isTableRollerVisible)}
                 variant="outline-secondary"
                 size="sm"
+                startIcon={<CasinoIcon />} // Added icon
                 style={{ marginTop: '10px', marginBottom: '5px' }}
               >
                 {isTableRollerVisible ? 'Hide Random Tables' : 'Show Random Tables'}
@@ -713,7 +748,13 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
               )}
               
               <div className="editor-actions">
-                <Button onClick={handleSave} className="editor-button" disabled={isSaving || isGeneratingContent}>
+                <Button
+                  onClick={handleSave}
+                  className="editor-button"
+                  variant="primary" // Changed variant
+                  startIcon={<SaveIcon />} // Added icon
+                  disabled={isSaving || isGeneratingContent}
+                >
                   {isSaving ? 'Saving...' : 'Save Content'}
                 </Button>
 
@@ -731,7 +772,13 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                 <Button onClick={() => setIsImageGenerationModalOpen(true)} className="editor-button" disabled={isGeneratingContent || isSaving}>
                   Generate Image
                 </Button>
-                <Button onClick={handleCancel} className="editor-button" variant="secondary" disabled={isSaving || isGeneratingContent}>
+                <Button
+                  onClick={handleCancel}
+                  className="editor-button"
+                  variant="danger" // Changed variant
+                  startIcon={<CancelIcon />} // Added icon
+                  disabled={isSaving || isGeneratingContent}
+                >
                   Cancel
                 </Button>
                 {localSaveError && <p className="error-message editor-feedback">{localSaveError}</p>}
@@ -746,14 +793,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                 <ReactMarkdown rehypePlugins={[rehypeRaw]}>{section.content}</ReactMarkdown>
               </div>
               <div className="view-actions">
-                <Button
-                  onClick={handleEdit}
-                  variant="secondary"
-                  size="sm"
-                  className="editor-button" // Removed edit-button, specific color styling will be removed from CSS
-                >
-                  Edit Section Content
-                </Button>
+                {/* "Edit Section Content" Button moved to section-title-header */}
                 {/* Regenerate button hidden as per requirements
                 <Button
                   size="sm"
@@ -771,6 +811,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                   variant="danger"
                   size="sm"
                   className="editor-button delete-button" // delete-button class might still have specific icon color logic
+                  startIcon={<DeleteIcon />} // Added icon
                   style={{ marginLeft: '10px' }}
                 >
                   Delete Section

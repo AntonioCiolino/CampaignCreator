@@ -141,6 +141,7 @@
 }
 */
 
+/*
 .campaign-section-view .save-button {
   background-color: var(--success-color); 
   border-color: var(--success-color);
@@ -160,6 +161,7 @@
   background-color: var(--secondary-color-dark);
   border-color: var(--secondary-color-dark);
 }
+*/
 
 .campaign-section-view .editor-button:disabled {
   /* Uses global disabled styles */

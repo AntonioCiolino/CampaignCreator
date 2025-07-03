@@ -5,6 +5,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import LLMSelectionDialog from '../components/modals/LLMSelectionDialog';
 import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal';
 import SuggestedTitlesModal from '../components/modals/SuggestedTitlesModal';
+import AddSectionModal from '../components/modals/AddSectionModal'; // Import AddSectionModal
 import * as campaignService from '../services/campaignService';
 import { getCampaignFiles } from '../services/campaignService';
 import {
@@ -67,8 +68,6 @@ const CampaignEditorPage: React.FC = () => {
   const [titlesError, setTitlesError] = useState<string | null>(null);
   const [suggestedTitles, setSuggestedTitles] = useState<string[] | null>(null);
 
-  const [newSectionTitle, setNewSectionTitle] = useState<string>('');
-  const [newSectionPrompt, setNewSectionPrompt] = useState<string>('');
   const [isAddingSection, setIsAddingSection] = useState<boolean>(false);
   const [addSectionError, setAddSectionError] = useState<string | null>(null);
   const [addSectionSuccess, setAddSectionSuccess] = useState<string | null>(null);
@@ -85,10 +84,10 @@ const CampaignEditorPage: React.FC = () => {
 
   const [isCampaignConceptCollapsed, setIsCampaignConceptCollapsed] = useState<boolean>(true);
   const [isTocCollapsed, setIsTocCollapsed] = useState<boolean>(false);
-  const [isAddSectionCollapsed, setIsAddSectionCollapsed] = useState<boolean>(true);
   const [isLLMDialogOpen, setIsLLMDialogOpen] = useState<boolean>(false);
   const [isBadgeImageModalOpen, setIsBadgeImageModalOpen] = useState(false);
   const [isSuggestedTitlesModalOpen, setIsSuggestedTitlesModalOpen] = useState<boolean>(false);
+  const [isAddSectionModalOpen, setIsAddSectionModalOpen] = useState<boolean>(false); // State for AddSectionModal
 
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [isAutoSavingLLMSettings, setIsAutoSavingLLMSettings] = useState<boolean>(false);
@@ -791,38 +790,39 @@ const CampaignEditorPage: React.FC = () => {
     }
   };
 
-  const handleAddSection = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  // Modified handleAddSection to be called by the modal
+  const handleAddSectionFromModal = async (title?: string, prompt?: string) => {
     if (!campaignId) return;
-    if (!newSectionTitle.trim() && !newSectionPrompt.trim()) {
-      setAddSectionError("Please provide a title or a prompt for the new section.");
-      return;
-    }
+    // Validation for empty title and prompt is handled by the modal itself or backend if "skip" is allowed.
+    // The modal's "Add Section" button is disabled if selectedLLMId is null AND both title and prompt are empty.
+    // If selectedLLMId is present, empty title/prompt are allowed (interpreted as "skip").
+
     setIsPageLoading(true);
-    setIsAddingSection(true);
+    setIsAddingSection(true); // You might want a specific state for modal adding if it behaves differently
     setAddSectionError(null);
     setAddSectionSuccess(null);
     try {
       const newSection = await campaignService.addCampaignSection(campaignId, {
-        title: newSectionTitle.trim() || undefined,
-        prompt: newSectionPrompt.trim() || undefined,
+        title: title?.trim() || undefined,
+        prompt: prompt?.trim() || undefined,
         model_id_with_prefix: selectedLLMId || undefined,
       });
       setSections(prev => [...prev, newSection].sort((a, b) => a.order - b.order));
-      setNewSectionTitle('');
-      setNewSectionPrompt('');
       setAddSectionSuccess("New section added successfully!");
       setTimeout(() => setAddSectionSuccess(null), 3000);
+      setIsAddSectionModalOpen(false); // Close modal on success
     } catch (err: any) {
       const errorMsg = (err instanceof Error && (err as any).response?.data?.detail)
                        ? (err as any).response.data.detail
                        : (err instanceof Error ? err.message : 'Failed to add new section.');
-      setAddSectionError(errorMsg);
+      setAddSectionError(errorMsg); // Display error in modal or page
+      // Optionally, keep modal open on error: setIsAddSectionModalOpen(true);
     } finally {
       setIsAddingSection(false);
       setIsPageLoading(false);
     }
   };
+
 
   const handleUpdateSection = async (sectionId: number, updatedData: CampaignSectionUpdatePayload) => { // Use imported CampaignSectionUpdatePayload
     if (!campaignId) return;
@@ -1287,50 +1287,18 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
 
   const sectionsTabContent = (
     <>
-      <div className="section-display-controls editor-section">
-        <h3>Section Display</h3>
-        <Button onClick={() => setForceCollapseAll(true)} className="action-button" icon={<UnfoldLessIcon />} tooltip="Collapse all campaign sections">
-          Collapse All Sections
-        </Button>
-        <Button onClick={() => setForceCollapseAll(false)} className="action-button" icon={<UnfoldMoreIcon />} tooltip="Expand all campaign sections">
-          Expand All Sections
-        </Button>
-        <Button
-          onClick={() => setIsAddSectionCollapsed(!isAddSectionCollapsed)}
-          disabled={!campaign?.concept?.trim()}
-          className="action-button"
-          icon={<AddCircleOutlineIcon />}
-          tooltip={!campaign?.concept?.trim() ? "Please define and save a campaign concept first." : "Add a new section to the campaign"}
-        >
-          Add New Section
-        </Button>
-      </div>
-      {!isAddSectionCollapsed && campaign?.concept?.trim() && (
-        <div className="editor-actions add-section-area editor-section card-like" style={{ marginTop: '20px' }}>
-          <h3>Add New Section</h3>
-          <form onSubmit={handleAddSection} className="add-section-form">
-            <div className="form-group">
-              <label htmlFor="newSectionTitle">Section Title (Optional):</label>
-              <input type="text" id="newSectionTitle" className="form-input" value={newSectionTitle} onChange={(e) => setNewSectionTitle(e.target.value)} placeholder="E.g., Chapter 1: The Discovery" />
-            </div>
-            <div className="form-group">
-              <label htmlFor="newSectionPrompt">Section Prompt (Optional):</label>
-              <textarea id="newSectionPrompt" className="form-textarea" value={newSectionPrompt} onChange={(e) => setNewSectionPrompt(e.target.value)} rows={3} placeholder="E.g., Start with the players finding a mysterious map..." />
-            </div>
-            {selectedLLMObject && (
-                 <p style={{fontSize: '0.9em', margin: '10px 0'}}>New section will use LLM: <strong>{selectedLLMObject.name}</strong></p>
-            )}
-            {addSectionError && <p className="error-message feedback-message">{addSectionError}</p>}
-            {addSectionSuccess && <p className="success-message feedback-message">{addSectionSuccess}</p>}
-            <Button type="submit" disabled={isAddingSection || !selectedLLMId || !campaign?.concept?.trim()} className="action-button add-section-button" icon={<AddCircleOutlineIcon />} tooltip={!campaign?.concept?.trim() ? "Please define and save a campaign concept first." : (!selectedLLMId ? "Please select an LLM in settings." : "Add this new section to the campaign")}>
-              {isAddingSection ? 'Adding Section...' : 'Confirm & Add Section'}
-            </Button>
-            <Button type="button" onClick={() => setIsAddSectionCollapsed(true)} className="action-button secondary-action-button" style={{marginLeft: '10px'}} icon={<CancelIcon />} tooltip="Cancel adding a new section">
-              Cancel
-            </Button>
-          </form>
-        </div>
-      )}
+      <Button
+        onClick={() => setIsAddSectionModalOpen(true)} // Open modal
+        disabled={!campaign?.concept?.trim()}
+        className="action-button"
+        icon={<AddCircleOutlineIcon />}
+        tooltip={!campaign?.concept?.trim() ? "Please define and save a campaign concept first." : "Add a new section to the campaign"}
+        style={{ marginBottom: '1rem' }} // Preserved margin for spacing
+      >
+        Add New Section
+      </Button>
+      {/* The div className="section-display-controls editor-section" has been removed */}
+      {/* Remove old collapsible form area */}
       <CampaignSectionEditor
         campaignId={campaignId!}
         sections={sections}
@@ -1762,6 +1730,12 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
         isOpen={isPreviewModalOpen}
         onClose={() => setIsPreviewModalOpen(false)}
         imageUrl={previewImageUrl}
+      />
+      <AddSectionModal
+        isOpen={isAddSectionModalOpen}
+        onClose={() => setIsAddSectionModalOpen(false)}
+        onAddSection={handleAddSectionFromModal}
+        selectedLLMId={selectedLLMId}
       />
     </div>
   );
