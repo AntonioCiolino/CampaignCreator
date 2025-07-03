@@ -37,7 +37,7 @@ describe('CampaignCard', () => {
   test('renders campaign title and snippet', () => {
     render(
       <MemoryRouter>
-        <CampaignCard campaign={mockCampaignWithBadge} />
+        <CampaignCard campaign={mockCampaignWithBadge} onDelete={jest.fn()} />
       </MemoryRouter>
     );
     expect(screen.getByText(mockCampaignWithBadge.title)).toBeInTheDocument();
@@ -48,7 +48,7 @@ describe('CampaignCard', () => {
     test('displays badge image as a clickable link when badge_image_url exists', () => {
       render(
         <MemoryRouter>
-          <CampaignCard campaign={mockCampaignWithBadge} />
+          <CampaignCard campaign={mockCampaignWithBadge} onDelete={jest.fn()} />
         </MemoryRouter>
       );
 
@@ -66,7 +66,7 @@ describe('CampaignCard', () => {
     test('displays placeholder when badge_image_url does not exist', () => {
       render(
         <MemoryRouter>
-          <CampaignCard campaign={mockCampaignWithoutBadge} />
+          <CampaignCard campaign={mockCampaignWithoutBadge} onDelete={jest.fn()} />
         </MemoryRouter>
       );
 
@@ -93,7 +93,7 @@ describe('CampaignCard', () => {
       
       render(
         <MemoryRouter>
-          <CampaignCard campaign={mockCampaignWithBadge} />
+          <CampaignCard campaign={mockCampaignWithBadge} onDelete={jest.fn()} />
         </MemoryRouter>
       );
 
@@ -122,5 +122,28 @@ describe('CampaignCard', () => {
       // The key is that the attribute is present in the component's code.
       // We've verified the link is there and correctly configured.
     });
+  });
+
+  test('renders delete button and calls onDelete when clicked', () => {
+    const mockOnDelete = jest.fn();
+    const campaignWithDelete: Campaign = {
+      ...mockCampaignWithBadge, // Use existing mock data
+      id: 3, // Ensure a unique ID if needed for other logic
+    };
+
+    render(
+      <MemoryRouter>
+        <CampaignCard campaign={campaignWithDelete} onDelete={mockOnDelete} />
+      </MemoryRouter>
+    );
+
+    const deleteButton = screen.getByRole('button', { name: `Delete campaign ${campaignWithDelete.title}` });
+    expect(deleteButton).toBeInTheDocument();
+    expect(deleteButton).toHaveTextContent('Delete');
+
+    fireEvent.click(deleteButton);
+
+    expect(mockOnDelete).toHaveBeenCalledTimes(1);
+    expect(mockOnDelete).toHaveBeenCalledWith(campaignWithDelete.id, campaignWithDelete.title);
   });
 });

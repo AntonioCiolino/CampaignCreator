@@ -1,5 +1,6 @@
 from typing import Optional, List, Dict # Added List and Dict
 from sqlalchemy.orm import Session
+from fastapi import HTTPException # Added HTTPException
 from passlib.context import CryptContext
 
 from app import models, orm_models # Standardized
@@ -557,6 +558,45 @@ def update_campaign_toc(db: Session, campaign_id: int, display_toc_content: List
         db.commit()
         db.refresh(db_campaign)
     return db_campaign
+
+async def delete_campaign(db: Session, campaign_id: int, user_id: int) -> Optional[orm_models.Campaign]:
+    """Deletes a campaign after checking ownership and performing placeholder asset deletion tasks."""
+    campaign = get_campaign(db, campaign_id)
+    if not campaign:
+        return None
+
+    if campaign.owner_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this campaign")
+
+    # Asset deletion logic
+    image_service = ImageGenerationService()
+    campaign_files = [] # Initialize in case list_campaign_files fails
+    try:
+        campaign_files = await image_service.list_campaign_files(user_id=user_id, campaign_id=campaign_id)
+    except Exception as e:
+        print(f"Error listing campaign files for campaign {campaign_id}, user {user_id}: {e}")
+        # Logged error, proceeding with campaign DB record deletion.
+
+    if campaign_files:
+        for file_metadata in campaign_files:
+            try:
+                print(f"Deleting blob: {file_metadata.blob_name} for campaign {campaign_id}")
+                await image_service.delete_image_from_blob_storage(blob_name=file_metadata.blob_name)
+
+                # This is a synchronous DB call, ensure it's okay within an async function
+                # or consider making it async if it causes blocking issues.
+                # For now, assuming it's acceptable as per typical FastAPI/SQLAlchemy patterns
+                # where DB operations are often sync even in async request handlers.
+                print(f"Deleting GeneratedImage record for blob: {file_metadata.blob_name}")
+                delete_generated_image_by_blob_name(db=db, blob_name=file_metadata.blob_name, user_id=user_id)
+            except Exception as e:
+                print(f"Error deleting asset {file_metadata.blob_name} for campaign {campaign_id}: {e}")
+                # Logged error, continue to the next file.
+
+    db.delete(campaign)
+    db.commit()
+    # The campaign object is now expired but contains the data before deletion.
+    return campaign
 
 # CampaignSection CRUD functions
 

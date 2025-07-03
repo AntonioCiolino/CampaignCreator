@@ -5,9 +5,16 @@ from sqlalchemy.orm import sessionmaker, Session
 from typing import Generator, Optional, List, Dict, AsyncGenerator
 
 from app.db import Base
-from app.orm_models import User as ORMUser, Campaign as ORMCampaign, CampaignSection as ORMCampaignSection
-from app.models import CampaignSectionUpdateInput
+from datetime import datetime, timezone
+
+import pytest
+from unittest.mock import MagicMock, patch, AsyncMock, ANY
+from fastapi import HTTPException
+
+from app.orm_models import User as ORMUser, Campaign as ORMCampaign, CampaignSection as ORMCampaignSection, GeneratedImage as ORMGeneratedImage
+from app.models import CampaignSectionUpdateInput, User as PydanticUser
 from app import crud
+from app.services.image_generation_service import ImageGenerationService, BlobFileMetadata # Added BlobFileMetadata
 
 # In-memory SQLite database for testing
 DATABASE_URL = "sqlite:///:memory:"
@@ -772,6 +779,215 @@ async def test_create_campaign_skip_concept_generation_flag(
     # even if skip_concept_generation is False. The conditional logic in crud.create_campaign is
     # `if not campaign_payload.skip_concept_generation and campaign_payload.initial_user_prompt:`
     mock_llm_instance.generate_campaign_concept.assert_not_called()
+
+
+# --- Campaign Deletion Tests ---
+
+# Helper to create a campaign directly in DB for deletion tests
+def create_db_campaign(db: Session, user: ORMUser, title: str = "Test Campaign to Delete") -> ORMCampaign:
+    campaign = ORMCampaign(title=title, owner_id=user.id, concept="Test concept")
+    db.add(campaign)
+    db.commit()
+    db.refresh(campaign)
+    return campaign
+
+# Helper to create campaign sections
+def create_db_section(db: Session, campaign: ORMCampaign, title: str, order: int) -> ORMCampaignSection:
+    section = ORMCampaignSection(campaign_id=campaign.id, title=title, content="Test content", order=order)
+    db.add(section)
+    db.commit()
+    db.refresh(section)
+    return section
+
+# Helper to create generated image records
+def create_db_generated_image(db: Session, user: ORMUser, campaign: ORMCampaign, blob_name: str, image_url: str) -> ORMGeneratedImage:
+    image = ORMGeneratedImage(
+        user_id=user.id,
+        campaign_id=campaign.id,
+        filename=blob_name, # blob_name is stored in filename field
+        image_url=image_url,
+        prompt="Test prompt",
+        model_used="test_model",
+        size_used="512x512",
+        created_at=datetime.now(timezone.utc)
+    )
+    db.add(image)
+    db.commit()
+    db.refresh(image)
+    return image
+
+@pytest.mark.asyncio
+@patch('app.crud.ImageGenerationService')
+async def test_delete_campaign_successful(
+    mock_image_service_class: MagicMock,
+    db_session: Session,
+    test_user: ORMUser
+):
+    # Setup Mocks
+    mock_image_service_instance = mock_image_service_class.return_value
+    blob1_name = f"user_uploads/{test_user.id}/campaigns/1/files/image1.png"
+    blob2_name = f"user_uploads/{test_user.id}/campaigns/1/files/image2.jpg"
+    mock_files = [
+        BlobFileMetadata(name="image1.png", blob_name=blob1_name, url="url1", size=100, last_modified=datetime.now(timezone.utc), content_type="image/png"),
+        BlobFileMetadata(name="image2.jpg", blob_name=blob2_name, url="url2", size=120, last_modified=datetime.now(timezone.utc), content_type="image/jpeg")
+    ]
+    mock_image_service_instance.list_campaign_files = AsyncMock(return_value=mock_files)
+    mock_image_service_instance.delete_image_from_blob_storage = AsyncMock()
+
+    # Setup Data
+    campaign_to_delete = create_db_campaign(db_session, test_user, title="Campaign for Successful Deletion")
+    campaign_id = campaign_to_delete.id
+
+    section1 = create_db_section(db_session, campaign_to_delete, "Section 1", 0)
+    section2 = create_db_section(db_session, campaign_to_delete, "Section 2", 1)
+
+    # Create GeneratedImage records that would be returned by list_campaign_files
+    # Ensure blob_names match what list_campaign_files mock returns
+    img1 = create_db_generated_image(db_session, test_user, campaign_to_delete, blob1_name, "url1")
+    img2 = create_db_generated_image(db_session, test_user, campaign_to_delete, blob2_name, "url2")
+
+    # Call delete_campaign
+    deleted_campaign_orm = await crud.delete_campaign(db=db_session, campaign_id=campaign_id, user_id=test_user.id)
+
+    # Assertions
+    assert deleted_campaign_orm is not None
+    assert deleted_campaign_orm.id == campaign_id
+    assert crud.get_campaign(db_session, campaign_id) is None
+
+    # Assert sections are deleted (cascade should handle this if configured, otherwise check explicitly)
+    # For SQLite in-memory tests, cascade might not be fully active unless explicitly handled by SQLAlchemy listeners or manual delete.
+    # Assuming Campaign ORM has cascade delete for sections:
+    sections_after_delete = db_session.query(ORMCampaignSection).filter(ORMCampaignSection.campaign_id == campaign_id).all()
+    assert len(sections_after_delete) == 0
+
+    # Assert ImageGenerationService calls
+    mock_image_service_instance.list_campaign_files.assert_called_once_with(user_id=test_user.id, campaign_id=campaign_id)
+    assert mock_image_service_instance.delete_image_from_blob_storage.call_count == len(mock_files)
+    mock_image_service_instance.delete_image_from_blob_storage.assert_any_call(blob_name=blob1_name)
+    mock_image_service_instance.delete_image_from_blob_storage.assert_any_call(blob_name=blob2_name)
+
+    # Assert GeneratedImage records are deleted
+    # We need to query for them directly
+    remaining_images = db_session.query(ORMGeneratedImage).filter(ORMGeneratedImage.campaign_id == campaign_id).all()
+    assert len(remaining_images) == 0
+    # Check if specific images are gone
+    assert db_session.query(ORMGeneratedImage).filter(ORMGeneratedImage.id == img1.id).first() is None
+    assert db_session.query(ORMGeneratedImage).filter(ORMGeneratedImage.id == img2.id).first() is None
+
+@pytest.mark.asyncio
+async def test_delete_campaign_by_non_owner(db_session: Session, test_user: ORMUser):
+    owner = test_user
+    non_owner_data = crud.models.UserCreate(email="nonowner@example.com", password="password")
+    non_owner = crud.create_user(db=db_session, user=non_owner_data)
+
+    campaign_to_delete = create_db_campaign(db_session, owner, title="Campaign for Non-Owner Test")
+
+    with pytest.raises(HTTPException) as exc_info:
+        await crud.delete_campaign(db=db_session, campaign_id=campaign_to_delete.id, user_id=non_owner.id)
+
+    assert exc_info.value.status_code == 403
+    assert "Not authorized" in exc_info.value.detail
+
+    # Ensure campaign still exists
+    assert crud.get_campaign(db_session, campaign_to_delete.id) is not None
+
+@pytest.mark.asyncio
+async def test_delete_non_existent_campaign(db_session: Session, test_user: ORMUser):
+    non_existent_campaign_id = 99999
+    result = await crud.delete_campaign(db=db_session, campaign_id=non_existent_campaign_id, user_id=test_user.id)
+    assert result is None
+
+@pytest.mark.asyncio
+@patch('app.crud.ImageGenerationService')
+@patch('app.crud.delete_generated_image_by_blob_name') # Patch the sync function
+async def test_delete_campaign_asset_deletion_failures_graceful_handling(
+    mock_delete_db_record: MagicMock,
+    mock_image_service_class: MagicMock,
+    db_session: Session,
+    test_user: ORMUser
+):
+    # Setup Mocks
+    mock_image_service_instance = mock_image_service_class.return_value
+    blob1_name = f"user_uploads/{test_user.id}/campaigns/2/files/asset1.png"
+    blob2_name = f"user_uploads/{test_user.id}/campaigns/2/files/asset2.txt"
+
+    mock_files = [
+        BlobFileMetadata(name="asset1.png", blob_name=blob1_name, url="url1", size=100,last_modified=datetime.now(timezone.utc), content_type="image/png"),
+        BlobFileMetadata(name="asset2.txt", blob_name=blob2_name, url="url2", size=120,last_modified=datetime.now(timezone.utc), content_type="text/plain")
+    ]
+    mock_image_service_instance.list_campaign_files = AsyncMock(return_value=mock_files)
+
+    # asset1 fails at blob storage, asset2 fails at DB record deletion
+    mock_image_service_instance.delete_image_from_blob_storage.side_effect = [
+        Exception("Azure unavailable for asset1"), # Fails for blob1_name
+        AsyncMock() # Succeeds for blob2_name
+    ]
+    mock_delete_db_record.side_effect = [
+        None, # Successfully deletes record for asset1 (or it was already gone)
+        Exception("DB error deleting record for asset2") # Fails for asset2's DB record
+    ]
+
+    # Setup Data
+    campaign_to_delete = create_db_campaign(db_session, test_user, title="Campaign for Graceful Failure Test")
+    campaign_id = campaign_to_delete.id
+    # Create corresponding GeneratedImage records
+    img1 = create_db_generated_image(db_session, test_user, campaign_to_delete, blob1_name, "url1")
+    img2 = create_db_generated_image(db_session, test_user, campaign_to_delete, blob2_name, "url2")
+
+    # Call delete_campaign
+    # We expect it to log errors but not re-raise, and still delete the campaign
+    deleted_campaign_orm = await crud.delete_campaign(db=db_session, campaign_id=campaign_id, user_id=test_user.id)
+
+    # Assertions
+    assert deleted_campaign_orm is not None # Campaign object itself is returned
+    assert crud.get_campaign(db_session, campaign_id) is None # Campaign DB record is deleted
+
+    # Assert service calls were made
+    mock_image_service_instance.list_campaign_files.assert_called_once_with(user_id=test_user.id, campaign_id=campaign_id)
+    assert mock_image_service_instance.delete_image_from_blob_storage.call_count == 2
+    mock_image_service_instance.delete_image_from_blob_storage.assert_any_call(blob_name=blob1_name)
+    mock_image_service_instance.delete_image_from_blob_storage.assert_any_call(blob_name=blob2_name)
+
+    # Assert delete_generated_image_by_blob_name calls were made
+    assert mock_delete_db_record.call_count == 2
+    mock_delete_db_record.assert_any_call(db=db_session, blob_name=blob1_name, user_id=test_user.id)
+    mock_delete_db_record.assert_any_call(db=db_session, blob_name=blob2_name, user_id=test_user.id)
+
+    # Check DB state for GeneratedImage records (img1's record should be deleted, img2's might still exist)
+    assert db_session.query(ORMGeneratedImage).filter(ORMGeneratedImage.id == img1.id).first() is None
+    assert db_session.query(ORMGeneratedImage).filter(ORMGeneratedImage.id == img2.id).first() is not None # Failed to delete
+
+
+@pytest.mark.asyncio
+@patch('app.crud.ImageGenerationService')
+async def test_delete_campaign_with_no_assets(
+    mock_image_service_class: MagicMock,
+    db_session: Session,
+    test_user: ORMUser
+):
+    # Setup Mocks
+    mock_image_service_instance = mock_image_service_class.return_value
+    mock_image_service_instance.list_campaign_files = AsyncMock(return_value=[]) # No assets
+    mock_image_service_instance.delete_image_from_blob_storage = AsyncMock()
+
+    # Patch the synchronous DB deletion for GeneratedImage as it shouldn't be called
+    with patch('app.crud.delete_generated_image_by_blob_name') as mock_delete_db_img_record:
+        # Setup Data
+        campaign_to_delete = create_db_campaign(db_session, test_user, title="Campaign No Assets")
+        campaign_id = campaign_to_delete.id
+
+        # Call delete_campaign
+        deleted_campaign_orm = await crud.delete_campaign(db=db_session, campaign_id=campaign_id, user_id=test_user.id)
+
+        # Assertions
+        assert deleted_campaign_orm is not None
+        assert crud.get_campaign(db_session, campaign_id) is None # Campaign is deleted
+
+        # Assert ImageGenerationService calls
+        mock_image_service_instance.list_campaign_files.assert_called_once_with(user_id=test_user.id, campaign_id=campaign_id)
+        mock_image_service_instance.delete_image_from_blob_storage.assert_not_called()
+        mock_delete_db_img_record.assert_not_called()
+
 
 # --- Character CRUD Tests ---
 
