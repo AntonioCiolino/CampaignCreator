@@ -112,19 +112,24 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   // Effect to reset selectedFeatureId will be handled by context menu logic
   // useEffect(() => { ... });
 
-  const [currentSelection, setCurrentSelection] = useState<QuillRange | null>(null);
+  const [currentSelection, setCurrentSelection] = useState<QuillRange | null>(null); // This will store the selection range
   const snippetContextMenuRef = useRef<HTMLDivElement>(null); // Ref for the context menu div
+  const contextMenuTriggerSelectionRef = useRef<QuillRange | null>(null); // Ref to store selection at menu trigger
 
   // Effect for Quill selection changes (just to update currentSelection state)
   useEffect(() => {
     if (isEditing && quillInstance) {
       const selectionChangeHandler = (range: QuillRange, oldRange: QuillRange, source: string) => {
         if (source === 'user') {
-          setCurrentSelection(range); // Update current selection state
+          // setCurrentSelection(range); // We will use the ref for the action, this can still be useful for other UI if needed
           // Don't open menu here anymore, only update selection state
           if (!range || range.length === 0) {
-            setIsSnippetContextMenuOpen(false); // Close if selection is lost
-            // setSelectedSnippetFeatureId(""); // Commented out as selectedSnippetFeatureId is not used
+            // If selection is lost, and menu is open, close it.
+            // Also clear the ref if selection is lost and menu was tied to it.
+            // This might need careful handling if menu should persist.
+            // For now, let's assume losing selection should close the menu.
+            setIsSnippetContextMenuOpen(false);
+            contextMenuTriggerSelectionRef.current = null;
           }
         }
       };
@@ -144,6 +149,10 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
         console.log('[CampaignSectionView] contextmenu event triggered');
         const selection = quillInstance.getSelection();
         if (selection && selection.length > 0) {
+          // Store the selection in the ref *when the context menu is triggered*
+          contextMenuTriggerSelectionRef.current = selection;
+          console.log('[CampaignSectionView] Stored selection in ref:', selection);
+
           const posX = event.clientX + 10; // Offset 10px to the right of the click
           const posY = event.clientY + 5;  // Offset 5px down from the click
           console.log('[CampaignSectionView] Text selected, opening context menu at viewport X:', event.clientX, 'Y:', event.clientY, 'Menu Pos X:', posX, 'Y:', posY);
@@ -151,6 +160,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
           setIsSnippetContextMenuOpen(true);
         } else {
           console.log('[CampaignSectionView] No text selected on right-click, not opening menu.');
+          contextMenuTriggerSelectionRef.current = null; // Clear ref if no selection
           setIsSnippetContextMenuOpen(false);
         }
       };
@@ -167,15 +177,18 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   useEffect(() => {
     if (!isSnippetContextMenuOpen) return;
 
-    function handleClickOutside(event: MouseEvent) {
-      if (snippetContextMenuRef.current && !snippetContextMenuRef.current.contains(event.target as Node)) {
-        console.log('[CampaignSectionView] Clicked outside context menu, closing.');
-        setIsSnippetContextMenuOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
+    // Handler for clicks outside the menu
+    // function handleClickOutside(event: MouseEvent) { // Temporarily disable this
+    //   if (snippetContextMenuRef.current && !snippetContextMenuRef.current.contains(event.target as Node)) {
+    //     console.log('[CampaignSectionView] Clicked outside context menu (document listener), closing.');
+    //     setIsSnippetContextMenuOpen(false);
+    //   }
+    // }
+
+    // document.addEventListener('mousedown', handleClickOutside); // Temporarily disable this
+
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      // document.removeEventListener('mousedown', handleClickOutside); // Temporarily disable this
     };
   }, [isSnippetContextMenuOpen]);
 
@@ -603,66 +616,69 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                 ref={setQuillRef} // Set the ref to get Quill instance
               />
               {isSnippetContextMenuOpen && contextMenuPosition && snippetFeatures.length > 0 && ReactDOM.createPortal(
-                (() => { // IIFE to keep console.log easily
+                // Restored Portal
+                (() => {
                   console.log("[CampaignSectionView] Rendering Snippet Context Menu via Portal with position:", contextMenuPosition, "and features:", snippetFeatures.length);
                   return (
                     <div
-                      ref={snippetContextMenuRef} // Attach ref here
-                      className="snippet-context-menu" // CSS will handle actual styling
+                      ref={snippetContextMenuRef}
+                      className="snippet-context-menu"
                       style={{
-                        position: 'fixed', // For portal, use fixed to position relative to viewport
+                        position: 'fixed',
                         left: `${contextMenuPosition.x}px`,
                         top: `${contextMenuPosition.y}px`,
-                        // Basic styling moved to CSS, but zIndex is important here
-                        zIndex: 1050, // Ensure it's above most other elements, including modals if any
+                        zIndex: 1050,
                       }}
                     >
                       {snippetFeatureFetchError && <p className="error-message" style={{fontSize: '0.8em', color: 'red', margin: '0 0 5px 0'}}>{snippetFeatureFetchError}</p>}
                       <ul style={{ listStyleType: 'none', margin: 0, padding: 0 }}>
-                    {snippetFeatures.map(feature => (
-                      <li
-                        key={feature.id}
-                        style={{ padding: '5px 10px', cursor: 'pointer' }}
-                        onMouseDown={(event) => event.stopPropagation()} // Prevent mousedown from closing menu via document listener
-                        onClick={async (event: React.MouseEvent) => {
-                          event.stopPropagation();
-                          event.preventDefault();
+                        {snippetFeatures.map(feature => (
+                          <li
+                            key={feature.id}
+                            data-feature-id={feature.id.toString()}
+                            style={{ padding: '5px 10px', cursor: 'pointer' }}
+                            onMouseDown={async (event) => {
+                              console.log("[CampaignSectionView] Snippet item onMouseDown triggered for feature:", feature.name);
+                              event.stopPropagation();
+                              event.preventDefault();
 
-                          const activeSelection = quillInstance?.getSelection();
+                              const quill = quillInstance;
+                              // Use contextMenuTriggerSelectionRef.current which is set reliably on contextmenu event
+                              const selectionToUse = contextMenuTriggerSelectionRef.current;
 
-                          if (quillInstance && activeSelection && activeSelection.length > 0) {
-                            const text = quillInstance.getText(activeSelection.index, activeSelection.length);
-                            const rangeToProcess = { index: activeSelection.index, length: activeSelection.length };
+                              console.log("[CampaignSectionView] MouseDown: quillInstance exists?", !!quill);
+                              console.log("[CampaignSectionView] MouseDown: selection from ref:", selectionToUse);
+                              if (selectionToUse) {
+                                  console.log("[CampaignSectionView] MouseDown: selection from ref length:", selectionToUse.length);
+                              }
 
-                            // It's important to set the menu to closed BEFORE the await,
-                            // so that any state changes related to selection being lost (due to focus shift)
-                            // don't interfere with the data we've already captured.
-                            setIsSnippetContextMenuOpen(false);
-
-    console.log("[CampaignSectionView] Snippet click: Calling handleGenerateContent with feature ID:", feature.id.toString()); // Added log
-                            // Now call handleGenerateContent with the captured, fresh data
-                            await handleGenerateContent(feature.id.toString(), text, rangeToProcess);
-                          } else {
-    console.warn("[CampaignSectionView] Snippet click: No active selection or Quill instance at the moment of click logic. Quill:", quillInstance, "Selection:", activeSelection); // Enhanced log
-                            setIsSnippetContextMenuOpen(false); // Still close menu
-                          }
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f0f0f0')}
-                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'white')}
-                      >
-                        {feature.name}
-                        {feature.required_context && feature.required_context.filter(rc => rc !== 'selected_text').length > 0 && (
-                           <span style={{fontSize: '0.7em', color: '#777', marginLeft: '5px'}}>
-                             (+ {feature.required_context.filter(rc => rc !== 'selected_text').join(', ')})
-                           </span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                );
-              })(), // End of IIFE
-              document.body // Target container for the portal
+                              if (quill && selectionToUse && selectionToUse.length > 0) {
+                                const text = quill.getText(selectionToUse.index, selectionToUse.length);
+                                const rangeToProcess = { index: selectionToUse.index, length: selectionToUse.length };
+                                setIsSnippetContextMenuOpen(false);
+                                console.log("[CampaignSectionView] Snippet item onMouseDown: Calling HGC for feature:", feature.id.toString());
+                                await handleGenerateContent(feature.id.toString(), text, rangeToProcess);
+                              } else {
+                                console.warn("[CampaignSectionView] Snippet item onMouseDown: No valid ref selection or Quill. Quill:", quill, "RefSelection:", selectionToUse);
+                                setIsSnippetContextMenuOpen(false);
+                              }
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f0f0f0')}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'white')}
+                          >
+                            {feature.name}
+                            {feature.required_context && feature.required_context.filter(rc => rc !== 'selected_text').length > 0 && (
+                              <span style={{fontSize: '0.7em', color: '#777', marginLeft: '5px'}}>
+                                (+ {feature.required_context.filter(rc => rc !== 'selected_text').join(', ')})
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })(),
+              document.body // Restored Portal target
               )}
               <Typography variant="caption" display="block" sx={{ mt: 1, color: 'text.secondary' }}>
                 Tip: For a horizontal line, use three dashes (`---`) on a line by themselves, surrounded by blank lines.
