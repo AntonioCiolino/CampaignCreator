@@ -19,7 +19,9 @@ import './CampaignSectionView.css';
 import { CampaignSectionUpdatePayload, SectionRegeneratePayload } from '../types/campaignTypes'; // CORRECTED PATH, Added SectionRegeneratePayload
 import { getFeatures } from '../services/featureService';
 import { Feature } from '../types/featureTypes';
+import { Character as FrontendCharacter } from '../../types/characterTypes'; // Import FrontendCharacter
 import * as campaignService from '../services/campaignService';
+import SnippetContextModal from './modals/SnippetContextModal'; // Import the new modal
 
 const SECTION_TYPES = ['NPC', 'Character', 'Location', 'Item', 'Quest', 'Monster', 'Chapter', 'Note', 'World Detail', 'Generic'];
 
@@ -38,6 +40,7 @@ interface CampaignSectionViewProps {
   onSectionTypeUpdate?: (sectionId: number, newType: string) => void; // Optional for now
   onSetThematicImageFromSection?: (imageUrl: string, promptUsed: string) => void;
   expandSectionId: string | null; // Add this
+  campaignCharacters: FrontendCharacter[]; // Added for context modal
 }
 
 // Removed ImageData interface
@@ -55,6 +58,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   onSectionTypeUpdate, // Destructure the new prop
   onSetThematicImageFromSection,
   expandSectionId, // Add this
+  campaignCharacters, // Destructure new prop
 }) => {
 
   // Function to get tooltip text based on section type
@@ -109,6 +113,13 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   const [snippetFeatureFetchError, setSnippetFeatureFetchError] = useState<string | null>(null);
   const [isSnippetContextMenuOpen, setIsSnippetContextMenuOpen] = useState<boolean>(false);
   const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number, y: number } | null>(null);
+
+  // State for the new SnippetContextModal
+  const [isContextModalOpen, setIsContextModalOpen] = useState<boolean>(false);
+  const [currentFeatureForModal, setCurrentFeatureForModal] = useState<Feature | null>(null);
+  const [currentSelectionForModal, setCurrentSelectionForModal] = useState<QuillRange | null>(null);
+
+
   // const [isRegenerating, setIsRegenerating] = useState<boolean>(false); // Removed
   // const [regenerateError, setRegenerateError] = useState<string | null>(null); // Removed
 
@@ -310,14 +321,29 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
     setContentGenerationError(null); // Clear content generation error on cancel
   };
 
+  const handleModalSubmit = (collectedContextData: Record<string, any>) => {
+    if (currentFeatureForModal && currentSelectionForModal) {
+      console.log('[CampaignSectionView] Submitting from modal. Feature:', currentFeatureForModal.name, 'Selection:', currentSelectionForModal, 'CollectedContext:', collectedContextData);
+      // Call handleGenerateContent, passing the feature ID, selection, and new collected context
+      handleGenerateContent(currentFeatureForModal.id.toString(), currentSelectionForModal, collectedContextData);
+    } else {
+      console.error('[CampaignSectionView] Modal submit called without current feature or selection for modal.');
+    }
+    // Reset modal state
+    setIsContextModalOpen(false);
+    setCurrentFeatureForModal(null);
+    setCurrentSelectionForModal(null);
+  };
+
   const handleGenerateContent = async (
     overrideSnippetFeatureId?: string,
-    explicitSelectionRange?: QuillRange | null // Added new optional parameter
+    explicitSelectionRange?: QuillRange | null,
+    collectedContextData?: Record<string, any> | null // New optional parameter for context from modal
   ) => {
     // Log raw parameters
-    console.log('[HGC] Raw params - overrideSnippetFeatureId:', overrideSnippetFeatureId, 'explicitSelectionRange:', explicitSelectionRange);
+    console.log('[HGC] Raw params - overrideSnippetFeatureId:', overrideSnippetFeatureId, 'explicitSelectionRange:', explicitSelectionRange, 'collectedContextData:', collectedContextData);
 
-    console.log('[HGC] Start. overrideSnippetFeatureId:', overrideSnippetFeatureId, 'explicitSelectionRange:', explicitSelectionRange); // Updated log
+    console.log('[HGC] Start. overrideSnippetFeatureId:', overrideSnippetFeatureId, 'explicitSelectionRange:', explicitSelectionRange, 'collectedContextData:', collectedContextData); // Updated log
     setIsGeneratingContent(true);
     setContentGenerationError(null);
 
@@ -392,56 +418,64 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
       // selectionToReplace is already set if it's a snippet operation with valid ref selection
 
       // This block determines if it's a snippet for payload:
-      if (featureIdToUseForSnippet && isTextActuallySelected) { // isTextActuallySelected is now correctly true for snippets from ref
+      if (featureIdToUseForSnippet && isTextActuallySelected) {
         console.log('[HGC] Looking for snippetFeature with ID:', featureIdToUseForSnippet, 'Available snippetFeatures:', snippetFeatures.map(f => f.id.toString()));
         const snippetFeature = snippetFeatures.find(f => f.id.toString() === featureIdToUseForSnippet);
-        console.log('[HGC] Attempting snippet path. Found snippetFeature:', snippetFeature); // Added
+        console.log('[HGC] Attempting snippet path. Found snippetFeature:', snippetFeature);
+
         if (snippetFeature) {
           featureIdForBackend = snippetFeature.id;
           operationType = `Snippet: ${snippetFeature.name}`;
-          contextDataForBackend['selected_text'] = editorSelectionText; // editorSelectionText is from ref for snippets
-          console.log('[HGC] Snippet feature identified. featureIdForBackend:', featureIdForBackend, 'contextData.selected_text:', contextDataForBackend['selected_text']); // Added
-          // selectionToReplace is already set from explicitSelectionRange or storedSelection if this path is taken
-          if (snippetFeature.required_context) {
+          contextDataForBackend['selected_text'] = editorSelectionText;
+          console.log('[HGC] Snippet feature identified. featureIdForBackend:', featureIdForBackend, 'contextData.selected_text:', contextDataForBackend['selected_text']);
+
+          if (collectedContextData) {
+            // If context was collected from modal, merge it in
+            console.log('[HGC] Merging collectedContextData:', collectedContextData);
+            for (const key in collectedContextData) {
+              if (Object.prototype.hasOwnProperty.call(collectedContextData, key)) {
+                contextDataForBackend[key] = collectedContextData[key];
+              }
+            }
+          } else if (snippetFeature.required_context) {
+            // Fallback to placeholder logic ONLY IF modal context wasn't provided AND feature has other required_context
+            // This path should ideally not be hit if modal logic is correct
             snippetFeature.required_context.forEach(key => {
-              if (key !== 'selected_text') {
-                console.log(`[HGC] Snippet feature '${snippetFeature.name}' also requires '${key}'. This needs to be fetched/passed.`);
-                contextDataForBackend[key] = `{${key}_placeholder_for_snippet}`;
+              if (key !== 'selected_text' && !contextDataForBackend[key]) { // Check if not already populated
+                console.warn(`[HGC] Snippet feature '${snippetFeature.name}' requires '${key}', but not found in collectedContext. Using placeholder.`);
+                contextDataForBackend[key] = `{${key}_placeholder_for_snippet_fallback}`;
               }
             });
           }
         } else {
           console.warn(`[HGC] Snippet feature ID ${featureIdToUseForSnippet} not found in snippetFeatures. Proceeding as full generation.`);
-          // This case means featureIdToUseForSnippet was set, but feature not found. Fallback to full gen.
-          featureIdForBackend = undefined; // Ensure it's undefined for the next block
+          featureIdForBackend = undefined;
         }
       }
 
-      console.log('[HGC] Before final check, featureIdForBackend is:', featureIdForBackend); // Added
-
+      // Fallback to full section generation if not a snippet or snippet processing failed
       if (!featureIdForBackend) {
         operationType = "Full Section Generation (Type-driven)";
-        console.log('[HGC] Not a snippet operation or feature not found, proceeding as Full Section Generation.');
-        // For "Generate Content" button:
-        // If text was selected, it's in editorSelectionText and isTextActuallySelected is true.
-        // If no text selected, editorSelectionText is full content, isTextActuallySelected is false.
-        if (editorSelectionText) { // If there's any text at all (selected or full)
+        console.log('[HGC] Not a snippet operation or feature not found/processed correctly, proceeding as Full Section Generation.');
+        if (editorSelectionText) {
           contextDataForBackend['user_instructions'] = editorSelectionText;
           console.log('[HGC] Added editor text as user_instructions for full generation.');
         }
       }
-      // Ensure new_prompt is cleared if it's a feature call, as backend might use it if present
-      const finalPromptForPayload = featureIdForBackend ? undefined : editorSelectionText;
+
+      const finalPromptForPayload = featureIdForBackend ? undefined : editorSelectionText; // For non-feature calls, user_instructions in context is preferred
 
       console.log('[HGC] Final featureIdForBackend:', featureIdForBackend);
+      console.log('[HGC] Final contextDataForBackend:', contextDataForBackend);
+
 
       const regeneratePayload: SectionRegeneratePayload = {
-        new_prompt: finalPromptForPayload, // Use selected_text via context_data for features
+        new_prompt: finalPromptForPayload,
         new_title: section.title || undefined,
         section_type: section.type || undefined,
         model_id_with_prefix: selectedLLMId || undefined,
         feature_id: featureIdForBackend,
-        context_data: contextDataForBackend,
+        context_data: contextDataForBackend, // This now includes merged context
       };
 
       console.log(`[HGC] Regenerate Payload for ${operationType}:`, regeneratePayload);
@@ -761,12 +795,22 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                               if (quill && selectionToUse && selectionToUse.length > 0) {
                                 // const text = quill.getText(selectionToUse.index, selectionToUse.length); // Unused
                                 // const rangeToProcess = { index: selectionToUse.index, length: selectionToUse.length }; // Unused
-                                setIsSnippetContextMenuOpen(false);
-                                console.log("[CampaignSectionView] Snippet item onMouseDown: Calling HGC for feature:", feature.id.toString(), "with selectionToUse:", selectionToUse);
-                                await handleGenerateContent(feature.id.toString(), selectionToUse); // Pass selectionToUse
+                                setIsSnippetContextMenuOpen(false); // Close context menu
+
+                                const needsExtraContext = feature.required_context && feature.required_context.some(key => key !== 'selected_text');
+
+                                if (needsExtraContext) {
+                                  console.log(`[CampaignSectionView] Feature '${feature.name}' requires extra context. Opening modal.`);
+                                  setCurrentFeatureForModal(feature);
+                                  setCurrentSelectionForModal(selectionToUse); // selectionToUse is the QuillRange
+                                  setIsContextModalOpen(true);
+                                } else {
+                                  console.log(`[CampaignSectionView] Feature '${feature.name}' does not require extra context. Calling HGC directly.`);
+                                  await handleGenerateContent(feature.id.toString(), selectionToUse, null); // Pass null for collectedContextData
+                                }
                               } else {
                                 console.warn("[CampaignSectionView] Snippet item onMouseDown: No valid ref selection or Quill. Quill:", quill, "RefSelection:", selectionToUse);
-                                setIsSnippetContextMenuOpen(false);
+                                setIsSnippetContextMenuOpen(false); // Ensure context menu is closed
                               }
                             }}
                             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f0f0f0')}
@@ -926,6 +970,18 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
         onSetAsThematic={onSetThematicImageFromSection}
         primaryActionText="Insert into Editor"
         autoApplyDefault={true}
+      />
+      <SnippetContextModal
+        isOpen={isContextModalOpen}
+        onClose={() => {
+          setIsContextModalOpen(false);
+          setCurrentFeatureForModal(null);
+          setCurrentSelectionForModal(null);
+        }}
+        onSubmit={handleModalSubmit}
+        feature={currentFeatureForModal}
+        campaignCharacters={campaignCharacters}
+        selectedText={currentSelectionForModal && quillInstance ? quillInstance.getText(currentSelectionForModal.index, currentSelectionForModal.length) : ''}
       />
     </div>
   );

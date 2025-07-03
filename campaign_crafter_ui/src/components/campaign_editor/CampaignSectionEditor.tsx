@@ -40,6 +40,7 @@ interface CampaignSectionEditorProps {
   selectedLLMId: string | null; // Add selectedLLMId
   expandSectionId: string | null; // Add this
   onSetThematicImageForSection?: (imageUrl: string, promptUsed: string) => void;
+  campaignCharacters: FrontendCharacter[]; // Add this prop
 }
 
 const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
@@ -55,6 +56,7 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
   selectedLLMId, // Destructure selectedLLMId
   expandSectionId, // Add this
   onSetThematicImageForSection,
+  campaignCharacters, // Destructure this prop
 }) => {
   const onDragEnd = (result: DropResult) => { // Removed ResponderProvided as it's not typically used in onDragEnd
     const { source, destination } = result;
@@ -170,6 +172,7 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
                               expandSectionId={expandSectionId} // Add this new prop
                               onSetThematicImageFromSection={onSetThematicImageForSection}
                                selectedLLMId={selectedLLMId} // Pass selectedLLMId
+                               campaignCharacters={campaignCharacters} // Pass campaignCharacters
                             />
                           </Box>
                           <IconButton
