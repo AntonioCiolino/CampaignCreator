@@ -299,7 +299,6 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
 
   const handleGenerateContent = async (
     overrideSnippetFeatureId?: string,
-    overrideSnippetFeatureId?: string // Remove explicitSelectedText and explicitSelectionRange from params
     // explicitSelectedText?: string, // No longer passed directly
     // explicitSelectionRange?: { index: number, length: number } | null // No longer passed directly
   ) => {
@@ -327,7 +326,6 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
           selectionToReplace = { index: storedSelection.index, length: storedSelection.length };
         } else {
           // Not a valid snippet call if no selection from ref, treat as full generation
-          featureIdToUseForSnippet = undefined;
           isTextActuallySelected = false;
           if (quillInstance) editorSelectionText = quillInstance.getText().substring(0,2000);
           else editorSelectionText = editedContent.substring(0,2000);
@@ -672,7 +670,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                                 const rangeToProcess = { index: selectionToUse.index, length: selectionToUse.length };
                                 setIsSnippetContextMenuOpen(false);
                                 console.log("[CampaignSectionView] Snippet item onMouseDown: Calling HGC for feature:", feature.id.toString());
-                                await handleGenerateContent(feature.id.toString(), text, rangeToProcess);
+                                await handleGenerateContent(feature.id.toString());
                               } else {
                                 console.warn("[CampaignSectionView] Snippet item onMouseDown: No valid ref selection or Quill. Quill:", quill, "RefSelection:", selectionToUse);
                                 setIsSnippetContextMenuOpen(false);
