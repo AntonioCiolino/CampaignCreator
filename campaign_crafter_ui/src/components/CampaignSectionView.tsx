@@ -11,6 +11,9 @@ import 'react-quill/dist/quill.snow.css'; // Import Quill's snow theme CSS
 import Button from './common/Button'; // Added Button import
 import RandomTableRoller from './RandomTableRoller';
 import ImageGenerationModal from './modals/ImageGenerationModal/ImageGenerationModal'; // Import the new modal
+import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
+import SaveIcon from '@mui/icons-material/Save'; // Import SaveIcon
+import CancelIcon from '@mui/icons-material/Cancel'; // Import CancelIcon
 import './CampaignSectionView.css';
 import { CampaignSectionUpdatePayload, SectionRegeneratePayload } from '../types/campaignTypes'; // CORRECTED PATH, Added SectionRegeneratePayload
 import { getFeatures } from '../services/featureService';
@@ -89,10 +92,12 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
     }
     return true; // Default for other sections
   });
-  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [isEditing, setIsEditing] = useState<boolean>(false); // For content editing
   const [editedContent, setEditedContent] = useState<string>(section.content || '');
+  const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false); // For title editing
+  const [editedTitle, setEditedTitle] = useState<string>(section.title || '');
   const [quillInstance, setQuillInstance] = useState<any>(null); // Enabled to store Quill instance
-  const [localSaveError, setLocalSaveError] = useState<string | null>(null);
+  const [localSaveError, setLocalSaveError] = useState<string | null>(null); // General save error for the section
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [isImageGenerationModalOpen, setIsImageGenerationModalOpen] = useState<boolean>(false);
   const [isGeneratingContent, setIsGeneratingContent] = useState<boolean>(false);
@@ -232,6 +237,13 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
         setLocalSaveError(null);
     }
   }, [section.content, externalSaveError]);
+
+  // Effect to update editedTitle if section.title prop changes from parent
+  useEffect(() => {
+    if (!isEditingTitle) { // Only update if not currently editing, to avoid overwriting user input
+      setEditedTitle(section.title || '');
+    }
+  }, [section.title, isEditingTitle]);
 
   useEffect(() => {
     if (forceCollapse !== undefined) {
@@ -600,21 +612,72 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
 
   console.log('[CampaignSectionView] Render state - isEditing:', isEditing, 'isSnippetContextMenuOpen:', isSnippetContextMenuOpen, 'contextMenuPosition:', contextMenuPosition, 'snippetFeatures.length:', snippetFeatures.length, 'currentSelection:', currentSelection);
 
+  const handleSaveTitle = async () => {
+    if (editedTitle.trim() === '') {
+      setLocalSaveError('Title cannot be empty.');
+      return;
+    }
+    setLocalSaveError(null);
+    setSaveSuccess(false);
+    try {
+      await onSave(section.id, { title: editedTitle });
+      setIsEditingTitle(false);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (error) {
+      console.error("Failed to save section title:", error);
+      setLocalSaveError('Failed to save title. Please try again.');
+    }
+  };
+
+  const handleCancelEditTitle = () => {
+    setEditedTitle(section.title || '');
+    setIsEditingTitle(false);
+    setLocalSaveError(null);
+  };
+
   return (
     <div id={`section-container-${section.id}`} className="campaign-section-view" tabIndex={-1}>
-      {section.title && (
-        <div className="section-title-header" onClick={() => setIsCollapsed(!isCollapsed)}>
-          <h3 className="section-title">
-            {isCollapsed ? '▶' : '▼'} {section.title}
-          </h3>
-          {/* Display Section Type if not editing title area */}
-          {!isEditing && section.type && (
-            <span style={{ marginLeft: '10px', fontSize: '0.8em', color: '#666', fontStyle: 'italic' }}>
-              ({section.type})
-            </span>
-          )}
-        </div>
-      )}
+      <div className="section-title-header">
+        {isEditingTitle ? (
+          <div className="title-edit-container">
+            <input
+              type="text"
+              value={editedTitle}
+              onChange={(e) => setEditedTitle(e.target.value)}
+              className="title-edit-input"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSaveTitle();
+                if (e.key === 'Escape') handleCancelEditTitle();
+              }}
+            />
+            <Button onClick={handleSaveTitle} size="sm" className="title-edit-button" disabled={isSaving}>
+              <SaveIcon fontSize="small" />
+            </Button>
+            <Button onClick={handleCancelEditTitle} size="sm" variant="secondary" className="title-edit-button">
+              <CancelIcon fontSize="small" />
+            </Button>
+          </div>
+        ) : (
+          <div className="title-display-container" onClick={() => !isEditing && setIsCollapsed(!isCollapsed)} style={{ cursor: isEditing ? 'default' : 'pointer', display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+            <h3 className="section-title" style={{ marginRight: '10px' }}>
+              {isCollapsed ? '▶' : '▼'} {section.title || 'Untitled Section'}
+            </h3>
+            {!isEditing && ( // Only show edit icon if not editing content
+              <IconButton onClick={(e) => { e.stopPropagation(); setIsEditingTitle(true); }} size="small" className="edit-title-icon" title="Edit title">
+                <EditIcon fontSize="small" />
+              </IconButton>
+            )}
+          </div>
+        )}
+        {/* Display Section Type if not editing title or content */}
+        {!isEditingTitle && !isEditing && section.type && (
+          <span style={{ marginLeft: '10px', fontSize: '0.8em', color: '#666', fontStyle: 'italic' }}>
+            ({section.type})
+          </span>
+        )}
+      </div>
 
       {!isCollapsed && (
         <>
