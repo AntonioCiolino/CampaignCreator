@@ -1341,6 +1341,7 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
         handleUpdateSectionType={handleUpdateSectionType}
         onUpdateSectionOrder={handleUpdateSectionOrder}
         forceCollapseAllSections={forceCollapseAll}
+        selectedLLMId={selectedLLMId} // Pass selectedLLMId here
         expandSectionId={sectionToExpand}
         onSetThematicImageForSection={handleSetThematicImage}
       />

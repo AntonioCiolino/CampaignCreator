@@ -29,6 +29,7 @@ interface CampaignSectionViewProps {
   // Props for regeneration
   campaignId: string | number; // Campaign ID to make the API call
   onSectionUpdated: (updatedSection: CampaignSection) => void; // Callback to update parent state
+  selectedLLMId: string | null; // Add selectedLLMId
   // Prop for updating section type
   onSectionTypeUpdate?: (sectionId: number, newType: string) => void; // Optional for now
   onSetThematicImageFromSection?: (imageUrl: string, promptUsed: string) => void;
@@ -46,6 +47,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   forceCollapse,
   campaignId,
   onSectionUpdated,
+  selectedLLMId, // Destructure selectedLLMId
   onSectionTypeUpdate, // Destructure the new prop
   onSetThematicImageFromSection,
   expandSectionId, // Add this
@@ -378,7 +380,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
         new_prompt: editorSelectionText,
         new_title: section.title || undefined,
         section_type: section.type || undefined,
-        model_id_with_prefix: undefined,
+        model_id_with_prefix: selectedLLMId || undefined,
         feature_id: featureIdForBackend,
         context_data: contextDataForBackend,
       };
