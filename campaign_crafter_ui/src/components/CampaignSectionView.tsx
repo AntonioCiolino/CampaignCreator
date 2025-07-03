@@ -244,12 +244,35 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   // Ensure editedContent is updated if the section prop changes externally
   // (e.g. if parent component re-fetches and passes a new section object, or after a save)
   useEffect(() => {
-    setEditedContent(section.content || '');
-    // If the external save error for this section is cleared, clear local error too
-    if (externalSaveError === null) {
-        setLocalSaveError(null);
+    // This effect synchronizes the section.content (plain text from props, expected to use \n\n for paragraphs)
+    // to the editedContent (HTML for Quill editor), primarily when not in an active editing session.
+    if (!isEditing) {
+      const plainTextFromProp = section.content || '';
+
+      // Split by double newlines (or more, with optional whitespace) to identify paragraphs
+      // Also handle the case where plainTextFromProp might be empty or just whitespace
+      const paragraphs = plainTextFromProp.trim() === '' ? [] : plainTextFromProp.split(/\n\s*\n/);
+
+      let htmlForQuill = paragraphs.map(paragraphText => {
+        // Convert single newlines within a paragraph (from original <br> tags in HTML) back to <br/> tags
+        const linesWithBreaks = paragraphText.split('\n').join('<br/>');
+        return `<p>${linesWithBreaks || '<br>'}</p>`; // Ensure empty paragraphs are <p><br></p>
+      }).join('');
+
+      if (paragraphs.length === 0) { // If section.content was effectively empty or only whitespace
+        htmlForQuill = '<p><br></p>'; // Ensure Quill gets a valid empty paragraph
+      }
+
+      if (editedContent !== htmlForQuill) {
+        setEditedContent(htmlForQuill);
+      }
     }
-  }, [section.content, externalSaveError]);
+
+    // Clear local save error if external error is cleared (unrelated to content sync)
+    if (externalSaveError === null && localSaveError !== null) {
+      setLocalSaveError(null);
+    }
+  }, [section.content, externalSaveError, isEditing, editedContent]); // editedContent in deps is okay if comparison is strict
 
   // Effect to update editedTitle if section.title prop changes from parent
   useEffect(() => {
@@ -1034,33 +1057,47 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
 // New utility function to convert Quill HTML to plain text
 // Exported for testing
 export const convertQuillHtmlToPlainText = (htmlString: string): string => {
-  if (!htmlString) {
-    return '';
+  if (!htmlString) return '';
+
+  // Create a temporary DOM element to parse the HTML string
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = htmlString;
+
+  const paragraphs: string[] = [];
+  // Iterate over block-level elements that Quill typically uses for paragraphs or lines that should become paragraphs.
+  // This includes <p>, but also potentially <h1>, <h2>, etc., <li> if they are not nested in <ul>/<ol>.
+  // For simplicity, we primarily focus on <p> as Quill's default block.
+  // If other block types like headers/lists are used and need specific plain text representation,
+  // this logic would need to be more sophisticated.
+
+  tempDiv.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, div.ql-align-center, div.ql-align-right, div.ql-align-justify').forEach(blockElement => {
+    // For list items, we might want to prefix with a bullet or number, but that adds complexity.
+    // For now, treat them as separate lines of text.
+    // We need to handle <br> tags within these blocks as newlines.
+    // Easiest way to get text content with <br> as \n is to temporarily replace <br>s, then get innerText.
+
+    const clonedBlock = blockElement.cloneNode(true) as HTMLElement; // Clone to avoid modifying the iterated node
+    clonedBlock.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+
+    let blockText = clonedBlock.textContent || "";
+    paragraphs.push(blockText.trim()); // Add trimmed text of the block
+  });
+
+  // Fallback if no standard block elements were found, but there's still content
+  if (paragraphs.length === 0 && tempDiv.textContent && tempDiv.textContent.trim() !== '') {
+    // This might happen if the content is just text nodes with <br>s, not wrapped in <p>
+    // Or if Quill editor is empty it gives <p><br></p> which querySelectorAll('p') would find.
+    // This fallback is more for safety.
+    const clonedRoot = tempDiv.cloneNode(true) as HTMLElement;
+    clonedRoot.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+    paragraphs.push(clonedRoot.textContent?.trim() || '');
   }
 
-  let text = htmlString;
 
-  // Replace <br> tags with \n
-  text = text.replace(/<br\s*\/?>/gi, '\n');
+  // Join paragraphs with double newlines. Filter out potentially empty strings from blocks that only contained whitespace.
+  let result = paragraphs.filter(p => p !== "").join('\n\n');
 
-  // Replace closing </p> tags with \n
-  text = text.replace(/<\/p>/gi, '\n');
-
-  // Strip all remaining HTML tags
-  text = text.replace(/<[^>]*>/g, '');
-
-  // Normalize newlines: sequences of 3 or more newlines with two newlines
-  text = text.replace(/\n{3,}/g, '\n\n');
-
-  // Trim leading and trailing newlines from the entire text
-  text = text.trim();
-
-  // Add a single newline at the end if the content is not empty
-  if (text) {
-    text += '\n';
-  }
-
-  return text;
+  return result;
 };
 
 export default CampaignSectionView;
