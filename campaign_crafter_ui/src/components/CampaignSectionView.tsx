@@ -19,7 +19,7 @@ import './CampaignSectionView.css';
 import { CampaignSectionUpdatePayload, SectionRegeneratePayload } from '../types/campaignTypes'; // CORRECTED PATH, Added SectionRegeneratePayload
 import { getFeatures } from '../services/featureService';
 import { Feature } from '../types/featureTypes';
-import { Character as FrontendCharacter } from '../../types/characterTypes'; // Import FrontendCharacter
+import { Character as FrontendCharacter } from '../types/characterTypes'; // Corrected path
 import * as campaignService from '../services/campaignService';
 import SnippetContextModal from './modals/SnippetContextModal'; // Import the new modal
 
@@ -426,27 +426,41 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
         if (snippetFeature) {
           featureIdForBackend = snippetFeature.id;
           operationType = `Snippet: ${snippetFeature.name}`;
-          contextDataForBackend['selected_text'] = editorSelectionText;
-          console.log('[HGC] Snippet feature identified. featureIdForBackend:', featureIdForBackend, 'contextData.selected_text:', contextDataForBackend['selected_text']);
 
+          // Always add selected_text
+          contextDataForBackend['selected_text'] = editorSelectionText;
+          console.log('[HGC] Added selected_text to contextDataForBackend.');
+
+          // Automatically add campaign_characters if required by the feature
+          if (snippetFeature.required_context?.includes('campaign_characters')) {
+            if (campaignCharacters && campaignCharacters.length > 0) {
+              contextDataForBackend['campaign_characters'] = campaignCharacters.map(char => char.name).join(', ');
+              console.log('[HGC] Automatically added campaign_characters to contextDataForBackend:', contextDataForBackend['campaign_characters']);
+            } else {
+              contextDataForBackend['campaign_characters'] = "No specific campaign characters provided.";
+              console.log('[HGC] No campaign characters to automatically add; added fallback message.');
+            }
+          }
+
+          // Merge context collected from modal (for other keys)
           if (collectedContextData) {
-            // If context was collected from modal, merge it in
-            console.log('[HGC] Merging collectedContextData:', collectedContextData);
+            console.log('[HGC] Merging collectedContextData from modal:', collectedContextData);
             for (const key in collectedContextData) {
-              if (Object.prototype.hasOwnProperty.call(collectedContextData, key)) {
+              if (Object.prototype.hasOwnProperty.call(collectedContextData, key) && key !== 'selected_text' && key !== 'campaign_characters') {
+                // Ensure not to overwrite already handled contexts like selected_text or campaign_characters if modal also sent them
                 contextDataForBackend[key] = collectedContextData[key];
               }
             }
-          } else if (snippetFeature.required_context) {
-            // Fallback to placeholder logic ONLY IF modal context wasn't provided AND feature has other required_context
-            // This path should ideally not be hit if modal logic is correct
-            snippetFeature.required_context.forEach(key => {
-              if (key !== 'selected_text' && !contextDataForBackend[key]) { // Check if not already populated
-                console.warn(`[HGC] Snippet feature '${snippetFeature.name}' requires '${key}', but not found in collectedContext. Using placeholder.`);
-                contextDataForBackend[key] = `{${key}_placeholder_for_snippet_fallback}`;
-              }
-            });
           }
+
+          // Placeholder for any other required context not provided (should be rare now)
+          snippetFeature.required_context?.forEach(key => {
+            if (!contextDataForBackend[key]) {
+              console.warn(`[HGC] Snippet feature '${snippetFeature.name}' still requires '${key}', but not found in any context source. Using placeholder.`);
+              contextDataForBackend[key] = `{${key}_placeholder_for_snippet_very_fallback}`;
+            }
+          });
+
         } else {
           console.warn(`[HGC] Snippet feature ID ${featureIdToUseForSnippet} not found in snippetFeatures. Proceeding as full generation.`);
           featureIdForBackend = undefined;
@@ -457,17 +471,16 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
       if (!featureIdForBackend) {
         operationType = "Full Section Generation (Type-driven)";
         console.log('[HGC] Not a snippet operation or feature not found/processed correctly, proceeding as Full Section Generation.');
-        if (editorSelectionText) {
+        if (editorSelectionText && Object.keys(contextDataForBackend).length === 0) { // Only add as user_instructions if no other context was built
           contextDataForBackend['user_instructions'] = editorSelectionText;
           console.log('[HGC] Added editor text as user_instructions for full generation.');
         }
       }
 
-      const finalPromptForPayload = featureIdForBackend ? undefined : editorSelectionText; // For non-feature calls, user_instructions in context is preferred
+      const finalPromptForPayload = featureIdForBackend ? undefined : editorSelectionText;
 
       console.log('[HGC] Final featureIdForBackend:', featureIdForBackend);
       console.log('[HGC] Final contextDataForBackend:', contextDataForBackend);
-
 
       const regeneratePayload: SectionRegeneratePayload = {
         new_prompt: finalPromptForPayload,
@@ -475,7 +488,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
         section_type: section.type || undefined,
         model_id_with_prefix: selectedLLMId || undefined,
         feature_id: featureIdForBackend,
-        context_data: contextDataForBackend, // This now includes merged context
+        context_data: contextDataForBackend,
       };
 
       console.log(`[HGC] Regenerate Payload for ${operationType}:`, regeneratePayload);
@@ -797,16 +810,22 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                                 // const rangeToProcess = { index: selectionToUse.index, length: selectionToUse.length }; // Unused
                                 setIsSnippetContextMenuOpen(false); // Close context menu
 
-                                const needsExtraContext = feature.required_context && feature.required_context.some(key => key !== 'selected_text');
+                                // Determine if there are required context keys other than 'selected_text' and 'campaign_characters'
+                                const otherRequiredKeys = feature.required_context?.filter(
+                                  key => key !== 'selected_text' && key !== 'campaign_characters'
+                                ) || [];
 
-                                if (needsExtraContext) {
-                                  console.log(`[CampaignSectionView] Feature '${feature.name}' requires extra context. Opening modal.`);
-                                  setCurrentFeatureForModal(feature);
-                                  setCurrentSelectionForModal(selectionToUse); // selectionToUse is the QuillRange
+                                if (otherRequiredKeys.length > 0) {
+                                  console.log(`[CampaignSectionView] Feature '${feature.name}' requires additional user input for: ${otherRequiredKeys.join(', ')}. Opening modal.`);
+                                  setCurrentFeatureForModal(feature); // Pass the full feature
+                                  setCurrentSelectionForModal(selectionToUse);
                                   setIsContextModalOpen(true);
                                 } else {
-                                  console.log(`[CampaignSectionView] Feature '${feature.name}' does not require extra context. Calling HGC directly.`);
-                                  await handleGenerateContent(feature.id.toString(), selectionToUse, null); // Pass null for collectedContextData
+                                  // No other keys, or only 'selected_text'/'campaign_characters' which are handled automatically
+                                  console.log(`[CampaignSectionView] Feature '${feature.name}' requires no additional user input beyond auto-handled context. Calling HGC directly.`);
+                                  // Prepare an empty object for collectedContextData if no modal needed,
+                                  // campaign_characters will be added in handleGenerateContent if required by the feature.
+                                  await handleGenerateContent(feature.id.toString(), selectionToUse, {});
                                 }
                               } else {
                                 console.warn("[CampaignSectionView] Snippet item onMouseDown: No valid ref selection or Quill. Quill:", quill, "RefSelection:", selectionToUse);

@@ -11,7 +11,7 @@ import {
   Paper,
 } from '@mui/material';
 import { Feature } from '../../types/featureTypes';
-import { Character as FrontendCharacter } from '../../types/characterTypes';
+import { Character as FrontendCharacter } from '../types/characterTypes'; // Corrected path
 
 interface SnippetContextModalProps {
   isOpen: boolean;
