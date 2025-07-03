@@ -1023,7 +1023,7 @@ async def test_generate_concept_manually_api(
 
     # Mock the LLM service for the endpoint
     mock_llm_instance_endpoint = AsyncMock()
-    mock_llm_instance_endpoint.generate_concept = AsyncMock(return_value="Manually Generated Concept")
+    mock_llm_instance_endpoint.generate_campaign_concept = AsyncMock(return_value="Manually Generated Concept") # Corrected method name
     mock_endpoint_get_llm_service.return_value = mock_llm_instance_endpoint
 
     # 2. Call the manual generation endpoint
@@ -1051,10 +1051,10 @@ async def test_generate_concept_manually_api(
     assert call_args_get_llm.kwargs['provider_name'] == expected_provider
     assert call_args_get_llm.kwargs['model_id_with_prefix'] == generation_payload['model_id_with_prefix']
 
-    # Check call to llm_instance.generate_concept
-    mock_llm_instance_endpoint.generate_concept.assert_called_once()
-    call_args_generate_concept = mock_llm_instance_endpoint.generate_concept.call_args
-    assert call_args_generate_concept.kwargs['initial_user_prompt'] == generation_payload["prompt"]
+    # Check call to llm_instance.generate_campaign_concept
+    mock_llm_instance_endpoint.generate_campaign_concept.assert_called_once() # Corrected method name
+    call_args_generate_concept = mock_llm_instance_endpoint.generate_campaign_concept.call_args # Corrected method name
+    assert call_args_generate_concept.kwargs['user_prompt'] == generation_payload["prompt"] # Corrected kwarg name
     assert call_args_generate_concept.kwargs['model'] == expected_model
 
     # Clean up the test campaign
@@ -1064,5 +1064,182 @@ async def test_generate_concept_manually_api(
         if campaign_to_delete:
             db.delete(campaign_to_delete)
             db.commit()
+    finally:
+        db.close()
+
+# --- Test DELETE /campaigns/{campaign_id} ---
+
+def create_another_user_in_db(db_session: Session, id: int, email: str, username: str) -> ORMUser:
+    """Helper to create an additional ORM user for testing ownership."""
+    another_user = ORMUser(
+        id=id,
+        username=username,
+        email=email,
+        full_name="Another User",
+        hashed_password="anotherfakepassword",
+        disabled=False,
+        is_superuser=False
+    )
+    db_session.add(another_user)
+    db_session.commit()
+    db_session.refresh(another_user)
+    return another_user
+
+@pytest.mark.asyncio
+@patch('app.api.endpoints.campaigns.crud.delete_campaign', new_callable=AsyncMock)
+async def test_delete_campaign_endpoint_success(
+    mock_crud_delete_campaign: AsyncMock,
+    async_client: AsyncClient,
+    current_active_user_override: PydanticUser, # Provides authenticated user (id=1)
+    db_session: sessionmaker # Fixture to get a session for direct DB manipulation
+):
+    # 1. Create a campaign owned by the authenticated test user (id=1)
+    db = db_session()
+    try:
+        owned_campaign = ORMCampaign(id=101, title="Owned Campaign", owner_id=current_active_user_override.id, concept="Test")
+        db.add(owned_campaign)
+        db.commit()
+        db.refresh(owned_campaign)
+        campaign_id_to_delete = owned_campaign.id
+    finally:
+        db.close()
+
+    # 2. Mock crud.delete_campaign
+    #    It should return an object that FastAPI can convert to the response_model (PydanticCampaign)
+    #    So, returning a mock ORM campaign object is suitable.
+    mock_deleted_orm_campaign = MagicMock(spec=ORMCampaign)
+    mock_deleted_orm_campaign.id = campaign_id_to_delete
+    mock_deleted_orm_campaign.title = "Owned Campaign"
+    mock_deleted_orm_campaign.owner_id = current_active_user_override.id
+    mock_deleted_orm_campaign.concept = "Test"
+    mock_deleted_orm_campaign.initial_user_prompt = None
+    mock_deleted_orm_campaign.display_toc = []
+    mock_deleted_orm_campaign.homebrewery_toc = []
+    mock_deleted_orm_campaign.homebrewery_export = None
+    mock_deleted_orm_campaign.mood_board_image_urls = []
+    mock_deleted_orm_campaign.selected_llm_id = None
+    mock_deleted_orm_campaign.temperature = 0.7
+    # Add theme attributes if they are part of PydanticCampaign model and non-optional
+    mock_deleted_orm_campaign.theme_primary_color = None
+    mock_deleted_orm_campaign.theme_secondary_color = None
+    mock_deleted_orm_campaign.theme_background_color = None
+    mock_deleted_orm_campaign.theme_text_color = None
+    mock_deleted_orm_campaign.theme_font_family = None
+    mock_deleted_orm_campaign.theme_background_image_url = None
+    mock_deleted_orm_campaign.theme_background_image_opacity = 1.0
+
+
+    mock_crud_delete_campaign.return_value = mock_deleted_orm_campaign
+
+    # 3. Make a DELETE request
+    response = await async_client.delete(f"/api/v1/campaigns/{campaign_id_to_delete}")
+
+    # 4. Assertions
+    assert response.status_code == 200, response.text
+    mock_crud_delete_campaign.assert_called_once_with(
+        db=ANY, campaign_id=campaign_id_to_delete, user_id=current_active_user_override.id
+    )
+
+    response_data = response.json()
+    assert response_data["id"] == campaign_id_to_delete
+    assert response_data["title"] == "Owned Campaign"
+    assert response_data["owner_id"] == current_active_user_override.id
+
+    # Clean up
+    db = db_session()
+    try:
+        db.delete(owned_campaign)
+        db.commit()
+    except: # If already deleted by a real CRUD call (which is mocked here, so won't happen)
+        pass
+    finally:
+        db.close()
+
+
+@pytest.mark.asyncio
+@patch('app.api.endpoints.campaigns.crud.delete_campaign', new_callable=AsyncMock)
+async def test_delete_campaign_endpoint_not_owned(
+    mock_crud_delete_campaign: AsyncMock,
+    async_client: AsyncClient,
+    current_active_user_override: PydanticUser, # Provides authenticated user (id=1)
+    db_session: sessionmaker
+):
+    # 1. Create another user and a campaign owned by them
+    db = db_session()
+    try:
+        other_user = create_another_user_in_db(db, id=2, email="other@example.com", username="otheruser")
+        not_owned_campaign = ORMCampaign(id=102, title="Not Owned Campaign", owner_id=other_user.id, concept="Test")
+        db.add(not_owned_campaign)
+        db.commit()
+        db.refresh(not_owned_campaign)
+        campaign_id_to_delete = not_owned_campaign.id
+    finally:
+        db.close()
+
+    # 2. Make a DELETE request using the authenticated test user (id=1)
+    response = await async_client.delete(f"/api/v1/campaigns/{campaign_id_to_delete}")
+
+    # 3. Assertions
+    assert response.status_code == 403, response.text
+    assert "Not authorized to delete this campaign" in response.json()["detail"]
+    mock_crud_delete_campaign.assert_not_called() # Crucial: CRUD delete should not be called
+
+    # Clean up
+    db = db_session()
+    try:
+        db.delete(not_owned_campaign)
+        db.delete(other_user)
+        db.commit()
+    finally:
+        db.close()
+
+@pytest.mark.asyncio
+async def test_delete_campaign_endpoint_not_found(
+    async_client: AsyncClient,
+    current_active_user_override: PydanticUser # Auth still needed
+):
+    non_existent_campaign_id = 99999
+    response = await async_client.delete(f"/api/v1/campaigns/{non_existent_campaign_id}")
+    assert response.status_code == 404, response.text
+    assert "Campaign not found" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+@patch('app.api.endpoints.campaigns.crud.delete_campaign', new_callable=AsyncMock)
+async def test_delete_campaign_endpoint_crud_fails_unexpectedly(
+    mock_crud_delete_campaign: AsyncMock,
+    async_client: AsyncClient,
+    current_active_user_override: PydanticUser,
+    db_session: sessionmaker
+):
+    db = db_session()
+    try:
+        owned_campaign = ORMCampaign(id=103, title="Campaign For CRUD Failure", owner_id=current_active_user_override.id, concept="Test")
+        db.add(owned_campaign)
+        db.commit()
+        db.refresh(owned_campaign)
+        campaign_id_to_delete = owned_campaign.id
+    finally:
+        db.close()
+
+    mock_crud_delete_campaign.side_effect = RuntimeError("Unexpected CRUD error")
+
+    response = await async_client.delete(f"/api/v1/campaigns/{campaign_id_to_delete}")
+
+    # FastAPI typically catches unhandled exceptions and returns a 500 error.
+    # If specific exception handling were added to the endpoint for RuntimeError, this would change.
+    assert response.status_code == 500, response.text
+    # The exact detail message might vary depending on FastAPI's default 500 error handling
+    # or if there's a custom exception handler. For now, checking status code is primary.
+
+    mock_crud_delete_campaign.assert_called_once_with(
+        db=ANY, campaign_id=campaign_id_to_delete, user_id=current_active_user_override.id
+    )
+
+    # Clean up
+    db = db_session()
+    try:
+        db.delete(owned_campaign)
+        db.commit()
     finally:
         db.close()
