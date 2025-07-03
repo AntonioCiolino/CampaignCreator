@@ -11,6 +11,7 @@ import 'react-quill/dist/quill.snow.css'; // Import Quill's snow theme CSS
 import Button from './common/Button'; // Added Button import
 import RandomTableRoller from './RandomTableRoller';
 import ImageGenerationModal from './modals/ImageGenerationModal/ImageGenerationModal'; // Import the new modal
+import { IconButton } from '@mui/material'; // Import IconButton
 import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
 import SaveIcon from '@mui/icons-material/Save'; // Import SaveIcon
 import CancelIcon from '@mui/icons-material/Cancel'; // Import CancelIcon
@@ -665,7 +666,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
               {isCollapsed ? '▶' : '▼'} {section.title || 'Untitled Section'}
             </h3>
             {!isEditing && ( // Only show edit icon if not editing content
-              <IconButton onClick={(e) => { e.stopPropagation(); setIsEditingTitle(true); }} size="small" className="edit-title-icon" title="Edit title">
+              <IconButton onClick={(e: React.MouseEvent) => { e.stopPropagation(); setIsEditingTitle(true); }} size="small" className="edit-title-icon" title="Edit title">
                 <EditIcon fontSize="small" />
               </IconButton>
             )}
@@ -758,8 +759,8 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                               }
 
                               if (quill && selectionToUse && selectionToUse.length > 0) {
-                                const text = quill.getText(selectionToUse.index, selectionToUse.length);
-                                const rangeToProcess = { index: selectionToUse.index, length: selectionToUse.length };
+                                // const text = quill.getText(selectionToUse.index, selectionToUse.length); // Unused
+                                // const rangeToProcess = { index: selectionToUse.index, length: selectionToUse.length }; // Unused
                                 setIsSnippetContextMenuOpen(false);
                                 console.log("[CampaignSectionView] Snippet item onMouseDown: Calling HGC for feature:", feature.id.toString(), "with selectionToUse:", selectionToUse);
                                 await handleGenerateContent(feature.id.toString(), selectionToUse); // Pass selectionToUse
