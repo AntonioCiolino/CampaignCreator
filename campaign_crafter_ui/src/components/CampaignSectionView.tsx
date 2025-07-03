@@ -4,7 +4,8 @@ import { CampaignSection } from '../types/campaignTypes'; // Corrected import pa
 import ReactMarkdown from 'react-markdown';
 import { Typography } from '@mui/material';
 import rehypeRaw from 'rehype-raw';
-import ReactQuill from 'react-quill';
+import ReactQuill, { Quill } from 'react-quill'; // Quill for Delta static methods
+import Delta from 'quill-delta'; // Direct import for Delta type/constructor
 import LoadingSpinner from './common/LoadingSpinner'; // Adjust path if necessary
 import type { RangeStatic as QuillRange } from 'quill'; // Import QuillRange
 import 'react-quill/dist/quill.snow.css'; // Import Quill's snow theme CSS
@@ -500,22 +501,68 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
         console.log('[HGC] Decision point for replacement: selectionToReplace:', selectionToReplace, 'featureIdForBackend:', featureIdForBackend);
         if (selectionToReplace && featureIdForBackend) { // Use captured selection for snippet operation
           // Snippet operation: replace only selected text
-          console.log('[HGC] Performing partial replacement.');
+          console.log('[HGC] Performing partial replacement with Delta logic.');
+
+          // 1. Delete original selection
           quillInstance.deleteText(selectionToReplace.index, selectionToReplace.length, 'user');
-          quillInstance.insertText(selectionToReplace.index, generatedText, 'user');
-          quillInstance.setSelection(selectionToReplace.index + generatedText.length, 0, 'user');
+
+          // 2. Process generatedText to have <p> tags for proper paragraph structure
+          // Ensure even single lines from LLM become a paragraph.
+          // And multiple lines separated by \n become multiple paragraphs.
+          const lines = generatedText.split('\n');
+          let htmlToInsert = lines.map(line => {
+            const trimmedLine = line.trim();
+            // Wrap non-empty lines in <p>, or use <p><br></p> for lines that were originally empty or just whitespace
+            // to preserve paragraph spacing that might come from an LLM intending a blank line.
+            return `<p>${trimmedLine || '<br>'}</p>`;
+          }).join('');
+
+          // If generatedText was empty or only whitespace, htmlToInsert might be <p><br></p>
+          // If generatedText was non-empty, it will be one or more <p>tags.
+          if (!htmlToInsert && generatedText.trim() === '') { // Catch if generatedText itself was empty string
+            htmlToInsert = '<p><br></p>'; // Default to an empty paragraph
+          } else if (!htmlToInsert && generatedText.trim() !== '') { // Catch if generatedText was non-empty but produced no paragraphs (e.g. only \n)
+             htmlToInsert = `<p>${generatedText.trim()}</p>`; // Fallback to single paragraph
+          }
+
+
+          console.log('[HGC] HTML to insert for snippet:', htmlToInsert);
+
+          // 3. Convert this HTML to Quill's Delta format
+          const deltaToInsert = quillInstance.clipboard.convert(htmlToInsert);
+          console.log('[HGC] Delta to insert:', JSON.stringify(deltaToInsert));
+
+          // 4. Create the operation Delta: retain up to insertion point, then concat new delta
+          // No need to create a new Delta object if we use updateContents with just the delta to insert at an index
+          // However, the more robust way for partial content update is retain, delete, concat.
+          // Since we already deleted, we just need to insert the new delta.
+          // quillInstance.updateContents(new Delta().retain(selectionToReplace.index).concat(deltaToInsert), 'user');
+
+          // Simpler: After deleting, the cursor is at selectionToReplace.index.
+          // We can insert the delta there.
+          // But updateContents typically takes a full document delta or a change delta.
+          // Let's use a change delta starting at the insertion point.
+          const changeDelta = new Delta().retain(selectionToReplace.index).concat(deltaToInsert);
+          quillInstance.updateContents(changeDelta, Quill.sources.USER);
+
+
+          // Quill might adjust selection automatically, or we might need to set it.
+          // For now, let's rely on Quill's default behavior after updateContents.
+          // const newLength = generatedText.length; // This is not accurate for HTML/Delta
+          // quillInstance.setSelection(selectionToReplace.index + newLength, 0, 'user');
+
         } else {
           // Full generation: replace all content
           console.log('[HGC] Performing full replacement because selectionToReplace is', selectionToReplace, 'and featureIdForBackend is', featureIdForBackend);
-          const delta = quillInstance.clipboard.convert(generatedText);
+          const delta = quillInstance.clipboard.convert(generatedText); // Convert plain text from LLM
           quillInstance.setContents(delta, 'user');
         }
         setEditedContent(quillInstance.root.innerHTML);
-        // Ensure the parent gets the full updated content, not just the snippet from updatedSection.content
+        // Ensure the parent gets the full updated content
         const fullContentPlainText = convertQuillHtmlToPlainText(quillInstance.root.innerHTML);
         const sectionWithFullContent: CampaignSection = {
-          ...updatedSection,
-          content: fullContentPlainText,
+          ...updatedSection, // Contains snippet from backend as .content
+          content: fullContentPlainText, // Overwrite with full editor content
         };
         onSectionUpdated(sectionWithFullContent);
       } else {
