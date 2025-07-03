@@ -282,12 +282,12 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   };
 
   const handleGenerateContent = async (overrideSnippetFeatureId?: string) => {
+    console.log('[HGC] Start. overrideSnippetFeatureId:', overrideSnippetFeatureId, 'selectedSnippetFeatureId (state):', selectedSnippetFeatureId);
     setIsGeneratingContent(true);
     setContentGenerationError(null);
-    // initialSelectionRange is now currentSelection state
 
-    // Accept override for snippet feature ID if called directly from menu item
     const featureIdToUseForSnippet = overrideSnippetFeatureId || selectedSnippetFeatureId;
+    console.log('[HGC] featureIdToUseForSnippet:', featureIdToUseForSnippet);
 
     try {
       let editorSelectionText = '';
@@ -296,12 +296,17 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
       if (quillInstance && currentSelection && currentSelection.length > 0) {
         editorSelectionText = quillInstance.getText(currentSelection.index, currentSelection.length);
         isTextActuallySelected = true;
-      } else if (quillInstance) { // No specific selection, use full text for potential user_instructions
+        console.log('[HGC] Text IS selected. Length:', currentSelection.length, 'Text:', editorSelectionText.substring(0,50) + "...");
+      } else if (quillInstance) {
         const fullText = quillInstance.getText();
-        editorSelectionText = fullText.substring(0, 2000); // Limit context
-      } else { // Fallback if no quillInstance
+        editorSelectionText = fullText.substring(0, 2000);
+        console.log('[HGC] Text NOT selected (or zero length). Using full editor text (max 2000 chars) for new_prompt / user_instructions. Length:', editorSelectionText.length);
+      } else {
         editorSelectionText = editedContent.substring(0, 2000);
+        console.log('[HGC] Quill instance not available. Using editedContent for new_prompt / user_instructions.');
       }
+      console.log('[HGC] isTextActuallySelected:', isTextActuallySelected, 'currentSelection:', currentSelection);
+
 
       if (!section.id) {
         setContentGenerationError("Section ID is missing. Cannot generate content.");
@@ -311,38 +316,41 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
 
       let featureIdForBackend: number | undefined = undefined;
       let contextDataForBackend: { [key: string]: any } = {};
-      let operationType = "Full Section Generation"; // For logging
+      let operationType = "Full Section Generation";
       let selectionToReplace: { index: number, length: number } | null = null;
 
-      // Check if a snippet feature is selected (via override or state) AND text is actually highlighted
-      if (featureIdToUseForSnippet && isTextActuallySelected && currentSelection) { // Ensure currentSelection is not null
+      if (featureIdToUseForSnippet && isTextActuallySelected && currentSelection) {
         const snippetFeature = snippetFeatures.find(f => f.id.toString() === featureIdToUseForSnippet);
+        console.log('[HGC] Attempting snippet path. Found snippetFeature:', snippetFeature);
         if (snippetFeature) {
           featureIdForBackend = snippetFeature.id;
           operationType = `Snippet: ${snippetFeature.name}`;
           contextDataForBackend['selected_text'] = editorSelectionText;
-          selectionToReplace = { index: currentSelection.index, length: currentSelection.length }; // Capture selection details
+          selectionToReplace = { index: currentSelection.index, length: currentSelection.length };
 
           if (snippetFeature.required_context) {
             snippetFeature.required_context.forEach(key => {
               if (key !== 'selected_text') {
-                console.log(`Snippet feature '${snippetFeature.name}' also requires '${key}'. This needs to be fetched/passed.`);
+                console.log(`[HGC] Snippet feature '${snippetFeature.name}' also requires '${key}'. This needs to be fetched/passed.`);
                 contextDataForBackend[key] = `{${key}_placeholder_for_snippet}`;
               }
             });
           }
         } else {
-          console.warn(`Selected snippet feature ID ${featureIdToUseForSnippet} not found in snippetFeatures list. Proceeding with full generation.`);
+          console.warn(`[HGC] Selected snippet feature ID ${featureIdToUseForSnippet} not found in snippetFeatures list. Proceeding with full generation.`);
           if(overrideSnippetFeatureId) setSelectedSnippetFeatureId("");
         }
       }
 
       if (!featureIdForBackend) {
         operationType = "Full Section Generation (Type-driven)";
+        console.log('[HGC] No featureIdForBackend, proceeding as Full Section Generation.');
         if (editorSelectionText && !isTextActuallySelected) {
           contextDataForBackend['user_instructions'] = editorSelectionText;
+          console.log('[HGC] Added full editor text as user_instructions.');
         }
       }
+      console.log('[HGC] Final featureIdForBackend:', featureIdForBackend);
 
       const regeneratePayload: SectionRegeneratePayload = {
         new_prompt: editorSelectionText,
@@ -353,7 +361,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
         context_data: contextDataForBackend,
       };
 
-      console.log(`Regenerate Payload for ${operationType}:`, regeneratePayload);
+      console.log(`[HGC] Regenerate Payload for ${operationType}:`, regeneratePayload);
 
       const updatedSection = await campaignService.regenerateCampaignSection(Number(campaignId), section.id, regeneratePayload);
       const generatedText = updatedSection.content;
