@@ -380,6 +380,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
 
       // This block determines if it's a snippet for payload:
       if (featureIdToUseForSnippet && isTextActuallySelected) { // isTextActuallySelected is now correctly true for snippets from ref
+        console.log('[HGC] Looking for snippetFeature with ID:', featureIdToUseForSnippet, 'Available snippetFeatures:', snippetFeatures.map(f => f.id.toString()));
         const snippetFeature = snippetFeatures.find(f => f.id.toString() === featureIdToUseForSnippet);
         console.log('[HGC] Attempting snippet path. Found snippetFeature:', snippetFeature); // Added
         if (snippetFeature) {
@@ -387,7 +388,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
           operationType = `Snippet: ${snippetFeature.name}`;
           contextDataForBackend['selected_text'] = editorSelectionText; // editorSelectionText is from ref for snippets
           console.log('[HGC] Snippet feature identified. featureIdForBackend:', featureIdForBackend, 'contextData.selected_text:', contextDataForBackend['selected_text']); // Added
-          // selectionToReplace is already set from storedSelection if this path is taken
+          // selectionToReplace is already set from explicitSelectionRange or storedSelection if this path is taken
           if (snippetFeature.required_context) {
             snippetFeature.required_context.forEach(key => {
               if (key !== 'selected_text') {
@@ -436,13 +437,16 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
       const generatedText = updatedSection.content;
 
       if (quillInstance) {
+        console.log('[HGC] Decision point for replacement: selectionToReplace:', selectionToReplace, 'featureIdForBackend:', featureIdForBackend);
         if (selectionToReplace && featureIdForBackend) { // Use captured selection for snippet operation
           // Snippet operation: replace only selected text
+          console.log('[HGC] Performing partial replacement.');
           quillInstance.deleteText(selectionToReplace.index, selectionToReplace.length, 'user');
           quillInstance.insertText(selectionToReplace.index, generatedText, 'user');
           quillInstance.setSelection(selectionToReplace.index + generatedText.length, 0, 'user');
         } else {
           // Full generation: replace all content
+          console.log('[HGC] Performing full replacement because selectionToReplace is', selectionToReplace, 'and featureIdForBackend is', featureIdForBackend);
           const delta = quillInstance.clipboard.convert(generatedText);
           quillInstance.setContents(delta, 'user');
         }
