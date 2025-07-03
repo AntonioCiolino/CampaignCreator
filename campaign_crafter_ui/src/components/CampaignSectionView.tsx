@@ -543,7 +543,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
           // But updateContents typically takes a full document delta or a change delta.
           // Let's use a change delta starting at the insertion point.
           const changeDelta = new Delta().retain(selectionToReplace.index).concat(deltaToInsert);
-          quillInstance.updateContents(changeDelta, Quill.sources.USER);
+          quillInstance.updateContents(changeDelta, 'user'); // Changed Quill.sources.USER to 'user'
 
 
           // Quill might adjust selection automatically, or we might need to set it.
