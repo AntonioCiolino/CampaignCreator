@@ -747,6 +747,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
     setLocalSaveError(null);
   };
 
+  
   return (
     <div id={`section-container-${section.id}`} className="campaign-section-view" tabIndex={-1}>
       {section.title && (
