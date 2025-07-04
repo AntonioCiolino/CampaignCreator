@@ -1318,8 +1318,7 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
         <Button
           onClick={() => setForceCollapseAll(prev => !prev)}
           icon={forceCollapseAll ? <UnfoldMoreIcon /> : <UnfoldLessIcon />}
-          variant="outline-secondary" // Reverted
-          // color="secondary" // Removed
+          variant="primary" // Changed to primary
           className="action-button"
           tooltip={forceCollapseAll ? "Expand all sections" : "Collapse all sections"}
         >
@@ -1574,8 +1573,7 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
           onClick={() => setIsMoodBoardPanelOpen(!isMoodBoardPanelOpen)}
           icon={<ImageIcon />}
           tooltip={isMoodBoardPanelOpen ? 'Hide Mood Board Panel' : 'Show Mood Board Panel'}
-          variant="outline-secondary" // Reverted
-          // color="secondary" // Removed
+          variant="primary" // Changed to primary
         >
           {isMoodBoardPanelOpen ? 'Hide Mood Board' : 'Show Mood Board'}
         </Button>
