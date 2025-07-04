@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef } from 'react'; // Added useRef
 import ReactDOM from 'react-dom'; // Added ReactDOM for createPortal
 import { CampaignSection } from '../types/campaignTypes'; // Corrected import path
 import ReactMarkdown from 'react-markdown';
-import { Typography, IconButton, Tooltip } from '@mui/material'; // Import IconButton and Tooltip
+import { Typography, IconButton, Tooltip, TextField } from '@mui/material'; // Import IconButton, Tooltip, TextField
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'; // Import ExpandMoreIcon
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'; // Import ExpandLessIcon
 import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
 // SaveIcon import removed
 import CheckIcon from '@mui/icons-material/Check'; // Import CheckIcon
+import CloseIcon from '@mui/icons-material/Close'; // Import CloseIcon
 import CancelIcon from '@mui/icons-material/Cancel'; // Import CancelIcon
 import DeleteIcon from '@mui/icons-material/Delete'; // Import DeleteIcon
 import CasinoIcon from '@mui/icons-material/Casino'; // Import CasinoIcon
@@ -99,6 +100,8 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   });
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editedContent, setEditedContent] = useState<string>(section.content || '');
+  const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
+  const [editableSectionTitle, setEditableSectionTitle] = useState<string>(section.title || '');
   const [quillInstance, setQuillInstance] = useState<any>(null); // Enabled to store Quill instance
   const [localSaveError, setLocalSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
@@ -242,6 +245,12 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   }, [section.content, externalSaveError]);
 
   useEffect(() => {
+    if (!isEditingTitle) {
+      setEditableSectionTitle(section.title || '');
+    }
+  }, [section.title, isEditingTitle]);
+
+  useEffect(() => {
     if (forceCollapse !== undefined) {
       setIsCollapsed(forceCollapse);
     }
@@ -272,8 +281,33 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   //     // setSelectedFeatureId("");
   //   }
   // }, [isEditing, features.length, featureFetchError]);
+
+  const handleSaveTitle = async () => {
+    if (section.id === undefined) {
+      console.error("Section ID is undefined, cannot save title.");
+      setLocalSaveError("Section ID is missing, cannot save title."); // Inform user
+      return;
+    }
+    try {
+      await onSave(section.id, { title: editableSectionTitle.trim() });
+      setIsEditingTitle(false);
+      setLocalSaveError(null);
+    } catch (error) {
+      console.error("Failed to save section title:", error);
+      setLocalSaveError("Failed to save title. Please try again.");
+    }
+  };
+
+  const handleCancelTitleEdit = () => {
+    setIsEditingTitle(false);
+    setEditableSectionTitle(section.title || '');
+    setLocalSaveError(null);
+  };
   
   const handleEdit = () => {
+    if (isEditingTitle) {
+      setIsEditingTitle(false); // Exit title edit mode if main edit is initiated
+    }
     setIsCollapsed(false); // Expand section on edit
 
     const plainTextContent = section.content || '';
@@ -598,11 +632,50 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
           >
             {isCollapsed ? <ExpandMoreIcon /> : <ExpandLessIcon />}
           </IconButton>
-          <h3 className="section-title" style={{ margin: 0 }}> {/* Removed margin from h3 for better alignment */}
-            {section.title}
-          </h3>
+          {!isEditingTitle ? (
+            <h3
+              className="section-title"
+              style={{ margin: 0, flexGrow: 1 }}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (isEditing) return;
+                setEditableSectionTitle(section.title || '');
+                setIsEditingTitle(true);
+              }}
+              sx={{ cursor: isEditing ? 'default' : 'pointer' }}
+            >
+              {editableSectionTitle} {/* Display editable title for consistency */}
+            </h3>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', flexGrow: 1, gap: '8px' }} onClick={(e)=> e.stopPropagation()}>
+              <TextField
+                variant="standard"
+                value={editableSectionTitle}
+                onChange={(e) => setEditableSectionTitle(e.target.value)}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault(); // Prevent form submission if any
+                    handleSaveTitle();
+                  }
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    handleCancelTitleEdit();
+                  }
+                }}
+                sx={{ flexGrow: 1 }}
+                // Remove onBlur for now to rely on explicit save/cancel
+              />
+              <IconButton onClick={(e) => {e.stopPropagation(); handleSaveTitle();}} size="small" aria-label="save title">
+                <CheckIcon fontSize="small" />
+              </IconButton>
+              <IconButton onClick={(e) => {e.stopPropagation(); handleCancelTitleEdit();}} size="small" aria-label="cancel title edit">
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </div>
+          )}
           {/* Display Section Type if not editing title area */}
-          {!isEditing && section.type && (
+          {!isEditing && !isEditingTitle && section.type && (
             <span style={{ marginLeft: '10px', fontSize: '0.8em', color: '#666', fontStyle: 'italic' }}>
               ({section.type})
             </span>
@@ -616,26 +689,17 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                 }}
                 size="small"
                 aria-label="edit section content"
-                sx={{ ml: 1 }} // Adjust margin as needed
+                sx={{ ml: 1 }}
               >
                 <EditIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           )}
-          {!isEditing && (
-            <Tooltip title="Delete Section">
-              <IconButton
-                onClick={() => onDelete(section.id)}
-                size="small"
-                aria-label="delete section"
-                sx={{ ml: 1, color: 'error.main' }} // Added color for visual cue
-              >
-                <DeleteIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          )}
+          {/* Delete icon is managed by CampaignSectionEditor */}
         </div>
       )}
+      {localSaveError && !isEditingTitle && <Typography color="error" variant="caption" sx={{ pl: 2, pt:1 }}>Title Save Error: {localSaveError}</Typography>}
+
 
       {!isCollapsed && (
         <>
