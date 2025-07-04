@@ -81,7 +81,7 @@ const CampaignEditorPage: React.FC = () => {
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
-  const [forceCollapseAll, setForceCollapseAll] = useState<boolean | undefined>(undefined);
+  const [forceCollapseAll, setForceCollapseAll] = useState<boolean>(true); // Initialize to true
 
   const [isCampaignConceptCollapsed, setIsCampaignConceptCollapsed] = useState<boolean>(true);
   const [isTocCollapsed, setIsTocCollapsed] = useState<boolean>(false);
@@ -1316,20 +1316,14 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
           Add New Section
         </Button>
         <Button
-          onClick={() => setForceCollapseAll(false)}
-          icon={<UnfoldMoreIcon />}
-          className="action-button"
-          tooltip="Expand all sections"
+          onClick={() => setForceCollapseAll(prev => !prev)}
+          icon={forceCollapseAll ? <UnfoldMoreIcon /> : <UnfoldLessIcon />}
+          variant="outlined"
+          color="secondary"
+          className="action-button" // Keep className for consistent styling if needed
+          tooltip={forceCollapseAll ? "Expand all sections" : "Collapse all sections"}
         >
-          Expand All
-        </Button>
-        <Button
-          onClick={() => setForceCollapseAll(true)}
-          icon={<UnfoldLessIcon />}
-          className="action-button"
-          tooltip="Collapse all sections"
-        >
-          Collapse All
+          {forceCollapseAll ? "Expand All" : "Collapse All"}
         </Button>
       </div>
       {/* The div className="section-display-controls editor-section" has been removed */}

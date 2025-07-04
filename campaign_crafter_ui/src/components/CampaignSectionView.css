@@ -141,29 +141,9 @@
 }
 */
 
-/*
-.campaign-section-view .save-button {
-  background-color: var(--success-color); 
-  border-color: var(--success-color);
-  color: white;
-}
-.campaign-section-view .save-button:hover {
-  background-color: #1e7e34; /* Darker success - nested comment removed */
-  border-color: #1e7e34;
-}
-*/
+/* Removed .save-button and .save-button:hover styles */
 
-/*
-.campaign-section-view .cancel-button {
-  background-color: var(--secondary-color); 
-  border-color: var(--secondary-color);
-  color: white;
-}
-.campaign-section-view .cancel-button:hover {
-  background-color: var(--secondary-color-dark);
-  border-color: var(--secondary-color-dark);
-}
-*/
+/* Removed .cancel-button and .cancel-button:hover styles */
 /* Removed potential stray } here if it existed */
 .campaign-section-view .editor-button:disabled {
   /* Uses global disabled styles */
