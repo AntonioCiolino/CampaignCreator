@@ -321,7 +321,7 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
             <div className="form-submit-area">
                 <button
                     type="button"
-                    className="btn btn-secondary me-2" // Added me-2 for margin
+                    className="btn btn-secondary" // me-2 removed
                     onClick={() => {
                         if (initialData && initialData.id) {
                             navigate(`/characters/${initialData.id}`); // Go to detail page if editing
@@ -331,10 +331,14 @@ const CharacterForm: React.FC<CharacterFormProps> = ({
                     }}
                     disabled={isSubmitting} // Disable cancel if main action is submitting
                 >
-                    Cancel
+                    <i className="bi bi-x-circle"></i> Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-                    {isSubmitting ? 'Submitting...' : submitButtonText}
+                    {isSubmitting ? (
+                        <><LoadingSpinner /> Submitting...</>
+                    ) : (
+                        <><i className="bi bi-plus-circle"></i> {submitButtonText}</>
+                    )}
                 </button>
             </div>
         </form>

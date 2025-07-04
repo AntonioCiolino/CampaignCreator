@@ -125,11 +125,18 @@ const CharacterDetailPage: React.FC = () => {
     // Character Chat Panel State
     const [isChatPanelOpen, setIsChatPanelOpen] = useState<boolean>(false);
 
-      // Optional: const [chatPanelWidth, setChatPanelWidth] = useState<number>(350);
     const [chatHistory, setChatHistory] = useState<Array<CharacterChatMessage>>([]);
 
     // State for LLM Notes visibility
-    const [showLlmNotes, setShowLlmNotes] = useState<boolean>(true); // Default to shown
+    const [showLlmNotes, setShowLlmNotes] = useState<boolean>(false); // Default to collapsed
+
+    // States for other collapsible sections
+    const [showStats, setShowStats] = useState<boolean>(true); // Expanded by default
+    const [showDescription, setShowDescription] = useState<boolean>(true); // Expanded by default
+    const [showAppearance, setShowAppearance] = useState<boolean>(true); // Expanded by default
+    const [showImages, setShowImages] = useState<boolean>(false); // Collapsed by default
+    const [showVideoClips, setShowVideoClips] = useState<boolean>(false); // Collapsed by default
+    const [showCampaignAssociations, setShowCampaignAssociations] = useState<boolean>(false); // Collapsed by default
 
     // DND Kit Sensors
     const sensors = useSensors(
@@ -287,11 +294,10 @@ const CharacterDetailPage: React.FC = () => {
         setError(null);
         try {
             await characterService.deleteCharacter(character.id);
-            // alert('Character deleted successfully.'); // Using AlertMessage now
             navigate('/characters', { state: { successMessage: `Character "${character.name}" deleted successfully.` } });
         } catch (err: any) {
             console.error("Failed to delete character:", err);
-            setError(err.response?.data?.detail || 'Failed to delete character. Please try again.');
+            setError(err.response?.data?.detail || 'Failed to delete character. Please try again');
             setIsDeleting(false); // Only set isDeleting to false on error, on success we navigate
             closeDeleteModal(); // Close modal on error
         }
@@ -471,18 +477,17 @@ const CharacterDetailPage: React.FC = () => {
                 {/* Title now takes available space, actions are on the right */}
                 <h1 className="character-title">{character.name}</h1>
                 <div className="header-actions">
-                    <Link to={`/characters/${character.id}/edit`} className="btn btn-outline-primary me-2">
-                        Edit Character
+                    <Link to={`/characters/${character.id}/edit`} className="btn btn-outline-primary">
+                        <i className="bi bi-pencil-square"></i> Edit
                     </Link>
-                    <button onClick={openDeleteModal} className="btn btn-outline-danger me-2">
-                        Delete Character
+                    <button onClick={openDeleteModal} className="btn btn-outline-danger">
+                        <i className="bi bi-trash"></i> Delete
                     </button>
                     <button
                         onClick={() => setIsChatPanelOpen(prev => !prev)}
                         className="btn btn-outline-info"
                         title={isChatPanelOpen ? "Close Chat" : "Chat with Character"}
                     >
-                        {/* Use an icon here if available, e.g., <ChatIcon /> */}
                         💬 Chat
                     </button>
                 </div>
@@ -497,53 +502,75 @@ const CharacterDetailPage: React.FC = () => {
                 <div className="character-main-column">
                     {/* Stats Card MOVED HERE - to be the first item in the main column */}
                     <div className="card data-card mb-3">
-                        <div className="card-header">Stats</div>
-                        <div className="card-body">
-                            {renderStats(character.stats)}
+                        <div
+                            className="card-header d-flex justify-content-between align-items-center"
+                            onClick={() => setShowStats(!showStats)}
+                            style={{ cursor: 'pointer' }}
+                        >
+                            <span>Stats</span>
+                            {showStats ? <i className="bi bi-chevron-up"></i> : <i className="bi bi-chevron-down"></i>}
                         </div>
+                        {showStats && (
+                            <div className="card-body">
+                                {renderStats(character.stats)}
+                            </div>
+                        )}
                     </div>
 
                     {/* "Notes for LLM" moved here, after Stats */}
                     {character.notes_for_llm && (
                         <div className="card data-card mb-3">
-                            <div className="card-header d-flex justify-content-between align-items-center">
-                                Notes for LLM
-                                <button
-                                    className="btn btn-sm btn-outline-secondary"
-                                    onClick={() => setShowLlmNotes(!showLlmNotes)}
-                                    title={showLlmNotes ? "Hide Notes" : "Show Notes"}
-                                >
-                                    {showLlmNotes ? <i className="bi bi-eye-slash-fill"></i> : <i className="bi bi-eye-fill"></i>}
-                                </button>
+                            <div
+                                className="card-header d-flex justify-content-between align-items-center"
+                                onClick={() => setShowLlmNotes(!showLlmNotes)} // Make the entire header clickable
+                                style={{ cursor: 'pointer' }} // Add pointer cursor to indicate clickability
+                            >
+                                <span>Notes for LLM</span> {/* Wrap title in span for flex control */}
+                                {/* Icon indicating collapsed/expanded state */}
+                                {showLlmNotes ? <i className="bi bi-chevron-up"></i> : <i className="bi bi-chevron-down"></i>}
                             </div>
                             {showLlmNotes && (
                                 <div className="card-body">
                                     <p className="card-text pre-wrap">{character.notes_for_llm}</p>
                                 </div>
                             )}
-                            {!showLlmNotes && (
-                                <div className="card-body text-muted small">
-                                    (Notes are hidden)
-                                </div>
-                            )}
+                            {/* The part for "{!showLlmNotes && ... (Notes are hidden)}" is completely removed */}
                         </div>
                     )}
 
                     {character.description && (
                         <div className="card data-card mb-3">
-                            <div className="card-header">Description</div>
-                            <div className="card-body">
-                                <p className="card-text pre-wrap">{character.description}</p>
+                            <div
+                                className="card-header d-flex justify-content-between align-items-center"
+                                onClick={() => setShowDescription(!showDescription)}
+                                style={{ cursor: 'pointer' }}
+                            >
+                                <span>Description</span>
+                                {showDescription ? <i className="bi bi-chevron-up"></i> : <i className="bi bi-chevron-down"></i>}
                             </div>
+                            {showDescription && (
+                                <div className="card-body">
+                                    <p className="card-text pre-wrap">{character.description}</p>
+                                </div>
+                            )}
                         </div>
                     )}
 
                     {character.appearance_description && (
                         <div className="card data-card mb-3">
-                            <div className="card-header">Appearance</div>
-                            <div className="card-body">
-                                <p className="card-text pre-wrap">{character.appearance_description}</p>
+                            <div
+                                className="card-header d-flex justify-content-between align-items-center"
+                                onClick={() => setShowAppearance(!showAppearance)}
+                                style={{ cursor: 'pointer' }}
+                            >
+                                <span>Appearance</span>
+                                {showAppearance ? <i className="bi bi-chevron-up"></i> : <i className="bi bi-chevron-down"></i>}
                             </div>
+                            {showAppearance && (
+                                <div className="card-body">
+                                    <p className="card-text pre-wrap">{character.appearance_description}</p>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -551,19 +578,30 @@ const CharacterDetailPage: React.FC = () => {
                 {/* Right Column: Images, etc. (Stats removed from here) */}
                 <div className="character-sidebar-column">
                     <div className="card data-card mb-3">
-                        <div className="card-header d-flex justify-content-between align-items-center">
-                            Images
-                            <button
-                                className="btn btn-sm btn-success"
-                                onClick={handleGenerateNewImage}
-                                disabled={isGeneratingImage}
-                            >
-                                {isGeneratingImage ? <><LoadingSpinner /> Generating...</> : 'Generate New'}
-                            </button>
+                        <div
+                            className="card-header d-flex justify-content-between align-items-center mb-3"
+                            onClick={() => setShowImages(!showImages)}
+                            style={{ cursor: 'pointer' }}
+                        >
+                            <span>Images</span>
+                            <div> {/* Wrapper for button and chevron */}
+                                <button
+                                    className="btn btn-sm btn-success me-2"
+                                    onClick={(e) => {
+                                        e.stopPropagation(); // Prevent header onClick
+                                        handleGenerateNewImage();
+                                    }}
+                                    disabled={isGeneratingImage}
+                                >
+                                    {isGeneratingImage ? <><LoadingSpinner /> Generating...</> : 'Generate New'}
+                                </button>
+                                {showImages ? <i className="bi bi-chevron-up"></i> : <i className="bi bi-chevron-down"></i>}
+                            </div>
                         </div>
-                        <div className="card-body">
-                            {imageGenError && <AlertMessage type="error" message={imageGenError} onClose={() => setImageGenError(null)} />}
-                            <DndContext
+                        {showImages && (
+                            <div className="card-body">
+                                {imageGenError && <AlertMessage type="error" message={imageGenError} onClose={() => setImageGenError(null)} />}
+                                <DndContext
                                 sensors={sensors}
                                 collisionDetection={closestCenter}
                                 onDragEnd={handleDragEnd}
@@ -594,6 +632,7 @@ const CharacterDetailPage: React.FC = () => {
                                 </SortableContext>
                             </DndContext>
                         </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -601,10 +640,18 @@ const CharacterDetailPage: React.FC = () => {
 
             {character.video_clip_urls && character.video_clip_urls.length > 0 && (
                 <div className="card data-card mb-3">
-                    <div className="card-header">Video Clips</div>
-                    <div className="card-body">
-                        <table className="table table-sm">
-                            <thead>
+                    <div
+                        className="card-header d-flex justify-content-between align-items-center"
+                        onClick={() => setShowVideoClips(!showVideoClips)}
+                        style={{ cursor: 'pointer' }}
+                    >
+                        <span>Video Clips</span>
+                        {showVideoClips ? <i className="bi bi-chevron-up"></i> : <i className="bi bi-chevron-down"></i>}
+                    </div>
+                    {showVideoClips && (
+                        <div className="card-body">
+                            <table className="table table-sm">
+                                <thead>
                                 <tr>
                                     <th>URL</th>
                                     <th style={{ width: '100px' }}>Action</th>
@@ -627,45 +674,68 @@ const CharacterDetailPage: React.FC = () => {
                                 ))}
                             </tbody>
                         </table>
-                    </div>
-                </div>
-            )}
-
-            {/* Old LLM Interaction Section - REMOVED */}
+                    </div> // Closes card-body
+                    )} {/* Closes showVideoClips conditional */}
+                </div> // Closes the Video Clips card <div className="card data-card mb-3">
+            )} {/* Closes the character.video_clip_urls conditional */}
 
             {/* Campaign Association Management - Full Width */}
             <div className="card data-card mb-3">
-                <div className="card-header">Campaign Associations</div>
-                <div className="card-body">
-                    {linkError && <AlertMessage type="error" message={linkError} onClose={() => setLinkError(null)} />}
-                    <h5>Currently In Campaigns:</h5>
+                <div
+                    className="card-header d-flex justify-content-between align-items-center"
+                    onClick={() => setShowCampaignAssociations(!showCampaignAssociations)}
+                    style={{ cursor: 'pointer' }}
+                >
+                    <span>Campaign Associations</span>
+                    {showCampaignAssociations ? <i className="bi bi-chevron-up"></i> : <i className="bi bi-chevron-down"></i>}
+                </div>
+                {showCampaignAssociations && (
+                    <div className="card-body">
+                        {linkError && <AlertMessage type="error" message={linkError} onClose={() => setLinkError(null)} />}
+                        <h5>Currently In Campaigns:</h5>
                     {associatedCampaigns.length > 0 ? (
-                        <ul className="list-group list-group-flush mb-3">
+                        <div className="associated-campaigns-list mb-3"> {/* New wrapper class, kept mb-3 */}
                             {associatedCampaigns.map(camp => (
-                                <li key={camp.id} className="list-group-item d-flex justify-content-between align-items-center">
-                                    <Link to={`/campaign/${camp.id}`}>{camp.title}</Link>
+                                <div key={camp.id} className="associated-campaign-item">
+                                    <img
+                                        src={camp.badge_image_url || camp.thematic_image_url || '/logo_placeholder.svg'}
+                                        alt={`Campaign: ${camp.title}`}
+                                        className="associated-campaign-thumbnail"
+                                        onError={(e) => {
+                                            const target = e.target as HTMLImageElement;
+                                            if (target.src !== '/logo_placeholder.svg') {
+                                                target.src = '/logo_placeholder.svg';
+                                                target.alt = "Placeholder image";
+                                            }
+                                        }}
+                                    />
+                                    <Link to={`/campaign/${camp.id}`} className="associated-campaign-name">
+                                        {camp.title}
+                                    </Link>
                                     <button
-                                        className="btn btn-sm btn-outline-warning"
+                                        className="btn btn-icon btn-outline-danger" // btn-sm removed
                                         onClick={() => handleUnlinkCampaign(camp.id, camp.title)}
                                         disabled={isLinking}
+                                        title={`Unlink from ${camp.title}`}
                                     >
-                                        {isLinking ? <LoadingSpinner /> : 'Unlink'}
+                                        {isLinking ? <LoadingSpinner /> : <i className="bi bi-x-circle"></i>}
                                     </button>
-                                </li>
+                                </div>
                             ))}
-                        </ul>
+                        </div>
                     ) : (
                         <p className="text-muted">Not currently associated with any campaigns.</p>
                     )}
                     <hr />
                     <h5>Link to a Campaign:</h5>
                     {userCampaigns.length > 0 && availableCampaignsToLink.length > 0 ? (
-                        <div className="input-group">
+                        <div className="link-campaign-controls"> {/* New wrapper div */}
                             <select
-                                className="form-select"
+                                className="form-select me-2" // Add margin to separate from link
                                 value={selectedCampaignToLink}
                                 onChange={(e) => setSelectedCampaignToLink(e.target.value)}
                                 disabled={isLinking}
+                                style={{ width: 'auto', flexGrow: 1 }} // Allow select to take space
                             >
                                 <option value="">Select a campaign...</option>
                                 {availableCampaignsToLink.map(camp => (
@@ -673,12 +743,17 @@ const CharacterDetailPage: React.FC = () => {
                                 ))}
                             </select>
                             <button
-                                className="btn btn-outline-success"
+                                className="btn btn-link text-success p-0 align-baseline" // Use btn-link, remove padding, ensure text color, align baseline
                                 type="button"
                                 onClick={handleLinkCampaign}
                                 disabled={!selectedCampaignToLink || isLinking}
+                                title="Link selected campaign"
                             >
-                                {isLinking ? <><LoadingSpinner /> Linking...</> : 'Link to Campaign'}
+                                {isLinking ? (
+                                    <><LoadingSpinner /> Linking...</>
+                                ) : (
+                                    <><i className="bi bi-plus-circle"></i> Link</> // Using a plus-circle icon
+                                )}
                             </button>
                         </div>
                     ) : (
@@ -686,10 +761,9 @@ const CharacterDetailPage: React.FC = () => {
                          <p className="text-muted">This character is already linked to all your available campaigns.</p> :
                          <p className="text-muted">You don't have any campaigns to link this character to, or no unlinked campaigns available.</p>
                     )}
-                </div>
+                    </div>
+                )}
             </div>
-
-            {/* "Back to Character List" button removed from here */}
 
             {selectedImageUrl && (
                 <ImagePreviewModal

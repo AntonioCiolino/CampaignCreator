@@ -31,12 +31,25 @@
     padding-right: 1rem; /* Space between title and action buttons */
 }
 
+/* MODIFIED FOR BUTTON STANDARDIZATION */
 .character-detail-page .header-actions {
     flex-shrink: 0; /* Prevent action buttons from shrinking */
+    display: flex; /* Make this a flex container for the buttons */
+    gap: 0.5rem; /* Spacing between buttons, replaces me-2 */
 }
 
+/* MODIFIED FOR BUTTON STANDARDIZATION */
 .character-detail-page .header-actions .btn {
     font-size: 0.9rem; /* Slightly smaller buttons in header */
+    display: inline-flex; /* Align icon and text */
+    align-items: center;
+    gap: 0.35rem; /* Space between icon and text */
+}
+
+/* ADDED FOR BUTTON STANDARDIZATION */
+.character-detail-page .header-actions .btn .bi {
+    line-height: 1; /* Helps with vertical alignment of icons */
+    /* Optionally, adjust icon size if needed, e.g., font-size: 0.9em; */
 }
 
 /* Grid layout for main content and sidebar */
@@ -161,7 +174,7 @@
     overflow-y: auto; /* Scroll for long responses */
 }
 
-/* Campaign Associations List */
+/* Campaign Associations List - Old styles for list-group-item, can be removed or kept if list-group is used elsewhere */
 .character-detail-page .list-group-item {
     padding-left: 0;
     padding-right: 0;
@@ -182,8 +195,8 @@
 }
 
 /* Loading spinner within buttons */
-.btn .spinner-border-sm {
-    margin-right: 0.5em;
+.btn .spinner-border-sm { /* This is a Bootstrap class, might be globally used */
+    margin-right: 0.5em; /* Default spacing if spinner is next to text */
 }
 
 
@@ -208,14 +221,6 @@
     .character-detail-page .header-actions {
         width: 100%;
         margin-top: 0.75rem;
-        display: flex;
-        justify-content: space-between;
-    }
-    .character-detail-page .header-actions .btn {
-        flex-grow: 1; /* Make buttons take equal space */
-    }
-    .character-detail-page .header-actions .btn.me-2 {
-        margin-right: 0.5rem !important; /* Ensure spacing */
     }
 
     .character-stats-grid {
@@ -244,16 +249,6 @@
 }
 
 @media (max-width: 576px) { /* Extra small devices (portrait phones, less than 576px) */
-    .character-detail-page .header-actions {
-        flex-direction: column;
-    }
-    .character-detail-page .header-actions .btn {
-        width: 100%;
-        margin-bottom: 0.5rem;
-    }
-    .character-detail-page .header-actions .btn.me-2 {
-        margin-right: 0 !important;
-    }
      .character-stats-grid {
         grid-template-columns: repeat(3, 1fr); /* Fixed 3 columns for very small screens */
     }
@@ -261,13 +256,115 @@
 
 /* Drag and Drop Styles for Character Images */
 .character-image-thumbnail-wrapper.dragging {
-  opacity: 0.4; /* Make it more transparent when dragging */
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25); /* More pronounced shadow */
-  border: 2px dashed var(--primary-color, #007bff); /* Use primary color for dashed border */
-  transform: scale(1.03); /* Slightly enlarge the item being dragged */
-  z-index: 10; /* Ensure it's above other items */
+  opacity: 0.4;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+  border: 2px dashed var(--primary-color, #007bff);
+  transform: scale(1.03);
+  z-index: 10;
 }
 
-/* Optional: Style for the drop placeholder or when hovering over a drop zone,
-   but @dnd-kit/sortable usually handles this well with transform.
-   If specific placeholder styling is needed, it would be more involved. */
+/* Campaign Association List Enhancement */
+.associated-campaigns-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.associated-campaign-item {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color-light, #e9ecef);
+    border-radius: var(--border-radius, 0.25rem);
+    background-color: var(--surface-color-secondary, #f8f9fa);
+}
+
+.associated-campaign-thumbnail {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: var(--border-radius-sm, 0.2rem);
+    margin-right: 0.75rem;
+    border: 1px solid var(--border-color-light, #e0e0e0);
+}
+
+.associated-campaign-name {
+    flex-grow: 1;
+    font-weight: 500;
+    color: var(--text-color, #333);
+    text-decoration: none;
+}
+.associated-campaign-name:hover {
+    text-decoration: underline;
+    color: var(--primary-color, #007bff);
+}
+
+/* Styling for Unlink icon button in Campaign Association List - MODIFIED */
+.associated-campaign-item .btn-icon {
+    padding: 0.3rem 0.6rem; /* Slightly increased padding */
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.associated-campaign-item .btn-icon .bi {
+    vertical-align: middle;
+    font-size: 1rem; /* Explicitly set icon size */
+}
+
+/* Spinner styles within Unlink button - MODIFIED to match new icon size */
+.associated-campaign-item .btn-icon .loading-spinner-overlay {
+    width: 1rem; /* Match icon font size */
+    height: 1rem; /* Match icon font size */
+    display: inline-block;
+    vertical-align: middle;
+    background-color: transparent;
+}
+.associated-campaign-item .btn-icon .loading-spinner-overlay .loading-spinner {
+    width: 100%;
+    height: 100%;
+    border-width: 0.2em;
+}
+
+/* Link Campaign Controls - ADDED */
+.link-campaign-controls {
+    display: flex;
+    align-items: center; /* Align select and link vertically */
+    gap: 0.5rem; /* Optional: if me-2 on select isn't enough or for a different approach */
+}
+
+/* .link-campaign-controls .form-select {} is handled by inline styles or existing form-select styles */
+
+.link-campaign-controls .btn-link {
+    text-decoration: none;
+    font-weight: 500; /* Make it slightly bolder than normal link text */
+    display: inline-flex; /* Align icon and text */
+    align-items: center;
+    gap: 0.25rem; /* Small gap between icon and text */
+    /* p-0 and align-baseline are handled by Bootstrap utility classes */
+}
+.link-campaign-controls .btn-link:hover {
+    text-decoration: underline;
+}
+
+.link-campaign-controls .btn-link .bi {
+    font-size: 1.1em; /* Slightly larger icon relative to link text */
+    line-height: 1;
+    vertical-align: middle; /* Better align icon with text */
+}
+
+/* Spinner within Link Campaign btn-link - ADDED */
+.link-campaign-controls .btn-link .loading-spinner-overlay {
+   width: 1em; /* Relative to button font size */
+   height: 1em;
+   display: inline-block;
+   vertical-align: text-bottom; /* Align with link text */
+   margin-right: 0.25rem; /* Space between spinner and "Linking..." */
+   background-color: transparent;
+}
+.link-campaign-controls .btn-link .loading-spinner-overlay .loading-spinner {
+   width: 100%;
+   height: 100%;
+   border-width: 0.15em; /* Thinner border for smaller spinner */
+}
