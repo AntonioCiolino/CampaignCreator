@@ -610,12 +610,27 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
           {!isEditing && (
             <Tooltip title="Edit Section Content">
               <IconButton
-                onClick={handleEdit}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleEdit();
+                }}
                 size="small"
                 aria-label="edit section content"
                 sx={{ ml: 1 }} // Adjust margin as needed
               >
                 <EditIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          {!isEditing && (
+            <Tooltip title="Delete Section">
+              <IconButton
+                onClick={() => onDelete(section.id)}
+                size="small"
+                aria-label="delete section"
+                sx={{ ml: 1, color: 'error.main' }} // Added color for visual cue
+              >
+                <DeleteIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           )}
@@ -807,16 +822,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                   <span>{isRegenerating ? 'Regenerating...' : 'Regenerate'}</span>
                 </Button>
                 */}
-                <Button
-                  onClick={() => onDelete(section.id)}
-                  variant="danger"
-                  size="sm"
-                  className="editor-button delete-button" // delete-button class might still have specific icon color logic
-                  icon={<DeleteIcon />} // Changed startIcon to icon
-                  style={{ marginLeft: '10px' }}
-                >
-                  Delete Section
-                </Button>
+                {/* The large "Delete Section" button has been removed from here. */}
               </div>
               {/* regenerateError display removed as state and handler are removed */}
             </>
