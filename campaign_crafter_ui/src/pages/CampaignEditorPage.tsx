@@ -41,7 +41,8 @@ import CampaignLLMSettings from '../components/campaign_editor/CampaignLLMSettin
 import CampaignSectionEditor from '../components/campaign_editor/CampaignSectionEditor';
 import { LLMModel as LLM } from '../services/llmService';
 import Tabs, { TabItem } from '../components/common/Tabs';
-import { Typography, TextField } from '@mui/material';
+import { Typography, TextField, List, ListItem, ListItemAvatar, Avatar, ListItemText, IconButton, Box, FormControl, InputLabel, Select, MenuItem, Paper, Divider } from '@mui/material';
+import LinkOffIcon from '@mui/icons-material/LinkOff';
 import DetailedProgressDisplay from '../components/common/DetailedProgressDisplay';
 import TOCEditor from '../components/campaign_editor/TOCEditor';
 import CampaignThemeEditor, { CampaignThemeData } from '../components/campaign_editor/CampaignThemeEditor';
@@ -1475,74 +1476,108 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
   );
 
   const charactersTabContent = (
-    <div className="editor-section characters-management-section card-like">
-      <Typography variant="h5" gutterBottom>Manage Campaign Characters</Typography>
-      {charactersLoading && <LoadingSpinner />}
-      {characterError && <p className="error-message feedback-message">{characterError}</p>}
+    <Paper elevation={2} sx={{ p: 2, mt: 1 }}>
+      <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>Manage Campaign Characters</Typography>
+      {charactersLoading && <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}><LoadingSpinner /></Box>}
+      {characterError && <Typography color="error" sx={{ my: 2 }}>{characterError}</Typography>}
       {!charactersLoading && !characterError && (
         <>
-          <div className="mb-3">
-            <h6>Associated Characters:</h6>
+          <Box sx={{ mb: 3 }}> {/* Added Box for margin separation */}
+            <Typography variant="h6" gutterBottom>Associated Characters:</Typography>
             {campaignCharacters.length > 0 ? (
-              <ul className="list-group">
+              <List sx={{ width: '100%', bgcolor: 'background.paper', borderRadius: 1 }}> {/* Optional: added border radius */}
                 {campaignCharacters.map(char => (
-                  <li key={char.id} className="list-group-item d-flex justify-content-between align-items-center">
-                    <Link to={`/characters/${char.id}`} target="_blank">{char.name}</Link>
-                    <Button
-                      onClick={() => handleUnlinkCharacterFromCampaign(char.id)}
-                      variant="danger"
-                      size="sm"
-                      disabled={isLinkingCharacter}
-                      tooltip={`Remove ${char.name} from this campaign`}
-                    >
-                      {isLinkingCharacter ? 'Processing...' : 'Unlink'}
-                    </Button>
-                  </li>
+                  <ListItem
+                    key={char.id}
+                    secondaryAction={
+                      <IconButton
+                        edge="end"
+                        aria-label="unlink character"
+                        onClick={() => handleUnlinkCharacterFromCampaign(char.id)}
+                        disabled={isLinkingCharacter}
+                        title={`Remove ${char.name} from this campaign`}
+                        color="error"
+                      >
+                        <LinkOffIcon />
+                      </IconButton>
+                    }
+                  >
+                    <ListItemAvatar>
+                      <Avatar
+                        alt={char.name}
+                        src={char.image_urls && char.image_urls.length > 0 ? char.image_urls[0] : undefined}
+                        sx={{ width: 40, height: 40 }}
+                      >
+                        {!(char.image_urls && char.image_urls.length > 0) && char.name.charAt(0).toUpperCase()}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={
+                        <Link to={`/characters/${char.id}`} target="_blank" style={{ textDecoration: 'none', color: 'inherit' }}>
+                          {char.name}
+                        </Link>
+                      }
+                    />
+                  </ListItem>
                 ))}
-              </ul>
+              </List>
             ) : (
-              <p className="text-muted">No characters are currently associated with this campaign.</p>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                No characters are currently associated with this campaign.
+              </Typography>
             )}
-          </div>
-          <hr />
-          <div className="mt-3">
-            <h6>Add Existing Character to Campaign:</h6>
+          </Box>
+          <Divider sx={{ my: 2 }} /> {/* Replaced hr with MUI Divider */}
+          <Box sx={{ mt: 2 }}> {/* Added Box for margin separation */}
+            <Typography variant="h6" gutterBottom>Add Existing Character to Campaign:</Typography>
             {userCharacters.length > 0 ? (
-              <div className="input-group">
-                <select
-                  className="form-select"
-                  value={selectedUserCharacterToAdd}
-                  onChange={(e) => setSelectedUserCharacterToAdd(e.target.value)}
-                  disabled={isLinkingCharacter}
-                >
-                  <option value="">Select a character to add...</option>
-                  {userCharacters
-                    .filter(uc => !campaignCharacters.some(cc => cc.id === uc.id))
-                    .map(char => (
-                      <option key={char.id} value={char.id}>
-                        {char.name}
-                      </option>
-                  ))}
-                </select>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}> {/* Reduced top margin slightly as h6 has gutterBottom */}
+                <FormControl fullWidth sx={{ flexGrow: 1 }}>
+                  <InputLabel id="select-user-character-label">Add Existing Character</InputLabel>
+                  <Select
+                    labelId="select-user-character-label"
+                    id="select-user-character"
+                    value={selectedUserCharacterToAdd}
+                    label="Add Existing Character"
+                    onChange={(e) => setSelectedUserCharacterToAdd(e.target.value)}
+                    disabled={isLinkingCharacter || userCharacters.filter(uc => !campaignCharacters.some(cc => cc.id === uc.id)).length === 0}
+                  >
+                    <MenuItem value="">
+                      <em>Select a character to add...</em>
+                    </MenuItem>
+                    {userCharacters
+                      .filter(uc => !campaignCharacters.some(cc => cc.id === uc.id))
+                      .map(char => (
+                        <MenuItem key={char.id} value={char.id.toString()}>
+                          {char.name}
+                        </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
                 <Button
                   onClick={handleLinkCharacterToCampaign}
                   disabled={!selectedUserCharacterToAdd || isLinkingCharacter}
                   variant="success"
                   tooltip="Add the selected character to this campaign"
+                  sx={{ flexShrink: 0 }}
                 >
                   {isLinkingCharacter ? 'Adding...' : 'Add to Campaign'}
                 </Button>
-              </div>
+              </Box>
             ) : (
-              <p className="text-muted">You have no other characters to add, or all your characters are already in this campaign.</p>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                You have no other characters to add, or all your characters are already in this campaign.
+              </Typography>
             )}
-             {userCharacters.filter(uc => !campaignCharacters.some(cc => cc.id === uc.id)).length === 0 && userCharacters.length > 0 && (
-                <p className="text-muted small mt-1">All your available characters are already linked to this campaign.</p>
+             {userCharacters.filter(uc => !campaignCharacters.some(cc => cc.id === uc.id)).length === 0 && userCharacters.length > 0 && !(userCharacters.length === 0) && (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                  All your available characters are already linked to this campaign.
+                </Typography>
             )}
-          </div>
+          </Box>
         </>
       )}
-    </div>
+    </Paper>
   );
 
   const finalTabItems: TabItem[] = [
