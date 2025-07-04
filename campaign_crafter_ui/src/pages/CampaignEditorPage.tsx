@@ -67,9 +67,9 @@ const CampaignEditorPage: React.FC = () => {
   const [titlesError, setTitlesError] = useState<string | null>(null);
   const [suggestedTitles, setSuggestedTitles] = useState<string[] | null>(null);
 
-  const [isAddingSection, setIsAddingSection] = useState<boolean>(false);
-  const [addSectionError, setAddSectionError] = useState<string | null>(null);
-  const [addSectionSuccess, setAddSectionSuccess] = useState<string | null>(null);
+  // const [isAddingSection, setIsAddingSection] = useState<boolean>(false); // Removed as not used in JSX
+  // const [addSectionError, setAddSectionError] = useState<string | null>(null); // Removed as not used in JSX
+  // const [addSectionSuccess, setAddSectionSuccess] = useState<string | null>(null); // Removed as not used in JSX
 
   const [availableLLMs, setAvailableLLMs] = useState<LLMModel[]>([]);
   const [isLLMsLoading, setIsLLMsLoading] = useState<boolean>(true);
@@ -803,9 +803,9 @@ const CampaignEditorPage: React.FC = () => {
     // If selectedLLMId is present, empty title/prompt are allowed (interpreted as "skip").
 
     setIsPageLoading(true);
-    setIsAddingSection(true); // You might want a specific state for modal adding if it behaves differently
-    setAddSectionError(null);
-    setAddSectionSuccess(null);
+    // setIsAddingSection(true); // State removed
+    // setAddSectionError(null); // State removed
+    // setAddSectionSuccess(null); // State removed
     try {
       const newSection = await campaignService.addCampaignSection(campaignId, {
         title: title?.trim() || undefined,
@@ -813,17 +813,18 @@ const CampaignEditorPage: React.FC = () => {
         model_id_with_prefix: selectedLLMId || undefined,
       });
       setSections(prev => [...prev, newSection].sort((a, b) => a.order - b.order));
-      setAddSectionSuccess("New section added successfully!");
-      setTimeout(() => setAddSectionSuccess(null), 3000);
+      // setAddSectionSuccess("New section added successfully!"); // State removed
+      // setTimeout(() => setAddSectionSuccess(null), 3000); // State removed
       setIsAddSectionModalOpen(false); // Close modal on success
     } catch (err: any) {
       const errorMsg = (err instanceof Error && (err as any).response?.data?.detail)
                        ? (err as any).response.data.detail
                        : (err instanceof Error ? err.message : 'Failed to add new section.');
-      setAddSectionError(errorMsg); // Display error in modal or page
-      // Optionally, keep modal open on error: setIsAddSectionModalOpen(true);
+      // setAddSectionError(errorMsg); // State removed
+      console.error("Error adding section: ", errorMsg); // Log error instead
+      // Optionally, keep modal open on error or pass error to modal: setIsAddSectionModalOpen(true);
     } finally {
-      setIsAddingSection(false);
+      // setIsAddingSection(false); // State removed
       setIsPageLoading(false);
     }
   };
