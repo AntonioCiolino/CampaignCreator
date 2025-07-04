@@ -317,13 +317,54 @@
 .associated-campaign-item .btn-icon .loading-spinner-overlay {
     width: 1rem; /* Match icon font size */
     height: 1rem; /* Match icon font size */
-    display: inline-block; /* Or inline-flex if it contains flex items */
-    vertical-align: middle; /* Align with icon if it were present */
-    background-color: transparent; /* Ensure spinner background is transparent */
-    /* margin-right: 0; /* No margin needed if it's the only thing in the button */
+    display: inline-block;
+    vertical-align: middle;
+    background-color: transparent;
 }
 .associated-campaign-item .btn-icon .loading-spinner-overlay .loading-spinner {
     width: 100%;
     height: 100%;
-    border-width: 0.2em; /* Adjust border for the new size */
+    border-width: 0.2em;
+}
+
+/* Link Campaign Controls - ADDED */
+.link-campaign-controls {
+    display: flex;
+    align-items: center; /* Align select and link vertically */
+    gap: 0.5rem; /* Optional: if me-2 on select isn't enough or for a different approach */
+}
+
+/* .link-campaign-controls .form-select {} is handled by inline styles or existing form-select styles */
+
+.link-campaign-controls .btn-link {
+    text-decoration: none;
+    font-weight: 500; /* Make it slightly bolder than normal link text */
+    display: inline-flex; /* Align icon and text */
+    align-items: center;
+    gap: 0.25rem; /* Small gap between icon and text */
+    /* p-0 and align-baseline are handled by Bootstrap utility classes */
+}
+.link-campaign-controls .btn-link:hover {
+    text-decoration: underline;
+}
+
+.link-campaign-controls .btn-link .bi {
+    font-size: 1.1em; /* Slightly larger icon relative to link text */
+    line-height: 1;
+    vertical-align: middle; /* Better align icon with text */
+}
+
+/* Spinner within Link Campaign btn-link - ADDED */
+.link-campaign-controls .btn-link .loading-spinner-overlay {
+   width: 1em; /* Relative to button font size */
+   height: 1em;
+   display: inline-block;
+   vertical-align: text-bottom; /* Align with link text */
+   margin-right: 0.25rem; /* Space between spinner and "Linking..." */
+   background-color: transparent;
+}
+.link-campaign-controls .btn-link .loading-spinner-overlay .loading-spinner {
+   width: 100%;
+   height: 100%;
+   border-width: 0.15em; /* Thinner border for smaller spinner */
 }

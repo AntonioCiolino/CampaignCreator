@@ -129,7 +129,15 @@ const CharacterDetailPage: React.FC = () => {
     const [chatHistory, setChatHistory] = useState<Array<CharacterChatMessage>>([]);
 
     // State for LLM Notes visibility
-    const [showLlmNotes, setShowLlmNotes] = useState<boolean>(false); // Default to shown
+    const [showLlmNotes, setShowLlmNotes] = useState<boolean>(false); // Default to collapsed
+
+    // States for other collapsible sections
+    const [showStats, setShowStats] = useState<boolean>(true); // Expanded by default
+    const [showDescription, setShowDescription] = useState<boolean>(true); // Expanded by default
+    const [showAppearance, setShowAppearance] = useState<boolean>(true); // Expanded by default
+    const [showImages, setShowImages] = useState<boolean>(false); // Collapsed by default
+    const [showVideoClips, setShowVideoClips] = useState<boolean>(false); // Collapsed by default
+    const [showCampaignAssociations, setShowCampaignAssociations] = useState<boolean>(false); // Collapsed by default
 
     // DND Kit Sensors
     const sensors = useSensors(
@@ -496,10 +504,19 @@ const CharacterDetailPage: React.FC = () => {
                 <div className="character-main-column">
                     {/* Stats Card MOVED HERE - to be the first item in the main column */}
                     <div className="card data-card mb-3">
-                        <div className="card-header">Stats</div>
-                        <div className="card-body">
-                            {renderStats(character.stats)}
+                        <div
+                            className="card-header d-flex justify-content-between align-items-center"
+                            onClick={() => setShowStats(!showStats)}
+                            style={{ cursor: 'pointer' }}
+                        >
+                            <span>Stats</span>
+                            {showStats ? <i className="bi bi-chevron-up"></i> : <i className="bi bi-chevron-down"></i>}
                         </div>
+                        {showStats && (
+                            <div className="card-body">
+                                {renderStats(character.stats)}
+                            </div>
+                        )}
                     </div>
 
                     {/* "Notes for LLM" moved here, after Stats */}
@@ -525,19 +542,37 @@ const CharacterDetailPage: React.FC = () => {
 
                     {character.description && (
                         <div className="card data-card mb-3">
-                            <div className="card-header">Description</div>
-                            <div className="card-body">
-                                <p className="card-text pre-wrap">{character.description}</p>
+                            <div
+                                className="card-header d-flex justify-content-between align-items-center"
+                                onClick={() => setShowDescription(!showDescription)}
+                                style={{ cursor: 'pointer' }}
+                            >
+                                <span>Description</span>
+                                {showDescription ? <i className="bi bi-chevron-up"></i> : <i className="bi bi-chevron-down"></i>}
                             </div>
+                            {showDescription && (
+                                <div className="card-body">
+                                    <p className="card-text pre-wrap">{character.description}</p>
+                                </div>
+                            )}
                         </div>
                     )}
 
                     {character.appearance_description && (
                         <div className="card data-card mb-3">
-                            <div className="card-header">Appearance</div>
-                            <div className="card-body">
-                                <p className="card-text pre-wrap">{character.appearance_description}</p>
+                            <div
+                                className="card-header d-flex justify-content-between align-items-center"
+                                onClick={() => setShowAppearance(!showAppearance)}
+                                style={{ cursor: 'pointer' }}
+                            >
+                                <span>Appearance</span>
+                                {showAppearance ? <i className="bi bi-chevron-up"></i> : <i className="bi bi-chevron-down"></i>}
                             </div>
+                            {showAppearance && (
+                                <div className="card-body">
+                                    <p className="card-text pre-wrap">{character.appearance_description}</p>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -545,19 +580,30 @@ const CharacterDetailPage: React.FC = () => {
                 {/* Right Column: Images, etc. (Stats removed from here) */}
                 <div className="character-sidebar-column">
                     <div className="card data-card mb-3">
-    <div className="card-header d-flex justify-content-between align-items-center mb-2"> {/* Added mb-2 here */}
-                            Images
-                            <button
-                                className="btn btn-sm btn-success"
-                                onClick={handleGenerateNewImage}
-                                disabled={isGeneratingImage}
-                            >
-                                {isGeneratingImage ? <><LoadingSpinner /> Generating...</> : 'Generate New'}
-                            </button>
+                        <div
+                            className="card-header d-flex justify-content-between align-items-center mb-3"
+                            onClick={() => setShowImages(!showImages)}
+                            style={{ cursor: 'pointer' }}
+                        >
+                            <span>Images</span>
+                            <div> {/* Wrapper for button and chevron */}
+                                <button
+                                    className="btn btn-sm btn-success me-2"
+                                    onClick={(e) => {
+                                        e.stopPropagation(); // Prevent header onClick
+                                        handleGenerateNewImage();
+                                    }}
+                                    disabled={isGeneratingImage}
+                                >
+                                    {isGeneratingImage ? <><LoadingSpinner /> Generating...</> : 'Generate New'}
+                                </button>
+                                {showImages ? <i className="bi bi-chevron-up"></i> : <i className="bi bi-chevron-down"></i>}
+                            </div>
                         </div>
-                        <div className="card-body">
-                            {imageGenError && <AlertMessage type="error" message={imageGenError} onClose={() => setImageGenError(null)} />}
-                            <DndContext
+                        {showImages && (
+                            <div className="card-body">
+                                {imageGenError && <AlertMessage type="error" message={imageGenError} onClose={() => setImageGenError(null)} />}
+                                <DndContext
                                 sensors={sensors}
                                 collisionDetection={closestCenter}
                                 onDragEnd={handleDragEnd}
@@ -595,10 +641,18 @@ const CharacterDetailPage: React.FC = () => {
 
             {character.video_clip_urls && character.video_clip_urls.length > 0 && (
                 <div className="card data-card mb-3">
-                    <div className="card-header">Video Clips</div>
-                    <div className="card-body">
-                        <table className="table table-sm">
-                            <thead>
+                    <div
+                        className="card-header d-flex justify-content-between align-items-center"
+                        onClick={() => setShowVideoClips(!showVideoClips)}
+                        style={{ cursor: 'pointer' }}
+                    >
+                        <span>Video Clips</span>
+                        {showVideoClips ? <i className="bi bi-chevron-up"></i> : <i className="bi bi-chevron-down"></i>}
+                    </div>
+                    {showVideoClips && (
+                        <div className="card-body">
+                            <table className="table table-sm">
+                                <thead>
                                 <tr>
                                     <th>URL</th>
                                     <th style={{ width: '100px' }}>Action</th>
@@ -629,10 +683,18 @@ const CharacterDetailPage: React.FC = () => {
 
             {/* Campaign Association Management - Full Width */}
             <div className="card data-card mb-3">
-                <div className="card-header">Campaign Associations</div>
-                <div className="card-body">
-                    {linkError && <AlertMessage type="error" message={linkError} onClose={() => setLinkError(null)} />}
-                    <h5>Currently In Campaigns:</h5>
+                <div
+                    className="card-header d-flex justify-content-between align-items-center"
+                    onClick={() => setShowCampaignAssociations(!showCampaignAssociations)}
+                    style={{ cursor: 'pointer' }}
+                >
+                    <span>Campaign Associations</span>
+                    {showCampaignAssociations ? <i className="bi bi-chevron-up"></i> : <i className="bi bi-chevron-down"></i>}
+                </div>
+                {showCampaignAssociations && (
+                    <div className="card-body">
+                        {linkError && <AlertMessage type="error" message={linkError} onClose={() => setLinkError(null)} />}
+                        <h5>Currently In Campaigns:</h5>
                     {associatedCampaigns.length > 0 ? (
                         <div className="associated-campaigns-list mb-3"> {/* New wrapper class, kept mb-3 */}
                             {associatedCampaigns.map(camp => (
@@ -669,12 +731,13 @@ const CharacterDetailPage: React.FC = () => {
                     <hr />
                     <h5>Link to a Campaign:</h5>
                     {userCampaigns.length > 0 && availableCampaignsToLink.length > 0 ? (
-                        <div className="input-group">
+                        <div className="link-campaign-controls"> {/* New wrapper div */}
                             <select
-                                className="form-select"
+                                className="form-select me-2" // Add margin to separate from link
                                 value={selectedCampaignToLink}
                                 onChange={(e) => setSelectedCampaignToLink(e.target.value)}
                                 disabled={isLinking}
+                                style={{ width: 'auto', flexGrow: 1 }} // Allow select to take space
                             >
                                 <option value="">Select a campaign...</option>
                                 {availableCampaignsToLink.map(camp => (
@@ -682,12 +745,17 @@ const CharacterDetailPage: React.FC = () => {
                                 ))}
                             </select>
                             <button
-                                className="btn btn-outline-success"
+                                className="btn btn-link text-success p-0 align-baseline" // Use btn-link, remove padding, ensure text color, align baseline
                                 type="button"
                                 onClick={handleLinkCampaign}
                                 disabled={!selectedCampaignToLink || isLinking}
+                                title="Link selected campaign"
                             >
-                                {isLinking ? <><LoadingSpinner /> Linking...</> : 'Link to Campaign'}
+                                {isLinking ? (
+                                    <><LoadingSpinner /> Linking...</>
+                                ) : (
+                                    <><i className="bi bi-plus-circle"></i> Link</> // Using a plus-circle icon
+                                )}
                             </button>
                         </div>
                     ) : (
@@ -695,7 +763,8 @@ const CharacterDetailPage: React.FC = () => {
                          <p className="text-muted">This character is already linked to all your available campaigns.</p> :
                          <p className="text-muted">You don't have any campaigns to link this character to, or no unlinked campaigns available.</p>
                     )}
-                </div>
+                    </div>
+                )}
             </div>
 
             {/* "Back to Character List" button removed from here */}
