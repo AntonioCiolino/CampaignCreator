@@ -195,8 +195,8 @@
 }
 
 /* Loading spinner within buttons */
-.btn .spinner-border-sm {
-    margin-right: 0.5em;
+.btn .spinner-border-sm { /* This is a Bootstrap class, might be globally used */
+    margin-right: 0.5em; /* Default spacing if spinner is next to text */
 }
 
 
@@ -218,19 +218,10 @@
     .character-detail-page .page-header h1 {
         font-size: 1.75rem;
     }
-    /* MODIFIED for button standardization - existing rules for responsive header actions might need review */
     .character-detail-page .header-actions {
         width: 100%;
         margin-top: 0.75rem;
-        /* display: flex; /* Already set above */
-        /* justify-content: space-between; /* This might conflict with gap, or be fine */
     }
-    /* .character-detail-page .header-actions .btn { */
-        /* flex-grow: 1; /* This would make buttons take equal space, could be too much with 3 buttons */
-    /* } */
-    /* .character-detail-page .header-actions .btn.me-2 { /* me-2 is removed, so this rule is not needed */
-    /*    margin-right: 0.5rem !important; /* Ensure spacing */
-    /* } */
 
     .character-stats-grid {
         grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
@@ -258,17 +249,6 @@
 }
 
 @media (max-width: 576px) { /* Extra small devices (portrait phones, less than 576px) */
-    /* MODIFIED for button standardization - existing rules for responsive header actions might need review */
-    .character-detail-page .header-actions {
-        /* flex-direction: column; /* This would stack buttons vertically */
-    }
-    /* .character-detail-page .header-actions .btn { /* These rules might need adjustment if flex-direction is column */
-    /*    width: 100%; */
-    /*    margin-bottom: 0.5rem; */
-    /* } */
-    /* .character-detail-page .header-actions .btn.me-2 { /* me-2 is removed */
-    /*    margin-right: 0 !important; */
-    /* } */
      .character-stats-grid {
         grid-template-columns: repeat(3, 1fr); /* Fixed 3 columns for very small screens */
     }
@@ -276,22 +256,18 @@
 
 /* Drag and Drop Styles for Character Images */
 .character-image-thumbnail-wrapper.dragging {
-  opacity: 0.4; /* Make it more transparent when dragging */
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25); /* More pronounced shadow */
-  border: 2px dashed var(--primary-color, #007bff); /* Use primary color for dashed border */
-  transform: scale(1.03); /* Slightly enlarge the item being dragged */
-  z-index: 10; /* Ensure it's above other items */
+  opacity: 0.4;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+  border: 2px dashed var(--primary-color, #007bff);
+  transform: scale(1.03);
+  z-index: 10;
 }
-
-/* Optional: Style for the drop placeholder or when hovering over a drop zone,
-   but @dnd-kit/sortable usually handles this well with transform.
-   If specific placeholder styling is needed, it would be more involved. */
 
 /* Campaign Association List Enhancement */
 .associated-campaigns-list {
     display: flex;
-    flex-direction: column; /* Stack items vertically */
-    gap: 0.75rem; /* Space between items */
+    flex-direction: column;
+    gap: 0.75rem;
 }
 
 .associated-campaign-item {
@@ -300,11 +276,11 @@
     padding: 0.5rem;
     border: 1px solid var(--border-color-light, #e9ecef);
     border-radius: var(--border-radius, 0.25rem);
-    background-color: var(--surface-color-secondary, #f8f9fa); /* Slight background tint */
+    background-color: var(--surface-color-secondary, #f8f9fa);
 }
 
 .associated-campaign-thumbnail {
-    width: 40px; /* Thumbnail size */
+    width: 40px;
     height: 40px;
     object-fit: cover;
     border-radius: var(--border-radius-sm, 0.2rem);
@@ -313,7 +289,7 @@
 }
 
 .associated-campaign-name {
-    flex-grow: 1; /* Name takes available space */
+    flex-grow: 1;
     font-weight: 500;
     color: var(--text-color, #333);
     text-decoration: none;
@@ -323,22 +299,31 @@
     color: var(--primary-color, #007bff);
 }
 
-/* Styling for icon button */
+/* Styling for Unlink icon button in Campaign Association List - MODIFIED */
 .associated-campaign-item .btn-icon {
-    padding: 0.25rem 0.5rem; /* Adjust padding for icon buttons */
-    line-height: 1; /* Ensure icon is centered */
-    /* Ensure Bootstrap icons are vertically centered if needed */
+    padding: 0.3rem 0.6rem; /* Slightly increased padding */
+    line-height: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
 }
 
-.associated-campaign-item .btn-icon .bi { /* Target Bootstrap icons specifically */
-    vertical-align: middle; /* Helps with icon alignment */
+.associated-campaign-item .btn-icon .bi {
+    vertical-align: middle;
+    font-size: 1rem; /* Explicitly set icon size */
 }
 
-.associated-campaign-item .btn-icon .spinner-border-sm {
-    width: 0.85rem; /* Adjust spinner size if needed */
-    height: 0.85rem;
-    /* margin-right: 0; if spinner is the only child */
+/* Spinner styles within Unlink button - MODIFIED to match new icon size */
+.associated-campaign-item .btn-icon .loading-spinner-overlay {
+    width: 1rem; /* Match icon font size */
+    height: 1rem; /* Match icon font size */
+    display: inline-block; /* Or inline-flex if it contains flex items */
+    vertical-align: middle; /* Align with icon if it were present */
+    background-color: transparent; /* Ensure spinner background is transparent */
+    /* margin-right: 0; /* No margin needed if it's the only thing in the button */
+}
+.associated-campaign-item .btn-icon .loading-spinner-overlay .loading-spinner {
+    width: 100%;
+    height: 100%;
+    border-width: 0.2em; /* Adjust border for the new size */
 }

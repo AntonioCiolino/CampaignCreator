@@ -653,7 +653,7 @@ const CharacterDetailPage: React.FC = () => {
                                         {camp.title}
                                     </Link>
                                     <button
-                                        className="btn btn-icon btn-outline-danger btn-sm"
+                                        className="btn btn-icon btn-outline-danger" // btn-sm removed
                                         onClick={() => handleUnlinkCampaign(camp.id, camp.title)}
                                         disabled={isLinking}
                                         title={`Unlink from ${camp.title}`}
