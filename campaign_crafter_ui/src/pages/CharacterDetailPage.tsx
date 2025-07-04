@@ -482,7 +482,7 @@ const CharacterDetailPage: React.FC = () => {
                         className="btn btn-outline-info"
                         title={isChatPanelOpen ? "Close Chat" : "Chat with Character"}
                     >
-                        <i className="bi bi-chat-dots"></i> Chat
+                        💬 Chat
                     </button>
                 </div>
             </div>
@@ -505,26 +505,21 @@ const CharacterDetailPage: React.FC = () => {
                     {/* "Notes for LLM" moved here, after Stats */}
                     {character.notes_for_llm && (
                         <div className="card data-card mb-3">
-                            <div className="card-header d-flex justify-content-between align-items-center">
-                                Notes for LLM
-                                <button
-                                    className="btn btn-sm btn-outline-secondary"
-                                    onClick={() => setShowLlmNotes(!showLlmNotes)}
-                                    title={showLlmNotes ? "Hide Notes" : "Show Notes"}
-                                >
-                                    {showLlmNotes ? <i className="bi bi-eye-slash-fill"></i> : <i className="bi bi-eye-fill"></i>}
-                                </button>
+                            <div
+                                className="card-header d-flex justify-content-between align-items-center"
+                                onClick={() => setShowLlmNotes(!showLlmNotes)} // Make the entire header clickable
+                                style={{ cursor: 'pointer' }} // Add pointer cursor to indicate clickability
+                            >
+                                <span>Notes for LLM</span> {/* Wrap title in span for flex control */}
+                                {/* Icon indicating collapsed/expanded state */}
+                                {showLlmNotes ? <i className="bi bi-chevron-up"></i> : <i className="bi bi-chevron-down"></i>}
                             </div>
                             {showLlmNotes && (
                                 <div className="card-body">
                                     <p className="card-text pre-wrap">{character.notes_for_llm}</p>
                                 </div>
                             )}
-                            {!showLlmNotes && (
-                                <div className="card-body text-muted small">
-                                    (Notes are hidden)
-                                </div>
-                            )}
+                            {/* The part for "{!showLlmNotes && ... (Notes are hidden)}" is completely removed */}
                         </div>
                     )}
 

@@ -115,14 +115,11 @@
 
 .stats-section .stat-input-item {
     flex: 1 1 calc(16.666% - 0.75rem); /* Try to fit 6, accounting for gap. (100/6 = 16.666) */
-    /* Fallback for browsers not supporting calc in flex-basis well, or simpler approach: */
-    /* flex-grow: 1; flex-shrink: 1; flex-basis: 100px; */ /* Let them grow and shrink from a base */
     min-width: 90px; /* Minimum width for an item before it becomes too small */
     max-width: 120px; /* Maximum width to prevent them from becoming too large */
     display: flex;
     flex-direction: column;
     align-items: center;
-    /* margin-bottom: 0.5rem !important; /* Use gap instead of margin on item if possible */
 }
 
 .stats-section .stat-input-item .form-label {
@@ -146,7 +143,6 @@
     border-radius: var(--border-radius-sm, 0.2rem);
 }
 
-/* Remove spinners from number inputs */
 .stats-section .stat-input-item .form-control[type="number"]::-webkit-outer-spin-button,
 .stats-section .stat-input-item .form-control[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
@@ -154,50 +150,6 @@
 }
 .stats-section .stat-input-item .form-control[type="number"] {
   -moz-appearance: textfield; /* Firefox */
-}
-
-/* Responsive adjustments for stats row */
-@media (max-width: 768px) { /* Tablets */
-    .stats-input-row-layout {
-        justify-content: space-around; /* Ensure good spacing for 3 items */
-    }
-    .stats-section .stat-input-item {
-        flex-basis: calc(33.333% - 0.75rem); /* 3 items per row */
-        min-width: 80px;
-    }
-}
-
-@media (max-width: 576px) { /* Mobile phones */
-    .stats-input-row-layout {
-        gap: 0.5rem; /* Tighter gap on mobile */
-    }
-    .stats-section .stat-input-item {
-        flex-basis: calc(33.333% - 0.5rem); /* Still aim for 3 items if possible, or they'll wrap to 2x3 */
-                                         /* Or change to calc(50% - 0.5rem) for 2 items per row explicitly */
-        min-width: 70px; /* Allow them to get smaller */
-    }
-    .stats-section .stat-input-item .form-label {
-        font-size: 0.65rem;
-    }
-    .stats-section .stat-input-item .form-control[type="number"] {
-        font-size: 0.95rem;
-        padding: 0.3rem 0.2rem;
-    }
-}
-
-
-/* Submit Button Area */
-.character-form-container .form-submit-area {
-    margin-top: 2rem; /* More space above the submit button */
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--border-color-light, #eee);
-    text-align: right; /* Align button to the right, or center */
-}
-
-.character-form-container button[type="submit"].btn-primary {
-    padding: 0.75rem 1.5rem; /* Larger padding for primary action */
-    font-size: 1.05rem; /* Slightly larger font */
-    font-weight: 500;
 }
 
 /* Error Message Styling */
@@ -210,39 +162,107 @@
     border-radius: var(--border-radius, 0.3rem);
 }
 
+/* Submit Button Area - MODIFIED */
+.character-form-container .form-submit-area {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color-light, #eee);
+    display: flex; /* Use flexbox */
+    justify-content: flex-end; /* Align buttons to the right */
+    gap: 0.75rem; /* Space between buttons */
+}
+
+/* Common styling for all buttons in this form's submit area - ADDED */
+.character-form-container .form-submit-area .btn {
+    padding: 0.6rem 1.2rem; /* Standardized padding */
+    font-size: 0.95rem;   /* Standardized font size */
+    font-weight: 500;
+    display: inline-flex; /* Align icon and text */
+    align-items: center;
+    gap: 0.4rem; /* Space between icon and text */
+    line-height: 1.5; /* Ensure proper line height */
+}
+
+/* Specific variant styles can still apply (color, background-color from Bootstrap) */
+/* .character-form-container .form-submit-area .btn-primary { } */
+/* .character-form-container .form-submit-area .btn-secondary { } */
+
+/* Icon styling within buttons - ADDED */
+.character-form-container .form-submit-area .btn .bi {
+    line-height: 1; /* Helps with vertical alignment */
+    /* font-size: 1em; /* Icon size relative to button font size */
+}
+
+/* Loading spinner inside button - ADDED */
+.character-form-container .form-submit-area .btn .loading-spinner-overlay {
+    width: 1em; /* Relative to button font size */
+    height: 1em;
+    display: inline-block; /* Keep it inline with text */
+    vertical-align: text-bottom; /* Align with text */
+    background-color: transparent;
+    position: relative; /* Ensure it's part of the flex flow */
+    margin-right: 0.4rem; /* Space between spinner and "Submitting..." text */
+}
+.character-form-container .form-submit-area .btn .loading-spinner-overlay .loading-spinner {
+    width: 100%; /* Full width of its parent overlay */
+    height: 100%; /* Full height of its parent overlay */
+    border-width: 0.15em; /* Thinner border for smaller spinner */
+}
+
+
 /* Responsive adjustments */
-@media (max-width: 768px) {
+@media (max-width: 768px) { /* Tablets */
     .character-form-container {
         padding: 1.5rem;
     }
-
     .stats-section {
         padding: 1rem;
     }
-
     .stats-section h5 {
         font-size: 1.2rem;
     }
+    .stats-input-row-layout {
+        justify-content: space-around; /* Ensure good spacing for 3 items */
+    }
+    .stats-section .stat-input-item {
+        flex-basis: calc(33.333% - 0.75rem); /* 3 items per row */
+        min-width: 80px;
+    }
 }
 
-@media (max-width: 576px) {
+@media (max-width: 576px) { /* Mobile phones */
     .character-form-container {
         padding: 1rem;
         box-shadow: none; /* Simpler look on very small screens */
         border: none;
         background-color: transparent;
     }
-
-    .stats-section {
-        /* Bootstrap columns .col-md-4 will stack to full width automatically.
-           If we used .col-sm-6, they would be 2-up, then stack.
-           Current .col-md-4 is fine for stacking to 1-up. */
+    .stats-input-row-layout {
+        gap: 0.5rem; /* Tighter gap on mobile */
+    }
+    .stats-section .stat-input-item {
+        flex-basis: calc(33.333% - 0.5rem); /* Still aim for 3 items if possible, or they'll wrap to 2x3 */
+        min-width: 70px; /* Allow them to get smaller */
+    }
+    .stats-section .stat-input-item .form-label {
+        font-size: 0.65rem;
+    }
+    .stats-section .stat-input-item .form-control[type="number"] {
+        font-size: 0.95rem;
+        padding: 0.3rem 0.2rem;
     }
 
+    /* Submit area responsive changes - MODIFIED */
     .character-form-container .form-submit-area {
-        text-align: center;
+        flex-direction: column; /* Stack buttons vertically */
+        justify-content: center; /* Center them when stacked */
+        gap: 0.75rem; /* Space between stacked buttons */
+        text-align: center; /* Fallback for non-flex browsers, though not strictly needed */
     }
-    .character-form-container button[type="submit"].btn-primary {
-        width: 100%; /* Full width button on small screens */
+    .character-form-container .form-submit-area .btn {
+        width: 100%; /* Make buttons full width when stacked */
+        justify-content: center; /* Center content (icon+text) within full-width button */
     }
+    /* Remove specific width rule for submit button as all buttons are now full width */
+    /* .character-form-container button[type="submit"].btn-primary { width: 100%; } */
 }
