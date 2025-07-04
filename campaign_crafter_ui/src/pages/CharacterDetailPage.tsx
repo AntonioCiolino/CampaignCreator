@@ -673,9 +673,10 @@ const CharacterDetailPage: React.FC = () => {
                                 ))}
                             </tbody>
                         </table>
-                    </div>
-                </div>
-            )}
+                    </div> // Closes card-body
+                    )} {/* Closes showVideoClips conditional */}
+                </div> // Closes the Video Clips card <div className="card data-card mb-3">
+            )} {/* Closes the character.video_clip_urls conditional */}
 
             {/* Campaign Association Management - Full Width */}
             <div className="card data-card mb-3">
