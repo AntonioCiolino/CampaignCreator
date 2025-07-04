@@ -125,7 +125,6 @@ const CharacterDetailPage: React.FC = () => {
     // Character Chat Panel State
     const [isChatPanelOpen, setIsChatPanelOpen] = useState<boolean>(false);
 
-      // Optional: const [chatPanelWidth, setChatPanelWidth] = useState<number>(350);
     const [chatHistory, setChatHistory] = useState<Array<CharacterChatMessage>>([]);
 
     // State for LLM Notes visibility
@@ -295,10 +294,9 @@ const CharacterDetailPage: React.FC = () => {
         setError(null);
         try {
             await characterService.deleteCharacter(character.id);
-            // alert('Character deleted successfully.'); // Using AlertMessage now
             navigate('/characters', { state: { successMessage: `Character "${character.name}" deleted successfully.` } });
         } catch (err: any) {
-            console.error("Failed to delete character:", err);
+            console.error("Failed to delete character:",
             setError(err.response?.data?.detail || 'Failed to delete character. Please try again.');
             setIsDeleting(false); // Only set isDeleting to false on error, on success we navigate
             closeDeleteModal(); // Close modal on error
@@ -634,7 +632,6 @@ const CharacterDetailPage: React.FC = () => {
                                 </SortableContext>
                             </DndContext>
                         </div>
-                    </div>
                 </div>
             </div>
 
@@ -678,8 +675,6 @@ const CharacterDetailPage: React.FC = () => {
                     </div>
                 </div>
             )}
-
-            {/* Old LLM Interaction Section - REMOVED */}
 
             {/* Campaign Association Management - Full Width */}
             <div className="card data-card mb-3">
@@ -766,8 +761,6 @@ const CharacterDetailPage: React.FC = () => {
                     </div>
                 )}
             </div>
-
-            {/* "Back to Character List" button removed from here */}
 
             {selectedImageUrl && (
                 <ImagePreviewModal
