@@ -10,7 +10,7 @@ import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
 import CheckIcon from '@mui/icons-material/Check'; // Import CheckIcon
 import CloseIcon from '@mui/icons-material/Close'; // Import CloseIcon
 import CancelIcon from '@mui/icons-material/Cancel'; // Import CancelIcon
-import DeleteIcon from '@mui/icons-material/Delete'; // Import DeleteIcon
+// DeleteIcon import removed as it's no longer used directly in this file
 import CasinoIcon from '@mui/icons-material/Casino'; // Import CasinoIcon
 import rehypeRaw from 'rehype-raw';
 import ReactQuill from 'react-quill';
@@ -635,16 +635,15 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
           {!isEditingTitle ? (
             <h3
               className="section-title"
-              style={{ margin: 0, flexGrow: 1 }}
+              style={{ margin: 0, flexGrow: 1, cursor: isEditing ? 'default' : 'pointer' }} // Changed sx to style here
               onClick={(event) => {
                 event.stopPropagation();
                 if (isEditing) return;
                 setEditableSectionTitle(section.title || '');
                 setIsEditingTitle(true);
               }}
-              sx={{ cursor: isEditing ? 'default' : 'pointer' }}
             >
-              {editableSectionTitle} {/* Display editable title for consistency */}
+              {section.title} {/* Display original section.title in view mode, editableSectionTitle will be used for input */}
             </h3>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', flexGrow: 1, gap: '8px' }} onClick={(e)=> e.stopPropagation()}>

@@ -1559,7 +1559,7 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
                   disabled={!selectedUserCharacterToAdd || isLinkingCharacter}
                   variant="success"
                   tooltip="Add the selected character to this campaign"
-                  sx={{ flexShrink: 0 }}
+                  style={{ flexShrink: 0 }}
                 >
                   {isLinkingCharacter ? 'Adding...' : 'Add to Campaign'}
                 </Button>
