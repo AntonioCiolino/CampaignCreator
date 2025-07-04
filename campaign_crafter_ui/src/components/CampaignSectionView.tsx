@@ -32,7 +32,7 @@ interface CampaignSectionViewProps {
   isSaving: boolean; // Prop to indicate if this specific section is being saved
   saveError: string | null; // Prop to display save error for this section
   onDelete: (sectionId: number) => void; // Added onDelete prop
-  forceCollapse?: boolean; // Optional prop to force collapse state
+  // forceCollapse?: boolean; // Prop removed
   // Props for regeneration
   campaignId: string | number; // Campaign ID to make the API call
   onSectionUpdated: (updatedSection: CampaignSection) => void; // Callback to update parent state
@@ -51,7 +51,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   isSaving,
   saveError: externalSaveError,
   onDelete,
-  forceCollapse,
+  // forceCollapse, // Prop removed
   campaignId,
   onSectionUpdated,
   selectedLLMId, // Destructure selectedLLMId
@@ -240,11 +240,11 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
     }
   }, [section.content, externalSaveError]);
 
-  useEffect(() => {
-    if (forceCollapse !== undefined) {
-      setIsCollapsed(forceCollapse);
-    }
-  }, [forceCollapse]);
+  // useEffect(() => { // Removed useEffect for forceCollapse
+  //   if (forceCollapse !== undefined) {
+  //     setIsCollapsed(forceCollapse);
+  //   }
+  // }, [forceCollapse]);
 
   useEffect(() => {
     // Check if this section is the one to be expanded and if it's currently collapsed
@@ -700,8 +700,8 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                               }
 
                               if (quill && selectionToUse && selectionToUse.length > 0) {
-                                const text = quill.getText(selectionToUse.index, selectionToUse.length);
-                                const rangeToProcess = { index: selectionToUse.index, length: selectionToUse.length };
+                                // const text = quill.getText(selectionToUse.index, selectionToUse.length); // Removed unused variable
+                                // const rangeToProcess = { index: selectionToUse.index, length: selectionToUse.length }; // Removed unused variable
                                 setIsSnippetContextMenuOpen(false);
                                 console.log("[CampaignSectionView] Snippet item onMouseDown: Calling HGC for feature:", feature.id.toString());
                                 await handleGenerateContent(feature.id.toString());
@@ -736,7 +736,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                 onClick={() => setIsTableRollerVisible(!isTableRollerVisible)}
                 variant="outline-secondary"
                 size="sm"
-                startIcon={<CasinoIcon />} // Added icon
+                icon={<CasinoIcon />} // Changed startIcon to icon
                 style={{ marginTop: '10px', marginBottom: '5px' }}
               >
                 {isTableRollerVisible ? 'Hide Random Tables' : 'Show Random Tables'}
@@ -752,7 +752,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                   onClick={handleSave}
                   className="editor-button"
                   variant="primary" // Changed variant
-                  startIcon={<SaveIcon />} // Added icon
+                  icon={<SaveIcon />} // Changed startIcon to icon
                   disabled={isSaving || isGeneratingContent}
                 >
                   {isSaving ? 'Saving...' : 'Save Content'}
@@ -776,7 +776,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                   onClick={handleCancel}
                   className="editor-button"
                   variant="danger" // Changed variant
-                  startIcon={<CancelIcon />} // Added icon
+                  icon={<CancelIcon />} // Changed startIcon to icon
                   disabled={isSaving || isGeneratingContent}
                 >
                   Cancel
@@ -811,7 +811,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                   variant="danger"
                   size="sm"
                   className="editor-button delete-button" // delete-button class might still have specific icon color logic
-                  startIcon={<DeleteIcon />} // Added icon
+                  icon={<DeleteIcon />} // Changed startIcon to icon
                   style={{ marginLeft: '10px' }}
                 >
                   Delete Section

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, FormEvent, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'; // FormEvent already removed by previous step, this ensures it.
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -24,8 +24,7 @@ import Button from '../components/common/Button';
 import ImagePreviewModal from '../components/modals/ImagePreviewModal';
 
 import ListAltIcon from '@mui/icons-material/ListAlt';
-import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
-import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
+// UnfoldLessIcon, UnfoldMoreIcon were confirmed removed (commented out) in previous step, this ensures it.
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CancelIcon from '@mui/icons-material/Cancel';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
@@ -80,7 +79,9 @@ const CampaignEditorPage: React.FC = () => {
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
-  const [forceCollapseAll, setForceCollapseAll] = useState<boolean | undefined>(undefined);
+  // const [forceCollapseAll, setForceCollapseAll] = useState<boolean | undefined>(undefined); // setForceCollapseAll removed, will remove forceCollapseAll itself later if unused
+  // Removed setForceCollapseAll, and forceCollapseAll as it will be confirmed dead code
+  // const [, setForceCollapseAll] = useState<boolean | undefined>(undefined); // Removed setForceCollapseAll
 
   const [isCampaignConceptCollapsed, setIsCampaignConceptCollapsed] = useState<boolean>(true);
   const [isTocCollapsed, setIsTocCollapsed] = useState<boolean>(false);
@@ -618,18 +619,22 @@ const CampaignEditorPage: React.FC = () => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(async () => {
         if (!campaign || !campaign.id) return;
-        if (selectedLLMId === campaign.selected_llm_id && temperature === campaign.temperature) return;
+        // Check if selectedLLMId or temperature actually changed from campaign's current values
+        const llmChanged = selectedLLMId !== campaign.selected_llm_id;
+        const tempChanged = temperature !== campaign.temperature;
+
+        if (!llmChanged && !tempChanged) return; // No changes to save
 
         setIsAutoSavingLLMSettings(true);
         setAutoSaveLLMSettingsError(null);
         setAutoSaveLLMSettingsSuccess(null);
         try {
           const payload: CampaignUpdatePayload = {
-            selected_llm_id: selectedLLMId || null,
-            temperature: temperature,
+            selected_llm_id: selectedLLMId || null, // Send current selectedLLMId
+            temperature: temperature, // Send current temperature
           };
           const updatedCampaign = await campaignService.updateCampaign(campaign.id, payload);
-          setCampaign(updatedCampaign);
+          setCampaign(updatedCampaign); // Update campaign state with the response
           setAutoSaveLLMSettingsSuccess("LLM settings auto-saved!");
           setTimeout(() => setAutoSaveLLMSettingsSuccess(null), 3000);
         } catch (err) {
@@ -641,7 +646,7 @@ const CampaignEditorPage: React.FC = () => {
         }
     }, 1500);
     return () => { if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current); };
-  }, [selectedLLMId, temperature, campaignId, campaign, isLoading, debounceTimerRef]);
+  }, [selectedLLMId, temperature, campaignId, campaign, isLoading]); // Added temperature, removed debounceTimerRef
 
   const handleGenerateConceptManually = async () => {
     if (!campaignId || !campaign) {
@@ -1308,7 +1313,7 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
         handleUpdateSectionTitle={handleUpdateSectionTitle}
         handleUpdateSectionType={handleUpdateSectionType}
         onUpdateSectionOrder={handleUpdateSectionOrder}
-        forceCollapseAllSections={forceCollapseAll}
+        // forceCollapseAllSections={forceCollapseAll} // Prop removed
         selectedLLMId={selectedLLMId} // Pass selectedLLMId here
         expandSectionId={sectionToExpand}
         onSetThematicImageForSection={handleSetThematicImage}

@@ -151,7 +151,9 @@
   background-color: #1e7e34; /* Darker success */
   border-color: #1e7e34;
 }
+*/ /* Ensuring the entire save-button block, including hover, is commented */
 
+/*
 .campaign-section-view .cancel-button {
   background-color: var(--secondary-color); 
   border-color: var(--secondary-color);
@@ -162,7 +164,7 @@
   border-color: var(--secondary-color-dark);
 }
 */
-
+/* Removed potential stray } here if it existed */
 .campaign-section-view .editor-button:disabled {
   /* Uses global disabled styles */
 }

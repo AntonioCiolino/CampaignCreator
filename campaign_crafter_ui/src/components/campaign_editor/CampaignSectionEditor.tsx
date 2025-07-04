@@ -35,7 +35,7 @@ interface CampaignSectionEditorProps {
   handleUpdateSectionTitle: (sectionId: number, newTitle: string) => void; // Changed sectionId to number
   handleUpdateSectionType: (sectionId: number, newType: string) => void; // Added for type updates
   onUpdateSectionOrder: (orderedSectionIds: number[]) => Promise<void>;
-  forceCollapseAllSections?: boolean; // Added new prop
+  // forceCollapseAllSections?: boolean; // Prop removed
   campaignId: string | number; // Added campaignId prop
   selectedLLMId: string | null; // Add selectedLLMId
   expandSectionId: string | null; // Add this
@@ -50,7 +50,7 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
   handleUpdateSectionTitle,   // Keep this prop for now, though CampaignSectionView might not edit title
   handleUpdateSectionType,  // Destructure new prop
   onUpdateSectionOrder,
-  forceCollapseAllSections, // Destructure the new prop
+  // forceCollapseAllSections, // Prop removed
   campaignId, // Destructure campaignId
   selectedLLMId, // Destructure selectedLLMId
   expandSectionId, // Add this
@@ -155,7 +155,7 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
                               isSaving={false} // TODO: Manage individual section saving state
                               saveError={null} // TODO: Manage individual section error state
                               onDelete={() => handleDeleteSection(typeof section.id === 'string' ? parseInt(section.id, 10) : section.id)}
-                              forceCollapse={forceCollapseAllSections} // Pass the prop here
+                              // forceCollapse={forceCollapseAllSections} // Prop removed
                               // Pass the type update handler to CampaignSectionView
                               onSectionTypeUpdate={(sectionId, newType) => {
                                 // Update local state first for responsiveness
