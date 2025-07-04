@@ -24,7 +24,8 @@ import Button from '../components/common/Button';
 import ImagePreviewModal from '../components/modals/ImagePreviewModal';
 
 import ListAltIcon from '@mui/icons-material/ListAlt';
-// UnfoldLessIcon, UnfoldMoreIcon were confirmed removed (commented out) in previous step, this ensures it.
+import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
+import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CancelIcon from '@mui/icons-material/Cancel';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
@@ -79,9 +80,7 @@ const CampaignEditorPage: React.FC = () => {
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
-  // const [forceCollapseAll, setForceCollapseAll] = useState<boolean | undefined>(undefined); // setForceCollapseAll removed, will remove forceCollapseAll itself later if unused
-  // Removed setForceCollapseAll, and forceCollapseAll as it will be confirmed dead code
-  // const [, setForceCollapseAll] = useState<boolean | undefined>(undefined); // Removed setForceCollapseAll
+  const [forceCollapseAll, setForceCollapseAll] = useState<boolean | undefined>(undefined);
 
   const [isCampaignConceptCollapsed, setIsCampaignConceptCollapsed] = useState<boolean>(true);
   const [isTocCollapsed, setIsTocCollapsed] = useState<boolean>(false);
@@ -796,22 +795,34 @@ const CampaignEditorPage: React.FC = () => {
   };
 
   // Modified handleAddSection to be called by the modal
-  const handleAddSectionFromModal = async (title?: string, prompt?: string) => {
+  const handleAddSectionFromModal = async (data: { title?: string; prompt?: string; bypassLLM?: boolean }) => {
     if (!campaignId) return;
+
+    const { title, prompt, bypassLLM } = data;
+
     // Validation for empty title and prompt is handled by the modal itself or backend if "skip" is allowed.
-    // The modal's "Add Section" button is disabled if selectedLLMId is null AND both title and prompt are empty.
-    // If selectedLLMId is present, empty title/prompt are allowed (interpreted as "skip").
+    // The modal's "Add Section" button is disabled if selectedLLMId is null AND both title and prompt are empty (unless bypassing).
 
     setIsPageLoading(true);
     // setIsAddingSection(true); // State removed
     // setAddSectionError(null); // State removed
     // setAddSectionSuccess(null); // State removed
     try {
-      const newSection = await campaignService.addCampaignSection(campaignId, {
-        title: title?.trim() || undefined,
-        prompt: prompt?.trim() || undefined,
-        model_id_with_prefix: selectedLLMId || undefined,
-      });
+      let payload: CampaignSectionCreatePayload;
+      if (bypassLLM) {
+        payload = {
+          title: title?.trim() || "New Blank Section",
+          // prompt and modelId are omitted
+        };
+      } else {
+        payload = {
+          title: title?.trim() || undefined,
+          prompt: prompt?.trim() || undefined,
+          modelId: selectedLLMId || undefined, // Use modelId here
+        };
+      }
+
+      const newSection = await campaignService.addCampaignSection(campaignId, payload);
       setSections(prev => [...prev, newSection].sort((a, b) => a.order - b.order));
       // setAddSectionSuccess("New section added successfully!"); // State removed
       // setTimeout(() => setAddSectionSuccess(null), 3000); // State removed
@@ -1293,16 +1304,33 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
 
   const sectionsTabContent = (
     <>
-      <Button
-        onClick={() => setIsAddSectionModalOpen(true)} // Open modal
-        disabled={!campaign?.concept?.trim()}
-        className="action-button"
-        icon={<AddCircleOutlineIcon />}
-        tooltip={!campaign?.concept?.trim() ? "Please define and save a campaign concept first." : "Add a new section to the campaign"}
-        style={{ marginBottom: '1rem' }} // Preserved margin for spacing
-      >
-        Add New Section
-      </Button>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}> {/* Adjusted gap and mb values to match typical MUI spacing (e.g., theme.spacing(1) and theme.spacing(2)) */}
+        <Button
+          onClick={() => setIsAddSectionModalOpen(true)} // Open modal
+          disabled={!campaign?.concept?.trim()}
+          className="action-button"
+          icon={<AddCircleOutlineIcon />}
+          tooltip={!campaign?.concept?.trim() ? "Please define and save a campaign concept first." : "Add a new section to the campaign"}
+        >
+          Add New Section
+        </Button>
+        <Button
+          onClick={() => setForceCollapseAll(false)}
+          icon={<UnfoldMoreIcon />}
+          className="action-button"
+          tooltip="Expand all sections"
+        >
+          Expand All
+        </Button>
+        <Button
+          onClick={() => setForceCollapseAll(true)}
+          icon={<UnfoldLessIcon />}
+          className="action-button"
+          tooltip="Collapse all sections"
+        >
+          Collapse All
+        </Button>
+      </div>
       {/* The div className="section-display-controls editor-section" has been removed */}
       {/* Remove old collapsible form area */}
       <CampaignSectionEditor
@@ -1314,7 +1342,7 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
         handleUpdateSectionTitle={handleUpdateSectionTitle}
         handleUpdateSectionType={handleUpdateSectionType}
         onUpdateSectionOrder={handleUpdateSectionOrder}
-        // forceCollapseAllSections={forceCollapseAll} // Prop removed
+        forceCollapseAllSections={forceCollapseAll} // Prop re-added
         selectedLLMId={selectedLLMId} // Pass selectedLLMId here
         expandSectionId={sectionToExpand}
         onSetThematicImageForSection={handleSetThematicImage}
