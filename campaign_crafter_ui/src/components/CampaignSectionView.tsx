@@ -2,14 +2,12 @@ import React, { useState, useEffect, useRef } from 'react'; // Added useRef
 import ReactDOM from 'react-dom'; // Added ReactDOM for createPortal
 import { CampaignSection } from '../types/campaignTypes'; // Corrected import path
 import ReactMarkdown from 'react-markdown';
-import { Typography, IconButton, Tooltip, TextField } from '@mui/material'; // Import IconButton, Tooltip, TextField
+import { Typography, Tooltip, TextField } from '@mui/material'; // Import IconButton, Tooltip, TextField
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'; // Import ExpandMoreIcon
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'; // Import ExpandLessIcon
-import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
 // SaveIcon import removed
 import CheckIcon from '@mui/icons-material/Check'; // Import CheckIcon
 import CloseIcon from '@mui/icons-material/Close'; // Import CloseIcon
-import CancelIcon from '@mui/icons-material/Cancel'; // Import CancelIcon
 // DeleteIcon import removed as it's no longer used directly in this file
 import CasinoIcon from '@mui/icons-material/Casino'; // Import CasinoIcon
 import rehypeRaw from 'rehype-raw';
@@ -742,24 +740,6 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   // };
 
   console.log('[CampaignSectionView] Render state - isEditing:', isEditing, 'isSnippetContextMenuOpen:', isSnippetContextMenuOpen, 'contextMenuPosition:', contextMenuPosition, 'snippetFeatures.length:', snippetFeatures.length, 'currentSelection:', currentSelection);
-
-  const handleSaveTitle = async () => {
-    if (editedTitle.trim() === '') {
-      setLocalSaveError('Title cannot be empty.');
-      return;
-    }
-    setLocalSaveError(null);
-    setSaveSuccess(false);
-    try {
-      await onSave(section.id, { title: editedTitle });
-      setIsEditingTitle(false);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (error) {
-      console.error("Failed to save section title:", error);
-      setLocalSaveError('Failed to save title. Please try again.');
-    }
-  };
 
   const handleCancelEditTitle = () => {
     setEditedTitle(section.title || '');
