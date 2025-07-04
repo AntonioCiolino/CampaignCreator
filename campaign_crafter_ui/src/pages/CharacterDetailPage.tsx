@@ -631,11 +631,11 @@ const CharacterDetailPage: React.FC = () => {
                                     </div>
                                 </SortableContext>
                             </DndContext>
-                        </div> // Correctly closes card-body
-                        )} {/* Correctly closes showImages conditional block */}
-                    </div> // Correctly closes the Images card <div className="card data-card mb-3">
-                </div> // Correctly closes the <div className="character-sidebar-column">
-            </div> {/* ADDED: Closes character-content-grid */}
+                        </div>
+                        )}
+                    </div>
+                </div>
+            </div>
 
 
             {character.video_clip_urls && character.video_clip_urls.length > 0 && (
