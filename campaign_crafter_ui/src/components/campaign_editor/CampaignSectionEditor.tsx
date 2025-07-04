@@ -36,7 +36,7 @@ interface CampaignSectionEditorProps {
   handleUpdateSectionTitle: (sectionId: number, newTitle: string) => void; // Changed sectionId to number
   handleUpdateSectionType: (sectionId: number, newType: string) => void; // Added for type updates
   onUpdateSectionOrder: (orderedSectionIds: number[]) => Promise<void>;
-  forceCollapseAllSections?: boolean; // Added new prop
+  forceCollapseAllSections?: boolean; // Prop re-added
   campaignId: string | number; // Added campaignId prop
   selectedLLMId: string | null; // Add selectedLLMId
   expandSectionId: string | null; // Add this
@@ -52,7 +52,7 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
   handleUpdateSectionTitle,   // Keep this prop for now, though CampaignSectionView might not edit title
   handleUpdateSectionType,  // Destructure new prop
   onUpdateSectionOrder,
-  forceCollapseAllSections, // Destructure the new prop
+  forceCollapseAllSections, // Prop re-added
   campaignId, // Destructure campaignId
   selectedLLMId, // Destructure selectedLLMId
   expandSectionId, // Add this
@@ -110,9 +110,7 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
   return (
     <Card sx={{ mb: 3 }}>
       <CardContent>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6">Campaign Sections</Typography>
-        </Box>
+        {/* The Box containing the "Campaign Sections" Typography has been removed */}
         <DragDropContext onDragEnd={onDragEnd}>
           <Droppable droppableId="campaignSections">
             {(provided: DroppableProvided, snapshot: DroppableStateSnapshot) => (
@@ -158,7 +156,7 @@ const CampaignSectionEditor: React.FC<CampaignSectionEditorProps> = ({
                               isSaving={false} // TODO: Manage individual section saving state
                               saveError={null} // TODO: Manage individual section error state
                               onDelete={() => handleDeleteSection(typeof section.id === 'string' ? parseInt(section.id, 10) : section.id)}
-                              forceCollapse={forceCollapseAllSections} // Pass the prop here
+                              forceCollapse={forceCollapseAllSections} // Prop re-added
                               // Pass the type update handler to CampaignSectionView
                               onSectionTypeUpdate={(sectionId, newType) => {
                                 // Update local state first for responsiveness

@@ -1,10 +1,11 @@
-import React, { useState, useEffect, FormEvent, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'; // FormEvent already removed by previous step, this ensures it.
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import LLMSelectionDialog from '../components/modals/LLMSelectionDialog';
 import ImageGenerationModal from '../components/modals/ImageGenerationModal/ImageGenerationModal';
 import SuggestedTitlesModal from '../components/modals/SuggestedTitlesModal';
+import AddSectionModal from '../components/modals/AddSectionModal'; // Import AddSectionModal
 import * as campaignService from '../services/campaignService';
 import { getCampaignFiles } from '../services/campaignService';
 import {
@@ -14,7 +15,8 @@ import {
     SeedSectionsProgressEvent,
     SeedSectionsCallbacks,
     CampaignUpdatePayload, // Direct import
-    CampaignSectionUpdatePayload // Direct import for handleUpdateSection
+    CampaignSectionUpdatePayload, // Direct import for handleUpdateSection
+    CampaignSectionCreatePayload
 } from '../types/campaignTypes';
 import { getAvailableLLMs, LLMModel } from '../services/llmService';
 import ReactMarkdown from 'react-markdown';
@@ -23,8 +25,8 @@ import Button from '../components/common/Button';
 import ImagePreviewModal from '../components/modals/ImagePreviewModal';
 
 import ListAltIcon from '@mui/icons-material/ListAlt';
-import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
+import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CancelIcon from '@mui/icons-material/Cancel';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
@@ -39,7 +41,8 @@ import CampaignLLMSettings from '../components/campaign_editor/CampaignLLMSettin
 import CampaignSectionEditor from '../components/campaign_editor/CampaignSectionEditor';
 import { LLMModel as LLM } from '../services/llmService';
 import Tabs, { TabItem } from '../components/common/Tabs';
-import { Typography, TextField } from '@mui/material';
+import { Typography, TextField, List, ListItem, ListItemAvatar, Avatar, ListItemText, IconButton, Box, FormControl, InputLabel, Select, MenuItem, Paper, Divider } from '@mui/material';
+import LinkOffIcon from '@mui/icons-material/LinkOff';
 import DetailedProgressDisplay from '../components/common/DetailedProgressDisplay';
 import TOCEditor from '../components/campaign_editor/TOCEditor';
 import CampaignThemeEditor, { CampaignThemeData } from '../components/campaign_editor/CampaignThemeEditor';
@@ -67,11 +70,9 @@ const CampaignEditorPage: React.FC = () => {
   const [titlesError, setTitlesError] = useState<string | null>(null);
   const [suggestedTitles, setSuggestedTitles] = useState<string[] | null>(null);
 
-  const [newSectionTitle, setNewSectionTitle] = useState<string>('');
-  const [newSectionPrompt, setNewSectionPrompt] = useState<string>('');
-  const [isAddingSection, setIsAddingSection] = useState<boolean>(false);
-  const [addSectionError, setAddSectionError] = useState<string | null>(null);
-  const [addSectionSuccess, setAddSectionSuccess] = useState<string | null>(null);
+  // const [isAddingSection, setIsAddingSection] = useState<boolean>(false); // Removed as not used in JSX
+  // const [addSectionError, setAddSectionError] = useState<string | null>(null); // Removed as not used in JSX
+  // const [addSectionSuccess, setAddSectionSuccess] = useState<string | null>(null); // Removed as not used in JSX
 
   const [availableLLMs, setAvailableLLMs] = useState<LLMModel[]>([]);
   const [isLLMsLoading, setIsLLMsLoading] = useState<boolean>(true);
@@ -81,14 +82,14 @@ const CampaignEditorPage: React.FC = () => {
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
-  const [forceCollapseAll, setForceCollapseAll] = useState<boolean | undefined>(undefined);
+  const [forceCollapseAll, setForceCollapseAll] = useState<boolean>(true); // Initialize to true
 
   const [isCampaignConceptCollapsed, setIsCampaignConceptCollapsed] = useState<boolean>(true);
   const [isTocCollapsed, setIsTocCollapsed] = useState<boolean>(false);
-  const [isAddSectionCollapsed, setIsAddSectionCollapsed] = useState<boolean>(true);
   const [isLLMDialogOpen, setIsLLMDialogOpen] = useState<boolean>(false);
   const [isBadgeImageModalOpen, setIsBadgeImageModalOpen] = useState(false);
   const [isSuggestedTitlesModalOpen, setIsSuggestedTitlesModalOpen] = useState<boolean>(false);
+  const [isAddSectionModalOpen, setIsAddSectionModalOpen] = useState<boolean>(false); // State for AddSectionModal
 
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [isAutoSavingLLMSettings, setIsAutoSavingLLMSettings] = useState<boolean>(false);
@@ -619,18 +620,22 @@ const CampaignEditorPage: React.FC = () => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(async () => {
         if (!campaign || !campaign.id) return;
-        if (selectedLLMId === campaign.selected_llm_id && temperature === campaign.temperature) return;
+        // Check if selectedLLMId or temperature actually changed from campaign's current values
+        const llmChanged = selectedLLMId !== campaign.selected_llm_id;
+        const tempChanged = temperature !== campaign.temperature;
+
+        if (!llmChanged && !tempChanged) return; // No changes to save
 
         setIsAutoSavingLLMSettings(true);
         setAutoSaveLLMSettingsError(null);
         setAutoSaveLLMSettingsSuccess(null);
         try {
           const payload: CampaignUpdatePayload = {
-            selected_llm_id: selectedLLMId || null,
-            temperature: temperature,
+            selected_llm_id: selectedLLMId || null, // Send current selectedLLMId
+            temperature: temperature, // Send current temperature
           };
           const updatedCampaign = await campaignService.updateCampaign(campaign.id, payload);
-          setCampaign(updatedCampaign);
+          setCampaign(updatedCampaign); // Update campaign state with the response
           setAutoSaveLLMSettingsSuccess("LLM settings auto-saved!");
           setTimeout(() => setAutoSaveLLMSettingsSuccess(null), 3000);
         } catch (err) {
@@ -642,7 +647,7 @@ const CampaignEditorPage: React.FC = () => {
         }
     }, 1500);
     return () => { if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current); };
-  }, [selectedLLMId, temperature, campaignId, campaign, isLoading, debounceTimerRef]);
+  }, [selectedLLMId, temperature, campaignId, campaign, isLoading]); // Added temperature, removed debounceTimerRef
 
   const handleGenerateConceptManually = async () => {
     if (!campaignId || !campaign) {
@@ -791,38 +796,52 @@ const CampaignEditorPage: React.FC = () => {
     }
   };
 
-  const handleAddSection = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  // Modified handleAddSection to be called by the modal
+  const handleAddSectionFromModal = async (data: { title?: string; prompt?: string; bypassLLM?: boolean }) => {
     if (!campaignId) return;
-    if (!newSectionTitle.trim() && !newSectionPrompt.trim()) {
-      setAddSectionError("Please provide a title or a prompt for the new section.");
-      return;
-    }
+
+    const { title, prompt, bypassLLM } = data;
+
+    // Validation for empty title and prompt is handled by the modal itself or backend if "skip" is allowed.
+    // The modal's "Add Section" button is disabled if selectedLLMId is null AND both title and prompt are empty (unless bypassing).
+
     setIsPageLoading(true);
-    setIsAddingSection(true);
-    setAddSectionError(null);
-    setAddSectionSuccess(null);
+    // setIsAddingSection(true); // State removed
+    // setAddSectionError(null); // State removed
+    // setAddSectionSuccess(null); // State removed
     try {
-      const newSection = await campaignService.addCampaignSection(campaignId, {
-        title: newSectionTitle.trim() || undefined,
-        prompt: newSectionPrompt.trim() || undefined,
-        model_id_with_prefix: selectedLLMId || undefined,
-      });
+      let payload: CampaignSectionCreatePayload;
+      if (bypassLLM) {
+        payload = {
+          title: title?.trim() || "New Blank Section",
+          // prompt and modelId are omitted
+        };
+      } else {
+        payload = {
+          title: title?.trim() || undefined,
+          prompt: prompt?.trim() || undefined,
+          model_id_with_prefix: selectedLLMId || undefined, // Use model_id_with_prefix
+        };
+      }
+
+      const newSection = await campaignService.addCampaignSection(campaignId, payload);
       setSections(prev => [...prev, newSection].sort((a, b) => a.order - b.order));
-      setNewSectionTitle('');
-      setNewSectionPrompt('');
-      setAddSectionSuccess("New section added successfully!");
-      setTimeout(() => setAddSectionSuccess(null), 3000);
+      // setAddSectionSuccess("New section added successfully!"); // State removed
+      // setTimeout(() => setAddSectionSuccess(null), 3000); // State removed
+      setIsAddSectionModalOpen(false); // Close modal on success
     } catch (err: any) {
       const errorMsg = (err instanceof Error && (err as any).response?.data?.detail)
                        ? (err as any).response.data.detail
                        : (err instanceof Error ? err.message : 'Failed to add new section.');
-      setAddSectionError(errorMsg);
+      // setAddSectionError(errorMsg); // State removed
+      console.error("Error adding section: ", errorMsg); // Log error instead
+      // Optionally, keep modal open on error or pass error to modal: setIsAddSectionModalOpen(true);
     } finally {
-      setIsAddingSection(false);
+      // setIsAddingSection(false); // State removed
       setIsPageLoading(false);
     }
   };
+
 
   const handleUpdateSection = async (sectionId: number, updatedData: CampaignSectionUpdatePayload) => { // Use imported CampaignSectionUpdatePayload
     if (!campaignId) return;
@@ -1287,16 +1306,9 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
 
   const sectionsTabContent = (
     <>
-      <div className="section-display-controls editor-section">
-        <h3>Section Display</h3>
-        <Button onClick={() => setForceCollapseAll(true)} className="action-button" icon={<UnfoldLessIcon />} tooltip="Collapse all campaign sections">
-          Collapse All Sections
-        </Button>
-        <Button onClick={() => setForceCollapseAll(false)} className="action-button" icon={<UnfoldMoreIcon />} tooltip="Expand all campaign sections">
-          Expand All Sections
-        </Button>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}> {/* Adjusted gap and mb values to match typical MUI spacing (e.g., theme.spacing(1) and theme.spacing(2)) */}
         <Button
-          onClick={() => setIsAddSectionCollapsed(!isAddSectionCollapsed)}
+          onClick={() => setIsAddSectionModalOpen(true)} // Open modal
           disabled={!campaign?.concept?.trim()}
           className="action-button"
           icon={<AddCircleOutlineIcon />}
@@ -1304,33 +1316,18 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
         >
           Add New Section
         </Button>
+        <Button
+          onClick={() => setForceCollapseAll(prev => !prev)}
+          icon={forceCollapseAll ? <UnfoldMoreIcon /> : <UnfoldLessIcon />}
+          variant="primary" // Changed to primary
+          className="action-button"
+          tooltip={forceCollapseAll ? "Expand all sections" : "Collapse all sections"}
+        >
+          {forceCollapseAll ? "Expand All" : "Collapse All"}
+        </Button>
       </div>
-      {!isAddSectionCollapsed && campaign?.concept?.trim() && (
-        <div className="editor-actions add-section-area editor-section card-like" style={{ marginTop: '20px' }}>
-          <h3>Add New Section</h3>
-          <form onSubmit={handleAddSection} className="add-section-form">
-            <div className="form-group">
-              <label htmlFor="newSectionTitle">Section Title (Optional):</label>
-              <input type="text" id="newSectionTitle" className="form-input" value={newSectionTitle} onChange={(e) => setNewSectionTitle(e.target.value)} placeholder="E.g., Chapter 1: The Discovery" />
-            </div>
-            <div className="form-group">
-              <label htmlFor="newSectionPrompt">Section Prompt (Optional):</label>
-              <textarea id="newSectionPrompt" className="form-textarea" value={newSectionPrompt} onChange={(e) => setNewSectionPrompt(e.target.value)} rows={3} placeholder="E.g., Start with the players finding a mysterious map..." />
-            </div>
-            {selectedLLMObject && (
-                 <p style={{fontSize: '0.9em', margin: '10px 0'}}>New section will use LLM: <strong>{selectedLLMObject.name}</strong></p>
-            )}
-            {addSectionError && <p className="error-message feedback-message">{addSectionError}</p>}
-            {addSectionSuccess && <p className="success-message feedback-message">{addSectionSuccess}</p>}
-            <Button type="submit" disabled={isAddingSection || !selectedLLMId || !campaign?.concept?.trim()} className="action-button add-section-button" icon={<AddCircleOutlineIcon />} tooltip={!campaign?.concept?.trim() ? "Please define and save a campaign concept first." : (!selectedLLMId ? "Please select an LLM in settings." : "Add this new section to the campaign")}>
-              {isAddingSection ? 'Adding Section...' : 'Confirm & Add Section'}
-            </Button>
-            <Button type="button" onClick={() => setIsAddSectionCollapsed(true)} className="action-button secondary-action-button" style={{marginLeft: '10px'}} icon={<CancelIcon />} tooltip="Cancel adding a new section">
-              Cancel
-            </Button>
-          </form>
-        </div>
-      )}
+      {/* The div className="section-display-controls editor-section" has been removed */}
+      {/* Remove old collapsible form area */}
       <CampaignSectionEditor
         campaignId={campaignId!}
         sections={sections}
@@ -1340,7 +1337,7 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
         handleUpdateSectionTitle={handleUpdateSectionTitle}
         handleUpdateSectionType={handleUpdateSectionType}
         onUpdateSectionOrder={handleUpdateSectionOrder}
-        forceCollapseAllSections={forceCollapseAll}
+        forceCollapseAllSections={forceCollapseAll} // Prop re-added
         selectedLLMId={selectedLLMId} // Pass selectedLLMId here
         expandSectionId={sectionToExpand}
         onSetThematicImageForSection={handleSetThematicImage}
@@ -1480,74 +1477,108 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
   );
 
   const charactersTabContent = (
-    <div className="editor-section characters-management-section card-like">
-      <Typography variant="h5" gutterBottom>Manage Campaign Characters</Typography>
-      {charactersLoading && <LoadingSpinner />}
-      {characterError && <p className="error-message feedback-message">{characterError}</p>}
+    <Paper elevation={2} sx={{ p: 2, mt: 1 }}>
+      <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>Manage Campaign Characters</Typography>
+      {charactersLoading && <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}><LoadingSpinner /></Box>}
+      {characterError && <Typography color="error" sx={{ my: 2 }}>{characterError}</Typography>}
       {!charactersLoading && !characterError && (
         <>
-          <div className="mb-3">
-            <h6>Associated Characters:</h6>
+          <Box sx={{ mb: 3 }}> {/* Added Box for margin separation */}
+            <Typography variant="h6" gutterBottom>Associated Characters:</Typography>
             {campaignCharacters.length > 0 ? (
-              <ul className="list-group">
+              <List sx={{ width: '100%', bgcolor: 'background.paper', borderRadius: 1 }}> {/* Optional: added border radius */}
                 {campaignCharacters.map(char => (
-                  <li key={char.id} className="list-group-item d-flex justify-content-between align-items-center">
-                    <Link to={`/characters/${char.id}`} target="_blank">{char.name}</Link>
-                    <Button
-                      onClick={() => handleUnlinkCharacterFromCampaign(char.id)}
-                      variant="danger"
-                      size="sm"
-                      disabled={isLinkingCharacter}
-                      tooltip={`Remove ${char.name} from this campaign`}
-                    >
-                      {isLinkingCharacter ? 'Processing...' : 'Unlink'}
-                    </Button>
-                  </li>
+                  <ListItem
+                    key={char.id}
+                    secondaryAction={
+                      <IconButton
+                        edge="end"
+                        aria-label="unlink character"
+                        onClick={() => handleUnlinkCharacterFromCampaign(char.id)}
+                        disabled={isLinkingCharacter}
+                        title={`Remove ${char.name} from this campaign`}
+                        color="error"
+                      >
+                        <LinkOffIcon />
+                      </IconButton>
+                    }
+                  >
+                    <ListItemAvatar>
+                      <Avatar
+                        alt={char.name}
+                        src={char.image_urls && char.image_urls.length > 0 ? char.image_urls[0] : undefined}
+                        sx={{ width: 40, height: 40 }}
+                      >
+                        {!(char.image_urls && char.image_urls.length > 0) && char.name.charAt(0).toUpperCase()}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={
+                        <Link to={`/characters/${char.id}`} target="_blank" style={{ textDecoration: 'none', color: 'inherit' }}>
+                          {char.name}
+                        </Link>
+                      }
+                    />
+                  </ListItem>
                 ))}
-              </ul>
+              </List>
             ) : (
-              <p className="text-muted">No characters are currently associated with this campaign.</p>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                No characters are currently associated with this campaign.
+              </Typography>
             )}
-          </div>
-          <hr />
-          <div className="mt-3">
-            <h6>Add Existing Character to Campaign:</h6>
+          </Box>
+          <Divider sx={{ my: 2 }} /> {/* Replaced hr with MUI Divider */}
+          <Box sx={{ mt: 2 }}> {/* Added Box for margin separation */}
+            <Typography variant="h6" gutterBottom>Add Existing Character to Campaign:</Typography>
             {userCharacters.length > 0 ? (
-              <div className="input-group">
-                <select
-                  className="form-select"
-                  value={selectedUserCharacterToAdd}
-                  onChange={(e) => setSelectedUserCharacterToAdd(e.target.value)}
-                  disabled={isLinkingCharacter}
-                >
-                  <option value="">Select a character to add...</option>
-                  {userCharacters
-                    .filter(uc => !campaignCharacters.some(cc => cc.id === uc.id))
-                    .map(char => (
-                      <option key={char.id} value={char.id}>
-                        {char.name}
-                      </option>
-                  ))}
-                </select>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}> {/* Reduced top margin slightly as h6 has gutterBottom */}
+                <FormControl fullWidth sx={{ flexGrow: 1 }}>
+                  <InputLabel id="select-user-character-label">Add Existing Character</InputLabel>
+                  <Select
+                    labelId="select-user-character-label"
+                    id="select-user-character"
+                    value={selectedUserCharacterToAdd}
+                    label="Add Existing Character"
+                    onChange={(e) => setSelectedUserCharacterToAdd(e.target.value)}
+                    disabled={isLinkingCharacter || userCharacters.filter(uc => !campaignCharacters.some(cc => cc.id === uc.id)).length === 0}
+                  >
+                    <MenuItem value="">
+                      <em>Select a character to add...</em>
+                    </MenuItem>
+                    {userCharacters
+                      .filter(uc => !campaignCharacters.some(cc => cc.id === uc.id))
+                      .map(char => (
+                        <MenuItem key={char.id} value={char.id.toString()}>
+                          {char.name}
+                        </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
                 <Button
                   onClick={handleLinkCharacterToCampaign}
                   disabled={!selectedUserCharacterToAdd || isLinkingCharacter}
                   variant="success"
                   tooltip="Add the selected character to this campaign"
+                  style={{ flexShrink: 0 }}
                 >
                   {isLinkingCharacter ? 'Adding...' : 'Add to Campaign'}
                 </Button>
-              </div>
+              </Box>
             ) : (
-              <p className="text-muted">You have no other characters to add, or all your characters are already in this campaign.</p>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                You have no other characters to add, or all your characters are already in this campaign.
+              </Typography>
             )}
-             {userCharacters.filter(uc => !campaignCharacters.some(cc => cc.id === uc.id)).length === 0 && userCharacters.length > 0 && (
-                <p className="text-muted small mt-1">All your available characters are already linked to this campaign.</p>
+             {userCharacters.filter(uc => !campaignCharacters.some(cc => cc.id === uc.id)).length === 0 && userCharacters.length > 0 && !(userCharacters.length === 0) && (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                  All your available characters are already linked to this campaign.
+                </Typography>
             )}
-          </div>
+          </Box>
         </>
       )}
-    </div>
+    </Paper>
   );
 
   const finalTabItems: TabItem[] = [
@@ -1578,7 +1609,7 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
           onClick={() => setIsMoodBoardPanelOpen(!isMoodBoardPanelOpen)}
           icon={<ImageIcon />}
           tooltip={isMoodBoardPanelOpen ? 'Hide Mood Board Panel' : 'Show Mood Board Panel'}
-          variant="outline-secondary"
+          variant="primary" // Changed to primary
         >
           {isMoodBoardPanelOpen ? 'Hide Mood Board' : 'Show Mood Board'}
         </Button>
@@ -1763,6 +1794,12 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
         isOpen={isPreviewModalOpen}
         onClose={() => setIsPreviewModalOpen(false)}
         imageUrl={previewImageUrl}
+      />
+      <AddSectionModal
+        isOpen={isAddSectionModalOpen}
+        onClose={() => setIsAddSectionModalOpen(false)}
+        onAddSection={handleAddSectionFromModal}
+        selectedLLMId={selectedLLMId}
       />
     </div>
   );

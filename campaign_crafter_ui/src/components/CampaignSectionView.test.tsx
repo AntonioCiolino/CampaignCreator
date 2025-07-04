@@ -125,7 +125,7 @@ const defaultProps: React.ComponentProps<typeof CampaignSectionView> = {
   isSaving: false,
   saveError: null,
   onDelete: jest.fn(),
-  forceCollapse: false,
+  // forceCollapse: false, // Removed prop
   campaignId: 1, // Assuming campaignId is number
   onSectionUpdated: jest.fn(),
   selectedLLMId: null, // Add selectedLLMId
