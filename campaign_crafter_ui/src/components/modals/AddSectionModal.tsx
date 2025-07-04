@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Box, Typography, TextField, Button, Paper } from '@mui/material';
+import { Modal, Box, Typography, TextField, Button, Paper, FormControlLabel, Checkbox } from '@mui/material';
 
 interface AddSectionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddSection: (title?: string, prompt?: string) => void;
+  onAddSection: (data: { title?: string; prompt?: string; bypassLLM?: boolean }) => void;
   selectedLLMId: string | null;
 }
 
@@ -23,12 +23,14 @@ const style = {
 const AddSectionModal: React.FC<AddSectionModalProps> = ({ isOpen, onClose, onAddSection, selectedLLMId }) => {
   const [title, setTitle] = useState<string>('');
   const [prompt, setPrompt] = useState<string>('');
+  const [bypassLLM, setBypassLLM] = useState<boolean>(false);
 
   // Reset fields when modal opens or selectedLLMId changes (if needed)
   useEffect(() => {
     if (isOpen) {
       setTitle('');
       setPrompt('');
+      setBypassLLM(false);
     }
   }, [isOpen]);
 
@@ -41,7 +43,7 @@ const AddSectionModal: React.FC<AddSectionModalProps> = ({ isOpen, onClose, onAd
   };
 
   const handleAdd = () => {
-    onAddSection(title, prompt);
+    onAddSection({ title, prompt, bypassLLM });
     onClose(); // Close modal after adding
   };
 
@@ -77,18 +79,32 @@ const AddSectionModal: React.FC<AddSectionModalProps> = ({ isOpen, onClose, onAd
           multiline
           rows={4}
           variant="outlined"
+          disabled={bypassLLM} // Disable if bypassing LLM
+        />
+        <FormControlLabel
+          control={<Checkbox checked={bypassLLM} onChange={(e) => setBypassLLM(e.target.checked)} />}
+          label="Create blank section (skip AI content generation)"
+          sx={{ mt: 1, mb: 1 }}
         />
         <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
           <Button onClick={handleCancel} sx={{ mr: 1 }}>
             Cancel
           </Button>
-          <Button onClick={handleAdd} variant="contained" disabled={!selectedLLMId && (!title && !prompt)}>
+          <Button
+            onClick={handleAdd}
+            variant="contained"
+            // Logic for disabled:
+            // If bypassing LLM, only title is relevant (though optional).
+            // If not bypassing LLM, then either selectedLLMId must be present OR (title or prompt must be present).
+            // Simplified: disable if not bypassing LLM AND no LLM is selected AND both title/prompt are empty.
+            disabled={!bypassLLM && !selectedLLMId && !title.trim() && !prompt.trim()}
+          >
             Add Section
           </Button>
         </Box>
-        {!selectedLLMId && (!title && !prompt) && (
+        {!bypassLLM && !selectedLLMId && !title.trim() && !prompt.trim() && (
           <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
-            A Large Language Model must be selected to automatically generate content, or a title/prompt must be provided.
+            To generate AI content, select an LLM (in Campaign Settings) or provide a Title/Prompt. Otherwise, check "Create blank section".
           </Typography>
         )}
       </Box>

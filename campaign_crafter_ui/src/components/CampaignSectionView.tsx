@@ -32,7 +32,7 @@ interface CampaignSectionViewProps {
   isSaving: boolean; // Prop to indicate if this specific section is being saved
   saveError: string | null; // Prop to display save error for this section
   onDelete: (sectionId: number) => void; // Added onDelete prop
-  // forceCollapse?: boolean; // Prop removed
+  forceCollapse?: boolean; // Prop re-added
   // Props for regeneration
   campaignId: string | number; // Campaign ID to make the API call
   onSectionUpdated: (updatedSection: CampaignSection) => void; // Callback to update parent state
@@ -51,7 +51,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   isSaving,
   saveError: externalSaveError,
   onDelete,
-  // forceCollapse, // Prop removed
+  forceCollapse, // Prop re-added
   campaignId,
   onSectionUpdated,
   selectedLLMId, // Destructure selectedLLMId
@@ -240,11 +240,11 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
     }
   }, [section.content, externalSaveError]);
 
-  // useEffect(() => { // Removed useEffect for forceCollapse
-  //   if (forceCollapse !== undefined) {
-  //     setIsCollapsed(forceCollapse);
-  //   }
-  // }, [forceCollapse]);
+  useEffect(() => {
+    if (forceCollapse !== undefined) {
+      setIsCollapsed(forceCollapse);
+    }
+  }, [forceCollapse]);
 
   useEffect(() => {
     // Check if this section is the one to be expanded and if it's currently collapsed
