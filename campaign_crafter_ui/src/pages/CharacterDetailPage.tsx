@@ -663,7 +663,7 @@ const CharacterDetailPage: React.FC = () => {
                                         disabled={isLinking}
                                         title={`Unlink from ${camp.title}`}
                                     >
-                                        {isLinking ? <LoadingSpinner size="sm" /> : <i className="bi bi-x-circle"></i>}
+                                        {isLinking ? <LoadingSpinner /> : <i className="bi bi-x-circle"></i>}
                                     </button>
                                 </div>
                             ))}
