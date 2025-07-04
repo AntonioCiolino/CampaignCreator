@@ -1344,6 +1344,7 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
         selectedLLMId={selectedLLMId} // Pass selectedLLMId here
         expandSectionId={sectionToExpand}
         onSetThematicImageForSection={handleSetThematicImage}
+         campaignCharacters={campaignCharacters} // Pass campaignCharacters here
       />
       {!campaign?.concept?.trim() && (
         <div className="editor-section user-message card-like" style={{ marginTop: '20px', padding: '15px', textAlign: 'center' }}>
