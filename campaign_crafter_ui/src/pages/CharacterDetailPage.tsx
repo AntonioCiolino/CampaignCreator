@@ -297,7 +297,7 @@ const CharacterDetailPage: React.FC = () => {
             navigate('/characters', { state: { successMessage: `Character "${character.name}" deleted successfully.` } });
         } catch (err: any) {
             console.error("Failed to delete character:",
-            setError(err.response?.data?.detail || 'Failed to delete character. Please try again.');
+            setError(err.response?.data?.detail || 'Failed to delete character. Please try again');
             setIsDeleting(false); // Only set isDeleting to false on error, on success we navigate
             closeDeleteModal(); // Close modal on error
         }
@@ -631,9 +631,10 @@ const CharacterDetailPage: React.FC = () => {
                                     </div>
                                 </SortableContext>
                             </DndContext>
-                        </div>
-                </div>
-            </div>
+                        </div> // Correctly closes card-body
+                        )} {/* Correctly closes showImages conditional block */}
+                    </div> // Correctly closes the Images card <div className="card data-card mb-3">
+                </div> // Correctly closes the <div className="character-sidebar-column">
 
 
             {character.video_clip_urls && character.video_clip_urls.length > 0 && (
