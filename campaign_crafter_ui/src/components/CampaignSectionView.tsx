@@ -6,7 +6,8 @@ import { Typography, IconButton, Tooltip } from '@mui/material'; // Import IconB
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'; // Import ExpandMoreIcon
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'; // Import ExpandLessIcon
 import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
-import SaveIcon from '@mui/icons-material/Save'; // Import SaveIcon
+// SaveIcon import removed
+import CheckIcon from '@mui/icons-material/Check'; // Import CheckIcon
 import CancelIcon from '@mui/icons-material/Cancel'; // Import CancelIcon
 import DeleteIcon from '@mui/icons-material/Delete'; // Import DeleteIcon
 import CasinoIcon from '@mui/icons-material/Casino'; // Import CasinoIcon
@@ -734,9 +735,10 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
               {/* Toggle Button for RandomTableRoller */}
               <Button
                 onClick={() => setIsTableRollerVisible(!isTableRollerVisible)}
-                variant="outline-secondary"
+                variant="outlined"
+                color="secondary"
                 size="sm"
-                icon={<CasinoIcon />} // Changed startIcon to icon
+                icon={<CasinoIcon />}
                 style={{ marginTop: '10px', marginBottom: '5px' }}
               >
                 {isTableRollerVisible ? 'Hide Random Tables' : 'Show Random Tables'}
@@ -751,8 +753,8 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                 <Button
                   onClick={handleSave}
                   className="editor-button"
-                  variant="primary" // Changed variant
-                  icon={<SaveIcon />} // Changed startIcon to icon
+                  variant="primary"
+                  icon={<CheckIcon />} // Changed from SaveIcon to CheckIcon
                   disabled={isSaving || isGeneratingContent}
                 >
                   {isSaving ? 'Saving...' : 'Save Content'}

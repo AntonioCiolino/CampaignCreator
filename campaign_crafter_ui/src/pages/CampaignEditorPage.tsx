@@ -1580,7 +1580,8 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
           onClick={() => setIsMoodBoardPanelOpen(!isMoodBoardPanelOpen)}
           icon={<ImageIcon />}
           tooltip={isMoodBoardPanelOpen ? 'Hide Mood Board Panel' : 'Show Mood Board Panel'}
-          variant="outline-secondary"
+          variant="outlined"
+          color="secondary"
         >
           {isMoodBoardPanelOpen ? 'Hide Mood Board' : 'Show Mood Board'}
         </Button>
