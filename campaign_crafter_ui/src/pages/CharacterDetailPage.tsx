@@ -129,7 +129,7 @@ const CharacterDetailPage: React.FC = () => {
     const [chatHistory, setChatHistory] = useState<Array<CharacterChatMessage>>([]);
 
     // State for LLM Notes visibility
-    const [showLlmNotes, setShowLlmNotes] = useState<boolean>(true); // Default to shown
+    const [showLlmNotes, setShowLlmNotes] = useState<boolean>(false); // Default to shown
 
     // DND Kit Sensors
     const sensors = useSensors(
@@ -471,19 +471,18 @@ const CharacterDetailPage: React.FC = () => {
                 {/* Title now takes available space, actions are on the right */}
                 <h1 className="character-title">{character.name}</h1>
                 <div className="header-actions">
-                    <Link to={`/characters/${character.id}/edit`} className="btn btn-outline-primary me-2">
-                        Edit Character
+                    <Link to={`/characters/${character.id}/edit`} className="btn btn-outline-primary">
+                        <i className="bi bi-pencil-square"></i> Edit
                     </Link>
-                    <button onClick={openDeleteModal} className="btn btn-outline-danger me-2">
-                        Delete Character
+                    <button onClick={openDeleteModal} className="btn btn-outline-danger">
+                        <i className="bi bi-trash"></i> Delete
                     </button>
                     <button
                         onClick={() => setIsChatPanelOpen(prev => !prev)}
                         className="btn btn-outline-info"
                         title={isChatPanelOpen ? "Close Chat" : "Chat with Character"}
                     >
-                        {/* Use an icon here if available, e.g., <ChatIcon /> */}
-                        💬 Chat
+                        <i className="bi bi-chat-dots"></i> Chat
                     </button>
                 </div>
             </div>
@@ -551,7 +550,7 @@ const CharacterDetailPage: React.FC = () => {
                 {/* Right Column: Images, etc. (Stats removed from here) */}
                 <div className="character-sidebar-column">
                     <div className="card data-card mb-3">
-                        <div className="card-header d-flex justify-content-between align-items-center">
+    <div className="card-header d-flex justify-content-between align-items-center mb-2"> {/* Added mb-2 here */}
                             Images
                             <button
                                 className="btn btn-sm btn-success"
@@ -640,20 +639,35 @@ const CharacterDetailPage: React.FC = () => {
                     {linkError && <AlertMessage type="error" message={linkError} onClose={() => setLinkError(null)} />}
                     <h5>Currently In Campaigns:</h5>
                     {associatedCampaigns.length > 0 ? (
-                        <ul className="list-group list-group-flush mb-3">
+                        <div className="associated-campaigns-list mb-3"> {/* New wrapper class, kept mb-3 */}
                             {associatedCampaigns.map(camp => (
-                                <li key={camp.id} className="list-group-item d-flex justify-content-between align-items-center">
-                                    <Link to={`/campaign/${camp.id}`}>{camp.title}</Link>
+                                <div key={camp.id} className="associated-campaign-item">
+                                    <img
+                                        src={camp.badge_image_url || camp.thematic_image_url || '/logo_placeholder.svg'}
+                                        alt={`Campaign: ${camp.title}`}
+                                        className="associated-campaign-thumbnail"
+                                        onError={(e) => {
+                                            const target = e.target as HTMLImageElement;
+                                            if (target.src !== '/logo_placeholder.svg') {
+                                                target.src = '/logo_placeholder.svg';
+                                                target.alt = "Placeholder image";
+                                            }
+                                        }}
+                                    />
+                                    <Link to={`/campaign/${camp.id}`} className="associated-campaign-name">
+                                        {camp.title}
+                                    </Link>
                                     <button
-                                        className="btn btn-sm btn-outline-warning"
+                                        className="btn btn-icon btn-outline-danger btn-sm"
                                         onClick={() => handleUnlinkCampaign(camp.id, camp.title)}
                                         disabled={isLinking}
+                                        title={`Unlink from ${camp.title}`}
                                     >
-                                        {isLinking ? <LoadingSpinner /> : 'Unlink'}
+                                        {isLinking ? <LoadingSpinner size="sm" /> : <i className="bi bi-x-circle"></i>}
                                     </button>
-                                </li>
+                                </div>
                             ))}
-                        </ul>
+                        </div>
                     ) : (
                         <p className="text-muted">Not currently associated with any campaigns.</p>
                     )}
