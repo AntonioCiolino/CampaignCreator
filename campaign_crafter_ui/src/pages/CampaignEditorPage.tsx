@@ -15,7 +15,8 @@ import {
     SeedSectionsProgressEvent,
     SeedSectionsCallbacks,
     CampaignUpdatePayload, // Direct import
-    CampaignSectionUpdatePayload // Direct import for handleUpdateSection
+    CampaignSectionUpdatePayload, // Direct import for handleUpdateSection
+    CampaignSectionCreatePayload
 } from '../types/campaignTypes';
 import { getAvailableLLMs, LLMModel } from '../services/llmService';
 import ReactMarkdown from 'react-markdown';
@@ -818,7 +819,7 @@ const CampaignEditorPage: React.FC = () => {
         payload = {
           title: title?.trim() || undefined,
           prompt: prompt?.trim() || undefined,
-          modelId: selectedLLMId || undefined, // Use modelId here
+          model_id_with_prefix: selectedLLMId || undefined, // Use model_id_with_prefix
         };
       }
 

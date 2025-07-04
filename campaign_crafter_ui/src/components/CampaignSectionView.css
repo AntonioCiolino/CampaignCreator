@@ -148,7 +148,7 @@
   color: white;
 }
 .campaign-section-view .save-button:hover {
-  background-color: #1e7e34; 
+  background-color: #1e7e34; /* Darker success */
   border-color: #1e7e34;
 }
 */
