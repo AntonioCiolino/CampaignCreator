@@ -735,8 +735,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
               {/* Toggle Button for RandomTableRoller */}
               <Button
                 onClick={() => setIsTableRollerVisible(!isTableRollerVisible)}
-                variant="outlined"
-                color="secondary"
+                variant="outline-secondary"
                 size="sm"
                 icon={<CasinoIcon />}
                 style={{ marginTop: '10px', marginBottom: '5px' }}
