@@ -66,6 +66,7 @@ describe('CampaignSectionEditor', () => {
     campaignId: 'test-campaign-id-default',
     selectedLLMId: null, // Add selectedLLMId
     expandSectionId: null, // <--- Add this line
+    campaignCharacters: [], // Added missing prop
   };
 
   test('renders correctly with no sections', () => {

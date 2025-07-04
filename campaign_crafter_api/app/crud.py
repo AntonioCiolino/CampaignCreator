@@ -188,7 +188,7 @@ def update_feature(db: Session, feature_id: int, feature_update: models.FeatureU
     if not db_feature:
         return None
 
-    update_data = feature_update.dict(exclude_unset=True)
+    update_data = feature_update.model_dump(exclude_unset=True) # Changed to model_dump for Pydantic v2
     for key, value in update_data.items():
         setattr(db_feature, key, value)
 

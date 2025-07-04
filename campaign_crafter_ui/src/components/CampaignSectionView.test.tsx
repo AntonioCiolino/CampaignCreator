@@ -132,6 +132,7 @@ const defaultProps: React.ComponentProps<typeof CampaignSectionView> = {
   // onSectionTypeUpdate: jest.fn(), // Optional, add if tests require it
   expandSectionId: null, // <--- Add this line
   // onSetThematicImageFromSection: jest.fn(), // Optional, add if tests require it
+  campaignCharacters: [], // Added missing prop
 };
 
 describe('CampaignSectionView', () => {
