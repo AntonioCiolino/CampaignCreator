@@ -635,6 +635,7 @@ const CharacterDetailPage: React.FC = () => {
                         )} {/* Correctly closes showImages conditional block */}
                     </div> // Correctly closes the Images card <div className="card data-card mb-3">
                 </div> // Correctly closes the <div className="character-sidebar-column">
+            </div> {/* ADDED: Closes character-content-grid */}
 
 
             {character.video_clip_urls && character.video_clip_urls.length > 0 && (
