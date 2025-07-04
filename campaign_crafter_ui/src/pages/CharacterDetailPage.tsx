@@ -296,7 +296,7 @@ const CharacterDetailPage: React.FC = () => {
             await characterService.deleteCharacter(character.id);
             navigate('/characters', { state: { successMessage: `Character "${character.name}" deleted successfully.` } });
         } catch (err: any) {
-            console.error("Failed to delete character:",
+            console.error("Failed to delete character:", err);
             setError(err.response?.data?.detail || 'Failed to delete character. Please try again');
             setIsDeleting(false); // Only set isDeleting to false on error, on success we navigate
             closeDeleteModal(); // Close modal on error
