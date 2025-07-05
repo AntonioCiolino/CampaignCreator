@@ -40,26 +40,17 @@ class FeaturePromptService:
 #     # if not existing_feature:
 #     #     crud.create_feature(db, models.FeatureCreate(name="Sample Feature", template="This is a {{description}}."))
 # 
-#     print("Testing get_prompt:")
 #     prompt = service.get_prompt("Sample Feature", db)
 #     if prompt:
-#         print(f"Prompt for 'Sample Feature': {prompt}")
 #     else:
-#         print("Prompt for 'Sample Feature' not found.")
 # 
 #     prompt_non_existent = service.get_prompt("NonExistentFeature", db)
 #     if prompt_non_existent:
-#         print(f"Prompt for 'NonExistentFeature': {prompt_non_existent}")
 #     else:
-#         print("Prompt for 'NonExistentFeature' not found.")
 # 
-#     print("\nTesting get_all_features:")
 #     all_features = service.get_all_features(db)
 #     if all_features:
-#         print("All features found in DB:")
 #         for feature in all_features:
-#             print(f"- ID: {feature.id}, Name: {feature.name}, Template: {feature.template}")
 #     else:
-#         print("No features found in the database.")
 # 
 #     db.close()

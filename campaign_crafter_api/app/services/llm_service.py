@@ -129,7 +129,6 @@ class AbstractLLMService(ABC):
 class LLMService(AbstractLLMService): # Note: This is a dummy implementation
     def __init__(self, api_key: Optional[str] = None):
         super().__init__(api_key=api_key)
-        # print(f"Dummy LLMService initialized with API key: {'Provided' if api_key else 'Not Provided'}")
 
     async def is_available(self, current_user: UserModel, db: Session) -> bool:
         print(f"Dummy LLMService: is_available called for user {current_user.id}")

@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict, Annotated # Added Annotated
+from typing import Optional, List, Dict, Annotated
 import re
 import json
 import asyncio
@@ -110,7 +110,7 @@ async def update_existing_campaign(
     # updated_campaign will be None if not found by crud.update_campaign, already handled by initial get.
     return updated_campaign
 
-@router.delete("/{campaign_id}", response_model=models.Campaign, tags=["Campaigns"]) # Added a DELETE endpoint for campaigns
+@router.delete("/{campaign_id}", response_model=models.Campaign, tags=["Campaigns"])
 async def delete_campaign_endpoint(
     campaign_id: int,
     db: Annotated[Session, Depends(get_db)],
@@ -342,7 +342,7 @@ async def generate_campaign_titles_endpoint(
                 final_model_id_for_generation = campaign_model_id
             # Placeholder for user preference logic
 
-        generated_titles = await llm_service.generate_titles( # Added await
+        generated_titles = await llm_service.generate_titles(
             campaign_concept=db_campaign.concept,
             db=db,
             count=count, 
@@ -406,7 +406,7 @@ async def generate_campaign_concept_manually_endpoint(
         # if it doesn't align with this usage pattern (e.g., if it always uses campaign.initial_user_prompt)
         # For now, assume generate_concept can take a direct prompt.
         generated_concept_text = await llm_service.generate_campaign_concept( # Corrected method name
-            user_prompt=request_body.prompt, # Pass the prompt from the request, use 'user_prompt'
+            user_prompt=request_body.prompt,
             db=db,
             current_user=current_user,
             model=model_specific_id,
@@ -569,7 +569,7 @@ async def seed_sections_from_toc_endpoint(
                     prompt = f"Describe the magical item '{title}'. Include its appearance, powers, history, and how it can be obtained or used."
                 elif section_type_for_llm == "quest":
                     prompt = f"Outline the quest '{title}'. Include the objectives, key NPCs involved, steps to complete it, and potential rewards or consequences."
-                elif section_type_for_llm == "chapter": # Added specific prompt for chapter
+                elif section_type_for_llm == "chapter":
                     prompt = f"Outline the main events and encounters for the chapter titled '{title}'. Provide a brief overview of the objectives, challenges, and potential rewards."
                 # Note: "note", "world_detail" will fall into the else "generic" category for now, which is acceptable.
                 else: # Generic or other specific types from TOC not explicitly handled above
@@ -579,7 +579,7 @@ async def seed_sections_from_toc_endpoint(
                     print(f"Attempting LLM generation for section: '{title}' (Type for LLM: {section_type_for_llm})")
                     _, model_specific_id_for_call = _extract_provider_and_model(db_campaign.selected_llm_id)
                     generated_llm_content = await llm_service_instance.generate_section_content(
-                        db_campaign=db_campaign, # Changed campaign_concept to db_campaign
+                        db_campaign=db_campaign,
                         db=db,
                         current_user=current_user,
                         existing_sections_summary=None,
@@ -621,7 +621,7 @@ async def seed_sections_from_toc_endpoint(
                 title=title,
                 order=order,
                 placeholder_content=section_content_for_crud,
-                type=type_from_toc # Pass the type from the TOC to be saved in DB
+                type=type_from_toc
             )
             pydantic_section = models.CampaignSection.from_orm(created_section_orm)
 
@@ -665,7 +665,7 @@ async def seed_sections_from_toc_endpoint(
 # --- Campaign Section Endpoints ---
 
 # Pydantic model for the request body of section order update
-class SectionOrderUpdate(BaseModel): # Changed to use pydantic.BaseModel
+class SectionOrderUpdate(BaseModel):
     section_ids: List[int]
 
 @router.put("/{campaign_id}/sections/order", status_code=204, tags=["Campaign Sections"])
@@ -735,7 +735,7 @@ async def create_new_campaign_section_endpoint(
             current_user_orm=current_user_orm,
             provider_name=provider_name, # Already extracted
             model_id_with_prefix=section_input.model_id_with_prefix,
-            campaign=db_campaign # Pass the fetched campaign
+            campaign=db_campaign
         )
 
         final_model_id_for_generation = model_specific_id
@@ -746,7 +746,7 @@ async def create_new_campaign_section_endpoint(
             # Placeholder for user preference logic
 
         generated_content = await llm_service.generate_section_content(
-            db_campaign=db_campaign, # Changed campaign_concept to db_campaign
+            db_campaign=db_campaign,
             db=db,
             existing_sections_summary=existing_sections_summary,
             section_creation_prompt=section_input.prompt,
@@ -778,7 +778,7 @@ async def create_new_campaign_section_endpoint(
             campaign_id=campaign_id,
             section_title=new_section_title,
             section_content=generated_content,
-            section_type=type_from_input # Pass the type to CRUD
+            section_type=type_from_input
         )
     except Exception as e:
         print(f"Error saving new section for campaign {campaign_id}: {e}")
@@ -1072,12 +1072,6 @@ async def regenerate_campaign_section_endpoint(
     for key, value in final_context_for_template.items():
         final_prompt_for_llm = final_prompt_for_llm.replace(f"{{{key}}}", str(value))
 
-    # Check for any unreplaced placeholders (optional, for debugging)
-    # unreplaced_placeholders = re.findall(r"\{[a-zA-Z0-9_]+\}", final_prompt_for_llm)
-    # if unreplaced_placeholders:
-    #     print(f"Warning: Unreplaced placeholders in final prompt: {unreplaced_placeholders}")
-
-
     # Initialize LLM Service (remains similar)
     llm_model_to_use = section_input.model_id_with_prefix or db_campaign.selected_llm_id
     if not llm_model_to_use:
@@ -1094,7 +1088,7 @@ async def regenerate_campaign_section_endpoint(
             db=db,
             current_user_orm=current_user_orm,
             provider_name=provider_name,
-            model_id_with_prefix=llm_model_to_use, # Pass the determined model_id_with_prefix
+            model_id_with_prefix=llm_model_to_use,
             campaign=db_campaign # Add this
         )
     except LLMServiceUnavailableError as e:
@@ -1119,7 +1113,7 @@ async def regenerate_campaign_section_endpoint(
 
         generated_content = await llm_service.generate_text(
             prompt=final_prompt_for_llm, # This is the fully rendered template
-            current_user=current_user,   # Pass Pydantic user model
+            current_user=current_user,  
             db=db,
             model=model_specific_id,     # Specific model ID for the provider
             temperature=db_campaign.temperature if db_campaign.temperature is not None else 0.7, # Use campaign temp or default
@@ -1129,7 +1123,7 @@ async def regenerate_campaign_section_endpoint(
             db_campaign=db_campaign,
             section_title_suggestion=current_title,
             section_type=determined_section_type,
-            section_creation_prompt=section_input.new_prompt if section_input.feature_id else None # Pass original user prompt only if it's a snippet modification
+            section_creation_prompt=section_input.new_prompt if section_input.feature_id else None
         )
 
         if not generated_content:
@@ -1221,7 +1215,7 @@ async def upload_moodboard_image_for_campaign(
             db=db,
             image_bytes=image_bytes,
             user_id=current_user.id,
-            campaign_id=campaign_id, # Pass campaign_id here
+            campaign_id=campaign_id,
             original_filename_from_api=file.filename
         )
     except HTTPException as e:

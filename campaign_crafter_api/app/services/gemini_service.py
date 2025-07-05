@@ -1,11 +1,11 @@
 import google.generativeai as genai # type: ignore
-import re # Added import
+import re
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError, LLMGenerationError
 from app.services.feature_prompt_service import FeaturePromptService
-from app import models, orm_models # Added models import, Added orm_models import
+from app import models, orm_models
 from app.models import User as UserModel
 # Removed import from llm_factory: from app.services.llm_factory import LLMServiceUnavailableError
 from pathlib import Path # For the __main__ block
@@ -91,9 +91,8 @@ class GeminiLLMService(AbstractLLMService):
             print(f"Gemini API error (model: {model_instance.model_name}): {type(e).__name__} - {e}")
             raise LLMServiceUnavailableError(f"Failed to generate text with Gemini model {model_instance.model_name} due to API error: {str(e)}") from e
             # else:
-            #     print(f"Unexpected error (model: {model_instance.model_name}): {type(e).__name__} - {e}")
             #     raise Exception(f"An unexpected error occurred: {str(e)}") from e
-    async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str: # Added current_user
+    async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
         if not await self.is_available(current_user=current_user, db=db): # Pass args
             raise LLMServiceUnavailableError("Gemini service is not available.")
         model_instance = self._get_model_instance(model)
@@ -132,7 +131,7 @@ class GeminiLLMService(AbstractLLMService):
                          parsed_toc_items.append({"title": title, "type": "unknown"})
         return parsed_toc_items
 
-    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> List[Dict[str, str]]: # Added current_user
+    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> List[Dict[str, str]]:
         if not await self.is_available(current_user=current_user, db=db): # Pass args
             raise LLMServiceUnavailableError("Gemini service is not available.")
         if not campaign_concept:
@@ -163,7 +162,7 @@ class GeminiLLMService(AbstractLLMService):
 
         return self._parse_toc_string_with_types(raw_toc_string)
 
-    async def generate_titles(self, campaign_concept: str, db: Session, current_user: UserModel, count: int = 5, model: Optional[str] = None) -> List[str]: # Added current_user
+    async def generate_titles(self, campaign_concept: str, db: Session, current_user: UserModel, count: int = 5, model: Optional[str] = None) -> List[str]:
         if not await self.is_available(current_user=current_user, db=db): # Pass args
             raise LLMServiceUnavailableError("Gemini service is not available.")
         if not campaign_concept:
@@ -432,7 +431,6 @@ class GeminiLLMService(AbstractLLMService):
                 if not response.candidates:
                      error_message += " No candidates were generated."
                 # You might want to log the full response here for debugging if it's small enough
-                # print(f"Unexpected response structure from Gemini image generation: {response}")
                 raise LLMGenerationError(error_message)
 
         except LLMGenerationError: # Re-raise if it's already our specific error
@@ -637,7 +635,6 @@ if __name__ == '__main__':
         # Optionally, run a quick test with the system key service instance
         # For example, list models:
         # models_list_system = await gemini_service_system.list_available_models(current_user=mock_user, db=mock_db_session)
-        # print(f"Models available with system key: {[m['name'] for m in models_list_system[:2]]}") # Print first 2 model names
 
         # Now, to test with a constructor-injected key (if different or for specific test)
         # For this example, we'll just re-use the system_gemini_key as if it were user-provided

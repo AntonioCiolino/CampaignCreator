@@ -68,9 +68,3 @@ class Settings(BaseSettings):
         extra = 'ignore' 
 
 settings = Settings()
-
-# Optional: For easy debugging of loaded settings
-# print(f"OpenAI Key loaded: {'Yes' if settings.OPENAI_API_KEY != 'YOUR_OPENAI_API_KEY' else 'No (Using default placeholder)'}")
-# print(f"Local LLM Base URL: {settings.LOCAL_LLM_API_BASE_URL}")
-# print(f"Local LLM Provider Name: {settings.LOCAL_LLM_PROVIDER_NAME}")
-# print(f"Local LLM Default Model: {settings.LOCAL_LLM_DEFAULT_MODEL_ID}")

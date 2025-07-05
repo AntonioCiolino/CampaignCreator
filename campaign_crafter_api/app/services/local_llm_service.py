@@ -1,9 +1,9 @@
 import httpx # For making async HTTP requests
-import re # Added import
+import re
 from typing import Optional, List, Dict, Any, AsyncGenerator
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from app import models, orm_models # Added models import, Added orm_models import
+from app import models, orm_models
 from app.models import User as UserModel
 from app.core.config import settings
 from app.services.llm_service import AbstractLLMService, LLMGenerationError
@@ -202,7 +202,7 @@ class LocalLLMService(AbstractLLMService):
                          parsed_toc_items.append({"title": title, "type": "unknown"})
         return parsed_toc_items
 
-    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> List[Dict[str, str]]: # Added current_user
+    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> List[Dict[str, str]]:
         if not await self.is_available(current_user=current_user, db=db): # Pass args
             raise HTTPException(status_code=503, detail=f"{self.PROVIDER_NAME.title()} service is not available or configured.")
         if not campaign_concept:

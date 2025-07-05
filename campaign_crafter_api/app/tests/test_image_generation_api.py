@@ -55,7 +55,6 @@ def test_generate_image_dalle_success(client, mock_image_service):
     
     mock_image_service.generate_image_dalle.assert_called_once()
     # You can add more detailed argument checking for the service call if needed
-    # print(mock_image_service.generate_image_dalle.call_args)
 
 
 def test_generate_image_stable_diffusion_success(client, mock_image_service):

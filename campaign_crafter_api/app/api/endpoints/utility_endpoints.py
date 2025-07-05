@@ -1,4 +1,4 @@
-from typing import List, Optional, Annotated # Added Annotated
+from typing import List, Optional, Annotated
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from app.db import get_db
