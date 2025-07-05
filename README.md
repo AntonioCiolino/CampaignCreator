@@ -7,11 +7,44 @@ The primary focus of current and future development is on:
 
 *   **`campaign_crafter_api`**: A Python-based backend API using FastAPI. It handles LLM integrations (OpenAI, Gemini, local models), data persistence, user authentication, image generation, and core business logic for content creation and management.
 *   **`campaign_crafter_ui`**: A React-based web interface that interacts with the `campaign_crafter_api` to provide a rich, web-based user experience for campaign editing, character management, and AI-assisted content generation.
+*   **`CampaignCreatorSwift`**: A modern, cross-platform Swift application providing core campaign creation functionality. Built using Swift Package Manager, it features document management, Markdown generation, and LLM integration.
 
-The project originated with an iOS application, **`TextEditorApp`** (formerly CampaignCreator iOS App). Its development is now de-prioritized in favor of the API and Web UI, and it's considered a legacy component. For more details on the iOS app, see the `TextEditorApp/` directory.
+The project originated with an iOS application, **`TextEditorApp`** (formerly CampaignCreator iOS App). Its development is now de-prioritized in favor of the API, Web UI, and the new Swift application, and it's considered a legacy component. For more details on the iOS app, see the `TextEditorApp/` directory.
+
+## `CampaignCreatorSwift` (Modern Swift Application)
+
+The `CampaignCreatorSwift`, located in the `CampaignCreatorSwift/` directory, is a modern, cross-platform Swift application that provides core campaign creation functionality. 
+
+**Status:** This application is **actively maintained** and represents a complete rewrite of the original iOS app using modern Swift practices.
+
+**Key Features:**
+*   **Cross-Platform**: Runs on macOS, Linux, and other Swift-supported platforms
+*   **Modern Architecture**: Built with Swift Package Manager and follows protocol-oriented design
+*   **Document Management**: Create, edit, and manage campaign documents
+*   **LLM Integration**: OpenAI GPT integration with extensible architecture for additional providers
+*   **Markdown Export**: Generate Homebrewery-compatible content
+*   **Comprehensive Testing**: Full test suite ensuring reliability
+
+For setup and usage instructions, see the README in the `CampaignCreatorSwift/` directory.
 
 ### Root `requirements.txt` and `utils/`
 The `requirements.txt` file and scripts within the `utils/` directory in the root of the repository are primarily for standalone utility scripts (e.g., data migration, content processing) or potentially an internal dashboard. These are generally not part of the main API (`campaign_crafter_api`) or UI (`campaign_crafter_ui`) application stacks but may support their development or maintenance.
+
+## `CampaignCreatorSwift` (Modern Swift Application)
+
+The `CampaignCreatorSwift`, located in the `CampaignCreatorSwift/` directory, is a modern, cross-platform Swift application that provides core campaign creation functionality. 
+
+**Status:** This application is **actively maintained** and represents a complete rewrite of the original iOS app using modern Swift practices.
+
+**Key Features:**
+*   **Cross-Platform**: Runs on macOS, Linux, and other Swift-supported platforms
+*   **Modern Architecture**: Built with Swift Package Manager and follows protocol-oriented design
+*   **Document Management**: Create, edit, and manage campaign documents
+*   **LLM Integration**: OpenAI GPT integration with extensible architecture for additional providers
+*   **Markdown Export**: Generate Homebrewery-compatible content
+*   **Comprehensive Testing**: Full test suite ensuring reliability
+
+For setup and usage instructions, see the README in the `CampaignCreatorSwift/` directory.
 
 ## `TextEditorApp` (Legacy iOS Application)
 
