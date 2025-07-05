@@ -49,7 +49,7 @@ async def _upload_file_to_blob_storage(file: UploadFile, user_id: int) -> str:
         if settings.AZURE_STORAGE_CONNECTION_STRING:
             async_blob_service_client = AsyncBlobServiceClient.from_connection_string(
                 settings.AZURE_STORAGE_CONNECTION_STRING,
-                transport=azure_transport # Pass the Azure transport
+                transport=azure_transport
             )
             conn_parts = {part.split('=', 1)[0]: part.split('=', 1)[1] for part in settings.AZURE_STORAGE_CONNECTION_STRING.split(';') if '=' in part}
             account_name_from_conn_str = conn_parts.get('AccountName')
@@ -72,7 +72,7 @@ async def _upload_file_to_blob_storage(file: UploadFile, user_id: int) -> str:
             async_blob_service_client = AsyncBlobServiceClient(
                 account_url_base,
                 credential=async_credential,
-                transport=azure_transport # Pass the Azure transport
+                transport=azure_transport
             )
         else:
             # If we get here, client wasn't created, so transport and session need to be closed

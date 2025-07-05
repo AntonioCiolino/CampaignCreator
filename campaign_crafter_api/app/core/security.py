@@ -42,21 +42,11 @@ def decrypt_key(encrypted_key: str) -> str:
         return decrypted_bytes.decode('utf-8')
     except InvalidToken:
         # Log this event in a real application
-        # print(f"Decryption failed for token: {encrypted_key[:20]}...") # Be careful with logging sensitive data
         return ""
     except Exception: # Catch any other Fernet related exceptions
-        # print(f"An unexpected error occurred during decryption of token: {encrypted_key[:20]}...")
         return ""
 
 # Password Hashing (keeping it here for now, or can be in crud.py as it is)
-# If moving from crud.py, ensure crud.py imports them from here.
-# For this task, we assume they are in crud.py and will be used from there if needed by auth_service.
-# pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-# def verify_password(plain_password: str, hashed_password: str) -> bool:
-#     return pwd_context.verify(plain_password, hashed_password)
-# def get_password_hash(password: str) -> str:
-#     return pwd_context.hash(password)
-
 # JWT Token Functions
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()

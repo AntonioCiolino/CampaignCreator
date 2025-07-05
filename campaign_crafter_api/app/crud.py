@@ -549,7 +549,6 @@ async def update_campaign(db: Session, campaign_id: int, campaign_update: models
                 setattr(db_campaign, key, value)
             # else:
                 # Optionally log or handle fields in payload that are not in ORM model
-                # print(f"Warning: Field '{key}' not in Campaign ORM model.")
 
         if mood_board_updated:
             new_image_urls = set(db_campaign.mood_board_image_urls if db_campaign.mood_board_image_urls else [])
