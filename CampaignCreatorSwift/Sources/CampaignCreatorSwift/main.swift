@@ -4,7 +4,7 @@ import CampaignCreatorLib
 @main
 struct CampaignCreatorApp {
     static func main() {
-        print("🎲 Welcome to Campaign Creator Swift!")
+        print("🎲 Welcome to Campaign Crafter Swift!")
         print("======================================")
         
         let campaignCreator = CampaignCreator()
@@ -15,7 +15,7 @@ struct CampaignCreatorApp {
     }
     
     static func demonstrateFeatures(_ creator: CampaignCreator) {
-        print("🚀 Demonstrating Campaign Creator features...\n")
+        print("🚀 Demonstrating Campaign Crafter features...\n")
         
         // 1. Create a sample document
         let document = creator.createDocument(
@@ -88,6 +88,6 @@ struct CampaignCreatorApp {
         // 4. Show final status
         creator.showStatus()
         
-        print("✨ Demo complete! Campaign Creator Swift is operational.")
+        print("✨ Demo complete! Campaign Crafter Swift is operational.")
     }
 }

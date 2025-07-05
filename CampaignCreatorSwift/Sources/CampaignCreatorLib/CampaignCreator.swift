@@ -72,7 +72,7 @@ public class CampaignCreator {
     // MARK: - Utility Functions
     
     public func showStatus() {
-        print("\n=== Campaign Creator Status ===")
+        print("\n=== Campaign Crafter Status ===")
         print("Available Services: \(SecretsManager.shared.availableServices.joined(separator: ", "))")
         print("Documents loaded: \(documents.count)")
         if !documents.isEmpty {

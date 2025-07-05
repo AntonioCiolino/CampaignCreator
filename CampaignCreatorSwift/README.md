@@ -1,6 +1,6 @@
 # CampaignCreator Swift
 
-A modern, functional Swift implementation of the Campaign Creator application, built using Swift Package Manager.
+A modern, functional Swift implementation of the Campaign Crafter application, built using Swift Package Manager.
 
 ## Overview
 
@@ -63,16 +63,16 @@ The application runs a demonstration of all core features:
 ### Example Output
 
 ```
-🎲 Welcome to Campaign Creator Swift!
+🎲 Welcome to Campaign Crafter Swift!
 ======================================
 ⚠️  OpenAI service not available: API key is missing. Please provide it via environment variable.
 
-=== Campaign Creator Status ===
+=== Campaign Crafter Status ===
 Available Services: 
 Documents loaded: 0
 ================================
 
-🚀 Demonstrating Campaign Creator features...
+🚀 Demonstrating Campaign Crafter features...
 
 📄 Created document: 'My First Campaign'
    Word count: 84
@@ -85,7 +85,7 @@ Documents loaded: 0
 A mystical realm where magic and technology coexist in delicate balance.
 ...
 
-✨ Demo complete! Campaign Creator Swift is operational.
+✨ Demo complete! Campaign Crafter Swift is operational.
 ```
 
 ## Architecture
