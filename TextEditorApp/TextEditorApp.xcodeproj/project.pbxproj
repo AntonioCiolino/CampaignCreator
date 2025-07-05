@@ -84,7 +84,7 @@
 				LastUpgradeCheck = 1250;
 				ORGANIZATIONNAME = "YourOrganizationName"; // Replace with your actual organization name
 				TargetAttributes = {
-					27C1E7D22C0F3838005C95D0 /* CampaignCreator */ = {
+					27C1E7D22C0F3838005C95D0 /* TextEditorApp */ = {
 						CreatedOnToolsVersion = 12.5;
 					};
 				};
