@@ -2,7 +2,7 @@ from typing import Optional
 import openai # Direct import of the openai library
 import requests
 # import os # No longer needed for Azure saving
-import base64 # Added base64 import
+import base64
 import uuid
 # import shutil # No longer needed for Azure saving
 from pathlib import Path
@@ -12,16 +12,12 @@ from io import BytesIO # Restored for Azure
 from azure.storage.blob import BlobServiceClient # Restored for Azure
 from azure.identity import DefaultAzureCredential # Restored for Azure
 
-# Added imports
-from app.models import User as UserModel, BlobFileMetadata # Added BlobFileMetadata
-from ..core.security import decrypt_key # Changed to relative import
-# settings is already imported below
-# openai is already imported above
-# HTTPException is already imported above
+from app.models import User as UserModel, BlobFileMetadata
+from ..core.security import decrypt_key
 
 from app.core.config import settings
 from app.orm_models import GeneratedImage
-from app import crud # Added crud import
+from app import crud
 from app.services.gemini_service import GeminiLLMService
 from app.services.llm_service import LLMGenerationError, LLMServiceUnavailableError
 
@@ -289,7 +285,7 @@ class ImageGenerationService:
         self,
         prompt: str,
         db: Session,
-        current_user: UserModel, # Added current_user
+        current_user: UserModel,
         size: Optional[str] = None,
         quality: Optional[str] = None,
         model: Optional[str] = None,
@@ -395,7 +391,7 @@ class ImageGenerationService:
         self,
         prompt: str,
         db: Session,
-        current_user: UserModel, # Added current_user
+        current_user: UserModel,
         size: Optional[str] = None,
         steps: Optional[int] = None,
         cfg_scale: Optional[float] = None,

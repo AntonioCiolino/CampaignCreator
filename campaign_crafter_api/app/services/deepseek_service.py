@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError, LLMGenerationError
 from app.services.feature_prompt_service import FeaturePromptService
-from app import models, orm_models # Added models import, Added orm_models import
+from app import models, orm_models
 from app.models import User as UserModel
 # Removed import from llm_factory: from app.services.llm_factory import LLMServiceUnavailableError
 # import os # For the __main__ block, commented out
@@ -20,20 +20,18 @@ class DeepSeekLLMService(AbstractLLMService):
         self.configured_successfully = False
         if self.effective_api_key and self.effective_api_key not in ["YOUR_DEEPSEEK_API_KEY", "YOUR_API_KEY_HERE"]:
             self.configured_successfully = True
-            # print(f"{self.PROVIDER_NAME.title()}LLMService configured with an effective API key.")
         else:
             print(f"Warning: {self.PROVIDER_NAME.title()} API key (user or system) not configured or is a placeholder.")
 
         self.feature_prompt_service = FeaturePromptService()
         # Placeholder for actual client initialization. DeepSeek often uses an OpenAI-compatible client.
-        # print(f"{self.PROVIDER_NAME.title()}LLMService initialized (placeholder).") # Optional: can be removed if too verbose
 
-    async def is_available(self, current_user: UserModel, db: Session) -> bool: # Changed params
+    async def is_available(self, current_user: UserModel, db: Session) -> bool:
         # Checks if essential configuration is present.
         return bool(self.api_key and self.api_key not in ["YOUR_DEEPSEEK_API_KEY", "YOUR_API_KEY_HERE"])
 
-    async def generate_text(self, prompt: str, current_user: UserModel, db: Session, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str: # Changed _current_user
-        if not await self.is_available(current_user=current_user, db=db): # Pass corrected args
+    async def generate_text(self, prompt: str, current_user: UserModel, db: Session, model: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 500) -> str:
+        if not await self.is_available(current_user=current_user, db=db):
             raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available. Please configure API key.")
         
         error_message = (
@@ -43,18 +41,18 @@ class DeepSeekLLMService(AbstractLLMService):
         print(f"WARNING: {error_message}")
         raise NotImplementedError(error_message)
 
-    async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str: # Added current_user
-        if not await self.is_available(current_user=current_user, db=db): # Pass corrected args
+    async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
+        if not await self.is_available(current_user=current_user, db=db):
             raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available.")
         raise NotImplementedError(f"{self.PROVIDER_NAME.title()}LLMService.generate_campaign_concept not implemented.")
 
-    async def generate_titles(self, campaign_concept: str, db: Session, current_user: UserModel, count: int = 5, model: Optional[str] = None) -> list[str]: # Added current_user
-        if not await self.is_available(current_user=current_user, db=db): # Pass corrected args
+    async def generate_titles(self, campaign_concept: str, db: Session, current_user: UserModel, count: int = 5, model: Optional[str] = None) -> list[str]:
+        if not await self.is_available(current_user=current_user, db=db):
             raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available.")
         raise NotImplementedError(f"{self.PROVIDER_NAME.title()}LLMService.generate_titles not implemented.")
 
-    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]: # Added current_user
-        if not await self.is_available(current_user=current_user, db=db): # Pass corrected args
+    async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> Dict[str, str]:
+        if not await self.is_available(current_user=current_user, db=db):
             raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available.")
         if not campaign_concept:
             raise ValueError("Campaign concept cannot be empty.")
@@ -72,11 +70,11 @@ class DeepSeekLLMService(AbstractLLMService):
         homebrewery_final_prompt = homebrewery_prompt_template.format(campaign_concept=campaign_concept)
 
         # These calls will fail until generate_text is implemented
-        generated_display_toc = await self.generate_text(prompt=display_final_prompt, current_user=current_user, db=db, model=model, temperature=0.5, max_tokens=700) # Pass corrected args
+        generated_display_toc = await self.generate_text(prompt=display_final_prompt, current_user=current_user, db=db, model=model, temperature=0.5, max_tokens=700)
         if not generated_display_toc:
              raise LLMGenerationError(f"{self.PROVIDER_NAME.title()} API call for Display TOC succeeded but returned no usable content.")
 
-        generated_homebrewery_toc = await self.generate_text(prompt=homebrewery_final_prompt, current_user=current_user, db=db, model=model, temperature=0.5, max_tokens=1000) # Pass corrected args
+        generated_homebrewery_toc = await self.generate_text(prompt=homebrewery_final_prompt, current_user=current_user, db=db, model=model, temperature=0.5, max_tokens=1000)
         if not generated_homebrewery_toc:
              raise LLMGenerationError(f"{self.PROVIDER_NAME.title()} API call for Homebrewery TOC succeeded but returned no usable content.")
 
@@ -87,7 +85,7 @@ class DeepSeekLLMService(AbstractLLMService):
 
     async def generate_section_content(
         self, 
-        db_campaign: orm_models.Campaign, # Changed campaign_concept to db_campaign
+        db_campaign: orm_models.Campaign,
         db: Session,
         current_user: UserModel,
         existing_sections_summary: Optional[str], 
@@ -96,22 +94,16 @@ class DeepSeekLLMService(AbstractLLMService):
         model: Optional[str] = None,
         section_type: Optional[str] = None
     ) -> str:
-        if not await self.is_available(current_user=current_user, db=db): # Pass corrected args
+        if not await self.is_available(current_user=current_user, db=db):
             raise LLMServiceUnavailableError(f"{self.PROVIDER_NAME.title()} service not available.")
-
-        # campaign_concept = db_campaign.concept if db_campaign else "N/A"
-        # characters_info = "N/A"
-        # if db_campaign and db_campaign.characters:
-        #     characters_info = f"{len(db_campaign.characters)} characters associated."
-        # print(f"DeepSeek generate_section_content called with campaign_id: {db_campaign.id if db_campaign else 'N/A'}, characters: {characters_info}")
 
         raise NotImplementedError(
             f"{self.PROVIDER_NAME.title()}LLMService.generate_section_content not implemented. "
             f"Received section_type: {section_type}"
         )
 
-    async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, any]]: # Changed params
-        if not await self.is_available(current_user=current_user, db=db): # Pass corrected args
+    async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, any]]:
+        if not await self.is_available(current_user=current_user, db=db):
             print(f"Warning: {self.PROVIDER_NAME.title()} service not available. Cannot list models.")
             return []
         

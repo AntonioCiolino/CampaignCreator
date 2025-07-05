@@ -259,12 +259,12 @@ async def generate_character_llm_response(
 
         generated_text = await llm_service.generate_character_response(
             character_name=db_character.name,
-            character_notes=db_character.notes_for_llm or "", # Pass empty string if notes are None
+            character_notes=db_character.notes_for_llm or "",
             user_prompt=request_body.prompt,
             chat_history=request_body.chat_history,
-            current_user=current_user, # Pass Pydantic user model
+            current_user=current_user,
             db=db,
-            model=model_specific_id_from_request, # Pass only the model part if prefix was used
+            model=model_specific_id_from_request,
             temperature=request_body.temperature,
             max_tokens=request_body.max_tokens
         )
@@ -350,7 +350,7 @@ async def generate_character_image_endpoint(
                 db=db,
                 current_user=current_user,
                 size=request_body.size,
-                model=request_body.gemini_model_name, # Pass specific gemini model if provided
+                model=request_body.gemini_model_name,
                 user_id=current_user.id
                 # campaign_id=None
             )

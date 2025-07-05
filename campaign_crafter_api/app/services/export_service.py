@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.models import User as UserModel # For current_user type hint
 
 class HomebreweryExportService:
-    FRONT_COVER_TEMPLATE = """{{frontCover}}
+    FRONT_COVER_TEMPLATE = r"""{{frontCover}}
 
 {{logo ![](/assets/naturalCritLogoRed.svg)}}
 
@@ -25,7 +25,7 @@ ___
 ![background image](https://onedrive.live.com/embed?resid=387fb00e5a1e24c8%2152521&authkey=%21APkOXzEAywQMAwA){position:absolute,bottom:0,left:0,width:100%}
 \page"""
 
-    BACK_COVER_TEMPLATE = """\\page
+    BACK_COVER_TEMPLATE = r"""\\page
 {{backCover}}
 
 #
@@ -52,47 +52,38 @@ VTCNP Enterprises
         if block_content is None:
             return ""
         
-        # If block_content is a list, join its elements into a single string
         if isinstance(block_content, list):
-            block_content = "\n".join(map(str, block_content)) # Ensure all elements are strings
+            block_content = "\n".join(map(str, block_content))
 
-        # Remove any leading/trailing whitespace
         processed_content = block_content.strip()
 
         # Replace "Table of Contents:" with a Homebrewery TOC tag
-        # This is specific to how TOC might be stored if it's a simple text block.
         if processed_content.strip().startswith("Table of Contents:"):
             processed_content = processed_content.replace("Table of Contents:", "{{toc,wide,frame,box}}", 1)
-            # Further process list items if this is a TOC block
-            lines = processed_content.split('\n') # Use escaped newline
+            lines = processed_content.split('\n')
             processed_lines = []
             for line in lines:
                 if line.strip().startswith(("* ", "- ", "+ ")):
-                    # Remove existing list marker, add Homebrewery list item format
                     cleaned_line = re.sub(r"^\s*[\*\-\+]\s*", "", line).strip()
                     processed_lines.append(f"- {cleaned_line}") 
                 else:
                     processed_lines.append(line)
-            processed_content = "\n".join(processed_lines) # Use escaped newline
-            return processed_content # Return early as TOC block is special
+            processed_content = "\n".join(processed_lines)
+            return processed_content
 
         # Replace "Chapter X:" or "Section X:" at the start of a line with Markdown H2 headings
-        # This is primarily for content that might be structured this way within the TOC block.
         processed_content = re.sub(r"^(Chapter\s*\d+|Section\s*\d+):", r"## \1", processed_content, flags=re.IGNORECASE | re.MULTILINE)
         
         # Replace "Background:" or similar headers at the start of a line with Markdown H2 headings
-        # Also primarily for content within the TOC block if it includes such headers.
-        headers_to_format = ["Background", "Introduction", "Overview", "Synopsis", "Adventure Hook"] # Add more as needed
+        headers_to_format = ["Background", "Introduction", "Overview", "Synopsis", "Adventure Hook"]
         for header in headers_to_format:
             processed_content = re.sub(rf"^{header}:", rf"## {header}", processed_content, flags=re.IGNORECASE | re.MULTILINE)
 
-        # Note: This process_block is mostly for basic formatting of a dedicated TOC block.
-        # It's not intended for deep processing of general Markdown or complex section content.
         return processed_content
 
     def _calculate_modifier(self, stat_value: Optional[int]) -> str:
         if stat_value is None:
-            stat_value = 10 # Default to 10 if None for modifier calculation
+            stat_value = 10
         modifier = math.floor((stat_value - 10) / 2)
         return f"+{modifier}" if modifier >= 0 else str(modifier)
 
@@ -101,7 +92,7 @@ VTCNP Enterprises
         Formats a single character's details into a Homebrewery Complex NPC stat block,
         similar to the "Elara Brightshield" example.
         """
-        output = [] # Using a list to join lines at the end
+        output = []
 
         character_name_or_default = character.name if character.name and character.name.strip() else "Unnamed Character"
         output.append(f"### {character_name_or_default}\n")
@@ -110,13 +101,13 @@ VTCNP Enterprises
         if character.image_urls and len(character.image_urls) > 0:
             image_url = character.image_urls[0]
             alt_text = f"{character.name} image" if character.name and character.name.strip() else "Character image"
-            output.append(f"![]({image_url}){{width:325px}}\n") # Elara example uses 325px
+            output.append(f"![]({image_url}){{width:325px}}\n")
 
         # 2. {{note}} Block
         note_content = "GM Notes: Add relevant plot hooks or secret information here."
         if character.notes_for_llm and character.notes_for_llm.strip():
             note_content = character.notes_for_llm.strip()
-        output.append(f"{{{{note\n{note_content}\n}}}}\n:") # Added colon as per Elara example after note
+        output.append(f"{{{{note\n{note_content}\n}}}}\n:")
 
         # 3. Descriptive Text (Appearance, Personality/Background)
         if character.appearance_description and character.appearance_description.strip():
@@ -135,12 +126,12 @@ VTCNP Enterprises
 
         name = character.name if character.name and character.name.strip() else "Unnamed Character"
         output.append(f"## {name}")
-        output.append(f"*Medium humanoid, alignment placeholder*") # Placeholder
-        output.append(f"**Class**: Class placeholder (e.g., Warrior, Mage)") # Placeholder
+        output.append(f"*Medium humanoid, alignment placeholder*")
+        output.append(f"**Class**: Class placeholder (e.g., Warrior, Mage)")
         output.append("___")
-        output.append(f"**Armor Class** :: AC placeholder (e.g., 16 (breastplate))") # Placeholder
-        output.append(f"**Hit Points** :: HP placeholder (e.g., 58 (9d8 + 18))") # Placeholder
-        output.append(f"**Speed** :: 30 ft.") # Placeholder
+        output.append(f"**Armor Class** :: AC placeholder (e.g., 16 (breastplate))")
+        output.append(f"**Hit Points** :: HP placeholder (e.g., 58 (9d8 + 18))")
+        output.append(f"**Speed** :: 30 ft.")
         output.append("___")
 
         # Stats Table
@@ -164,19 +155,19 @@ VTCNP Enterprises
         )
         output.append("___")
 
-        output.append(f"**Saving Throws** :: Saving Throws placeholder (e.g., Wis +5, Cha +6)") # Placeholder
-        output.append(f"**Skills** :: Skills placeholder (e.g., Perception +5, Persuasion +6)") # Placeholder
-        output.append(f"**Senses** :: passive Perception placeholder (e.g., 15)") # Placeholder
-        output.append(f"**Languages** :: Languages placeholder (e.g., Common, Celestial)") # Placeholder
-        output.append(f"**Challenge** :: Challenge placeholder (e.g., 1 (200 XP))") # Placeholder
+        output.append(f"**Saving Throws** :: Saving Throws placeholder (e.g., Wis +5, Cha +6)")
+        output.append(f"**Skills** :: Skills placeholder (e.g., Perception +5, Persuasion +6)")
+        output.append(f"**Senses** :: passive Perception placeholder (e.g., 15)")
+        output.append(f"**Languages** :: Languages placeholder (e.g., Common, Celestial)")
+        output.append(f"**Challenge** :: Challenge placeholder (e.g., 1 (200 XP))")
         output.append("___") # Elara example has this before spellcasting
 
         # Spellcasting (Placeholder)
         output.append("### Spellcasting") # Elara example has this unbolded, but typically these are bolded. Let's make it H3 bold.
         output.append("Spellcasting placeholder. This character might have spellcasting abilities. Define spell save DC, attack bonus, and prepared spells here if applicable.")
         output.append(":") # Elara example uses colon for list continuation
-        output.append("**1st Level (X slots):** Spell 1, Spell 2") # Placeholder
-        output.append("**2nd Level (Y slots):** Spell 3, Spell 4") # Placeholder
+        output.append("**1st Level (X slots):** Spell 1, Spell 2")
+        output.append("**2nd Level (Y slots):** Spell 3, Spell 4")
         output.append("\n") # Spacing after spell list
 
         # Actions (Placeholder)
@@ -223,9 +214,9 @@ VTCNP Enterprises
         output.append(f"## {character_name_or_default}")
         output.append(f"*Medium humanoid, alignment placeholder*")
         output.append("___")
-        output.append(f"**Armor Class** :: 10 (Natural Armor)") # Placeholder
-        output.append(f"**Hit Points** :: 10 (2d8+2)") # Placeholder
-        output.append(f"**Speed** :: 30 ft.") # Placeholder
+        output.append(f"**Armor Class** :: 10 (Natural Armor)")
+        output.append(f"**Hit Points** :: 10 (2d8+2)")
+        output.append(f"**Speed** :: 30 ft.")
         output.append("___")
 
         stats_data = character.stats if character.stats else {}
@@ -267,7 +258,7 @@ VTCNP Enterprises
 
     async def format_campaign_for_homebrewery(self, campaign: orm_models.Campaign, sections: List[orm_models.CampaignSection], db: Session, current_user: UserModel) -> str: # Added db, current_user and async
         # TODO: Make page_image_url and stain_images configurable in the future, perhaps via campaign settings or user profile.
-        page_image_url = "https://www.gmbinder.com/images/b7OT9E4.png" # Example URL for title page background
+        page_image_url = "https://www.gmbinder.com/images/b7OT9E4.png"
         stain_images = [
             "https://www.gmbinder.com/images/86T8EZC.png", 
             "https://www.gmbinder.com/images/cblLsoB.png",
@@ -350,7 +341,6 @@ VTCNP Enterprises
                 # This might be problematic if campaign.homebrewery_toc is not Optional[Dict[str,str]] in CampaignUpdate model.
                 # Let's assume a specific CRUD function or that CampaignUpdate model is correctly structured for this.
 
-                # Placeholder for actual CRUD call, as it needs specific design
                 # For this subtask, we are focusing on the service logic.
                 # A direct call to crud.update_campaign might be too broad if we only want to update the TOC.
                 # We will assume a more targeted (hypothetical) CRUD function for now:
@@ -395,7 +385,7 @@ VTCNP Enterprises
             for character in campaign.characters:
                 if character.export_format_preference == 'simple':
                     homebrewery_content.append(self._format_character_simple_block(character))
-                else: # Default to complex if preference is 'complex', None, or any other value
+                else:
                     homebrewery_content.append(self._format_character_complex_block(character))
 
                 # Add a page break after each character's full block

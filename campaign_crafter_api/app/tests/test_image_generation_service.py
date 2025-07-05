@@ -205,7 +205,7 @@ async def test_generate_image_stable_diffusion_missing_base_url(image_service, m
         assert exc_info.value.status_code == 503
         assert "Stable Diffusion API base URL or engine configuration is missing/invalid" in exc_info.value.detail
     finally:
-        settings.STABLE_DIFFUSION_API_BASE_URL = original_sd_base_url # Restore original setting
+        settings.STABLE_DIFFUSION_API_BASE_URL = original_sd_base_url
 
 # TODO: Add tests for error handling in all three methods
 # e.g., API connection errors, API returning error status, _save_image failure scenarios.

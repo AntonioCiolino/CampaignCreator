@@ -162,7 +162,7 @@ def read_roll_table(roll_table_id: int, db: Annotated[Session, Depends(get_db)])
 @router_roll_tables.get("/", response_model=List[models.RollTable])
 def read_roll_tables(
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[models.User, Depends(get_current_active_user)], # Added
+    current_user: Annotated[models.User, Depends(get_current_active_user)],
     skip: int = 0,
     limit: int = 100
     # user_id: Optional[int] = None, # Removed
