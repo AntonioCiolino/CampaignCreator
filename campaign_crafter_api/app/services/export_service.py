@@ -1,5 +1,5 @@
 import re
-import math # For floor function
+import math
 from typing import List, Optional, Dict
 from app import orm_models, crud
 from app.services.llm_factory import get_llm_service
@@ -376,7 +376,7 @@ VTCNP Enterprises
             homebrewery_content.append("\\page\n") 
 
         # Character Appendix Section (Dramatis Personae)
-        if campaign.characters: # Check if there are any characters linked to the campaign
+        if campaign.characters:
             homebrewery_content.append("\\page\n") # Start Dramatis Personae on a new page
             homebrewery_content.append("## Dramatis Personae\n")
             # Add a general intro to Dramatis Personae before the first character, if desired

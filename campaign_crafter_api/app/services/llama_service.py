@@ -25,13 +25,11 @@ class LlamaLLMService(AbstractLLMService):
         # For now, primarily relying on key for placeholder configuration status
         if key_is_valid: # And url_is_valid if that's a strict requirement
             self.configured_successfully = True
-            # print(f"{self.PROVIDER_NAME.title()}LLMService configured with an effective API key.")
         else:
             print(f"Warning: {self.PROVIDER_NAME.title()} API key (user or system) not configured or is a placeholder.") # Add URL status if relevant
 
         self.feature_prompt_service = FeaturePromptService()
         # Placeholder for actual client initialization if needed
-        # print(f"{self.PROVIDER_NAME.title()}LLMService initialized (placeholder).") # Optional: can be removed if too verbose
 
     async def is_available(self, current_user: UserModel, db: Session) -> bool:
         key_present = bool(self.api_key and self.api_key not in ["YOUR_LLAMA_API_KEY", "YOUR_API_KEY_HERE"])
@@ -111,7 +109,6 @@ class LlamaLLMService(AbstractLLMService):
         # characters_info = "N/A"
         # if db_campaign and db_campaign.characters:
         #     characters_info = f"{len(db_campaign.characters)} characters associated."
-        # print(f"Llama generate_section_content called with campaign_id: {db_campaign.id if db_campaign else 'N/A'}, characters: {characters_info}")
 
         raise NotImplementedError(
             f"{self.PROVIDER_NAME.title()}LLMService.generate_section_content not implemented. "
@@ -253,7 +250,6 @@ class LlamaLLMService(AbstractLLMService):
 #     settings.LLAMA_API_KEY = settings.LLAMA_API_KEY or os.getenv("LLAMA_API_KEY")
 #     settings.LLAMA_API_URL = settings.LLAMA_API_URL or os.getenv("LLAMA_API_URL")
 
-#     print(f"--- Testing {LlamaLLMService.PROVIDER_NAME.title()}LLMService Placeholder ---")
 
 #     # To test async methods, you'd need asyncio.run()
 #     # This block would need to be refactored to use an async event loop.
@@ -301,4 +297,3 @@ class LlamaLLMService(AbstractLLMService):
 #     #    print("Skipping LlamaLLMService async tests in __main__ block. Set RUN_LLAMA_TESTS=true to run.")
 
 
-#     print(f"--- End Test for {LlamaLLMService.PROVIDER_NAME.title()}LLMService ---")

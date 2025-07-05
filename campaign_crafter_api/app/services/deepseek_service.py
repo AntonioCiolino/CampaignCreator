@@ -158,7 +158,6 @@ class DeepSeekLLMService(AbstractLLMService):
 
         final_prompt = prompt_template_str.format(sections_summary=sections_summary)
 
-        # This will raise NotImplementedError because self.generate_text is not implemented
         generated_toc = await self.generate_text(
             prompt=final_prompt,
             current_user=current_user,
@@ -238,7 +237,6 @@ class DeepSeekLLMService(AbstractLLMService):
     
 #     settings.DEEPSEEK_API_KEY = settings.DEEPSEEK_API_KEY or os.getenv("DEEPSEEK_API_KEY")
 
-#     print(f"--- Testing {DeepSeekLLMService.PROVIDER_NAME.title()}LLMService Placeholder ---")
     
 #     # This block would need to be refactored to use asyncio.run() for async methods
 #     # Example:
@@ -282,4 +280,3 @@ class DeepSeekLLMService(AbstractLLMService):
 #     # else:
 #     #    print("Skipping DeepSeekLLMService async tests in __main__ block. Set RUN_DEEPSEEK_TESTS=true to run.")
 
-#     print(f"--- End Test for {DeepSeekLLMService.PROVIDER_NAME.title()}LLMService ---")

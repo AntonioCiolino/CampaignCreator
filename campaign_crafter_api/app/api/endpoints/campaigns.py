@@ -1072,12 +1072,6 @@ async def regenerate_campaign_section_endpoint(
     for key, value in final_context_for_template.items():
         final_prompt_for_llm = final_prompt_for_llm.replace(f"{{{key}}}", str(value))
 
-    # Check for any unreplaced placeholders (optional, for debugging)
-    # unreplaced_placeholders = re.findall(r"\{[a-zA-Z0-9_]+\}", final_prompt_for_llm)
-    # if unreplaced_placeholders:
-    #     print(f"Warning: Unreplaced placeholders in final prompt: {unreplaced_placeholders}")
-
-
     # Initialize LLM Service (remains similar)
     llm_model_to_use = section_input.model_id_with_prefix or db_campaign.selected_llm_id
     if not llm_model_to_use:

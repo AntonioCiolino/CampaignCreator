@@ -98,11 +98,9 @@ class RandomTableService:
 #     db = SessionLocal()
 #     service = RandomTableService()
 # 
-#     print("Available tables:")
 #     try:
 #         table_names = service.get_available_table_names(db)
 #         for name in table_names:
-#             print(f"- {name}")
 # 
 #         # Example: Test with a known table (ensure 'Magic Items' table exists from migration)
 #         # test_table_name = "Magic Items" # Or any table loaded by your migration
@@ -115,15 +113,11 @@ class RandomTableService:
 #         #     print(f"\nTest table '{test_table_name}' not found in DB, skipping item roll test.")
 # 
 #     except Exception as e:
-#         print(f"Error during testing: {e}")
 # 
 #     # Test with a non-existent table
 #     try:
-#         print("\nTrying to get item from 'NonExistent Table':")
 #         service.get_random_item_from_table("NonExistent Table", db)
 #     except TableNotFoundError as e:
-#         print(e)
 #     except Exception as e:
-#         print(f"An unexpected error occurred: {e}")
 #     finally:
 #         db.close()

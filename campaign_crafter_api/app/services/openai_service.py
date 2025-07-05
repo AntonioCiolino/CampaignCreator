@@ -140,8 +140,6 @@ class OpenAILLMService(AbstractLLMService):
         system_message_content = "You are a helpful assistant." # Default system message
 
         if db_campaign:
-            # We have campaign context, so we should try to format the prompt (template)
-            # This logic is similar to generate_section_content's formatting part
             campaign_concept_str = db_campaign.concept if db_campaign.concept else "Not specified."
 
             character_info_parts = []
@@ -265,7 +263,6 @@ class OpenAILLMService(AbstractLLMService):
                     if title: # Ensure title is not empty
                          parsed_toc_items.append({"title": title, "type": "unknown"})
                 # else: if no regex matches, the line is ignored or could be logged.
-                #     print(f"Warning: Line did not match TOC item format: '{line}'")
         return parsed_toc_items
 
     async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> List[Dict[str, str]]:
@@ -524,7 +521,6 @@ class OpenAILLMService(AbstractLLMService):
         pass
         # if self.async_client:
         #     await self.async_client.close()
-        #     print("OpenAI AsyncClient closed.")
 
     async def generate_homebrewery_toc_from_sections(self, sections_summary: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
         if not await self.is_available(current_user, db): # Added is_available check

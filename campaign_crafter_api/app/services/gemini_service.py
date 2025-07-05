@@ -91,7 +91,6 @@ class GeminiLLMService(AbstractLLMService):
             print(f"Gemini API error (model: {model_instance.model_name}): {type(e).__name__} - {e}")
             raise LLMServiceUnavailableError(f"Failed to generate text with Gemini model {model_instance.model_name} due to API error: {str(e)}") from e
             # else:
-            #     print(f"Unexpected error (model: {model_instance.model_name}): {type(e).__name__} - {e}")
             #     raise Exception(f"An unexpected error occurred: {str(e)}") from e
     async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
         if not await self.is_available(current_user=current_user, db=db): # Pass args
@@ -432,7 +431,6 @@ class GeminiLLMService(AbstractLLMService):
                 if not response.candidates:
                      error_message += " No candidates were generated."
                 # You might want to log the full response here for debugging if it's small enough
-                # print(f"Unexpected response structure from Gemini image generation: {response}")
                 raise LLMGenerationError(error_message)
 
         except LLMGenerationError: # Re-raise if it's already our specific error
@@ -637,7 +635,6 @@ if __name__ == '__main__':
         # Optionally, run a quick test with the system key service instance
         # For example, list models:
         # models_list_system = await gemini_service_system.list_available_models(current_user=mock_user, db=mock_db_session)
-        # print(f"Models available with system key: {[m['name'] for m in models_list_system[:2]]}") # Print first 2 model names
 
         # Now, to test with a constructor-injected key (if different or for specific test)
         # For this example, we'll just re-use the system_gemini_key as if it were user-provided
