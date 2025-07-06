@@ -353,7 +353,7 @@ public final class APIService: Sendable {
 
     // MARK: - Character Methods
     public func fetchCharacters() async throws -> [Character] {
-        try await performRequest(endpoint: "/characters/")
+        try await performRequest(endpoint: "/characters") // Removed trailing slash
     }
 
     public func fetchCharacter(id: Int) async throws -> Character { // Changed id from UUID to Int

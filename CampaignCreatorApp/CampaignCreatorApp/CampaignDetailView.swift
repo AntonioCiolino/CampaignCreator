@@ -42,7 +42,7 @@ struct CampaignDetailView: View {
                         VStack(alignment: .leading) {
                             Text("\(campaign.wordCount) words (from sections)")
                                 .font(.caption).foregroundColor(.secondary)
-                            Text("Modified: \(campaign.modifiedAt, style: .date)")
+                            Text(campaign.modifiedAt != nil ? "Modified: \(campaign.modifiedAt!, style: .date)" : "Modified: N/A")
                                 .font(.caption).foregroundColor(.secondary)
                         }
                         Spacer()
@@ -315,6 +315,10 @@ struct CampaignDetailView: View {
         id: 1, // Correct: Campaign ID is Int
         title: "My Preview Saga",
         concept: "A test concept.",
+        displayTOC: [ // Corrected order: displayTOC before sections
+            TOCEntry(id: 201, title: "Introduction", type: "Introduction"),
+            TOCEntry(id: 202, title: "Chapter 1 Link", type: "Chapter")
+        ],
         sections: [
             CampaignSection(
                 id: 101, // Correct: CampaignSection ID is Int
