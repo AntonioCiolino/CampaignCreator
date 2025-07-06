@@ -33,7 +33,7 @@ public struct CampaignSection: Identifiable, Codable, Sendable {
 
 // This struct will represent the Campaign. We are evolving the old 'Document' into this.
 public struct Campaign: Identifiable, Codable, Sendable {
-    public var id: UUID
+    public var id: Int // Changed from UUID to Int
     public var title: String
     public var initialUserPrompt: String?
     public var concept: String?
@@ -64,7 +64,7 @@ public struct Campaign: Identifiable, Codable, Sendable {
     // Linking characters (IDs for now, actual Character objects can be resolved by CampaignCreator)
     public var linkedCharacterIDs: [UUID]?
 
-    public init(id: UUID = UUID(),
+    public init(id: Int, // Changed from UUID = UUID()
                 title: String = "Untitled Campaign",
                 initialUserPrompt: String? = nil,
                 concept: String? = nil,

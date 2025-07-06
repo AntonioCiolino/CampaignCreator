@@ -333,8 +333,8 @@ public final class APIService: Sendable {
         try await performRequest(endpoint: "/campaigns/")
     }
 
-    public func fetchCampaign(id: UUID) async throws -> Campaign {
-        try await performRequest(endpoint: "/campaigns/\(id.uuidString)/")
+    public func fetchCampaign(id: Int) async throws -> Campaign { // Changed id from UUID to Int
+        try await performRequest(endpoint: "/campaigns/\(id)/") // Changed id.uuidString to id
     }
 
     public func createCampaign(_ campaignData: CampaignCreateDTO) async throws -> Campaign {
@@ -342,13 +342,13 @@ public final class APIService: Sendable {
         return try await performRequest(endpoint: "/campaigns/", method: "POST", body: body)
     }
 
-    public func updateCampaign(_ campaignId: UUID, data: CampaignUpdateDTO) async throws -> Campaign {
+    public func updateCampaign(_ campaignId: Int, data: CampaignUpdateDTO) async throws -> Campaign { // Changed campaignId from UUID to Int
         let body = try jsonEncoder.encode(data)
-        return try await performRequest(endpoint: "/campaigns/\(campaignId.uuidString)/", method: "PATCH", body: body)
+        return try await performRequest(endpoint: "/campaigns/\(campaignId)/", method: "PATCH", body: body) // Changed campaignId.uuidString to campaignId
     }
 
-    public func deleteCampaign(id: UUID) async throws {
-        try await performVoidRequest(endpoint: "/campaigns/\(id.uuidString)/", method: "DELETE")
+    public func deleteCampaign(id: Int) async throws { // Changed id from UUID to Int
+        try await performVoidRequest(endpoint: "/campaigns/\(id)/", method: "DELETE") // Changed id.uuidString to id
     }
 
     // MARK: - Character Methods

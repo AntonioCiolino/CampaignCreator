@@ -113,9 +113,9 @@ public class CampaignCreator: ObservableObjectProtocol {
         isLoadingCampaigns = false
     }
 
-    public func fetchCampaign(id: UUID) async throws -> Campaign {
+    public func fetchCampaign(id: Int) async throws -> Campaign { // Changed id from UUID to Int
         guard isAuthenticated else { throw APIError.notAuthenticated }
-        return try await apiService.fetchCampaign(id: id)
+        return try await apiService.fetchCampaign(id: id) // id is now Int
     }
 
     public func createCampaign(title: String, initialUserPrompt: String? = nil) async throws -> Campaign {
