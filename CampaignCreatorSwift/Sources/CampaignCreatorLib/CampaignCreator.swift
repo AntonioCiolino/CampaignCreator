@@ -1,9 +1,16 @@
 import Foundation
+#if canImport(Combine)
+import Combine
+#endif
 
-public class CampaignCreator {
+public class CampaignCreator: ObservableObjectProtocol {
     public let markdownGenerator: MarkdownGenerator
     private var llmService: LLMService?
+    #if canImport(Combine)
+    @Published private var documents: [Document] = []
+    #else
     private var documents: [Document] = []
+    #endif
     
     public init() {
         self.markdownGenerator = MarkdownGenerator()
@@ -88,3 +95,10 @@ public class CampaignCreator {
         return markdownGenerator.generateHomebreweryMarkdown(from: document.text)
     }
 }
+
+// MARK: - ObservableObject Protocol Support
+#if canImport(Combine)
+public protocol ObservableObjectProtocol: ObservableObject {}
+#else
+public protocol ObservableObjectProtocol: AnyObject {}
+#endif
