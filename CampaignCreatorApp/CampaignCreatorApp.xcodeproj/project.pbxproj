@@ -20,8 +20,6 @@
 		949269ED2E1AC11300376F0A /* CharacterDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949269E52E1AC11300376F0A /* CharacterDetailView.swift */; };
 		949269EE2E1AC11300376F0A /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949269E82E1AC11300376F0A /* LoginView.swift */; };
 		949269EF2E1AC11300376F0A /* CharacterEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949269E62E1AC11300376F0A /* CharacterEditView.swift */; };
-		94926A042E1B3DCE00376F0A /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94926A032E1B3DCE00376F0A /* KeychainHelper.swift */; };
-		94926A062E1B3E2900376F0A /* SectionBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94926A052E1B3E2900376F0A /* SectionBox.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,8 +36,6 @@
 		949269E62E1AC11300376F0A /* CharacterEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterEditView.swift; sourceTree = "<group>"; };
 		949269E72E1AC11300376F0A /* CharacterListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterListView.swift; sourceTree = "<group>"; };
 		949269E82E1AC11300376F0A /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
-		94926A032E1B3DCE00376F0A /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
-		94926A052E1B3E2900376F0A /* SectionBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionBox.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -73,8 +69,6 @@
 		3D92BBE32B8C8A8E00B8E8E8 /* CampaignCreatorApp */ = {
 			isa = PBXGroup;
 			children = (
-				94926A052E1B3E2900376F0A /* SectionBox.swift */,
-				94926A032E1B3DCE00376F0A /* KeychainHelper.swift */,
 				949269E22E1AC11300376F0A /* CampaignDetailView.swift */,
 				949269E32E1AC11300376F0A /* CampaignListView.swift */,
 				949269E42E1AC11300376F0A /* CharacterCreateView.swift */,
@@ -176,12 +170,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				949269E92E1AC11300376F0A /* CharacterCreateView.swift in Sources */,
-				94926A062E1B3E2900376F0A /* SectionBox.swift in Sources */,
 				949269EA2E1AC11300376F0A /* CampaignListView.swift in Sources */,
 				949269EB2E1AC11300376F0A /* CampaignDetailView.swift in Sources */,
 				949269EC2E1AC11300376F0A /* CharacterListView.swift in Sources */,
 				949269ED2E1AC11300376F0A /* CharacterDetailView.swift in Sources */,
-				94926A042E1B3DCE00376F0A /* KeychainHelper.swift in Sources */,
 				949269EE2E1AC11300376F0A /* LoginView.swift in Sources */,
 				949269EF2E1AC11300376F0A /* CharacterEditView.swift in Sources */,
 				3D92BBFA2B8C8D4C00B8E8E8 /* SettingsView.swift in Sources */,

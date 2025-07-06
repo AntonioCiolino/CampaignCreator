@@ -62,7 +62,7 @@ struct MainTabView: View {
 #Preview {
     // For previewing, you might want to simulate both authenticated and non-authenticated states.
     // Example: Non-authenticated
-    // let nonAuthCreator = CampaignCreator()
+    let nonAuthCreator = CampaignCreator()
     // nonAuthCreator.isAuthenticated = false // Default
 
     // Example: Authenticated

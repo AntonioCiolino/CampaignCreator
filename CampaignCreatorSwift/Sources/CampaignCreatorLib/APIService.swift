@@ -267,6 +267,17 @@ public final class APIService: Sendable {
         print("🚀 \(method) \(url)")
         if let body = body, let str = String(data: body, encoding: .utf8) { print("   Body: \(str.prefix(500))") }
 
+        // Print Request Headers for Debugging
+        print("   [REQUEST HEADERS for \(method) \(url.absoluteString)]")
+        if let allHTTPHeaderFields = request.allHTTPHeaderFields {
+            for (header, value) in allHTTPHeaderFields {
+                print("     \(header): \(value)")
+            }
+        } else {
+            print("     No headers found on request.")
+        }
+        print("   --- END HEADERS ---")
+
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse else { throw APIError.requestFailed(URLError(.badServerResponse)) }
@@ -325,6 +336,17 @@ public final class APIService: Sendable {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
+        // Print Request Headers for Debugging
+        print("   [REQUEST HEADERS for \(method) \(url.absoluteString) (void)]")
+        if let allHTTPHeaderFields = request.allHTTPHeaderFields {
+            for (header, value) in allHTTPHeaderFields {
+                print("     \(header): \(value)")
+            }
+        } else {
+            print("     No headers found on request.")
+        }
+        print("   --- END HEADERS ---")
+
         print("🚀 \(method) \(url) (expecting no content)")
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
@@ -362,7 +384,7 @@ public final class APIService: Sendable {
 
     // MARK: - Character Methods
     public func fetchCharacters() async throws -> [Character] {
-        try await performRequest(endpoint: "/characters/") // Removed trailing slash
+        try await performRequest(endpoint: "/characters") // Removed trailing slash
     }
 
     public func fetchCharacter(id: Int) async throws -> Character { // Changed id from UUID to Int
