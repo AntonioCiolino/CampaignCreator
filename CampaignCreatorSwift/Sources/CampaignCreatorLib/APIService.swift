@@ -1,7 +1,7 @@
 import Foundation
 
 // Error enum for API related issues
-enum APIError: Error, LocalizedError {
+public enum APIError: Error, LocalizedError {
     case invalidURL
     case requestFailed(Error)
     case decodingFailed(Error)
@@ -11,7 +11,7 @@ enum APIError: Error, LocalizedError {
     case notAuthenticated
     case custom(String)
 
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
         case .invalidURL:
             return "The API endpoint URL was invalid."
@@ -51,112 +51,189 @@ enum APIError: Error, LocalizedError {
 }
 
 // DTOs for Campaign operations
-struct CampaignCreateDTO: Codable {
-    var title: String
-    var initialUserPrompt: String?
-    // Add other relevant fields from CampaignCreatePayload in TypeScript
+public struct CampaignCreateDTO: Codable {
+    public var title: String
+    public var initialUserPrompt: String?
+
+    public init(title: String, initialUserPrompt: String? = nil) {
+        self.title = title
+        self.initialUserPrompt = initialUserPrompt
+    }
 }
 
-struct CampaignUpdateDTO: Codable {
-    var title: String?
-    var initialUserPrompt: String?
-    var concept: String?
-    var displayTOC: [TOCEntry]?
-    var badgeImageURL: String?
-    var thematicImageURL: String?
-    var thematicImagePrompt: String?
-    var selectedLLMId: String?
-    var temperature: Double?
-    var moodBoardImageURLs: [String]?
-    var themePrimaryColor: String?
-    var themeSecondaryColor: String?
-    var themeBackgroundColor: String?
-    var themeTextColor: String?
-    var themeFontFamily: String?
-    var themeBackgroundImageURL: String?
-    var themeBackgroundImageOpacity: Double?
-    var linkedCharacterIDs: [UUID]?
+public struct CampaignUpdateDTO: Codable {
+    public var title: String?
+    public var initialUserPrompt: String?
+    public var concept: String?
+    public var displayTOC: [TOCEntry]?
+    public var badgeImageURL: String?
+    public var thematicImageURL: String?
+    public var thematicImagePrompt: String?
+    public var selectedLLMId: String?
+    public var temperature: Double?
+    public var moodBoardImageURLs: [String]?
+    public var themePrimaryColor: String?
+    public var themeSecondaryColor: String?
+    public var themeBackgroundColor: String?
+    public var themeTextColor: String?
+    public var themeFontFamily: String?
+    public var themeBackgroundImageURL: String?
+    public var themeBackgroundImageOpacity: Double?
+    public var linkedCharacterIDs: [UUID]?
+
+    public init(title: String? = nil, initialUserPrompt: String? = nil, concept: String? = nil, displayTOC: [TOCEntry]? = nil, badgeImageURL: String? = nil, thematicImageURL: String? = nil, thematicImagePrompt: String? = nil, selectedLLMId: String? = nil, temperature: Double? = nil, moodBoardImageURLs: [String]? = nil, themePrimaryColor: String? = nil, themeSecondaryColor: String? = nil, themeBackgroundColor: String? = nil, themeTextColor: String? = nil, themeFontFamily: String? = nil, themeBackgroundImageURL: String? = nil, themeBackgroundImageOpacity: Double? = nil, linkedCharacterIDs: [UUID]? = nil) {
+        self.title = title
+        self.initialUserPrompt = initialUserPrompt
+        self.concept = concept
+        self.displayTOC = displayTOC
+        self.badgeImageURL = badgeImageURL
+        self.thematicImageURL = thematicImageURL
+        self.thematicImagePrompt = thematicImagePrompt
+        self.selectedLLMId = selectedLLMId
+        self.temperature = temperature
+        self.moodBoardImageURLs = moodBoardImageURLs
+        self.themePrimaryColor = themePrimaryColor
+        self.themeSecondaryColor = themeSecondaryColor
+        self.themeBackgroundColor = themeBackgroundColor
+        self.themeTextColor = themeTextColor
+        self.themeFontFamily = themeFontFamily
+        self.themeBackgroundImageURL = themeBackgroundImageURL
+        self.themeBackgroundImageOpacity = themeBackgroundImageOpacity
+        self.linkedCharacterIDs = linkedCharacterIDs
+    }
 }
 
 // DTOs for Character operations
-struct CharacterCreateDTO: Codable {
-    var name: String
-    var description: String? // Ensure this matches `characterDescription` in the Character model if that's the internal name
-    var appearanceDescription: String?
-    var imageURLs: [String]?
-    var notesForLLM: String?
-    var stats: CharacterStats? // CharacterStats is already Codable
-    var exportFormatPreference: String?
-    // `owner_id` is usually set by the backend based on the authenticated user
+public struct CharacterCreateDTO: Codable {
+    public var name: String
+    public var description: String?
+    public var appearanceDescription: String?
+    public var imageURLs: [String]?
+    public var notesForLLM: String?
+    public var stats: CharacterStats?
+    public var exportFormatPreference: String?
+
+    public init(name: String, description: String? = nil, appearanceDescription: String? = nil, imageURLs: [String]? = nil, notesForLLM: String? = nil, stats: CharacterStats? = nil, exportFormatPreference: String? = nil) {
+        self.name = name
+        self.description = description
+        self.appearanceDescription = appearanceDescription
+        self.imageURLs = imageURLs
+        self.notesForLLM = notesForLLM
+        self.stats = stats
+        self.exportFormatPreference = exportFormatPreference
+    }
 }
 
-struct CharacterUpdateDTO: Codable {
-    var name: String?
-    var description: String?
-    var appearanceDescription: String?
-    var imageURLs: [String]?
-    var notesForLLM: String?
-    var stats: CharacterStats?
-    var exportFormatPreference: String?
+public struct CharacterUpdateDTO: Codable {
+    public var name: String?
+    public var description: String?
+    public var appearanceDescription: String?
+    public var imageURLs: [String]?
+    public var notesForLLM: String?
+    public var stats: CharacterStats?
+    public var exportFormatPreference: String?
+
+    public init(name: String? = nil, description: String? = nil, appearanceDescription: String? = nil, imageURLs: [String]? = nil, notesForLLM: String? = nil, stats: CharacterStats? = nil, exportFormatPreference: String? = nil) {
+        self.name = name
+        self.description = description
+        self.appearanceDescription = appearanceDescription
+        self.imageURLs = imageURLs
+        self.notesForLLM = notesForLLM
+        self.stats = stats
+        self.exportFormatPreference = exportFormatPreference
+    }
+}
+
+// DTOs for Auth operations
+public struct LoginRequestDTO: Codable {
+    public var username: String
+    public var password: String
+
+    public init(username: String, password: String) {
+        self.username = username
+        self.password = password
+    }
+}
+
+public struct LoginResponseDTO: Codable {
+    public var access_token: String
+    public var token_type: String
+
+    public init(access_token: String, token_type: String) {
+        self.access_token = access_token
+        self.token_type = token_type
+    }
 }
 
 
 // Simple protocol for token management
-protocol TokenManaging {
+public protocol TokenManaging {
     func getToken() -> String?
     func setToken(_ token: String?)
     func clearToken()
+    func hasToken() -> Bool
 }
 
-class UserDefaultsTokenManager: TokenManaging {
+public class UserDefaultsTokenManager: TokenManaging {
     private let tokenKey = "AuthToken"
-    func getToken() -> String? { UserDefaults.standard.string(forKey: tokenKey) }
-    func setToken(_ token: String?) {
+    public func getToken() -> String? { UserDefaults.standard.string(forKey: tokenKey) }
+    public func setToken(_ token: String?) {
         if let token = token { UserDefaults.standard.set(token, forKey: tokenKey) }
         else { UserDefaults.standard.removeObject(forKey: tokenKey) }
     }
-    func clearToken() { UserDefaults.standard.removeObject(forKey: tokenKey) }
+    public func clearToken() { UserDefaults.standard.removeObject(forKey: tokenKey) }
+    public func hasToken() -> Bool { getToken() != nil }
+
+    public init() {}
 }
 
 
-class APIService {
+public class APIService {
     private let baseURLString = "http://localhost:8000/api/v1"
     private var tokenManager: TokenManaging
     private let jsonDecoder: JSONDecoder
     private let jsonEncoder: JSONEncoder
 
-    init(tokenManager: TokenManaging = UserDefaultsTokenManager()) {
+    public init(tokenManager: TokenManaging = UserDefaultsTokenManager()) {
         self.tokenManager = tokenManager
         jsonDecoder = JSONDecoder()
         jsonDecoder.dateDecodingStrategy = .iso8601
-        // For Character model, ensure 'description' field in JSON maps to 'characterDescription' if that's the Swift property name.
-        // If they differ, a custom CodingKeys or manual decoding/encoding might be needed for Character,
-        // or ensure the Swift Character model's property name matches the JSON key.
-        // For now, assuming Character.swift uses 'description' for the property that maps to JSON 'description'.
-        // If Character.swift uses 'characterDescription', this might need adjustment in Character's Codable conformance or here.
-        // Let's assume Character struct's 'description' property is what we mean.
 
         jsonEncoder = JSONEncoder()
         jsonEncoder.dateEncodingStrategy = .iso8601
         jsonEncoder.outputFormatting = .prettyPrinted
     }
 
-    func updateAuthToken(_ token: String?) {
+    public func updateAuthToken(_ token: String?) {
         tokenManager.setToken(token)
+    }
+
+    public func hasToken() -> Bool {
+        return tokenManager.hasToken()
     }
 
     private func performRequest<T: Decodable>(
         endpoint: String,
         method: String = "GET",
         body: Data? = nil,
+        headers: [String: String] = [:],
         requiresAuth: Bool = true
     ) async throws -> T {
         guard let url = URL(string: baseURLString + endpoint) else { throw APIError.invalidURL }
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.httpBody = body
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        if request.value(forHTTPHeaderField: "Content-Type") == nil {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+        if request.value(forHTTPHeaderField: "Accept") == nil {
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+        }
+
+        for (key, value) in headers {
+            request.setValue(value, forHTTPHeaderField: key)
+        }
 
         if requiresAuth {
             guard let token = tokenManager.getToken() else { throw APIError.notAuthenticated }
@@ -235,52 +312,65 @@ class APIService {
     }
 
     // MARK: - Campaign Methods
-    func fetchCampaigns() async throws -> [Campaign] {
+    public func fetchCampaigns() async throws -> [Campaign] {
         try await performRequest(endpoint: "/campaigns/")
     }
 
-    func fetchCampaign(id: UUID) async throws -> Campaign {
+    public func fetchCampaign(id: UUID) async throws -> Campaign {
         try await performRequest(endpoint: "/campaigns/\(id.uuidString)/")
     }
 
-    func createCampaign(_ campaignData: CampaignCreateDTO) async throws -> Campaign {
+    public func createCampaign(_ campaignData: CampaignCreateDTO) async throws -> Campaign {
         let body = try jsonEncoder.encode(campaignData)
         return try await performRequest(endpoint: "/campaigns/", method: "POST", body: body)
     }
 
-    func updateCampaign(_ campaignId: UUID, data: CampaignUpdateDTO) async throws -> Campaign {
+    public func updateCampaign(_ campaignId: UUID, data: CampaignUpdateDTO) async throws -> Campaign {
         let body = try jsonEncoder.encode(data)
         return try await performRequest(endpoint: "/campaigns/\(campaignId.uuidString)/", method: "PATCH", body: body)
     }
 
-    func deleteCampaign(id: UUID) async throws {
+    public func deleteCampaign(id: UUID) async throws {
         try await performVoidRequest(endpoint: "/campaigns/\(id.uuidString)/", method: "DELETE")
     }
 
     // MARK: - Character Methods
-    func fetchCharacters() async throws -> [Character] {
+    public func fetchCharacters() async throws -> [Character] {
         try await performRequest(endpoint: "/characters/")
     }
 
-    func fetchCharacter(id: UUID) async throws -> Character {
+    public func fetchCharacter(id: UUID) async throws -> Character {
         try await performRequest(endpoint: "/characters/\(id.uuidString)/")
     }
 
-    func createCharacter(_ characterData: CharacterCreateDTO) async throws -> Character {
+    public func createCharacter(_ characterData: CharacterCreateDTO) async throws -> Character {
         let body = try jsonEncoder.encode(characterData)
         return try await performRequest(endpoint: "/characters/", method: "POST", body: body)
     }
 
-    func updateCharacter(_ characterId: UUID, data: CharacterUpdateDTO) async throws -> Character {
+    public func updateCharacter(_ characterId: UUID, data: CharacterUpdateDTO) async throws -> Character {
         let body = try jsonEncoder.encode(data)
         return try await performRequest(endpoint: "/characters/\(characterId.uuidString)/", method: "PATCH", body: body)
     }
 
-    func deleteCharacter(id: UUID) async throws {
+    public func deleteCharacter(id: UUID) async throws {
         try await performVoidRequest(endpoint: "/characters/\(id.uuidString)/", method: "DELETE")
     }
 
-    // MARK: - Auth Methods (Placeholders)
-    // func login(credentials: LoginCredentials) async throws -> AuthResponse
-    // func logout() async throws
+    // MARK: - Auth Methods
+    public func login(credentials: LoginRequestDTO) async throws -> LoginResponseDTO {
+        var components = URLComponents()
+        components.queryItems = [
+            URLQueryItem(name: "username", value: credentials.username),
+            URLQueryItem(name: "password", value: credentials.password)
+        ]
+        let bodyData = components.query?.data(using: .utf8)
+        let headers = ["Content-Type": "application/x-www-form-urlencoded"]
+        return try await performRequest(endpoint: "/auth/token", method: "POST", body: bodyData, headers: headers, requiresAuth: false)
+    }
+
+    // MARK: - User Methods
+    public func getMe() async throws -> User {
+        return try await performRequest(endpoint: "/users/me", requiresAuth: true)
+    }
 }

@@ -12,7 +12,7 @@ let package = Package(
         .watchOS(.v6)
     ],
     products: [
-        .executable(name: "CampaignCreatorSwift", targets: ["CampaignCreatorSwift"]),
+        .executable(name: "CampaignCreatorSwiftCLI", targets: ["CampaignCreatorSwiftCLI"]),
         .library(name: "CampaignCreatorLib", targets: ["CampaignCreatorLib"])
     ],
     dependencies: [
@@ -20,37 +20,28 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "CampaignCreatorSwift",
+            name: "CampaignCreatorSwiftCLI",
             dependencies: ["CampaignCreatorLib"]
-            // No specific path needed here, defaults to "Sources/CampaignCreatorSwift" or "Sources" then "CampaignCreatorSwift"
         ),
         .target(
             name: "CampaignCreatorLib",
             dependencies: [],
-            // path: "Sources/CampaignCreatorLib", // Path is relative to the package root
-            // By default, SPM looks for sources in Sources/<TargetName>.
-            // If files are directly in Sources/CampaignCreatorLib and Sources/CampaignCreatorLib/Models,
-            // it should find them.
-            // Let's explicitly list them to be sure, especially since Document.swift was removed.
             sources: [
                 "CampaignCreator.swift",
+                "APIService.swift", // Ensure APIService is here
                 "LLMService.swift",
                 "MarkdownGenerator.swift",
                 "OpenAIClient.swift",
                 "OpenAIDataStructures.swift",
                 "SecretsManager.swift",
                 "Models/CampaignModel.swift",
-                "Models/CharacterModel.swift"
+                "Models/CharacterModel.swift",
+                "Models/UserModel.swift" // Added UserModel.swift
             ]
-            // Ensure the path to these sources is relative to "Sources/CampaignCreatorLib/"
-            // If `sources` are specified, the `path` parameter defines where these `sources` strings are relative to.
-            // If `path` is "Sources/CampaignCreatorLib", then the paths in `sources` are correct.
-            // If `path` is omitted, it defaults to "Sources/<target_name>", which is "Sources/CampaignCreatorLib".
         ),
         .testTarget(
             name: "CampaignCreatorLibTests",
             dependencies: ["CampaignCreatorLib"]
-            // path: "Tests/CampaignCreatorLibTests" // Default path
         ),
     ]
 )
