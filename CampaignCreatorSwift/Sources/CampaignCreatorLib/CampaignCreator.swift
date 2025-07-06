@@ -18,9 +18,6 @@ public class CampaignCreator: ObservableObjectProtocol {
     @Published public var isLoadingCharacters: Bool = false
     @Published public var characterError: APIError? = nil
     @Published public var initialCharacterFetchAttempted: Bool = false
-
-    @Published public var isLoadingCampaigns: Bool = false
-    @Published public var campaignError: APIError? = nil
     @Published public var initialCampaignFetchAttempted: Bool = false
 
     // Auth State
