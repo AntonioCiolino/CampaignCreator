@@ -300,9 +300,9 @@ struct CampaignDetailView: View {
 
 #Preview {
     let campaignCreator = CampaignCreator()
-    let sampleCampaign = Campaign(title: "My Preview Saga", concept: "A test concept.", sections: [
-        CampaignSection(title: "Intro", content: "This is the intro section.", order: 0),
-        CampaignSection(title: "Chapter 1", content: "Content for chapter 1.", order: 1)
+    let sampleCampaign = Campaign(id: 1, title: "My Preview Saga", concept: "A test concept.", sections: [ // Added id: 1 for Campaign
+        CampaignSection(id: 101, title: "Intro", content: "This is the intro section.", order: 0), // Added id: 101 for Section
+        CampaignSection(id: 102, title: "Chapter 1", content: "Content for chapter 1.", order: 1)  // Added id: 102 for Section
     ])
     // campaignCreator.campaigns = [sampleCampaign] // If needed for preview consistency
 

@@ -137,9 +137,15 @@ struct CharacterDetailView_Previews: PreviewProvider {
         // If not, this specific preview setup might need adjustment or a mock CampaignCreator.
         // For now, we rely on the passed 'character' state.
         // creator.characters = [sampleChar] // This would be ideal if possible
+        let sampleCharWithId = Character( // Renamed and added id
+            id: 1, // Added id: 1
+            name: sampleChar.name,
+            description: sampleChar.description,
+            stats: sampleChar.stats
+        )
 
         return NavigationView {
-            CharacterDetailView(character: sampleChar, campaignCreator: creator)
+            CharacterDetailView(character: sampleCharWithId, campaignCreator: creator) // Use character with ID
         }
     }
 }

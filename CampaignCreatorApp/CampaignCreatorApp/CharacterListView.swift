@@ -105,8 +105,8 @@ struct CharacterListView: View {
     // To show data, you could do:
     /*
     previewCreator.characters = [
-        Character(name: "Preview Elara", description: "Preview Elf Ranger. A long description to test line limits and see how it wraps or truncates based on the view settings for this particular character entry in the list view."),
-        Character(name: "Preview Grom", description: "Preview Orc Warrior")
+        Character(id: 1, name: "Preview Elara", description: "Preview Elf Ranger. A long description to test line limits and see how it wraps or truncates based on the view settings for this particular character entry in the list view."), // Added id: 1
+        Character(id: 2, name: "Preview Grom", description: "Preview Orc Warrior") // Added id: 2
     ]
     */
     return CharacterListView(campaignCreator: previewCreator)
