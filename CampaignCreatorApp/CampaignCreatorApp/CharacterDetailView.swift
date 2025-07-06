@@ -109,19 +109,6 @@ struct StatRow: View {
     }
 }
 
-struct SectionBox<Content: View>: View {
-    let title: String
-    @ViewBuilder let content: Content
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.headline)
-            content.padding().frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(.systemGray6)).cornerRadius(8)
-        }
-        .padding(.vertical, 8)
-    }
-}
-
 struct CharacterDetailView_Previews: PreviewProvider {
     static var previews: some View {
         let creator = CampaignCreator()
