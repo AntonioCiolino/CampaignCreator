@@ -48,7 +48,7 @@ struct LoginView: View {
                     .foregroundColor(.white)
                     .shadow(color: .black.opacity(0.5), radius: 2, x: 1, y: 1)
 
-                Image(systemName: "shield.lefthalf.filled.dice")
+                Image(systemName: "shield.lefthalf.fill") // Corrected SF Symbol
                     .font(.system(size: 60))
                     .foregroundColor(.white)
                     .padding(.bottom, 20)

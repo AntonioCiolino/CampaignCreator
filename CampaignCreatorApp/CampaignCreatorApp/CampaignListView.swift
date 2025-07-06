@@ -114,12 +114,19 @@ struct CampaignListView: View {
                 Text(creationErrorMessage)
             }
             .onAppear {
-                // Fetch campaigns if the list is empty or to refresh
-                // Consider adding pull-to-refresh later
-                if campaignCreator.campaigns.isEmpty {
-                    Task {
-                        await campaignCreator.fetchCampaigns()
+                print("CampaignListView: .onAppear. Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCampaigns), Err: \(campaignCreator.campaignError != nil ? (campaignCreator.campaignError?.localizedDescription ?? "Unknown Error") : "None")")
+                if campaignCreator.isAuthenticated && !campaignCreator.isLoadingCampaigns {
+                    // Fetch if campaigns array is empty OR if there was a previous error trying to load them.
+                    if campaignCreator.campaigns.isEmpty || campaignCreator.campaignError != nil {
+                        print("CampaignListView: Conditions met (authenticated, not loading, campaigns empty or previous error), will fetch campaigns.")
+                        Task {
+                            await campaignCreator.fetchCampaigns()
+                        }
+                    } else {
+                        print("CampaignListView: Campaigns already loaded and no previous error, skipping fetch.")
                     }
+                } else {
+                    print("CampaignListView: Skipping fetch. Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCampaigns)")
                 }
             }
         }

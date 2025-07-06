@@ -253,7 +253,12 @@ public final class APIService: Sendable {
         }
 
         if requiresAuth {
-            guard let token = tokenManager.getToken() else { throw APIError.notAuthenticated }
+            print("APIService [Auth]: Attempting to get token for endpoint '\(endpoint)'. Token currently in manager: \(tokenManager.getToken() ?? "NIL - Not Found")")
+            guard let token = tokenManager.getToken() else {
+                print("APIService [Auth]: No token retrieved by tokenManager for authenticated request to '\(endpoint)'. Throwing APIError.notAuthenticated.")
+                throw APIError.notAuthenticated
+            }
+            print("APIService [Auth]: Successfully retrieved token. Using token for '\(endpoint)': Bearer \(token.prefix(20))...")
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
