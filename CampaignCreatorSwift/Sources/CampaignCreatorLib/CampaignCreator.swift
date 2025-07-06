@@ -89,7 +89,7 @@ public class CampaignCreator: ObservableObjectProtocol {
         } catch let error as APIError {
             print("❌ Failed to fetch current user: \(error.localizedDescription)")
             // If /users/me fails (e.g. token expired), treat as logout
-            if error == .notAuthenticated || (error as? APIError)?.errorDescription?.contains("401") == true {
+            if error == .notAuthenticated || error.errorDescription?.contains("401") == true { 
                 logout()
             } else {
                 self.authError = error // Or a different error property for user fetching

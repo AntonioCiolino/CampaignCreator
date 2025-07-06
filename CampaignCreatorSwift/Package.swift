@@ -12,7 +12,7 @@ let package = Package(
         .watchOS(.v6)
     ],
     products: [
-        .executable(name: "CampaignCreatorSwiftCLI", targets: ["CampaignCreatorSwiftCLI"]),
+        .executable(name: "CampaignCreatorSwift", targets: ["CampaignCreatorSwift"]),
         .library(name: "CampaignCreatorLib", targets: ["CampaignCreatorLib"])
     ],
     dependencies: [
@@ -20,7 +20,7 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "CampaignCreatorSwiftCLI",
+            name: "CampaignCreatorSwift",
             dependencies: ["CampaignCreatorLib"]
         ),
         .target(

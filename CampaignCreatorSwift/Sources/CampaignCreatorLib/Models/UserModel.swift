@@ -1,6 +1,6 @@
 import Foundation
 
-public struct User: Identifiable, Codable, Equatable {
+public struct User: Identifiable, Codable, Equatable, Sendable {
     public var id: UUID // Assuming backend provides UUID for user ID. Adjust if Int.
     public var email: String
     public var username: String? // Or non-optional if always present

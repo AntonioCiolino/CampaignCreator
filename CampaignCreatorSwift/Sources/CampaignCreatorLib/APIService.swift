@@ -190,7 +190,7 @@ public protocol TokenManaging: Sendable {
     func hasToken() -> Bool
 }
 
-public class UserDefaultsTokenManager: TokenManaging {
+public final class UserDefaultsTokenManager: TokenManaging {
     private let tokenKey = "AuthToken"
     public func getToken() -> String? { UserDefaults.standard.string(forKey: tokenKey) }
     public func setToken(_ token: String?) {
@@ -204,8 +204,8 @@ public class UserDefaultsTokenManager: TokenManaging {
 }
 
 
-public class APIService: Sendable {
-    private let baseURLString = "http://localhost:8000/api/v1"
+public final class APIService: Sendable {
+    private let baseURLString = "https://campaigncreator-api.onrender.com/api/v1"
     private let tokenManager: TokenManaging
     private let jsonDecoder: JSONDecoder
     private let jsonEncoder: JSONEncoder

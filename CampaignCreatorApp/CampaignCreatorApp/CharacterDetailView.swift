@@ -52,9 +52,10 @@ struct CharacterDetailView: View {
                 }
 
                 SectionBox(title: "Metadata") {
-                    HStack { Text("Created:"); Spacer(); Text(character.createdAt, style: .dateTime) }
+                    HStack { Text("Created:"); Spacer(); Text(character.createdAt, style: .date) }
                     .font(.caption).foregroundColor(.secondary)
-                    HStack { Text("Modified:"); Spacer(); Text(character.modifiedAt, style: .dateTime) }
+                    
+                    HStack { Text("Modified:"); Spacer(); Text(character.modifiedAt, style: .date) }
                     .font(.caption).foregroundColor(.secondary)
                 }
                 Spacer()
