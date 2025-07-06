@@ -241,6 +241,7 @@ public final class APIService: Sendable {
         request.httpMethod = method
         request.httpBody = body
         request.cachePolicy = .reloadIgnoringLocalCacheData // Added to force reload
+        request.setValue("app://com.campaigncreator.app", forHTTPHeaderField: "Origin") // Set custom Origin for iOS app
 
         if request.value(forHTTPHeaderField: "Content-Type") == nil {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -316,6 +317,7 @@ public final class APIService: Sendable {
         request.httpMethod = method
         request.httpBody = body
         request.cachePolicy = .reloadIgnoringLocalCacheData // Added to force reload
+        request.setValue("app://com.campaigncreator.app", forHTTPHeaderField: "Origin") // Set custom Origin for iOS app
         if method != "GET" && method != "HEAD" { request.setValue("application/json", forHTTPHeaderField: "Content-Type") }
 
         if requiresAuth {
