@@ -356,8 +356,8 @@ public final class APIService: Sendable {
         try await performRequest(endpoint: "/characters/")
     }
 
-    public func fetchCharacter(id: UUID) async throws -> Character {
-        try await performRequest(endpoint: "/characters/\(id.uuidString)/")
+    public func fetchCharacter(id: Int) async throws -> Character { // Changed id from UUID to Int
+        try await performRequest(endpoint: "/characters/\(id)/") // Changed id.uuidString to id
     }
 
     public func createCharacter(_ characterData: CharacterCreateDTO) async throws -> Character {
@@ -365,13 +365,13 @@ public final class APIService: Sendable {
         return try await performRequest(endpoint: "/characters/", method: "POST", body: body)
     }
 
-    public func updateCharacter(_ characterId: UUID, data: CharacterUpdateDTO) async throws -> Character {
+    public func updateCharacter(_ characterId: Int, data: CharacterUpdateDTO) async throws -> Character { // Changed characterId from UUID to Int
         let body = try jsonEncoder.encode(data)
-        return try await performRequest(endpoint: "/characters/\(characterId.uuidString)/", method: "PATCH", body: body)
+        return try await performRequest(endpoint: "/characters/\(characterId)/", method: "PATCH", body: body) // Changed characterId.uuidString to characterId
     }
 
-    public func deleteCharacter(id: UUID) async throws {
-        try await performVoidRequest(endpoint: "/characters/\(id.uuidString)/", method: "DELETE")
+    public func deleteCharacter(id: Int) async throws { // Changed id from UUID to Int
+        try await performVoidRequest(endpoint: "/characters/\(id)/", method: "DELETE") // Changed id.uuidString to id
     }
 
     // MARK: - Auth Methods

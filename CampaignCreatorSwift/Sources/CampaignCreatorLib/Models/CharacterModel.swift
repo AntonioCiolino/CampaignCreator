@@ -22,7 +22,7 @@ public struct CharacterStats: Codable, Sendable {
 
 // Corresponds to TypeScript 'Character'
 public struct Character: Identifiable, Codable, Sendable {
-    public var id: UUID // Using UUID for local consistency
+    public var id: Int // Changed from UUID to Int
     // public var ownerId: UUID? // If we need to associate with a user someday
     public var name: String
     public var description: String?
@@ -36,7 +36,7 @@ public struct Character: Identifiable, Codable, Sendable {
     public var createdAt: Date
     public var modifiedAt: Date
 
-    public init(id: UUID = UUID(),
+    public init(id: Int, // Changed from UUID to Int, removed default
                 name: String,
                 description: String? = nil,
                 appearanceDescription: String? = nil,

@@ -15,14 +15,14 @@ public struct TOCEntry: Identifiable, Codable, Sendable {
 
 // Corresponds to TypeScript 'CampaignSection'
 public struct CampaignSection: Identifiable, Codable, Sendable {
-    public var id: UUID // Using UUID for local consistency
+    public var id: Int // Changed from UUID to Int
     public var title: String?
     public var content: String
     public var order: Int
     // public var campaign_id: UUID // Link back to the Campaign, if sections are stored separately
     public var type: String? // e.g., "Narrative", "Location", "NPC"
 
-    public init(id: UUID = UUID(), title: String? = nil, content: String, order: Int, type: String? = nil) {
+    public init(id: Int, title: String? = nil, content: String, order: Int, type: String? = nil) { // Changed id from UUID to Int, removed default
         self.id = id
         self.title = title
         self.content = content

@@ -163,9 +163,9 @@ public class CampaignCreator: ObservableObjectProtocol {
         isLoadingCharacters = false
     }
 
-    public func fetchCharacter(id: UUID) async throws -> Character {
+    public func fetchCharacter(id: Int) async throws -> Character { // Changed id from UUID to Int
         guard isAuthenticated else { throw APIError.notAuthenticated }
-        return try await apiService.fetchCharacter(id: id)
+        return try await apiService.fetchCharacter(id: id) // id is now Int
     }
 
     public func createCharacter(name: String, description: String? = nil, appearance: String? = nil, stats: CharacterStats? = nil) async throws -> Character {
