@@ -2,11 +2,11 @@ import Foundation
 
 // Corresponds to TypeScript 'TOCEntry'
 public struct TOCEntry: Identifiable, Codable, Sendable {
-    public var id = UUID() // Added for Identifiable conformance if needed in Swift UI lists
+    public var id: Int // Changed from UUID to Int
     public var title: String
     public var type: String // e.g., "Introduction", "Chapter 1", "Appendix"
 
-    public init(id: UUID = UUID(), title: String, type: String) {
+    public init(id: Int, title: String, type: String) { // Changed id from UUID to Int, removed default
         self.id = id
         self.title = title
         self.type = type
