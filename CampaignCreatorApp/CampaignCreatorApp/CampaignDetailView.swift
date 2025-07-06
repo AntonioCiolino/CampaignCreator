@@ -332,10 +332,6 @@ struct CampaignDetailView: View {
                 content: "Content for chapter 1.",
                 order: 1
             )
-        ],
-        displayTOC: [ // Example TOC with Int IDs
-            TOCEntry(id: 201, title: "Introduction", type: "Introduction"),
-            TOCEntry(id: 202, title: "Chapter 1 Link", type: "Chapter")
         ]
     )
     // campaignCreator.campaigns = [sampleCampaign] // If needed for preview consistency
