@@ -208,8 +208,9 @@ struct LoginView: View {
         NotificationCenter.default.removeObserver(self, name: .AVPlayerItemDidPlayToEndTime, object: nil)
 
         // Add a new observer specifically for the current player item.
-        NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: player?.currentItem, queue: .main) { [weak self] _ in
-            guard let self = self else { return }
+        NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: player?.currentItem, queue: .main) { _ in
+            // self is a struct, [weak self] is not needed and was causing a warning/error.
+            // Structs are value types, so self is a copy here.
             print("LoginView: Video item did play to end. Current index: \(self.currentVideoIndex). Setting up next video.")
             self.currentVideoIndex += 1
             // Call setupVideoPlayer again to load and play the next video.

@@ -117,22 +117,6 @@ struct CampaignDetailView: View {
                 }
                 .padding().background(Color(.systemBackground)).cornerRadius(12)
 
-                // MARK: - Table of Contents
-                if let tocEntries = campaign.displayTOC, !tocEntries.isEmpty {
-                    DisclosureGroup("Table of Contents") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            ForEach(tocEntries) { entry in
-                                Text(entry.title)
-                                    .font(.body)
-                                    // TODO: Add navigation to section
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.top, 4)
-                    }
-                    .padding().background(Color(.systemBackground)).cornerRadius(12)
-                }
-
                 // MARK: - Campaign Theme Display
                 DisclosureGroup("Campaign Theme") {
                     VStack(alignment: .leading, spacing: 8) {
