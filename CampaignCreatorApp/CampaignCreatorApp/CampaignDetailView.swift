@@ -23,6 +23,9 @@ struct CampaignDetailView: View {
 
     @State private var titleDebounceTimer: Timer?
 
+    // For generating temporary client-side IDs for new sections
+    @State private var nextTemporaryClientSectionID: Int = -1
+
     init(campaign: Campaign, campaignCreator: CampaignCreator) {
         self._campaign = State(initialValue: campaign)
         self._campaignCreator = ObservedObject(wrappedValue: campaignCreator)
@@ -39,7 +42,7 @@ struct CampaignDetailView: View {
                         VStack(alignment: .leading) {
                             Text("\(campaign.wordCount) words (from sections)")
                                 .font(.caption).foregroundColor(.secondary)
-                            Text("Modified: \(campaign.modifiedAt, style: .date)")
+                            Text(campaign.modifiedAt != nil ? "Modified: \(campaign.modifiedAt!, style: .date)" : "Modified: N/A")
                                 .font(.caption).foregroundColor(.secondary)
                         }
                         Spacer()
@@ -151,6 +154,12 @@ struct CampaignDetailView: View {
         }
     }
 
+    private func generateTemporaryClientSectionID() -> Int {
+        let tempID = nextTemporaryClientSectionID
+        nextTemporaryClientSectionID -= 1
+        return tempID
+    }
+
     // MARK: - Save Logic
     enum SaveSource { case titleField, conceptEditorDoneButton, onDisappear }
     private func saveCampaignDetails(source: SaveSource) async {
@@ -243,6 +252,7 @@ struct CampaignDetailView: View {
 
             var updatedCampaign = self.campaign
             let newSection = CampaignSection(
+                id: generateTemporaryClientSectionID(), // Use temporary negative ID
                 title: generatePrompt.prefix(50) + (generatePrompt.count > 50 ? "..." : ""), // Use prompt as title
                 content: generatedText,
                 order: (updatedCampaign.sections.map(\.order).max() ?? -1) + 1 // Ensure new section is last
@@ -300,13 +310,37 @@ struct CampaignDetailView: View {
 
 #Preview {
     let campaignCreator = CampaignCreator()
-    let sampleCampaign = Campaign(title: "My Preview Saga", concept: "A test concept.", sections: [
-        CampaignSection(title: "Intro", content: "This is the intro section.", order: 0),
-        CampaignSection(title: "Chapter 1", content: "Content for chapter 1.", order: 1)
-    ])
+    // Ensure all model instantiations have their required 'id: Int'
+    let sampleCampaign = Campaign(
+        id: 1, // Correct: Campaign ID is Int
+        title: "My Preview Saga",
+        concept: "A test concept.",
+        displayTOC: [ // Corrected order: displayTOC before sections
+            TOCEntry(id: 201, title: "Introduction", type: "Introduction"),
+            TOCEntry(id: 202, title: "Chapter 1 Link", type: "Chapter")
+        ],
+        sections: [
+            CampaignSection(
+                id: 101, // Correct: CampaignSection ID is Int
+                title: "Intro",
+                content: "This is the intro section.",
+                order: 0
+            ),
+            CampaignSection(
+                id: 102, // Correct: CampaignSection ID is Int
+                title: "Chapter 1",
+                content: "Content for chapter 1.",
+                order: 1
+            )
+        ],
+        displayTOC: [ // Example TOC with Int IDs
+            TOCEntry(id: 201, title: "Introduction", type: "Introduction"),
+            TOCEntry(id: 202, title: "Chapter 1 Link", type: "Chapter")
+        ]
+    )
     // campaignCreator.campaigns = [sampleCampaign] // If needed for preview consistency
 
-    return NavigationView {
+    NavigationView { // Removed explicit 'return'
         CampaignDetailView(campaign: sampleCampaign, campaignCreator: campaignCreator)
     }
 }

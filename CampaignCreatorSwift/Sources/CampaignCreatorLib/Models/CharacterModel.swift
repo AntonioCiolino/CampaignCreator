@@ -22,7 +22,7 @@ public struct CharacterStats: Codable, Sendable {
 
 // Corresponds to TypeScript 'Character'
 public struct Character: Identifiable, Codable, Sendable {
-    public var id: UUID // Using UUID for local consistency
+    public var id: Int // Changed from UUID to Int
     // public var ownerId: UUID? // If we need to associate with a user someday
     public var name: String
     public var description: String?
@@ -33,10 +33,10 @@ public struct Character: Identifiable, Codable, Sendable {
     public var exportFormatPreference: String? // e.g., "JSON", "Markdown"
 
     // Metadata
-    public var createdAt: Date
-    public var modifiedAt: Date
+    public var createdAt: Date? // Changed to optional
+    public var modifiedAt: Date? // Changed to optional
 
-    public init(id: UUID = UUID(),
+    public init(id: Int, // Changed from UUID to Int, removed default
                 name: String,
                 description: String? = nil,
                 appearanceDescription: String? = nil,
@@ -44,8 +44,8 @@ public struct Character: Identifiable, Codable, Sendable {
                 notesForLLM: String? = nil,
                 stats: CharacterStats? = nil,
                 exportFormatPreference: String? = nil,
-                createdAt: Date = Date(),
-                modifiedAt: Date = Date()) {
+                createdAt: Date? = nil, // Changed to optional, default nil
+                modifiedAt: Date? = nil) { // Changed to optional, default nil
         self.id = id
         self.name = name
         self.description = description

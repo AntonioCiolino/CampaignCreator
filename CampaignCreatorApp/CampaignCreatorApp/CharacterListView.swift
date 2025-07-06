@@ -71,10 +71,18 @@ struct CharacterListView: View {
                 CharacterCreateView(campaignCreator: campaignCreator, isPresented: $showingCreateSheet)
             }
             .onAppear {
-                if campaignCreator.characters.isEmpty || campaignCreator.characterError != nil { // Fetch if empty or if there was a previous error
-                    Task {
-                        await campaignCreator.fetchCharacters()
+                print("CharacterListView: .onAppear. Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCharacters), InitialFetchAttempted: \(campaignCreator.initialCharacterFetchAttempted), Err: \(campaignCreator.characterError != nil ? (campaignCreator.characterError?.localizedDescription ?? "Unknown Error") : "None")")
+                if campaignCreator.isAuthenticated && !campaignCreator.isLoadingCharacters {
+                    if !campaignCreator.initialCharacterFetchAttempted || campaignCreator.characterError != nil {
+                        print("CharacterListView: Conditions met (initial fetch needed or error retry), will fetch characters.")
+                        Task {
+                            await campaignCreator.fetchCharacters()
+                        }
+                    } else {
+                        print("CharacterListView: Initial fetch already attempted and no error, skipping fetch. Characters count: \(campaignCreator.characters.count)")
                     }
+                } else {
+                    print("CharacterListView: Skipping fetch. Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCharacters)")
                 }
             }
         }
@@ -105,8 +113,8 @@ struct CharacterListView: View {
     // To show data, you could do:
     /*
     previewCreator.characters = [
-        Character(name: "Preview Elara", description: "Preview Elf Ranger. A long description to test line limits and see how it wraps or truncates based on the view settings for this particular character entry in the list view."),
-        Character(name: "Preview Grom", description: "Preview Orc Warrior")
+        Character(id: 1, name: "Preview Elara", description: "Preview Elf Ranger. A long description to test line limits and see how it wraps or truncates based on the view settings for this particular character entry in the list view."), // Added id: 1
+        Character(id: 2, name: "Preview Grom", description: "Preview Orc Warrior") // Added id: 2
     ]
     */
     return CharacterListView(campaignCreator: previewCreator)

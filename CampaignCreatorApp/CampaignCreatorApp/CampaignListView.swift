@@ -53,7 +53,7 @@ struct CampaignListView: View {
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                         Spacer()
-                                        Text(campaign.modifiedAt, style: .date)
+                                        Text(campaign.modifiedAt != nil ? "\(campaign.modifiedAt!, style: .date)" : "N/A")
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }
@@ -114,12 +114,18 @@ struct CampaignListView: View {
                 Text(creationErrorMessage)
             }
             .onAppear {
-                // Fetch campaigns if the list is empty or to refresh
-                // Consider adding pull-to-refresh later
-                if campaignCreator.campaigns.isEmpty {
-                    Task {
-                        await campaignCreator.fetchCampaigns()
+                print("CampaignListView: .onAppear. Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCampaigns), InitialFetchAttempted: \(campaignCreator.initialCampaignFetchAttempted), Err: \(campaignCreator.campaignError != nil ? (campaignCreator.campaignError?.localizedDescription ?? "Unknown Error") : "None")")
+                if campaignCreator.isAuthenticated && !campaignCreator.isLoadingCampaigns {
+                    if !campaignCreator.initialCampaignFetchAttempted || campaignCreator.campaignError != nil {
+                        print("CampaignListView: Conditions met (initial fetch needed or error retry), will fetch campaigns.")
+                        Task {
+                            await campaignCreator.fetchCampaigns()
+                        }
+                    } else {
+                        print("CampaignListView: Initial fetch already attempted and no error, skipping fetch. Campaigns count: \(campaignCreator.campaigns.count)")
                     }
+                } else {
+                    print("CampaignListView: Skipping fetch. Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCampaigns)")
                 }
             }
         }

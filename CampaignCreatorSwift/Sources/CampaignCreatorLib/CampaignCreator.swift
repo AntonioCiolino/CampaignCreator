@@ -17,6 +17,11 @@ public class CampaignCreator: ObservableObjectProtocol {
 
     @Published public var isLoadingCharacters: Bool = false
     @Published public var characterError: APIError? = nil
+    @Published public var initialCharacterFetchAttempted: Bool = false
+
+    @Published public var isLoadingCampaigns: Bool = false
+    @Published public var campaignError: APIError? = nil
+    @Published public var initialCampaignFetchAttempted: Bool = false
 
     // Auth State
     @Published public var isAuthenticated: Bool = false
@@ -77,6 +82,8 @@ public class CampaignCreator: ObservableObjectProtocol {
         currentUser = nil // Clear current user
         campaigns = []
         characters = []
+        initialCampaignFetchAttempted = false // Reset flag
+        initialCharacterFetchAttempted = false // Reset flag
         print("Logged out.")
     }
     
@@ -106,16 +113,22 @@ public class CampaignCreator: ObservableObjectProtocol {
             campaignError = .notAuthenticated; print("⚠️ Cannot fetch campaigns: Not authenticated."); return
         }
         isLoadingCampaigns = true; campaignError = nil
+        defer {
+            isLoadingCampaigns = false
+            self.initialCampaignFetchAttempted = true
+        }
         do {
             self.campaigns = try await apiService.fetchCampaigns()
-        } catch let error as APIError { self.campaignError = error; print("❌ Error fetching campaigns: \(error.localizedDescription)")
+        } catch let error as APIError {
+            self.campaignError = error; print("❌ Error fetching campaigns: \(error.localizedDescription)")
+            if case .notAuthenticated = error { self.logout() }
+            else if case .serverError(let statusCode, _) = error, statusCode == 401 { self.logout() }
         } catch { self.campaignError = APIError.custom("An unexpected error occurred: \(error.localizedDescription)"); print("❌ Unexpected error fetching campaigns: \(error.localizedDescription)")}
-        isLoadingCampaigns = false
     }
 
-    public func fetchCampaign(id: UUID) async throws -> Campaign {
+    public func fetchCampaign(id: Int) async throws -> Campaign { // Changed id from UUID to Int
         guard isAuthenticated else { throw APIError.notAuthenticated }
-        return try await apiService.fetchCampaign(id: id)
+        return try await apiService.fetchCampaign(id: id) // id is now Int
     }
 
     public func createCampaign(title: String, initialUserPrompt: String? = nil) async throws -> Campaign {
@@ -156,16 +169,22 @@ public class CampaignCreator: ObservableObjectProtocol {
             characterError = .notAuthenticated; print("⚠️ Cannot fetch characters: Not authenticated."); return
         }
         isLoadingCharacters = true; characterError = nil
+        defer {
+            isLoadingCharacters = false
+            self.initialCharacterFetchAttempted = true
+        }
         do {
             self.characters = try await apiService.fetchCharacters()
-        } catch let error as APIError { self.characterError = error; print("❌ Error fetching characters: \(error.localizedDescription)")
+        } catch let error as APIError {
+            self.characterError = error; print("❌ Error fetching characters: \(error.localizedDescription)")
+            if case .notAuthenticated = error { self.logout() }
+            else if case .serverError(let statusCode, _) = error, statusCode == 401 { self.logout() }
         } catch { self.characterError = APIError.custom("An unexpected error occurred while fetching characters: \(error.localizedDescription)"); print("❌ Unexpected error fetching characters: \(error.localizedDescription)")}
-        isLoadingCharacters = false
     }
 
-    public func fetchCharacter(id: UUID) async throws -> Character {
+    public func fetchCharacter(id: Int) async throws -> Character { // Changed id from UUID to Int
         guard isAuthenticated else { throw APIError.notAuthenticated }
-        return try await apiService.fetchCharacter(id: id)
+        return try await apiService.fetchCharacter(id: id) // id is now Int
     }
 
     public func createCharacter(name: String, description: String? = nil, appearance: String? = nil, stats: CharacterStats? = nil) async throws -> Character {

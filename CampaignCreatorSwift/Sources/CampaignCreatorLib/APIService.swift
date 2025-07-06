@@ -253,7 +253,12 @@ public final class APIService: Sendable {
         }
 
         if requiresAuth {
-            guard let token = tokenManager.getToken() else { throw APIError.notAuthenticated }
+            print("APIService [Auth]: Attempting to get token for endpoint '\(endpoint)'. Token currently in manager: \(tokenManager.getToken() ?? "NIL - Not Found")")
+            guard let token = tokenManager.getToken() else {
+                print("APIService [Auth]: No token retrieved by tokenManager for authenticated request to '\(endpoint)'. Throwing APIError.notAuthenticated.")
+                throw APIError.notAuthenticated
+            }
+            print("APIService [Auth]: Successfully retrieved token. Using token for '\(endpoint)': Bearer \(token.prefix(20))...")
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
@@ -333,8 +338,8 @@ public final class APIService: Sendable {
         try await performRequest(endpoint: "/campaigns/")
     }
 
-    public func fetchCampaign(id: UUID) async throws -> Campaign {
-        try await performRequest(endpoint: "/campaigns/\(id.uuidString)/")
+    public func fetchCampaign(id: Int) async throws -> Campaign { // Changed id from UUID to Int
+        try await performRequest(endpoint: "/campaigns/\(id)/") // Changed id.uuidString to id
     }
 
     public func createCampaign(_ campaignData: CampaignCreateDTO) async throws -> Campaign {
@@ -342,22 +347,22 @@ public final class APIService: Sendable {
         return try await performRequest(endpoint: "/campaigns/", method: "POST", body: body)
     }
 
-    public func updateCampaign(_ campaignId: UUID, data: CampaignUpdateDTO) async throws -> Campaign {
+    public func updateCampaign(_ campaignId: Int, data: CampaignUpdateDTO) async throws -> Campaign { // Changed campaignId from UUID to Int
         let body = try jsonEncoder.encode(data)
-        return try await performRequest(endpoint: "/campaigns/\(campaignId.uuidString)/", method: "PATCH", body: body)
+        return try await performRequest(endpoint: "/campaigns/\(campaignId)/", method: "PATCH", body: body) // Changed campaignId.uuidString to campaignId
     }
 
-    public func deleteCampaign(id: UUID) async throws {
-        try await performVoidRequest(endpoint: "/campaigns/\(id.uuidString)/", method: "DELETE")
+    public func deleteCampaign(id: Int) async throws { // Changed id from UUID to Int
+        try await performVoidRequest(endpoint: "/campaigns/\(id)/", method: "DELETE") // Changed id.uuidString to id
     }
 
     // MARK: - Character Methods
     public func fetchCharacters() async throws -> [Character] {
-        try await performRequest(endpoint: "/characters/")
+        try await performRequest(endpoint: "/characters") // Removed trailing slash
     }
 
-    public func fetchCharacter(id: UUID) async throws -> Character {
-        try await performRequest(endpoint: "/characters/\(id.uuidString)/")
+    public func fetchCharacter(id: Int) async throws -> Character { // Changed id from UUID to Int
+        try await performRequest(endpoint: "/characters/\(id)/") // Changed id.uuidString to id
     }
 
     public func createCharacter(_ characterData: CharacterCreateDTO) async throws -> Character {
@@ -365,13 +370,13 @@ public final class APIService: Sendable {
         return try await performRequest(endpoint: "/characters/", method: "POST", body: body)
     }
 
-    public func updateCharacter(_ characterId: UUID, data: CharacterUpdateDTO) async throws -> Character {
+    public func updateCharacter(_ characterId: Int, data: CharacterUpdateDTO) async throws -> Character { // Changed characterId from UUID to Int
         let body = try jsonEncoder.encode(data)
-        return try await performRequest(endpoint: "/characters/\(characterId.uuidString)/", method: "PATCH", body: body)
+        return try await performRequest(endpoint: "/characters/\(characterId)/", method: "PATCH", body: body) // Changed characterId.uuidString to characterId
     }
 
-    public func deleteCharacter(id: UUID) async throws {
-        try await performVoidRequest(endpoint: "/characters/\(id.uuidString)/", method: "DELETE")
+    public func deleteCharacter(id: Int) async throws { // Changed id from UUID to Int
+        try await performVoidRequest(endpoint: "/characters/\(id)/", method: "DELETE") // Changed id.uuidString to id
     }
 
     // MARK: - Auth Methods

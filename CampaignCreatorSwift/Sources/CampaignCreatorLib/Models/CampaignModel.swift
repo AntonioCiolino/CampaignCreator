@@ -2,11 +2,11 @@ import Foundation
 
 // Corresponds to TypeScript 'TOCEntry'
 public struct TOCEntry: Identifiable, Codable, Sendable {
-    public var id = UUID() // Added for Identifiable conformance if needed in Swift UI lists
+    public var id: Int // Changed from UUID to Int
     public var title: String
     public var type: String // e.g., "Introduction", "Chapter 1", "Appendix"
 
-    public init(id: UUID = UUID(), title: String, type: String) {
+    public init(id: Int, title: String, type: String) { // Changed id from UUID to Int, removed default
         self.id = id
         self.title = title
         self.type = type
@@ -15,14 +15,14 @@ public struct TOCEntry: Identifiable, Codable, Sendable {
 
 // Corresponds to TypeScript 'CampaignSection'
 public struct CampaignSection: Identifiable, Codable, Sendable {
-    public var id: UUID // Using UUID for local consistency
+    public var id: Int // Changed from UUID to Int
     public var title: String?
     public var content: String
     public var order: Int
     // public var campaign_id: UUID // Link back to the Campaign, if sections are stored separately
     public var type: String? // e.g., "Narrative", "Location", "NPC"
 
-    public init(id: UUID = UUID(), title: String? = nil, content: String, order: Int, type: String? = nil) {
+    public init(id: Int, title: String? = nil, content: String, order: Int, type: String? = nil) { // Changed id from UUID to Int, removed default
         self.id = id
         self.title = title
         self.content = content
@@ -33,7 +33,7 @@ public struct CampaignSection: Identifiable, Codable, Sendable {
 
 // This struct will represent the Campaign. We are evolving the old 'Document' into this.
 public struct Campaign: Identifiable, Codable, Sendable {
-    public var id: UUID
+    public var id: Int // Changed from UUID to Int
     public var title: String
     public var initialUserPrompt: String?
     public var concept: String?
@@ -58,13 +58,13 @@ public struct Campaign: Identifiable, Codable, Sendable {
     public var themeBackgroundImageOpacity: Double?
 
     public var fileURL: URL? // Keep if direct file association is needed for saving/loading whole campaign
-    public var createdAt: Date
-    public var modifiedAt: Date
+    public var createdAt: Date? // Changed to optional
+    public var modifiedAt: Date? // Changed to optional
 
     // Linking characters (IDs for now, actual Character objects can be resolved by CampaignCreator)
     public var linkedCharacterIDs: [UUID]?
 
-    public init(id: UUID = UUID(),
+    public init(id: Int, // Changed from UUID = UUID()
                 title: String = "Untitled Campaign",
                 initialUserPrompt: String? = nil,
                 concept: String? = nil,
@@ -84,8 +84,8 @@ public struct Campaign: Identifiable, Codable, Sendable {
                 themeBackgroundImageURL: String? = nil,
                 themeBackgroundImageOpacity: Double? = nil,
                 fileURL: URL? = nil,
-                createdAt: Date = Date(),
-                modifiedAt: Date = Date(),
+                createdAt: Date? = nil, // Changed to optional, default nil
+                modifiedAt: Date? = nil, // Changed to optional, default nil
                 linkedCharacterIDs: [UUID]? = nil) {
         self.id = id
         self.title = title

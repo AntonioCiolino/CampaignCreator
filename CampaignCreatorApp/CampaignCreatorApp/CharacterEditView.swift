@@ -272,7 +272,7 @@ struct CharacterEditView_Previews: PreviewProvider {
         @State var isPresented: Bool = true
         let creator = CampaignCreator()
         let sampleCharacter = Character(
-            id: UUID(), name: "Aella Swiftarrow (Edit)", description: "A nimble scout...",
+            id: 1, name: "Aella Swiftarrow (Edit)", description: "A nimble scout...", // Changed id from UUID() to 1
             appearanceDescription: "Slender build...", imageURLs: ["http://example.com/img1.png"],
             stats: CharacterStats(strength: 10, dexterity: 15)
         )
