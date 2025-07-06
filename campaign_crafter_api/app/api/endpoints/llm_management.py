@@ -48,7 +48,7 @@ async def list_llm_models(
     and can be used in other API endpoints that accept a 'model_id_with_prefix'.
     """
     try:
-        # Pass db and current_user to get_available_models_info
+       
         available_models_info: List[pydantic_models.ModelInfo] = await get_available_models_info(db=db, current_user=current_user)
 
         if not available_models_info:
@@ -65,7 +65,7 @@ async def list_llm_models(
 
 @router.post("/generate-text", response_model=pydantic_models.LLMTextGenerationResponse, tags=["LLM Management"])
 async def generate_text_endpoint( # Renamed to match existing, added db
-    request_body: pydantic_models.LLMGenerationRequest, # Changed variable name for clarity
+    request_body: pydantic_models.LLMGenerationRequest,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[pydantic_models.User, Depends(get_current_active_user)]
 ) -> pydantic_models.LLMTextGenerationResponse:
@@ -130,16 +130,16 @@ async def generate_text_endpoint( # Renamed to match existing, added db
 
         text_content = await llm_service.generate_text(
             prompt=request_body.prompt, # This is the template string
-            model=final_model_specific_id_to_use, # Pass the determined model
+            model=final_model_specific_id_to_use,
             temperature=request_body.temperature,
             max_tokens=request_body.max_tokens,
             current_user=current_user, # pydantic_models.User
             db=db,
             # New context parameters for generate_text:
-            db_campaign=db_campaign_for_context, # Pass the ORM campaign object if available
+            db_campaign=db_campaign_for_context,
             section_title_suggestion=request_body.section_title_suggestion,
             section_type=request_body.section_type,
-            section_creation_prompt=request_body.section_creation_prompt # Pass this through
+            section_creation_prompt=request_body.section_creation_prompt
             # existing_sections_summary, campaign_concept, campaign_characters will be derived by the service from db_campaign
         )
 
@@ -185,7 +185,7 @@ async def test_openai_config(
         # The factory's get_llm_service already does some basic config checks.
         # is_available() does a live API call.
 
-        if await llm_service.is_available(current_user=current_user, db=db): # Pass args
+        if await llm_service.is_available(current_user=current_user, db=db):
             return LLMConfigStatus(
                 status="success",
                 message="OpenAI configuration appears valid and service is reachable.",
@@ -248,7 +248,7 @@ async def test_openai_config_v2(
             provider_name=provider_to_test
         )
 
-        if await llm_service.is_available(current_user=current_user, db=db): # Pass args. This now raises LLMServiceUnavailableError on failure
+        if await llm_service.is_available(current_user=current_user, db=db):
             return LLMConfigStatus(
                 status="success",
                 message="OpenAI configuration appears valid and service is reachable.",

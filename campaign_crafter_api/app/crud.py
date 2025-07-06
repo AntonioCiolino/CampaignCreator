@@ -1,5 +1,6 @@
 from typing import Optional, List, Dict # Added List and Dict
 from sqlalchemy.orm import Session
+from sqlalchemy.dialects.postgresql import JSONB # Added for JSONB casting
 from fastapi import HTTPException # Added HTTPException
 from passlib.context import CryptContext
 
@@ -142,9 +143,11 @@ def get_master_feature_for_type(db: Session, section_type: str) -> Optional[orm_
     Tries to find a specific match first, then a generic 'FullSection' feature if no specific match.
     """
     # Attempt to find a feature specifically compatible with the section_type and categorized as FullSection
+    # Construct a JSON array string for the check, e.g., '["typeA"]'
+    json_array_to_check = f'["{section_type}"]'
     db_feature = db.query(orm_models.Feature).filter(
         orm_models.Feature.feature_category == "FullSection",
-        orm_models.Feature.compatible_types.contains(f'"{section_type}"') # Assuming compatible_types is stored as JSON array string
+        orm_models.Feature.compatible_types.cast(JSONB).contains(json_array_to_check)
     ).first()
 
     if db_feature:
@@ -546,7 +549,6 @@ async def update_campaign(db: Session, campaign_id: int, campaign_update: models
                 setattr(db_campaign, key, value)
             # else:
                 # Optionally log or handle fields in payload that are not in ORM model
-                # print(f"Warning: Field '{key}' not in Campaign ORM model.")
 
         if mood_board_updated:
             new_image_urls = set(db_campaign.mood_board_image_urls if db_campaign.mood_board_image_urls else [])

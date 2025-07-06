@@ -1,5 +1,5 @@
 import re
-import math # For floor function
+import math
 from typing import List, Optional, Dict
 from app import orm_models, crud
 from app.services.llm_factory import get_llm_service
@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.models import User as UserModel # For current_user type hint
 
 class HomebreweryExportService:
-    FRONT_COVER_TEMPLATE = """{{frontCover}}
+    FRONT_COVER_TEMPLATE = r"""{{frontCover}}
 
 {{logo ![](/assets/naturalCritLogoRed.svg)}}
 
@@ -25,7 +25,7 @@ ___
 ![background image](https://onedrive.live.com/embed?resid=387fb00e5a1e24c8%2152521&authkey=%21APkOXzEAywQMAwA){position:absolute,bottom:0,left:0,width:100%}
 \page"""
 
-    BACK_COVER_TEMPLATE = """\\page
+    BACK_COVER_TEMPLATE = r"""\\page
 {{backCover}}
 
 #
@@ -52,7 +52,6 @@ VTCNP Enterprises
         if block_content is None:
             return ""
         
-        # If block_content is a list, join its elements into a single string
         if isinstance(block_content, list):
             block_content = "\n".join(map(str, block_content))
 
@@ -106,7 +105,7 @@ VTCNP Enterprises
 
     def _calculate_modifier(self, stat_value: Optional[int]) -> str:
         if stat_value is None:
-            stat_value = 10 # Default to 10 if None for modifier calculation
+            stat_value = 10
         modifier = math.floor((stat_value - 10) / 2)
         return f"+{modifier}" if modifier >= 0 else str(modifier)
 
@@ -115,7 +114,7 @@ VTCNP Enterprises
         Formats a single character's details into a Homebrewery Complex NPC stat block,
         similar to the "Elara Brightshield" example.
         """
-        output = [] # Using a list to join lines at the end
+        output = []
 
         character_name_or_default = character.name if character.name and character.name.strip() else "Unnamed Character"
         output.append(f"### {character_name_or_default}\n")
@@ -124,13 +123,13 @@ VTCNP Enterprises
         if character.image_urls and len(character.image_urls) > 0:
             image_url = character.image_urls[0]
             alt_text = f"{character.name} image" if character.name and character.name.strip() else "Character image"
-            output.append(f"![]({image_url}){{width:325px}}\n") # Elara example uses 325px
+            output.append(f"![]({image_url}){{width:325px}}\n")
 
         # 2. {{note}} Block
         note_content = "GM Notes: Add relevant plot hooks or secret information here."
         if character.notes_for_llm and character.notes_for_llm.strip():
             note_content = character.notes_for_llm.strip()
-        output.append(f"{{{{note\n{note_content}\n}}}}\n:") # Added colon as per Elara example after note
+        output.append(f"{{{{note\n{note_content}\n}}}}\n:")
 
         # 3. Descriptive Text (Appearance, Personality/Background)
         if character.appearance_description and character.appearance_description.strip():
@@ -149,12 +148,12 @@ VTCNP Enterprises
 
         name = character.name if character.name and character.name.strip() else "Unnamed Character"
         output.append(f"## {name}")
-        output.append(f"*Medium humanoid, alignment placeholder*") # Placeholder
-        output.append(f"**Class**: Class placeholder (e.g., Warrior, Mage)") # Placeholder
+        output.append(f"*Medium humanoid, alignment placeholder*")
+        output.append(f"**Class**: Class placeholder (e.g., Warrior, Mage)")
         output.append("___")
-        output.append(f"**Armor Class** :: AC placeholder (e.g., 16 (breastplate))") # Placeholder
-        output.append(f"**Hit Points** :: HP placeholder (e.g., 58 (9d8 + 18))") # Placeholder
-        output.append(f"**Speed** :: 30 ft.") # Placeholder
+        output.append(f"**Armor Class** :: AC placeholder (e.g., 16 (breastplate))")
+        output.append(f"**Hit Points** :: HP placeholder (e.g., 58 (9d8 + 18))")
+        output.append(f"**Speed** :: 30 ft.")
         output.append("___")
 
         # Stats Table
@@ -178,11 +177,11 @@ VTCNP Enterprises
         )
         output.append("___")
 
-        output.append(f"**Saving Throws** :: Saving Throws placeholder (e.g., Wis +5, Cha +6)") # Placeholder
-        output.append(f"**Skills** :: Skills placeholder (e.g., Perception +5, Persuasion +6)") # Placeholder
-        output.append(f"**Senses** :: passive Perception placeholder (e.g., 15)") # Placeholder
-        output.append(f"**Languages** :: Languages placeholder (e.g., Common, Celestial)") # Placeholder
-        output.append(f"**Challenge** :: Challenge placeholder (e.g., 1 (200 XP))") # Placeholder
+        output.append(f"**Saving Throws** :: Saving Throws placeholder (e.g., Wis +5, Cha +6)")
+        output.append(f"**Skills** :: Skills placeholder (e.g., Perception +5, Persuasion +6)")
+        output.append(f"**Senses** :: passive Perception placeholder (e.g., 15)")
+        output.append(f"**Languages** :: Languages placeholder (e.g., Common, Celestial)")
+        output.append(f"**Challenge** :: Challenge placeholder (e.g., 1 (200 XP))")
         output.append("___") # Elara example has this before spellcasting
 
         # Spellcasting (Placeholder)
@@ -236,9 +235,9 @@ VTCNP Enterprises
         output.append(f"## {character_name_or_default}")
         output.append(f"*Medium humanoid, alignment placeholder*")
         output.append("___")
-        output.append(f"**Armor Class** :: 10 (Natural Armor)") # Placeholder
-        output.append(f"**Hit Points** :: 10 (2d8+2)") # Placeholder
-        output.append(f"**Speed** :: 30 ft.") # Placeholder
+        output.append(f"**Armor Class** :: 10 (Natural Armor)")
+        output.append(f"**Hit Points** :: 10 (2d8+2)")
+        output.append(f"**Speed** :: 30 ft.")
         output.append("___")
 
         stats_data = character.stats if character.stats else {}
@@ -276,6 +275,7 @@ VTCNP Enterprises
         return "\n".join(output)
 
     async def format_campaign_for_homebrewery(self, campaign: orm_models.Campaign, sections: List[orm_models.CampaignSection], db: Session, current_user: UserModel) -> str: # Added db, current_user and async
+        # TODO: Make page_image_url and stain_images configurable in the future, perhaps via campaign settings or user profile.
         page_image_url = "https://www.gmbinder.com/images/b7OT9E4.png"
         stain_images = [
             "https://www.gmbinder.com/images/86T8EZC.png", 
@@ -365,6 +365,7 @@ VTCNP Enterprises
             
             homebrewery_content.append("\\page\n") 
 
+        # Character Appendix Section (Dramatis Personae)
         if campaign.characters:
             homebrewery_content.append("\\page\n")
             homebrewery_content.append("## Dramatis Personae\n")

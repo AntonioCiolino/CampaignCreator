@@ -6,16 +6,16 @@ from app import models, crud
 # Removed deps import, will add direct imports for get_db and get_current_active_user
 from app.core.security import encrypt_key
 from app.models import UserAPIKeyUpdate
-from app.db import get_db # Added direct import
-from app.services.auth_service import get_current_active_user # Added direct import
+from app.db import get_db
+from app.services.auth_service import get_current_active_user
 
 router = APIRouter()
 
 @router.put("/me/keys", response_model=models.User)
 def update_user_api_keys(
     *,
-    db: Session = Depends(get_db), # Changed to use direct import
-    current_user: models.User = Depends(get_current_active_user), # Changed to use direct import
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
     api_keys_in: UserAPIKeyUpdate,
 ) -> Any:
     """
@@ -24,7 +24,7 @@ def update_user_api_keys(
     """
     # current_user from deps.get_current_active_user is already a models.User Pydantic model.
     # We need the ORM model to make changes.
-    user_orm = crud.get_user(db, user_id=current_user.id) # Changed to use crud.get_user
+    user_orm = crud.get_user(db, user_id=current_user.id)
     if not user_orm:
         # This case should ideally not happen if get_current_active_user works correctly
         # and the user hasn't been deleted mid-session.
@@ -102,7 +102,7 @@ async def upload_avatar(
             prompt=f"User avatar for {current_user.username}",
             model_used="user_upload", # Indicates it's an uploaded avatar
             size_used="avatar", # Generic size category
-            db=db, # Pass the db session
+            db=db,
             image_bytes=image_bytes,
             user_id=current_user.id, # Link image to user if GeneratedImage table requires it
             original_filename_from_api=avatar_filename # Use a constructed filename

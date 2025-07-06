@@ -12,7 +12,7 @@ from app.services.llama_service import LlamaLLMService
 from app.services.deepseek_service import DeepSeekLLMService
 from app.services.local_llm_service import LocalLLMService # New import
 from app.core.config import settings
-from app.services.llm_service import LLMServiceUnavailableError # Added import
+from app.services.llm_service import LLMServiceUnavailableError
 
 logger = logging.getLogger(__name__) # Added logger
 

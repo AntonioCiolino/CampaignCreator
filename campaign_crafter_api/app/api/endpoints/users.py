@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app import crud, models # Standardized import
 from app.db import get_db # Standardized import
 from app.services.auth_service import get_current_active_superuser, get_current_active_user # Standardized import
-from app.services.image_generation_service import ImageGenerationService # Added import
+from app.services.image_generation_service import ImageGenerationService
 
 router = APIRouter()
 
@@ -89,7 +89,7 @@ def update_user_endpoint(
     user_id: int,
     user_in: models.UserUpdate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[models.User, Depends(get_current_active_user)] # Changed dependency
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
     db_user = crud.get_user(db, user_id=user_id)
     if db_user is None:

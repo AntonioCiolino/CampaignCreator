@@ -2,7 +2,7 @@ from typing import Optional
 import openai # Direct import of the openai library
 import requests
 # import os # No longer needed for Azure saving
-import base64 # Added base64 import
+import base64
 import uuid
 # import shutil # No longer needed for Azure saving
 from pathlib import Path
@@ -12,16 +12,12 @@ from io import BytesIO # Restored for Azure
 from azure.storage.blob import BlobServiceClient # Restored for Azure
 from azure.identity import DefaultAzureCredential # Restored for Azure
 
-# Added imports
-from app.models import User as UserModel, BlobFileMetadata # Added BlobFileMetadata
-from ..core.security import decrypt_key # Changed to relative import
-# settings is already imported below
-# openai is already imported above
-# HTTPException is already imported above
+from app.models import User as UserModel, BlobFileMetadata
+from ..core.security import decrypt_key
 
 from app.core.config import settings
 from app.orm_models import GeneratedImage
-from app import crud # Added crud import
+from app import crud
 from app.services.gemini_service import GeminiLLMService
 from app.services.llm_service import LLMGenerationError, LLMServiceUnavailableError
 
@@ -41,7 +37,6 @@ class ImageGenerationService:
         # This specific check for STABLE_DIFFUSION_API_KEY is removed as per plan,
         # the new block below handles STABLE_DIFFUSION_API_BASE_URL and its relation to the key.
         # if not settings.STABLE_DIFFUSION_API_KEY or settings.STABLE_DIFFUSION_API_KEY == "YOUR_STABLE_DIFFUSION_API_KEY_HERE":
-        #     print("Warning: System-level Stable Diffusion API key (settings.STABLE_DIFFUSION_API_KEY) is not configured or is a placeholder. Superuser fallback for Stable Diffusion may not work.")
 
         # New warning check for STABLE_DIFFUSION_API_BASE_URL
         if not settings.STABLE_DIFFUSION_API_BASE_URL or \
@@ -53,10 +48,8 @@ class ImageGenerationService:
 
         # Old block for self.stable_diffusion_api_url is removed.
         # if not self.stable_diffusion_api_url or self.stable_diffusion_api_url == "YOUR_STABLE_DIFFUSION_API_URL_HERE":
-        #     print("Warning: Stable Diffusion API URL (settings.STABLE_DIFFUSION_API_URL) is not configured or is a placeholder.")
         #     self.stable_diffusion_api_url = None
         # elif self.stable_diffusion_api_url and not (self.stable_diffusion_api_url.startswith("http://") or self.stable_diffusion_api_url.startswith("https://")):
-        #     print(f"Warning: STABLE_DIFFUSION_API_URL ('{self.stable_diffusion_api_url}') does not look like a valid URL. Proceeding with caution.")
 
     async def _get_openai_api_key_for_user(self, current_user: UserModel, db: Session) -> str: # Added db
         """
@@ -289,7 +282,7 @@ class ImageGenerationService:
         self,
         prompt: str,
         db: Session,
-        current_user: UserModel, # Added current_user
+        current_user: UserModel,
         size: Optional[str] = None,
         quality: Optional[str] = None,
         model: Optional[str] = None,
@@ -395,7 +388,7 @@ class ImageGenerationService:
         self,
         prompt: str,
         db: Session,
-        current_user: UserModel, # Added current_user
+        current_user: UserModel,
         size: Optional[str] = None,
         steps: Optional[int] = None,
         cfg_scale: Optional[float] = None,
@@ -751,19 +744,12 @@ class ImageGenerationService:
 #         if settings.OPENAI_API_KEY and settings.OPENAI_API_KEY not in ["YOUR_OPENAI_API_KEY", "YOUR_API_KEY_HERE"]:
 #             try:
 #                 service_dalle = ImageGenerationService() # Re-init for this scope if needed or ensure global settings are picked up
-#                 print("ImageGenerationService initialized for DALL-E test.")
 #                 prompt_dalle = "A cute cat astronaut planting a flag on the moon, digital art"
-#                 print(f"Generating DALL-E image for prompt: '{prompt_dalle}'")
 #                 image_url_d3 = await service_dalle.generate_image_dalle(prompt=prompt_dalle, model="dall-e-3")
-#                 print(f"DALL-E 3 Image URL: {image_url_d3}")
 #             except ValueError as ve:
-#                 print(f"DALL-E Initialization Error: {ve}")
 #             except HTTPException as he:
-#                 print(f"DALL-E HTTP Exception: {he.status_code} - {he.detail}")
 #             except Exception as e:
-#                 print(f"DALL-E unexpected error: {e}")
 #         else:
-#             print("Skipping DALL-E test: OPENAI_API_KEY not configured.")
 
 #         # Test Stable Diffusion
 #         stable_diffusion_key = os.getenv("STABLE_DIFFUSION_API_KEY")
@@ -774,21 +760,14 @@ class ImageGenerationService:
             
 #             # Check if service_sd has the SD key correctly (it should if the env var is set)
 #             if not service_sd.stable_diffusion_api_key or service_sd.stable_diffusion_api_key == "YOUR_STABLE_DIFFUSION_API_KEY":
-#                 print("Skipping Stable Diffusion test: API key not properly loaded by service.")
 #             else:
-#                 print("ImageGenerationService initialized for Stable Diffusion test.")
 #                 prompt_sd = "A majestic eagle soaring over a futuristic city, photorealistic"
-#                 print(f"Generating Stable Diffusion image for prompt: '{prompt_sd}'")
 #                 try:
 #                     # Note: generate_image_stable_diffusion is async but uses blocking 'requests.post'
 #                     # For a real async application, use httpx or run 'requests.post' in a thread pool.
 #                     image_url_sd = await service_sd.generate_image_stable_diffusion(prompt=prompt_sd, size="1024x1024", steps=30)
-#                     print(f"Stable Diffusion Image URL: {image_url_sd}")
 #                 except HTTPException as he:
-#                     print(f"Stable Diffusion HTTP Exception: {he.status_code} - {he.detail}")
 #                 except Exception as e:
-#                     print(f"Stable Diffusion unexpected error: {e}")
 #         else:
-#             print("Skipping Stable Diffusion test: STABLE_DIFFUSION_API_KEY not configured or is a placeholder.")
 
 #     asyncio.run(main())

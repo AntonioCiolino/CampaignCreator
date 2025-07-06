@@ -1,6 +1,6 @@
 from enum import Enum
 from enum import Enum
-from typing import Optional, Annotated # Added Annotated
+from typing import Optional, Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field # HttpUrl removed as image_url is str
@@ -18,7 +18,7 @@ router = APIRouter()
 class ImageModelName(str, Enum):
     DALLE = "dall-e"
     STABLE_DIFFUSION = "stable-diffusion"
-    GEMINI = "gemini" # Added Gemini model
+    GEMINI = "gemini"
 
 class ImageGenerationRequest(BaseModel):
     prompt: str
@@ -33,7 +33,7 @@ class ImageGenerationRequest(BaseModel):
     campaign_id: Optional[int] = Field(None, description="Optional campaign ID to associate the image with.")
 
 class ImageGenerationResponse(BaseModel):
-    image_url: str # Changed from HttpUrl to str, to accommodate data URLs
+    image_url: str
     prompt_used: str
     model_used: ImageModelName # This will now include "gemini"
     size_used: str
@@ -128,8 +128,8 @@ async def generate_image_endpoint(
                 model=dalle_model_name,
                 size=final_size,
                 quality=final_quality if dalle_model_name == "dall-e-3" else None,
-                current_user=current_user, # Changed from user_id
-                campaign_id=request.campaign_id # Pass campaign_id
+                current_user=current_user,
+                campaign_id=request.campaign_id
             )
             model_used_for_response = f"{request.model.value} ({dalle_model_name})" # Not used in response model directly
 
@@ -152,12 +152,12 @@ async def generate_image_endpoint(
             image_url = await service.generate_image_stable_diffusion(
                 prompt=request.prompt,
                 db=db,
-                size=final_size, # Pass the determined size (request or default)
-                steps=final_steps, # Pass request value (can be None)
-                cfg_scale=final_cfg_scale, # Pass request value (can be None)
+                size=final_size,
+                steps=final_steps,
+                cfg_scale=final_cfg_scale,
                 current_user=current_user,
-                campaign_id=request.campaign_id, # Pass campaign_id
-                sd_engine_id=sd_engine_to_use # Pass the user's preferred engine
+                campaign_id=request.campaign_id,
+                sd_engine_id=sd_engine_to_use
             )
             model_used_for_response = request.model.value
 
@@ -171,10 +171,10 @@ async def generate_image_endpoint(
                 prompt=request.prompt,
                 db=db,
                 current_user=current_user,
-                size=request.size, # Pass user's requested size (conceptual for Gemini)
-                model=final_gemini_model_name, # Pass specific Gemini model
+                size=request.size,
+                model=final_gemini_model_name,
                 user_id=current_user.id,
-                campaign_id=request.campaign_id # Pass campaign_id
+                campaign_id=request.campaign_id
             )
             model_used_for_response = request.model.value # This is 'gemini'
             # For Gemini, quality, steps, cfg_scale are not applicable in the same way
