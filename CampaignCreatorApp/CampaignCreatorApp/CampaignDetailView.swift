@@ -23,6 +23,9 @@ struct CampaignDetailView: View {
 
     @State private var titleDebounceTimer: Timer?
 
+    // For generating temporary client-side IDs for new sections
+    @State private var nextTemporaryClientSectionID: Int = -1
+
     init(campaign: Campaign, campaignCreator: CampaignCreator) {
         self._campaign = State(initialValue: campaign)
         self._campaignCreator = ObservedObject(wrappedValue: campaignCreator)
@@ -151,6 +154,12 @@ struct CampaignDetailView: View {
         }
     }
 
+    private func generateTemporaryClientSectionID() -> Int {
+        let tempID = nextTemporaryClientSectionID
+        nextTemporaryClientSectionID -= 1
+        return tempID
+    }
+
     // MARK: - Save Logic
     enum SaveSource { case titleField, conceptEditorDoneButton, onDisappear }
     private func saveCampaignDetails(source: SaveSource) async {
@@ -243,6 +252,7 @@ struct CampaignDetailView: View {
 
             var updatedCampaign = self.campaign
             let newSection = CampaignSection(
+                id: generateTemporaryClientSectionID(), // Use temporary negative ID
                 title: generatePrompt.prefix(50) + (generatePrompt.count > 50 ? "..." : ""), // Use prompt as title
                 content: generatedText,
                 order: (updatedCampaign.sections.map(\.order).max() ?? -1) + 1 // Ensure new section is last
