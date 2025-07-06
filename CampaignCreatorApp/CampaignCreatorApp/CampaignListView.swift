@@ -114,18 +114,18 @@ struct CampaignListView: View {
                 Text(creationErrorMessage)
             }
             .onAppear {
-                print("CampaignListView: .onAppear. Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCampaigns), InitialFetchAttempted: \(campaignCreator.initialCampaignFetchAttempted), Err: \(campaignCreator.campaignError != nil ? (campaignCreator.campaignError?.localizedDescription ?? "Unknown Error") : "None")")
-                if campaignCreator.isAuthenticated && !campaignCreator.isLoadingCampaigns {
+                print("CampaignListView: .onAppear. SessionValid: \(campaignCreator.isUserSessionValid), Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCampaigns), InitialFetchAttempted: \(campaignCreator.initialCampaignFetchAttempted), Err: \(campaignCreator.campaignError != nil ? (campaignCreator.campaignError?.localizedDescription ?? "Unknown Error") : "None")")
+                if campaignCreator.isUserSessionValid && !campaignCreator.isLoadingCampaigns {
                     if !campaignCreator.initialCampaignFetchAttempted || campaignCreator.campaignError != nil {
-                        print("CampaignListView: Conditions met (initial fetch needed or error retry), will fetch campaigns.")
+                        print("CampaignListView: Conditions met (SESSION VALID, initial fetch needed or error retry), will fetch campaigns.")
                         Task {
                             await campaignCreator.fetchCampaigns()
                         }
                     } else {
-                        print("CampaignListView: Initial fetch already attempted and no error, skipping fetch. Campaigns count: \(campaignCreator.campaigns.count)")
+                        print("CampaignListView: Session valid, initial fetch already attempted and no error, skipping fetch. Campaigns count: \(campaignCreator.campaigns.count)")
                     }
                 } else {
-                    print("CampaignListView: Skipping fetch. Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCampaigns)")
+                    print("CampaignListView: Skipping fetch. SessionValid: \(campaignCreator.isUserSessionValid), Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCampaigns)")
                 }
             }
         }

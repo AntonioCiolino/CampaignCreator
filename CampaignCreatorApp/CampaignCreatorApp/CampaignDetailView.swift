@@ -17,9 +17,13 @@ struct CampaignDetailView: View {
     @State private var generatePrompt = ""
     @State private var isGeneratingText = false // Renamed for clarity
     @State private var generationError: String?
+    @State private var imageGenerationError: String? // For image generation
 
     @State private var showingExportSheet = false
     @State private var exportedMarkdown = ""
+
+    @State private var showingGenerateImageSheet = false // New state for image sheet
+    @State private var imageGeneratePrompt = "" // Prompt for image generation
 
     @State private var titleDebounceTimer: Timer?
 
@@ -52,9 +56,14 @@ struct CampaignDetailView: View {
                         // Action buttons
                         HStack(spacing: 12) {
                             Button(action: { showingGenerateSheet = true }) {
-                                Label("Generate", systemImage: "sparkles")
+                                Label("Text", systemImage: "sparkles") // Clarify it's text
                             }
                             .buttonStyle(.borderedProminent).disabled(isSaving || isGeneratingText)
+
+                            Button(action: { showingGenerateImageSheet = true }) { // New Button
+                                Label("Image", systemImage: "photo")
+                            }
+                            .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
 
                             Button(action: { exportCampaignContent() }) {
                                 Label("Export", systemImage: "square.and.arrow.up")
@@ -78,40 +87,80 @@ struct CampaignDetailView: View {
                 .padding().background(Color(.systemGroupedBackground)).cornerRadius(12)
 
                 // MARK: - Concept Editor
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("Campaign Concept")
-                            .font(.headline)
-                        Spacer()
-                        Button(isEditingConcept ? "Done" : "Edit") {
-                            isEditingConcept.toggle()
-                            if !isEditingConcept {
-                                Task { await saveCampaignDetails(source: .conceptEditorDoneButton) }
+                DisclosureGroup("Campaign Concept") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Spacer() // Pushes button to the right
+                            Button(isEditingConcept ? "Done" : "Edit") {
+                                isEditingConcept.toggle()
+                                if !isEditingConcept {
+                                    Task { await saveCampaignDetails(source: .conceptEditorDoneButton) }
+                                }
+                            }
+                            .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
+                        }
+
+                        if isEditingConcept {
+                            TextEditor(text: $editableConcept)
+                                .frame(minHeight: 200, maxHeight: 400).padding(8)
+                                .background(Color(.systemBackground)).cornerRadius(8)
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+                                .disabled(isSaving || isGeneratingText)
+                        } else {
+                            Text(editableConcept.isEmpty ? "Tap Edit to add campaign concept..." : editableConcept)
+                                .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 100)
+                                .padding().background(Color(.systemGroupedBackground)).cornerRadius(8)
+                                .foregroundColor(editableConcept.isEmpty ? .secondary : .primary)
+                                .onTapGesture { if !isSaving && !isGeneratingText { isEditingConcept = true } }
+                        }
+                    }
+                }
+                .padding().background(Color(.systemBackground)).cornerRadius(12)
+
+                // MARK: - Table of Contents
+                if let tocEntries = campaign.displayTOC, !tocEntries.isEmpty {
+                    DisclosureGroup("Table of Contents") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(tocEntries) { entry in
+                                Text(entry.title)
+                                    .font(.body)
+                                    // TODO: Add navigation to section
                             }
                         }
-                        .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 4)
                     }
+                    .padding().background(Color(.systemBackground)).cornerRadius(12)
+                }
 
-                    if isEditingConcept {
-                        TextEditor(text: $editableConcept)
-                            .frame(minHeight: 200, maxHeight: 400).padding(8)
-                            .background(Color(.systemBackground)).cornerRadius(8)
-                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
-                            .disabled(isSaving || isGeneratingText)
-                    } else {
-                        Text(editableConcept.isEmpty ? "Tap Edit to add campaign concept..." : editableConcept)
-                            .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 100)
-                            .padding().background(Color(.systemGroupedBackground)).cornerRadius(8)
-                            .foregroundColor(editableConcept.isEmpty ? .secondary : .primary)
-                            .onTapGesture { if !isSaving && !isGeneratingText { isEditingConcept = true } }
+                // MARK: - Campaign Theme Display
+                DisclosureGroup("Campaign Theme") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ThemePropertyRow(label: "Primary Color", value: campaign.themePrimaryColor)
+                        ThemePropertyRow(label: "Secondary Color", value: campaign.themeSecondaryColor)
+                        ThemePropertyRow(label: "Background Color", value: campaign.themeBackgroundColor)
+                        ThemePropertyRow(label: "Text Color", value: campaign.themeTextColor)
+                        ThemePropertyRow(label: "Font Family", value: campaign.themeFontFamily)
+                        ThemePropertyRow(label: "Background Image URL", value: campaign.themeBackgroundImageURL, isURL: true)
+                        ThemePropertyRow(label: "BG Image Opacity", value: campaign.themeBackgroundImageOpacity.map { String(format: "%.2f", $0) })
+
+                        Button("Edit Theme (Placeholder)") {
+                            // TODO: Implement theme editing
+                            print("Edit Theme button tapped - functionality not yet implemented.")
+                            errorMessage = "Theme editing is not yet implemented."
+                            showErrorAlert = true
+                        }
+                        .buttonStyle(.bordered)
+                        .padding(.top, 8)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 4)
                 }
                 .padding().background(Color(.systemBackground)).cornerRadius(12)
 
                 // MARK: - Sections Placeholder
                 VStack(alignment: .leading) {
                     Text("Sections").font(.headline)
-                    // TODO: Implement section listing and editing here
                     if campaign.sections.isEmpty {
                         Text("No sections yet. Use 'Generate' to create the first section from a prompt.")
                             .font(.subheadline).foregroundColor(.secondary).padding()
@@ -119,11 +168,14 @@ struct CampaignDetailView: View {
                             .background(Color(.systemGroupedBackground)).cornerRadius(8)
                     } else {
                         ForEach(campaign.sections) { section in
-                            SectionBox(title: section.title ?? "Untitled Section (\(section.order))") {
+                            DisclosureGroup(section.title ?? "Untitled Section (\(section.order))") {
                                 Text(section.content.prefix(200) + (section.content.count > 200 ? "..." : ""))
                                     .font(.body)
                                     .lineLimit(5)
+                                    .frame(maxWidth: .infinity, alignment: .leading) // Ensure text aligns left
+                                    .padding(.top, 4) // Add some padding below the DisclosureGroup title
                             }
+                            .padding(.vertical, 4)
                         }
                     }
                 }
@@ -149,6 +201,9 @@ struct CampaignDetailView: View {
         .sheet(isPresented: $showingGenerateSheet) {
             generateSheetView
         }
+        .sheet(isPresented: $showingGenerateImageSheet) { // New sheet modifier
+            generateImageSheetView
+        }
         .sheet(isPresented: $showingExportSheet) {
             exportSheetView
         }
@@ -158,6 +213,82 @@ struct CampaignDetailView: View {
         let tempID = nextTemporaryClientSectionID
         nextTemporaryClientSectionID -= 1
         return tempID
+    }
+
+    // MARK: - Image Generation Logic (Campaign Thematic Image)
+    private var generateImageSheetView: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Text("AI Image Generation").font(.headline)
+                Text("Describe the thematic image you'd like to generate for your campaign.")
+                    .font(.subheadline).foregroundColor(.secondary)
+                TextEditor(text: $imageGeneratePrompt)
+                    .frame(height: 120).padding(8)
+                    .background(Color(.systemGroupedBackground)).cornerRadius(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+
+                if let error = imageGenerationError { Text(error).foregroundColor(.red).font(.caption) }
+                Spacer()
+                Button(action: { Task { await performAICampaignImageGeneration() } }) {
+                    HStack {
+                        // Assuming isGeneratingText can be reused or a new @State isGeneratingImage exists
+                        if isGeneratingText { ProgressView().progressViewStyle(.circular).tint(.white) }
+                        Text(isGeneratingText ? "Generating..." : "Generate Thematic Image")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(imageGeneratePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGeneratingText)
+            }
+            .padding()
+            .navigationTitle("Generate Image").navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { showingGenerateImageSheet = false; imageGeneratePrompt = ""; imageGenerationError = nil }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func performAICampaignImageGeneration() async {
+        guard !imageGeneratePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        // Use a separate state for image generation progress if text generation can happen concurrently
+        // For now, reusing isGeneratingText for simplicity, assuming modal operation.
+        isGeneratingText = true // Or a new @State isGeneratingImage = true
+        imageGenerationError = nil
+
+        do {
+            // Placeholder for actual image generation call
+            // let imageURL = try await campaignCreator.generateCampaignImage(campaignId: campaign.id, prompt: imageGeneratePrompt)
+            // For now, simulate a delay and a fake URL
+            try await Task.sleep(nanoseconds: 2_000_000_000) // Simulate network request
+            let simulatedImageURL = "https://picsum.photos/seed/\(UUID().uuidString)/600/400"
+
+            var campaignToUpdate = self.campaign
+            campaignToUpdate.thematicImageURL = simulatedImageURL
+            campaignToUpdate.thematicImagePrompt = imageGeneratePrompt // Save the prompt used
+            campaignToUpdate.markAsModified()
+
+            try await campaignCreator.updateCampaign(campaignToUpdate)
+
+            if let refreshedCampaign = campaignCreator.campaigns.first(where: { $0.id == campaignToUpdate.id }) {
+                self.campaign = refreshedCampaign
+                self.editableTitle = refreshedCampaign.title
+                self.editableConcept = refreshedCampaign.concept ?? ""
+            }
+
+            showingGenerateImageSheet = false
+            imageGeneratePrompt = ""
+            print("Simulated campaign image generated and campaign updated.")
+
+        } catch let error as APIError {
+            imageGenerationError = "Failed to save campaign with new image: \(error.localizedDescription)"
+            print("❌ API Error saving campaign after image generation: \(error.localizedDescription)")
+        } catch {
+            imageGenerationError = "An unexpected error occurred: \(error.localizedDescription)"
+            print("❌ Unexpected error during campaign image generation: \(error.localizedDescription)")
+        }
+        isGeneratingText = false // Or isGeneratingImage = false
     }
 
     // MARK: - Save Logic
@@ -332,11 +463,46 @@ struct CampaignDetailView: View {
                 content: "Content for chapter 1.",
                 order: 1
             )
-        ]
+        ],
+        themePrimaryColor: "#FF0000",
+        themeFontFamily: "Arial"
     )
     // campaignCreator.campaigns = [sampleCampaign] // If needed for preview consistency
 
     NavigationView { // Removed explicit 'return'
         CampaignDetailView(campaign: sampleCampaign, campaignCreator: campaignCreator)
+    }
+}
+
+
+// Helper view for displaying theme properties
+struct ThemePropertyRow: View {
+    let label: String
+    let value: String?
+    var isURL: Bool = false
+
+    var body: some View {
+        HStack {
+            Text(label + ":")
+                .font(.caption)
+                .fontWeight(.medium)
+            if let val = value, !val.isEmpty {
+                if isURL, let url = URL(string: val) {
+                    Link(val, destination: url)
+                        .font(.caption)
+                        .lineLimit(1)
+                } else {
+                    Text(val)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            } else {
+                Text("Not set")
+                    .font(.caption)
+                    .italic()
+                    .foregroundColor(.gray)
+            }
+            Spacer() // Pushes content to the left
+        }
     }
 }

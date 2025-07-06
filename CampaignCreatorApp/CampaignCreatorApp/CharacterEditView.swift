@@ -32,6 +32,13 @@ struct CharacterEditView: View {
     @State private var aspectGenerationError: String? = nil
     enum AspectField { case description, appearance }
 
+    // New states for character image generation sheet
+    @State private var showingCharacterImageSheet = false
+    @State private var characterImageGeneratePrompt = ""
+    @State private var characterImageGenerationError: String?
+    @State private var isGeneratingCharacterImage = false
+
+
     @Environment(\.dismiss) var dismiss
 
     init(character: Character, campaignCreator: CampaignCreator, isPresented: Binding<Bool>) {
@@ -92,10 +99,15 @@ struct CharacterEditView: View {
                         .disabled(newImageURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
 
-                    Button(action: requestImageGeneration) {
-                        Label("Suggest Image (AI Placeholder)", systemImage: "photo.on.rectangle.angled")
+                    Button(action: {
+                        // Reset prompt and error before showing sheet
+                        characterImageGeneratePrompt = "\(name) - \(appearanceDescriptionText)" // Pre-fill prompt
+                        characterImageGenerationError = nil
+                        showingCharacterImageSheet = true
+                    }) {
+                        Label("Generate Character Image (AI)", systemImage: "photo.on.rectangle.angled")
                     }
-                    .disabled(isGeneratingAspect) // Disable if other AI generation is active
+                    .disabled(isGeneratingAspect || isGeneratingCharacterImage)
                 }
 
                 Section(header: Text("Statistics (Optional)")) {
@@ -140,9 +152,71 @@ struct CharacterEditView: View {
             .alert("Error Updating Character", isPresented: $showErrorAlert) {
                 Button("OK") { }
             } message: { Text(errorMessage) }
-            .disabled(isSaving || isGeneratingAspect)
+            .disabled(isSaving || isGeneratingAspect || isGeneratingCharacterImage)
+            .sheet(isPresented: $showingCharacterImageSheet) {
+                characterImageGenerateSheet
+            }
         }
     }
+
+    // MARK: - Character Image Generation Sheet
+    private var characterImageGenerateSheet: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Text("AI Character Image Generation").font(.headline)
+                Text("Describe the character image you'd like to generate. Initial prompt based on name and appearance.")
+                    .font(.subheadline).foregroundColor(.secondary)
+                TextEditor(text: $characterImageGeneratePrompt)
+                    .frame(height: 150).padding(8)
+                    .background(Color(.systemGroupedBackground)).cornerRadius(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+
+                if let error = characterImageGenerationError { Text(error).foregroundColor(.red).font(.caption) }
+                Spacer()
+                Button(action: { Task { await performCharacterImageGeneration() } }) {
+                    HStack {
+                        if isGeneratingCharacterImage { ProgressView().progressViewStyle(.circular).tint(.white) }
+                        Text(isGeneratingCharacterImage ? "Generating..." : "Generate Image")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(characterImageGeneratePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGeneratingCharacterImage || isGeneratingAspect)
+            }
+            .padding()
+            .navigationTitle("Generate Character Image").navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { showingCharacterImageSheet = false }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func performCharacterImageGeneration() async {
+        guard !characterImageGeneratePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        isGeneratingCharacterImage = true
+        characterImageGenerationError = nil
+
+        do {
+            // Placeholder for actual image generation call
+            // let imageURL = try await campaignCreator.generateCharacterImage(characterId: characterToEdit.id, prompt: characterImageGeneratePrompt)
+            try await Task.sleep(nanoseconds: 2_000_000_000) // Simulate network request
+            let simulatedImageURL = "https://picsum.photos/seed/\(UUID().uuidString)/300/300" // Different size for character
+
+            imageURLsText.append(simulatedImageURL) // Add to the list
+
+            showingCharacterImageSheet = false
+            // characterImageGeneratePrompt = "" // Keep prompt in case user wants to tweak and retry
+            print("Simulated character image generated and URL added.")
+
+        } catch { // Catches any error, including potential LLMError or APIError if those were real.
+            characterImageGenerationError = "An unexpected error occurred: \(error.localizedDescription)"
+            print("❌ Unexpected error during character image generation: \(error.localizedDescription)")
+        }
+        isGeneratingCharacterImage = false
+    }
+
 
     @ViewBuilder
     private func generateableTextField(title: String, text: Binding<String>, fieldType: AspectField) -> some View {

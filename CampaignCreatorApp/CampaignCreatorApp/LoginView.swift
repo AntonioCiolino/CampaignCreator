@@ -7,8 +7,11 @@ struct LoginView: View {
 
     @State private var usernameOrEmail = ""
     @State private var password = ""
+    @State private var rememberMe = false // New state for Remember Me
     @State private var loginAttemptError: String? = nil
     @State private var isAttemptingLogin: Bool = false
+
+    private let lastUsernameKey = "LastUsername" // UserDefaults key for username
 
     // Video player state
     @State private var player: AVPlayer?
@@ -28,11 +31,11 @@ struct LoginView: View {
                     .aspectRatio(contentMode: .fill)
                     .edgesIgnoringSafeArea(.all)
                     .opacity(0.3) // Adjust opacity to make it a background
-                    .onAppear {
-                        player.play()
-                    }
+                    // .onAppear { player.play() } // player.play() is called in setupVideoPlayer
                     .onDisappear {
                         player.pause()
+                        // It's good practice to remove observers when the view disappears
+                        NotificationCenter.default.removeObserver(self, name: .AVPlayerItemDidPlayToEndTime, object: player.currentItem)
                     }
             }
 
@@ -70,6 +73,10 @@ struct LoginView: View {
                         .background(Color.white.opacity(0.8))
                         .cornerRadius(8)
                         .shadow(radius: 3)
+
+                    Toggle("Remember Me", isOn: $rememberMe)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 5) // Slight padding for the toggle text
                 }
                 .padding(.horizontal, 40)
 
@@ -110,13 +117,72 @@ struct LoginView: View {
             }
             .padding()
         }
-        .onAppear(perform: setupVideoPlayer)
+        .onAppear {
+            setupVideoPlayer()
+            loadSavedCredentials()
+        }
         .onChange(of: campaignCreator.authError) { newError in
             // This logic might need refinement based on how authError is used globally vs locally
             loginAttemptError = newError?.localizedDescription
         }
         .onChange(of: campaignCreator.isLoggingIn) { loggingInStatus in
             isAttemptingLogin = loggingInStatus
+        }
+        // When login succeeds and isAuthenticated becomes true, this view will disappear.
+        // That's a good time to save credentials if "Remember Me" is checked.
+        .onChange(of: campaignCreator.isAuthenticated) { isAuthenticated in
+            if isAuthenticated {
+                handleLoginSuccess()
+            }
+        }
+    }
+
+    private func loadSavedCredentials() {
+        // Load last username
+        if let lastUser = UserDefaults.standard.string(forKey: lastUsernameKey) {
+            usernameOrEmail = lastUser
+            // Attempt to load password only if a username was saved
+            do {
+                password = try KeychainHelper.loadPassword(username: lastUser)
+                rememberMe = true // If password loaded, assume "Remember Me" was on
+                print("LoginView: Loaded saved credentials for \(lastUser)")
+            } catch KeychainHelper.KeychainError.itemNotFound {
+                print("LoginView: No saved password found for \(lastUser).")
+                // No password, so ensure "Remember Me" is off unless user explicitly sets it
+                // rememberMe = false // Let it default to false or prior state
+            } catch {
+                print("LoginView: Error loading password for \(lastUser): \(error.localizedDescription)")
+                // Clear potentially stale password and ensure rememberMe is off
+                password = ""
+                // rememberMe = false
+            }
+        } else {
+            print("LoginView: No last username found in UserDefaults.")
+        }
+    }
+
+    private func handleLoginSuccess() {
+        let userToRemember = usernameOrEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !userToRemember.isEmpty else { return }
+
+        if rememberMe {
+            UserDefaults.standard.set(userToRemember, forKey: lastUsernameKey)
+            do {
+                try KeychainHelper.savePassword(username: userToRemember, password: password)
+                print("LoginView: Saved credentials for \(userToRemember)")
+            } catch {
+                print("LoginView: Failed to save password for \(userToRemember): \(error.localizedDescription)")
+                // Optionally, inform the user that saving failed
+            }
+        } else {
+            // If "Remember Me" is off, remove saved credentials for this username
+            UserDefaults.standard.removeObject(forKey: lastUsernameKey) // Or just remove for current user if logic is specific
+            do {
+                try KeychainHelper.delete(username: userToRemember)
+                print("LoginView: Cleared saved credentials for \(userToRemember)")
+            } catch {
+                print("LoginView: Failed to delete password for \(userToRemember): \(error.localizedDescription)")
+            }
         }
     }
 
@@ -135,22 +201,32 @@ struct LoginView: View {
         }
 
         player?.isMuted = true // Mute background video
-        player?.actionAtItemEnd = .none // Loop
+        player?.actionAtItemEnd = .none // Crucial for manual looping/cycling
 
-        // Notification to restart video when it ends
-        NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: player?.currentItem, queue: .main) { _ in
-            self.player?.seek(to: .zero)
-            self.player?.play()
+        // Remove ALL previous AVPlayerItemDidPlayToEndTime observers registered by this instance of LoginView
+        // to prevent multiple handlers firing if setupVideoPlayer is called again (e.g., on view re-appear or error).
+        NotificationCenter.default.removeObserver(self, name: .AVPlayerItemDidPlayToEndTime, object: nil)
 
-            // Cycle to next video
+        // Add a new observer specifically for the current player item.
+        NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: player?.currentItem, queue: .main) { [weak self] _ in
+            guard let self = self else { return }
+            print("LoginView: Video item did play to end. Current index: \(self.currentVideoIndex). Setting up next video.")
             self.currentVideoIndex += 1
-            let nextUrlString = self.videoURLs[self.currentVideoIndex % self.videoURLs.count]
-            if let nextVideoURL = URL(string: nextUrlString) {
-                self.player?.replaceCurrentItem(with: AVPlayerItem(url: nextVideoURL))
-                self.player?.play() // Ensure it starts playing the new item
+            self.setupVideoPlayer() // This will set up the player for the new currentVideoIndex and re-register observer for that new item.
+        }
+
+        // Ensure player starts playing on the main thread
+        DispatchQueue.main.async {
+            self.player?.play()
+            // Simple check to see if playback started. More robust checks involve observing player.timeControlStatus or item.status.
+            if self.player?.rate == 0.0 && self.player?.error == nil {
+                 print("LoginView: player.play() called, but rate is 0 and no immediate error. Video might be buffering or item status not ready.")
+            } else if let error = self.player?.error {
+                print("LoginView: Player error on attempting play: \(error.localizedDescription)")
+            } else {
+                print("LoginView: player.play() called, current rate: \(self.player?.rate ?? 0).")
             }
         }
-        player?.play()
     }
 
     private func performLogin() {

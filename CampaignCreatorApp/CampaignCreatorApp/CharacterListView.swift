@@ -71,18 +71,18 @@ struct CharacterListView: View {
                 CharacterCreateView(campaignCreator: campaignCreator, isPresented: $showingCreateSheet)
             }
             .onAppear {
-                print("CharacterListView: .onAppear. Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCharacters), InitialFetchAttempted: \(campaignCreator.initialCharacterFetchAttempted), Err: \(campaignCreator.characterError != nil ? (campaignCreator.characterError?.localizedDescription ?? "Unknown Error") : "None")")
-                if campaignCreator.isAuthenticated && !campaignCreator.isLoadingCharacters {
+                print("CharacterListView: .onAppear. SessionValid: \(campaignCreator.isUserSessionValid), Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCharacters), InitialFetchAttempted: \(campaignCreator.initialCharacterFetchAttempted), Err: \(campaignCreator.characterError != nil ? (campaignCreator.characterError?.localizedDescription ?? "Unknown Error") : "None")")
+                if campaignCreator.isUserSessionValid && !campaignCreator.isLoadingCharacters {
                     if !campaignCreator.initialCharacterFetchAttempted || campaignCreator.characterError != nil {
-                        print("CharacterListView: Conditions met (initial fetch needed or error retry), will fetch characters.")
+                        print("CharacterListView: Conditions met (SESSION VALID, initial fetch needed or error retry), will fetch characters.")
                         Task {
                             await campaignCreator.fetchCharacters()
                         }
                     } else {
-                        print("CharacterListView: Initial fetch already attempted and no error, skipping fetch. Characters count: \(campaignCreator.characters.count)")
+                        print("CharacterListView: Session valid, initial fetch already attempted and no error, skipping fetch. Characters count: \(campaignCreator.characters.count)")
                     }
                 } else {
-                    print("CharacterListView: Skipping fetch. Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCharacters)")
+                    print("CharacterListView: Skipping fetch. SessionValid: \(campaignCreator.isUserSessionValid), Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCharacters)")
                 }
             }
         }
