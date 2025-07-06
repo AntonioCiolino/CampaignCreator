@@ -2,24 +2,31 @@ import SwiftUI
 import CampaignCreatorLib
 
 struct ContentView: View {
-    @State private var campaignCreator = CampaignCreator()
+    @StateObject private var campaignCreator = CampaignCreator() // Use @StateObject for ObservableObjects
     @State private var selectedTab = 0
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            DocumentListView(campaignCreator: campaignCreator)
+            CampaignListView(campaignCreator: campaignCreator)
                 .tabItem {
                     Image(systemName: "doc.text.fill")
-                    Text("Documents")
+                    Text("Campaigns")
                 }
                 .tag(0)
             
-            SettingsView()
+            CharacterListView(campaignCreator: campaignCreator) // Added CharacterListView
+                .tabItem {
+                    Image(systemName: "person.3.fill")
+                    Text("Characters")
+                }
+                .tag(1)
+
+            SettingsView() // SettingsView will now be tag 2
                 .tabItem {
                     Image(systemName: "gear")
                     Text("Settings")
                 }
-                .tag(1)
+                .tag(2)
         }
         .accentColor(.blue)
     }
