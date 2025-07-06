@@ -17,6 +17,11 @@ public class CampaignCreator: ObservableObjectProtocol {
 
     @Published public var isLoadingCharacters: Bool = false
     @Published public var characterError: APIError? = nil
+    @Published public var initialCharacterFetchAttempted: Bool = false
+
+    @Published public var isLoadingCampaigns: Bool = false
+    @Published public var campaignError: APIError? = nil
+    @Published public var initialCampaignFetchAttempted: Bool = false
 
     // Auth State
     @Published public var isAuthenticated: Bool = false
@@ -77,6 +82,8 @@ public class CampaignCreator: ObservableObjectProtocol {
         currentUser = nil // Clear current user
         campaigns = []
         characters = []
+        initialCampaignFetchAttempted = false // Reset flag
+        initialCharacterFetchAttempted = false // Reset flag
         print("Logged out.")
     }
     
@@ -106,6 +113,10 @@ public class CampaignCreator: ObservableObjectProtocol {
             campaignError = .notAuthenticated; print("⚠️ Cannot fetch campaigns: Not authenticated."); return
         }
         isLoadingCampaigns = true; campaignError = nil
+        defer {
+            isLoadingCampaigns = false
+            self.initialCampaignFetchAttempted = true
+        }
         do {
             self.campaigns = try await apiService.fetchCampaigns()
         } catch let error as APIError {
@@ -113,7 +124,6 @@ public class CampaignCreator: ObservableObjectProtocol {
             if case .notAuthenticated = error { self.logout() }
             else if case .serverError(let statusCode, _) = error, statusCode == 401 { self.logout() }
         } catch { self.campaignError = APIError.custom("An unexpected error occurred: \(error.localizedDescription)"); print("❌ Unexpected error fetching campaigns: \(error.localizedDescription)")}
-        isLoadingCampaigns = false
     }
 
     public func fetchCampaign(id: Int) async throws -> Campaign { // Changed id from UUID to Int
@@ -159,6 +169,10 @@ public class CampaignCreator: ObservableObjectProtocol {
             characterError = .notAuthenticated; print("⚠️ Cannot fetch characters: Not authenticated."); return
         }
         isLoadingCharacters = true; characterError = nil
+        defer {
+            isLoadingCharacters = false
+            self.initialCharacterFetchAttempted = true
+        }
         do {
             self.characters = try await apiService.fetchCharacters()
         } catch let error as APIError {
@@ -166,7 +180,6 @@ public class CampaignCreator: ObservableObjectProtocol {
             if case .notAuthenticated = error { self.logout() }
             else if case .serverError(let statusCode, _) = error, statusCode == 401 { self.logout() }
         } catch { self.characterError = APIError.custom("An unexpected error occurred while fetching characters: \(error.localizedDescription)"); print("❌ Unexpected error fetching characters: \(error.localizedDescription)")}
-        isLoadingCharacters = false
     }
 
     public func fetchCharacter(id: Int) async throws -> Character { // Changed id from UUID to Int

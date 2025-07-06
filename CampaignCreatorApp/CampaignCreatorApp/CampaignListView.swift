@@ -114,16 +114,15 @@ struct CampaignListView: View {
                 Text(creationErrorMessage)
             }
             .onAppear {
-                print("CampaignListView: .onAppear. Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCampaigns), Err: \(campaignCreator.campaignError != nil ? (campaignCreator.campaignError?.localizedDescription ?? "Unknown Error") : "None")")
+                print("CampaignListView: .onAppear. Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCampaigns), InitialFetchAttempted: \(campaignCreator.initialCampaignFetchAttempted), Err: \(campaignCreator.campaignError != nil ? (campaignCreator.campaignError?.localizedDescription ?? "Unknown Error") : "None")")
                 if campaignCreator.isAuthenticated && !campaignCreator.isLoadingCampaigns {
-                    // Fetch if campaigns array is empty OR if there was a previous error trying to load them.
-                    if campaignCreator.campaigns.isEmpty || campaignCreator.campaignError != nil {
-                        print("CampaignListView: Conditions met (authenticated, not loading, campaigns empty or previous error), will fetch campaigns.")
+                    if !campaignCreator.initialCampaignFetchAttempted || campaignCreator.campaignError != nil {
+                        print("CampaignListView: Conditions met (initial fetch needed or error retry), will fetch campaigns.")
                         Task {
                             await campaignCreator.fetchCampaigns()
                         }
                     } else {
-                        print("CampaignListView: Campaigns already loaded and no previous error, skipping fetch.")
+                        print("CampaignListView: Initial fetch already attempted and no error, skipping fetch. Campaigns count: \(campaignCreator.campaigns.count)")
                     }
                 } else {
                     print("CampaignListView: Skipping fetch. Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCampaigns)")

@@ -71,16 +71,15 @@ struct CharacterListView: View {
                 CharacterCreateView(campaignCreator: campaignCreator, isPresented: $showingCreateSheet)
             }
             .onAppear {
-                print("CharacterListView: .onAppear. Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCharacters), Err: \(campaignCreator.characterError != nil ? (campaignCreator.characterError?.localizedDescription ?? "Unknown Error") : "None")")
+                print("CharacterListView: .onAppear. Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCharacters), InitialFetchAttempted: \(campaignCreator.initialCharacterFetchAttempted), Err: \(campaignCreator.characterError != nil ? (campaignCreator.characterError?.localizedDescription ?? "Unknown Error") : "None")")
                 if campaignCreator.isAuthenticated && !campaignCreator.isLoadingCharacters {
-                    // Fetch if characters array is empty OR if there was a previous error trying to load them.
-                    if campaignCreator.characters.isEmpty || campaignCreator.characterError != nil {
-                        print("CharacterListView: Conditions met (authenticated, not loading, characters empty or previous error), will fetch characters.")
+                    if !campaignCreator.initialCharacterFetchAttempted || campaignCreator.characterError != nil {
+                        print("CharacterListView: Conditions met (initial fetch needed or error retry), will fetch characters.")
                         Task {
                             await campaignCreator.fetchCharacters()
                         }
                     } else {
-                        print("CharacterListView: Characters already loaded and no previous error, skipping fetch.")
+                        print("CharacterListView: Initial fetch already attempted and no error, skipping fetch. Characters count: \(campaignCreator.characters.count)")
                     }
                 } else {
                     print("CharacterListView: Skipping fetch. Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCharacters)")
