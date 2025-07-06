@@ -55,31 +55,53 @@ VTCNP Enterprises
         if isinstance(block_content, list):
             block_content = "\n".join(map(str, block_content))
 
-        processed_content = block_content.strip()
+        # Remove any leading/trailing whitespace for the initial check
+        processed_content_for_check = block_content.strip()
 
-        # Replace "Table of Contents:" with a Homebrewery TOC tag
-        if processed_content.strip().startswith("Table of Contents:"):
-            processed_content = processed_content.replace("Table of Contents:", "{{toc,wide,frame,box}}", 1)
-            lines = processed_content.split('\n')
-            processed_lines = []
-            for line in lines:
+        # Case-insensitive check for "Table of Contents:"
+        if processed_content_for_check.lower().startswith("table of contents:"):
+            # Perform a case-insensitive replacement of the line starting with "Table of Contents:"
+            # with the Homebrewery TOC tag.
+            temp_toc_content = re.sub(
+                r"^\s*table of contents:.*",  # Match from start of line
+                "{{toc,wide,frame,box}}",    # Replacement
+                block_content,               # Operate on original block_content
+                count=1,
+                flags=re.IGNORECASE | re.MULTILINE
+            )
+
+            # Process list items on the content.
+            lines_for_list_processing = temp_toc_content.splitlines() # Handles various newline types
+
+            final_processed_lines = []
+            is_toc_tag_line_processed_for_list = False
+
+            for line in lines_for_list_processing:
+                # Check if the current line IS the TOC tag we just inserted.
+                if "{{toc,wide,frame,box}}" in line and not is_toc_tag_line_processed_for_list:
+                    final_processed_lines.append(line)
+                    is_toc_tag_line_processed_for_list = True
+                    continue
+
+                # Process for list items
                 if line.strip().startswith(("* ", "- ", "+ ")):
                     cleaned_line = re.sub(r"^\s*[\*\-\+]\s*", "", line).strip()
-                    processed_lines.append(f"- {cleaned_line}") 
-                else:
-                    processed_lines.append(line)
-            processed_content = "\n".join(processed_lines)
-            return processed_content
+                    if cleaned_line:
+                        final_processed_lines.append(f"- {cleaned_line}")
+                elif line.strip():
+                    final_processed_lines.append(line)
 
-        # Replace "Chapter X:" or "Section X:" at the start of a line with Markdown H2 headings
-        processed_content = re.sub(r"^(Chapter\s*\d+|Section\s*\d+):", r"## \1", processed_content, flags=re.IGNORECASE | re.MULTILINE)
-        
-        # Replace "Background:" or similar headers at the start of a line with Markdown H2 headings
+            return "\n".join(final_processed_lines)
+
+        # If not a TOC block, apply other generic formatting
+        current_text_to_format = block_content.strip()
+
+        current_text_to_format = re.sub(r"^(Chapter\s*\d+|Section\s*\d+):", r"## \1", current_text_to_format, flags=re.IGNORECASE | re.MULTILINE)
         headers_to_format = ["Background", "Introduction", "Overview", "Synopsis", "Adventure Hook"]
         for header in headers_to_format:
-            processed_content = re.sub(rf"^{header}:", rf"## {header}", processed_content, flags=re.IGNORECASE | re.MULTILINE)
+            current_text_to_format = re.sub(rf"^{header}:", rf"## {header}", current_text_to_format, flags=re.IGNORECASE | re.MULTILINE)
 
-        return processed_content
+        return current_text_to_format
 
     def _calculate_modifier(self, stat_value: Optional[int]) -> str:
         if stat_value is None:
@@ -163,12 +185,12 @@ VTCNP Enterprises
         output.append("___") # Elara example has this before spellcasting
 
         # Spellcasting (Placeholder)
-        output.append("### Spellcasting") # Elara example has this unbolded, but typically these are bolded. Let's make it H3 bold.
+        output.append("### Spellcasting")
         output.append("Spellcasting placeholder. This character might have spellcasting abilities. Define spell save DC, attack bonus, and prepared spells here if applicable.")
-        output.append(":") # Elara example uses colon for list continuation
+        output.append(":")
         output.append("**1st Level (X slots):** Spell 1, Spell 2")
         output.append("**2nd Level (Y slots):** Spell 3, Spell 4")
-        output.append("\n") # Spacing after spell list
+        output.append("\n")
 
         # Actions (Placeholder)
         output.append("### Actions")
@@ -190,7 +212,6 @@ VTCNP Enterprises
         # Reactions (Placeholder - simplified from Elara)
         output.append("### Reactions")
         output.append("***Reaction Name.*** Description of reaction placeholder.")
-        # No final newline for the last item in the block.
 
         output.append("}}") # End monster block
 
@@ -253,16 +274,12 @@ VTCNP Enterprises
         output.append("}}")
         return "\n".join(output)
 
-    # _format_character_for_export is being removed/renamed.
-    # Ensure calls are updated to _format_character_simple_block or _format_character_complex_block.
-
     async def format_campaign_for_homebrewery(self, campaign: orm_models.Campaign, sections: List[orm_models.CampaignSection], db: Session, current_user: UserModel) -> str: # Added db, current_user and async
         # TODO: Make page_image_url and stain_images configurable in the future, perhaps via campaign settings or user profile.
         page_image_url = "https://www.gmbinder.com/images/b7OT9E4.png"
         stain_images = [
             "https://www.gmbinder.com/images/86T8EZC.png", 
             "https://www.gmbinder.com/images/cblLsoB.png",
-            # Add more stain images if available in original script
         ]
         
         homebrewery_content = []
@@ -285,21 +302,17 @@ VTCNP Enterprises
         # Title
         homebrewery_content.append(f"# {campaign.title if campaign.title else 'Untitled Campaign'}\n")
 
-        # Campaign Concept
-        # Users should use Markdown within their concept. Homebrewery markers like \page or \column are also allowed.
         if campaign.concept:
             homebrewery_content.append("## Campaign Overview\n") 
-            homebrewery_content.append(f"{campaign.concept.strip()}\n") # Strip to remove leading/trailing whitespace from the concept itself
+            homebrewery_content.append(f"{campaign.concept.strip()}\n")
         
-        homebrewery_content.append("\\page\n") # Page break after concept/title page
+        homebrewery_content.append("\\page\n")
 
-        # Table of Contents - New Generation Logic
         sections_summary = "\n".join([s.title for s in sections if s.title])
         freshly_generated_hb_toc_string: Optional[str] = None
 
-        if sections_summary: # Only attempt to generate if there are sections
+        if sections_summary:
             try:
-                # Determine provider and model_id from campaign.selected_llm_id
                 provider_name_for_llm = None
                 model_id_for_llm = campaign.selected_llm_id
                 if campaign.selected_llm_id and '/' in campaign.selected_llm_id:
@@ -315,14 +328,14 @@ VTCNP Enterprises
                         sections_summary=sections_summary,
                         db=db,
                         current_user=current_user,
-                        model=model_id_for_llm # Pass only the model part if provider was split
+                        model=model_id_for_llm
                     )
                 else:
                     print(f"ERROR EXPORT: Could not get LLM service for provider '{provider_name_for_llm}' or model '{campaign.selected_llm_id}' for campaign {campaign.id}")
 
             except (LLMServiceUnavailableError, LLMGenerationError) as e:
                 print(f"ERROR EXPORT: LLM error generating Homebrewery TOC for campaign {campaign.id}: {e}")
-            except Exception as e: # Catch any other unexpected errors
+            except Exception as e:
                 print(f"ERROR EXPORT: Unexpected error generating Homebrewery TOC for campaign {campaign.id}: {type(e).__name__} - {e}")
         else:
             print(f"INFO EXPORT: No sections with titles found for campaign {campaign.id}, skipping Homebrewery TOC generation.")
@@ -330,25 +343,11 @@ VTCNP Enterprises
         if freshly_generated_hb_toc_string:
             processed_toc = self.process_block(freshly_generated_hb_toc_string)
             homebrewery_content.append(f"{processed_toc.strip()}\n")
-            homebrewery_content.append("\\page\n") # Page break after TOC
+            homebrewery_content.append("\\page\n")
 
-            # Save the newly generated TOC back to the database
             hb_toc_object_to_save = {"markdown_string": freshly_generated_hb_toc_string}
             try:
-                # This assumes crud.update_campaign_homebrewery_toc will be created/adapted
-                # to handle updating only this field.
-                # For now, we'll use a more general update and rely on Pydantic model validation for structure.
-                # This might be problematic if campaign.homebrewery_toc is not Optional[Dict[str,str]] in CampaignUpdate model.
-                # Let's assume a specific CRUD function or that CampaignUpdate model is correctly structured for this.
-
-                # For this subtask, we are focusing on the service logic.
-                # A direct call to crud.update_campaign might be too broad if we only want to update the TOC.
-                # We will assume a more targeted (hypothetical) CRUD function for now:
-                # crud.update_campaign_homebrewery_toc(db=db, campaign_id=campaign.id, homebrewery_toc_content=hb_toc_object_to_save)
-
-                # To make this runnable without a new CRUD method yet, we can try to update using existing CampaignUpdate
-                # This requires CampaignUpdate Pydantic model to accept homebrewery_toc as Dict[str, str]
-                from app.models import CampaignUpdate # Local import for this block
+                from app.models import CampaignUpdate
                 campaign_update_payload = CampaignUpdate(homebrewery_toc=hb_toc_object_to_save)
                 await crud.update_campaign(db=db, campaign_id=campaign.id, campaign_update=campaign_update_payload)
                 print(f"INFO EXPORT: Attempted to save newly generated Homebrewery TOC to DB for campaign {campaign.id}")
@@ -357,30 +356,19 @@ VTCNP Enterprises
         else:
             print(f"INFO EXPORT: No Homebrewery TOC was generated or appended for campaign {campaign.id}.")
 
-        # Main Content - Sections
-        # Sections are iterated in their given order.
-        # Users should use Markdown for formatting within section content.
-        # Homebrewery-specific markers like \page and \column within section.content will be passed through
-        # and should be interpreted by Homebrewery.
         for section in sections: 
             if section.title:
                 homebrewery_content.append(f"## {section.title.strip()}\n")
             
             if section.content:
-                # Append section content directly. Homebrewery will parse its Markdown.
-                # Ensure content ends with a newline for separation, but strip existing trailing whitespace from content.
                 homebrewery_content.append(f"{section.content.strip()}\n") 
             
-            # Add a Homebrewery page break after each section.
-            # If users include \page within their section content for finer control, that will also take effect.
             homebrewery_content.append("\\page\n") 
 
         # Character Appendix Section (Dramatis Personae)
         if campaign.characters:
-            homebrewery_content.append("\\page\n") # Start Dramatis Personae on a new page
+            homebrewery_content.append("\\page\n")
             homebrewery_content.append("## Dramatis Personae\n")
-            # Add a general intro to Dramatis Personae before the first character, if desired
-            # homebrewery_content.append("Key characters featured in this campaign include:\n")
 
             for character in campaign.characters:
                 if character.export_format_preference == 'simple':
@@ -388,24 +376,12 @@ VTCNP Enterprises
                 else:
                     homebrewery_content.append(self._format_character_complex_block(character))
 
-                # Add a page break after each character's full block
                 homebrewery_content.append("\\page\n")
 
-            # No page break needed here if the last character already added one.
-            # If Dramatis Personae had content AND there were characters, the last char added a page break.
-            # If there were no characters, this section wouldn't run.
-
-        # Add decorative stains (example implementation)
-        # This part can be made more sophisticated, e.g., user-selectable stains, random placement, etc.
-        if stain_images: # Only add stains if configured
+        if stain_images:
             for i, stain_url in enumerate(stain_images):
-                # Simple logic: add a stain every few pages, or specific pages.
-                # This example adds them somewhat arbitrarily.
-                if (i + 1) % 3 == 0 : # Example: on 3rd, 6th, etc. "page" (logical block here)
+                if (i + 1) % 3 == 0 :
                     homebrewery_content.append(f"{{{{stain:{stain_url}}}}}\n") 
-                # Could also use background-image for full page stains on certain pages:
-                # elif (i + 1) % 5 == 0:
-                #     homebrewery_content.append(f"{{{{background-image: {stain_url}}}}}\n")
 
         # Back Cover
         back_cover = self.BACK_COVER_TEMPLATE
@@ -414,4 +390,4 @@ VTCNP Enterprises
         back_cover = back_cover.replace("ADD A CAMPAIGN COMMENTARY BLOCK HERE", "Author's notes and commentary on the campaign.")
         homebrewery_content.append(back_cover)
 
-        return "\n\n".join(homebrewery_content) # Use double newline to ensure separation of major blocks
+        return "\n\n".join(homebrewery_content)
