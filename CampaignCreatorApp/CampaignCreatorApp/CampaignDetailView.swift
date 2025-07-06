@@ -1,27 +1,31 @@
 import SwiftUI
-import CampaignCreatorLib // Ensure this import points to your actual library
+import CampaignCreatorLib
 
 struct CampaignDetailView: View {
-    @State var campaign: Campaign // Use @State if you need to modify it directly and have UI update
-    let campaignCreator: CampaignCreator // To save changes
+    @State var campaign: Campaign
+    @ObservedObject var campaignCreator: CampaignCreator
 
-    // State for editing title and concept
     @State private var editableTitle: String
     @State private var editableConcept: String
 
     @State private var isEditingConcept = false
+    @State private var isSaving = false
+    @State private var showErrorAlert = false
+    @State private var errorMessage = ""
 
-    // TODO: Re-integrate AI generation and export when section editing is clearer
     @State private var showingGenerateSheet = false
     @State private var generatePrompt = ""
-    @State private var isGenerating = false
+    @State private var isGeneratingText = false // Renamed for clarity
     @State private var generationError: String?
+
     @State private var showingExportSheet = false
     @State private var exportedMarkdown = ""
 
+    @State private var titleDebounceTimer: Timer?
+
     init(campaign: Campaign, campaignCreator: CampaignCreator) {
         self._campaign = State(initialValue: campaign)
-        self.campaignCreator = campaignCreator
+        self._campaignCreator = ObservedObject(wrappedValue: campaignCreator)
         self._editableTitle = State(initialValue: campaign.title)
         self._editableConcept = State(initialValue: campaign.concept ?? "")
     }
@@ -29,147 +33,278 @@ struct CampaignDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                // Campaign Info Header (Simplified for now)
+                // MARK: - Header and Title
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         VStack(alignment: .leading) {
-                            // Display word count from campaign.wordCount
                             Text("\(campaign.wordCount) words (from sections)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .font(.caption).foregroundColor(.secondary)
                             Text("Modified: \(campaign.modifiedAt, style: .date)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .font(.caption).foregroundColor(.secondary)
                         }
                         Spacer()
-                        // Action buttons (Generate/Export - to be re-enabled later)
-                        /*
+                        if isSaving || isGeneratingText { // Show progress if saving or generating
+                            ProgressView().padding(.trailing, 5)
+                        }
+                        // Action buttons
                         HStack(spacing: 12) {
                             Button(action: { showingGenerateSheet = true }) {
                                 Label("Generate", systemImage: "sparkles")
                             }
-                            .buttonStyle(.borderedProminent)
+                            .buttonStyle(.borderedProminent).disabled(isSaving || isGeneratingText)
 
                             Button(action: { exportCampaignContent() }) {
                                 Label("Export", systemImage: "square.and.arrow.up")
                             }
-                            .buttonStyle(.bordered)
+                            .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
                         }
-                        */
                     }
-                     // Editable Title
-                    TextField("Campaign Title", text: $editableTitle, onCommit: saveCampaignDetails)
+
+                    TextField("Campaign Title", text: $editableTitle)
                         .font(.largeTitle)
-                        .textFieldStyle(PlainTextFieldStyle()) // Or any style you prefer
+                        .textFieldStyle(PlainTextFieldStyle())
                         .padding(.bottom, 4)
-
-
+                        .disabled(isSaving || isGeneratingText)
+                        .onChange(of: editableTitle) { _ in
+                            titleDebounceTimer?.invalidate()
+                            titleDebounceTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
+                                Task { await saveCampaignDetails(source: .titleField) }
+                            }
+                        }
                 }
-                .padding()
-                .background(Color(.systemGroupedBackground))
-                .cornerRadius(12)
+                .padding().background(Color(.systemGroupedBackground)).cornerRadius(12)
 
-                // Concept Editor
+                // MARK: - Concept Editor
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Text("Campaign Concept")
                             .font(.headline)
                         Spacer()
                         Button(isEditingConcept ? "Done" : "Edit") {
-                            if isEditingConcept {
-                                saveCampaignDetails() // Save when "Done" is tapped
-                            }
                             isEditingConcept.toggle()
+                            if !isEditingConcept {
+                                Task { await saveCampaignDetails(source: .conceptEditorDoneButton) }
+                            }
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
                     }
 
                     if isEditingConcept {
                         TextEditor(text: $editableConcept)
-                            .frame(minHeight: 200, maxHeight: 400)
-                            .padding(8)
-                            .background(Color(.systemBackground))
-                            .cornerRadius(8)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color(.systemGray4), lineWidth: 1)
-                            )
-                            .onDisappear(perform: saveCampaignDetails) // Save if view disappears while editing
+                            .frame(minHeight: 200, maxHeight: 400).padding(8)
+                            .background(Color(.systemBackground)).cornerRadius(8)
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+                            .disabled(isSaving || isGeneratingText)
                     } else {
                         Text(editableConcept.isEmpty ? "Tap Edit to add campaign concept..." : editableConcept)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .frame(minHeight: 100)
-                            .padding()
-                            .background(Color(.systemGroupedBackground))
-                            .cornerRadius(8)
+                            .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 100)
+                            .padding().background(Color(.systemGroupedBackground)).cornerRadius(8)
                             .foregroundColor(editableConcept.isEmpty ? .secondary : .primary)
-                            .onTapGesture {
-                                isEditingConcept = true
-                            }
+                            .onTapGesture { if !isSaving && !isGeneratingText { isEditingConcept = true } }
                     }
                 }
-                .padding()
-                .background(Color(.systemBackground))
-                .cornerRadius(12)
+                .padding().background(Color(.systemBackground)).cornerRadius(12)
 
-                // Placeholder for Sections View (to be implemented later)
+                // MARK: - Sections Placeholder
                 VStack(alignment: .leading) {
-                    Text("Sections")
-                        .font(.headline)
-                    Text("Campaign sections will be listed and editable here in a future update.")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .background(Color(.systemGroupedBackground))
-                        .cornerRadius(8)
+                    Text("Sections").font(.headline)
+                    // TODO: Implement section listing and editing here
+                    if campaign.sections.isEmpty {
+                        Text("No sections yet. Use 'Generate' to create the first section from a prompt.")
+                            .font(.subheadline).foregroundColor(.secondary).padding()
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .background(Color(.systemGroupedBackground)).cornerRadius(8)
+                    } else {
+                        ForEach(campaign.sections) { section in
+                            SectionBox(title: section.title ?? "Untitled Section (\(section.order))") {
+                                Text(section.content.prefix(200) + (section.content.count > 200 ? "..." : ""))
+                                    .font(.body)
+                                    .lineLimit(5)
+                            }
+                        }
+                    }
                 }
                 .padding()
             }
             .padding()
         }
-        .navigationTitle(editableTitle) // Dynamically update navigation title
-        .navigationBarTitleDisplayMode(.inline) // Use inline to make space for editable title in content if desired
-        .onDisappear(perform: saveCampaignDetails) // Save when the view disappears
-        // TODO: Re-add sheets for AI generation and export
-        /*
-        .sheet(isPresented: $showingGenerateSheet) { ... }
-        .sheet(isPresented: $showingExportSheet) { ... }
-        */
+        .navigationTitle(editableTitle)
+        .navigationBarTitleDisplayMode(.inline)
+        .disabled(isSaving || isGeneratingText)
+        .alert("Error", isPresented: $showErrorAlert) { // Generic error alert
+            Button("OK") { }
+        } message: {
+            Text(errorMessage)
+        }
+        .onDisappear {
+            titleDebounceTimer?.invalidate()
+            if campaign.title != editableTitle || campaign.concept ?? "" != editableConcept {
+                 Task { await saveCampaignDetails(source: .onDisappear) }
+            }
+        }
+        // MARK: - Sheets
+        .sheet(isPresented: $showingGenerateSheet) {
+            generateSheetView
+        }
+        .sheet(isPresented: $showingExportSheet) {
+            exportSheetView
+        }
     }
 
-    private func saveCampaignDetails() {
-        var updatedCampaign = campaign // Create a mutable copy
-        updatedCampaign.title = editableTitle
-        updatedCampaign.concept = editableConcept.isEmpty ? nil : editableConcept
-        updatedCampaign.markAsModified()
+    // MARK: - Save Logic
+    enum SaveSource { case titleField, conceptEditorDoneButton, onDisappear }
+    private func saveCampaignDetails(source: SaveSource) async {
+        guard !isSaving else { print("Save already in progress from source: \(source). Skipping."); return }
 
-        campaignCreator.updateCampaign(updatedCampaign)
-        self.campaign = updatedCampaign // Update the local @State to reflect changes if needed
-        print("Campaign details saved for: \(updatedCampaign.title)")
+        var campaignToUpdate = campaign // Use the @State campaign as the source
+        var changed = false
+        if campaignToUpdate.title != editableTitle {
+            campaignToUpdate.title = editableTitle
+            changed = true
+        }
+        let conceptToSave = editableConcept.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty()
+        if campaignToUpdate.concept != conceptToSave {
+             campaignToUpdate.concept = conceptToSave
+             changed = true
+        }
+
+        guard changed else { print("No changes to save from source: \(source)."); return }
+
+        isSaving = true
+        errorMessage = ""
+        campaignToUpdate.markAsModified()
+
+        do {
+            try await campaignCreator.updateCampaign(campaignToUpdate)
+            // After successful save, campaignCreator.campaigns will be updated (if fetchCampaigns is called in updateCampaign)
+            // We should refresh our local @State campaign from that source
+            if let refreshedCampaign = campaignCreator.campaigns.first(where: { $0.id == campaignToUpdate.id }) {
+                self.campaign = refreshedCampaign // This updates the view
+                // Re-sync editable fields if they were out of sync or if server transformed data
+                self.editableTitle = refreshedCampaign.title
+                self.editableConcept = refreshedCampaign.concept ?? ""
+            } else {
+                 self.campaign = campaignToUpdate // Fallback, should ideally find it
+            }
+            print("Campaign details saved successfully via \(source).")
+        } catch let error as APIError {
+            errorMessage = "Save failed: \(error.localizedDescription)"
+            showErrorAlert = true
+            print("❌ Error saving campaign: \(errorMessage)")
+        } catch {
+            errorMessage = "Save failed: An unexpected error occurred: \(error.localizedDescription)"
+            showErrorAlert = true
+            print("❌ Unexpected error saving campaign: \(errorMessage)")
+        }
+        isSaving = false
     }
 
-    // TODO: Update generateContent and exportCampaignContent for new Campaign structure
-    /*
-    private func generateContent() {
-        // ... adapt to use campaign.concept or a specific section's content ...
-        // ... update campaign.concept or section content with generatedText ...
-        // campaignCreator.updateCampaign(campaign)
+    // MARK: - AI Generation Logic
+    private var generateSheetView: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Text("AI Text Generation").font(.headline)
+                Text("Describe what you'd like to generate. This will create a new section in your campaign.")
+                    .font(.subheadline).foregroundColor(.secondary)
+                TextEditor(text: $generatePrompt)
+                    .frame(height: 120).padding(8)
+                    .background(Color(.systemGroupedBackground)).cornerRadius(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+
+                if let error = generationError { Text(error).foregroundColor(.red).font(.caption) }
+                Spacer()
+                Button(action: { Task { await performAIGeneration() } }) {
+                    HStack {
+                        if isGeneratingText { ProgressView().progressViewStyle(.circular).tint(.white) }
+                        Text(isGeneratingText ? "Generating..." : "Generate New Section")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(generatePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGeneratingText)
+            }
+            .padding()
+            .navigationTitle("Generate Content").navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { showingGenerateSheet = false; generatePrompt = ""; generationError = nil }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func performAIGeneration() async {
+        guard !generatePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        isGeneratingText = true
+        generationError = nil
+
+        do {
+            let generatedText = try await campaignCreator.generateText(prompt: generatePrompt)
+
+            var updatedCampaign = self.campaign
+            let newSection = CampaignSection(
+                title: generatePrompt.prefix(50) + (generatePrompt.count > 50 ? "..." : ""), // Use prompt as title
+                content: generatedText,
+                order: (updatedCampaign.sections.map(\.order).max() ?? -1) + 1 // Ensure new section is last
+            )
+            updatedCampaign.sections.append(newSection)
+            updatedCampaign.markAsModified()
+
+            try await campaignCreator.updateCampaign(updatedCampaign) // Save campaign with new section
+
+            // Refresh local state from campaignCreator's published list
+            if let refreshedCampaign = campaignCreator.campaigns.first(where: { $0.id == updatedCampaign.id }) {
+                self.campaign = refreshedCampaign
+                self.editableTitle = refreshedCampaign.title // Resync in case title was part of update
+                self.editableConcept = refreshedCampaign.concept ?? ""
+            }
+
+            showingGenerateSheet = false
+            generatePrompt = ""
+        } catch let error as LLMError {
+            generationError = error.localizedDescription
+            print("❌ LLM Generation failed: \(error.localizedDescription)")
+        } catch let error as APIError {
+            generationError = "Failed to save new section: \(error.localizedDescription)"
+            print("❌ API Error saving generated section: \(error.localizedDescription)")
+        } catch {
+            generationError = "An unexpected error occurred: \(error.localizedDescription)"
+            print("❌ Unexpected error during/after generation: \(error.localizedDescription)")
+        }
+        isGeneratingText = false
+    }
+
+    // MARK: - Export Logic
+    private var exportSheetView: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Homebrewery Export").font(.headline)
+                    Text("Your campaign has been converted to Homebrewery-compatible markdown:").font(.subheadline).foregroundColor(.secondary)
+                    Text(exportedMarkdown).font(.system(.body, design: .monospaced)).padding()
+                        .background(Color(.systemGroupedBackground)).cornerRadius(8)
+                    Button("Copy to Clipboard") { UIPasteboard.general.string = exportedMarkdown }
+                        .buttonStyle(.borderedProminent).frame(maxWidth: .infinity)
+                }.padding()
+            }
+            .navigationTitle("Export").navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Done") { showingExportSheet = false } } }
+        }
     }
 
     private func exportCampaignContent() {
-        // exportedMarkdown = campaignCreator.exportCampaignToHomebrewery(campaign)
-        // showingExportSheet = true
+        exportedMarkdown = campaignCreator.exportCampaignToHomebrewery(campaign)
+        showingExportSheet = true
     }
-    */
 }
 
 #Preview {
     let campaignCreator = CampaignCreator()
-    let sampleCampaign = campaignCreator.createCampaign(title: "My Epic Saga")
-    // Add a concept for preview if desired
-    // sampleCampaign.concept = "A thrilling adventure in a land of dragons and magic."
-    // campaignCreator.updateCampaign(sampleCampaign) // If CampaignCreator needs to know about it for preview
+    let sampleCampaign = Campaign(title: "My Preview Saga", concept: "A test concept.", sections: [
+        CampaignSection(title: "Intro", content: "This is the intro section.", order: 0),
+        CampaignSection(title: "Chapter 1", content: "Content for chapter 1.", order: 1)
+    ])
+    // campaignCreator.campaigns = [sampleCampaign] // If needed for preview consistency
 
     return NavigationView {
         CampaignDetailView(campaign: sampleCampaign, campaignCreator: campaignCreator)

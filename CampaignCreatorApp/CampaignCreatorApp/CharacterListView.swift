@@ -3,94 +3,111 @@ import CampaignCreatorLib
 
 struct CharacterListView: View {
     @ObservedObject var campaignCreator: CampaignCreator
-    @State private var characters: [Character] = []
     @State private var showingCreateSheet = false
 
     var body: some View {
         NavigationView {
-            List {
-                ForEach(characters) { character in
-                    VStack(alignment: .leading) {
-                        Text(character.name)
+            Group {
+                if campaignCreator.isLoadingCharacters && campaignCreator.characters.isEmpty {
+                    ProgressView("Loading Characters...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let error = campaignCreator.characterError {
+                    VStack {
+                        Text("Error Loading Characters")
                             .font(.headline)
-                        Text(character.description ?? "No description")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
+                        Text(error.localizedDescription)
+                            .font(.caption)
+                            .multilineTextAlignment(.center)
+                        Button("Retry") {
+                            Task {
+                                await campaignCreator.fetchCharacters()
+                            }
+                        }
+                        .padding(.top)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if campaignCreator.characters.isEmpty {
+                    Text("No characters yet. Tap '+' to create one.")
+                        .foregroundColor(.secondary)
+                        .font(.title2)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        ForEach(campaignCreator.characters) { character in
+                            NavigationLink(destination: CharacterDetailView(character: character, campaignCreator: campaignCreator)) {
+                                VStack(alignment: .leading) {
+                                    Text(character.name)
+                                        .font(.headline)
+                                    Text(character.description ?? "No description")
+                                        .font(.subheadline)
+                                        .foregroundColor(.gray)
+                                        .lineLimit(2) // Limit description lines in list
+                                }
+                            }
+                        }
+                        .onDelete(perform: deleteCharacters)
                     }
                 }
-                .onDelete(perform: deleteCharacters)
             }
             .navigationTitle("Characters")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if campaignCreator.isLoadingCharacters && !campaignCreator.characters.isEmpty {
+                        ProgressView()
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
-                        self.showingCreateSheet = true // Present CharacterCreateView as a sheet
+                        self.showingCreateSheet = true
                     }) {
                         Image(systemName: "plus")
                     }
                 }
             }
-            .sheet(isPresented: $showingCreateSheet, onDismiss: loadCharacters) { // Reload characters when sheet is dismissed
+            .sheet(isPresented: $showingCreateSheet, onDismiss: {
+                // CharacterCreateView calls fetchCharacters internally upon successful save via CampaignCreator
+            }) {
                 CharacterCreateView(campaignCreator: campaignCreator, isPresented: $showingCreateSheet)
             }
             .onAppear {
-                loadCharacters()
+                if campaignCreator.characters.isEmpty || campaignCreator.characterError != nil { // Fetch if empty or if there was a previous error
+                    Task {
+                        await campaignCreator.fetchCharacters()
+                    }
+                }
             }
-
-            if characters.isEmpty && !showingCreateSheet { // Avoid showing placeholder when sheet is up
-                Text("No characters yet. Tap '+' to create one.")
-                    .foregroundColor(.secondary)
-                    .font(.title2)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity) // Center it
-                    .background(Color(.systemBackground)) // Ensure it's visible if list is empty
-            }
-        }
-    }
-
-    private func loadCharacters() {
-        self.characters = campaignCreator.listCharacters()
-        // For testing, if listCharacters is empty, add mock data:
-        // This mock data logic can be removed once actual data persistence/flow is robust
-        if self.characters.isEmpty && ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" { // Don't add mock data in previews if list is empty
-             print("No characters found in CampaignCreator, adding mock characters for UI testing (non-preview).")
-             let mockChar1 = campaignCreator.createCharacter(name: "Elara Meadowlight")
-             var mockChar1Updated = mockChar1 // Create mutable copy to update
-             mockChar1Updated.description = "A brave elf ranger with a hawk companion."
-             campaignCreator.updateCharacter(mockChar1Updated)
-
-             let mockChar2 = campaignCreator.createCharacter(name: "Grom Bloodfist")
-             var mockChar2Updated = mockChar2 // Create mutable copy
-             mockChar2Updated.description = "A stoic orc warrior seeking redemption."
-             campaignCreator.updateCharacter(mockChar2Updated)
-
-             self.characters = campaignCreator.listCharacters() // Reload after adding mocks
         }
     }
 
     private func deleteCharacters(offsets: IndexSet) {
-        let charactersToDelete = offsets.map { characters[$0] }
-        for character in charactersToDelete {
-            campaignCreator.deleteCharacter(character)
+        let charactersToDelete = offsets.map { campaignCreator.characters[$0] }
+        Task {
+            for character in charactersToDelete {
+                do {
+                    try await campaignCreator.deleteCharacter(character)
+                } catch {
+                    print("Error deleting character \(character.name): \(error.localizedDescription)")
+                    // TODO: Show alert to user about deletion failure
+                }
+            }
+            // CampaignCreator's deleteCharacter method already calls fetchCharacters,
+            // which will update the @Published characters array.
         }
-        // The list will update automatically if `campaignCreator.characters` is @Published
-        // and `characters` state var here is correctly updated from it.
-        // Calling loadCharacters() ensures consistency if direct @Published updates aren't flowing as expected.
-        loadCharacters()
     }
 }
 
 #Preview {
-    // For preview, you might want to pass a CampaignCreator that already has some mock characters
-    let previewCampaignCreator = CampaignCreator()
-    let char1 = previewCampaignCreator.createCharacter(name: "Preview Elara")
-    var updatedChar1 = char1
-    updatedChar1.description = "Preview Elf Ranger"
-    previewCampaignCreator.updateCharacter(updatedChar1)
-
-    let char2 = previewCampaignCreator.createCharacter(name: "Preview Grom")
-    var updatedChar2 = char2
-    updatedChar2.description = "Preview Orc Warrior"
-    previewCampaignCreator.updateCharacter(updatedChar2)
-
-    return CharacterListView(campaignCreator: previewCampaignCreator)
+    let previewCreator = CampaignCreator()
+    // For preview, populate with some mock data directly if API is not live
+    // This requires CampaignCreator's characters array to be settable or to have a mock data init.
+    // For simplicity, this preview will show loading or empty state if API not running.
+    // To show data, you could do:
+    /*
+    previewCreator.characters = [
+        Character(name: "Preview Elara", description: "Preview Elf Ranger. A long description to test line limits and see how it wraps or truncates based on the view settings for this particular character entry in the list view."),
+        Character(name: "Preview Grom", description: "Preview Orc Warrior")
+    ]
+    */
+    return CharacterListView(campaignCreator: previewCreator)
 }

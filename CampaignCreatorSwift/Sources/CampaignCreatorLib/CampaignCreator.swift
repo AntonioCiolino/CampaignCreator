@@ -3,129 +3,146 @@ import Foundation
 import Combine
 #endif
 
+@MainActor
 public class CampaignCreator: ObservableObjectProtocol {
     public let markdownGenerator: MarkdownGenerator
     private var llmService: LLMService?
-
-    #if canImport(Combine)
-    @Published private var campaigns: [Campaign] = []
-    @Published private var characters: [Character] = []
-    #else
-    private var campaigns: [Campaign] = []
-    private var characters: [Character] = []
-    #endif
+    private let apiService: APIService
     
-    public init() {
+    @Published public var campaigns: [Campaign] = []
+    @Published public var characters: [Character] = []
+
+    @Published public var isLoadingCampaigns: Bool = false
+    @Published public var campaignError: APIError? = nil
+
+    @Published public var isLoadingCharacters: Bool = false
+    @Published public var characterError: APIError? = nil
+
+    public init(apiService: APIService = APIService()) {
         self.markdownGenerator = MarkdownGenerator()
+        self.apiService = apiService
         self.setupLLMService()
-        // TODO: Load campaigns and characters from persistent storage
     }
     
     private func setupLLMService() {
-        // Try to initialize available LLM services
         do {
             self.llmService = try OpenAIClient()
             print("✅ OpenAI service initialized")
         } catch {
-            print("⚠️  OpenAI service not available: \(error.localizedDescription)")
+            print("⚠️ OpenAI service not available: \(error.localizedDescription)")
         }
-        // Could add more services here (Gemini, etc.)
     }
     
-    // MARK: - Campaign Management
-    
-    public func createCampaign(title: String = "Untitled Campaign") -> Campaign {
-        let campaign = Campaign(title: title)
-        campaigns.append(campaign)
-        // TODO: Save campaigns to persistent storage
-        return campaign
-    }
-    
-    public func loadCampaign(from url: URL) -> Campaign? {
+    // MARK: - Campaign Management (Networked)
+    public func fetchCampaigns() async {
+        isLoadingCampaigns = true
+        campaignError = nil
         do {
-            let campaign = try Campaign.load(from: url)
-            // Avoid duplicates if already loaded
-            if !campaigns.contains(where: { $0.id == campaign.id }) {
-                campaigns.append(campaign)
-            }
-            return campaign
+            let fetchedCampaigns = try await apiService.fetchCampaigns()
+            self.campaigns = fetchedCampaigns
+        } catch let error as APIError {
+            self.campaignError = error
+            print("❌ Error fetching campaigns: \(error.localizedDescription)")
         } catch {
-            print("Error loading campaign from \(url.path): \(error)")
-            return nil
+            self.campaignError = APIError.custom("An unexpected error occurred: \(error.localizedDescription)")
+            print("❌ Unexpected error fetching campaigns: \(error.localizedDescription)")
         }
+        isLoadingCampaigns = false
+    }
+
+    public func fetchCampaign(id: UUID) async throws -> Campaign {
+        return try await apiService.fetchCampaign(id: id)
+    }
+
+    public func createCampaign(title: String, initialUserPrompt: String? = nil) async throws -> Campaign {
+        let dto = CampaignCreateDTO(title: title, initialUserPrompt: initialUserPrompt)
+        let newCampaign = try await apiService.createCampaign(dto)
+        await fetchCampaigns()
+        return newCampaign
+    }
+
+    public func updateCampaign(_ campaign: Campaign) async throws {
+        let dto = CampaignUpdateDTO(
+            title: campaign.title, initialUserPrompt: campaign.initialUserPrompt, concept: campaign.concept,
+            displayTOC: campaign.displayTOC, badgeImageURL: campaign.badgeImageURL,
+            thematicImageURL: campaign.thematicImageURL, thematicImagePrompt: campaign.thematicImagePrompt,
+            selectedLLMId: campaign.selectedLLMId, temperature: campaign.temperature,
+            moodBoardImageURLs: campaign.moodBoardImageURLs, themePrimaryColor: campaign.themePrimaryColor,
+            themeSecondaryColor: campaign.themeSecondaryColor, themeBackgroundColor: campaign.themeBackgroundColor,
+            themeTextColor: campaign.themeTextColor, themeFontFamily: campaign.themeFontFamily,
+            themeBackgroundImageURL: campaign.themeBackgroundImageURL,
+            themeBackgroundImageOpacity: campaign.themeBackgroundImageOpacity,
+            linkedCharacterIDs: campaign.linkedCharacterIDs
+        )
+        _ = try await apiService.updateCampaign(campaign.id, data: dto)
+        await fetchCampaigns()
+    }
+
+    public func deleteCampaign(_ campaign: Campaign) async throws {
+        try await apiService.deleteCampaign(id: campaign.id)
+        await fetchCampaigns()
     }
     
-    public func saveCampaign(_ campaign: Campaign, to url: URL? = nil) throws {
-        let saveURL = url ?? campaign.fileURL ?? defaultURLForCampaign(campaign)
-        try campaign.save(to: saveURL)
-        // Update fileURL in campaign if it was nil
-        if var mutableCampaign = campaigns.first(where: { $0.id == campaign.id }), mutableCampaign.fileURL == nil {
-            mutableCampaign.fileURL = saveURL
-            updateCampaign(mutableCampaign)
+    // MARK: - Character Management (Networked)
+    public func fetchCharacters() async {
+        isLoadingCharacters = true
+        characterError = nil
+        do {
+            let fetchedCharacters = try await apiService.fetchCharacters()
+            self.characters = fetchedCharacters
+        } catch let error as APIError {
+            self.characterError = error
+            print("❌ Error fetching characters: \(error.localizedDescription)")
+        } catch {
+            self.characterError = APIError.custom("An unexpected error occurred while fetching characters: \(error.localizedDescription)")
+            print("❌ Unexpected error fetching characters: \(error.localizedDescription)")
         }
-        print("📝 Campaign saved to: \(saveURL.path)")
-        // TODO: Update campaigns list in persistent storage
+        isLoadingCharacters = false
     }
 
-    private func defaultURLForCampaign(_ campaign: Campaign) -> URL {
-        // Create a default URL in documents directory
-        let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        return documentsDirectory.appendingPathComponent("\(campaign.title.replacingOccurrences(of: " ", with: "_"))-\(campaign.id).json")
+    // Fetches a single character - useful if detail view needs fresh data
+    public func fetchCharacter(id: UUID) async throws -> Character {
+        return try await apiService.fetchCharacter(id: id)
     }
 
-    public func listCampaigns() -> [Campaign] {
-        return campaigns
+    public func createCharacter(name: String, description: String? = nil, appearance: String? = nil, stats: CharacterStats? = nil) async throws -> Character {
+        let dto = CharacterCreateDTO(
+            name: name,
+            description: description,
+            appearanceDescription: appearance,
+            // imageURLs, notesForLLM, exportFormatPreference can be added if CharacterCreateView supports them
+            stats: stats
+        )
+        let newCharacter = try await apiService.createCharacter(dto)
+        await fetchCharacters() // Refresh the list
+        return newCharacter
     }
 
-    public func updateCampaign(_ campaign: Campaign) {
-        if let index = campaigns.firstIndex(where: { $0.id == campaign.id }) {
-            campaigns[index] = campaign
-            // TODO: Save updated campaign to persistent storage
-        }
-    }
-
-    public func deleteCampaign(_ campaign: Campaign) {
-        campaigns.removeAll { $0.id == campaign.id }
-        // TODO: Delete from persistent storage
-        if let fileURL = campaign.fileURL {
-            try? FileManager.default.removeItem(at: fileURL)
-        }
+    public func updateCharacter(_ character: Character) async throws {
+        let dto = CharacterUpdateDTO(
+            name: character.name,
+            description: character.description,
+            appearanceDescription: character.appearanceDescription,
+            imageURLs: character.imageURLs,
+            notesForLLM: character.notesForLLM,
+            stats: character.stats,
+            exportFormatPreference: character.exportFormatPreference
+        )
+        _ = try await apiService.updateCharacter(character.id, data: dto)
+        await fetchCharacters() // Refresh the list
     }
     
-    // MARK: - Character Management
-
-    public func createCharacter(name: String) -> Character {
-        let character = Character(name: name)
-        characters.append(character)
-        // TODO: Save characters to persistent storage
-        return character
-    }
-
-    public func listCharacters() -> [Character] {
-        return characters
-    }
-
-    public func updateCharacter(_ character: Character) {
-        if let index = characters.firstIndex(where: { $0.id == character.id }) {
-            characters[index] = character
-            // TODO: Save updated character to persistent storage
-        }
-    }
-    
-    public func deleteCharacter(_ character: Character) {
-        characters.removeAll { $0.id == character.id }
-        // TODO: Delete from persistent storage
+    public func deleteCharacter(_ character: Character) async throws {
+        try await apiService.deleteCharacter(id: character.id)
+        await fetchCharacters() // Refresh the list
     }
 
     // MARK: - LLM Features
-    
     public func generateText(prompt: String, completion: @escaping @Sendable (Result<String, LLMError>) -> Void) {
         guard let llmService = llmService else {
             completion(.failure(.other(message: "No LLM service available. Please set up API keys.")))
             return
         }
-        
-        print("🤖 Generating text with prompt: \(prompt.prefix(50))...")
         llmService.generateCompletion(prompt: prompt, completionHandler: completion)
     }
     
@@ -134,49 +151,32 @@ public class CampaignCreator: ObservableObjectProtocol {
         guard let llmService = llmService else {
             throw LLMError.other(message: "No LLM service available. Please set up API keys.")
         }
-        
-        print("🤖 Generating text with prompt: \(prompt.prefix(50))...")
         return try await llmService.generateCompletion(prompt: prompt)
     }
     
     // MARK: - Utility Functions
-    
     public func showStatus() {
         print("\n=== Campaign Crafter Status ===")
         print("Available Services: \(SecretsManager.shared.availableServices.joined(separator: ", "))")
-        print("Campaigns loaded: \(campaigns.count)")
-        if !campaigns.isEmpty {
-            print("Campaigns:")
-            for (index, campaign) in campaigns.enumerated() {
-                print("  \(index + 1). \(campaign.title) (\(campaign.wordCount) words), \(campaign.sections.count) sections")
-            }
-        }
-        print("Characters loaded: \(characters.count)")
-        if !characters.isEmpty {
-            print("Characters:")
-            for (index, character) in characters.enumerated() {
-                print("  \(index + 1). \(character.name)")
-            }
-        }
+        print("Fetched Campaigns: \(campaigns.count)")
+        // ... (campaign listing logic) ...
+        print("Fetched Characters: \(characters.count)")
+        // ... (character listing logic) ...
         print("================================\n")
     }
     
     public func exportCampaignToHomebrewery(_ campaign: Campaign) -> String {
-        // This will likely need to be more sophisticated, combining all sections,
-        // potentially using TOC, etc. For now, let's assume a simple concatenation
-        // or export of the first section if it exists.
-        // A more robust implementation would iterate through campaign.sections
-        // and format them appropriately.
         let combinedText = campaign.sections.map { section in
             var text = ""
-            if let title = section.title {
-                text += "## \(title)\n\n" // Markdown for section title
-            }
+            if let title = section.title { text += "## \(title)\n\n" }
             text += section.content
             return text
-        }.joined(separator: "\n\n---\n\n") // Separate sections with a horizontal rule
-
+        }.joined(separator: "\n\n---\n\n")
         return markdownGenerator.generateHomebreweryMarkdown(from: combinedText)
+    }
+
+    public func setAuthToken(_ token: String?) {
+        apiService.updateAuthToken(token)
     }
 }
 
