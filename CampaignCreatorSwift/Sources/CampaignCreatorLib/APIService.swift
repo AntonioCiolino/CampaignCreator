@@ -240,6 +240,7 @@ public final class APIService: Sendable {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.httpBody = body
+        request.cachePolicy = .reloadIgnoringLocalCacheData // Added to force reload
 
         if request.value(forHTTPHeaderField: "Content-Type") == nil {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -314,6 +315,7 @@ public final class APIService: Sendable {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.httpBody = body
+        request.cachePolicy = .reloadIgnoringLocalCacheData // Added to force reload
         if method != "GET" && method != "HEAD" { request.setValue("application/json", forHTTPHeaderField: "Content-Type") }
 
         if requiresAuth {
@@ -349,7 +351,7 @@ public final class APIService: Sendable {
 
     public func updateCampaign(_ campaignId: Int, data: CampaignUpdateDTO) async throws -> Campaign { // Changed campaignId from UUID to Int
         let body = try jsonEncoder.encode(data)
-        return try await performRequest(endpoint: "/campaigns/\(campaignId)/", method: "PATCH", body: body) // Changed campaignId.uuidString to campaignId
+        return try await performRequest(endpoint: "/campaigns/\(campaignId)/", method: "PUT", body: body) // Changed campaignId.uuidString to campaignId
     }
 
     public func deleteCampaign(id: Int) async throws { // Changed id from UUID to Int
@@ -372,7 +374,7 @@ public final class APIService: Sendable {
 
     public func updateCharacter(_ characterId: Int, data: CharacterUpdateDTO) async throws -> Character { // Changed characterId from UUID to Int
         let body = try jsonEncoder.encode(data)
-        return try await performRequest(endpoint: "/characters/\(characterId)/", method: "PATCH", body: body) // Changed characterId.uuidString to characterId
+        return try await performRequest(endpoint: "/characters/\(characterId)/", method: "PUT", body: body) // Changed characterId.uuidString to characterId
     }
 
     public func deleteCharacter(id: Int) async throws { // Changed id from UUID to Int
