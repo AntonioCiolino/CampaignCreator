@@ -31,11 +31,11 @@ struct LoginView: View {
                     .aspectRatio(contentMode: .fill)
                     .edgesIgnoringSafeArea(.all)
                     .opacity(0.3) // Adjust opacity to make it a background
-                    // .onAppear { player.play() } // player.play() is called in setupVideoPlayer
+                    // .onAppear { player.play() } // player.play() is now called reliably in setupVideoPlayer
                     .onDisappear {
-                        player.pause()
-                        // It's good practice to remove observers when the view disappears
-                        NotificationCenter.default.removeObserver(self, name: .AVPlayerItemDidPlayToEndTime, object: player.currentItem)
+                        player?.pause()
+                        // Remove observer when the view disappears
+                        NotificationCenter.default.removeObserver(self, name: .AVPlayerItemDidPlayToEndTime, object: nil)
                     }
             }
 
@@ -212,7 +212,9 @@ struct LoginView: View {
             guard let self = self else { return }
             print("LoginView: Video item did play to end. Current index: \(self.currentVideoIndex). Setting up next video.")
             self.currentVideoIndex += 1
-            self.setupVideoPlayer() // This will set up the player for the new currentVideoIndex and re-register observer for that new item.
+            // Call setupVideoPlayer again to load and play the next video.
+            // This will also correctly set up the observer for the new player item.
+            self.setupVideoPlayer()
         }
 
         // Ensure player starts playing on the main thread
