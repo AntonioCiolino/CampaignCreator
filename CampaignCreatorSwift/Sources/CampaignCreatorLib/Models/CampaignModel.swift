@@ -58,8 +58,8 @@ public struct Campaign: Identifiable, Codable, Sendable {
     public var themeBackgroundImageOpacity: Double?
 
     public var fileURL: URL? // Keep if direct file association is needed for saving/loading whole campaign
-    public var createdAt: Date
-    public var modifiedAt: Date
+    public var createdAt: Date? // Changed to optional
+    public var modifiedAt: Date? // Changed to optional
 
     // Linking characters (IDs for now, actual Character objects can be resolved by CampaignCreator)
     public var linkedCharacterIDs: [UUID]?
@@ -84,8 +84,8 @@ public struct Campaign: Identifiable, Codable, Sendable {
                 themeBackgroundImageURL: String? = nil,
                 themeBackgroundImageOpacity: Double? = nil,
                 fileURL: URL? = nil,
-                createdAt: Date = Date(),
-                modifiedAt: Date = Date(),
+                createdAt: Date? = nil, // Changed to optional, default nil
+                modifiedAt: Date? = nil, // Changed to optional, default nil
                 linkedCharacterIDs: [UUID]? = nil) {
         self.id = id
         self.title = title

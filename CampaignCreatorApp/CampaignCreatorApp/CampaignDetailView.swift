@@ -310,10 +310,30 @@ struct CampaignDetailView: View {
 
 #Preview {
     let campaignCreator = CampaignCreator()
-    let sampleCampaign = Campaign(id: 1, title: "My Preview Saga", concept: "A test concept.", sections: [ // Added id: 1 for Campaign
-        CampaignSection(id: 101, title: "Intro", content: "This is the intro section.", order: 0), // Added id: 101 for Section
-        CampaignSection(id: 102, title: "Chapter 1", content: "Content for chapter 1.", order: 1)  // Added id: 102 for Section
-    ])
+    // Ensure all model instantiations have their required 'id: Int'
+    let sampleCampaign = Campaign(
+        id: 1, // Correct: Campaign ID is Int
+        title: "My Preview Saga",
+        concept: "A test concept.",
+        sections: [
+            CampaignSection(
+                id: 101, // Correct: CampaignSection ID is Int
+                title: "Intro",
+                content: "This is the intro section.",
+                order: 0
+            ),
+            CampaignSection(
+                id: 102, // Correct: CampaignSection ID is Int
+                title: "Chapter 1",
+                content: "Content for chapter 1.",
+                order: 1
+            )
+        ],
+        displayTOC: [ // Example TOC with Int IDs
+            TOCEntry(id: 201, title: "Introduction", type: "Introduction"),
+            TOCEntry(id: 202, title: "Chapter 1 Link", type: "Chapter")
+        ]
+    )
     // campaignCreator.campaigns = [sampleCampaign] // If needed for preview consistency
 
     return NavigationView {

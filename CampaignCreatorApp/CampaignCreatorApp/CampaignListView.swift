@@ -53,7 +53,7 @@ struct CampaignListView: View {
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                         Spacer()
-                                        Text(campaign.modifiedAt, style: .date)
+                                        Text(campaign.modifiedAt != nil ? "\(campaign.modifiedAt!, style: .date)" : "N/A")
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }

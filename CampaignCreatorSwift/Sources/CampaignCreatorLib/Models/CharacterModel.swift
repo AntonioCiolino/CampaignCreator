@@ -33,8 +33,8 @@ public struct Character: Identifiable, Codable, Sendable {
     public var exportFormatPreference: String? // e.g., "JSON", "Markdown"
 
     // Metadata
-    public var createdAt: Date
-    public var modifiedAt: Date
+    public var createdAt: Date? // Changed to optional
+    public var modifiedAt: Date? // Changed to optional
 
     public init(id: Int, // Changed from UUID to Int, removed default
                 name: String,
@@ -44,8 +44,8 @@ public struct Character: Identifiable, Codable, Sendable {
                 notesForLLM: String? = nil,
                 stats: CharacterStats? = nil,
                 exportFormatPreference: String? = nil,
-                createdAt: Date = Date(),
-                modifiedAt: Date = Date()) {
+                createdAt: Date? = nil, // Changed to optional, default nil
+                modifiedAt: Date? = nil) { // Changed to optional, default nil
         self.id = id
         self.name = name
         self.description = description
