@@ -1,7 +1,7 @@
 import Foundation
 
 // Corresponds to TypeScript 'CharacterStats'
-public struct CharacterStats: Codable {
+public struct CharacterStats: Codable, Sendable {
     public var strength: Int?
     public var dexterity: Int?
     public var constitution: Int?
@@ -21,7 +21,7 @@ public struct CharacterStats: Codable {
 }
 
 // Corresponds to TypeScript 'Character'
-public struct Character: Identifiable, Codable {
+public struct Character: Identifiable, Codable, Sendable {
     public var id: UUID // Using UUID for local consistency
     // public var ownerId: UUID? // If we need to associate with a user someday
     public var name: String

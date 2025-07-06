@@ -3,34 +3,40 @@ import CampaignCreatorLib
 
 struct CharacterCreateView: View {
     @ObservedObject var campaignCreator: CampaignCreator
-    @Binding var isPresented: Bool // To dismiss the sheet
+    @Binding var isPresented: Bool
 
     @State private var characterName: String = ""
     @State private var characterDescription: String = ""
-    // TODO: Add fields for other character properties like stats, imageURLs etc. later
+    @State private var characterAppearance: String = "" // Added for more detail
+    // TODO: Add @State vars for stats, imageURLs etc. if they are to be settable on creation
 
-    @Environment(\.presentationMode) var presentationMode // Alternative way to dismiss
+    @State private var isSaving: Bool = false
+    @State private var showErrorAlert: Bool = false
+    @State private var errorMessage: String = ""
+
+    @Environment(\.dismiss) var dismiss // Use new dismiss environment variable
 
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("Character Details")) {
-                    TextField("Name", text: $characterName)
-                    // Using TextEditor for potentially multi-line description
+                    TextField("Name*", text: $characterName)
                     VStack(alignment: .leading) {
-                        Text("Description (Optional)")
-                            .font(.caption)
-                            .foregroundColor(.gray)
+                        Text("Description")
+                            .font(.caption).foregroundColor(.gray)
                         TextEditor(text: $characterDescription)
-                            .frame(height: 150) // Adjust height as needed
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 5)
-                                    .stroke(Color.gray.opacity(0.5), lineWidth: 1)
-                            )
+                            .frame(height: 100)
+                            .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.gray.opacity(0.5), lineWidth: 1))
+                    }
+                    VStack(alignment: .leading) {
+                        Text("Appearance")
+                            .font(.caption).foregroundColor(.gray)
+                        TextEditor(text: $characterAppearance)
+                            .frame(height: 100)
+                            .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.gray.opacity(0.5), lineWidth: 1))
                     }
                 }
-
-                // TODO: Add sections for stats, appearance, notes for LLM etc. in future iterations
+                // TODO: Add sections for stats if CharacterStats is simple enough for creation form
             }
             .navigationTitle("New Character")
             .navigationBarTitleDisplayMode(.inline)
@@ -39,45 +45,75 @@ struct CharacterCreateView: View {
                     Button("Cancel") {
                         dismissView()
                     }
+                    .disabled(isSaving)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Save") {
-                        saveCharacter()
-                        dismissView()
+                    if isSaving {
+                        ProgressView()
+                    } else {
+                        Button("Save") {
+                            Task {
+                                await saveCharacter()
+                            }
+                        }
+                        .disabled(characterName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
                     }
-                    .disabled(characterName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
+            }
+            .alert("Error Creating Character", isPresented: $showErrorAlert) {
+                Button("OK") { }
+            } message: {
+                Text(errorMessage)
             }
         }
     }
 
-    private func saveCharacter() {
+    private func saveCharacter() async {
         let name = characterName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
 
-        let newCharacter = campaignCreator.createCharacter(name: name)
-        // Update description if provided
-        if !characterDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            var updatedCharacter = newCharacter
-            updatedCharacter.description = characterDescription.trimmingCharacters(in: .whitespacesAndNewlines)
-            campaignCreator.updateCharacter(updatedCharacter) // Assuming CampaignCreator has an update method
+        isSaving = true
+        errorMessage = ""
+
+        do {
+            // Pass all relevant fields to createCharacter
+            // The DTO used by createCharacter in APIService will handle which fields are sent
+            _ = try await campaignCreator.createCharacter(
+                name: name,
+                description: characterDescription.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty(),
+                appearance: characterAppearance.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty()
+                // TODO: Pass stats if form includes them
+            )
+            // CampaignCreator.fetchCharacters() is called internally, updating the list.
+            dismissView()
+        } catch let error as APIError {
+            errorMessage = error.localizedDescription
+            showErrorAlert = true
+            print("❌ Error creating character: \(errorMessage)")
+        } catch {
+            errorMessage = "An unexpected error occurred: \(error.localizedDescription)"
+            showErrorAlert = true
+            print("❌ Unexpected error creating character: \(errorMessage)")
         }
-        // After saving, CharacterListView will update itself on next appear or via @ObservedObject chain
+        isSaving = false
     }
 
     private func dismissView() {
-        if isPresented {
-            isPresented = false
-        } else {
-            // Fallback if isPresented binding isn't used (e.g., direct navigation)
-            presentationMode.wrappedValue.dismiss()
-        }
+        // isPresented binding is preferred for sheets
+        isPresented = false
+        // dismiss() // Use if not presented as a sheet or if binding doesn't work
+    }
+}
+
+// Helper to convert empty strings to nil for optional fields
+extension String {
+    func nilIfEmpty() -> String? {
+        self.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : self
     }
 }
 
 struct CharacterCreateView_Previews: PreviewProvider {
     static var previews: some View {
-        // Create a dummy binding for the preview
         @State var isPresented: Bool = true
         let campaignCreator = CampaignCreator()
 

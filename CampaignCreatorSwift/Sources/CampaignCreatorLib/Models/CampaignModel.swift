@@ -1,7 +1,7 @@
 import Foundation
 
 // Corresponds to TypeScript 'TOCEntry'
-public struct TOCEntry: Identifiable, Codable {
+public struct TOCEntry: Identifiable, Codable, Sendable {
     public var id = UUID() // Added for Identifiable conformance if needed in Swift UI lists
     public var title: String
     public var type: String // e.g., "Introduction", "Chapter 1", "Appendix"
@@ -14,7 +14,7 @@ public struct TOCEntry: Identifiable, Codable {
 }
 
 // Corresponds to TypeScript 'CampaignSection'
-public struct CampaignSection: Identifiable, Codable {
+public struct CampaignSection: Identifiable, Codable, Sendable {
     public var id: UUID // Using UUID for local consistency
     public var title: String?
     public var content: String
@@ -32,7 +32,7 @@ public struct CampaignSection: Identifiable, Codable {
 }
 
 // This struct will represent the Campaign. We are evolving the old 'Document' into this.
-public struct Campaign: Identifiable, Codable {
+public struct Campaign: Identifiable, Codable, Sendable {
     public var id: UUID
     public var title: String
     public var initialUserPrompt: String?

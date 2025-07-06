@@ -25,7 +25,19 @@ let package = Package(
         ),
         .target(
             name: "CampaignCreatorLib",
-            dependencies: []
+            dependencies: [],
+            sources: [
+                "CampaignCreator.swift",
+                "APIService.swift", // Ensure APIService is here
+                "LLMService.swift",
+                "MarkdownGenerator.swift",
+                "OpenAIClient.swift",
+                "OpenAIDataStructures.swift",
+                "SecretsManager.swift",
+                "Models/CampaignModel.swift",
+                "Models/CharacterModel.swift",
+                "Models/UserModel.swift" // Added UserModel.swift
+            ]
         ),
         .testTarget(
             name: "CampaignCreatorLibTests",

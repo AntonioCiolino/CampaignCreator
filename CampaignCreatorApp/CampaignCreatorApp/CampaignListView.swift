@@ -2,49 +2,76 @@ import SwiftUI
 import CampaignCreatorLib
 
 struct CampaignListView: View {
-    @ObservedObject var campaignCreator: CampaignCreator // Keep as ObservedObject if CampaignCreator is an ObservableObject
-    @State private var campaigns: [Campaign] = []
+    // CampaignCreator is now an @MainActor class and uses @Published for campaigns
+    @ObservedObject var campaignCreator: CampaignCreator
     @State private var showingCreateSheet = false
     @State private var newCampaignTitle = ""
-    // selectedCampaign might be needed if you want to show a master-detail view on iPadOS/macOS
-    // @State private var selectedCampaign: Campaign?
+    @State private var showCreationErrorAlert = false
+    @State private var creationErrorMessage = ""
 
     var body: some View {
         NavigationView {
-            List {
-                ForEach(campaigns) { campaign in // Campaign is Identifiable
-                    NavigationLink(destination: CampaignDetailView(campaign: campaign, campaignCreator: campaignCreator)) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(campaign.title)
-                                .font(.headline)
-                                .foregroundColor(.primary)
-
-                            HStack {
-                                // Display word count from campaign.wordCount (sum of sections)
-                                Text("\(campaign.wordCount) words")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-
-                                Spacer()
-
-                                Text("Sections: \(campaign.sections.count)")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-
-                                Spacer()
-
-                                Text(campaign.modifiedAt, style: .date)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+            Group { // Use Group to conditionally show content
+                if campaignCreator.isLoadingCampaigns && campaignCreator.campaigns.isEmpty {
+                    ProgressView("Loading Campaigns...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let error = campaignCreator.campaignError {
+                    VStack {
+                        Text("Error Loading Campaigns")
+                            .font(.headline)
+                        Text(error.localizedDescription)
+                            .font(.caption)
+                            .multilineTextAlignment(.center)
+                        Button("Retry") {
+                            Task {
+                                await campaignCreator.fetchCampaigns()
                             }
                         }
-                        .padding(.vertical, 2)
+                        .padding(.top)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if campaignCreator.campaigns.isEmpty {
+                    Text("No campaigns yet. Tap '+' to create one.")
+                        .foregroundColor(.secondary)
+                        .font(.title2)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        ForEach(campaignCreator.campaigns) { campaign in
+                            NavigationLink(destination: CampaignDetailView(campaign: campaign, campaignCreator: campaignCreator)) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(campaign.title)
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    HStack {
+                                        Text("\(campaign.wordCount) words")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                        Text("Sections: \(campaign.sections.count)")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                        Text(campaign.modifiedAt, style: .date)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                .padding(.vertical, 2)
+                            }
+                        }
+                        .onDelete(perform: deleteCampaigns)
                     }
                 }
-                .onDelete(perform: deleteCampaigns)
             }
-            .navigationTitle("Campaigns") // Updated title
+            .navigationTitle("Campaigns")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if campaignCreator.isLoadingCampaigns && !campaignCreator.campaigns.isEmpty {
+                        ProgressView() // Show a small spinner if loading in background
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         showingCreateSheet = true
@@ -56,11 +83,11 @@ struct CampaignListView: View {
             .sheet(isPresented: $showingCreateSheet) {
                 NavigationView {
                     Form {
-                        Section("Campaign Details") { // Updated section title
+                        Section("Campaign Details") {
                             TextField("Campaign Title", text: $newCampaignTitle)
                         }
                     }
-                    .navigationTitle("New Campaign") // Updated navigation title
+                    .navigationTitle("New Campaign")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .navigationBarLeading) {
@@ -69,10 +96,11 @@ struct CampaignListView: View {
                                 newCampaignTitle = ""
                             }
                         }
-
                         ToolbarItem(placement: .navigationBarTrailing) {
                             Button("Create") {
-                                createCampaign()
+                                Task {
+                                    await createCampaign()
+                                }
                             }
                             .disabled(newCampaignTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         }
@@ -80,41 +108,64 @@ struct CampaignListView: View {
                 }
                 .presentationDetents([.medium])
             }
-            .onAppear {
-                loadCampaigns()
+            .alert("Error Creating Campaign", isPresented: $showCreationErrorAlert) {
+                Button("OK") { }
+            } message: {
+                Text(creationErrorMessage)
             }
-
-            // Detail view placeholder for when no campaign is selected (especially for iPad/macOS)
-            Text("Select a campaign to view details, or tap '+' to create a new one.")
-                .foregroundColor(.secondary)
-                .font(.title2)
+            .onAppear {
+                // Fetch campaigns if the list is empty or to refresh
+                // Consider adding pull-to-refresh later
+                if campaignCreator.campaigns.isEmpty {
+                    Task {
+                        await campaignCreator.fetchCampaigns()
+                    }
+                }
+            }
         }
     }
 
-    private func loadCampaigns() {
-        campaigns = campaignCreator.listCampaigns()
-    }
-
-    private func createCampaign() {
+    private func createCampaign() async {
         let title = newCampaignTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !title.isEmpty {
-            _ = campaignCreator.createCampaign(title: title) // CampaignCreator handles adding to its list
-            loadCampaigns() // Reload to get the updated list including the new campaign
-        }
+        guard !title.isEmpty else { return }
 
-        showingCreateSheet = false
-        newCampaignTitle = ""
+        do {
+            _ = try await campaignCreator.createCampaign(title: title)
+            // CampaignCreator.fetchCampaigns() is called internally by createCampaign,
+            // so the @Published campaigns array will update.
+            showingCreateSheet = false
+            newCampaignTitle = ""
+        } catch let error as APIError {
+            creationErrorMessage = error.localizedDescription
+            showCreationErrorAlert = true
+            print("❌ Error creating campaign: \(error.localizedDescription)")
+        } catch {
+            creationErrorMessage = "An unexpected error occurred: \(error.localizedDescription)"
+            showCreationErrorAlert = true
+            print("❌ Unexpected error creating campaign: \(error.localizedDescription)")
+        }
     }
 
     private func deleteCampaigns(offsets: IndexSet) {
-        let campaignsToDelete = offsets.map { campaigns[$0] }
-        for campaign in campaignsToDelete {
-            campaignCreator.deleteCampaign(campaign)
+        let campaignsToDelete = offsets.map { campaignCreator.campaigns[$0] }
+        Task {
+            for campaign in campaignsToDelete {
+                do {
+                    try await campaignCreator.deleteCampaign(campaign)
+                } catch {
+                    // Handle error, e.g., show an alert to the user
+                    print("Error deleting campaign \(campaign.title): \(error.localizedDescription)")
+                    // Optionally, present an alert for the failed deletion
+                }
+            }
+            // campaignCreator.fetchCampaigns() is called internally by deleteCampaign
         }
-        loadCampaigns() // Reload to reflect deletions
     }
 }
 
 #Preview {
-    CampaignListView(campaignCreator: CampaignCreator())
+    let previewCreator = CampaignCreator()
+    // Optionally populate with some mock data for preview if API is not live
+    // For async, previewing loading/error states might require more setup
+    return CampaignListView(campaignCreator: previewCreator)
 }
