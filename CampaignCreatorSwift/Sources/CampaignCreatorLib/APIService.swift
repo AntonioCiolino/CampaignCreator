@@ -1,11 +1,11 @@
 import Foundation
 
 // Error enum for API related issues
-public enum APIError: Error, LocalizedError {
+public enum APIError: Error, LocalizedError, Sendable, Equatable { // Added Equatable
     case invalidURL
-    case requestFailed(Error)
-    case decodingFailed(Error)
-    case encodingFailed(Error)
+    case requestFailed(Error) // Associated value Error might not be Equatable
+    case decodingFailed(Error) // Associated value Error might not be Equatable
+    case encodingFailed(Error) // Associated value Error might not be Equatable
     case serverError(statusCode: Int, data: Data?)
     case noData
     case notAuthenticated
@@ -20,18 +20,19 @@ public enum APIError: Error, LocalizedError {
         case .decodingFailed(let error):
             var detailedError = "Failed to decode the server response."
             if let decodingError = error as? DecodingError {
-                switch decodingError {
-                case .typeMismatch(let type, let context):
-                    detailedError += " Type mismatch for type \(type) at \(context.codingPath.map { $0.stringValue }.joined(separator: ".")): \(context.debugDescription)"
-                case .valueNotFound(let type, let context):
-                    detailedError += " Value not found for type \(type) at \(context.codingPath.map { $0.stringValue }.joined(separator: ".")): \(context.debugDescription)"
-                case .keyNotFound(let key, let context):
-                    detailedError += " Key not found: \(key.stringValue) at \(context.codingPath.map { $0.stringValue }.joined(separator: ".")): \(context.debugDescription)"
-                case .dataCorrupted(let context):
-                    detailedError += " Data corrupted at \(context.codingPath.map { $0.stringValue }.joined(separator: ".")): \(context.debugDescription)"
-                @unknown default:
-                    detailedError += " Unknown decoding error: \(error.localizedDescription)"
-                }
+                // ... (detailed error descriptions)
+                 switch decodingError {
+                 case .typeMismatch(let type, let context):
+                     detailedError += " Type mismatch for type \(type) at \(context.codingPath.map { $0.stringValue }.joined(separator: ".")): \(context.debugDescription)"
+                 case .valueNotFound(let type, let context):
+                     detailedError += " Value not found for type \(type) at \(context.codingPath.map { $0.stringValue }.joined(separator: ".")): \(context.debugDescription)"
+                 case .keyNotFound(let key, let context):
+                     detailedError += " Key not found: \(key.stringValue) at \(context.codingPath.map { $0.stringValue }.joined(separator: ".")): \(context.debugDescription)"
+                 case .dataCorrupted(let context):
+                     detailedError += " Data corrupted at \(context.codingPath.map { $0.stringValue }.joined(separator: ".")): \(context.debugDescription)"
+                 @unknown default:
+                     detailedError += " Unknown decoding error: \(error.localizedDescription)"
+                 }
             } else {
                 detailedError += " \(error.localizedDescription)"
             }
@@ -48,10 +49,25 @@ public enum APIError: Error, LocalizedError {
             return message
         }
     }
+
+    // Manual Equatable conformance
+    public static func == (lhs: APIError, rhs: APIError) -> Bool {
+        switch (lhs, rhs) {
+        case (.invalidURL, .invalidURL): return true
+        case (.requestFailed(_), .requestFailed(_)): return true // Simplified: compare only cases, not associated errors
+        case (.decodingFailed(_), .decodingFailed(_)): return true // Simplified
+        case (.encodingFailed(_), .encodingFailed(_)): return true // Simplified
+        case (let .serverError(sc1, data1), let .serverError(sc2, data2)): return sc1 == sc2 && data1 == data2
+        case (.noData, .noData): return true
+        case (.notAuthenticated, .notAuthenticated): return true
+        case (let .custom(s1), let .custom(s2)): return s1 == s2
+        default: return false
+        }
+    }
 }
 
 // DTOs for Campaign operations
-public struct CampaignCreateDTO: Codable {
+public struct CampaignCreateDTO: Codable, Sendable {
     public var title: String
     public var initialUserPrompt: String?
 
@@ -61,7 +77,7 @@ public struct CampaignCreateDTO: Codable {
     }
 }
 
-public struct CampaignUpdateDTO: Codable {
+public struct CampaignUpdateDTO: Codable, Sendable {
     public var title: String?
     public var initialUserPrompt: String?
     public var concept: String?
@@ -104,7 +120,7 @@ public struct CampaignUpdateDTO: Codable {
 }
 
 // DTOs for Character operations
-public struct CharacterCreateDTO: Codable {
+public struct CharacterCreateDTO: Codable, Sendable {
     public var name: String
     public var description: String?
     public var appearanceDescription: String?
@@ -124,7 +140,7 @@ public struct CharacterCreateDTO: Codable {
     }
 }
 
-public struct CharacterUpdateDTO: Codable {
+public struct CharacterUpdateDTO: Codable, Sendable {
     public var name: String?
     public var description: String?
     public var appearanceDescription: String?
@@ -145,7 +161,7 @@ public struct CharacterUpdateDTO: Codable {
 }
 
 // DTOs for Auth operations
-public struct LoginRequestDTO: Codable {
+public struct LoginRequestDTO: Codable, Sendable {
     public var username: String
     public var password: String
 
@@ -155,7 +171,7 @@ public struct LoginRequestDTO: Codable {
     }
 }
 
-public struct LoginResponseDTO: Codable {
+public struct LoginResponseDTO: Codable, Sendable {
     public var access_token: String
     public var token_type: String
 
@@ -167,7 +183,7 @@ public struct LoginResponseDTO: Codable {
 
 
 // Simple protocol for token management
-public protocol TokenManaging {
+public protocol TokenManaging: Sendable {
     func getToken() -> String?
     func setToken(_ token: String?)
     func clearToken()
@@ -188,9 +204,9 @@ public class UserDefaultsTokenManager: TokenManaging {
 }
 
 
-public class APIService {
+public class APIService: Sendable {
     private let baseURLString = "http://localhost:8000/api/v1"
-    private var tokenManager: TokenManaging
+    private let tokenManager: TokenManaging
     private let jsonDecoder: JSONDecoder
     private let jsonEncoder: JSONEncoder
 
@@ -204,12 +220,13 @@ public class APIService {
         jsonEncoder.outputFormatting = .prettyPrinted
     }
 
+    @MainActor
     public func updateAuthToken(_ token: String?) {
         tokenManager.setToken(token)
     }
 
     public func hasToken() -> Bool {
-        return tokenManager.hasToken()
+        return tokenManager.getToken() != nil
     }
 
     private func performRequest<T: Decodable>(
