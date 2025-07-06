@@ -24,7 +24,8 @@ public class CampaignCreator: ObservableObjectProtocol {
     @Published public var isAuthenticated: Bool = false
     @Published public var authError: APIError? = nil
     @Published public var isLoggingIn: Bool = false
-    @Published public var currentUser: User? = nil // Added currentUser
+    @Published public var currentUser: User? = nil
+    @Published public var isUserSessionValid: Bool = false // New state for session validity
 
     public init(apiService: APIService = APIService()) {
         self.markdownGenerator = MarkdownGenerator()
@@ -59,16 +60,18 @@ public class CampaignCreator: ObservableObjectProtocol {
             let loginResponse = try await apiService.login(credentials: credentials)
             apiService.updateAuthToken(loginResponse.access_token)
             isAuthenticated = true
-            await fetchCurrentUser() // Fetch user details after successful login
+            await fetchCurrentUser() // This will set isUserSessionValid on success
         } catch let error as APIError {
             authError = error
             isAuthenticated = false
             currentUser = nil
+            isUserSessionValid = false
             print("❌ Login failed: \(error.localizedDescription)")
         } catch {
             authError = APIError.custom("Login failed: An unexpected error occurred. \(error.localizedDescription)")
             isAuthenticated = false
             currentUser = nil
+            isUserSessionValid = false
             print("❌ Login failed with unexpected error: \(error.localizedDescription)")
         }
     }
@@ -76,31 +79,38 @@ public class CampaignCreator: ObservableObjectProtocol {
     public func logout() {
         apiService.updateAuthToken(nil)
         isAuthenticated = false
-        currentUser = nil // Clear current user
+        currentUser = nil
+        isUserSessionValid = false // Reset session validity
         campaigns = []
         characters = []
-        initialCampaignFetchAttempted = false // Reset flag
-        initialCharacterFetchAttempted = false // Reset flag
+        initialCampaignFetchAttempted = false
+        initialCharacterFetchAttempted = false
         print("Logged out.")
     }
     
     private func fetchCurrentUser() async {
-        guard isAuthenticated else { return } // Should only be called if authenticated
+        guard isAuthenticated else { // Still gate by initial token presence
+            isUserSessionValid = false
+            return
+        }
         do {
             let user = try await apiService.getMe()
             self.currentUser = user
+            self.isUserSessionValid = true // Session is valid
             print("✅ Fetched current user: \(user.email)")
         } catch let error as APIError {
             print("❌ Failed to fetch current user: \(error.localizedDescription)")
             // If /users/me fails (e.g. token expired), treat as logout
-            if error == .notAuthenticated || error.errorDescription?.contains("401") == true { 
-                logout()
+            self.isUserSessionValid = false
+            if error == .notAuthenticated || error.errorDescription?.contains("401") == true {
+                logout() // logout() will also set isAuthenticated and isUserSessionValid to false
             } else {
-                self.authError = error // Or a different error property for user fetching
+                self.authError = error
             }
         } catch {
             print("❌ Unexpected error fetching current user: \(error.localizedDescription)")
             self.authError = APIError.custom("Failed to fetch user details.")
+            self.isUserSessionValid = false
         }
     }
 
