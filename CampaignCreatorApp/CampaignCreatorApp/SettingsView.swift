@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var geminiApiKey = "" // This will be masked for display
     @State private var stableDiffusionApiKey = "" // New state for Stable Diffusion key display
 
+
     // For editing, use separate @State vars that are not masked
     @State private var editOpenAIApiKey = ""
     @State private var editGeminiApiKey = ""
@@ -172,6 +173,7 @@ struct SettingsView: View {
     private func saveAPIKey(_ key: String, value: String) {
         let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
         UserDefaults.standard.set(trimmedValue, forKey: key)
+        // setenv(key, trimmedValue, 1) // No longer needed as SecretsManager reads from UserDefaults
         
         // Update display state
         var keyLabel = key.replacingOccurrences(of: "_API_KEY", with: "")

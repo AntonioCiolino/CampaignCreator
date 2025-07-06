@@ -3,51 +3,56 @@ import Foundation
 public struct SecretsManager: Sendable {
     
     public static let shared = SecretsManager()
-    private let userDefaults = UserDefaults.standard
+    // private let userDefaults = UserDefaults.standard // Removed to ensure Sendable
 
     // Define constants for UserDefault keys to avoid typos
     private enum APIKeyNames: String {
         case openAI = "OPENAI_API_KEY"
         case gemini = "GEMINI_API_KEY"
         case anthropic = "ANTHROPIC_API_KEY"
-        // Add Stable Diffusion key name when implemented
         case stableDiffusion = "STABLE_DIFFUSION_API_KEY"
     }
     
     private init() {}
     
     public var openAIAPIKey: String? {
-        let key = userDefaults.string(forKey: APIKeyNames.openAI.rawValue)
+        // Access UserDefaults directly in the computed property
+        let key = UserDefaults.standard.string(forKey: APIKeyNames.openAI.rawValue)
         return isValidKey(key) ? key : nil
     }
     
     public var geminiAPIKey: String? {
-        let key = userDefaults.string(forKey: APIKeyNames.gemini.rawValue)
+        let key = UserDefaults.standard.string(forKey: APIKeyNames.gemini.rawValue)
         return isValidKey(key) ? key : nil
     }
     
     public var antropicAPIKey: String? { // Corrected typo from antRopic to antHropic
-        let key = userDefaults.string(forKey: APIKeyNames.anthropic.rawValue)
+        let key = UserDefaults.standard.string(forKey: APIKeyNames.anthropic.rawValue)
         return isValidKey(key) ? key : nil
     }
 
-    public var stableDiffusionAPIKey: String? { // Added for Stable Diffusion
-        let key = userDefaults.string(forKey: APIKeyNames.stableDiffusion.rawValue)
+    public var stableDiffusionAPIKey: String? {
+        let key = UserDefaults.standard.string(forKey: APIKeyNames.stableDiffusion.rawValue)
         return isValidKey(key) ? key : nil
     }
     
     /// Check if any API key is available
     public var hasAnyAPIKey: Bool {
-        return openAIAPIKey != nil || geminiAPIKey != nil || antropicAPIKey != nil || stableDiffusionAPIKey != nil
+        // Check each key; UserDefaults access is fine here as it's not stored.
+        return (UserDefaults.standard.string(forKey: APIKeyNames.openAI.rawValue).flatMap(isValidKey) ?? false) ||
+               (UserDefaults.standard.string(forKey: APIKeyNames.gemini.rawValue).flatMap(isValidKey) ?? false) ||
+               (UserDefaults.standard.string(forKey: APIKeyNames.anthropic.rawValue).flatMap(isValidKey) ?? false) ||
+               (UserDefaults.standard.string(forKey: APIKeyNames.stableDiffusion.rawValue).flatMap(isValidKey) ?? false)
     }
     
     /// Get available services
     public var availableServices: [String] {
         var services: [String] = []
-        if openAIAPIKey != nil { services.append("OpenAI") }
-        if geminiAPIKey != nil { services.append("Gemini") }
-        if antropicAPIKey != nil { services.append("Anthropic") } // Corrected typo
-        if stableDiffusionAPIKey != nil { services.append("Stable Diffusion") }
+        // Access UserDefaults directly for checks
+        if UserDefaults.standard.string(forKey: APIKeyNames.openAI.rawValue).flatMap(isValidKey) ?? false { services.append("OpenAI") }
+        if UserDefaults.standard.string(forKey: APIKeyNames.gemini.rawValue).flatMap(isValidKey) ?? false { services.append("Gemini") }
+        if UserDefaults.standard.string(forKey: APIKeyNames.anthropic.rawValue).flatMap(isValidKey) ?? false { services.append("Anthropic") }
+        if UserDefaults.standard.string(forKey: APIKeyNames.stableDiffusion.rawValue).flatMap(isValidKey) ?? false { services.append("Stable Diffusion") }
         return services
     }
     
