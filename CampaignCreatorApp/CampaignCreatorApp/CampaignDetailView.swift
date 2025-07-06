@@ -340,7 +340,7 @@ struct CampaignDetailView: View {
     )
     // campaignCreator.campaigns = [sampleCampaign] // If needed for preview consistency
 
-    return NavigationView {
+    NavigationView { // Removed explicit 'return'
         CampaignDetailView(campaign: sampleCampaign, campaignCreator: campaignCreator)
     }
 }

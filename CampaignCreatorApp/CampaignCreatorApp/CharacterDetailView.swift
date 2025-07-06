@@ -125,27 +125,28 @@ struct SectionBox<Content: View>: View {
 struct CharacterDetailView_Previews: PreviewProvider {
     static var previews: some View {
         let creator = CampaignCreator()
-        // It's good practice for previews to have the character also in the CampaignCreator's list
-        // if the view or its sub-views (like an edit view) might interact with it.
-        let sampleChar = Character(
+
+        let sampleCharacter = Character(
+            id: 1,
             name: "Aella Swiftarrow (Detail)",
-            description: "A nimble scout...",
-            stats: CharacterStats(strength: 11, dexterity: 19)
-        )
-        // Simulate it being part of the creator's list for onDismiss behavior of sheet
-        // This assumes CampaignCreator.characters is mutable for preview setup.
-        // If not, this specific preview setup might need adjustment or a mock CampaignCreator.
-        // For now, we rely on the passed 'character' state.
-        // creator.characters = [sampleChar] // This would be ideal if possible
-        let sampleCharWithId = Character( // Renamed and added id
-            id: 1, // Added id: 1
-            name: sampleChar.name,
-            description: sampleChar.description,
-            stats: sampleChar.stats
+            description: "A nimble scout with keen eyes and a steady hand, always ready for adventure.",
+            appearanceDescription: "Slender build, often seen in practical leather armor and a deep green cloak that helps her blend into forests. Has a braid of raven hair and striking blue eyes.",
+            imageURLs: nil, // Or ["http://example.com/aella.png"]
+            notesForLLM: "Loves nature, wary of large cities, skilled archer.",
+            stats: CharacterStats(strength: 11, dexterity: 19, constitution: 12, intelligence: 10, wisdom: 14, charisma: 13),
+            exportFormatPreference: "Markdown",
+            createdAt: Date(timeIntervalSinceNow: -86400 * 5), // 5 days ago
+            modifiedAt: Date(timeIntervalSinceNow: -86400 * 1) // 1 day ago
         )
 
+        // Optional: If you want to test how the view behaves if the character is in the CampaignCreator's list
+        // (e.g., for onDismiss logic that tries to find the character in the list to refresh it):
+        // creator.characters = [sampleCharacter]
+        // Note: This would require CampaignCreator.characters to be easily mutable for previews,
+        // or using a mock CampaignCreator designed for previews.
+
         return NavigationView {
-            CharacterDetailView(character: sampleCharWithId, campaignCreator: creator) // Use character with ID
+            CharacterDetailView(character: sampleCharacter, campaignCreator: creator)
         }
     }
 }

@@ -108,7 +108,10 @@ public class CampaignCreator: ObservableObjectProtocol {
         isLoadingCampaigns = true; campaignError = nil
         do {
             self.campaigns = try await apiService.fetchCampaigns()
-        } catch let error as APIError { self.campaignError = error; print("❌ Error fetching campaigns: \(error.localizedDescription)")
+        } catch let error as APIError {
+            self.campaignError = error; print("❌ Error fetching campaigns: \(error.localizedDescription)")
+            if case .notAuthenticated = error { self.logout() }
+            else if case .serverError(let statusCode, _) = error, statusCode == 401 { self.logout() }
         } catch { self.campaignError = APIError.custom("An unexpected error occurred: \(error.localizedDescription)"); print("❌ Unexpected error fetching campaigns: \(error.localizedDescription)")}
         isLoadingCampaigns = false
     }
@@ -158,7 +161,10 @@ public class CampaignCreator: ObservableObjectProtocol {
         isLoadingCharacters = true; characterError = nil
         do {
             self.characters = try await apiService.fetchCharacters()
-        } catch let error as APIError { self.characterError = error; print("❌ Error fetching characters: \(error.localizedDescription)")
+        } catch let error as APIError {
+            self.characterError = error; print("❌ Error fetching characters: \(error.localizedDescription)")
+            if case .notAuthenticated = error { self.logout() }
+            else if case .serverError(let statusCode, _) = error, statusCode == 401 { self.logout() }
         } catch { self.characterError = APIError.custom("An unexpected error occurred while fetching characters: \(error.localizedDescription)"); print("❌ Unexpected error fetching characters: \(error.localizedDescription)")}
         isLoadingCharacters = false
     }
