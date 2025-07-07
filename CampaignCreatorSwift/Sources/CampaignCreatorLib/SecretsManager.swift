@@ -16,51 +16,12 @@ public struct SecretsManager: Sendable {
     private init() {}
     
     public var openAIAPIKey: String? {
-        // Attempt to load from Keychain
-        // Note: KeychainHelper is in the App target, so direct access here is not possible
-        // This will require a protocol or a shared mechanism if SecretsManager remains in a separate module.
-        // For now, this assumes KeychainHelper is accessible or this logic is adapted.
-        // Consider making KeychainHelper part of CampaignCreatorLib or using a shared AppGroup.
-        // This is a placeholder for where Keychain logic would go.
-        // As KeychainHelper is not directly available here, we'll need to adjust the architecture
-        // or expect this to be handled at a higher level (e.g., in the App target, passing keys to the Lib).
-
-        // Fallback to UserDefaults for now, or handle error appropriately
-        // This change highlights an architectural consideration:
-        // If SecretsManager is in a library, it cannot directly access KeychainHelper from the main app bundle without modification.
-        // A proper solution would involve dependency injection or making KeychainHelper available to this module.
-
-        // Attempt to load from Keychain
-        do {
-            let key = try KeychainHelper.loadPassword(username: APIKeyNames.openAI.rawValue)
-            return isValidKey(key) ? key : nil
-        } catch KeychainHelper.KeychainError.itemNotFound {
-            // If not in Keychain, try UserDefaults (legacy support)
-            let key = UserDefaults.standard.string(forKey: APIKeyNames.openAI.rawValue)
-            if let key = key, isValidKey(key) {
-                // If found in UserDefaults, migrate to Keychain
-                do {
-                    try KeychainHelper.savePassword(username: APIKeyNames.openAI.rawValue, password: key)
-                    // Optionally, remove from UserDefaults after successful migration
-                    // UserDefaults.standard.removeObject(forKey: APIKeyNames.openAI.rawValue)
-                } catch {
-                    print("Failed to migrate OpenAI API key to Keychain: \(error.localizedDescription)")
-                }
-                return key
-            }
-            return nil
-        } catch {
-            print("Failed to load OpenAI API key from Keychain: \(error.localizedDescription)")
-            // Fallback to UserDefaults if Keychain access fails for other reasons
-            let key = UserDefaults.standard.string(forKey: APIKeyNames.openAI.rawValue)
-            return isValidKey(key) ? key : nil
-        }
+        // Access UserDefaults directly in the computed property
+        let key = UserDefaults.standard.string(forKey: APIKeyNames.openAI.rawValue)
+        return isValidKey(key) ? key : nil
     }
     
     public var geminiAPIKey: String? {
-        // Similar consideration for Gemini API Key if it were to be moved to Keychain
-        // For now, keeping Gemini on UserDefaults as per original scope,
-        // but ideally, all keys would be handled consistently.
         let key = UserDefaults.standard.string(forKey: APIKeyNames.gemini.rawValue)
         return isValidKey(key) ? key : nil
     }

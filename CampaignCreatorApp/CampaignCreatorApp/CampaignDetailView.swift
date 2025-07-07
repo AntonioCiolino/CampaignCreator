@@ -74,7 +74,7 @@ struct CampaignDetailView: View {
                 .onChange(of: editableTitle) { _ in
                     titleDebounceTimer?.invalidate()
                     titleDebounceTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
-                        Task { await saveCampaignDetails(source: .titleField) }
+                        Task { await self.saveCampaignDetails(source: .titleField) } // Added self.
                     }
                 }
         }
@@ -91,7 +91,7 @@ struct CampaignDetailView: View {
                     Button(isEditingConcept ? "Done" : "Edit") {
                         isEditingConcept.toggle()
                         if !isEditingConcept { // Save when "Done" is tapped
-                            Task { await saveCampaignDetails(source: .conceptEditorDoneButton) }
+                            Task { await self.saveCampaignDetails(source: .conceptEditorDoneButton) } // Added self.
                         }
                     }
                     .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
