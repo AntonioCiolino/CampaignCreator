@@ -8,13 +8,14 @@ public struct User: Identifiable, Codable, Equatable, Sendable {
     public var is_superuser: Bool?
     public var description: String?
     public var appearance: String?
+    public var avatar_url: String?
 
     // Add other fields your /users/me endpoint returns, e.g.:
     // public var fullName: String?
     // public var createdAt: Date?
     // public var modifiedAt: Date?
 
-    public init(id: Int, email: String, username: String? = nil, is_active: Bool? = true, is_superuser: Bool? = false, description: String? = nil, appearance: String? = nil) { // Changed id from UUID to Int
+    public init(id: Int, email: String, username: String? = nil, is_active: Bool? = true, is_superuser: Bool? = false, description: String? = nil, appearance: String? = nil, avatar_url: String? = nil) { // Changed id from UUID to Int
         self.id = id
         self.email = email
         self.username = username
@@ -22,5 +23,6 @@ public struct User: Identifiable, Codable, Equatable, Sendable {
         self.is_superuser = is_superuser
         self.description = description
         self.appearance = appearance
+        self.avatar_url = avatar_url
     }
 }
