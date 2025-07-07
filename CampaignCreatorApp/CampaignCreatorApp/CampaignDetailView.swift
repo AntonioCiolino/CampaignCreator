@@ -47,6 +47,25 @@ struct CampaignDetailView: View {
     @State private var currentSectionIdForImageGen: UUID? = nil
     @State private var imageGenPromptText: String = ""
 
+    // Error states for specific operations
+    @State private var featureFetchError: String? = nil
+    @State private var snippetProcessingError: String? = nil
+    @State private var fullSectionRegenError: String? = nil
+    @State private var sectionImageGenError: String? = nil
+
+    // Computed property to consolidate error messages for the main alert
+    private var computedErrorMessage: String? {
+        // Combine all specific errors. Could be more sophisticated with formatting.
+        let errors = [
+            featureFetchError,
+            snippetProcessingError,
+            fullSectionRegenError,
+            sectionImageGenError,
+            errorMessage // Include general errorMessage as a fallback or for other errors
+        ].compactMap { $0 }
+
+        return errors.isEmpty ? nil : errors.joined(separator: "\n---\n")
+    }
 
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
 
@@ -233,17 +252,22 @@ struct CampaignDetailView: View {
     }
 
     private func handleImageGenerationForSection() async {
+        sectionImageGenError = nil // Reset error
         guard let sectionId = currentSectionIdForImageGen,
               let coordinator = customTextViewCoordinators[sectionId] else {
-            print("Error: Missing section ID or coordinator for image generation.")
-            // TODO: Show error to user
+            let errorMsg = "Error: Missing section ID or coordinator for image generation."
+            print(errorMsg)
+            sectionImageGenError = errorMsg
+            // self.errorMessage = errorMsg; self.showErrorAlert = true // Optional: general alert
             return
         }
 
         let prompt = imageGenPromptText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty else {
-            print("Error: Image generation prompt is empty.")
-            // TODO: Show error to user
+            let errorMsg = "Error: Image generation prompt is empty."
+            print(errorMsg)
+            sectionImageGenError = errorMsg
+            // self.errorMessage = errorMsg; self.showErrorAlert = true // Optional: general alert
             return
         }
 
@@ -258,16 +282,23 @@ struct CampaignDetailView: View {
             )
 
             let markdownImage = "\n![Generated Image: \(response.promptUsed)](\(response.imageUrl))\n"
-            coordinator.insertTextAtCurrentCursor(markdownImage)
+            coordinator.insertTextAtCurrentCursor(markdownImage) // This updates the binding via coordinator
 
-            // Update local state if content was changed directly through coordinator
-            // This ensures the change is reflected if the binding didn't immediately pick it up
-            // or if save logic relies on localCampaignCustomSections being perfectly in sync.
-            if let index = localCampaignCustomSections.firstIndex(where: { $0.id == sectionId }) {
-                 // The coordinator's insertTextAtCurrentCursor already updated parent.text binding.
-                 // So, localCampaignCustomSections[index].content should be up-to-date.
-                 // If not, manual update would be needed:
-                 // localCampaignCustomSections[index].content = coordinator.textView?.text ?? localCampaignCustomSections[index].content
+            // Note: insertTextAtCurrentCursor in Coordinator should be updating parent.text binding.
+            // This change will propagate to localCampaignCustomSections through the ForEach loop's binding $section.content.
+            // So, an explicit re-sync of the *entire* campaign from CampaignCreator might not be strictly necessary
+            // if the image generation itself doesn't have other side effects on the campaign model on the backend
+            // that `CampaignCreator.generateImageForSection` doesn't already handle by returning the image response.
+            // However, the saveCampaignDetails below will persist the current state of `localCampaignCustomSections`.
+
+            // Let's ensure the local state is definitely what the coordinator now has, before saving.
+            // This is mostly a safeguard if the binding propagation has delays or issues.
+            if let index = localCampaignCustomSections.firstIndex(where: { $0.id == sectionId }),
+               let currentCoordinatorText = coordinator.textView?.text { // Access actual text from UITextView
+                if localCampaignCustomSections[index].content != currentCoordinatorText {
+                    localCampaignCustomSections[index].content = currentCoordinatorText
+                     print("ImageGen: Forcing localCampaignCustomSections content update from coordinator's text view for section \(sectionId).")
+                }
             }
 
             // Save the campaign to persist the new content with the image link
@@ -275,8 +306,11 @@ struct CampaignDetailView: View {
             print("Image generated and inserted for section \(sectionId).")
 
         } catch {
-            print("Error generating image for section \(sectionId): \(error.localizedDescription)")
-            // TODO: Show error to user (e.g., update a @State var bound to an alert for this modal or section)
+            let errorDescription = "Error generating image for section \(sectionId): \(error.localizedDescription)"
+            print(errorDescription)
+            sectionImageGenError = errorDescription
+            self.errorMessage = "Image Generation Failed (For section related to prompt: \"\(prompt.prefix(30))...\")"
+            self.showErrorAlert = true
         }
 
         // Reset state
@@ -322,9 +356,12 @@ struct CampaignDetailView: View {
     }
 
     private func handleFullSectionRegeneration(forSection section: CampaignCustomSection) {
+        fullSectionRegenError = nil // Reset error
         guard let coordinator = customTextViewCoordinators[section.id] else {
-            print("Error: Coordinator not found for section \(section.id) for full regeneration.")
-            // TODO: Show error to user
+            let errorMsg = "Error: Coordinator not found for section \(section.id) for full regeneration."
+            print(errorMsg)
+            fullSectionRegenError = errorMsg
+            // self.errorMessage = errorMsg; self.showErrorAlert = true // Optional: general alert
             return
         }
 
@@ -346,44 +383,54 @@ struct CampaignDetailView: View {
 
             do {
                 print("Calling CampaignCreator to regenerate FULL content for section \(section.id)...")
-                let updatedSectionData = try await campaignCreator.regenerateCampaignCustomSection(
+                let _ = try await campaignCreator.regenerateCampaignCustomSection( // returnedUpdatedSectionData can be ignored if we re-sync fully
                     campaignId: Int(campaign.id),
                     sectionId: section.id,
                     payload: payload
                 )
 
-                // Replace ENTIRE text in the CustomTextView
-                // To do this via coordinator, it might need a `setText` method, or we update binding.
-                // Forcing binding update:
-                if let index = localCampaignCustomSections.firstIndex(where: { $0.id == section.id }) {
-                    localCampaignCustomSections[index].content = updatedSectionData.content
-                    // If the backend could also change title/type during full regeneration:
-                    // localCampaignCustomSections[index].title = updatedSectionData.title
-                    // localCampaignCustomSections[index].type = updatedSectionData.type
+                // --- State Synchronization Start ---
+                if let refreshedCampaignFromCreator = campaignCreator.campaigns.first(where: { $0.id == self.campaign.id }) {
+                    self.campaign = refreshedCampaignFromCreator
+                    self.localCampaignCustomSections = refreshedCampaignFromCreator.customSections ?? [] // This re-syncs all sections
+                    print("CampaignDetailView: self.campaign and localCampaignCustomSections re-synced from CampaignCreator after full regen.")
+                    // The CustomTextView for the target section will update automatically due to its binding to localCampaignCustomSections[index].content
+                } else {
+                    print("Error: Could not find refreshed campaign \(self.campaign.id) in CampaignCreator.campaigns after full regen.")
+                    // If campaign couldn't be refreshed, the local change might not be reflected unless we manually update from returnedUpdatedSectionData.
+                    // However, regenerateCampaignCustomSection in CampaignCreator already tries to refresh.
+                    // A more robust error handling might be needed here. For now, we assume it mostly succeeds or UI shows old data.
                 }
-                // The CustomTextView will update via its @Binding text.
+                // --- State Synchronization End ---
 
                 await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true)
                 print("Full section content regeneration successful for section \(section.id).")
 
             } catch {
-                print("Error regenerating full section content for section \(section.id): \(error.localizedDescription)")
-                // TODO: Show error to user
+            let errorDescription = "Error regenerating full content for section \(section.title ?? section.id.uuidString): \(error.localizedDescription)"
+                print(errorDescription)
+                fullSectionRegenError = errorDescription
+            self.errorMessage = "Content Regeneration Failed (Section: \(section.title ?? "Untitled"))"
+            self.showErrorAlert = true
             }
         }
     }
 
     // Placeholder for actual LLM call logic (Step 4.D)
     private func processSnippetWithLLM(feature: Feature, sectionId: UUID, selectedText: String, rangeToReplace: NSRange, additionalContext: [String: String]) {
-        guard let coordinator = customTextViewCoordinators[sectionId] else {
-            print("Error: Coordinator not found for section \(sectionId) during LLM processing.")
-            // TODO: Show error to user
+        snippetProcessingError = nil // Reset error
+        guard let coordinator = customTextViewCoordinators[sectionId] else { // Ensure coordinator exists at the start
+            let errorMsg = "Error: Coordinator not found for section \(sectionId) during LLM processing."
+            print(errorMsg)
+            snippetProcessingError = errorMsg
             return
         }
 
         // Get current section details to pass to payload
         guard let currentCampaignSection = localCampaignCustomSections.first(where: { $0.id == sectionId }) else {
-            print("Error: Could not find current campaign section with ID \(sectionId) in local state.")
+            let errorMsg = "Error: Could not find current campaign section with ID \(sectionId) in local state for snippet processing."
+            print(errorMsg)
+            snippetProcessingError = errorMsg // Use the specific error state
             return
         }
 
@@ -399,42 +446,69 @@ struct CampaignDetailView: View {
 
             do {
                 print("Calling CampaignCreator to regenerate snippet for section \(sectionId), feature '\(feature.name)'...")
-                let updatedSectionData = try await campaignCreator.regenerateCampaignCustomSection(
+                let returnedUpdatedSectionData = try await campaignCreator.regenerateCampaignCustomSection(
                     campaignId: Int(campaign.id), // Assuming campaign.id is Int
                     sectionId: sectionId,
                     payload: payload
                 )
 
-                // Replace text in the CustomTextView
-                coordinator.replaceText(inRange: rangeToReplace, with: updatedSectionData.content)
+                // 1. Get the LLM-processed snippet
+                let returnedUpdatedSectionData = try await campaignCreator.regenerateCampaignCustomSection(
+                    campaignId: Int(campaign.id),
+                    sectionId: sectionId,
+                    payload: payload
+                )
 
-                // Update localCampaignCustomSections to reflect the new content and potentially other changes from backend
-                if let index = localCampaignCustomSections.firstIndex(where: { $0.id == sectionId }) {
-                    localCampaignCustomSections[index].content = updatedSectionData.content
-                    // If backend can change title/type during regeneration, update them too:
-                    // localCampaignCustomSections[index].title = updatedSectionData.title
-                    // localCampaignCustomSections[index].type = updatedSectionData.type
+                // 2. Apply this specific change locally using the coordinator and the original range
+                // This updates the UITextView and the $section.content binding for this item
+                // in localCampaignCustomSections.
+                coordinator.replaceText(inRange: rangeToReplace, with: returnedUpdatedSectionData.content)
+
+                // 3. Now, re-sync the entire campaign state from CampaignCreator
+                if let refreshedCampaignFromCreator = campaignCreator.campaigns.first(where: { $0.id == self.campaign.id }) {
+                    self.campaign = refreshedCampaignFromCreator
+                    // This re-initialization is important.
+                    // The content of the section we just applied the snippet to should ideally match
+                    // returnedUpdatedSectionData.content after this line, if the backend is consistent
+                    // and CampaignCreator's refresh was successful and picked up the change.
+                    // If not, the coordinator.replaceText above has already updated the visual and the specific
+                    // $section.content binding which might be temporarily out of sync with the new localCampaignCustomSections
+                    // if the array was rebuilt without that exact content. This is a subtle point.
+                    // The saveCampaignDetails below will use the version from localCampaignCustomSections.
+                    // To be absolutely sure, we could find the section in the new localCampaignCustomSections and ensure its content
+                    // matches returnedUpdatedSectionData.content if there's a discrepancy.
+                    self.localCampaignCustomSections = refreshedCampaignFromCreator.customSections ?? []
+                    if let index = self.localCampaignCustomSections.firstIndex(where: { $0.id == sectionId }) {
+                        if self.localCampaignCustomSections[index].content != returnedUpdatedSectionData.content {
+                            print("CampaignDetailView: Snippet content from LLM ('\(returnedUpdatedSectionData.content.prefix(20))') differs from re-synced campaign's section content ('\(self.localCampaignCustomSections[index].content.prefix(20))'). Trusting LLM direct output for this section.")
+                            // This ensures the text view, which was updated by the coordinator,
+                            // and the underlying data model for that section are aligned with the direct LLM output for the snippet.
+                             self.localCampaignCustomSections[index].content = returnedUpdatedSectionData.content
+                        }
+                    }
+
+                } else {
+                    print("Error: Could not find refreshed campaign \(self.campaign.id) in CampaignCreator.campaigns after snippet. Saving local changes.")
+                    // If full refresh fails, at least the local change via coordinator is likely in localCampaignCustomSections.
                 }
 
-                // The campaign itself in campaignCreator.campaigns list should have been updated by regenerateCampaignCustomSection.
-                // We might need to re-sync `self.campaign` if `CampaignDetailView`'s copy is stale.
-                // This is complex. For now, assume `saveCampaignDetails` after this will handle persisting the locally modified section.
-                // Or, even better, `CampaignCreator.regenerateCampaignCustomSection` should ensure its published `campaigns` array is updated,
-                // and `CampaignDetailView` should observe that.
-
-                // Persist the changes made by the LLM (which updated local state via coordinator)
+                // 4. Save all details.
                 await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true)
                 print("Snippet processing successful for feature '\(feature.name)'.")
 
             } catch {
-                print("Error processing snippet with LLM for feature '\(feature.name)': \(error.localizedDescription)")
-                // TODO: Show error to user (e.g., update a @State var bound to an alert)
+                let errorDescription = "Error processing snippet for feature '\(feature.name)': \(error.localizedDescription)"
+                print(errorDescription)
+                snippetProcessingError = errorDescription
+            self.errorMessage = "Snippet Processing Failed (Section: \(currentCampaignSection.title ?? "Untitled"))"
+            self.showErrorAlert = true
             }
         }
     }
 
     private func fetchSnippetFeatures() async {
         isLoadingFeatures = true
+        featureFetchError = nil // Reset error
         do {
             let allFeatures = try await featureService.fetchFeatures()
             // Filter for "Snippet" category or other relevant criteria if needed
@@ -447,8 +521,11 @@ struct CampaignDetailView: View {
             }
             print("Fetched \(self.snippetFeatures.count) snippet features.")
         } catch {
-            print("Error fetching snippet features: \(error.localizedDescription)")
-            // Handle error display if necessary
+            let errorDescription = "Error fetching snippet features: \(error.localizedDescription)"
+            print(errorDescription)
+            featureFetchError = errorDescription
+            self.errorMessage = "Feature Loading Failed" // General title for alert
+            self.showErrorAlert = true
         }
         isLoadingFeatures = false
     }
@@ -665,10 +742,19 @@ struct CampaignDetailView: View {
                 }
             }
         }
-        .alert("Error", isPresented: $showErrorAlert) { // Generic error alert
-            Button("OK") { }
-        } message: {
-            Text(errorMessage)
+        .alert(isPresented: $showErrorAlert) {
+            Alert(
+                title: Text(errorMessage), // errorMessage now serves as a general title for the alert
+                message: Text(computedErrorMessage ?? "An unexpected error occurred. Please try again."),
+                dismissButton: .default(Text("OK")) {
+                    // Clear all specific error states and the general errorMessage
+                    featureFetchError = nil
+                    snippetProcessingError = nil
+                    fullSectionRegenError = nil
+                    sectionImageGenError = nil
+                    self.errorMessage = "" // Clear the general message that might have been set
+                }
+            )
         }
         .onDisappear {
             titleDebounceTimer?.invalidate()
