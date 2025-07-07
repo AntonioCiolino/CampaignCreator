@@ -372,13 +372,13 @@ public final class APIService: Sendable {
         try await performRequest(endpoint: "/campaigns/")
     }
 
-    public func fetchCampaign(id: Int) async throws -> Campaign { // Changed id from UUID to Int
-        try await performRequest(endpoint: "/campaigns/\(id)/") // Changed id.uuidString to id
+    public func fetchCampaign(id: Int) async throws -> Campaign {
+        try await performRequest(endpoint: "/campaigns/\(id)")
     }
 
     public func createCampaign(_ campaignData: CampaignCreateDTO) async throws -> Campaign {
         let body = try jsonEncoder.encode(campaignData)
-        return try await performRequest(endpoint: "/campaigns/", method: "POST", body: body)
+        return try await performRequest(endpoint: "/campaigns", method: "POST", body: body)
     }
 
     public func updateCampaign(_ campaignId: Int, data: CampaignUpdateDTO) async throws -> Campaign { // Changed campaignId from UUID to Int
@@ -387,7 +387,7 @@ public final class APIService: Sendable {
     }
 
     public func deleteCampaign(id: Int) async throws { // Changed id from UUID to Int
-        try await performVoidRequest(endpoint: "/campaigns/\(id)/", method: "DELETE") // Changed id.uuidString to id
+        try await performVoidRequest(endpoint: "/campaigns/\(id)", method: "DELETE") // Changed id.uuidString to id
     }
 
     // MARK: - Character Methods
@@ -395,8 +395,8 @@ public final class APIService: Sendable {
         try await performRequest(endpoint: "/characters/") // ADDED TRAILING SLASH
     }
 
-    public func fetchCharacter(id: Int) async throws -> Character { // Changed id from UUID to Int
-        try await performRequest(endpoint: "/characters/\(id)/") // Changed id.uuidString to id
+    public func fetchCharacter(id: Int) async throws -> Character {
+        try await performRequest(endpoint: "/characters/\(id)")
     }
 
     public func createCharacter(_ characterData: CharacterCreateDTO) async throws -> Character {
@@ -406,11 +406,11 @@ public final class APIService: Sendable {
 
     public func updateCharacter(_ characterId: Int, data: CharacterUpdateDTO) async throws -> Character { // Changed characterId from UUID to Int
         let body = try jsonEncoder.encode(data)
-        return try await performRequest(endpoint: "/characters/\(characterId)/", method: "PUT", body: body) // Changed characterId.uuidString to characterId
+        return try await performRequest(endpoint: "/characters/\(characterId)", method: "PUT", body: body) // Changed characterId.uuidString to characterId
     }
 
     public func deleteCharacter(id: Int) async throws { // Changed id from UUID to Int
-        try await performVoidRequest(endpoint: "/characters/\(id)/", method: "DELETE") // Changed id.uuidString to id
+        try await performVoidRequest(endpoint: "/characters/\(id)", method: "DELETE") // Changed id.uuidString to id
     }
 
     // MARK: - Auth Methods
@@ -444,7 +444,7 @@ public final class APIService: Sendable {
         // For now, assuming a dedicated regeneration endpoint for a custom section.
         // IMPORTANT: The actual endpoint path needs to be verified with the backend API documentation.
         // Using a placeholder endpoint structure for now.
-        return try await performRequest(endpoint: "/campaigns/\(campaignId)/custom_sections/\(sectionId.uuidString)/regenerate", method: "POST", body: body)
+        return try await performRequest(endpoint: "/campaigns/\(campaignId)/custom_sections/\(sectionId)/regenerate", method: "POST", body: body)
     }
 
     // MARK: - Image Generation Methods

@@ -608,7 +608,7 @@ struct CampaignDetailView: View {
 
                             Button { // Generate Image Button
                                 self.currentSectionIdForImageGen = section.id
-                                self.imageGenPromptText = section.title ?? "" // Pre-fill with section title
+                                self.imageGenPromptText = section.title
                                 self.showingImagePromptModalForSection = true
                             } label: {
                                 Label("Image", systemImage: "photo.badge.plus")
@@ -662,25 +662,26 @@ struct CampaignDetailView: View {
                 // Apply background color only if no image, or if image fails to load and placeholder is clear
                 currentBackgroundColor.edgesIgnoringSafeArea(.all)
             }
-
+            
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     // Apply general text color and font to the content of the ScrollView
                     // Specific elements can override this.
                     headerAndTitleSection // Using the extracted component
                     conceptEditorSection // Using the extracted component
-
-                // MARK: - Table of Contents
-                if let tocEntries = campaign.displayTOC, !tocEntries.isEmpty {
-                    tableOfContentsSection // Using the extracted component
+                    
+                    // MARK: - Table of Contents
+                    if let tocEntries = campaign.displayTOC, !tocEntries.isEmpty {
+                        tableOfContentsSection // Using the extracted component
+                    }
+                    campaignThemeDisplaySection // Using the extracted component
+                    campaignCustomSectionsEditorView // ADDED Campaign Custom Sections UI
+                    sectionsDisplaySection // Using the extracted component (standard generated sections)
                 }
-                campaignThemeDisplaySection // Using the extracted component
-                campaignCustomSectionsEditorView // ADDED Campaign Custom Sections UI
-                sectionsDisplaySection // Using the extracted component (standard generated sections)
+                .padding()
+                .font(currentFont) // Apply default theme font to all content within VStack
+                .foregroundColor(currentTextColor) // Apply default theme text color
             }
-            .padding()
-            .font(currentFont) // Apply default theme font to all content within VStack
-            .foregroundColor(currentTextColor) // Apply default theme text color
         }
         .navigationTitle(editableTitle)
         .navigationBarTitleDisplayMode(.inline)
@@ -975,10 +976,6 @@ struct CampaignDetailView: View {
             // or we rely on other parts of 'changed' logic or always save if includeCustomSections is true.
             // For now, if includeCustomSections is true, we will assign and mark as changed.
             // This is simpler than a deep comparison here.
-            let sectionsToSave = localCampaignCustomSections.filter { // This is the correct single declaration
-                !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-                !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            }
             // The duplicate "let sectionsToSave = ..." line that was here previously has been removed.
             campaignToUpdate.customSections = sectionsToSave.isEmpty ? nil : sectionsToSave
             // We need to ensure 'changed' is true if custom sections were part of the trigger.
@@ -1339,8 +1336,8 @@ struct CampaignConceptView: View {
         themePrimaryColor: "#FF0000",
         themeFontFamily: "Arial",
         customSections: [ // ADDED Sample Campaign Custom Sections
-            CampaignCustomSection(title: "World History", content: "A brief history of the world..."),
-            CampaignCustomSection(title: "Key Factions", content: "Details about important groups...")
+            CampaignCustomSection(id: 1, title: "World History", content: "A brief history of the world..."),
+            CampaignCustomSection(id: 2, title: "Key Factions", content: "Details about important groups...")
         ]
     )
     // campaignCreator.campaigns = [sampleCampaign] // If needed for preview consistency
