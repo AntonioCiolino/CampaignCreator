@@ -196,7 +196,7 @@ public class CampaignCreator: ObservableObjectProtocol {
 
     public func createCharacter(name: String, description: String? = nil, appearance: String? = nil, stats: CharacterStats? = nil) async throws -> Character {
         guard isAuthenticated else { throw APIError.notAuthenticated }
-        let dto = CharacterCreateDTO(name: name, description: description, appearanceDescription: appearance, stats: stats)
+        let dto = CharacterCreateDTO(name: name, description: description, appearanceDescription: appearance, stats: stats, customSections: nil) // Assuming new characters don't start with custom sections by default
         let newCharacter = try await apiService.createCharacter(dto)
         await fetchCharacters()
         return newCharacter
@@ -208,7 +208,8 @@ public class CampaignCreator: ObservableObjectProtocol {
             name: character.name, description: character.description,
             appearanceDescription: character.appearanceDescription, imageURLs: character.imageURLs,
             notesForLLM: character.notesForLLM, stats: character.stats,
-            exportFormatPreference: character.exportFormatPreference
+            exportFormatPreference: character.exportFormatPreference,
+            customSections: character.customSections // Added
         )
         _ = try await apiService.updateCharacter(character.id, data: dto)
         await fetchCharacters()

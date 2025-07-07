@@ -37,6 +37,166 @@ struct CampaignDetailView: View {
         self._editableConcept = State(initialValue: campaign.concept ?? "")
     }
 
+    // Computed properties for theme colors
+    private var currentPrimaryColor: Color { campaign.themePrimaryColor.map { Color(hex: $0) } ?? .accentColor }
+    private var currentSecondaryColor: Color { campaign.themeSecondaryColor.map { Color(hex: $0) } ?? .secondary }
+    private var currentBackgroundColor: Color { campaign.themeBackgroundColor.map { Color(hex: $0) } ?? Color(.systemBackground) }
+    private var currentTextColor: Color { campaign.themeTextColor.map { Color(hex: $0) } ?? Color(.label) }
+    private var currentFont: Font {
+        if let fontName = campaign.themeFontFamily, !fontName.isEmpty {
+            return .custom(fontName, size: 16) // Default size, can be made dynamic
+        }
+        return .body // Default system font
+    }
+
+    // MARK: - Extracted View Components for Body
+    private var headerAndTitleSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("\(campaign.wordCount) words (from sections)")
+                        .font(.caption).foregroundColor(.secondary)
+                    Text(campaign.modifiedAt != nil ? "Modified: \(campaign.modifiedAt!, style: .date)" : "Modified: N/A")
+                        .font(.caption).foregroundColor(.secondary)
+                }
+                Spacer()
+                // ProgressView will be handled in toolbar or a more global status area if needed
+            }
+
+            TextField("Campaign Title", text: $editableTitle)
+                .font(.largeTitle)
+                .textFieldStyle(PlainTextFieldStyle())
+                .padding(.bottom, 4)
+                .disabled(isSaving || isGeneratingText)
+                .onChange(of: editableTitle) { _ in
+                    titleDebounceTimer?.invalidate()
+                    titleDebounceTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
+                        Task { await self.saveCampaignDetails(source: .titleField) } // Added self.
+                    }
+                }
+        }
+        .padding().background(Color(.systemGroupedBackground)).cornerRadius(12)
+        // Apply theme to specific text elements inside if needed, or globally if this section has distinct styling.
+        // For now, relying on global theme application or default system styles for this section.
+    }
+
+    private var conceptEditorSection: some View {
+        DisclosureGroup("Campaign Concept", isExpanded: $isEditingConcept.animation()) { // Added animation for smoother toggle
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Spacer() // Pushes button to the right
+                    Button(isEditingConcept ? "Done" : "Edit") {
+                        isEditingConcept.toggle()
+                        if !isEditingConcept { // Save when "Done" is tapped
+                            Task { await self.saveCampaignDetails(source: .conceptEditorDoneButton) } // Added self.
+                        }
+                    }
+                    .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
+                    .tint(currentPrimaryColor) // Apply theme primary color
+                }
+
+                if isEditingConcept {
+                    TextEditor(text: $editableConcept)
+                        .frame(minHeight: 200, maxHeight: 400).padding(8)
+                        .background(Color(.secondarySystemGroupedBackground)) // Use a slightly different background for editor
+                        .cornerRadius(8)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+                        .disabled(isSaving || isGeneratingText)
+                } else {
+                    Text(editableConcept.isEmpty ? "Tap Edit to add campaign concept..." : editableConcept)
+                        .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 100)
+                        .padding().background(Color(.systemGroupedBackground)).cornerRadius(8) // Keep original background for display
+                        .foregroundColor(editableConcept.isEmpty ? .secondary : currentTextColor) // Use theme text color
+                        .onTapGesture { if !isSaving && !isGeneratingText { isEditingConcept = true } }
+                }
+            }
+        }
+        .padding().background(Color(.systemBackground)).cornerRadius(12) // Keep original outer padding/bg
+        .font(currentFont) // Apply theme font
+    }
+
+    private var tableOfContentsSection: some View {
+        // Ensure this only appears if tocEntries are available and not empty
+        // The conditional logic is kept in the main body for clarity of structure
+        DisclosureGroup("Table of Contents") {
+            VStack(alignment: .leading, spacing: 8) {
+                // Ensure campaign.displayTOC is not nil before trying to iterate
+                ForEach(campaign.displayTOC ?? []) { entry in
+                    Text(entry.title)
+                        .font(.body) // Can be themed with currentFont if desired, or kept as .body
+                        // TODO: Add navigation to section
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 4)
+        }
+        .padding().background(Color(.systemBackground)).cornerRadius(12)
+        .foregroundColor(currentTextColor) // Apply theme text color
+        .font(currentFont) // Apply theme font
+    }
+
+    private var campaignThemeDisplaySection: some View {
+        DisclosureGroup("Campaign Theme") {
+            VStack(alignment: .leading, spacing: 8) {
+                ThemePropertyRow(label: "Primary Color", value: campaign.themePrimaryColor)
+                ThemePropertyRow(label: "Secondary Color", value: campaign.themeSecondaryColor)
+                ThemePropertyRow(label: "Background Color", value: campaign.themeBackgroundColor)
+                ThemePropertyRow(label: "Text Color", value: campaign.themeTextColor)
+                ThemePropertyRow(label: "Font Family", value: campaign.themeFontFamily)
+                ThemePropertyRow(label: "Background Image URL", value: campaign.themeBackgroundImageURL, isURL: true)
+                ThemePropertyRow(label: "BG Image Opacity", value: campaign.themeBackgroundImageOpacity.map { String(format: "%.2f", $0) })
+
+                Button("Edit Theme") {
+                    showingThemeEditSheet = true
+                }
+                .buttonStyle(.bordered)
+                .tint(currentPrimaryColor) // Apply theme primary color
+                .padding(.top, 8)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 4)
+        }
+        .padding().background(Color(.systemBackground)).cornerRadius(12)
+        .foregroundColor(currentTextColor) // Apply theme text color
+        .font(currentFont) // Apply theme font
+    }
+
+    private var sectionsDisplaySection: some View {
+        VStack(alignment: .leading) {
+            Text("Sections")
+                .font(currentFont.weight(.bold)) // Use theme font, make bold
+                .foregroundColor(currentPrimaryColor) // Use theme primary color for header
+                .padding(.bottom, 4)
+
+            if campaign.sections.isEmpty {
+                Text("No sections yet. Use 'Generate' to create the first section from a prompt.")
+                    .font(currentFont.italic()) // Theme font, italic
+                    .foregroundColor(currentTextColor.opacity(0.7)) // Theme text color, slightly muted
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .background(Color(.systemGroupedBackground)).cornerRadius(8)
+            } else {
+                ForEach(campaign.sections) { section in
+                    DisclosureGroup { // Content of DisclosureGroup
+                        Text(section.content.prefix(200) + (section.content.count > 200 ? "..." : ""))
+                            .font(currentFont) // Apply theme font
+                            .lineLimit(5)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.top, 4)
+                    } label: { // Label of DisclosureGroup
+                        Text(section.title ?? "Untitled Section (\(section.order))")
+                            .font(currentFont.weight(.semibold)) // Theme font, semibold for title
+                            .foregroundColor(currentTextColor) // Theme text color for title
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+        .padding() // Outer padding for the whole sections block
+        // Note: Individual DisclosureGroup backgrounds/paddings might need adjustment
+        // if they clash with the overall theme. For now, applying font/color broadly.
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {

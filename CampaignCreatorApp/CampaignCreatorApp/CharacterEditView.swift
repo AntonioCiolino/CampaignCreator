@@ -24,6 +24,9 @@ struct CharacterEditView: View {
     @State private var statsWisdom: String
     @State private var statsCharisma: String
 
+    // State for custom sections
+    @State private var localCustomSections: [CustomSection]
+
     @State private var isSaving: Bool = false
     @State private var showErrorAlert: Bool = false
     @State private var errorMessage: String = ""
@@ -59,6 +62,7 @@ struct CharacterEditView: View {
         self._statsIntelligence = State(initialValue: character.stats?.intelligence.map(String.init) ?? "")
         self._statsWisdom = State(initialValue: character.stats?.wisdom.map(String.init) ?? "")
         self._statsCharisma = State(initialValue: character.stats?.charisma.map(String.init) ?? "")
+        self._localCustomSections = State(initialValue: character.customSections ?? [])
     }
 
     var body: some View {
@@ -126,6 +130,27 @@ struct CharacterEditView: View {
                             .overlay(formElementOverlay())
                     }
                     TextField("Export Format Preference (Optional)", text: $exportFormatPreferenceText)
+                }
+
+                Section(header: Text("Custom Sections")) {
+                    ForEach($localCustomSections) { $section in
+                        VStack(alignment: .leading) {
+                            TextField("Section Title", text: $section.title)
+                                .font(.headline)
+                            TextEditor(text: $section.content)
+                                .frame(height: 100)
+                                .overlay(formElementOverlay())
+                            Button("Delete Section") {
+                                localCustomSections.removeAll { $0.id == section.id }
+                            }
+                            .foregroundColor(.red)
+                            .buttonStyle(.borderless)
+                        }
+                        .padding(.vertical, 5)
+                    }
+                    Button(action: addCustomSection) {
+                        Label("Add Custom Section", systemImage: "plus.circle.fill")
+                    }
                 }
 
                 if let error = aspectGenerationError {
@@ -300,6 +325,8 @@ struct CharacterEditView: View {
         updatedCharacter.exportFormatPreference = exportFormatPreferenceText.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty()
         updatedCharacter.imageURLs = imageURLsText.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
         if updatedCharacter.imageURLs?.isEmpty ?? true { updatedCharacter.imageURLs = nil }
+        updatedCharacter.customSections = localCustomSections.filter { !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        if updatedCharacter.customSections?.isEmpty ?? true { updatedCharacter.customSections = nil }
 
         var newStats = CharacterStats()
         newStats.strength = Int(statsStrength)
@@ -322,6 +349,10 @@ struct CharacterEditView: View {
             errorMessage = "An unexpected error occurred: \(error.localizedDescription)"; showErrorAlert = true
         }
         isSaving = false
+    }
+
+    private func addCustomSection() {
+        localCustomSections.append(CustomSection(title: "New Section", content: ""))
     }
 
     private func dismissView() { isPresented = false }
@@ -348,7 +379,11 @@ struct CharacterEditView_Previews: PreviewProvider {
         let sampleCharacter = Character(
             id: 1, name: "Aella Swiftarrow (Edit)", description: "A nimble scout...", // Changed id from UUID() to 1
             appearanceDescription: "Slender build...", imageURLs: ["http://example.com/img1.png"],
-            stats: CharacterStats(strength: 10, dexterity: 15)
+            stats: CharacterStats(strength: 10, dexterity: 15),
+            customSections: [
+                CustomSection(title: "Backstory", content: "Orphaned at a young age..."),
+                CustomSection(title: "Secrets", content: "Secretly afraid of spiders.")
+            ]
         )
         return CharacterEditView(character: sampleCharacter, campaignCreator: creator, isPresented: $isPresented)
     }
