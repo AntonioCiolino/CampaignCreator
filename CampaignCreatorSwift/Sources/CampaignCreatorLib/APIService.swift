@@ -240,6 +240,8 @@ public final class APIService: Sendable {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.httpBody = body
+        request.cachePolicy = .reloadIgnoringLocalCacheData // Added to force reload
+        request.setValue("app://com.campaigncreator.app", forHTTPHeaderField: "Origin") // Set custom Origin for iOS app
 
         if request.value(forHTTPHeaderField: "Content-Type") == nil {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -264,6 +266,17 @@ public final class APIService: Sendable {
 
         print("🚀 \(method) \(url)")
         if let body = body, let str = String(data: body, encoding: .utf8) { print("   Body: \(str.prefix(500))") }
+
+        // Print Request Headers for Debugging
+        print("   [REQUEST HEADERS for \(method) \(url.absoluteString)]")
+        if let allHTTPHeaderFields = request.allHTTPHeaderFields {
+            for (header, value) in allHTTPHeaderFields {
+                print("     \(header): \(value)")
+            }
+        } else {
+            print("     No headers found on request.")
+        }
+        print("   --- END HEADERS ---")
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
@@ -314,12 +327,25 @@ public final class APIService: Sendable {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.httpBody = body
+        request.cachePolicy = .reloadIgnoringLocalCacheData // Added to force reload
+        request.setValue("app://com.campaigncreator.app", forHTTPHeaderField: "Origin") // Set custom Origin for iOS app
         if method != "GET" && method != "HEAD" { request.setValue("application/json", forHTTPHeaderField: "Content-Type") }
 
         if requiresAuth {
             guard let token = tokenManager.getToken() else { throw APIError.notAuthenticated }
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
+
+        // Print Request Headers for Debugging
+        print("   [REQUEST HEADERS for \(method) \(url.absoluteString) (void)]")
+        if let allHTTPHeaderFields = request.allHTTPHeaderFields {
+            for (header, value) in allHTTPHeaderFields {
+                print("     \(header): \(value)")
+            }
+        } else {
+            print("     No headers found on request.")
+        }
+        print("   --- END HEADERS ---")
 
         print("🚀 \(method) \(url) (expecting no content)")
         do {
@@ -349,7 +375,7 @@ public final class APIService: Sendable {
 
     public func updateCampaign(_ campaignId: Int, data: CampaignUpdateDTO) async throws -> Campaign { // Changed campaignId from UUID to Int
         let body = try jsonEncoder.encode(data)
-        return try await performRequest(endpoint: "/campaigns/\(campaignId)/", method: "PATCH", body: body) // Changed campaignId.uuidString to campaignId
+        return try await performRequest(endpoint: "/campaigns/\(campaignId)", method: "PUT", body: body) // REMOVED TRAILING SLASH
     }
 
     public func deleteCampaign(id: Int) async throws { // Changed id from UUID to Int
@@ -358,7 +384,7 @@ public final class APIService: Sendable {
 
     // MARK: - Character Methods
     public func fetchCharacters() async throws -> [Character] {
-        try await performRequest(endpoint: "/characters/") // Removed trailing slash
+        try await performRequest(endpoint: "/characters/") // ADDED TRAILING SLASH
     }
 
     public func fetchCharacter(id: Int) async throws -> Character { // Changed id from UUID to Int
@@ -372,7 +398,7 @@ public final class APIService: Sendable {
 
     public func updateCharacter(_ characterId: Int, data: CharacterUpdateDTO) async throws -> Character { // Changed characterId from UUID to Int
         let body = try jsonEncoder.encode(data)
-        return try await performRequest(endpoint: "/characters/\(characterId)/", method: "PATCH", body: body) // Changed characterId.uuidString to characterId
+        return try await performRequest(endpoint: "/characters/\(characterId)/", method: "PUT", body: body) // Changed characterId.uuidString to characterId
     }
 
     public func deleteCharacter(id: Int) async throws { // Changed id from UUID to Int
