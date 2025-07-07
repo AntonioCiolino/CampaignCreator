@@ -24,14 +24,11 @@ struct CampaignDetailView: View {
 
     @State private var showingGenerateImageSheet = false // New state for image sheet
     @State private var imageGeneratePrompt = "" // Prompt for image generation
-    @State private var showingThemeEditSheet = false // New state for theme edit sheet
 
     @State private var titleDebounceTimer: Timer?
 
     // For generating temporary client-side IDs for new sections
     @State private var nextTemporaryClientSectionID: Int = -1
-
-    @Environment(\.horizontalSizeClass) var horizontalSizeClass
 
     init(campaign: Campaign, campaignCreator: CampaignCreator) {
         self._campaign = State(initialValue: campaign)
@@ -40,197 +37,50 @@ struct CampaignDetailView: View {
         self._editableConcept = State(initialValue: campaign.concept ?? "")
     }
 
-    // Computed properties for theme colors
-    private var currentPrimaryColor: Color { campaign.themePrimaryColor.map { Color(hex: $0) } ?? .accentColor }
-    private var currentSecondaryColor: Color { campaign.themeSecondaryColor.map { Color(hex: $0) } ?? .secondary }
-    private var currentBackgroundColor: Color { campaign.themeBackgroundColor.map { Color(hex: $0) } ?? Color(.systemBackground) }
-    private var currentTextColor: Color { campaign.themeTextColor.map { Color(hex: $0) } ?? Color(.label) }
-    private var currentFont: Font {
-        if let fontName = campaign.themeFontFamily, !fontName.isEmpty {
-            return .custom(fontName, size: 16) // Default size, can be made dynamic
-        }
-        return .body // Default system font
-    }
-
-    // MARK: - Extracted View Components for Body
-    private var headerAndTitleSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                VStack(alignment: .leading) {
-                    Text("\(campaign.wordCount) words (from sections)")
-                        .font(.caption).foregroundColor(.secondary)
-                    Text(campaign.modifiedAt != nil ? "Modified: \(campaign.modifiedAt!, style: .date)" : "Modified: N/A")
-                        .font(.caption).foregroundColor(.secondary)
-                }
-                Spacer()
-                // ProgressView will be handled in toolbar or a more global status area if needed
-            }
-
-            TextField("Campaign Title", text: $editableTitle)
-                .font(.largeTitle)
-                .textFieldStyle(PlainTextFieldStyle())
-                .padding(.bottom, 4)
-                .disabled(isSaving || isGeneratingText)
-                .onChange(of: editableTitle) { _ in
-                    titleDebounceTimer?.invalidate()
-                    titleDebounceTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
-                        Task { await self.saveCampaignDetails(source: .titleField) } // Added self.
-                    }
-                }
-        }
-        .padding().background(Color(.systemGroupedBackground)).cornerRadius(12)
-        // Apply theme to specific text elements inside if needed, or globally if this section has distinct styling.
-        // For now, relying on global theme application or default system styles for this section.
-    }
-
-    private var conceptEditorSection: some View {
-        DisclosureGroup("Campaign Concept", isExpanded: $isEditingConcept.animation()) { // Added animation for smoother toggle
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Spacer() // Pushes button to the right
-                    Button(isEditingConcept ? "Done" : "Edit") {
-                        isEditingConcept.toggle()
-                        if !isEditingConcept { // Save when "Done" is tapped
-                            Task { await self.saveCampaignDetails(source: .conceptEditorDoneButton) } // Added self.
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                CampaignHeaderView(
+                    campaign: campaign,
+                    editableTitle: $editableTitle,
+                    isSaving: isSaving,
+                    isGeneratingText: isGeneratingText,
+                    showingGenerateSheet: $showingGenerateSheet,
+                    showingGenerateImageSheet: $showingGenerateImageSheet,
+                    exportCampaignContent: exportCampaignContent,
+                    saveTitleAction: {
+                        // Debounce logic moved here or called from here
+                        titleDebounceTimer?.invalidate()
+                        titleDebounceTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
+                            Task { await saveCampaignDetails(source: .titleField) }
                         }
                     }
-                    .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
-                }
+                )
 
-                if isEditingConcept {
-                    TextEditor(text: $editableConcept)
-                        .frame(minHeight: 200, maxHeight: 400).padding(8)
-                        .background(Color(.secondarySystemGroupedBackground)) // Use a slightly different background for editor
-                        .cornerRadius(8)
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
-                        .disabled(isSaving || isGeneratingText)
-                } else {
-                    Text(editableConcept.isEmpty ? "Tap Edit to add campaign concept..." : editableConcept)
-                        .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 100)
-                        .padding().background(Color(.systemGroupedBackground)).cornerRadius(8) // Keep original background for display
-                        .foregroundColor(editableConcept.isEmpty ? .secondary : currentTextColor) // Use theme text color
-                        .onTapGesture { if !isSaving && !isGeneratingText { isEditingConcept = true } }
-                }
-            }
-        }
-        .padding().background(Color(.systemBackground)).cornerRadius(12) // Keep original outer padding/bg
-        .font(currentFont) // Apply theme font
-    }
-
-    private var tableOfContentsSection: some View {
-        // Ensure this only appears if tocEntries are available and not empty
-        // The conditional logic is kept in the main body for clarity of structure
-        DisclosureGroup("Table of Contents") {
-            VStack(alignment: .leading, spacing: 8) {
-                // Ensure campaign.displayTOC is not nil before trying to iterate
-                ForEach(campaign.displayTOC ?? []) { entry in
-                    Text(entry.title)
-                        .font(.body) // Can be themed with currentFont if desired, or kept as .body
-                        // TODO: Add navigation to section
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 4)
-        }
-        .padding().background(Color(.systemBackground)).cornerRadius(12)
-        .foregroundColor(currentTextColor) // Apply theme text color
-        .font(currentFont) // Apply theme font
-    }
-
-    private var campaignThemeDisplaySection: some View {
-        DisclosureGroup("Campaign Theme") {
-            VStack(alignment: .leading, spacing: 8) {
-                ThemePropertyRow(label: "Primary Color", value: campaign.themePrimaryColor)
-                ThemePropertyRow(label: "Secondary Color", value: campaign.themeSecondaryColor)
-                ThemePropertyRow(label: "Background Color", value: campaign.themeBackgroundColor)
-                ThemePropertyRow(label: "Text Color", value: campaign.themeTextColor)
-                ThemePropertyRow(label: "Font Family", value: campaign.themeFontFamily)
-                ThemePropertyRow(label: "Background Image URL", value: campaign.themeBackgroundImageURL, isURL: true)
-                ThemePropertyRow(label: "BG Image Opacity", value: campaign.themeBackgroundImageOpacity.map { String(format: "%.2f", $0) })
-
-                Button("Edit Theme") {
-                    showingThemeEditSheet = true
-                }
-                .buttonStyle(.bordered)
-                .padding(.top, 8)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 4)
-        }
-        .padding().background(Color(.systemBackground)).cornerRadius(12)
-        .foregroundColor(currentTextColor) // Apply theme text color
-        .font(currentFont) // Apply theme font
-    }
-
-    private var sectionsDisplaySection: some View {
-        VStack(alignment: .leading) {
-            Text("Sections")
-                .font(currentFont.weight(.bold)) // Use theme font, make bold
-                .foregroundColor(currentPrimaryColor) // Use theme primary color for header
-                .padding(.bottom, 4)
-
-            if campaign.sections.isEmpty {
-                Text("No sections yet. Use 'Generate' to create the first section from a prompt.")
-                    .font(currentFont.italic()) // Theme font, italic
-                    .foregroundColor(currentTextColor.opacity(0.7)) // Theme text color, slightly muted
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .background(Color(.systemGroupedBackground)).cornerRadius(8)
-            } else {
-                ForEach(campaign.sections) { section in
-                    DisclosureGroup { // Content of DisclosureGroup
-                        Text(section.content.prefix(200) + (section.content.count > 200 ? "..." : ""))
-                            .font(currentFont) // Apply theme font
-                            .lineLimit(5)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.top, 4)
-                    } label: { // Label of DisclosureGroup
-                        Text(section.title ?? "Untitled Section (\(section.order))")
-                            .font(currentFont.weight(.semibold)) // Theme font, semibold for title
-                            .foregroundColor(currentTextColor) // Theme text color for title
+                CampaignConceptView(
+                    editableConcept: $editableConcept,
+                    isEditingConcept: $isEditingConcept,
+                    isSaving: isSaving,
+                    isGeneratingText: isGeneratingText,
+                    saveConceptAction: {
+                        Task { await saveCampaignDetails(source: .conceptEditorDoneButton) }
                     }
-                    .padding(.vertical, 4)
-                }
-            }
-        }
-        .padding() // Outer padding for the whole sections block
-        // Note: Individual DisclosureGroup backgrounds/paddings might need adjustment
-        // if they clash with the overall theme. For now, applying font/color broadly.
-    }
-
-    var body: some View {
-        ZStack { // Use ZStack for background image handling
-            // Background Image (if URL is provided)
-            if let bgImageURLString = campaign.themeBackgroundImageURL, let bgImageURL = URL(string: bgImageURLString) {
-                AsyncImage(url: bgImageURL) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    Color.clear // Or a placeholder color/progress view
-                }
-                .opacity(campaign.themeBackgroundImageOpacity ?? 1.0)
-                .edgesIgnoringSafeArea(.all)
-            } else {
-                // Apply background color only if no image, or if image fails to load and placeholder is clear
-                currentBackgroundColor.edgesIgnoringSafeArea(.all)
-            }
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    // Apply general text color and font to the content of the ScrollView
-                    // Specific elements can override this.
-                    headerAndTitleSection // Using the extracted component
-                    conceptEditorSection // Using the extracted component
+                )
 
                 // MARK: - Table of Contents
                 if let tocEntries = campaign.displayTOC, !tocEntries.isEmpty {
-                    tableOfContentsSection // Using the extracted component
+                    CampaignTableOfContentsView(tocEntries: tocEntries)
                 }
-                campaignThemeDisplaySection // Using the extracted component
-                sectionsDisplaySection // Using the extracted component
+
+                CampaignThemeDisplayView(
+                    campaign: campaign,
+                    errorMessage: $errorMessage,
+                    showErrorAlert: $showErrorAlert
+                )
+
+                CampaignSectionsListView(campaign: campaign)
             }
             .padding()
-            .font(currentFont) // Apply default theme font to all content within VStack
-            .foregroundColor(currentTextColor) // Apply default theme text color
         }
         .navigationTitle(editableTitle)
         .navigationBarTitleDisplayMode(.inline)
@@ -256,76 +106,6 @@ struct CampaignDetailView: View {
         .sheet(isPresented: $showingExportSheet) {
             exportSheetView
         }
-        .sheet(isPresented: $showingThemeEditSheet) {
-            CampaignThemeEditView(campaign: $campaign)
-                .onDisappear {
-                    // Changes to campaign theme are saved within CampaignThemeEditView's "Done" button.
-                    // We might still need to trigger a broader save of the campaign object if
-                    // the theme changes should also update the campaign's modifiedAt timestamp
-                    // or if other side effects are needed.
-                    // For now, assume CampaignThemeEditView handles its own persistence to the binding.
-                    // If a specific save call is needed:
-                    // Task { await saveCampaignDetails(source: .themeEditorDismissed) }
-                    // However, saveCampaignDetails currently only saves title and concept.
-                    // A more generic save or a specific theme save function might be needed on CampaignCreator.
-
-                    // Let's make sure the main CampaignDetailView saves the campaign
-                    // if theme properties were changed.
-                    // We need to compare the campaign state before and after the sheet.
-                    // This is tricky as the binding means `campaign` is already updated.
-                    // A simple solution is to always mark as modified and save if the sheet was shown.
-                    // More robust: check if any theme property actually changed.
-                    // For now, a direct save call if the sheet was for theme editing.
-                    print("Theme edit sheet dismissed. Campaign title: \(campaign.title)") // campaign is already updated due to @Binding
-                    Task {
-                        // We need a way to tell saveCampaignDetails to save *everything* or
-                        // have a separate save for theme. Let's assume saveCampaignDetails
-                        // should be smart enough or we add a specific theme save.
-                        // For now, let's add a specific part to saveCampaignDetails for theme.
-                        // This requires modifying saveCampaignDetails.
-                        // Alternatively, call a specific save method on campaignCreator if available.
-                         await saveCampaignDetails(source: .themeEditorDismissed, includeTheme: true)
-                    }
-                }
-        }
-        .toolbar {
-            ToolbarItemGroup(placement: .navigationBarTrailing) {
-                if isSaving || isGeneratingText {
-                    ProgressView()
-                } else {
-                    Button(action: { showingGenerateSheet = true }) {
-                        Label("Generate Text", systemImage: "sparkles")
-                    }
-                    .disabled(isSaving || isGeneratingText)
-                    .labelStyle(horizontalSizeClass == .compact ? .iconOnly : .automatic)
-
-                    Button(action: { showingGenerateImageSheet = true }) {
-                        Label("Generate Image", systemImage: "photo")
-                    }
-                    .disabled(isSaving || isGeneratingText)
-                    .labelStyle(horizontalSizeClass == .compact ? .iconOnly : .automatic)
-
-                    Button(action: { exportCampaignContent() }) {
-                        Label("Export", systemImage: "square.and.arrow.up")
-                    }
-                    .disabled(isSaving || isGeneratingText)
-                    .labelStyle(horizontalSizeClass == .compact ? .iconOnly : .automatic)
-                }
-            }
-        }
-        .onChange(of: horizontalSizeClass) { newSizeClass in
-            // This is mostly for debugging or if specific non-label-style changes were needed.
-            // .labelStyle modifier handles the change automatically.
-            print("Horizontal size class changed to: \(String(describing: newSizeClass))")
-        }
-    }
-
-    @ViewBuilder
-    private var commonToolbarButtons: some View {
-        // This approach allows for dynamic labelStyle but might be overly complex
-        // if .labelStyle(.iconOnly) on the button itself works well with @Environment.
-        // Sticking to simpler individual button modifiers for now.
-        EmptyView()
     }
 
     private func generateTemporaryClientSectionID() -> Int {
@@ -411,17 +191,11 @@ struct CampaignDetailView: View {
     }
 
     // MARK: - Save Logic
-    enum SaveSource { case titleField, conceptEditorDoneButton, onDisappear, themeEditorDismissed } // Added themeEditorDismissed
-    private func saveCampaignDetails(source: SaveSource, includeTheme: Bool = false) async { // Added includeTheme
+    enum SaveSource { case titleField, conceptEditorDoneButton, onDisappear }
+    private func saveCampaignDetails(source: SaveSource) async {
         guard !isSaving else { print("Save already in progress from source: \(source). Skipping."); return }
 
-        // It's important to use a fresh copy of `self.campaign` for comparison
-        // if the binding was already updated by a sub-view (like CampaignThemeEditView).
-        // However, for title and concept, editableTitle and editableConcept are the source of truth.
-        // For theme, campaign itself IS the source of truth due to @Binding.
-
-        var campaignToUpdate = self.campaign // Use the @State campaign as the source of truth for theme properties.
-                                         // For title/concept, we compare against editable fields.
+        var campaignToUpdate = campaign // Use the @State campaign as the source
         var changed = false
         if campaignToUpdate.title != editableTitle {
             campaignToUpdate.title = editableTitle
@@ -431,21 +205,6 @@ struct CampaignDetailView: View {
         if campaignToUpdate.concept != conceptToSave {
              campaignToUpdate.concept = conceptToSave
              changed = true
-        }
-
-        if includeTheme {
-            // If includeTheme is true, we assume theme data might have changed.
-            // The `campaignToUpdate` already reflects these changes due to @Binding.
-            // We just need to ensure 'changed' is true so the save proceeds.
-            // A more robust check would compare current theme values to original ones
-            // if we had stored them before opening the theme editor.
-            // For now, if source is themeEditorDismissed, we force a save.
-            if source == .themeEditorDismissed {
-                print("Theme editor dismissed, marking campaign as changed for saving theme properties.")
-                changed = true
-            }
-            // Note: campaignToUpdate already has the latest theme values from the binding.
-            // No need to explicitly copy them here again.
         }
 
         guard changed else { print("No changes to save from source: \(source)."); return }
@@ -576,6 +335,182 @@ struct CampaignDetailView: View {
     private func exportCampaignContent() {
         exportedMarkdown = campaignCreator.exportCampaignToHomebrewery(campaign)
         showingExportSheet = true
+    }
+}
+
+struct CampaignSectionsListView: View {
+    let campaign: Campaign
+
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text("Sections").font(.headline)
+            if campaign.sections.isEmpty {
+                Text("No sections yet. Use 'Generate' to create the first section from a prompt.")
+                    .font(.subheadline).foregroundColor(.secondary).padding()
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .background(Color(.systemGroupedBackground)).cornerRadius(8)
+            } else {
+                ForEach(campaign.sections) { section in
+                    DisclosureGroup(section.title ?? "Untitled Section (\(section.order))") {
+                        Text(section.content.prefix(200) + (section.content.count > 200 ? "..." : ""))
+                            .font(.body)
+                            .lineLimit(5)
+                            .frame(maxWidth: .infinity, alignment: .leading) // Ensure text aligns left
+                            .padding(.top, 4) // Add some padding below the DisclosureGroup title
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+        .padding()
+    }
+}
+
+struct CampaignThemeDisplayView: View {
+    let campaign: Campaign
+    @Binding var errorMessage: String
+    @Binding var showErrorAlert: Bool
+
+    var body: some View {
+        DisclosureGroup("Campaign Theme") {
+            VStack(alignment: .leading, spacing: 8) {
+                ThemePropertyRow(label: "Primary Color", value: campaign.themePrimaryColor)
+                ThemePropertyRow(label: "Secondary Color", value: campaign.themeSecondaryColor)
+                ThemePropertyRow(label: "Background Color", value: campaign.themeBackgroundColor)
+                ThemePropertyRow(label: "Text Color", value: campaign.themeTextColor)
+                ThemePropertyRow(label: "Font Family", value: campaign.themeFontFamily)
+                ThemePropertyRow(label: "Background Image URL", value: campaign.themeBackgroundImageURL, isURL: true)
+                ThemePropertyRow(label: "BG Image Opacity", value: campaign.themeBackgroundImageOpacity.map { String(format: "%.2f", $0) })
+
+                Button("Edit Theme (Placeholder)") {
+                    // TODO: Implement theme editing
+                    print("Edit Theme button tapped - functionality not yet implemented.")
+                    errorMessage = "Theme editing is not yet implemented."
+                    showErrorAlert = true
+                }
+                .buttonStyle(.bordered)
+                .padding(.top, 8)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 4)
+        }
+        .padding().background(Color(.systemBackground)).cornerRadius(12)
+    }
+}
+
+struct CampaignTableOfContentsView: View {
+    let tocEntries: [TOCEntry]
+
+    var body: some View {
+        DisclosureGroup("Table of Contents") {
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(tocEntries) { entry in
+                    Text(entry.title)
+                        .font(.body)
+                        // TODO: Add navigation to section
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 4)
+        }
+        .padding().background(Color(.systemBackground)).cornerRadius(12)
+    }
+}
+
+// MARK: - Extracted Subviews
+
+struct CampaignHeaderView: View {
+    let campaign: Campaign
+    @Binding var editableTitle: String
+    let isSaving: Bool
+    let isGeneratingText: Bool
+    @Binding var showingGenerateSheet: Bool
+    @Binding var showingGenerateImageSheet: Bool
+    let exportCampaignContent: () -> Void
+    let saveTitleAction: () -> Void // For debounced save
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("\(campaign.wordCount) words (from sections)")
+                        .font(.caption).foregroundColor(.secondary)
+                    Text(campaign.modifiedAt != nil ? "Modified: \(campaign.modifiedAt!, style: .date)" : "Modified: N/A")
+                        .font(.caption).foregroundColor(.secondary)
+                }
+                Spacer()
+                if isSaving || isGeneratingText { // Show progress if saving or generating
+                    ProgressView().padding(.trailing, 5)
+                }
+                // Action buttons
+                HStack(spacing: 12) {
+                    Button(action: { showingGenerateSheet = true }) {
+                        Label("Text", systemImage: "sparkles")
+                    }
+                    .buttonStyle(.borderedProminent).disabled(isSaving || isGeneratingText)
+
+                    Button(action: { showingGenerateImageSheet = true }) {
+                        Label("Image", systemImage: "photo")
+                    }
+                    .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
+
+                    Button(action: exportCampaignContent) {
+                        Label("Export", systemImage: "square.and.arrow.up")
+                    }
+                    .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
+                }
+            }
+
+            TextField("Campaign Title", text: $editableTitle)
+                .font(.largeTitle)
+                .textFieldStyle(PlainTextFieldStyle())
+                .padding(.bottom, 4)
+                .disabled(isSaving || isGeneratingText)
+                .onChange(of: editableTitle) { _ in
+                    saveTitleAction() // Call the debounced save action
+                }
+        }
+        .padding().background(Color(.systemGroupedBackground)).cornerRadius(12)
+    }
+}
+
+struct CampaignConceptView: View {
+    @Binding var editableConcept: String
+    @Binding var isEditingConcept: Bool
+    let isSaving: Bool
+    let isGeneratingText: Bool
+    let saveConceptAction: () async -> Void
+
+    var body: some View {
+        DisclosureGroup("Campaign Concept", isExpanded: $isEditingConcept) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Spacer() // Pushes button to the right
+                    Button(isEditingConcept ? "Done" : "Edit") {
+                        isEditingConcept.toggle()
+                        if !isEditingConcept {
+                            Task { await saveConceptAction() }
+                        }
+                    }
+                    .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
+                }
+
+                if isEditingConcept {
+                    TextEditor(text: $editableConcept)
+                        .frame(minHeight: 200, maxHeight: 400).padding(8)
+                        .background(Color(.systemBackground)).cornerRadius(8)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+                        .disabled(isSaving || isGeneratingText)
+                } else {
+                    Text(editableConcept.isEmpty ? "Tap Edit to add campaign concept..." : editableConcept)
+                        .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 100)
+                        .padding().background(Color(.systemGroupedBackground)).cornerRadius(8)
+                        .foregroundColor(editableConcept.isEmpty ? .secondary : .primary)
+                        .onTapGesture { if !isSaving && !isGeneratingText { isEditingConcept = true } }
+                }
+            }
+        }
+        .padding().background(Color(.systemBackground)).cornerRadius(12)
     }
 }
 
