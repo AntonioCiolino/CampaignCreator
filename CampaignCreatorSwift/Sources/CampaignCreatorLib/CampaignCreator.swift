@@ -140,7 +140,8 @@ public class CampaignCreator: ObservableObjectProtocol {
 
     public func createCampaign(title: String, initialUserPrompt: String? = nil) async throws -> Campaign {
         guard isAuthenticated else { throw APIError.notAuthenticated }
-        let dto = CampaignCreateDTO(title: title, initialUserPrompt: initialUserPrompt)
+        // Assuming new campaigns start without custom sections by default, pass nil
+        let dto = CampaignCreateDTO(title: title, initialUserPrompt: initialUserPrompt, customSections: nil)
         let newCampaign = try await apiService.createCampaign(dto)
         await fetchCampaigns()
         return newCampaign
@@ -158,7 +159,8 @@ public class CampaignCreator: ObservableObjectProtocol {
             themeTextColor: campaign.themeTextColor, themeFontFamily: campaign.themeFontFamily,
             themeBackgroundImageURL: campaign.themeBackgroundImageURL,
             themeBackgroundImageOpacity: campaign.themeBackgroundImageOpacity,
-            linkedCharacterIDs: campaign.linkedCharacterIDs
+            linkedCharacterIDs: campaign.linkedCharacterIDs,
+            customSections: campaign.customSections // ADDED
         )
         _ = try await apiService.updateCampaign(campaign.id, data: dto)
         await fetchCampaigns()
@@ -168,6 +170,52 @@ public class CampaignCreator: ObservableObjectProtocol {
         guard isAuthenticated else { throw APIError.notAuthenticated }
         try await apiService.deleteCampaign(id: campaign.id)
         await fetchCampaigns()
+    }
+
+    public func regenerateCampaignCustomSection(campaignId: Int, sectionId: UUID, payload: SectionRegeneratePayload) async throws -> CampaignCustomSection {
+        guard isAuthenticated else { throw APIError.notAuthenticated }
+        let updatedSection = try await apiService.regenerateCampaignCustomSection(campaignId: campaignId, sectionId: sectionId, payload: payload)
+
+        // After regeneration, the campaign's overall sections (including custom ones) might need an update.
+        // The backend might return just the section, or the whole campaign.
+        // If it returns just the section, we need to find the campaign and update that specific section.
+        // This could be complex if customSections is nested.
+        // For now, let's assume the backend handles updating the campaign structure if needed,
+        // and we re-fetch the specific campaign to get all changes.
+        // Or, if the payload directly updates the campaign's customSections array on the backend,
+        // then fetching the campaign again is the most straightforward.
+
+        // Option 1: Re-fetch the whole campaign (simpler, might be less performant if called frequently)
+        // This also assumes that `fetchCampaigns()` updates the `campaigns` array
+        // and the UI will find the updated campaign.
+        // However, custom sections are part of the Campaign object, so fetching the specific campaign is better.
+        if let index = campaigns.firstIndex(where: { $0.id == campaignId }) {
+            do {
+                let refreshedCampaign = try await fetchCampaign(id: campaignId)
+                campaigns[index] = refreshedCampaign
+                // It's important that the UI observing this campaign updates.
+                // If CampaignDetailView holds its own @State copy, that needs to be updated too.
+                // This is a general SwiftUI state management challenge.
+                // For now, this updates the main campaigns array.
+            } catch {
+                print("Error re-fetching campaign \(campaignId) after custom section regeneration: \(error)")
+                // Decide if we should throw the original updatedSection or this new error.
+            }
+        }
+        return updatedSection // Return the directly updated section for immediate UI feedback if possible.
+    }
+
+    public func generateImageForSection(prompt: String, campaignId: Int, model: ImageModelName = .dalle, size: String? = "1024x1024", quality: String? = "standard") async throws -> ImageGenerationResponse {
+        guard isAuthenticated else { throw APIError.notAuthenticated }
+
+        let params = ImageGenerationParams(
+            prompt: prompt,
+            model: model, // Defaulting to dall-e, could be configurable
+            size: size,
+            quality: quality,
+            campaignId: String(campaignId) // API expects string campaign_id
+        )
+        return try await apiService.generateImage(payload: params)
     }
     
     // MARK: - Character Management (Networked)
@@ -196,7 +244,7 @@ public class CampaignCreator: ObservableObjectProtocol {
 
     public func createCharacter(name: String, description: String? = nil, appearance: String? = nil, stats: CharacterStats? = nil) async throws -> Character {
         guard isAuthenticated else { throw APIError.notAuthenticated }
-        let dto = CharacterCreateDTO(name: name, description: description, appearanceDescription: appearance, stats: stats, customSections: nil) // Assuming new characters don't start with custom sections by default
+        let dto = CharacterCreateDTO(name: name, description: description, appearanceDescription: appearance, stats: stats) // customSections removed
         let newCharacter = try await apiService.createCharacter(dto)
         await fetchCharacters()
         return newCharacter
@@ -208,8 +256,8 @@ public class CampaignCreator: ObservableObjectProtocol {
             name: character.name, description: character.description,
             appearanceDescription: character.appearanceDescription, imageURLs: character.imageURLs,
             notesForLLM: character.notesForLLM, stats: character.stats,
-            exportFormatPreference: character.exportFormatPreference,
-            customSections: character.customSections // Added
+            exportFormatPreference: character.exportFormatPreference
+            // customSections: character.customSections // REMOVED
         )
         _ = try await apiService.updateCharacter(character.id, data: dto)
         await fetchCharacters()

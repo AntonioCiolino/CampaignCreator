@@ -13,6 +13,23 @@ public struct TOCEntry: Identifiable, Codable, Sendable {
     }
 }
 
+// New struct for campaign custom sections
+public struct CampaignCustomSection: Identifiable, Codable, Sendable {
+    public var id: UUID
+    public var title: String
+    public var content: String
+    public var type: String? // ADDED type field
+    // public var order: Int // Optional: if explicit ordering is needed beyond array order
+
+    public init(id: UUID = UUID(), title: String, content: String, type: String? = "Generic" /*, order: Int = 0*/) { // ADDED type, default "Generic"
+        self.id = id
+        self.title = title
+        self.content = content
+        self.type = type // ADDED
+        // self.order = order
+    }
+}
+
 // Corresponds to TypeScript 'CampaignSection'
 public struct CampaignSection: Identifiable, Codable, Sendable {
     public var id: Int // Changed from UUID to Int
@@ -63,6 +80,7 @@ public struct Campaign: Identifiable, Codable, Sendable {
 
     // Linking characters (IDs for now, actual Character objects can be resolved by CampaignCreator)
     public var linkedCharacterIDs: [UUID]?
+    public var customSections: [CampaignCustomSection]? // <<<< ADDED
 
     public init(id: Int, // Changed from UUID = UUID()
                 title: String = "Untitled Campaign",
@@ -86,7 +104,8 @@ public struct Campaign: Identifiable, Codable, Sendable {
                 fileURL: URL? = nil,
                 createdAt: Date? = nil, // Changed to optional, default nil
                 modifiedAt: Date? = nil, // Changed to optional, default nil
-                linkedCharacterIDs: [UUID]? = nil) {
+                linkedCharacterIDs: [UUID]? = nil,
+                customSections: [CampaignCustomSection]? = nil) { // <<<< ADDED
         self.id = id
         self.title = title
         self.initialUserPrompt = initialUserPrompt
@@ -110,6 +129,7 @@ public struct Campaign: Identifiable, Codable, Sendable {
         self.createdAt = createdAt
         self.modifiedAt = modifiedAt
         self.linkedCharacterIDs = linkedCharacterIDs
+        self.customSections = customSections // <<<< ADDED
     }
 
     // Word count can be a computed property, summing word counts of all sections
