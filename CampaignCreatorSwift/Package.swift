@@ -37,7 +37,10 @@ let package = Package(
                 "KeychainHelper.swift",
                 "Models/CampaignModel.swift",
                 "Models/CharacterModel.swift",
-                "Models/UserModel.swift" // Added UserModel.swift
+                "Models/UserModel.swift", // Added UserModel.swift
+                "Models/FeatureModel.swift", // ADDED
+                "Models/ImageGenerationModels.swift", // ADDED
+                "Models/SectionRegeneratePayload.swift" // ADDED
             ]
         ),
         .testTarget(
