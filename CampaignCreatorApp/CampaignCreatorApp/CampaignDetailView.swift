@@ -407,10 +407,10 @@ struct CampaignDetailView: View {
                 print("Full section content regeneration successful for section \(section.id).")
 
             } catch {
-            let errorDescription = "Error regenerating full content for section \(section.title ?? section.id.uuidString): \(error.localizedDescription)"
+            let errorDescription = "Error regenerating full content for section \(section.title): \(error.localizedDescription)" // Fixed: section.title is not optional
                 print(errorDescription)
                 fullSectionRegenError = errorDescription
-            self.errorMessage = "Content Regeneration Failed (Section: \(section.title ?? "Untitled"))"
+            self.errorMessage = "Content Regeneration Failed (Section: \(section.title))" // Fixed: section.title is not optional
             self.showErrorAlert = true
             }
         }
@@ -452,12 +452,8 @@ struct CampaignDetailView: View {
                     payload: payload
                 )
 
-                // 1. Get the LLM-processed snippet
-                let returnedUpdatedSectionData = try await campaignCreator.regenerateCampaignCustomSection(
-                    campaignId: Int(campaign.id),
-                    sectionId: sectionId,
-                    payload: payload
-                )
+                // The redundant declaration of returnedUpdatedSectionData has been removed.
+                // The first declaration above is the correct one.
 
                 // 2. Apply this specific change locally using the coordinator and the original range
                 // This updates the UITextView and the $section.content binding for this item
@@ -500,7 +496,7 @@ struct CampaignDetailView: View {
                 let errorDescription = "Error processing snippet for feature '\(feature.name)': \(error.localizedDescription)"
                 print(errorDescription)
                 snippetProcessingError = errorDescription
-            self.errorMessage = "Snippet Processing Failed (Section: \(currentCampaignSection.title ?? "Untitled"))"
+            self.errorMessage = "Snippet Processing Failed (Section: \(currentCampaignSection.title))" // Fixed: currentCampaignSection.title is not optional
             self.showErrorAlert = true
             }
         }
@@ -547,7 +543,7 @@ struct CampaignDetailView: View {
                             }
                         }
                         .pickerStyle(MenuPickerStyle())
-                        .font(currentFont.caption) // Apply themed font, smaller size
+                        .font(.caption) // FIXED: Use system caption style
                         .padding(.bottom, 4)
 
                         CustomTextView(
@@ -805,29 +801,35 @@ struct CampaignDetailView: View {
                 }
         }
         .toolbar {
-            ToolbarItemGroup(placement: .navigationBarTrailing) {
-                if isSaving || isGeneratingText {
-                    ProgressView()
-                } else {
-                    Button(action: { showingGenerateSheet = true }) {
-                        Label("Generate Text", systemImage: "sparkles")
-                    }
-                    .disabled(isSaving || isGeneratingText)
-                    .labelStyle(horizontalSizeClass == .compact ? .iconOnly : .automatic)
-
-                    Button(action: { showingGenerateImageSheet = true }) {
-                        Label("Generate Image", systemImage: "photo")
-                    }
-                    .disabled(isSaving || isGeneratingText)
-                    .labelStyle(horizontalSizeClass == .compact ? .iconOnly : .automatic)
-
-                    Button(action: { exportCampaignContent() }) {
-                        Label("Export", systemImage: "square.and.arrow.up")
-                    }
-                    .disabled(isSaving || isGeneratingText)
-                    .labelStyle(horizontalSizeClass == .compact ? .iconOnly : .automatic)
+            // Simplified toolbar for testing ambiguity
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Test") {
+                    print("Test toolbar button tapped.")
                 }
             }
+            // ToolbarItemGroup(placement: .navigationBarTrailing) {
+            //     if isSaving || isGeneratingText {
+            //         ProgressView()
+            //     } else {
+            //         Button(action: { showingGenerateSheet = true }) {
+            //             Label("Generate Text", systemImage: "sparkles")
+            //         }
+            //         .disabled(isSaving || isGeneratingText)
+            //         .labelStyle(horizontalSizeClass == .compact ? .iconOnly : .automatic)
+
+            //         Button(action: { showingGenerateImageSheet = true }) {
+            //             Label("Generate Image", systemImage: "photo")
+            //         }
+            //         .disabled(isSaving || isGeneratingText)
+            //         .labelStyle(horizontalSizeClass == .compact ? .iconOnly : .automatic)
+
+            //         Button(action: { exportCampaignContent() }) {
+            //             Label("Export", systemImage: "square.and.arrow.up")
+            //         }
+            //         .disabled(isSaving || isGeneratingText)
+            //         .labelStyle(horizontalSizeClass == .compact ? .iconOnly : .automatic)
+            //     }
+            // }
         }
         .onChange(of: horizontalSizeClass) { newSizeClass in
             // This is mostly for debugging or if specific non-label-style changes were needed.
@@ -978,10 +980,11 @@ struct CampaignDetailView: View {
             // or we rely on other parts of 'changed' logic or always save if includeCustomSections is true.
             // For now, if includeCustomSections is true, we will assign and mark as changed.
             // This is simpler than a deep comparison here.
-            let sectionsToSave = localCampaignCustomSections.filter {
+            let sectionsToSave = localCampaignCustomSections.filter { // This is the correct single declaration
                 !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
                 !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             }
+            // The duplicate "let sectionsToSave = ..." line that was here previously has been removed.
             campaignToUpdate.customSections = sectionsToSave.isEmpty ? nil : sectionsToSave
             // We need to ensure 'changed' is true if custom sections were part of the trigger.
             // The most straightforward way is if the source indicates it, or if `includeCustomSections` was passed as true.
