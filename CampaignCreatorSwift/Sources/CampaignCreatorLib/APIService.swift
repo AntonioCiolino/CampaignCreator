@@ -375,7 +375,7 @@ public final class APIService: Sendable {
 
     public func updateCampaign(_ campaignId: Int, data: CampaignUpdateDTO) async throws -> Campaign { // Changed campaignId from UUID to Int
         let body = try jsonEncoder.encode(data)
-        return try await performRequest(endpoint: "/campaigns/\(campaignId)/", method: "PUT", body: body) // Changed campaignId.uuidString to campaignId
+        return try await performRequest(endpoint: "/campaigns/\(campaignId)", method: "PUT", body: body) // REMOVED TRAILING SLASH
     }
 
     public func deleteCampaign(id: Int) async throws { // Changed id from UUID to Int
@@ -384,7 +384,7 @@ public final class APIService: Sendable {
 
     // MARK: - Character Methods
     public func fetchCharacters() async throws -> [Character] {
-        try await performRequest(endpoint: "/characters") // Removed trailing slash
+        try await performRequest(endpoint: "/characters/") // ADDED TRAILING SLASH
     }
 
     public func fetchCharacter(id: Int) async throws -> Character { // Changed id from UUID to Int
