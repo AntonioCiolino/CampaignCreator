@@ -95,6 +95,7 @@ struct CampaignDetailView: View {
                         }
                     }
                     .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
+                    .tint(currentPrimaryColor) // Apply theme primary color
                 }
 
                 if isEditingConcept {
@@ -152,6 +153,7 @@ struct CampaignDetailView: View {
                     showingThemeEditSheet = true
                 }
                 .buttonStyle(.bordered)
+                .tint(currentPrimaryColor) // Apply theme primary color
                 .padding(.top, 8)
             }
             .frame(maxWidth: .infinity, alignment: .leading)

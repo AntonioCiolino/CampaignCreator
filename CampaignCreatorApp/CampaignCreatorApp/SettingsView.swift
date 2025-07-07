@@ -15,11 +15,6 @@ struct SettingsView: View {
     @State private var editGeminiApiKey = ""
     @State private var editStableDiffusionApiKey = "" // New state for Stable Diffusion key
 
-    // State for new user fields
-    @State private var userDescription: String = ""
-    @State private var userAppearance: String = ""
-    @State private var isProfileEditing: Bool = false // To toggle edit mode for profile section
-
     @State private var showingAPIKeyAlert = false
     @State private var alertMessage = ""
     @State private var showingForgetLoginAlert = false // New alert for forgetting login
@@ -45,56 +40,7 @@ struct SettingsView: View {
                             Text("Logout")
                                 .foregroundColor(.red)
                         }
-
-                        // Description Field
-                        DisclosureGroup("Profile Details", isExpanded: $isProfileEditing) {
-                            VStack(alignment: .leading, spacing: 10) {
-                                HStack {
-                                    Text("Description")
-                                        .font(.headline)
-                                    Spacer()
-                                    Button(isProfileEditing ? "Done" : "Edit") {
-                                        isProfileEditing.toggle()
-                                        if !isProfileEditing {
-                                            // TODO: Add save logic here if needed immediately
-                                            // For now, changes are local or rely on a broader save mechanism
-                                            print("User description: \(userDescription)")
-                                            print("User appearance: \(userAppearance)")
-                                            // Potentially call a method on campaignCreator to update user
-                                            // campaignCreator.updateUserDetails(description: userDescription, appearance: userAppearance)
-                                        }
-                                    }
-                                }
-                                if isProfileEditing {
-                                    TextEditor(text: $userDescription)
-                                        .frame(height: 100)
-                                        .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.gray.opacity(0.5), lineWidth: 1))
-                                    Divider()
-                                    Text("Appearance")
-                                        .font(.headline)
-                                    TextField("e.g., Prefers dark themes, compact UI", text: $userAppearance)
-                                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                                } else {
-                                    Text(userDescription.isEmpty ? "No description set." : userDescription)
-                                        .foregroundColor(userDescription.isEmpty ? .secondary : .primary)
-                                    Divider()
-                                    Text("Appearance:")
-                                        .font(.headline)
-                                    Text(userAppearance.isEmpty ? "No appearance preferences set." : userAppearance)
-                                        .foregroundColor(userAppearance.isEmpty ? .secondary : .primary)
-                                }
-                            }
-                            .padding(.vertical, 5)
-                        }
-                        .onAppear {
-                            // Initialize from currentUser when the view appears or user changes
-                            if let currentUser = campaignCreator.currentUser {
-                                userDescription = currentUser.description ?? ""
-                                userAppearance = currentUser.appearance ?? ""
-                            }
-                        }
-                        // Add a way to save these details if needed, e.g., a Save button or auto-save logic.
-                        // For now, editing is local to the @State variables.
+                        // The "Profile Details" DisclosureGroup has been removed.
                     }
                 }
 

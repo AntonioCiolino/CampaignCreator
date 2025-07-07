@@ -128,8 +128,9 @@ public struct CharacterCreateDTO: Codable, Sendable {
     public var notesForLLM: String?
     public var stats: CharacterStats?
     public var exportFormatPreference: String?
+    public var customSections: [CustomSection]? // Added
 
-    public init(name: String, description: String? = nil, appearanceDescription: String? = nil, imageURLs: [String]? = nil, notesForLLM: String? = nil, stats: CharacterStats? = nil, exportFormatPreference: String? = nil) {
+    public init(name: String, description: String? = nil, appearanceDescription: String? = nil, imageURLs: [String]? = nil, notesForLLM: String? = nil, stats: CharacterStats? = nil, exportFormatPreference: String? = nil, customSections: [CustomSection]? = nil) { // Added
         self.name = name
         self.description = description
         self.appearanceDescription = appearanceDescription
@@ -137,6 +138,7 @@ public struct CharacterCreateDTO: Codable, Sendable {
         self.notesForLLM = notesForLLM
         self.stats = stats
         self.exportFormatPreference = exportFormatPreference
+        self.customSections = customSections // Added
     }
 }
 
@@ -148,8 +150,9 @@ public struct CharacterUpdateDTO: Codable, Sendable {
     public var notesForLLM: String?
     public var stats: CharacterStats?
     public var exportFormatPreference: String?
+    public var customSections: [CustomSection]? // Added
 
-    public init(name: String? = nil, description: String? = nil, appearanceDescription: String? = nil, imageURLs: [String]? = nil, notesForLLM: String? = nil, stats: CharacterStats? = nil, exportFormatPreference: String? = nil) {
+    public init(name: String? = nil, description: String? = nil, appearanceDescription: String? = nil, imageURLs: [String]? = nil, notesForLLM: String? = nil, stats: CharacterStats? = nil, exportFormatPreference: String? = nil, customSections: [CustomSection]? = nil) { // Added
         self.name = name
         self.description = description
         self.appearanceDescription = appearanceDescription
@@ -157,6 +160,7 @@ public struct CharacterUpdateDTO: Codable, Sendable {
         self.notesForLLM = notesForLLM
         self.stats = stats
         self.exportFormatPreference = exportFormatPreference
+        self.customSections = customSections // Added
     }
 }
 
