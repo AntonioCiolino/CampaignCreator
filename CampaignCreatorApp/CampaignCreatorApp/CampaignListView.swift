@@ -114,18 +114,41 @@ struct CampaignListView: View {
                 Text(creationErrorMessage)
             }
             .onAppear {
+                // Keep the existing onAppear logic for scenarios like app returning from background
+                // or if the view appears when session is already valid.
                 print("CampaignListView: .onAppear. SessionValid: \(campaignCreator.isUserSessionValid), Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCampaigns), InitialFetchAttempted: \(campaignCreator.initialCampaignFetchAttempted), Err: \(campaignCreator.campaignError != nil ? (campaignCreator.campaignError?.localizedDescription ?? "Unknown Error") : "None")")
-                if campaignCreator.isUserSessionValid && !campaignCreator.isLoadingCampaigns {
+                // Simplified onAppear: if session is valid and we haven't tried loading, load.
+                // The onChange modifier will handle the case where session becomes valid after appearing.
+                if campaignCreator.isUserSessionValid && !campaignCreator.isLoadingCampaigns && !campaignCreator.initialCampaignFetchAttempted {
+                     print("CampaignListView: .onAppear - Conditions met (SESSION VALID, not loading, not attempted), will fetch campaigns.")
+                     Task {
+                         await campaignCreator.fetchCampaigns()
+                     }
+                } else if campaignCreator.isUserSessionValid && campaignCreator.campaignError != nil && !campaignCreator.isLoadingCampaigns {
+                     print("CampaignListView: .onAppear - Conditions met (SESSION VALID, error present, not loading), will attempt retry fetch campaigns.")
+                     Task {
+                         await campaignCreator.fetchCampaigns() // Retry on error
+                     }
+                } else {
+                     print("CampaignListView: .onAppear - Conditions not met for immediate fetch. isUserSessionValid: \(campaignCreator.isUserSessionValid), isLoading: \(campaignCreator.isLoadingCampaigns), initialAttempted: \(campaignCreator.initialCampaignFetchAttempted)")
+                }
+            }
+            .onChange(of: campaignCreator.isUserSessionValid) { newSessionValidState in
+                print("CampaignListView: .onChange(of: isUserSessionValid) triggered. New state: \(newSessionValidState)")
+                if newSessionValidState && !campaignCreator.isLoadingCampaigns {
                     if !campaignCreator.initialCampaignFetchAttempted || campaignCreator.campaignError != nil {
-                        print("CampaignListView: Conditions met (SESSION VALID, initial fetch needed or error retry), will fetch campaigns.")
+                        print("CampaignListView: .onChange - Conditions met (SESSION NOW VALID, initial fetch needed or error retry), will fetch campaigns.")
                         Task {
                             await campaignCreator.fetchCampaigns()
                         }
                     } else {
-                        print("CampaignListView: Session valid, initial fetch already attempted and no error, skipping fetch. Campaigns count: \(campaignCreator.campaigns.count)")
+                         print("CampaignListView: .onChange - Session valid, initial fetch already attempted and no error, skipping fetch. Campaigns count: \(campaignCreator.campaigns.count)")
                     }
+                } else if !newSessionValidState {
+                    print("CampaignListView: .onChange - Session became invalid. Campaigns will be cleared by logout logic if applicable.")
+                    // If session becomes invalid, campaigns list is typically cleared by logout() in CampaignCreator
                 } else {
-                    print("CampaignListView: Skipping fetch. SessionValid: \(campaignCreator.isUserSessionValid), Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCampaigns)")
+                    print("CampaignListView: .onChange - Session valid but currently loading campaigns. Skipping fetch.")
                 }
             }
         }

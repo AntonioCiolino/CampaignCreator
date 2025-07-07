@@ -160,7 +160,8 @@ public class CampaignCreator: ObservableObjectProtocol {
             themeBackgroundImageURL: campaign.themeBackgroundImageURL,
             themeBackgroundImageOpacity: campaign.themeBackgroundImageOpacity,
             linkedCharacterIDs: campaign.linkedCharacterIDs,
-            customSections: campaign.customSections // ADDED
+            customSections: campaign.customSections, // ADDED
+            sections: campaign.sections // ADDED standard sections
         )
         print("[THEME_DEBUG CampaignCreator] updateCampaign: DTO being sent to API for campaign \(campaign.id):") // DEBUG LOG
         print("[THEME_DEBUG CampaignCreator]   DTO.themePrimaryColor: \(dto.themePrimaryColor ?? "nil")") // DEBUG LOG
