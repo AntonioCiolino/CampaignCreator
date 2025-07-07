@@ -11,6 +11,8 @@ export interface User {
   gemini_api_key_provided?: boolean;
   other_llm_api_key_provided?: boolean;
   avatar_url?: string | null; // New field for avatar URL
+  description?: string | null;
+  appearance?: string | null;
 }
 
 export interface UserApiKeysPayload {
