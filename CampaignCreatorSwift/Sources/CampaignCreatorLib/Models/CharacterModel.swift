@@ -35,7 +35,7 @@ public struct Character: Identifiable, Codable, Sendable {
     // Metadata
     public var createdAt: Date? // Changed to optional
     public var modifiedAt: Date? // Changed to optional
-    public var customSections: [CustomSection]? // Added for custom sections
+    // public var customSections: [CustomSection]? // REMOVED
 
     public init(id: Int, // Changed from UUID to Int, removed default
                 name: String,
@@ -45,7 +45,7 @@ public struct Character: Identifiable, Codable, Sendable {
                 notesForLLM: String? = nil,
                 stats: CharacterStats? = nil,
                 exportFormatPreference: String? = nil,
-                customSections: [CustomSection]? = nil, // Added
+                // customSections: [CustomSection]? = nil, // REMOVED
                 createdAt: Date? = nil, // Changed to optional, default nil
                 modifiedAt: Date? = nil) { // Changed to optional, default nil
         self.id = id
@@ -56,7 +56,7 @@ public struct Character: Identifiable, Codable, Sendable {
         self.notesForLLM = notesForLLM
         self.stats = stats
         self.exportFormatPreference = exportFormatPreference
-        self.customSections = customSections // Added
+        // self.customSections = customSections // REMOVED
         self.createdAt = createdAt
         self.modifiedAt = modifiedAt
     }
@@ -67,15 +67,4 @@ public struct Character: Identifiable, Codable, Sendable {
     }
 }
 
-// New struct for custom sections
-public struct CustomSection: Identifiable, Codable, Sendable {
-    public var id: UUID
-    public var title: String
-    public var content: String
-
-    public init(id: UUID = UUID(), title: String, content: String) {
-        self.id = id
-        self.title = title
-        self.content = content
-    }
-}
+// CustomSection struct REMOVED from here (will be added to CampaignModel.swift)

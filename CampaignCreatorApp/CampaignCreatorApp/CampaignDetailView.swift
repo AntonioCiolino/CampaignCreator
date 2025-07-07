@@ -30,6 +30,7 @@ struct CampaignDetailView: View {
 
     // For generating temporary client-side IDs for new sections
     @State private var nextTemporaryClientSectionID: Int = -1
+    @State private var localCampaignCustomSections: [CampaignCustomSection] // ADDED
 
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
 
@@ -38,6 +39,7 @@ struct CampaignDetailView: View {
         self._campaignCreator = ObservedObject(wrappedValue: campaignCreator)
         self._editableTitle = State(initialValue: campaign.title)
         self._editableConcept = State(initialValue: campaign.concept ?? "")
+        self._localCampaignCustomSections = State(initialValue: campaign.customSections ?? []) // ADDED
     }
 
     // Computed properties for theme colors
@@ -149,7 +151,7 @@ struct CampaignDetailView: View {
                 ThemePropertyRow(label: "Background Image URL", value: campaign.themeBackgroundImageURL, isURL: true)
                 ThemePropertyRow(label: "BG Image Opacity", value: campaign.themeBackgroundImageOpacity.map { String(format: "%.2f", $0) })
 
-                Button("Edit Theme") {
+                Button("Customize Theme") { // Caption updated
                     showingThemeEditSheet = true
                 }
                 .buttonStyle(.bordered)
@@ -200,6 +202,56 @@ struct CampaignDetailView: View {
         // if they clash with the overall theme. For now, applying font/color broadly.
     }
 
+    // MARK: - Campaign Custom Sections Editor
+    private var campaignCustomSectionsEditorView: some View {
+        DisclosureGroup("Custom Campaign Sections") {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach($localCampaignCustomSections) { $section in // Use localCampaignCustomSections
+                    VStack(alignment: .leading) {
+                        TextField("Section Title", text: $section.title)
+                            .font(currentFont.weight(.semibold)) // Use theme font
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .padding(.bottom, 2)
+                        TextEditor(text: $section.content)
+                            .frame(minHeight: 100, maxHeight: 300)
+                            .padding(4)
+                            .background(Color(.secondarySystemGroupedBackground))
+                            .cornerRadius(8)
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+                            .font(currentFont) // Use theme font
+                        Button("Delete Section") {
+                            localCampaignCustomSections.removeAll { $0.id == section.id }
+                            // Consider triggering a save or marking campaign as changed
+                            Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
+                        }
+                        .foregroundColor(.red)
+                        .buttonStyle(.borderless)
+                        .padding(.top, 4)
+                    }
+                    .padding(.vertical, 8)
+                    Divider()
+                }
+                Button(action: addCampaignCustomSection) {
+                    Label("Add Custom Section", systemImage: "plus.circle.fill")
+                }
+                .buttonStyle(.bordered)
+                .tint(currentPrimaryColor) // Use theme color
+            }
+            .padding(.top, 8)
+        }
+        .padding().background(Color(.systemBackground)).cornerRadius(12)
+        .foregroundColor(currentTextColor)
+        .font(currentFont)
+    }
+
+    private func addCampaignCustomSection() {
+        let newSection = CampaignCustomSection(title: "New Section", content: "")
+        localCampaignCustomSections.append(newSection)
+        // Optionally trigger save immediately or rely on user saving via other actions
+        // Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
+    }
+
+
     var body: some View {
         ZStack { // Use ZStack for background image handling
             // Background Image (if URL is provided)
@@ -228,7 +280,8 @@ struct CampaignDetailView: View {
                     tableOfContentsSection // Using the extracted component
                 }
                 campaignThemeDisplaySection // Using the extracted component
-                sectionsDisplaySection // Using the extracted component
+                campaignCustomSectionsEditorView // ADDED Campaign Custom Sections UI
+                sectionsDisplaySection // Using the extracted component (standard generated sections)
             }
             .padding()
             .font(currentFont) // Apply default theme font to all content within VStack
@@ -413,8 +466,8 @@ struct CampaignDetailView: View {
     }
 
     // MARK: - Save Logic
-    enum SaveSource { case titleField, conceptEditorDoneButton, onDisappear, themeEditorDismissed } // Added themeEditorDismissed
-    private func saveCampaignDetails(source: SaveSource, includeTheme: Bool = false) async { // Added includeTheme
+    enum SaveSource { case titleField, conceptEditorDoneButton, onDisappear, themeEditorDismissed, customSectionChange } // Added customSectionChange
+    private func saveCampaignDetails(source: SaveSource, includeTheme: Bool = false, includeCustomSections: Bool = false) async { // Added includeCustomSections
         guard !isSaving else { print("Save already in progress from source: \(source). Skipping."); return }
 
         // It's important to use a fresh copy of `self.campaign` for comparison
@@ -450,6 +503,33 @@ struct CampaignDetailView: View {
             // No need to explicitly copy them here again.
         }
 
+        if includeCustomSections {
+            // Filter out any completely empty custom sections before saving
+            let sectionsToSave = localCampaignCustomSections.filter {
+                !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            }
+            // Check if the custom sections have actually changed compared to the campaign's current state.
+            // This is a bit more complex due to array of objects. A simpler check for now:
+            // If includeCustomSections is true, we'll update the campaign object with the current localCustomSections.
+            // The `changed` flag will be set if this assignment actually alters campaignToUpdate.customSections.
+            // This requires CampaignCustomSection to be Equatable for an exact comparison,
+            // or we rely on other parts of 'changed' logic or always save if includeCustomSections is true.
+            // For now, if includeCustomSections is true, we will assign and mark as changed.
+            // This is simpler than a deep comparison here.
+            let sectionsToSave = localCampaignCustomSections.filter {
+                !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            }
+            campaignToUpdate.customSections = sectionsToSave.isEmpty ? nil : sectionsToSave
+            // We need to ensure 'changed' is true if custom sections were part of the trigger.
+            // The most straightforward way is if the source indicates it, or if `includeCustomSections` was passed as true.
+            if source == .customSectionChange || includeCustomSections { // If called with this intent, assume changes.
+                changed = true
+                print("Custom sections included in save operation.")
+            }
+        }
+
         guard changed else { print("No changes to save from source: \(source)."); return }
 
         isSaving = true
@@ -465,8 +545,11 @@ struct CampaignDetailView: View {
                 // Re-sync editable fields if they were out of sync or if server transformed data
                 self.editableTitle = refreshedCampaign.title
                 self.editableConcept = refreshedCampaign.concept ?? ""
+                self.localCampaignCustomSections = refreshedCampaign.customSections ?? [] // Re-sync custom sections
             } else {
                  self.campaign = campaignToUpdate // Fallback, should ideally find it
+                 // If falling back, ensure localCampaignCustomSections reflects campaignToUpdate
+                 self.localCampaignCustomSections = campaignToUpdate.customSections ?? []
             }
             print("Campaign details saved successfully via \(source).")
         } catch let error as APIError {
@@ -607,7 +690,11 @@ struct CampaignDetailView: View {
             )
         ],
         themePrimaryColor: "#FF0000",
-        themeFontFamily: "Arial"
+        themeFontFamily: "Arial",
+        customSections: [ // ADDED Sample Campaign Custom Sections
+            CampaignCustomSection(title: "World History", content: "A brief history of the world..."),
+            CampaignCustomSection(title: "Key Factions", content: "Details about important groups...")
+        ]
     )
     // campaignCreator.campaigns = [sampleCampaign] // If needed for preview consistency
 

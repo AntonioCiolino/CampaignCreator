@@ -70,10 +70,12 @@ public enum APIError: Error, LocalizedError, Sendable, Equatable { // Added Equa
 public struct CampaignCreateDTO: Codable, Sendable {
     public var title: String
     public var initialUserPrompt: String?
+    public var customSections: [CampaignCustomSection]? // ADDED
 
-    public init(title: String, initialUserPrompt: String? = nil) {
+    public init(title: String, initialUserPrompt: String? = nil, customSections: [CampaignCustomSection]? = nil) { // ADDED
         self.title = title
         self.initialUserPrompt = initialUserPrompt
+        self.customSections = customSections // ADDED
     }
 }
 
@@ -96,8 +98,9 @@ public struct CampaignUpdateDTO: Codable, Sendable {
     public var themeBackgroundImageURL: String?
     public var themeBackgroundImageOpacity: Double?
     public var linkedCharacterIDs: [UUID]?
+    public var customSections: [CampaignCustomSection]? // ADDED
 
-    public init(title: String? = nil, initialUserPrompt: String? = nil, concept: String? = nil, displayTOC: [TOCEntry]? = nil, badgeImageURL: String? = nil, thematicImageURL: String? = nil, thematicImagePrompt: String? = nil, selectedLLMId: String? = nil, temperature: Double? = nil, moodBoardImageURLs: [String]? = nil, themePrimaryColor: String? = nil, themeSecondaryColor: String? = nil, themeBackgroundColor: String? = nil, themeTextColor: String? = nil, themeFontFamily: String? = nil, themeBackgroundImageURL: String? = nil, themeBackgroundImageOpacity: Double? = nil, linkedCharacterIDs: [UUID]? = nil) {
+    public init(title: String? = nil, initialUserPrompt: String? = nil, concept: String? = nil, displayTOC: [TOCEntry]? = nil, badgeImageURL: String? = nil, thematicImageURL: String? = nil, thematicImagePrompt: String? = nil, selectedLLMId: String? = nil, temperature: Double? = nil, moodBoardImageURLs: [String]? = nil, themePrimaryColor: String? = nil, themeSecondaryColor: String? = nil, themeBackgroundColor: String? = nil, themeTextColor: String? = nil, themeFontFamily: String? = nil, themeBackgroundImageURL: String? = nil, themeBackgroundImageOpacity: Double? = nil, linkedCharacterIDs: [UUID]? = nil, customSections: [CampaignCustomSection]? = nil) { // ADDED
         self.title = title
         self.initialUserPrompt = initialUserPrompt
         self.concept = concept
@@ -116,6 +119,7 @@ public struct CampaignUpdateDTO: Codable, Sendable {
         self.themeBackgroundImageURL = themeBackgroundImageURL
         self.themeBackgroundImageOpacity = themeBackgroundImageOpacity
         self.linkedCharacterIDs = linkedCharacterIDs
+        self.customSections = customSections // ADDED
     }
 }
 
@@ -128,9 +132,9 @@ public struct CharacterCreateDTO: Codable, Sendable {
     public var notesForLLM: String?
     public var stats: CharacterStats?
     public var exportFormatPreference: String?
-    public var customSections: [CustomSection]? // Added
+    // public var customSections: [CustomSection]? // REMOVED
 
-    public init(name: String, description: String? = nil, appearanceDescription: String? = nil, imageURLs: [String]? = nil, notesForLLM: String? = nil, stats: CharacterStats? = nil, exportFormatPreference: String? = nil, customSections: [CustomSection]? = nil) { // Added
+    public init(name: String, description: String? = nil, appearanceDescription: String? = nil, imageURLs: [String]? = nil, notesForLLM: String? = nil, stats: CharacterStats? = nil, exportFormatPreference: String? = nil /*, customSections: [CustomSection]? = nil REMOVED */) {
         self.name = name
         self.description = description
         self.appearanceDescription = appearanceDescription
@@ -138,7 +142,7 @@ public struct CharacterCreateDTO: Codable, Sendable {
         self.notesForLLM = notesForLLM
         self.stats = stats
         self.exportFormatPreference = exportFormatPreference
-        self.customSections = customSections // Added
+        // self.customSections = customSections // REMOVED
     }
 }
 
@@ -150,9 +154,9 @@ public struct CharacterUpdateDTO: Codable, Sendable {
     public var notesForLLM: String?
     public var stats: CharacterStats?
     public var exportFormatPreference: String?
-    public var customSections: [CustomSection]? // Added
+    // public var customSections: [CustomSection]? // REMOVED
 
-    public init(name: String? = nil, description: String? = nil, appearanceDescription: String? = nil, imageURLs: [String]? = nil, notesForLLM: String? = nil, stats: CharacterStats? = nil, exportFormatPreference: String? = nil, customSections: [CustomSection]? = nil) { // Added
+    public init(name: String? = nil, description: String? = nil, appearanceDescription: String? = nil, imageURLs: [String]? = nil, notesForLLM: String? = nil, stats: CharacterStats? = nil, exportFormatPreference: String? = nil /*, customSections: [CustomSection]? = nil REMOVED */) {
         self.name = name
         self.description = description
         self.appearanceDescription = appearanceDescription
@@ -160,7 +164,7 @@ public struct CharacterUpdateDTO: Codable, Sendable {
         self.notesForLLM = notesForLLM
         self.stats = stats
         self.exportFormatPreference = exportFormatPreference
-        self.customSections = customSections // Added
+        // self.customSections = customSections // REMOVED
     }
 }
 

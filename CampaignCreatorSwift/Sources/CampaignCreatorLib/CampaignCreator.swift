@@ -140,7 +140,8 @@ public class CampaignCreator: ObservableObjectProtocol {
 
     public func createCampaign(title: String, initialUserPrompt: String? = nil) async throws -> Campaign {
         guard isAuthenticated else { throw APIError.notAuthenticated }
-        let dto = CampaignCreateDTO(title: title, initialUserPrompt: initialUserPrompt)
+        // Assuming new campaigns start without custom sections by default, pass nil
+        let dto = CampaignCreateDTO(title: title, initialUserPrompt: initialUserPrompt, customSections: nil)
         let newCampaign = try await apiService.createCampaign(dto)
         await fetchCampaigns()
         return newCampaign
@@ -158,7 +159,8 @@ public class CampaignCreator: ObservableObjectProtocol {
             themeTextColor: campaign.themeTextColor, themeFontFamily: campaign.themeFontFamily,
             themeBackgroundImageURL: campaign.themeBackgroundImageURL,
             themeBackgroundImageOpacity: campaign.themeBackgroundImageOpacity,
-            linkedCharacterIDs: campaign.linkedCharacterIDs
+            linkedCharacterIDs: campaign.linkedCharacterIDs,
+            customSections: campaign.customSections // ADDED
         )
         _ = try await apiService.updateCampaign(campaign.id, data: dto)
         await fetchCampaigns()
@@ -196,7 +198,7 @@ public class CampaignCreator: ObservableObjectProtocol {
 
     public func createCharacter(name: String, description: String? = nil, appearance: String? = nil, stats: CharacterStats? = nil) async throws -> Character {
         guard isAuthenticated else { throw APIError.notAuthenticated }
-        let dto = CharacterCreateDTO(name: name, description: description, appearanceDescription: appearance, stats: stats, customSections: nil) // Assuming new characters don't start with custom sections by default
+        let dto = CharacterCreateDTO(name: name, description: description, appearanceDescription: appearance, stats: stats) // customSections removed
         let newCharacter = try await apiService.createCharacter(dto)
         await fetchCharacters()
         return newCharacter
@@ -208,8 +210,8 @@ public class CampaignCreator: ObservableObjectProtocol {
             name: character.name, description: character.description,
             appearanceDescription: character.appearanceDescription, imageURLs: character.imageURLs,
             notesForLLM: character.notesForLLM, stats: character.stats,
-            exportFormatPreference: character.exportFormatPreference,
-            customSections: character.customSections // Added
+            exportFormatPreference: character.exportFormatPreference
+            // customSections: character.customSections // REMOVED
         )
         _ = try await apiService.updateCharacter(character.id, data: dto)
         await fetchCharacters()
