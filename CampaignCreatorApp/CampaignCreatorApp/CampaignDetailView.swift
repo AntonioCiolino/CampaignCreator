@@ -77,7 +77,12 @@ struct CampaignDetailView: View {
         self._campaignCreator = ObservedObject(wrappedValue: campaignCreator)
         self._editableTitle = State(initialValue: campaign.title)
         self._editableConcept = State(initialValue: campaign.concept ?? "")
-        self._localCampaignCustomSections = State(initialValue: campaign.customSections ?? []) // ADDED
+        self._localCampaignCustomSections = State(initialValue: campaign.customSections ?? [])
+
+        print("[THEME_DEBUG CampaignDetailView] init: Campaign '\(campaign.title)' (ID: \(campaign.id)) loaded with theme values:") // DEBUG LOG
+        print("[THEME_DEBUG CampaignDetailView]   PrimaryColor: \(campaign.themePrimaryColor ?? "nil")") // DEBUG LOG
+        print("[THEME_DEBUG CampaignDetailView]   FontFamily: \(campaign.themeFontFamily ?? "nil")") // DEBUG LOG
+        print("[THEME_DEBUG CampaignDetailView]   BgImageURL: \(campaign.themeBackgroundImageURL ?? "nil")") // DEBUG LOG
     }
 
     // Helper to convert SwiftUI Font to UIFont (simplified)
@@ -393,10 +398,11 @@ struct CampaignDetailView: View {
                 if let refreshedCampaignFromCreator = campaignCreator.campaigns.first(where: { $0.id == self.campaign.id }) {
                     self.campaign = refreshedCampaignFromCreator
                     self.localCampaignCustomSections = refreshedCampaignFromCreator.customSections ?? [] // This re-syncs all sections
-                    print("CampaignDetailView: self.campaign and localCampaignCustomSections re-synced from CampaignCreator after full regen.")
+                    let postSyncSectionIds = self.localCampaignCustomSections.map { $0.id }
+                    print("[SAVE_DEBUG CampaignDetailView] handleFullSectionRegeneration: Post-sync. localCampaignCustomSections IDs: \(postSyncSectionIds)") // DEBUG LOG
                     // The CustomTextView for the target section will update automatically due to its binding to localCampaignCustomSections[index].content
                 } else {
-                    print("Error: Could not find refreshed campaign \(self.campaign.id) in CampaignCreator.campaigns after full regen.")
+                    print("[SAVE_DEBUG CampaignDetailView] handleFullSectionRegeneration: Error - Could not find refreshed campaign \(self.campaign.id) in CampaignCreator.campaigns after full regen.") // DEBUG LOG
                     // If campaign couldn't be refreshed, the local change might not be reflected unless we manually update from returnedUpdatedSectionData.
                     // However, regenerateCampaignCustomSection in CampaignCreator already tries to refresh.
                     // A more robust error handling might be needed here. For now, we assume it mostly succeeds or UI shows old data.
@@ -474,9 +480,12 @@ struct CampaignDetailView: View {
                     // To be absolutely sure, we could find the section in the new localCampaignCustomSections and ensure its content
                     // matches returnedUpdatedSectionData.content if there's a discrepancy.
                     self.localCampaignCustomSections = refreshedCampaignFromCreator.customSections ?? []
+                    let postSyncSnippetSectionIds = self.localCampaignCustomSections.map { $0.id }
+                    print("[SAVE_DEBUG CampaignDetailView] processSnippetWithLLM: Post-sync. localCampaignCustomSections IDs: \(postSyncSnippetSectionIds)") // DEBUG LOG
+
                     if let index = self.localCampaignCustomSections.firstIndex(where: { $0.id == sectionId }) {
                         if self.localCampaignCustomSections[index].content != returnedUpdatedSectionData.content {
-                            print("CampaignDetailView: Snippet content from LLM ('\(returnedUpdatedSectionData.content.prefix(20))') differs from re-synced campaign's section content ('\(self.localCampaignCustomSections[index].content.prefix(20))'). Trusting LLM direct output for this section.")
+                            print("[SAVE_DEBUG CampaignDetailView] processSnippetWithLLM: Snippet content from LLM ('\(returnedUpdatedSectionData.content.prefix(20))') differs from re-synced campaign's section content ('\(self.localCampaignCustomSections[index].content.prefix(20))'). Trusting LLM direct output for this section.") // DEBUG LOG
                             // This ensures the text view, which was updated by the coordinator,
                             // and the underlying data model for that section are aligned with the direct LLM output for the snippet.
                              self.localCampaignCustomSections[index].content = returnedUpdatedSectionData.content
@@ -484,7 +493,7 @@ struct CampaignDetailView: View {
                     }
 
                 } else {
-                    print("Error: Could not find refreshed campaign \(self.campaign.id) in CampaignCreator.campaigns after snippet. Saving local changes.")
+                    print("[SAVE_DEBUG CampaignDetailView] processSnippetWithLLM: Error - Could not find refreshed campaign \(self.campaign.id) in CampaignCreator.campaigns after snippet. Saving local changes.") // DEBUG LOG
                     // If full refresh fails, at least the local change via coordinator is likely in localCampaignCustomSections.
                 }
 
@@ -630,6 +639,7 @@ struct CampaignDetailView: View {
         nextTemporaryClientSectionID -= 1 // Decrement for next use
         let newSection = CampaignCustomSection(id: newId, title: "New Section", content: "", type: "Generic") // Pass newId
         localCampaignCustomSections.append(newSection)
+        print("[SAVE_DEBUG CampaignDetailView] addCampaignCustomSection: Added new section with temporary ID \(newId)") // DEBUG LOG
         // Optionally trigger save immediately or rely on user saving via other actions
         // For now, let user make edits and then save via other means or when view disappears.
         // Or, if auto-save is desired here:
@@ -792,7 +802,10 @@ struct CampaignDetailView: View {
                     // A simple solution is to always mark as modified and save if the sheet was shown.
                     // More robust: check if any theme property actually changed.
                     // For now, a direct save call if the sheet was for theme editing.
-                    print("Theme edit sheet dismissed. Campaign title: \(campaign.title)") // campaign is already updated due to @Binding
+                    print("[THEME_DEBUG CampaignDetailView] ThemeEditView dismissed. Current self.campaign theme values before save call:") // DEBUG LOG
+                    print("[THEME_DEBUG CampaignDetailView]   PrimaryColor: \(self.campaign.themePrimaryColor ?? "nil")") // DEBUG LOG
+                    print("[THEME_DEBUG CampaignDetailView]   FontFamily: \(self.campaign.themeFontFamily ?? "nil")") // DEBUG LOG
+                    print("[THEME_DEBUG CampaignDetailView]   BgImageURL: \(self.campaign.themeBackgroundImageURL ?? "nil")") // DEBUG LOG
                     Task {
                         // We need a way to tell saveCampaignDetails to save *everything* or
                         // have a separate save for theme. Let's assume saveCampaignDetails
@@ -805,35 +818,13 @@ struct CampaignDetailView: View {
                 }
         }
         .toolbar {
-            // Simplified toolbar for testing ambiguity
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Test") {
-                    print("Test toolbar button tapped.")
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
+                if isSaving || isGeneratingText {
+                    ProgressView()
+                } else {
+                    // Buttons will be added incrementally in subsequent steps
                 }
             }
-            // ToolbarItemGroup(placement: .navigationBarTrailing) {
-            //     if isSaving || isGeneratingText {
-            //         ProgressView()
-            //     } else {
-            //         Button(action: { showingGenerateSheet = true }) {
-            //             Label("Generate Text", systemImage: "sparkles")
-            //         }
-            //         .disabled(isSaving || isGeneratingText)
-            //         .labelStyle(horizontalSizeClass == .compact ? .iconOnly : .automatic)
-
-            //         Button(action: { showingGenerateImageSheet = true }) {
-            //             Label("Generate Image", systemImage: "photo")
-            //         }
-            //         .disabled(isSaving || isGeneratingText)
-            //         .labelStyle(horizontalSizeClass == .compact ? .iconOnly : .automatic)
-
-            //         Button(action: { exportCampaignContent() }) {
-            //             Label("Export", systemImage: "square.and.arrow.up")
-            //         }
-            //         .disabled(isSaving || isGeneratingText)
-            //         .labelStyle(horizontalSizeClass == .compact ? .iconOnly : .automatic)
-            //     }
-            // }
         }
         .onChange(of: horizontalSizeClass) { newSizeClass in
             // This is mostly for debugging or if specific non-label-style changes were needed.
@@ -1002,6 +993,18 @@ struct CampaignDetailView: View {
 
         isSaving = true
         errorMessage = ""
+
+        if includeCustomSections, let sections = campaignToUpdate.customSections {
+            let sectionIds = sections.map { $0.id }
+            print("[SAVE_DEBUG CampaignDetailView] saveCampaignDetails: CustomSection IDs being sent: \(sectionIds)")
+        }
+        if includeTheme {
+            print("[THEME_DEBUG CampaignDetailView] saveCampaignDetails: Sending campaignToUpdate with theme values:") // DEBUG LOG
+            print("[THEME_DEBUG CampaignDetailView]   PrimaryColor: \(campaignToUpdate.themePrimaryColor ?? "nil")") // DEBUG LOG
+            print("[THEME_DEBUG CampaignDetailView]   FontFamily: \(campaignToUpdate.themeFontFamily ?? "nil")") // DEBUG LOG
+            print("[THEME_DEBUG CampaignDetailView]   BgImageURL: \(campaignToUpdate.themeBackgroundImageURL ?? "nil")") // DEBUG LOG
+        }
+
         campaignToUpdate.markAsModified()
 
         do {

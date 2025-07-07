@@ -162,8 +162,27 @@ public class CampaignCreator: ObservableObjectProtocol {
             linkedCharacterIDs: campaign.linkedCharacterIDs,
             customSections: campaign.customSections // ADDED
         )
-        _ = try await apiService.updateCampaign(campaign.id, data: dto)
-        await fetchCampaigns()
+        print("[THEME_DEBUG CampaignCreator] updateCampaign: DTO being sent to API for campaign \(campaign.id):") // DEBUG LOG
+        print("[THEME_DEBUG CampaignCreator]   DTO.themePrimaryColor: \(dto.themePrimaryColor ?? "nil")") // DEBUG LOG
+        print("[THEME_DEBUG CampaignCreator]   DTO.themeFontFamily: \(dto.themeFontFamily ?? "nil")") // DEBUG LOG
+        print("[THEME_DEBUG CampaignCreator]   DTO.themeBgImageURL: \(dto.themeBackgroundImageURL ?? "nil")") // DEBUG LOG
+
+        let updatedCampaignFromAPI = try await apiService.updateCampaign(campaign.id, data: dto)
+
+        // Refresh the specific campaign in the local list
+        if let index = campaigns.firstIndex(where: { $0.id == campaign.id }) {
+            campaigns[index] = updatedCampaignFromAPI
+            let customSectionIds = updatedCampaignFromAPI.customSections?.map { $0.id } ?? [] // Keep existing custom section log
+            print("[SAVE_DEBUG CampaignCreator] updateCampaign: Campaign \(campaign.id) updated. CustomSection IDs from API response: \(customSectionIds)")
+
+            print("[THEME_DEBUG CampaignCreator] updateCampaign: Refreshed campaign \(campaign.id) from API response. Theme values:") // DEBUG LOG
+            print("[THEME_DEBUG CampaignCreator]   PrimaryColor: \(updatedCampaignFromAPI.themePrimaryColor ?? "nil")") // DEBUG LOG
+            print("[THEME_DEBUG CampaignCreator]   FontFamily: \(updatedCampaignFromAPI.themeFontFamily ?? "nil")") // DEBUG LOG
+            print("[THEME_DEBUG CampaignCreator]   BgImageURL: \(updatedCampaignFromAPI.themeBackgroundImageURL ?? "nil")") // DEBUG LOG
+        } else {
+            print("[SAVE_DEBUG CampaignCreator] Updated campaign \(campaign.id) not found in list. Fetching all campaigns.")
+            await fetchCampaigns()
+        }
     }
 
     public func deleteCampaign(_ campaign: Campaign) async throws {
