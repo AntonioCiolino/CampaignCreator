@@ -436,7 +436,7 @@ public final class APIService: Sendable {
     }
 
     // MARK: - Campaign Custom Section Methods (New)
-    public func regenerateCampaignCustomSection(campaignId: Int, sectionId: UUID, payload: SectionRegeneratePayload) async throws -> CampaignCustomSection {
+    public func regenerateCampaignCustomSection(campaignId: Int, sectionId: Int, payload: SectionRegeneratePayload) async throws -> CampaignCustomSection { // sectionId changed to Int
         let body = try jsonEncoder.encode(payload)
         // The endpoint needs to be confirmed. Assuming a nested structure for custom sections.
         // e.g., /api/v1/campaigns/{campaign_id}/custom_sections/{section_id}/regenerate

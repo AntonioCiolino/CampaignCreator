@@ -14,18 +14,18 @@ public struct TOCEntry: Identifiable, Codable, Sendable {
 }
 
 // New struct for campaign custom sections
-public struct CampaignCustomSection: Identifiable, Codable, Sendable {
-    public var id: UUID
+public struct CampaignCustomSection: Identifiable, Codable, Sendable, Hashable { // Added Hashable
+    public var id: Int // CHANGED from UUID to Int
     public var title: String
     public var content: String
-    public var type: String? // ADDED type field
+    public var type: String?
     // public var order: Int // Optional: if explicit ordering is needed beyond array order
 
-    public init(id: UUID = UUID(), title: String, content: String, type: String? = "Generic" /*, order: Int = 0*/) { // ADDED type, default "Generic"
+    public init(id: Int, title: String, content: String, type: String? = "Generic" /*, order: Int = 0*/) { // CHANGED id to Int, made it non-optional in param
         self.id = id
         self.title = title
         self.content = content
-        self.type = type // ADDED
+        self.type = type
         // self.order = order
     }
 }
