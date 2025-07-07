@@ -29,9 +29,9 @@ struct CampaignDetailView: View {
     @State private var titleDebounceTimer: Timer?
 
     // For generating temporary client-side IDs for new sections
-    @State private var nextTemporaryClientSectionID: Int = -1
+    @State private var nextTemporaryClientSectionID: Int = -1 // This is already Int, used for new section IDs
     @State private var localCampaignCustomSections: [CampaignCustomSection] // ADDED
-    @State private var customTextViewCoordinators: [UUID: CustomTextView.Coordinator] = [:] // ADDED for snippet ops
+    @State private var customTextViewCoordinators: [Int: CustomTextView.Coordinator] = [:] // CHANGED UUID to Int
     @State private var snippetFeatures: [Feature] = [] // ADDED for snippet features
     @State private var isLoadingFeatures: Bool = false // ADDED
     private let featureService = FeatureService() // ADDED
@@ -39,12 +39,12 @@ struct CampaignDetailView: View {
     // State for Snippet Context Modal
     @State private var showingContextModal: Bool = false
     @State private var currentFeatureForModal: Feature? = nil
-    @State private var currentSectionIdForModal: UUID? = nil // To know which section's coordinator to use
+    @State private var currentSectionIdForModal: Int? = nil // CHANGED UUID to Int
     @State private var currentSelectedTextForModal: String = ""
 
     // State for Image Generation Modal for sections
     @State private var showingImagePromptModalForSection: Bool = false
-    @State private var currentSectionIdForImageGen: UUID? = nil
+    @State private var currentSectionIdForImageGen: Int? = nil // CHANGED UUID to Int
     @State private var imageGenPromptText: String = ""
 
     // Error states for specific operations
@@ -417,7 +417,7 @@ struct CampaignDetailView: View {
     }
 
     // Placeholder for actual LLM call logic (Step 4.D)
-    private func processSnippetWithLLM(feature: Feature, sectionId: UUID, selectedText: String, rangeToReplace: NSRange, additionalContext: [String: String]) {
+    private func processSnippetWithLLM(feature: Feature, sectionId: Int, selectedText: String, rangeToReplace: NSRange, additionalContext: [String: String]) { // sectionId changed to Int
         snippetProcessingError = nil // Reset error
         guard let coordinator = customTextViewCoordinators[sectionId] else { // Ensure coordinator exists at the start
             let errorMsg = "Error: Coordinator not found for section \(sectionId) during LLM processing."
@@ -626,9 +626,13 @@ struct CampaignDetailView: View {
     }
 
     private func addCampaignCustomSection() {
-        let newSection = CampaignCustomSection(title: "New Section", content: "")
+        let newId = nextTemporaryClientSectionID
+        nextTemporaryClientSectionID -= 1 // Decrement for next use
+        let newSection = CampaignCustomSection(id: newId, title: "New Section", content: "", type: "Generic") // Pass newId
         localCampaignCustomSections.append(newSection)
         // Optionally trigger save immediately or rely on user saving via other actions
+        // For now, let user make edits and then save via other means or when view disappears.
+        // Or, if auto-save is desired here:
         // Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
     }
 

@@ -172,9 +172,9 @@ public class CampaignCreator: ObservableObjectProtocol {
         await fetchCampaigns()
     }
 
-    public func regenerateCampaignCustomSection(campaignId: Int, sectionId: UUID, payload: SectionRegeneratePayload) async throws -> CampaignCustomSection {
+    public func regenerateCampaignCustomSection(campaignId: Int, sectionId: Int, payload: SectionRegeneratePayload) async throws -> CampaignCustomSection { // sectionId changed to Int
         guard isAuthenticated else { throw APIError.notAuthenticated }
-        let updatedSection = try await apiService.regenerateCampaignCustomSection(campaignId: campaignId, sectionId: sectionId, payload: payload)
+        let updatedSection = try await apiService.regenerateCampaignCustomSection(campaignId: campaignId, sectionId: sectionId, payload: payload) // Pass Int sectionId
 
         // After regeneration, the campaign's overall sections (including custom ones) might need an update.
         // The backend might return just the section, or the whole campaign.
