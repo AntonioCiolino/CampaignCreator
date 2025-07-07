@@ -1,11 +1,6 @@
 import SwiftUI
 import CampaignCreatorLib
 
-// Helper for non-empty string check
-extension String {
-    var isNotEmpty: Bool { !self.isEmpty }
-}
-
 // Helper extension for Binding<Double?> to Double for Slider
 extension Binding where Value == Double? {
     func withDefault(_ defaultValue: Double) -> Binding<Double> {
