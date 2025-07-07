@@ -1196,33 +1196,30 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
               </ReactMarkdown>
             )}
             {(!campaign.display_toc || campaign.display_toc.length === 0) && <p>No Table of Contents generated yet.</p>}
-            <div className="button-group-responsive">
-              <Button
-                onClick={handleGenerateTOC}
-                disabled={isGeneratingTOC || !selectedLLMId}
-                className="action-button"
-                style={{ marginTop: (campaign.display_toc && campaign.display_toc.length > 0) ? '10px' : '0' }}
-                icon={<ListAltIcon />}
-                tooltip={!selectedLLMId ? "Select an LLM model from the Settings tab first" : "Generate or re-generate the Table of Contents based on the campaign concept and sections"}
-              >
-                <span className="button-text">{isGeneratingTOC ? 'Generating TOC...' : ((campaign.display_toc && campaign.display_toc.length > 0) ? 'Re-generate Table of Contents' : 'Generate Table of Contents')}</span>
-              </Button>
-              {campaign.display_toc && campaign.display_toc.length > 0 && !isTOCEditorVisible && (
-                <Button
-                  onClick={() => setIsTOCEditorVisible(true)}
-                  className="action-button"
-                  icon={<EditIcon />}
-                  style={{ marginTop: '10px', display: 'block', marginBottom: '15px' }}
-                  tooltip="Edit the Table of Contents entries"
-                >
-                  <span className="button-text">Edit Table of Contents</span>
-                </Button>
-              )}
-            </div>
+            <Button
+              onClick={handleGenerateTOC}
+              disabled={isGeneratingTOC || !selectedLLMId}
+              className="action-button"
+              style={{ marginTop: (campaign.display_toc && campaign.display_toc.length > 0) ? '10px' : '0' }}
+              icon={<ListAltIcon />}
+              tooltip={!selectedLLMId ? "Select an LLM model from the Settings tab first" : "Generate or re-generate the Table of Contents based on the campaign concept and sections"}
+            >
+              {isGeneratingTOC ? 'Generating TOC...' : ((campaign.display_toc && campaign.display_toc.length > 0) ? 'Re-generate Table of Contents' : 'Generate Table of Contents')}
+            </Button>
             {tocError && <p className="error-message feedback-message" style={{ marginTop: '5px' }}>{tocError}</p>}
-
+            {campaign.display_toc && campaign.display_toc.length > 0 && !isTOCEditorVisible && (
+              <Button
+                onClick={() => setIsTOCEditorVisible(true)}
+                className="action-button"
+                icon={<EditIcon />}
+                style={{ marginTop: '10px', display: 'block', marginBottom: '15px' }}
+                tooltip="Edit the Table of Contents entries"
+              >
+                Edit Table of Contents
+              </Button>
+            )}
             {(campaign.display_toc && campaign.display_toc.length > 0) && (
-              <div style={{ marginTop: '15px' }} className="button-group-responsive">
+              <div style={{ marginTop: '15px' }}>
                 {!isDetailedProgressVisible ? (
                   <>
                     <Button
@@ -1232,10 +1229,10 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
                       icon={<AddCircleOutlineIcon />}
                       tooltip="Parse the current Table of Contents and create campaign sections based on its structure. Optionally auto-populate content."
                     >
-                      <span className="button-text">{isSeedingSections ? (autoPopulateSections ? 'Creating & Populating Sections...' : 'Creating Sections...') : 'Approve TOC & Create Sections'}</span>
+                      {isSeedingSections ? (autoPopulateSections ? 'Creating & Populating Sections...' : 'Creating Sections...') : 'Approve TOC & Create Sections'}
                     </Button>
                     {!isDetailedProgressVisible && seedSectionsError && <p className="error-message feedback-message" style={{ marginTop: '5px' }}>{seedSectionsError}</p>}
-                    <div style={{ marginTop: '10px', marginBottom: '10px' }} className="seed-options">
+                    <div style={{ marginTop: '10px', marginBottom: '10px' }}>
                       <label htmlFor="autoPopulateCheckbox" style={{ marginRight: '8px' }}>
                         Auto-populate sections with generated content:
                       </label>
@@ -1298,9 +1295,9 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
       )}
     {tocSaveError && <p className="error-message feedback-message">{tocSaveError}</p>}
     {tocSaveSuccess && <p className="success-message feedback-message">{tocSaveSuccess}</p>}
-      <div className="action-group export-action-group editor-section button-group-responsive"> {/* Added button-group-responsive here */}
-        <Button onClick={handleExportHomebrewery} disabled={isExporting} className="llm-button export-button action-button" icon={<PublishIcon />} tooltip="Export the campaign content as Markdown formatted for Homebrewery">
-          <span className="button-text">{isExporting ? 'Exporting...' : 'Export to Homebrewery'}</span>
+      <div className="action-group export-action-group editor-section">
+        <Button onClick={handleExportHomebrewery} disabled={isExporting} className="llm-button export-button" icon={<PublishIcon />} tooltip="Export the campaign content as Markdown formatted for Homebrewery">
+          {isExporting ? 'Exporting...' : 'Export to Homebrewery'}
         </Button>
         {exportError && <p className="error-message llm-feedback">{exportError}</p>}
       </div>
@@ -1309,7 +1306,7 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
 
   const sectionsTabContent = (
     <>
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }} className="button-group-responsive"> {/* Added button-group-responsive here */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}> {/* Adjusted gap and mb values to match typical MUI spacing (e.g., theme.spacing(1) and theme.spacing(2)) */}
         <Button
           onClick={() => setIsAddSectionModalOpen(true)} // Open modal
           disabled={!campaign?.concept?.trim()}
@@ -1317,7 +1314,7 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
           icon={<AddCircleOutlineIcon />}
           tooltip={!campaign?.concept?.trim() ? "Please define and save a campaign concept first." : "Add a new section to the campaign"}
         >
-          <span className="button-text">Add New Section</span>
+          Add New Section
         </Button>
         <Button
           onClick={() => setForceCollapseAll(prev => !prev)}
@@ -1326,7 +1323,7 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
           className="action-button"
           tooltip={forceCollapseAll ? "Expand all sections" : "Collapse all sections"}
         >
-          <span className="button-text">{forceCollapseAll ? "Expand All" : "Collapse All"}</span>
+          {forceCollapseAll ? "Expand All" : "Collapse All"}
         </Button>
       </div>
       {/* The div className="section-display-controls editor-section" has been removed */}

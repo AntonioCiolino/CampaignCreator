@@ -27,10 +27,6 @@ const UserSettingsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // State for new fields
-  const [description, setDescription] = useState('');
-  const [appearance, setAppearance] = useState('');
-
   const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [sdApiKey, setSdApiKey] = useState('');
   const [geminiApiKey, setGeminiApiKey] = useState('');
@@ -73,8 +69,6 @@ const UserSettingsPage: React.FC = () => {
         setCurrentUser(userToSet);
         if (userToSet) {
           setSdEnginePreference(userToSet.sd_engine_preference || '');
-          setDescription(userToSet.description || '');
-          setAppearance(userToSet.appearance || '');
           // If avatar_url is present in the fetched user data, set the preview
           if (userToSet.avatar_url && !avatarPreview) { // only set if not already previewing a new file
             setAvatarPreview(userToSet.avatar_url);
@@ -100,48 +94,31 @@ const UserSettingsPage: React.FC = () => {
   //   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
   // };
 
-  const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handlePasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     setMessage(null);
-
+    if (newPassword !== confirmPassword) {
+      setError('New passwords do not match.');
+      return;
+    }
+    if (!newPassword) {
+      setError('New password cannot be empty.');
+      return;
+    }
     if (!currentUser) {
       setError('User data not loaded.');
       return;
     }
-
-    const updatePayload: Partial<User> = {
-        description: description,
-        appearance: appearance,
-    };
-
-    if (newPassword) {
-        if (newPassword !== confirmPassword) {
-            setError('New passwords do not match.');
-            return;
-        }
-        updatePayload.password = newPassword;
-    }
-
     setIsLoading(true);
     try {
-      // Assuming updateUser service can handle partial updates including password
-      await updateUser(currentUser.id, updatePayload);
-      setMessage('Profile updated successfully!');
-      if (newPassword) {
-          setNewPassword('');
-          setConfirmPassword('');
-          setCurrentPassword(''); // Clear current password field after successful update
-      }
-      // Refetch user data to update context and local state accurately
-      const updatedUser = await getMe();
-      if (setAuthUser) setAuthUser(updatedUser);
-      setCurrentUser(updatedUser);
-      setDescription(updatedUser.description || '');
-      setAppearance(updatedUser.appearance || '');
-
+      await updateUser(currentUser.id, { password: newPassword });
+      setMessage('Password updated successfully!');
+      setNewPassword('');
+      setConfirmPassword('');
+      setCurrentPassword('');
     } catch (err: any) {
-      let errorMessage = 'Failed to update profile.';
+      let errorMessage = 'Failed to update password.';
       if (err.response?.data?.detail) {
         errorMessage = typeof err.response.data.detail === 'string' ? err.response.data.detail : JSON.stringify(err.response.data.detail);
       } else if (err.message) {
@@ -385,38 +362,15 @@ const UserSettingsPage: React.FC = () => {
         <Input id="username-display" name="usernameDisplay" type="text" label="Username:" value={currentUser.username} disabled onChange={() => {}} />
         <Input id="email-display" name="emailDisplay" type="email" label="Email:" value={currentUser.email || ''} disabled onChange={() => {}} />
       </div>
-
-      <h3>Update Profile Information</h3>
+      <h3>Change Password</h3>
       {message && <div className="message success">{message}</div>}
       {error && <div className="message error">{error}</div>}
-      <form onSubmit={handleProfileSubmit} className="profile-update-form settings-form-section">
-        <Input
-          id="description"
-          name="description"
-          type="textarea" // Changed to textarea for potentially longer input
-          label="Description (optional):"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Tell us a bit about yourself..."
-        />
-        <Input
-          id="appearance"
-          name="appearance"
-          type="text" // Could also be a select or other input type depending on what "appearance" means
-          label="Appearance (optional):"
-          value={appearance}
-          onChange={(e) => setAppearance(e.target.value)}
-          placeholder="E.g., 'Likes dark themes'"
-        />
-
-        <h4>Change Password (optional)</h4>
-        {/* Current password might be needed if password is being changed, depends on backend logic. Assuming not for now. */}
-        {/* <Input id="current-password" name="currentPassword" type="password" label="Current Password (if changing password):" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} /> */}
-        <Input id="new-password" name="newPassword" type="password" label="New Password (leave blank to keep current):" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-        <Input id="confirm-password" name="confirmPassword" type="password" label="Confirm New Password:" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} disabled={!newPassword} />
-
-        <Button type="submit" variant="primary" disabled={isLoading} style={{marginTop: '1rem'}}>
-          {isLoading ? 'Updating Profile...' : 'Save Profile Changes'}
+      <form onSubmit={handlePasswordSubmit} className="password-change-form settings-form-section">
+        <Input id="current-password" name="currentPassword" type="password" label="Current Password:" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required />
+        <Input id="new-password" name="newPassword" type="password" label="New Password:" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
+        <Input id="confirm-password" name="confirmPassword" type="password" label="Confirm New Password:" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
+        <Button type="submit" variant="primary" disabled={isLoading}>
+          {isLoading ? 'Updating...' : 'Change Password'}
         </Button>
       </form>
 
