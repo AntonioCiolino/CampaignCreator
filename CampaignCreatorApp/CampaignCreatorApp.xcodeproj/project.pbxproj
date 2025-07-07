@@ -13,6 +13,12 @@
 		3D92BBEC2B8C8A8F00B8E8E8 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3D92BBEB2B8C8A8F00B8E8E8 /* Preview Assets.xcassets */; };
 		3D92BBF42B8C8B0200B8E8E8 /* CampaignCreatorLib in Frameworks */ = {isa = PBXBuildFile; productRef = 3D92BBF32B8C8B0200B8E8E8 /* CampaignCreatorLib */; };
 		3D92BBFA2B8C8D4C00B8E8E8 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D92BBF92B8C8D4C00B8E8E8 /* SettingsView.swift */; };
+		943031802E1C8B1000F3C129 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9430317E2E1C8B1000F3C129 /* KeychainHelper.swift */; };
+		943031812E1C8B1000F3C129 /* Binding+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9430317A2E1C8B1000F3C129 /* Binding+Helpers.swift */; };
+		943031822E1C8B1000F3C129 /* CampaignThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9430317B2E1C8B1000F3C129 /* CampaignThemeManager.swift */; };
+		943031832E1C8B1000F3C129 /* CustomTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9430317C2E1C8B1000F3C129 /* CustomTextView.swift */; };
+		943031842E1C8B1000F3C129 /* FeatureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9430317D2E1C8B1000F3C129 /* FeatureService.swift */; };
+		943031852E1C8B1000F3C129 /* SnippetContextInputModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9430317F2E1C8B1000F3C129 /* SnippetContextInputModal.swift */; };
 		9481FD632E1C3D180084268D /* CampaignThemeEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9481FD612E1C3D180084268D /* CampaignThemeEditView.swift */; };
 		9481FD642E1C3D180084268D /* SectionBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9481FD622E1C3D180084268D /* SectionBox.swift */; };
 		9481FD662E1C3D210084268D /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9481FD652E1C3D210084268D /* Color+Hex.swift */; };
@@ -32,6 +38,12 @@
 		3D92BBE82B8C8A8F00B8E8E8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3D92BBEB2B8C8A8F00B8E8E8 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		3D92BBF92B8C8D4C00B8E8E8 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		9430317A2E1C8B1000F3C129 /* Binding+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Binding+Helpers.swift"; sourceTree = "<group>"; };
+		9430317B2E1C8B1000F3C129 /* CampaignThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignThemeManager.swift; sourceTree = "<group>"; };
+		9430317C2E1C8B1000F3C129 /* CustomTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomTextView.swift; sourceTree = "<group>"; };
+		9430317D2E1C8B1000F3C129 /* FeatureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureService.swift; sourceTree = "<group>"; };
+		9430317E2E1C8B1000F3C129 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
+		9430317F2E1C8B1000F3C129 /* SnippetContextInputModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetContextInputModal.swift; sourceTree = "<group>"; };
 		9481FD612E1C3D180084268D /* CampaignThemeEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignThemeEditView.swift; sourceTree = "<group>"; };
 		9481FD622E1C3D180084268D /* SectionBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionBox.swift; sourceTree = "<group>"; };
 		9481FD652E1C3D210084268D /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
@@ -75,6 +87,12 @@
 		3D92BBE32B8C8A8E00B8E8E8 /* CampaignCreatorApp */ = {
 			isa = PBXGroup;
 			children = (
+				9430317A2E1C8B1000F3C129 /* Binding+Helpers.swift */,
+				9430317B2E1C8B1000F3C129 /* CampaignThemeManager.swift */,
+				9430317C2E1C8B1000F3C129 /* CustomTextView.swift */,
+				9430317D2E1C8B1000F3C129 /* FeatureService.swift */,
+				9430317E2E1C8B1000F3C129 /* KeychainHelper.swift */,
+				9430317F2E1C8B1000F3C129 /* SnippetContextInputModal.swift */,
 				9481FD652E1C3D210084268D /* Color+Hex.swift */,
 				9481FD612E1C3D180084268D /* CampaignThemeEditView.swift */,
 				9481FD622E1C3D180084268D /* SectionBox.swift */,
@@ -191,6 +209,12 @@
 				3D92BBE52B8C8A8E00B8E8E8 /* CampaignCreatorApp.swift in Sources */,
 				9481FD632E1C3D180084268D /* CampaignThemeEditView.swift in Sources */,
 				9481FD642E1C3D180084268D /* SectionBox.swift in Sources */,
+				943031802E1C8B1000F3C129 /* KeychainHelper.swift in Sources */,
+				943031812E1C8B1000F3C129 /* Binding+Helpers.swift in Sources */,
+				943031822E1C8B1000F3C129 /* CampaignThemeManager.swift in Sources */,
+				943031832E1C8B1000F3C129 /* CustomTextView.swift in Sources */,
+				943031842E1C8B1000F3C129 /* FeatureService.swift in Sources */,
+				943031852E1C8B1000F3C129 /* SnippetContextInputModal.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

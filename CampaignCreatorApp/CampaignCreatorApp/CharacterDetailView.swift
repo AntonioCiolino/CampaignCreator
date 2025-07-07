@@ -51,6 +51,8 @@ struct CharacterDetailView: View {
                      SectionBox(title: "Export Preference") { Text(exportFormat) }
                 }
 
+                // Display Custom Sections - REMOVED from Character
+
                 SectionBox(title: "Metadata") {
                     HStack { Text("Created:"); Spacer(); Text(character.createdAt != nil ? "\(character.createdAt!, style: .date)" : "N/A") }
                     .font(.caption).foregroundColor(.secondary)
@@ -122,6 +124,7 @@ struct CharacterDetailView_Previews: PreviewProvider {
             notesForLLM: "Loves nature, wary of large cities, skilled archer.",
             stats: CharacterStats(strength: 11, dexterity: 19, constitution: 12, intelligence: 10, wisdom: 14, charisma: 13),
             exportFormatPreference: "Markdown",
+            // customSections REMOVED
             createdAt: Date(timeIntervalSinceNow: -86400 * 5), // 5 days ago
             modifiedAt: Date(timeIntervalSinceNow: -86400 * 1) // 1 day ago
         )
