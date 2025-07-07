@@ -75,11 +75,25 @@ extension Binding {
 }
 
 // For the specific Picker case where `String?` needs a default for `String` binding:
+// (also used for TextFields now with more robust logic)
 extension Binding where Value == String? {
     func withDefault(_ defaultValue: String) -> Binding<String> {
         Binding<String>(
             get: { self.wrappedValue ?? defaultValue },
-            set: { self.wrappedValue = $0 }
+            set: {
+                let trimmedValue = $0.trimmingCharacters(in: .whitespacesAndNewlines)
+                // Store nil if empty, OR if it matches a non-empty default placeholder.
+                if trimmedValue.isEmpty || (defaultValue.isNotEmpty && trimmedValue == defaultValue) {
+                    self.wrappedValue = nil
+                } else {
+                    self.wrappedValue = trimmedValue
+                }
+            }
         )
     }
+}
+
+// Helper for non-empty string check, used by withDefault for String?
+internal extension String { // Make internal if only used within this module's extensions
+    var isNotEmpty: Bool { !self.isEmpty }
 }

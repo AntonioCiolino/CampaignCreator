@@ -1,26 +1,6 @@
 import SwiftUI
 import CampaignCreatorLib
 
-// Helper extension for Binding<String?> to String for TextField
-extension Binding where Value == String? {
-    func withDefault(_ defaultValue: String) -> Binding<String> {
-        Binding<String>(
-            get: { self.wrappedValue ?? defaultValue },
-            set: {
-                let trimmedValue = $0.trimmingCharacters(in: .whitespacesAndNewlines)
-                // Store nil if empty, otherwise store the value.
-                // If the current value IS the default value, setting it to "" should result in nil.
-                // If user types the default value, it should also be considered as "using the default", so store nil.
-                if trimmedValue.isEmpty || (defaultValue.isNotEmpty && trimmedValue == defaultValue) {
-                    self.wrappedValue = nil
-                } else {
-                    self.wrappedValue = trimmedValue
-                }
-            }
-        )
-    }
-}
-
 // Helper for non-empty string check
 extension String {
     var isNotEmpty: Bool { !self.isEmpty }
