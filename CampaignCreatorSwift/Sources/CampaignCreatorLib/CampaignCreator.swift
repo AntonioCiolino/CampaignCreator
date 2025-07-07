@@ -97,7 +97,11 @@ public class CampaignCreator: ObservableObjectProtocol {
             let user = try await apiService.getMe()
             self.currentUser = user
             self.isUserSessionValid = true // Session is valid
-            print("✅ Fetched current user: \(user.email)")
+            print("✅ Fetched current user: \(user.email). Now fetching initial data.")
+            // Proactively fetch essential data now that the user session is confirmed
+            await self.fetchCharacters()
+            await self.fetchCampaigns()
+            // Note: fetchCharacters/Campaigns internally set their 'initialFetchAttempted' flags.
         } catch let error as APIError {
             print("❌ Failed to fetch current user: \(error.localizedDescription)")
             // If /users/me fails (e.g. token expired), treat as logout

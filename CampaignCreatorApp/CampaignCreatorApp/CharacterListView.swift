@@ -71,18 +71,26 @@ struct CharacterListView: View {
                 CharacterCreateView(campaignCreator: campaignCreator, isPresented: $showingCreateSheet)
             }
             .onAppear {
-                print("CharacterListView: .onAppear. SessionValid: \(campaignCreator.isUserSessionValid), Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCharacters), InitialFetchAttempted: \(campaignCreator.initialCharacterFetchAttempted), Err: \(campaignCreator.characterError != nil ? (campaignCreator.characterError?.localizedDescription ?? "Unknown Error") : "None")")
+                // Simplified logic:
+                // Proactive fetch is now handled in CampaignCreator after successful user session validation.
+                // This .onAppear primarily handles:
+                // 1. Retrying if there was a previous error.
+                // 2. Fetching if the view appears and characters are empty AND the initial fetch (now proactive)
+                //    hasn't been marked as attempted yet (e.g., view appears *very* quickly).
+                print("CharacterListView: .onAppear. SessionValid: \(campaignCreator.isUserSessionValid), Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCharacters), CharactersEmpty: \(campaignCreator.characters.isEmpty), InitialFetchAttempted: \(campaignCreator.initialCharacterFetchAttempted), Err: \(campaignCreator.characterError != nil ? (campaignCreator.characterError?.localizedDescription ?? "Unknown Error") : "None")")
                 if campaignCreator.isUserSessionValid && !campaignCreator.isLoadingCharacters {
-                    if !campaignCreator.initialCharacterFetchAttempted || campaignCreator.characterError != nil {
-                        print("CharacterListView: Conditions met (SESSION VALID, initial fetch needed or error retry), will fetch characters.")
+                    // Fetch if there's an error to retry, OR
+                    // if characters are empty and initial fetch hasn't been attempted (less likely now but safe).
+                    if campaignCreator.characterError != nil || (campaignCreator.characters.isEmpty && !campaignCreator.initialCharacterFetchAttempted) {
+                        print("CharacterListView: Conditions met for fetch (error retry or initial empty state). Will fetch characters.")
                         Task {
                             await campaignCreator.fetchCharacters()
                         }
                     } else {
-                        print("CharacterListView: Session valid, initial fetch already attempted and no error, skipping fetch. Characters count: \(campaignCreator.characters.count)")
+                        print("CharacterListView: Skipping fetch. Conditions not met (no error, or characters present/initial fetch attempted). Characters count: \(campaignCreator.characters.count)")
                     }
                 } else {
-                    print("CharacterListView: Skipping fetch. SessionValid: \(campaignCreator.isUserSessionValid), Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCharacters)")
+                    print("CharacterListView: Skipping fetch. Session not valid or already loading. SessionValid: \(campaignCreator.isUserSessionValid), Loading: \(campaignCreator.isLoadingCharacters)")
                 }
             }
         }
