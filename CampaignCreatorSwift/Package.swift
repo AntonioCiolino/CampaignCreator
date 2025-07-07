@@ -34,6 +34,7 @@ let package = Package(
                 "OpenAIClient.swift",
                 "OpenAIDataStructures.swift",
                 "SecretsManager.swift",
+                "KeychainHelper.swift",
                 "Models/CampaignModel.swift",
                 "Models/CharacterModel.swift",
                 "Models/UserModel.swift" // Added UserModel.swift

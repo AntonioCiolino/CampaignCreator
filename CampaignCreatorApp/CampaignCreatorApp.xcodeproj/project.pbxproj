@@ -13,6 +13,9 @@
 		3D92BBEC2B8C8A8F00B8E8E8 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3D92BBEB2B8C8A8F00B8E8E8 /* Preview Assets.xcassets */; };
 		3D92BBF42B8C8B0200B8E8E8 /* CampaignCreatorLib in Frameworks */ = {isa = PBXBuildFile; productRef = 3D92BBF32B8C8B0200B8E8E8 /* CampaignCreatorLib */; };
 		3D92BBFA2B8C8D4C00B8E8E8 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D92BBF92B8C8D4C00B8E8E8 /* SettingsView.swift */; };
+		9481FD632E1C3D180084268D /* CampaignThemeEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9481FD612E1C3D180084268D /* CampaignThemeEditView.swift */; };
+		9481FD642E1C3D180084268D /* SectionBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9481FD622E1C3D180084268D /* SectionBox.swift */; };
+		9481FD662E1C3D210084268D /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9481FD652E1C3D210084268D /* Color+Hex.swift */; };
 		949269E92E1AC11300376F0A /* CharacterCreateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949269E42E1AC11300376F0A /* CharacterCreateView.swift */; };
 		949269EA2E1AC11300376F0A /* CampaignListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949269E32E1AC11300376F0A /* CampaignListView.swift */; };
 		949269EB2E1AC11300376F0A /* CampaignDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949269E22E1AC11300376F0A /* CampaignDetailView.swift */; };
@@ -29,6 +32,9 @@
 		3D92BBE82B8C8A8F00B8E8E8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3D92BBEB2B8C8A8F00B8E8E8 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		3D92BBF92B8C8D4C00B8E8E8 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		9481FD612E1C3D180084268D /* CampaignThemeEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignThemeEditView.swift; sourceTree = "<group>"; };
+		9481FD622E1C3D180084268D /* SectionBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionBox.swift; sourceTree = "<group>"; };
+		9481FD652E1C3D210084268D /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
 		949269E22E1AC11300376F0A /* CampaignDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignDetailView.swift; sourceTree = "<group>"; };
 		949269E32E1AC11300376F0A /* CampaignListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignListView.swift; sourceTree = "<group>"; };
 		949269E42E1AC11300376F0A /* CharacterCreateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterCreateView.swift; sourceTree = "<group>"; };
@@ -69,6 +75,9 @@
 		3D92BBE32B8C8A8E00B8E8E8 /* CampaignCreatorApp */ = {
 			isa = PBXGroup;
 			children = (
+				9481FD652E1C3D210084268D /* Color+Hex.swift */,
+				9481FD612E1C3D180084268D /* CampaignThemeEditView.swift */,
+				9481FD622E1C3D180084268D /* SectionBox.swift */,
 				949269E22E1AC11300376F0A /* CampaignDetailView.swift */,
 				949269E32E1AC11300376F0A /* CampaignListView.swift */,
 				949269E42E1AC11300376F0A /* CharacterCreateView.swift */,
@@ -169,6 +178,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9481FD662E1C3D210084268D /* Color+Hex.swift in Sources */,
 				949269E92E1AC11300376F0A /* CharacterCreateView.swift in Sources */,
 				949269EA2E1AC11300376F0A /* CampaignListView.swift in Sources */,
 				949269EB2E1AC11300376F0A /* CampaignDetailView.swift in Sources */,
@@ -179,6 +189,8 @@
 				3D92BBFA2B8C8D4C00B8E8E8 /* SettingsView.swift in Sources */,
 				3D92BBE72B8C8A8E00B8E8E8 /* ContentView.swift in Sources */,
 				3D92BBE52B8C8A8E00B8E8E8 /* CampaignCreatorApp.swift in Sources */,
+				9481FD632E1C3D180084268D /* CampaignThemeEditView.swift in Sources */,
+				9481FD642E1C3D180084268D /* SectionBox.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

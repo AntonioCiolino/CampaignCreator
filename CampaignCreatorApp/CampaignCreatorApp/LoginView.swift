@@ -36,7 +36,7 @@ struct LoginView: View {
                     .opacity(0.3) // Adjust opacity to make it a background
                     // .onAppear { player.play() } // player.play() is now called reliably in setupVideoPlayer
                     .onDisappear {
-                        player?.pause()
+                        player.pause()
                         // Remove observer when the view disappears
                         NotificationCenter.default.removeObserver(self, name: .AVPlayerItemDidPlayToEndTime, object: nil)
                     }
