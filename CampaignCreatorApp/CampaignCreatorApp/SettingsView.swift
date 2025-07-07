@@ -102,11 +102,9 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .onAppear {
-                loadAPIKeys() // Load current keys for display
-                // Initialize edit fields with actual stored values, not the masked ones
-                editOpenAIApiKey = UserDefaults.standard.string(forKey: "OPENAI_API_KEY") ?? ""
-                editGeminiApiKey = UserDefaults.standard.string(forKey: "GEMINI_API_KEY") ?? ""
-                editStableDiffusionApiKey = UserDefaults.standard.string(forKey: "STABLE_DIFFUSION_API_KEY") ?? ""
+                loadAPIKeys() // This will now correctly load OpenAI key into editOpenAIApiKey via SecretsManager
+                // Gemini and Stable Diffusion are still loaded directly from UserDefaults in loadAPIKeys if not found by SecretsManager,
+                // but their edit fields are also set within loadAPIKeys.
             }
             .alert("Login Credentials", isPresented: $showingForgetLoginAlert) { // Alert for forgetting login
                 Button("OK") { }
@@ -159,40 +157,63 @@ struct SettingsView: View {
     }
 
     private func loadAPIKeys() {
-        let storedOpenAIKey = UserDefaults.standard.string(forKey: "OPENAI_API_KEY") ?? ""
+        // Load OpenAI API Key from Keychain or UserDefaults (via SecretsManager)
+        if let key = SecretsManager.shared.openAIAPIKey, !key.isEmpty {
+            openAIApiKey = "••••••••••••••••" // Masked for display
+            editOpenAIApiKey = key // Actual key for editing
+        } else {
+            openAIApiKey = ""
+            editOpenAIApiKey = ""
+        }
+
+        // Gemini and Stable Diffusion remain on UserDefaults for now as per current scope
         let storedGeminiKey = UserDefaults.standard.string(forKey: "GEMINI_API_KEY") ?? ""
         let storedStableDiffusionKey = UserDefaults.standard.string(forKey: "STABLE_DIFFUSION_API_KEY") ?? ""
         
-        openAIApiKey = storedOpenAIKey.isEmpty ? "" : "••••••••••••••••"
         geminiApiKey = storedGeminiKey.isEmpty ? "" : "••••••••••••••••"
-        stableDiffusionApiKey = storedStableDiffusionKey.isEmpty ? "" : "••••••••••••••••"
+        editGeminiApiKey = storedGeminiKey // Actual key for editing
 
-        // Edit fields are initialized in .onAppear directly
+        stableDiffusionApiKey = storedStableDiffusionKey.isEmpty ? "" : "••••••••••••••••"
+        editStableDiffusionApiKey = storedStableDiffusionKey // Actual key for editing
     }
     
-    private func saveAPIKey(_ key: String, value: String) {
+    private func saveAPIKey(_ keyName: String, value: String) {
         let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        UserDefaults.standard.set(trimmedValue, forKey: key)
-        // setenv(key, trimmedValue, 1) // No longer needed as SecretsManager reads from UserDefaults
-        
-        // Update display state
-        var keyLabel = key.replacingOccurrences(of: "_API_KEY", with: "")
-                           .replacingOccurrences(of: "_", with: " ") // Make it more readable
-                           .capitalized
+        var keyLabel = keyName.replacingOccurrences(of: "_API_KEY", with: "")
+                               .replacingOccurrences(of: "_", with: " ")
+                               .capitalized
 
-        if key == "OPENAI_API_KEY" {
-            openAIApiKey = trimmedValue.isEmpty ? "" : "••••••••••••••••"
-            editOpenAIApiKey = trimmedValue
-        } else if key == "GEMINI_API_KEY" {
+        if keyName == "OPENAI_API_KEY" {
+            do {
+                if trimmedValue.isEmpty {
+                    try KeychainHelper.delete(username: keyName) // Use keyName as username for API keys
+                    print("OpenAI API Key deleted from Keychain.")
+                } else {
+                    try KeychainHelper.savePassword(username: keyName, password: trimmedValue)
+                    print("OpenAI API Key saved to Keychain.")
+                }
+                // Remove from UserDefaults if it exists there (migration cleanup)
+                UserDefaults.standard.removeObject(forKey: keyName)
+
+                openAIApiKey = trimmedValue.isEmpty ? "" : "••••••••••••••••"
+                editOpenAIApiKey = trimmedValue
+                alertMessage = "\(keyLabel) API Key has been saved securely."
+            } catch {
+                alertMessage = "Failed to save \(keyLabel) API Key: \(error.localizedDescription)"
+            }
+        } else if keyName == "GEMINI_API_KEY" {
+            UserDefaults.standard.set(trimmedValue, forKey: keyName)
             geminiApiKey = trimmedValue.isEmpty ? "" : "••••••••••••••••"
             editGeminiApiKey = trimmedValue
-        } else if key == "STABLE_DIFFUSION_API_KEY" {
+            alertMessage = "\(keyLabel) API Key has been saved."
+        } else if keyName == "STABLE_DIFFUSION_API_KEY" {
+            UserDefaults.standard.set(trimmedValue, forKey: keyName)
             stableDiffusionApiKey = trimmedValue.isEmpty ? "" : "••••••••••••••••"
             editStableDiffusionApiKey = trimmedValue
             keyLabel = "Stable Diffusion" // Custom label for alert
+            alertMessage = "\(keyLabel) API Key has been saved."
         }
         
-        alertMessage = "\(keyLabel) API Key has been saved."
         showingAPIKeyAlert = true
     }
     
