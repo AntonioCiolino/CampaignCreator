@@ -130,3 +130,11 @@ dmypy.json
 
 secrets.toml
 TextEditorApp/TextEditorApp/Secrets.swift
+
+# === Xcode ===
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/
