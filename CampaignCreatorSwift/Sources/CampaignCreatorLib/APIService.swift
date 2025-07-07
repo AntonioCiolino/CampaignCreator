@@ -429,4 +429,28 @@ public final class APIService: Sendable {
     public func getMe() async throws -> User {
         return try await performRequest(endpoint: "/users/me", requiresAuth: true)
     }
+
+    // MARK: - Feature Methods
+    public func fetchFeatures() async throws -> [Feature] {
+        try await performRequest(endpoint: "/features/") // Assuming endpoint is /api/v1/features/
+    }
+
+    // MARK: - Campaign Custom Section Methods (New)
+    public func regenerateCampaignCustomSection(campaignId: Int, sectionId: UUID, payload: SectionRegeneratePayload) async throws -> CampaignCustomSection {
+        let body = try jsonEncoder.encode(payload)
+        // The endpoint needs to be confirmed. Assuming a nested structure for custom sections.
+        // e.g., /api/v1/campaigns/{campaign_id}/custom_sections/{section_id}/regenerate
+        // Or if custom sections are part of the main campaign update, this might be different.
+        // For now, assuming a dedicated regeneration endpoint for a custom section.
+        // IMPORTANT: The actual endpoint path needs to be verified with the backend API documentation.
+        // Using a placeholder endpoint structure for now.
+        return try await performRequest(endpoint: "/campaigns/\(campaignId)/custom_sections/\(sectionId.uuidString)/regenerate", method: "POST", body: body)
+    }
+
+    // MARK: - Image Generation Methods
+    public func generateImage(payload: ImageGenerationParams) async throws -> ImageGenerationResponse {
+        let body = try jsonEncoder.encode(payload)
+        // Endpoint from web UI is /api/v1/images/generate
+        return try await performRequest(endpoint: "/images/generate", method: "POST", body: body)
+    }
 }

@@ -31,8 +31,27 @@ struct CampaignDetailView: View {
     // For generating temporary client-side IDs for new sections
     @State private var nextTemporaryClientSectionID: Int = -1
     @State private var localCampaignCustomSections: [CampaignCustomSection] // ADDED
+    @State private var customTextViewCoordinators: [UUID: CustomTextView.Coordinator] = [:] // ADDED for snippet ops
+    @State private var snippetFeatures: [Feature] = [] // ADDED for snippet features
+    @State private var isLoadingFeatures: Bool = false // ADDED
+    private let featureService = FeatureService() // ADDED
+
+    // State for Snippet Context Modal
+    @State private var showingContextModal: Bool = false
+    @State private var currentFeatureForModal: Feature? = nil
+    @State private var currentSectionIdForModal: UUID? = nil // To know which section's coordinator to use
+    @State private var currentSelectedTextForModal: String = ""
+
+    // State for Image Generation Modal for sections
+    @State private var showingImagePromptModalForSection: Bool = false
+    @State private var currentSectionIdForImageGen: UUID? = nil
+    @State private var imageGenPromptText: String = ""
+
 
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
+
+    private let sectionTypes = ["Generic", "NPC", "Character", "Location", "Item", "Quest", "Monster", "Chapter", "Note", "World Detail"]
+
 
     init(campaign: Campaign, campaignCreator: CampaignCreator) {
         self._campaign = State(initialValue: campaign)
@@ -40,6 +59,17 @@ struct CampaignDetailView: View {
         self._editableTitle = State(initialValue: campaign.title)
         self._editableConcept = State(initialValue: campaign.concept ?? "")
         self._localCampaignCustomSections = State(initialValue: campaign.customSections ?? []) // ADDED
+    }
+
+    // Helper to convert SwiftUI Font to UIFont (simplified)
+    private func uiFontFrom(swiftUIFont: Font, defaultSize: CGFloat = 16) -> UIFont {
+        // This is a simplified conversion. A full conversion is complex.
+        // It currently relies on how `currentFont` is constructed.
+        if let fontName = campaign.themeFontFamily, !fontName.isEmpty {
+            return UIFont(name: fontName, size: defaultSize) ?? UIFont.systemFont(ofSize: defaultSize)
+        }
+        // Assuming .body maps to system font of defaultSize for this context
+        return UIFont.systemFont(ofSize: defaultSize)
     }
 
     // Computed properties for theme colors
@@ -202,6 +232,227 @@ struct CampaignDetailView: View {
         // if they clash with the overall theme. For now, applying font/color broadly.
     }
 
+    private func handleImageGenerationForSection() async {
+        guard let sectionId = currentSectionIdForImageGen,
+              let coordinator = customTextViewCoordinators[sectionId] else {
+            print("Error: Missing section ID or coordinator for image generation.")
+            // TODO: Show error to user
+            return
+        }
+
+        let prompt = imageGenPromptText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !prompt.isEmpty else {
+            print("Error: Image generation prompt is empty.")
+            // TODO: Show error to user
+            return
+        }
+
+        // Consider adding loading state indication for this specific section or globally
+        print("Generating image for section \(sectionId) with prompt: \(prompt)")
+
+        do {
+            let response = try await campaignCreator.generateImageForSection(
+                prompt: prompt,
+                campaignId: Int(campaign.id) // Assuming campaign.id is Int
+                // Add other params like model, size if UI allows configuring them
+            )
+
+            let markdownImage = "\n![Generated Image: \(response.promptUsed)](\(response.imageUrl))\n"
+            coordinator.insertTextAtCurrentCursor(markdownImage)
+
+            // Update local state if content was changed directly through coordinator
+            // This ensures the change is reflected if the binding didn't immediately pick it up
+            // or if save logic relies on localCampaignCustomSections being perfectly in sync.
+            if let index = localCampaignCustomSections.firstIndex(where: { $0.id == sectionId }) {
+                 // The coordinator's insertTextAtCurrentCursor already updated parent.text binding.
+                 // So, localCampaignCustomSections[index].content should be up-to-date.
+                 // If not, manual update would be needed:
+                 // localCampaignCustomSections[index].content = coordinator.textView?.text ?? localCampaignCustomSections[index].content
+            }
+
+            // Save the campaign to persist the new content with the image link
+            await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true)
+            print("Image generated and inserted for section \(sectionId).")
+
+        } catch {
+            print("Error generating image for section \(sectionId): \(error.localizedDescription)")
+            // TODO: Show error to user (e.g., update a @State var bound to an alert for this modal or section)
+        }
+
+        // Reset state
+        self.currentSectionIdForImageGen = nil
+        self.imageGenPromptText = ""
+    }
+
+    private func handleSnippetFeatureSelection(_ feature: Feature, forSection section: CampaignCustomSection) {
+        guard let coordinator = customTextViewCoordinators[section.id] else {
+            print("Coordinator not found for section \(section.id) to process snippet feature '\(feature.name)'.")
+            // Optionally show an alert to the user
+            return
+        }
+
+        guard let selectedText = coordinator.getSelectedText(), !selectedText.isEmpty else {
+            print("No text selected in section \(section.id) for snippet feature '\(feature.name)'.")
+            // Optionally show an alert to the user to select text
+            return
+        }
+
+        let currentRange = coordinator.getCurrentSelectedRange() // Keep this to know where to replace later
+        print("Snippet Feature '\(feature.name)' selected for text: '\(selectedText)' in section \(section.id) at range \(currentRange)")
+
+        let additionalRequiredContext = feature.requiredContext?.filter { $0 != "selected_text" && $0 != "campaign_characters" } ?? []
+
+        if additionalRequiredContext.isEmpty {
+            // No additional context needed, proceed to (placeholder) LLM call
+            print("No additional context required for feature '\(feature.name)'. Calling placeholder process.")
+            // Placeholder for Step 4.D (Full LLM Interaction)
+            // For now, simulate by replacing text.
+            // This will eventually call a method that takes `feature`, `selectedText`, `section.id`, `currentRange`, and empty context.
+            processSnippetWithLLM(feature: feature, sectionId: section.id, selectedText: selectedText, rangeToReplace: currentRange, additionalContext: [:])
+
+        } else {
+            // Additional context required, show modal
+            print("Additional context required for feature '\(feature.name)': \(additionalRequiredContext). Showing modal.")
+            self.currentFeatureForModal = feature
+            self.currentSectionIdForModal = section.id
+            self.currentSelectedTextForModal = selectedText
+            // self.currentSelectionRangeForModal = currentRange // Store this if modal needs to pass it back for replacement
+            self.showingContextModal = true
+        }
+    }
+
+    private func handleFullSectionRegeneration(forSection section: CampaignCustomSection) {
+        guard let coordinator = customTextViewCoordinators[section.id] else {
+            print("Error: Coordinator not found for section \(section.id) for full regeneration.")
+            // TODO: Show error to user
+            return
+        }
+
+        // Determine the prompt: use selected text if any, otherwise the whole current content.
+        let selectedText = coordinator.getSelectedText()
+        let currentFullText = section.content // Use the bound content from localCampaignCustomSections
+
+        let promptForRegeneration = selectedText ?? currentFullText // If text is selected, it's a hint/focus. Otherwise, use current content.
+
+        Task {
+            let payload = SectionRegeneratePayload(
+                newPrompt: promptForRegeneration,
+                newTitle: section.title,
+                sectionType: section.type,
+                modelIdWithPrefix: campaign.selectedLLMId, // Use campaign's selected LLM
+                featureId: nil, // No specific feature for full regeneration
+                contextData: selectedText != nil ? ["user_instructions": selectedText!] : nil // Pass selected text as user_instructions if it exists
+            )
+
+            do {
+                print("Calling CampaignCreator to regenerate FULL content for section \(section.id)...")
+                let updatedSectionData = try await campaignCreator.regenerateCampaignCustomSection(
+                    campaignId: Int(campaign.id),
+                    sectionId: section.id,
+                    payload: payload
+                )
+
+                // Replace ENTIRE text in the CustomTextView
+                // To do this via coordinator, it might need a `setText` method, or we update binding.
+                // Forcing binding update:
+                if let index = localCampaignCustomSections.firstIndex(where: { $0.id == section.id }) {
+                    localCampaignCustomSections[index].content = updatedSectionData.content
+                    // If the backend could also change title/type during full regeneration:
+                    // localCampaignCustomSections[index].title = updatedSectionData.title
+                    // localCampaignCustomSections[index].type = updatedSectionData.type
+                }
+                // The CustomTextView will update via its @Binding text.
+
+                await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true)
+                print("Full section content regeneration successful for section \(section.id).")
+
+            } catch {
+                print("Error regenerating full section content for section \(section.id): \(error.localizedDescription)")
+                // TODO: Show error to user
+            }
+        }
+    }
+
+    // Placeholder for actual LLM call logic (Step 4.D)
+    private func processSnippetWithLLM(feature: Feature, sectionId: UUID, selectedText: String, rangeToReplace: NSRange, additionalContext: [String: String]) {
+        guard let coordinator = customTextViewCoordinators[sectionId] else {
+            print("Error: Coordinator not found for section \(sectionId) during LLM processing.")
+            // TODO: Show error to user
+            return
+        }
+
+        // Get current section details to pass to payload
+        guard let currentCampaignSection = localCampaignCustomSections.first(where: { $0.id == sectionId }) else {
+            print("Error: Could not find current campaign section with ID \(sectionId) in local state.")
+            return
+        }
+
+        Task {
+            let payload = SectionRegeneratePayload(
+                newPrompt: selectedText, // The selected text is the primary "prompt" for the snippet feature
+                newTitle: currentCampaignSection.title,
+                sectionType: currentCampaignSection.type,
+                modelIdWithPrefix: campaign.selectedLLMId, // Use campaign's selected LLM
+                featureId: feature.id,
+                contextData: additionalContext.merging(["selected_text": selectedText]) { (_, new) in new } // Ensure selected_text is in context
+            )
+
+            do {
+                print("Calling CampaignCreator to regenerate snippet for section \(sectionId), feature '\(feature.name)'...")
+                let updatedSectionData = try await campaignCreator.regenerateCampaignCustomSection(
+                    campaignId: Int(campaign.id), // Assuming campaign.id is Int
+                    sectionId: sectionId,
+                    payload: payload
+                )
+
+                // Replace text in the CustomTextView
+                coordinator.replaceText(inRange: rangeToReplace, with: updatedSectionData.content)
+
+                // Update localCampaignCustomSections to reflect the new content and potentially other changes from backend
+                if let index = localCampaignCustomSections.firstIndex(where: { $0.id == sectionId }) {
+                    localCampaignCustomSections[index].content = updatedSectionData.content
+                    // If backend can change title/type during regeneration, update them too:
+                    // localCampaignCustomSections[index].title = updatedSectionData.title
+                    // localCampaignCustomSections[index].type = updatedSectionData.type
+                }
+
+                // The campaign itself in campaignCreator.campaigns list should have been updated by regenerateCampaignCustomSection.
+                // We might need to re-sync `self.campaign` if `CampaignDetailView`'s copy is stale.
+                // This is complex. For now, assume `saveCampaignDetails` after this will handle persisting the locally modified section.
+                // Or, even better, `CampaignCreator.regenerateCampaignCustomSection` should ensure its published `campaigns` array is updated,
+                // and `CampaignDetailView` should observe that.
+
+                // Persist the changes made by the LLM (which updated local state via coordinator)
+                await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true)
+                print("Snippet processing successful for feature '\(feature.name)'.")
+
+            } catch {
+                print("Error processing snippet with LLM for feature '\(feature.name)': \(error.localizedDescription)")
+                // TODO: Show error to user (e.g., update a @State var bound to an alert)
+            }
+        }
+    }
+
+    private func fetchSnippetFeatures() async {
+        isLoadingFeatures = true
+        do {
+            let allFeatures = try await featureService.fetchFeatures()
+            // Filter for "Snippet" category or other relevant criteria if needed
+            // For now, assuming all fetched features might be usable as snippets,
+            // or the backend / featureService already filters appropriately.
+            // The web UI filters for category 'Snippet' or specific non-campaign/TOC related names.
+            self.snippetFeatures = allFeatures.filter {
+                $0.featureCategory?.lowercased() == "snippet" ||
+                ($0.featureCategory == nil && !["Campaign", "TOC Homebrewery", "TOC Display", "Campaign Names"].contains($0.name))
+            }
+            print("Fetched \(self.snippetFeatures.count) snippet features.")
+        } catch {
+            print("Error fetching snippet features: \(error.localizedDescription)")
+            // Handle error display if necessary
+        }
+        isLoadingFeatures = false
+    }
+
     // MARK: - Campaign Custom Sections Editor
     private var campaignCustomSectionsEditorView: some View {
         DisclosureGroup("Custom Campaign Sections") {
@@ -212,20 +463,77 @@ struct CampaignDetailView: View {
                             .font(currentFont.weight(.semibold)) // Use theme font
                             .textFieldStyle(PlainTextFieldStyle())
                             .padding(.bottom, 2)
-                        TextEditor(text: $section.content)
+
+                        Picker("Section Type", selection: $section.type.withDefault("Generic")) {
+                            ForEach(sectionTypes, id: \.self) { typeName in
+                                Text(typeName).tag(typeName)
+                            }
+                        }
+                        .pickerStyle(MenuPickerStyle())
+                        .font(currentFont.caption) // Apply themed font, smaller size
+                        .padding(.bottom, 4)
+
+                        CustomTextView(
+                            text: $section.content,
+                            font: uiFontFrom(swiftUIFont: currentFont),
+                            textColor: UIColor(currentTextColor),
+                            onCoordinatorCreated: { coordinator in
+                                customTextViewCoordinators[section.id] = coordinator
+                            }
+                        )
                             .frame(minHeight: 100, maxHeight: 300)
-                            .padding(4)
                             .background(Color(.secondarySystemGroupedBackground))
                             .cornerRadius(8)
                             .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
-                            .font(currentFont) // Use theme font
-                        Button("Delete Section") {
-                            localCampaignCustomSections.removeAll { $0.id == section.id }
-                            // Consider triggering a save or marking campaign as changed
-                            Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
+
+                        HStack { // Group Delete and Test Snippet buttons
+                            Button("Delete Section") {
+                                localCampaignCustomSections.removeAll { $0.id == section.id }
+                                customTextViewCoordinators.removeValue(forKey: section.id) // Clean up coordinator
+                                Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
+                            }
+                            .foregroundColor(.red)
+                            .buttonStyle(.borderless)
+
+                            Spacer()
+
+                            Menu {
+                                if isLoadingFeatures {
+                                    Text("Loading features...")
+                                } else if snippetFeatures.isEmpty {
+                                    Text("No snippet features available.")
+                                } else {
+                                    ForEach(snippetFeatures) { feature in
+                                        Button(feature.name) {
+                                            handleSnippetFeatureSelection(feature, forSection: section)
+                                        }
+                                    }
+                                }
+                            } label: {
+                                Label("Process Snippet", systemImage: "wand.and.stars")
+                                    .font(.caption) // Apply caption font to the label
+                            }
+                            .buttonStyle(.bordered)
+                            // .font(.caption) // This on Menu might not style the internal label as expected, applied to Label directly.
+                            .disabled(isLoadingFeatures)
+
+                            Button("Regenerate Content") {
+                                handleFullSectionRegeneration(forSection: section)
+                            }
+                            .buttonStyle(.bordered)
+                            .font(.caption)
+                            .tint(currentPrimaryColor) // Optional: theme it or use default
+
+                            Button { // Generate Image Button
+                                self.currentSectionIdForImageGen = section.id
+                                self.imageGenPromptText = section.title ?? "" // Pre-fill with section title
+                                self.showingImagePromptModalForSection = true
+                            } label: {
+                                Label("Image", systemImage: "photo.badge.plus")
+                                   .font(.caption)
+                            }
+                            .buttonStyle(.bordered)
                         }
-                        .foregroundColor(.red)
-                        .buttonStyle(.borderless)
                         .padding(.top, 4)
                     }
                     .padding(.vertical, 8)
@@ -290,6 +598,73 @@ struct CampaignDetailView: View {
         .navigationTitle(editableTitle)
         .navigationBarTitleDisplayMode(.inline)
         .disabled(isSaving || isGeneratingText)
+        .onAppear {
+            Task {
+                await fetchSnippetFeatures()
+            }
+        }
+        .sheet(isPresented: $showingContextModal) {
+            if let feature = currentFeatureForModal, let sectionId = currentSectionIdForModal {
+                SnippetContextInputModal(
+                    isPresented: $showingContextModal,
+                    feature: feature,
+                    campaignCharacters: campaignCreator.characters, // Pass actual characters
+                    selectedText: currentSelectedTextForModal,
+                    onSubmit: { contextData in
+                        // User submitted context from modal, now call LLM processing
+                        if let coordinator = customTextViewCoordinators[sectionId] {
+                            let rangeToReplace = coordinator.getCurrentSelectedRange() // Re-fetch range, or pass it through state
+                            processSnippetWithLLM(
+                                feature: feature,
+                                sectionId: sectionId,
+                                selectedText: currentSelectedTextForModal, // Or re-fetch if selection could change while modal is up
+                                rangeToReplace: rangeToReplace,
+                                additionalContext: contextData
+                            )
+                        } else {
+                             print("Error: Coordinator disappeared while context modal was up for section \(sectionId).")
+                        }
+                    }
+                )
+            } else {
+                // This should ideally not happen if state is set correctly before presentation
+                Text("Error: Missing feature or section context for modal.")
+                    .onAppear { showingContextModal = false } // Dismiss if error state
+            }
+        }
+        .sheet(isPresented: $showingImagePromptModalForSection) {
+            // Simple prompt modal for now
+            NavigationView {
+                VStack {
+                    Text("Generate Image for Section")
+                        .font(.headline)
+                        .padding()
+                    TextEditor(text: $imageGenPromptText)
+                        .frame(height: 100)
+                        .border(Color.gray)
+                        .padding()
+
+                    Button("Generate Image") {
+                        Task {
+                            await handleImageGenerationForSection()
+                        }
+                        showingImagePromptModalForSection = false
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(imageGenPromptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .padding()
+
+                    Spacer()
+                }
+                .navigationTitle("Image Prompt")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("Cancel") { showingImagePromptModalForSection = false }
+                    }
+                }
+            }
+        }
         .alert("Error", isPresented: $showErrorAlert) { // Generic error alert
             Button("OK") { }
         } message: {

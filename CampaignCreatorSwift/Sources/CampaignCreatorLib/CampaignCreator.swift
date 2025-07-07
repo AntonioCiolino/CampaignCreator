@@ -171,6 +171,52 @@ public class CampaignCreator: ObservableObjectProtocol {
         try await apiService.deleteCampaign(id: campaign.id)
         await fetchCampaigns()
     }
+
+    public func regenerateCampaignCustomSection(campaignId: Int, sectionId: UUID, payload: SectionRegeneratePayload) async throws -> CampaignCustomSection {
+        guard isAuthenticated else { throw APIError.notAuthenticated }
+        let updatedSection = try await apiService.regenerateCampaignCustomSection(campaignId: campaignId, sectionId: sectionId, payload: payload)
+
+        // After regeneration, the campaign's overall sections (including custom ones) might need an update.
+        // The backend might return just the section, or the whole campaign.
+        // If it returns just the section, we need to find the campaign and update that specific section.
+        // This could be complex if customSections is nested.
+        // For now, let's assume the backend handles updating the campaign structure if needed,
+        // and we re-fetch the specific campaign to get all changes.
+        // Or, if the payload directly updates the campaign's customSections array on the backend,
+        // then fetching the campaign again is the most straightforward.
+
+        // Option 1: Re-fetch the whole campaign (simpler, might be less performant if called frequently)
+        // This also assumes that `fetchCampaigns()` updates the `campaigns` array
+        // and the UI will find the updated campaign.
+        // However, custom sections are part of the Campaign object, so fetching the specific campaign is better.
+        if let index = campaigns.firstIndex(where: { $0.id == campaignId }) {
+            do {
+                let refreshedCampaign = try await fetchCampaign(id: campaignId)
+                campaigns[index] = refreshedCampaign
+                // It's important that the UI observing this campaign updates.
+                // If CampaignDetailView holds its own @State copy, that needs to be updated too.
+                // This is a general SwiftUI state management challenge.
+                // For now, this updates the main campaigns array.
+            } catch {
+                print("Error re-fetching campaign \(campaignId) after custom section regeneration: \(error)")
+                // Decide if we should throw the original updatedSection or this new error.
+            }
+        }
+        return updatedSection // Return the directly updated section for immediate UI feedback if possible.
+    }
+
+    public func generateImageForSection(prompt: String, campaignId: Int, model: ImageModelName = .dalle, size: String? = "1024x1024", quality: String? = "standard") async throws -> ImageGenerationResponse {
+        guard isAuthenticated else { throw APIError.notAuthenticated }
+
+        let params = ImageGenerationParams(
+            prompt: prompt,
+            model: model, // Defaulting to dall-e, could be configurable
+            size: size,
+            quality: quality,
+            campaignId: String(campaignId) // API expects string campaign_id
+        )
+        return try await apiService.generateImage(payload: params)
+    }
     
     // MARK: - Character Management (Networked)
     public func fetchCharacters() async {

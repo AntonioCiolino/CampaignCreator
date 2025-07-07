@@ -18,12 +18,14 @@ public struct CampaignCustomSection: Identifiable, Codable, Sendable {
     public var id: UUID
     public var title: String
     public var content: String
+    public var type: String? // ADDED type field
     // public var order: Int // Optional: if explicit ordering is needed beyond array order
 
-    public init(id: UUID = UUID(), title: String, content: String /*, order: Int = 0*/) {
+    public init(id: UUID = UUID(), title: String, content: String, type: String? = "Generic" /*, order: Int = 0*/) { // ADDED type, default "Generic"
         self.id = id
         self.title = title
         self.content = content
+        self.type = type // ADDED
         // self.order = order
     }
 }
