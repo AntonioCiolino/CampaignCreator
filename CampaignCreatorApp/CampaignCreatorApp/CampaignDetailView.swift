@@ -26,6 +26,16 @@ extension String {
     var isNotEmpty: Bool { !self.isEmpty }
 }
 
+// Helper extension for Binding<Double?> to Double for Slider
+extension Binding where Value == Double? {
+    func withDefault(_ defaultValue: Double) -> Binding<Double> {
+        Binding<Double>(
+            get: { self.wrappedValue ?? defaultValue },
+            set: { self.wrappedValue = $0 }
+        )
+    }
+}
+
 
 struct CampaignDetailView: View {
     @State var campaign: Campaign
@@ -1558,188 +1568,7 @@ struct CampaignDetailView: View {
 
     // MARK: - Export Logic
     private var exportSheetView: some View {
-
-        // It's important to use a fresh copy of `self.campaign` for comparison
-        // if the binding was already updated by a sub-view (like CampaignThemeEditView).
-        // However, for title and concept, editableTitle and editableConcept are the source of truth.
-        // For theme, campaign itself IS the source of truth due to @Binding.
-
-        var campaignToUpdate = self.campaign // Use the @State campaign as the source of truth for theme properties.
-                                         // For title/concept, we compare against editable fields.
-        var changed = false
-        if campaignToUpdate.title != editableTitle {
-            campaignToUpdate.title = editableTitle
-            changed = true
-        }
-        let conceptToSave = editableConcept.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty()
-        if campaignToUpdate.concept != conceptToSave {
-             campaignToUpdate.concept = conceptToSave
-             changed = true
-        }
-
-        if includeTheme {
-            // If includeTheme is true, we assume theme data might have changed.
-            // The `campaignToUpdate` already reflects these changes due to @Binding.
-            // We just need to ensure 'changed' is true so the save proceeds.
-            // A more robust check would compare current theme values to original ones
-            // if we had stored them before opening the theme editor.
-            // For now, if source is themeEditorDismissed, we force a save.
-            if source == .themeEditorDismissed {
-                print("Theme editor dismissed, marking campaign as changed for saving theme properties.")
-                changed = true
-            }
-            // Note: campaignToUpdate already has the latest theme values from the binding.
-            // No need to explicitly copy them here again.
-        }
-
-        if includeCustomSections {
-            // Filter out any completely empty custom sections before saving
-            let sectionsToSave = localCampaignCustomSections.filter {
-                !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-                !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            }
-            // Check if the custom sections have actually changed compared to the campaign's current state.
-            // This is a bit more complex due to array of objects. A simpler check for now:
-            // If includeCustomSections is true, we'll update the campaign object with the current localCustomSections.
-            // The `changed` flag will be set if this assignment actually alters campaignToUpdate.customSections.
-            // This requires CampaignCustomSection to be Equatable for an exact comparison,
-            // or we rely on other parts of 'changed' logic or always save if includeCustomSections is true.
-            // For now, if includeCustomSections is true, we will assign and mark as changed.
-            // This is simpler than a deep comparison here.
-            // The duplicate "let sectionsToSave = ..." line that was here previously has been removed.
-            campaignToUpdate.customSections = sectionsToSave.isEmpty ? nil : sectionsToSave
-            // We need to ensure 'changed' is true if custom sections were part of the trigger.
-            // The most straightforward way is if the source indicates it, or if `includeCustomSections` was passed as true.
-            if source == .customSectionChange || includeCustomSections { // If called with this intent, assume changes.
-                changed = true
-                print("Custom sections included in save operation.")
-            }
-        }
-
-        guard changed else { print("No changes to save from source: \(source)."); return }
-
-        isSaving = true
-        errorMessage = ""
-
-        if includeCustomSections, let sections = campaignToUpdate.customSections {
-            let sectionIds = sections.map { $0.id }
-            print("[SAVE_DEBUG CampaignDetailView] saveCampaignDetails: CustomSection IDs being sent: \(sectionIds)")
-        }
-        if includeTheme {
-            print("[THEME_DEBUG CampaignDetailView] saveCampaignDetails: Sending campaignToUpdate with theme values:") // DEBUG LOG
-            print("[THEME_DEBUG CampaignDetailView]   PrimaryColor: \(campaignToUpdate.themePrimaryColor ?? "nil")") // DEBUG LOG
-            print("[THEME_DEBUG CampaignDetailView]   FontFamily: \(campaignToUpdate.themeFontFamily ?? "nil")") // DEBUG LOG
-            print("[THEME_DEBUG CampaignDetailView]   BgImageURL: \(campaignToUpdate.themeBackgroundImageURL ?? "nil")") // DEBUG LOG
-        }
-
-        campaignToUpdate.markAsModified()
-
-        do {
-            try await campaignCreator.updateCampaign(campaignToUpdate)
-            // After successful save, campaignCreator.campaigns will be updated (if fetchCampaigns is called in updateCampaign)
-            // We should refresh our local @State campaign from that source
-            if let refreshedCampaign = campaignCreator.campaigns.first(where: { $0.id == campaignToUpdate.id }) {
-                self.campaign = refreshedCampaign // This updates the view
-                // Re-sync editable fields if they were out of sync or if server transformed data
-                self.editableTitle = refreshedCampaign.title
-                self.editableConcept = refreshedCampaign.concept ?? ""
-                self.localCampaignCustomSections = refreshedCampaign.customSections ?? [] // Re-sync custom sections
-            } else {
-                 self.campaign = campaignToUpdate // Fallback, should ideally find it
-                 // If falling back, ensure localCampaignCustomSections reflects campaignToUpdate
-                 self.localCampaignCustomSections = campaignToUpdate.customSections ?? []
-            }
-            print("Campaign details saved successfully via \(source).")
-        } catch let error as APIError {
-            errorMessage = "Save failed: \(error.localizedDescription)"
-            showErrorAlert = true
-            print("❌ Error saving campaign: \(errorMessage)")
-        } catch {
-            errorMessage = "Save failed: An unexpected error occurred: \(error.localizedDescription)"
-            showErrorAlert = true
-            print("❌ Unexpected error saving campaign: \(errorMessage)")
-        }
-        isSaving = false
-    }
-
-    // MARK: - AI Generation Logic
-    private var generateSheetView: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                Text("AI Text Generation").font(.headline)
-                Text("Describe what you'd like to generate. This will create a new section in your campaign.")
-                    .font(.subheadline).foregroundColor(.secondary)
-                TextEditor(text: $generatePrompt)
-                    .frame(height: 120).padding(8)
-                    .background(Color(.systemGroupedBackground)).cornerRadius(8)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
-
-                if let error = generationError { Text(error).foregroundColor(.red).font(.caption) }
-                Spacer()
-                Button(action: { Task { await performAIGeneration() } }) {
-                    HStack {
-                        if isGeneratingText { ProgressView().progressViewStyle(.circular).tint(.white) }
-                        Text(isGeneratingText ? "Generating..." : "Generate New Section")
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(generatePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGeneratingText)
-            }
-            .padding()
-            .navigationTitle("Generate Content").navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { showingGenerateSheet = false; generatePrompt = ""; generationError = nil }
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
-    }
-
-    private func performAIGeneration() async {
-        guard !generatePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        isGeneratingText = true
-        generationError = nil
-
-        do {
-            let generatedText = try await campaignCreator.generateText(prompt: generatePrompt)
-
-            var updatedCampaign = self.campaign
-            let newSection = CampaignSection(
-                id: generateTemporaryClientSectionID(), // Use temporary negative ID
-                title: generatePrompt.prefix(50) + (generatePrompt.count > 50 ? "..." : ""), // Use prompt as title
-                content: generatedText,
-                order: (updatedCampaign.sections.map(\.order).max() ?? -1) + 1 // Ensure new section is last
-            )
-            updatedCampaign.sections.append(newSection)
-            updatedCampaign.markAsModified()
-
-            try await campaignCreator.updateCampaign(updatedCampaign) // Save campaign with new section
-
-            // Refresh local state from campaignCreator's published list
-            if let refreshedCampaign = campaignCreator.campaigns.first(where: { $0.id == updatedCampaign.id }) {
-                self.campaign = refreshedCampaign
-                self.editableTitle = refreshedCampaign.title // Resync in case title was part of update
-                self.editableConcept = refreshedCampaign.concept ?? ""
-            }
-
-            showingGenerateSheet = false
-            generatePrompt = ""
-        } catch let error as LLMError {
-            generationError = error.localizedDescription
-            print("❌ LLM Generation failed: \(error.localizedDescription)")
-        } catch let error as APIError {
-            generationError = "Failed to save new section: \(error.localizedDescription)"
-            print("❌ API Error saving generated section: \(error.localizedDescription)")
-        } catch {
-            generationError = "An unexpected error occurred: \(error.localizedDescription)"
-            print("❌ Unexpected error during/after generation: \(error.localizedDescription)")
-        }
-        isGeneratingText = false
-    }
-
-    // MARK: - Export Logic
-    private var exportSheetView: some View {
+        // This is the CORRECT exportSheetView
         NavigationView {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
