@@ -1,18 +1,18 @@
 import Foundation
 import Security
 
-struct KeychainHelper {
+public struct KeychainHelper {
 
-    static let service = "com.example.CampaignCreatorApp.Login" // Unique service name for your app
+    public static let service = "com.example.CampaignCreatorApp.Login" // Unique service name for your app
 
-    enum KeychainError: Error, LocalizedError {
+    public enum KeychainError: Error, LocalizedError {
         case saveError(OSStatus)
         case loadError(OSStatus)
         case deleteError(OSStatus)
         case dataConversionError
         case itemNotFound
 
-        var errorDescription: String? {
+        public var errorDescription: String? { // Made public
             switch self {
             case .saveError(let status): return "Could not save item to Keychain: \(status)"
             case .loadError(let status): return "Could not load item from Keychain: \(status)"
@@ -23,7 +23,8 @@ struct KeychainHelper {
         }
     }
 
-    static func save(username: String, passwordData: Data) throws {
+    // This internal save can remain internal if only used by public savePassword
+    internal static func save(username: String, passwordData: Data) throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -41,7 +42,8 @@ struct KeychainHelper {
         print("Keychain: Successfully saved password for username '\(username)'")
     }
 
-    static func load(username: String) throws -> Data {
+    // This internal load can remain internal if only used by public loadPassword
+    internal static func load(username: String) throws -> Data {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -66,7 +68,7 @@ struct KeychainHelper {
         return retrievedData
     }
 
-    static func delete(username: String) throws {
+    public static func delete(username: String) throws { // Already public
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -82,15 +84,15 @@ struct KeychainHelper {
     }
 
     // Convenience methods for String passwords
-    static func savePassword(username: String, password string: String) throws {
+    public static func savePassword(username: String, password string: String) throws { // Already public
         guard let passwordData = string.data(using: .utf8) else {
             throw KeychainError.dataConversionError
         }
-        try save(username: username, passwordData: passwordData)
+        try save(username: username, passwordData: passwordData) // Calls internal save
     }
 
-    static func loadPassword(username: String) throws -> String {
-        let passwordData = try load(username: username)
+    public static func loadPassword(username: String) throws -> String { // Already public
+        let passwordData = try load(username: username) // Calls internal load
         guard let passwordString = String(data: passwordData, encoding: .utf8) else {
             throw KeychainError.dataConversionError
         }
