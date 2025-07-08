@@ -174,7 +174,7 @@ struct SettingsView: View {
                             }
                         }
                         Spacer()
-                        Button(action: refreshServiceStatus) {
+                        Button(action: { refreshServiceStatus() }) { // Wrapped in a closure
                             if isRefreshingServiceStatus {
                                 ProgressView() // Show spinner inside button if preferred
                             } else {
