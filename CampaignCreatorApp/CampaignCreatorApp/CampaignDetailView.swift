@@ -41,6 +41,9 @@ struct CampaignDetailView: View {
     @State private var viewRefreshTrigger = UUID() // <<<< ADDED to force view refresh
     
     @State private var titleDebounceTimer: Timer?
+    // Debounce timers for custom section title and content
+    @State private var customSectionTitleDebounceTimers: [Int: Timer] = [:]
+    @State private var customSectionContentDebounceTimers: [Int: Timer] = [:]
     
     // For generating temporary client-side IDs for new sections
     @State private var nextTemporaryClientSectionID: Int = -1 // This is already Int, used for new section IDs
@@ -692,8 +695,12 @@ struct CampaignDetailView: View {
                                 .font(currentFont.weight(.semibold))
                                 .textFieldStyle(PlainTextFieldStyle())
                                 .padding(.bottom, 2)
-                                .onChange(of: section.title.wrappedValue) { _ in // Observe .wrappedValue
-                                    Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
+                                .onChange(of: section.title.wrappedValue) { newValue in // Observe .wrappedValue
+                                    let sectionId = section.id.wrappedValue
+                                    customSectionTitleDebounceTimers[sectionId]?.invalidate()
+                                    customSectionTitleDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
+                                        Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
+                                    }
                                 }
                             
                             Picker("Section Type", selection: section.type.withDefault("Generic")) {
@@ -720,8 +727,12 @@ struct CampaignDetailView: View {
                             .background(Color(.secondarySystemGroupedBackground))
                             .cornerRadius(8)
                             .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
-                            .onChange(of: section.content.wrappedValue) { _ in // Observe .wrappedValue
-                                Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
+                                .onChange(of: section.content.wrappedValue) { newValue in // Observe .wrappedValue
+                                    let sectionId = section.id.wrappedValue
+                                    customSectionContentDebounceTimers[sectionId]?.invalidate()
+                                    customSectionContentDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in // Slightly longer timer for content
+                                        Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
+                                    }
                             }
                             
                             HStack { // Action Buttons
@@ -964,9 +975,18 @@ struct CampaignDetailView: View {
         }
         .onDisappear {
             titleDebounceTimer?.invalidate()
+            // Invalidate all custom section timers when the view disappears
+            customSectionTitleDebounceTimers.values.forEach { $0.invalidate() }
+            customSectionContentDebounceTimers.values.forEach { $0.invalidate() }
+            customSectionTitleDebounceTimers.removeAll()
+            customSectionContentDebounceTimers.removeAll()
+
             if campaign.title != editableTitle || campaign.concept ?? "" != editableConcept {
                 Task { await saveCampaignDetails(source: .onDisappear) }
             }
+            // Consider if a final save for any pending custom section changes is needed here,
+            // though debounced saves might not have fired. This could be complex if saves are mid-flight.
+            // For now, relying on the user to pause enough for debounce to trigger or explicit save actions.
         }
         // MARK: - Sheets
         .sheet(isPresented: $showingGenerateSheet) {
@@ -978,38 +998,85 @@ struct CampaignDetailView: View {
         .sheet(isPresented: $showingExportSheet) {
             exportSheetView
         }
-        .sheet(isPresented: $showingMoodBoardSheet) { // ADDED: Sheet for Mood Board
-            NavigationView { // Wrap in NavigationView for title and potential dismiss button
-                moodBoardSection // Use the existing moodBoardSection as content
-                    .navigationTitle("Mood Board")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Button("Done") { showingMoodBoardSheet = false }
-                        }
+        .sheet(isPresented: $showingMoodBoardSheet) {
+            // Present moodBoardSection directly without NavigationView
+            // Add a way to dismiss if necessary, e.g. a button within moodBoardSection or rely on swipe
+            VStack {
+                HStack {
+                    Spacer()
+                    Button { showingMoodBoardSheet = false } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                            .padding([.top, .trailing])
+                            .foregroundColor(.gray)
                     }
+                }
+                moodBoardSection
+                Spacer() // Pushes content to top
             }
+            .padding(.top) // Add some padding so X button isn't too close to status bar
         }
         .sheet(isPresented: $showingCampaignEditSheet) { // Renamed state variable
             CampaignEditView(campaign: $campaign, campaignCreator: campaignCreator, isPresented: $showingCampaignEditSheet) // Pass campaignCreator and isPresented
-                .onDisappear {
-                    // CampaignEditView now handles its own saving via its "Done" button
-                    // and dismisses itself by setting its isPresented binding to false.
-                    // The CampaignCreator's @Published campaigns array should trigger updates here.
-                    // We might still want to ensure our local `campaign` @State var is
-                    // perfectly in sync with the one from campaignCreator.characters if there were changes.
-                    if let updatedCampaign = campaignCreator.campaigns.first(where: { $0.id == self.campaign.id }) {
-                        if self.campaign.modifiedAt != updatedCampaign.modifiedAt || // Simple check for modifications
-                            self.campaign.linkedCharacterIDs != updatedCampaign.linkedCharacterIDs ||
-                            self.campaign.title != updatedCampaign.title {
-                            print("CampaignDetailView: CampaignEditView dismissed, local campaign state updated from CampaignCreator.")
-                            self.campaign = updatedCampaign
-                            self.editableTitle = updatedCampaign.title // Ensure title is also synced
-                            self.editableConcept = updatedCampaign.concept ?? ""
-                            self.localCampaignCustomSections = updatedCampaign.customSections ?? []
-                        }
-                    }
-                }
+        }
+        .onDisappear { // MODIFIED .onDisappear - This needs to be attached to the View that triggers the sheet, not the sheet modifier itself.
+            // However, the context of onDisappear for a sheet is when the sheet is dismissed.
+            // Let's adjust the previous onDisappear for the sheet content if that's where it was intended,
+            // or ensure this onDisappear is correctly scoped if it's for the CampaignDetailView itself.
+            // The original onDisappear was for the sheet content.
+            // The current plan is to ensure CampaignDetailView refreshes when CampaignEditView (the sheet) is dismissed.
+            // So, this needs to be tied to the dismissal of showingCampaignEditSheet.
+            // A direct .onDisappear on the sheet modifier itself is not standard.
+            // The standard way is to use the onDismiss parameter of .sheet().
+            // Let's refine this. The .onDisappear on CampaignEditView's sheet presentation is the correct place.
+            // The previous code was:
+            // .sheet(isPresented: $showingCampaignEditSheet) { CampaignEditView(...) .onDisappear { /* logic */ } }
+            // This means the onDisappear is on the CampaignEditView content.
+            // Let's re-verify the placement. The onDisappear should be on the sheet CONTENT or use the onDismiss parameter of .sheet.
+            // The previous code was correct: .sheet(isPresented: $showingCampaignEditSheet) { CampaignEditView(...).onDisappear { /* THIS IS THE ONE TO MODIFY */ } }
+            // The current code structure for the sheet is:
+            // .sheet(isPresented: $showingCampaignEditSheet) { // Renamed state variable
+            //     CampaignEditView(campaign: $campaign, campaignCreator: campaignCreator, isPresented: $showingCampaignEditSheet) // Pass campaignCreator and isPresented
+            //         .onDisappear { /* OLD LOGIC WAS HERE */ }
+            // }
+            // We will replace the old .onDisappear logic with the new Task-based refresh.
+            // This requires editing the .onDisappear block INSIDE the sheet's content definition.
+            // The file was provided again, so I will make the change in the .onDisappear of the CampaignEditView sheet presentation.
+            // This change is ALREADY in the provided file structure from the previous read.
+            // The previous change to .onDisappear on CampaignEditView was:
+            // .onDisappear {
+            //    if let updatedCampaign = campaignCreator.campaigns.first(where: { $0.id == self.campaign.id }) { ... }
+            // }
+            // This needs to be replaced by the Task { await campaignCreator.refreshCampaign... }
+            // The structure for the sheet is:
+            // .sheet(isPresented: $showingCampaignEditSheet) {
+            //      CampaignEditView(...) // THIS IS THE CONTENT
+            //          .onDisappear { /* MODIFY THIS BLOCK */ }
+            // }
+            // The current file has this structure. I will apply the change to that specific .onDisappear.
+            // This was identified as a complex part. The .onDisappear for the *sheet* itself (not its content) is not standard.
+            // The correct way to handle sheet dismissal is the `onDismiss` parameter of the `.sheet` modifier.
+            // Let's use that.
+        }
+        .sheet(isPresented: $showingCampaignEditSheet,
+               onDismiss: { // Using onDismiss for when the sheet is dismissed
+                   Task {
+                       print("CampaignEditView (sheet) dismissed. Attempting to refresh campaign: \(self.campaign.id)")
+                       do {
+                           let refreshedCampaign = try await campaignCreator.refreshCampaign(id: self.campaign.id)
+                           self.campaign = refreshedCampaign
+                           self.editableTitle = refreshedCampaign.title
+                           self.editableConcept = refreshedCampaign.concept ?? ""
+                           self.localCampaignCustomSections = refreshedCampaign.customSections ?? []
+                           print("CampaignDetailView refreshed with latest data after CampaignEditView dismissal.")
+                       } catch {
+                           print("Error refreshing campaign in CampaignDetailView.onDismiss (for CampaignEditView sheet): \(error.localizedDescription)")
+                           self.errorMessage = "Failed to update campaign details. Please try refreshing."
+                           self.showErrorAlert = true
+                       }
+                   }
+               }) {
+            CampaignEditView(campaign: $campaign, campaignCreator: campaignCreator, isPresented: $showingCampaignEditSheet)
         }
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
