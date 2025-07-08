@@ -67,7 +67,12 @@ struct CharacterDetailView: View {
         .navigationTitle(character.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItemGroup(placement: .navigationBarTrailing) { // Changed to ToolbarItemGroup
+                // Navigate to Chat View
+                NavigationLink(destination: CharacterChatView(campaignCreator: campaignCreator, character: character)) {
+                    Image(systemName: "message.fill")
+                }
+
                 Button("Edit") { showingEditView = true }
             }
         }
