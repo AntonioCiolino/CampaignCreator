@@ -221,6 +221,7 @@ public final class APIService: Sendable {
 
     public init(tokenManager: TokenManaging = UserDefaultsTokenManager()) {
         self.tokenManager = tokenManager
+
         jsonDecoder = JSONDecoder()
         jsonDecoder.dateDecodingStrategy = .iso8601
         jsonDecoder.keyDecodingStrategy = .convertFromSnakeCase // ADDED
