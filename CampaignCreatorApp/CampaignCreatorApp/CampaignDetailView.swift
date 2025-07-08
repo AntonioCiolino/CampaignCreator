@@ -1881,4 +1881,4 @@ struct ThemePropertyRow: View {
             Spacer() // Pushes content to the left
         }
     }
-}
+// Last '}' is assumed to be extraneous and is removed by not including it here.
