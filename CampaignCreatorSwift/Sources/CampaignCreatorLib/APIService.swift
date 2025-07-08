@@ -97,10 +97,11 @@ public struct CampaignUpdateDTO: Codable, Sendable {
     public var themeFontFamily: String?
     public var themeBackgroundImageURL: String?
     public var themeBackgroundImageOpacity: Double?
-    public var linkedCharacterIDs: [UUID]?
+    public var linkedCharacterIDs: [Int]? // CHANGED from [UUID]?
     public var customSections: [CampaignCustomSection]? // ADDED
+    public var sections: [CampaignSection]? // ADDED for standard sections
 
-    public init(title: String? = nil, initialUserPrompt: String? = nil, concept: String? = nil, displayTOC: [TOCEntry]? = nil, badgeImageURL: String? = nil, thematicImageURL: String? = nil, thematicImagePrompt: String? = nil, selectedLLMId: String? = nil, temperature: Double? = nil, moodBoardImageURLs: [String]? = nil, themePrimaryColor: String? = nil, themeSecondaryColor: String? = nil, themeBackgroundColor: String? = nil, themeTextColor: String? = nil, themeFontFamily: String? = nil, themeBackgroundImageURL: String? = nil, themeBackgroundImageOpacity: Double? = nil, linkedCharacterIDs: [UUID]? = nil, customSections: [CampaignCustomSection]? = nil) { // ADDED
+    public init(title: String? = nil, initialUserPrompt: String? = nil, concept: String? = nil, displayTOC: [TOCEntry]? = nil, badgeImageURL: String? = nil, thematicImageURL: String? = nil, thematicImagePrompt: String? = nil, selectedLLMId: String? = nil, temperature: Double? = nil, moodBoardImageURLs: [String]? = nil, themePrimaryColor: String? = nil, themeSecondaryColor: String? = nil, themeBackgroundColor: String? = nil, themeTextColor: String? = nil, themeFontFamily: String? = nil, themeBackgroundImageURL: String? = nil, themeBackgroundImageOpacity: Double? = nil, linkedCharacterIDs: [Int]? = nil, customSections: [CampaignCustomSection]? = nil, sections: [CampaignSection]? = nil) { // CHANGED linkedCharacterIDs to [Int]?, ADDED sections
         self.title = title
         self.initialUserPrompt = initialUserPrompt
         self.concept = concept
@@ -180,13 +181,13 @@ public struct LoginRequestDTO: Codable, Sendable {
 }
 
 public struct LoginResponseDTO: Codable, Sendable {
-    public var access_token: String
-    public var token_type: String
+    // Properties now camelCase to work with global .convertFromSnakeCase strategy
+    let accessToken: String
+    let tokenType: String
 
-    public init(access_token: String, token_type: String) {
-        self.access_token = access_token
-        self.token_type = token_type
-    }
+    // No explicit CodingKeys needed if backend sends "access_token" and "token_type"
+    // and jsonDecoder.keyDecodingStrategy = .convertFromSnakeCase is set.
+    // No custom init needed; memberwise initializer will be synthesized.
 }
 
 
@@ -222,9 +223,11 @@ public final class APIService: Sendable {
         self.tokenManager = tokenManager
         jsonDecoder = JSONDecoder()
         jsonDecoder.dateDecodingStrategy = .iso8601
+        jsonDecoder.keyDecodingStrategy = .convertFromSnakeCase // ADDED
 
         jsonEncoder = JSONEncoder()
         jsonEncoder.dateEncodingStrategy = .iso8601
+        jsonEncoder.keyEncodingStrategy = .convertToSnakeCase // ADDED
         jsonEncoder.outputFormatting = .prettyPrinted
     }
 

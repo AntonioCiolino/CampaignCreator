@@ -78,8 +78,8 @@ public struct Campaign: Identifiable, Codable, Sendable {
     public var createdAt: Date? // Changed to optional
     public var modifiedAt: Date? // Changed to optional
 
-    // Linking characters (IDs for now, actual Character objects can be resolved by CampaignCreator)
-    public var linkedCharacterIDs: [UUID]?
+    // Linking characters
+    public var linkedCharacterIDs: [Int]? // CHANGED from [UUID]?
     public var customSections: [CampaignCustomSection]? // <<<< ADDED
 
     public init(id: Int, // Changed from UUID = UUID()
@@ -104,7 +104,7 @@ public struct Campaign: Identifiable, Codable, Sendable {
                 fileURL: URL? = nil,
                 createdAt: Date? = nil, // Changed to optional, default nil
                 modifiedAt: Date? = nil, // Changed to optional, default nil
-                linkedCharacterIDs: [UUID]? = nil,
+                linkedCharacterIDs: [Int]? = nil, // CHANGED from [UUID]?
                 customSections: [CampaignCustomSection]? = nil) { // <<<< ADDED
         self.id = id
         self.title = title
