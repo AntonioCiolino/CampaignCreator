@@ -63,6 +63,9 @@ struct CampaignListView: View {
                         }
                         .onDelete(perform: deleteCampaigns)
                     }
+                    .refreshable { // <<<< ADDED
+                        await campaignCreator.fetchCampaigns()
+                    }
                 }
             }
             .navigationTitle("Campaigns")
