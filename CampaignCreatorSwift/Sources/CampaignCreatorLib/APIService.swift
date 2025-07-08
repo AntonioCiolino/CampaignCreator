@@ -180,13 +180,10 @@ public struct LoginRequestDTO: Codable, Sendable {
 }
 
 public struct LoginResponseDTO: Codable, Sendable {
-    public var access_token: String
-    public var token_type: String
-
-    public init(access_token: String, token_type: String) {
-        self.access_token = access_token
-        self.token_type = token_type
-    }
+    public var access_token: String // Exact match to JSON key
+    public var token_type: String   // Exact match to JSON key
+    // No CodingKeys enum needed.
+    // No custom init needed.
 }
 
 
