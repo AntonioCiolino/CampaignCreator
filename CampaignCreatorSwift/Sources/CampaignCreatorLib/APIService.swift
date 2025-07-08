@@ -181,13 +181,13 @@ public struct LoginRequestDTO: Codable, Sendable {
 }
 
 public struct LoginResponseDTO: Codable, Sendable {
-    public var access_token: String
-    public var token_type: String
+    // Properties now camelCase to work with global .convertFromSnakeCase strategy
+    let accessToken: String
+    let tokenType: String
 
-    public init(access_token: String, token_type: String) {
-        self.access_token = access_token
-        self.token_type = token_type
-    }
+    // No explicit CodingKeys needed if backend sends "access_token" and "token_type"
+    // and jsonDecoder.keyDecodingStrategy = .convertFromSnakeCase is set.
+    // No custom init needed; memberwise initializer will be synthesized.
 }
 
 

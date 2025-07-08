@@ -37,6 +37,8 @@ struct CampaignDetailView: View {
     @State private var imageGeneratePrompt = "" // Prompt for image generation
     @State private var showingCampaignEditSheet = false // Renamed from showingThemeEditSheet
 
+    @State private var viewRefreshTrigger = UUID() // <<<< ADDED to force view refresh
+
     @State private var titleDebounceTimer: Timer?
 
     // For generating temporary client-side IDs for new sections
@@ -843,6 +845,7 @@ struct CampaignDetailView: View {
                 .foregroundColor(currentTextColor) // Apply default theme text color
             }
         }
+        .id(viewRefreshTrigger) // Force refresh when trigger changes
         .navigationTitle(editableTitle)
         .navigationBarTitleDisplayMode(.inline)
         .disabled(isSaving || isGeneratingText)
@@ -1473,6 +1476,7 @@ struct CampaignDetailView: View {
             self.editableConcept = trulyRefreshedCampaign.concept ?? ""
             self.localCampaignCustomSections = trulyRefreshedCampaign.customSections ?? []
             // campaign.sections is part of self.campaign, so it's also updated.
+            self.viewRefreshTrigger = UUID() // Force UI refresh
 
             print("Campaign details saved successfully via \(source). UI refreshed with direct API response.")
         } catch let error as APIError {
