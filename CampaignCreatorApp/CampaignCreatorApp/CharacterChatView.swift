@@ -150,22 +150,17 @@ struct CharacterChatView_Previews: PreviewProvider {
             appearanceDescription: "Slender build.",
             notesForLLM: "Loves nature."
         )
-        // Simulate some chat history for preview
+
         let sampleMessages = [
             ChatMessage(text: "Hello Aella!", sender: .user),
             ChatMessage(text: "Greetings, traveler. How may I assist you?", sender: .llm)
         ]
 
-        // A better way for previewing with initial state:
-        var previewChatView = CharacterChatView(campaignCreator: creator, character: sampleCharacter)
-        // Simulate initial chat messages by directly setting the @State variable for the preview instance
-        previewChatView._chatMessages = State(initialValue: [
-            ChatMessage(text: "Hello Aella!", sender: .user),
-            ChatMessage(text: "Greetings, traveler. How may I assist you?", sender: .llm)
-        ])
-
         return NavigationView {
-            previewChatView
+            CharacterChatView(
+                campaignCreator: creator,
+                character: sampleCharacter
+            )
         }
     }
 }
