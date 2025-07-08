@@ -58,7 +58,7 @@ public class CampaignCreator: ObservableObjectProtocol {
         let credentials = LoginRequestDTO(username: usernameOrEmail, password: password)
         do {
             let loginResponse = try await apiService.login(credentials: credentials)
-            apiService.updateAuthToken(loginResponse.access_token)
+            apiService.updateAuthToken(loginResponse.accessToken) // MODIFIED to use camelCase
             isAuthenticated = true
             await fetchCurrentUser() // This will set isUserSessionValid on success
         } catch let error as APIError {
