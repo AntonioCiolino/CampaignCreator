@@ -7,8 +7,12 @@ struct CharacterCreateView: View {
 
     @State private var characterName: String = ""
     @State private var characterDescription: String = ""
-    @State private var characterAppearance: String = "" // Added for more detail
-    // TODO: Add @State vars for stats, imageURLs etc. if they are to be settable on creation
+    @State private var characterAppearance: String = ""
+    @State private var characterNotesForLLM: String = ""
+    @State private var characterExportFormatPreference: String = "Complex" // Default to "Complex"
+    @State private var characterImageURLsText: [String] = []
+    @State private var newImageURL: String = ""
+    // TODO: Add @State vars for stats if they are to be settable on creation
 
     @State private var isSaving: Bool = false
     @State private var showErrorAlert: Bool = false
@@ -30,6 +34,41 @@ struct CharacterCreateView: View {
                         .disabled(isGeneratingDescription || isGeneratingAppearance)
                     generateableTextField(title: "Description", text: $characterDescription, fieldType: .description, isGenerating: $isGeneratingDescription)
                     generateableTextField(title: "Appearance", text: $characterAppearance, fieldType: .appearance, isGenerating: $isGeneratingAppearance)
+                }
+
+                Section(header: Text("Image URLs")) {
+                    ForEach(characterImageURLsText.indices, id: \.self) { index in
+                        HStack {
+                            TextField("Image URL", text: $characterImageURLsText[index])
+                            Button(action: { characterImageURLsText.remove(at: index) }) {
+                                Image(systemName: "trash").foregroundColor(.red)
+                            }
+                        }
+                    }
+                    HStack {
+                        TextField("Add new image URL", text: $newImageURL)
+                        Button(action: {
+                            if !newImageURL.isEmpty, let _ = URL(string: newImageURL) { // Basic URL validation
+                                characterImageURLsText.append(newImageURL)
+                                newImageURL = ""
+                            }
+                        }) {
+                            Image(systemName: "plus.circle.fill")
+                        }
+                        .disabled(newImageURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                }
+
+                Section(header: Text("Additional Information")) {
+                    VStack(alignment: .leading) {
+                        Text("Notes for LLM (Optional)").font(.caption).foregroundColor(.gray)
+                        TextEditor(text: $characterNotesForLLM)
+                            .frame(height: 80)
+                            .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.gray.opacity(0.5), lineWidth: 1))
+                            .disabled(isGeneratingDescription || isGeneratingAppearance)
+                    }
+                    TextField("Export Format Preference", text: $characterExportFormatPreference)
+                        .disabled(isGeneratingDescription || isGeneratingAppearance)
                 }
                 // TODO: Add sections for stats if CharacterStats is simple enough for creation form
 
@@ -137,10 +176,14 @@ struct CharacterCreateView: View {
         do {
             // Pass all relevant fields to createCharacter
             // The DTO used by createCharacter in APIService will handle which fields are sent
+            let finalExportFormatPreference = characterExportFormatPreference.trimmingCharacters(in: .whitespacesAndNewlines)
             _ = try await campaignCreator.createCharacter(
                 name: name,
                 description: characterDescription.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty(),
-                appearance: characterAppearance.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty()
+                appearance: characterAppearance.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty(),
+                notesForLLM: characterNotesForLLM.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty(),
+                imageURLs: characterImageURLsText.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.nilIfEmpty(),
+                exportFormatPreference: finalExportFormatPreference.isEmpty ? "Complex" : finalExportFormatPreference
                 // TODO: Pass stats if form includes them
             )
             // CampaignCreator.fetchCharacters() is called internally, updating the list.
@@ -168,6 +211,13 @@ struct CharacterCreateView: View {
 extension String {
     func nilIfEmpty() -> String? {
         self.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : self
+    }
+}
+
+// Helper to convert empty arrays to nil for optional fields
+extension Array where Element == String {
+    func nilIfEmpty() -> [String]? {
+        self.isEmpty ? nil : self
     }
 }
 

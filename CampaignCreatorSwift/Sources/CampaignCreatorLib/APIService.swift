@@ -97,10 +97,10 @@ public struct CampaignUpdateDTO: Codable, Sendable {
     public var themeFontFamily: String?
     public var themeBackgroundImageURL: String?
     public var themeBackgroundImageOpacity: Double?
-    public var linkedCharacterIDs: [UUID]?
+    public var linkedCharacterIDs: [Int]? // Changed from [UUID]?
     public var customSections: [CampaignCustomSection]? // ADDED
 
-    public init(title: String? = nil, initialUserPrompt: String? = nil, concept: String? = nil, displayTOC: [TOCEntry]? = nil, badgeImageURL: String? = nil, thematicImageURL: String? = nil, thematicImagePrompt: String? = nil, selectedLLMId: String? = nil, temperature: Double? = nil, moodBoardImageURLs: [String]? = nil, themePrimaryColor: String? = nil, themeSecondaryColor: String? = nil, themeBackgroundColor: String? = nil, themeTextColor: String? = nil, themeFontFamily: String? = nil, themeBackgroundImageURL: String? = nil, themeBackgroundImageOpacity: Double? = nil, linkedCharacterIDs: [UUID]? = nil, customSections: [CampaignCustomSection]? = nil) { // ADDED
+    public init(title: String? = nil, initialUserPrompt: String? = nil, concept: String? = nil, displayTOC: [TOCEntry]? = nil, badgeImageURL: String? = nil, thematicImageURL: String? = nil, thematicImagePrompt: String? = nil, selectedLLMId: String? = nil, temperature: Double? = nil, moodBoardImageURLs: [String]? = nil, themePrimaryColor: String? = nil, themeSecondaryColor: String? = nil, themeBackgroundColor: String? = nil, themeTextColor: String? = nil, themeFontFamily: String? = nil, themeBackgroundImageURL: String? = nil, themeBackgroundImageOpacity: Double? = nil, linkedCharacterIDs: [Int]? = nil, customSections: [CampaignCustomSection]? = nil) { // Changed linkedCharacterIDs to [Int]?
         self.title = title
         self.initialUserPrompt = initialUserPrompt
         self.concept = concept

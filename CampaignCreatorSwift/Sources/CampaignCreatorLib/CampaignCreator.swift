@@ -261,11 +261,27 @@ public class CampaignCreator: ObservableObjectProtocol {
         return try await apiService.fetchCharacter(id: id) // id is now Int
     }
 
-    public func createCharacter(name: String, description: String? = nil, appearance: String? = nil, stats: CharacterStats? = nil) async throws -> Character {
+    public func createCharacter(
+        name: String,
+        description: String? = nil,
+        appearance: String? = nil,
+        notesForLLM: String? = nil,
+        imageURLs: [String]? = nil,
+        exportFormatPreference: String? = "Complex", // Default here as well for safety
+        stats: CharacterStats? = nil
+    ) async throws -> Character {
         guard isAuthenticated else { throw APIError.notAuthenticated }
-        let dto = CharacterCreateDTO(name: name, description: description, appearanceDescription: appearance, stats: stats) // customSections removed
+        let dto = CharacterCreateDTO(
+            name: name,
+            description: description,
+            appearanceDescription: appearance,
+            imageURLs: imageURLs,
+            notesForLLM: notesForLLM,
+            stats: stats,
+            exportFormatPreference: exportFormatPreference
+        )
         let newCharacter = try await apiService.createCharacter(dto)
-        await fetchCharacters()
+        await fetchCharacters() // Refresh the list
         return newCharacter
     }
 
@@ -299,6 +315,57 @@ public class CampaignCreator: ObservableObjectProtocol {
     public func generateText(prompt: String) async throws -> String {
         guard isAuthenticated else { throw LLMError.other(message: "Not authenticated.") }
         guard let llmService = llmService else { throw LLMError.other(message: "LLM not available.") }
+        return try await llmService.generateCompletion(prompt: prompt)
+    }
+
+    @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+    public func generateChatResponse(character: Character, message: String, chatHistory: [ChatMessageData]) async throws -> String { // Changed to ChatMessageData
+        guard isAuthenticated else { throw LLMError.other(message: "Not authenticated.") }
+        guard let llmService = llmService else { throw LLMError.other(message: "LLM not available.") }
+
+        // Construct a more detailed prompt for the LLM
+        var prompt = """
+        You are roleplaying as the character '\(character.name)'.
+        Your known details are:
+        Description: \(character.description ?? "Not specified.")
+        Appearance: \(character.appearanceDescription ?? "Not specified.")
+        Notes for LLM (Personality, background, motivations, etc.): \(character.notesForLLM ?? "Not specified, rely on general knowledge and the persona derived from description and appearance.")
+
+        Current conversation context (last few messages):
+        """
+
+        // Add recent chat history to the prompt (e.g., last 5 messages)
+        // The ChatMessage struct needs to be accessible here or defined in a shared scope
+        // For now, assuming ChatMessage is defined in CampaignCreatorLib or accessible.
+        // If not, we'll need to adjust how chatHistory is passed or defined.
+        // For this example, let's assume ChatMessage.Sender and .text are available.
+        // This part needs ChatMessage to be defined in CampaignCreatorLib or a DTO.
+        // For now, I'll use a placeholder for history formatting.
+        // TODO: Define ChatMessage in CampaignCreatorLib or pass history as [(sender: String, text: String)]
+
+        let recentHistory = chatHistory.suffix(5) // Take last 5 messages
+        for chatMsg in recentHistory {
+            // Assuming ChatMessage has 'sender' (e.g., .user, .llm) and 'text'
+            // And ChatMessage.Sender has a rawValue or similar string representation
+            // This is a placeholder and needs ChatMessage to be defined in this scope.
+            // For now, let's use a simpler string representation if ChatMessage is not directly available
+            // Or assume it's passed as a simpler structure e.g. [(sender: String, text: String)]
+            // If ChatMessage is from App module, we can't use it here.
+            // Let's assume chatHistory is passed as [(sender: String, text: String)] for now.
+            // This means CharacterChatView needs to map its ChatMessage to this format.
+            // For the plan, I'll assume ChatMessage is defined in Lib.
+            // If not, CharacterChatView needs to pass history as [(sender: String, text: String)]
+            let senderPrefix = chatMsg.sender == .user ? "User" : character.name // LLM speaks as character
+            prompt += "\n\(senderPrefix): \(chatMsg.text)"
+        }
+
+        prompt += "\n\nUser: \(message)"
+        prompt += "\n\(character.name): " // Prompt LLM to respond as the character
+
+        print("--- Sending prompt to LLM for chat response for \(character.name) ---")
+        print(prompt)
+        print("--------------------------------------------------------------------")
+
         return try await llmService.generateCompletion(prompt: prompt)
     }
     

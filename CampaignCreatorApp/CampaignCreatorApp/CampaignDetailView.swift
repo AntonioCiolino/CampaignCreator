@@ -24,7 +24,7 @@ struct CampaignDetailView: View {
 
     @State private var showingGenerateImageSheet = false // New state for image sheet
     @State private var imageGeneratePrompt = "" // Prompt for image generation
-    @State private var showingThemeEditSheet = false // New state for theme edit sheet
+    @State private var showingCampaignEditSheet = false // Renamed from showingThemeEditSheet
 
     @State private var titleDebounceTimer: Timer?
 
@@ -205,8 +205,24 @@ struct CampaignDetailView: View {
                 ThemePropertyRow(label: "Background Image URL", value: campaign.themeBackgroundImageURL, isURL: true)
                 ThemePropertyRow(label: "BG Image Opacity", value: campaign.themeBackgroundImageOpacity.map { String(format: "%.2f", $0) })
 
-                Button("Customize Theme") { // Caption updated
-                    showingThemeEditSheet = true
+                // Display Linked Characters
+                if let linkedIDs = campaign.linkedCharacterIDs, !linkedIDs.isEmpty {
+                    Text("Linked Characters:").font(currentFont.weight(.semibold)).padding(.top, 5)
+                    ForEach(linkedIDs, id: \.self) { charID in
+                        if let char = campaignCreator.characters.first(where: { $0.id == charID }) {
+                            Text("  - \(char.name)")
+                                .font(currentFont)
+                        } else {
+                            Text("  - Character ID: \(charID) (Not found)")
+                                .font(currentFont.italic())
+                                .foregroundColor(.gray)
+                        }
+                    }
+                }
+
+
+                Button("Edit Campaign Details") { // Caption updated
+                    showingCampaignEditSheet = true // Use new state variable
                 }
                 .buttonStyle(.bordered)
                 .tint(currentPrimaryColor) // Apply theme primary color
@@ -783,38 +799,24 @@ struct CampaignDetailView: View {
         .sheet(isPresented: $showingExportSheet) {
             exportSheetView
         }
-        .sheet(isPresented: $showingThemeEditSheet) {
-            CampaignThemeEditView(campaign: $campaign)
+        .sheet(isPresented: $showingCampaignEditSheet) { // Renamed state variable
+            CampaignEditView(campaign: $campaign, campaignCreator: campaignCreator, isPresented: $showingCampaignEditSheet) // Pass campaignCreator and isPresented
                 .onDisappear {
-                    // Changes to campaign theme are saved within CampaignThemeEditView's "Done" button.
-                    // We might still need to trigger a broader save of the campaign object if
-                    // the theme changes should also update the campaign's modifiedAt timestamp
-                    // or if other side effects are needed.
-                    // For now, assume CampaignThemeEditView handles its own persistence to the binding.
-                    // If a specific save call is needed:
-                    // Task { await saveCampaignDetails(source: .themeEditorDismissed) }
-                    // However, saveCampaignDetails currently only saves title and concept.
-                    // A more generic save or a specific theme save function might be needed on CampaignCreator.
-
-                    // Let's make sure the main CampaignDetailView saves the campaign
-                    // if theme properties were changed.
-                    // We need to compare the campaign state before and after the sheet.
-                    // This is tricky as the binding means `campaign` is already updated.
-                    // A simple solution is to always mark as modified and save if the sheet was shown.
-                    // More robust: check if any theme property actually changed.
-                    // For now, a direct save call if the sheet was for theme editing.
-                    print("[THEME_DEBUG CampaignDetailView] ThemeEditView dismissed. Current self.campaign theme values before save call:") // DEBUG LOG
-                    print("[THEME_DEBUG CampaignDetailView]   PrimaryColor: \(self.campaign.themePrimaryColor ?? "nil")") // DEBUG LOG
-                    print("[THEME_DEBUG CampaignDetailView]   FontFamily: \(self.campaign.themeFontFamily ?? "nil")") // DEBUG LOG
-                    print("[THEME_DEBUG CampaignDetailView]   BgImageURL: \(self.campaign.themeBackgroundImageURL ?? "nil")") // DEBUG LOG
-                    Task {
-                        // We need a way to tell saveCampaignDetails to save *everything* or
-                        // have a separate save for theme. Let's assume saveCampaignDetails
-                        // should be smart enough or we add a specific theme save.
-                        // For now, let's add a specific part to saveCampaignDetails for theme.
-                        // This requires modifying saveCampaignDetails.
-                        // Alternatively, call a specific save method on campaignCreator if available.
-                         await saveCampaignDetails(source: .themeEditorDismissed, includeTheme: true)
+                    // CampaignEditView now handles its own saving via its "Done" button
+                    // and dismisses itself by setting its isPresented binding to false.
+                    // The CampaignCreator's @Published campaigns array should trigger updates here.
+                    // We might still want to ensure our local `campaign` @State var is
+                    // perfectly in sync with the one from campaignCreator.characters if there were changes.
+                    if let updatedCampaign = campaignCreator.campaigns.first(where: { $0.id == self.campaign.id }) {
+                        if self.campaign.modifiedAt != updatedCampaign.modifiedAt || // Simple check for modifications
+                            self.campaign.linkedCharacterIDs != updatedCampaign.linkedCharacterIDs ||
+                            self.campaign.title != updatedCampaign.title {
+                             print("CampaignDetailView: CampaignEditView dismissed, local campaign state updated from CampaignCreator.")
+                             self.campaign = updatedCampaign
+                             self.editableTitle = updatedCampaign.title // Ensure title is also synced
+                             self.editableConcept = updatedCampaign.concept ?? ""
+                             self.localCampaignCustomSections = updatedCampaign.customSections ?? []
+                        }
                     }
                 }
         }
