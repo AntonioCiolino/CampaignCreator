@@ -147,7 +147,7 @@ public class CampaignCreator: ObservableObjectProtocol {
         return newCampaign
     }
 
-    public func updateCampaign(_ campaign: Campaign) async throws {
+    public func updateCampaign(_ campaign: Campaign) async throws -> Campaign { // MODIFIED: Added -> Campaign return type
         guard isAuthenticated else { throw APIError.notAuthenticated }
         let dto = CampaignUpdateDTO(
             title: campaign.title, initialUserPrompt: campaign.initialUserPrompt, concept: campaign.concept,
@@ -182,8 +182,11 @@ public class CampaignCreator: ObservableObjectProtocol {
             print("[THEME_DEBUG CampaignCreator]   BgImageURL: \(updatedCampaignFromAPI.themeBackgroundImageURL ?? "nil")") // DEBUG LOG
         } else {
             print("[SAVE_DEBUG CampaignCreator] Updated campaign \(campaign.id) not found in list. Fetching all campaigns.")
-            await fetchCampaigns()
+            await fetchCampaigns() // This case might ideally also return the specific updated campaign if possible,
+                                   // or the caller has to be aware that a full refresh happened.
+                                   // For now, it returns the direct API response if found, otherwise this branch implies a broader update.
         }
+        return updatedCampaignFromAPI // MODIFIED: Added return
     }
 
     public func deleteCampaign(_ campaign: Campaign) async throws {

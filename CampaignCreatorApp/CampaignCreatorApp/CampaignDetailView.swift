@@ -1464,18 +1464,15 @@ struct CampaignDetailView: View {
         campaignToUpdate.markAsModified()
 
         do {
-            try await campaignCreator.updateCampaign(campaignToUpdate)
-            if let refreshedCampaign = campaignCreator.campaigns.first(where: { $0.id == campaignToUpdate.id }) {
-                self.campaign = refreshedCampaign
-                self.editableTitle = refreshedCampaign.title
-                self.editableConcept = refreshedCampaign.concept ?? ""
-                self.localCampaignCustomSections = refreshedCampaign.customSections ?? []
-                // Note: campaign.sections is directly part of self.campaign, so it's refreshed too.
-            } else {
-                 self.campaign = campaignToUpdate // Fallback
-                 self.localCampaignCustomSections = campaignToUpdate.customSections ?? []
-            }
-            print("Campaign details saved successfully via \(source).")
+            let trulyRefreshedCampaign = try await campaignCreator.updateCampaign(campaignToUpdate)
+            // Directly use the returned campaign object to refresh the local state
+            self.campaign = trulyRefreshedCampaign
+            self.editableTitle = trulyRefreshedCampaign.title
+            self.editableConcept = trulyRefreshedCampaign.concept ?? ""
+            self.localCampaignCustomSections = trulyRefreshedCampaign.customSections ?? []
+            // campaign.sections is part of self.campaign, so it's also updated.
+
+            print("Campaign details saved successfully via \(source). UI refreshed with direct API response.")
         } catch let error as APIError {
             errorMessage = "Save failed: \(error.localizedDescription)"
             showErrorAlert = true
