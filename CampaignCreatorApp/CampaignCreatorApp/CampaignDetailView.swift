@@ -287,12 +287,11 @@ struct CampaignDetailView: View {
             } else {
                 // Use indices to bind to elements of campaign.sections array
                 ForEach($campaign.sections.indices, id: \.self) { index in
-                    DisclosureGroup(
-                        content: {
-                            let sectionBinding = $campaign.sections[index]
-                            VStack(alignment: .leading) {
-                                TextField("Section Title", text: sectionBinding.title.withDefault("Untitled Section \(campaign.sections[index].order)"))
-                                    .font(currentFont.weight(.semibold))
+                    // Reverted to VStack, removing individual DisclosureGroup for standard sections for now
+                    let sectionBinding = $campaign.sections[index]
+                    VStack(alignment: .leading) {
+                        TextField("Section Title", text: sectionBinding.title.withDefault("Untitled Section \(campaign.sections[index].order)"))
+                            .font(currentFont.weight(.semibold))
                                     .textFieldStyle(PlainTextFieldStyle())
                                     .padding(.bottom, 2)
                                     .onChange(of: campaign.sections[index].title) { _ in
@@ -367,14 +366,10 @@ struct CampaignDetailView: View {
                                 .padding(.top, 4)
                             }
                             .padding(.vertical, 8) // Padding for the content of DisclosureGroup
-                        },
-                        label: {
-                            Text(campaign.sections[index].title ?? "Untitled Section \(campaign.sections[index].order)")
-                                .font(currentFont.weight(.bold))
-                                .foregroundColor(currentTextColor)
-                        }
-                    )
-                    .padding(.bottom, 4) // Spacing between disclosure groups
+                        // Removed DisclosureGroup label and closing for standard sections
+                    }
+                    // .padding(.bottom, 4) // Spacing between disclosure groups // Removed
+                    .padding(.vertical, 4) // Keep some vertical padding for the VStack itself
                     Divider()
                 }
             }
@@ -682,7 +677,7 @@ struct CampaignDetailView: View {
                                 .font(currentFont.weight(.semibold))
                                 .textFieldStyle(PlainTextFieldStyle())
                                 .padding(.bottom, 2)
-                                .onChange(of: section.title) { _ in
+                                .onChange(of: $section.title.wrappedValue) { _ in // Observe .wrappedValue
                                     Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
                                 }
 
@@ -694,7 +689,7 @@ struct CampaignDetailView: View {
                             .pickerStyle(MenuPickerStyle())
                             .font(.caption)
                             .padding(.bottom, 4)
-                            .onChange(of: section.type) { _ in
+                            .onChange(of: $section.type.wrappedValue) { _ in // Observe .wrappedValue
                                Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
                             }
 
@@ -703,14 +698,14 @@ struct CampaignDetailView: View {
                                 font: uiFontFrom(swiftUIFont: currentFont),
                                 textColor: UIColor(currentTextColor),
                                 onCoordinatorCreated: { coordinator in
-                                    customTextViewCoordinators[section.id.wrappedValue] = coordinator
+                                customTextViewCoordinators[$section.id.wrappedValue] = coordinator // Corrected access
                                 }
                             )
                                 .frame(minHeight: 100, maxHeight: 300)
                                 .background(Color(.secondarySystemGroupedBackground))
                                 .cornerRadius(8)
                                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
-                                .onChange(of: section.content) { _ in
+                            .onChange(of: $section.content.wrappedValue) { _ in // Observe .wrappedValue
                                     Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
                                 }
 
