@@ -1883,3 +1883,4 @@ struct ThemePropertyRow: View {
         }
     }
 }
+// NO EXTRANEOUS BRACE AT THE VERY END OF THE FILE
