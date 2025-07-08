@@ -35,7 +35,7 @@ struct CampaignDetailView: View {
 
     @State private var showingGenerateImageSheet = false // New state for image sheet
     @State private var imageGeneratePrompt = "" // Prompt for image generation
-    @State private var showingThemeEditSheet = false // New state for theme edit sheet
+    @State private var showingCampaignEditSheet = false // Renamed from showingThemeEditSheet
 
     @State private var viewRefreshTrigger = UUID() // <<<< ADDED to force view refresh
 
@@ -233,7 +233,7 @@ struct CampaignDetailView: View {
                 ForEach(campaign.displayTOC ?? []) { entry in
                     Text(entry.title)
                         .font(.body) // Can be themed with currentFont if desired, or kept as .body
-                        // TODO: Add navigation to section
+                    // TODO: Add navigation to section
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -255,8 +255,24 @@ struct CampaignDetailView: View {
                 ThemePropertyRow(label: "Background Image URL", value: campaign.themeBackgroundImageURL, isURL: true)
                 ThemePropertyRow(label: "BG Image Opacity", value: campaign.themeBackgroundImageOpacity.map { String(format: "%.2f", $0) })
 
-                Button("Customize Theme") { // Caption updated
-                    showingThemeEditSheet = true
+                // Display Linked Characters
+                if let linkedIDs = campaign.linkedCharacterIDs, !linkedIDs.isEmpty {
+                    Text("Linked Characters:").font(currentFont.weight(.semibold)).padding(.top, 5)
+                    ForEach(linkedIDs, id: \.self) { charID in
+                        if let char = campaignCreator.characters.first(where: { $0.id == charID }) {
+                            Text("  - \(char.name)")
+                                .font(currentFont)
+                        } else {
+                            Text("  - Character ID: \(charID) (Not found)")
+                                .font(currentFont.italic())
+                                .foregroundColor(.gray)
+                        }
+                    }
+                }
+
+
+                Button("Edit Campaign Details") { // Caption updated
+                    showingCampaignEditSheet = true // Use new state variable
                 }
                 .buttonStyle(.bordered)
                 .tint(currentPrimaryColor) // Apply theme primary color
@@ -292,94 +308,94 @@ struct CampaignDetailView: View {
                     VStack(alignment: .leading) {
                         TextField("Section Title", text: sectionBinding.title.withDefault("Untitled Section \(campaign.sections[index].order)"))
                             .font(currentFont.weight(.semibold))
-                                    .textFieldStyle(PlainTextFieldStyle())
-                                    .padding(.bottom, 2)
-                                    .onChange(of: campaign.sections[index].title) { _ in
-                                        Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
-                                    }
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .padding(.bottom, 2)
+                            .onChange(of: campaign.sections[index].title) { _ in
+                                Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
+                            }
 
-                                CustomTextView(
-                                    text: sectionBinding.content,
-                                    font: uiFontFrom(swiftUIFont: currentFont),
-                                    textColor: UIColor(currentTextColor),
-                                    onCoordinatorCreated: { coordinator in
-                                         customTextViewCoordinators[campaign.sections[index].id] = coordinator
-                                    }
-                                )
-                                    .frame(minHeight: 100, maxHeight: 300)
-                                    .background(Color(.secondarySystemGroupedBackground))
-                                    .cornerRadius(8)
-                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
-                                    .onChange(of: campaign.sections[index].content) { _ in
-                                        Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
-                                    }
+                        CustomTextView(
+                            text: sectionBinding.content,
+                            font: uiFontFrom(swiftUIFont: currentFont),
+                            textColor: UIColor(currentTextColor),
+                            onCoordinatorCreated: { coordinator in
+                                customTextViewCoordinators[campaign.sections[index].id] = coordinator
+                            }
+                        )
+                        .frame(minHeight: 100, maxHeight: 300)
+                        .background(Color(.secondarySystemGroupedBackground))
+                        .cornerRadius(8)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+                        .onChange(of: campaign.sections[index].content) { _ in
+                            Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
+                        }
 
-                                HStack {
-                                    Button("Delete") {
-                                        if index < campaign.sections.count { // Check index validity before acting
-                                            let sectionIdToDelete = campaign.sections[index].id
-                                            campaign.sections.remove(at: index)
-                                            customTextViewCoordinators.removeValue(forKey: sectionIdToDelete)
-                                            Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
-                                        }
-                                    }
-                                    .foregroundColor(.red)
-                                    .buttonStyle(.borderless)
+                        HStack {
+                            Button("Delete") {
+                                if index < campaign.sections.count { // Check index validity before acting
+                                    let sectionIdToDelete = campaign.sections[index].id
+                                    campaign.sections.remove(at: index)
+                                    customTextViewCoordinators.removeValue(forKey: sectionIdToDelete)
+                                    Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
+                                }
+                            }
+                            .foregroundColor(.red)
+                            .buttonStyle(.borderless)
 
-                                    Spacer()
+                            Spacer()
 
-                                    Menu {
-                                        if isLoadingFeatures { Text("Loading features...") }
-                                        else if snippetFeatures.isEmpty { Text("No snippet features.") }
-                                        else {
-                                            ForEach(snippetFeatures) { feature in
-                                                Button(feature.name) {
-                                                    if index < campaign.sections.count {
-                                                        handleStandardSnippetFeatureSelection(feature, forSectionAtIndex: index)
-                                                    }
-                                                }
+                            Menu {
+                                if isLoadingFeatures { Text("Loading features...") }
+                                else if snippetFeatures.isEmpty { Text("No snippet features.") }
+                                else {
+                                    ForEach(snippetFeatures) { feature in
+                                        Button(feature.name) {
+                                            if index < campaign.sections.count {
+                                                handleStandardSnippetFeatureSelection(feature, forSectionAtIndex: index)
                                             }
                                         }
-                                    } label: {
-                                        Label("Snippet", systemImage: "wand.and.stars").font(.caption)
                                     }
-                                    .buttonStyle(.bordered).disabled(isLoadingFeatures)
-
-                                    Button("Regen") {
-                                        if index < campaign.sections.count {
-                                            handleStandardSectionRegeneration(forSectionAtIndex: index)
-                                        }
-                                    }
-                                    .buttonStyle(.bordered).font(.caption)
-
-                                    Button {
-                                        if index < campaign.sections.count {
-                                            self.currentStandardSectionIndexForImageGen = index
-                                            self.imageGenPromptText = campaign.sections[index].title ?? "Image for section \(campaign.sections[index].order)"
-                                            self.showingImagePromptModalForStandardSection = true
-                                        }
-                                    } label: {
-                                        Label("Image", systemImage: "photo.badge.plus").font(.caption)
-                                    }
-                                    .buttonStyle(.bordered)
                                 }
-                                .padding(.top, 4)
+                            } label: {
+                                Label("Snippet", systemImage: "wand.and.stars").font(.caption)
                             }
-                            .padding(.vertical, 8) // Padding for the content of DisclosureGroup
-                        // Removed DisclosureGroup label and closing for standard sections
+                            .buttonStyle(.bordered).disabled(isLoadingFeatures)
+
+                            Button("Regen") {
+                                if index < campaign.sections.count {
+                                    handleStandardSectionRegeneration(forSectionAtIndex: index)
+                                }
+                            }
+                            .buttonStyle(.bordered).font(.caption)
+
+                            Button {
+                                if index < campaign.sections.count {
+                                    self.currentStandardSectionIndexForImageGen = index
+                                    self.imageGenPromptText = campaign.sections[index].title ?? "Image for section \(campaign.sections[index].order)"
+                                    self.showingImagePromptModalForStandardSection = true
+                                }
+                            } label: {
+                                Label("Image", systemImage: "photo.badge.plus").font(.caption)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        .padding(.top, 4)
                     }
-                    // .padding(.bottom, 4) // Spacing between disclosure groups // Removed
-                    .padding(.vertical, 4) // Keep some vertical padding for the VStack itself
-                    Divider()
+                    .padding(.vertical, 8) // Padding for the content of DisclosureGroup
+                    // Removed DisclosureGroup label and closing for standard sections
                 }
+                // .padding(.bottom, 4) // Spacing between disclosure groups // Removed
+                .padding(.vertical, 4) // Keep some vertical padding for the VStack itself
+                Divider()
             }
         }
         .padding() // Outer padding for the whole sections block
-        // Removed .onAppear as it was not clearly contributing to standard section save logic here.
-        // onChange for individual fields handles saves.
-        // Note: Individual DisclosureGroup backgrounds/paddings might need adjustment
-        // if they clash with the overall theme. For now, applying font/color broadly.
     }
+    // Removed .onAppear as it was not clearly contributing to standard section save logic here.
+    // onChange for individual fields handles saves.
+    // Note: Individual DisclosureGroup backgrounds/paddings might need adjustment
+    // if they clash with the overall theme. For now, applying font/color broadly.
+
 
     private func handleImageGenerationForSection() async {
         sectionImageGenError = nil // Reset error
@@ -427,7 +443,7 @@ struct CampaignDetailView: View {
                let currentCoordinatorText = coordinator.textView?.text { // Access actual text from UITextView
                 if localCampaignCustomSections[index].content != currentCoordinatorText {
                     localCampaignCustomSections[index].content = currentCoordinatorText
-                     print("ImageGen: Forcing localCampaignCustomSections content update from coordinator's text view for section \(sectionId).")
+                    print("ImageGen: Forcing localCampaignCustomSections content update from coordinator's text view for section \(sectionId).")
                 }
             }
 
@@ -538,11 +554,11 @@ struct CampaignDetailView: View {
                 print("Full section content regeneration successful for section \(section.id).")
 
             } catch {
-            let errorDescription = "Error regenerating full content for section \(section.title): \(error.localizedDescription)" // Fixed: section.title is not optional
+                let errorDescription = "Error regenerating full content for section \(section.title): \(error.localizedDescription)" // Fixed: section.title is not optional
                 print(errorDescription)
                 fullSectionRegenError = errorDescription
-            self.errorMessage = "Content Regeneration Failed (Section: \(section.title))" // Fixed: section.title is not optional
-            self.showErrorAlert = true
+                self.errorMessage = "Content Regeneration Failed (Section: \(section.title))" // Fixed: section.title is not optional
+                self.showErrorAlert = true
             }
         }
     }
@@ -613,7 +629,7 @@ struct CampaignDetailView: View {
                             print("[SAVE_DEBUG CampaignDetailView] processSnippetWithLLM: Snippet content from LLM ('\(returnedUpdatedSectionData.content.prefix(20))') differs from re-synced campaign's section content ('\(self.localCampaignCustomSections[index].content.prefix(20))'). Trusting LLM direct output for this section.") // DEBUG LOG
                             // This ensures the text view, which was updated by the coordinator,
                             // and the underlying data model for that section are aligned with the direct LLM output for the snippet.
-                             self.localCampaignCustomSections[index].content = returnedUpdatedSectionData.content
+                            self.localCampaignCustomSections[index].content = returnedUpdatedSectionData.content
                         }
                     }
 
@@ -630,8 +646,8 @@ struct CampaignDetailView: View {
                 let errorDescription = "Error processing snippet for feature '\(feature.name)': \(error.localizedDescription)"
                 print(errorDescription)
                 snippetProcessingError = errorDescription
-            self.errorMessage = "Snippet Processing Failed (Section: \(currentCampaignSection.title))" // Fixed: currentCampaignSection.title is not optional
-            self.showErrorAlert = true
+                self.errorMessage = "Snippet Processing Failed (Section: \(currentCampaignSection.title))" // Fixed: currentCampaignSection.title is not optional
+                self.showErrorAlert = true
             }
         }
     }
@@ -690,7 +706,7 @@ struct CampaignDetailView: View {
                             .font(.caption)
                             .padding(.bottom, 4)
                             .onChange(of: $section.type.wrappedValue) { _ in // Observe .wrappedValue
-                               Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
+                                Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
                             }
 
                             CustomTextView(
@@ -698,16 +714,16 @@ struct CampaignDetailView: View {
                                 font: uiFontFrom(swiftUIFont: currentFont),
                                 textColor: UIColor(currentTextColor),
                                 onCoordinatorCreated: { coordinator in
-                                customTextViewCoordinators[$section.id.wrappedValue] = coordinator // Corrected access
+                                    customTextViewCoordinators[$section.id.wrappedValue] = coordinator // Corrected access
                                 }
                             )
-                                .frame(minHeight: 100, maxHeight: 300)
-                                .background(Color(.secondarySystemGroupedBackground))
-                                .cornerRadius(8)
-                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+                            .frame(minHeight: 100, maxHeight: 300)
+                            .background(Color(.secondarySystemGroupedBackground))
+                            .cornerRadius(8)
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
                             .onChange(of: $section.content.wrappedValue) { _ in // Observe .wrappedValue
-                                    Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
-                                }
+                                Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
+                            }
 
                             HStack { // Action Buttons
                                 Button(role: section.id.wrappedValue < 0 ? .none : .destructive) {
@@ -879,7 +895,7 @@ struct CampaignDetailView: View {
                                 additionalContext: contextData
                             )
                         } else {
-                             print("Error: Coordinator disappeared while context modal was up for section \(sectionId).")
+                            print("Error: Coordinator disappeared while context modal was up for section \(sectionId).")
                         }
                     }
                 )
@@ -939,7 +955,7 @@ struct CampaignDetailView: View {
         .onDisappear {
             titleDebounceTimer?.invalidate()
             if campaign.title != editableTitle || campaign.concept ?? "" != editableConcept {
-                 Task { await saveCampaignDetails(source: .onDisappear) }
+                Task { await saveCampaignDetails(source: .onDisappear) }
             }
         }
         // MARK: - Sheets
@@ -952,38 +968,24 @@ struct CampaignDetailView: View {
         .sheet(isPresented: $showingExportSheet) {
             exportSheetView
         }
-        .sheet(isPresented: $showingThemeEditSheet) {
-            CampaignThemeEditView(campaign: $campaign)
+        .sheet(isPresented: $showingCampaignEditSheet) { // Renamed state variable
+            CampaignEditView(campaign: $campaign, campaignCreator: campaignCreator, isPresented: $showingCampaignEditSheet) // Pass campaignCreator and isPresented
                 .onDisappear {
-                    // Changes to campaign theme are saved within CampaignThemeEditView's "Done" button.
-                    // We might still need to trigger a broader save of the campaign object if
-                    // the theme changes should also update the campaign's modifiedAt timestamp
-                    // or if other side effects are needed.
-                    // For now, assume CampaignThemeEditView handles its own persistence to the binding.
-                    // If a specific save call is needed:
-                    // Task { await saveCampaignDetails(source: .themeEditorDismissed) }
-                    // However, saveCampaignDetails currently only saves title and concept.
-                    // A more generic save or a specific theme save function might be needed on CampaignCreator.
-
-                    // Let's make sure the main CampaignDetailView saves the campaign
-                    // if theme properties were changed.
-                    // We need to compare the campaign state before and after the sheet.
-                    // This is tricky as the binding means `campaign` is already updated.
-                    // A simple solution is to always mark as modified and save if the sheet was shown.
-                    // More robust: check if any theme property actually changed.
-                    // For now, a direct save call if the sheet was for theme editing.
-                    print("[THEME_DEBUG CampaignDetailView] ThemeEditView dismissed. Current self.campaign theme values before save call:") // DEBUG LOG
-                    print("[THEME_DEBUG CampaignDetailView]   PrimaryColor: \(self.campaign.themePrimaryColor ?? "nil")") // DEBUG LOG
-                    print("[THEME_DEBUG CampaignDetailView]   FontFamily: \(self.campaign.themeFontFamily ?? "nil")") // DEBUG LOG
-                    print("[THEME_DEBUG CampaignDetailView]   BgImageURL: \(self.campaign.themeBackgroundImageURL ?? "nil")") // DEBUG LOG
-                    Task {
-                        // We need a way to tell saveCampaignDetails to save *everything* or
-                        // have a separate save for theme. Let's assume saveCampaignDetails
-                        // should be smart enough or we add a specific theme save.
-                        // For now, let's add a specific part to saveCampaignDetails for theme.
-                        // This requires modifying saveCampaignDetails.
-                        // Alternatively, call a specific save method on campaignCreator if available.
-                         await saveCampaignDetails(source: .themeEditorDismissed, includeTheme: true)
+                    // CampaignEditView now handles its own saving via its "Done" button
+                    // and dismisses itself by setting its isPresented binding to false.
+                    // The CampaignCreator's @Published campaigns array should trigger updates here.
+                    // We might still want to ensure our local `campaign` @State var is
+                    // perfectly in sync with the one from campaignCreator.characters if there were changes.
+                    if let updatedCampaign = campaignCreator.campaigns.first(where: { $0.id == self.campaign.id }) {
+                        if self.campaign.modifiedAt != updatedCampaign.modifiedAt || // Simple check for modifications
+                            self.campaign.linkedCharacterIDs != updatedCampaign.linkedCharacterIDs ||
+                            self.campaign.title != updatedCampaign.title {
+                            print("CampaignDetailView: CampaignEditView dismissed, local campaign state updated from CampaignCreator.")
+                            self.campaign = updatedCampaign
+                            self.editableTitle = updatedCampaign.title // Ensure title is also synced
+                            self.editableConcept = updatedCampaign.concept ?? ""
+                            self.localCampaignCustomSections = updatedCampaign.customSections ?? []
+                        }
                     }
                 }
         }
@@ -1237,8 +1239,8 @@ struct CampaignDetailView: View {
                     // For Slider, onChange is usually triggered when dragging ends.
                 }
                 .onChange(of: campaign.temperature) { _ in
-                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                     Task { await saveCampaignDetails(source: .llmSettingsChange, includeLLMSettings: true) }
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    Task { await saveCampaignDetails(source: .llmSettingsChange, includeLLMSettings: true) }
                 }
 
                 Text("Lower temperature (e.g., 0.2) means more focused output. Higher (e.g., 0.8) means more creative output.")
@@ -1322,10 +1324,10 @@ struct CampaignDetailView: View {
                                                 .frame(width: 100, height: 100)
                                         case .success(let image):
                                             image.resizable()
-                                                 .aspectRatio(contentMode: .fill)
-                                                 .frame(width: 100, height: 100)
-                                                 .clipped()
-                                                 .cornerRadius(8)
+                                                .aspectRatio(contentMode: .fill)
+                                                .frame(width: 100, height: 100)
+                                                .clipped()
+                                                .cornerRadius(8)
                                         case .failure:
                                             Image(systemName: "photo")
                                                 .resizable()
@@ -1394,8 +1396,8 @@ struct CampaignDetailView: View {
         // Concept comparison
         let conceptToSave = editableConcept.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty()
         if campaignToUpdate.concept != conceptToSave {
-             campaignToUpdate.concept = conceptToSave
-             changed = true
+            campaignToUpdate.concept = conceptToSave
+            changed = true
         }
 
         if includeLLMSettings {
@@ -1403,8 +1405,8 @@ struct CampaignDetailView: View {
             // `campaignToUpdate` already reflects the current UI state for these.
             // Mark `changed = true` to ensure the save proceeds.
             if source == .llmSettingsChange { // If called specifically for this
-                 print("LLM settings included in save operation by source.")
-                 changed = true
+                print("LLM settings included in save operation by source.")
+                changed = true
             } else {
                 print("LLM settings included in save operation by flag.")
                 changed = true
@@ -1444,8 +1446,8 @@ struct CampaignDetailView: View {
             // We mark `changed = true` to ensure the save proceeds with these sections.
             // A more precise check would involve comparing with original state if we had snapshot it.
             if source == .standardSectionChange { // If called specifically for this, assume change.
-                 print("Standard sections included in save operation by source. Count: \(campaignToUpdate.sections.count)")
-                 changed = true
+                print("Standard sections included in save operation by source. Count: \(campaignToUpdate.sections.count)")
+                changed = true
             } else {
                 // If not triggered by standardSectionChange, one might implement a deep comparison
                 // to see if campaign.sections actually changed from their state before this save call.
@@ -1631,226 +1633,227 @@ struct CampaignDetailView: View {
         exportedMarkdown = campaignCreator.exportCampaignToHomebrewery(campaign)
         showingExportSheet = true
     }
-}
 
-struct CampaignSectionsListView: View {
-    let campaign: Campaign
 
-    var body: some View {
-        VStack(alignment: .leading) {
-            Text("Sections").font(.headline)
-            if campaign.sections.isEmpty {
-                Text("No sections yet. Use 'Generate' to create the first section from a prompt.")
-                    .font(.subheadline).foregroundColor(.secondary).padding()
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .background(Color(.systemGroupedBackground)).cornerRadius(8)
-            } else {
-                ForEach(campaign.sections) { section in
-                    DisclosureGroup(section.title ?? "Untitled Section (\(section.order))") {
-                        Text(section.content.prefix(200) + (section.content.count > 200 ? "..." : ""))
-                            .font(.body)
-                            .lineLimit(5)
-                            .frame(maxWidth: .infinity, alignment: .leading) // Ensure text aligns left
-                            .padding(.top, 4) // Add some padding below the DisclosureGroup title
-                    }
-                    .padding(.vertical, 4)
-                }
-            }
-        }
-        .padding()
-    }
-}
+    struct CampaignSectionsListView: View {
+        let campaign: Campaign
 
-struct CampaignThemeDisplayView: View {
-    let campaign: Campaign
-    @Binding var errorMessage: String
-    @Binding var showErrorAlert: Bool
-
-    var body: some View {
-        DisclosureGroup("Campaign Theme") {
-            VStack(alignment: .leading, spacing: 8) {
-                ThemePropertyRow(label: "Primary Color", value: campaign.themePrimaryColor)
-                ThemePropertyRow(label: "Secondary Color", value: campaign.themeSecondaryColor)
-                ThemePropertyRow(label: "Background Color", value: campaign.themeBackgroundColor)
-                ThemePropertyRow(label: "Text Color", value: campaign.themeTextColor)
-                ThemePropertyRow(label: "Font Family", value: campaign.themeFontFamily)
-                ThemePropertyRow(label: "Background Image URL", value: campaign.themeBackgroundImageURL, isURL: true)
-                ThemePropertyRow(label: "BG Image Opacity", value: campaign.themeBackgroundImageOpacity.map { String(format: "%.2f", $0) })
-
-                Button("Edit Theme (Placeholder)") {
-                    // TODO: Implement theme editing
-                    print("Edit Theme button tapped - functionality not yet implemented.")
-                    errorMessage = "Theme editing is not yet implemented."
-                    showErrorAlert = true
-                }
-                .buttonStyle(.bordered)
-                .padding(.top, 8)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 4)
-        }
-        .padding().background(Color(.systemBackground)).cornerRadius(12)
-    }
-}
-
-struct CampaignTableOfContentsView: View {
-    let tocEntries: [TOCEntry]
-
-    var body: some View {
-        DisclosureGroup("Table of Contents") {
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(tocEntries) { entry in
-                    Text(entry.title)
-                        .font(.body)
-                        // TODO: Add navigation to section
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 4)
-        }
-        .padding().background(Color(.systemBackground)).cornerRadius(12)
-    }
-}
-
-// MARK: - Extracted Subviews
-
-struct CampaignHeaderView: View {
-    let campaign: Campaign
-    @Binding var editableTitle: String
-    let isSaving: Bool
-    let isGeneratingText: Bool
-    @Binding var showingGenerateSheet: Bool
-    @Binding var showingGenerateImageSheet: Bool
-    let exportCampaignContent: () -> Void
-    let saveTitleAction: () -> Void // For debounced save
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                VStack(alignment: .leading) {
-                    Text("\(campaign.wordCount) words (from sections)")
-                        .font(.caption).foregroundColor(.secondary)
-                    Text(campaign.modifiedAt != nil ? "Modified: \(campaign.modifiedAt!, style: .date)" : "Modified: N/A")
-                        .font(.caption).foregroundColor(.secondary)
-                }
-                Spacer()
-                if isSaving || isGeneratingText { // Show progress if saving or generating
-                    ProgressView().padding(.trailing, 5)
-                }
-                // Action buttons
-                HStack(spacing: 12) {
-                    Button(action: { showingGenerateSheet = true }) {
-                        Label("Text", systemImage: "sparkles")
-                    }
-                    .buttonStyle(.borderedProminent).disabled(isSaving || isGeneratingText)
-
-                    Button(action: { showingGenerateImageSheet = true }) {
-                        Label("Image", systemImage: "photo")
-                    }
-                    .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
-
-                    Button(action: exportCampaignContent) {
-                        Label("Export", systemImage: "square.and.arrow.up")
-                    }
-                    .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
-                }
-            }
-
-            TextField("Campaign Title", text: $editableTitle)
-                .font(.largeTitle)
-                .textFieldStyle(PlainTextFieldStyle())
-                .padding(.bottom, 4)
-                .disabled(isSaving || isGeneratingText)
-                .onChange(of: editableTitle) { _ in
-                    saveTitleAction() // Call the debounced save action
-                }
-        }
-        .padding().background(Color(.systemGroupedBackground)).cornerRadius(12)
-    }
-}
-
-struct CampaignConceptView: View {
-    @Binding var editableConcept: String
-    @Binding var isEditingConcept: Bool
-    let isSaving: Bool
-    let isGeneratingText: Bool
-    let saveConceptAction: () async -> Void
-
-    var body: some View {
-        DisclosureGroup("Campaign Concept", isExpanded: $isEditingConcept) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Spacer() // Pushes button to the right
-                    Button(isEditingConcept ? "Done" : "Edit") {
-                        isEditingConcept.toggle()
-                        if !isEditingConcept {
-                            Task { await saveConceptAction() }
-                        }
-                    }
-                    .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
-                }
-
-                if isEditingConcept {
-                    TextEditor(text: $editableConcept)
-                        .frame(minHeight: 200, maxHeight: 400).padding(8)
-                        .background(Color(.systemBackground)).cornerRadius(8)
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
-                        .disabled(isSaving || isGeneratingText)
+        var body: some View {
+            VStack(alignment: .leading) {
+                Text("Sections").font(.headline)
+                if campaign.sections.isEmpty {
+                    Text("No sections yet. Use 'Generate' to create the first section from a prompt.")
+                        .font(.subheadline).foregroundColor(.secondary).padding()
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .background(Color(.systemGroupedBackground)).cornerRadius(8)
                 } else {
-                    Text(editableConcept.isEmpty ? "Tap Edit to add campaign concept..." : editableConcept)
-                        .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 100)
-                        .padding().background(Color(.systemGroupedBackground)).cornerRadius(8)
-                        .foregroundColor(editableConcept.isEmpty ? .secondary : .primary)
-                        .onTapGesture { if !isSaving && !isGeneratingText { isEditingConcept = true } }
+                    ForEach(campaign.sections) { section in
+                        DisclosureGroup(section.title ?? "Untitled Section (\(section.order))") {
+                            Text(section.content.prefix(200) + (section.content.count > 200 ? "..." : ""))
+                                .font(.body)
+                                .lineLimit(5)
+                                .frame(maxWidth: .infinity, alignment: .leading) // Ensure text aligns left
+                                .padding(.top, 4) // Add some padding below the DisclosureGroup title
+                        }
+                        .padding(.vertical, 4)
+                    }
                 }
             }
+            .padding()
         }
-        .padding().background(Color(.systemBackground)).cornerRadius(12)
     }
-}
 
-#Preview {
-    let campaignCreator = CampaignCreator()
-    // Ensure all model instantiations have their required 'id: Int'
-    let sampleCampaign = Campaign(
-        id: 1, // Correct: Campaign ID is Int
-        title: "My Preview Saga",
-        concept: "A test concept.",
-        displayTOC: [ // Corrected order: displayTOC before sections
-            TOCEntry(id: 201, title: "Introduction", type: "Introduction"),
-            TOCEntry(id: 202, title: "Chapter 1 Link", type: "Chapter")
-        ],
-        sections: [
-            CampaignSection(
-                id: 101, // Correct: CampaignSection ID is Int
-                title: "Intro",
-                content: "This is the intro section.",
-                order: 0
-            ),
-            CampaignSection(
-                id: 102, // Correct: CampaignSection ID is Int
-                title: "Chapter 1",
-                content: "Content for chapter 1.",
-                order: 1
-            )
-        ],
-        themePrimaryColor: "#FF0000",
-        themeFontFamily: "Arial",
-        customSections: [ // ADDED Sample Campaign Custom Sections
-            CampaignCustomSection(id: 1, title: "World History", content: "A brief history of the world..."),
-            CampaignCustomSection(id: 2, title: "Key Factions", content: "Details about important groups...")
-        ]
-    )
-    // campaignCreator.campaigns = [sampleCampaign] // If needed for preview consistency
+    struct CampaignThemeDisplayView: View {
+        let campaign: Campaign
+        @Binding var errorMessage: String
+        @Binding var showErrorAlert: Bool
 
-    NavigationView { // Removed explicit 'return'
-        CampaignDetailView(campaign: sampleCampaign, campaignCreator: campaignCreator)
+        var body: some View {
+            DisclosureGroup("Campaign Theme") {
+                VStack(alignment: .leading, spacing: 8) {
+                    ThemePropertyRow(label: "Primary Color", value: campaign.themePrimaryColor)
+                    ThemePropertyRow(label: "Secondary Color", value: campaign.themeSecondaryColor)
+                    ThemePropertyRow(label: "Background Color", value: campaign.themeBackgroundColor)
+                    ThemePropertyRow(label: "Text Color", value: campaign.themeTextColor)
+                    ThemePropertyRow(label: "Font Family", value: campaign.themeFontFamily)
+                    ThemePropertyRow(label: "Background Image URL", value: campaign.themeBackgroundImageURL, isURL: true)
+                    ThemePropertyRow(label: "BG Image Opacity", value: campaign.themeBackgroundImageOpacity.map { String(format: "%.2f", $0) })
+
+                    Button("Edit Theme (Placeholder)") {
+                        // TODO: Implement theme editing
+                        print("Edit Theme button tapped - functionality not yet implemented.")
+                        errorMessage = "Theme editing is not yet implemented."
+                        showErrorAlert = true
+                    }
+                    .buttonStyle(.bordered)
+                    .padding(.top, 8)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 4)
+            }
+            .padding().background(Color(.systemBackground)).cornerRadius(12)
+        }
     }
-}
 
+    struct CampaignTableOfContentsView: View {
+        let tocEntries: [TOCEntry]
 
-// Helper view for displaying theme properties
-struct ThemePropertyRow: View {
+        var body: some View {
+            DisclosureGroup("Table of Contents") {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(tocEntries) { entry in
+                        Text(entry.title)
+                            .font(.body)
+                        // TODO: Add navigation to section
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 4)
+            }
+            .padding().background(Color(.systemBackground)).cornerRadius(12)
+        }
+    }
+
+    // MARK: - Extracted Subviews
+
+    struct CampaignHeaderView: View {
+        let campaign: Campaign
+        @Binding var editableTitle: String
+        let isSaving: Bool
+        let isGeneratingText: Bool
+        @Binding var showingGenerateSheet: Bool
+        @Binding var showingGenerateImageSheet: Bool
+        let exportCampaignContent: () -> Void
+        let saveTitleAction: () -> Void // For debounced save
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("\(campaign.wordCount) words (from sections)")
+                            .font(.caption).foregroundColor(.secondary)
+                        Text(campaign.modifiedAt != nil ? "Modified: \(campaign.modifiedAt!, style: .date)" : "Modified: N/A")
+                            .font(.caption).foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    if isSaving || isGeneratingText { // Show progress if saving or generating
+                        ProgressView().padding(.trailing, 5)
+                    }
+                    // Action buttons
+                    HStack(spacing: 12) {
+                        Button(action: { showingGenerateSheet = true }) {
+                            Label("Text", systemImage: "sparkles")
+                        }
+                        .buttonStyle(.borderedProminent).disabled(isSaving || isGeneratingText)
+
+                        Button(action: { showingGenerateImageSheet = true }) {
+                            Label("Image", systemImage: "photo")
+                        }
+                        .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
+
+                        Button(action: exportCampaignContent) {
+                            Label("Export", systemImage: "square.and.arrow.up")
+                        }
+                        .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
+                    }
+                }
+
+                TextField("Campaign Title", text: $editableTitle)
+                    .font(.largeTitle)
+                    .textFieldStyle(PlainTextFieldStyle())
+                    .padding(.bottom, 4)
+                    .disabled(isSaving || isGeneratingText)
+                    .onChange(of: editableTitle) { _ in
+                        saveTitleAction() // Call the debounced save action
+                    }
+            }
+            .padding().background(Color(.systemGroupedBackground)).cornerRadius(12)
+        }
+    }
+
+    struct CampaignConceptView: View {
+        @Binding var editableConcept: String
+        @Binding var isEditingConcept: Bool
+        let isSaving: Bool
+        let isGeneratingText: Bool
+        let saveConceptAction: () async -> Void
+
+        var body: some View {
+            DisclosureGroup("Campaign Concept", isExpanded: $isEditingConcept) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Spacer() // Pushes button to the right
+                        Button(isEditingConcept ? "Done" : "Edit") {
+                            isEditingConcept.toggle()
+                            if !isEditingConcept {
+                                Task { await saveConceptAction() }
+                            }
+                        }
+                        .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
+                    }
+
+                    if isEditingConcept {
+                        TextEditor(text: $editableConcept)
+                            .frame(minHeight: 200, maxHeight: 400).padding(8)
+                            .background(Color(.systemBackground)).cornerRadius(8)
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+                            .disabled(isSaving || isGeneratingText)
+                    } else {
+                        Text(editableConcept.isEmpty ? "Tap Edit to add campaign concept..." : editableConcept)
+                            .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 100)
+                            .padding().background(Color(.systemGroupedBackground)).cornerRadius(8)
+                            .foregroundColor(editableConcept.isEmpty ? .secondary : .primary)
+                            .onTapGesture { if !isSaving && !isGeneratingText { isEditingConcept = true } }
+                    }
+                }
+            }
+            .padding().background(Color(.systemBackground)).cornerRadius(12)
+        }
+    }
+
+    #Preview {
+        let campaignCreator = CampaignCreator()
+        // Ensure all model instantiations have their required 'id: Int'
+        let sampleCampaign = Campaign(
+            id: 1, // Correct: Campaign ID is Int
+            title: "My Preview Saga",
+            concept: "A test concept.",
+            displayTOC: [ // Corrected order: displayTOC before sections
+                TOCEntry(id: 201, title: "Introduction", type: "Introduction"),
+                TOCEntry(id: 202, title: "Chapter 1 Link", type: "Chapter")
+                        ],
+            sections: [
+                CampaignSection(
+                    id: 101, // Correct: CampaignSection ID is Int
+                    title: "Intro",
+                    content: "This is the intro section.",
+                    order: 0
+                ),
+                CampaignSection(
+                    id: 102, // Correct: CampaignSection ID is Int
+                    title: "Chapter 1",
+                    content: "Content for chapter 1.",
+                    order: 1
+                )
+            ],
+            themePrimaryColor: "#FF0000",
+            themeFontFamily: "Arial",
+            customSections: [ // ADDED Sample Campaign Custom Sections
+                CampaignCustomSection(id: 1, title: "World History", content: "A brief history of the world..."),
+                CampaignCustomSection(id: 2, title: "Key Factions", content: "Details about important groups...")
+                            ]
+        )
+        // campaignCreator.campaigns = [sampleCampaign] // If needed for preview consistency
+
+        NavigationView { // Removed explicit 'return'
+            CampaignDetailView(campaign: sampleCampaign, campaignCreator: campaignCreator)
+        }
+    }
+
+    // Helper view for displaying theme properties
+} // THIS IS THE END OF CampaignDetailView struct
+
+struct ThemePropertyRow: View { // This struct is correctly outside CampaignDetailView
     let label: String
     let value: String?
     var isURL: Bool = false
@@ -1879,4 +1882,5 @@ struct ThemePropertyRow: View {
             Spacer() // Pushes content to the left
         }
     }
-// Last '}' is assumed to be extraneous and is removed by not including it here.
+}
+// NO EXTRANEOUS BRACE AT THE VERY END OF THE FILE
