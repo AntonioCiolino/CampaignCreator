@@ -292,6 +292,9 @@ struct CampaignDetailView: View {
                             .font(currentFont.weight(.semibold))
                             .textFieldStyle(PlainTextFieldStyle())
                             .padding(.bottom, 2)
+                            .onChange(of: campaign.sections[index].title) { _ in // Use index to ensure it's observing the correct instance if ForEach recreates views
+                                Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
+                            }
 
                         // Note: CustomTextView needs a binding to String.
                         // We are binding directly to sectionBinding.content
@@ -310,6 +313,9 @@ struct CampaignDetailView: View {
                             .background(Color(.secondarySystemGroupedBackground))
                             .cornerRadius(8)
                             .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+                            .onChange(of: campaign.sections[index].content) { _ in // Use index for the same reason
+                                Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
+                            }
 
                         // Action Buttons for Standard Sections
                         HStack {
@@ -1160,22 +1166,48 @@ struct CampaignDetailView: View {
     @State private var currentStandardSectionIndexForImageGen: Int? = nil
     // Re-use imageGenPromptText for the modal's text editor.
 
+    // Struct for LLM Picker
+    struct AvailableLLM: Identifiable, Hashable {
+        let id: String
+        let name: String
+    }
+
+    // Placeholder list of LLMs - ideally, this would be fetched from a service
+    let placeholderLLMs: [AvailableLLM] = [
+        AvailableLLM(id: "gpt-4o", name: "GPT-4o"),
+        AvailableLLM(id: "gpt-4-turbo", name: "GPT-4 Turbo"),
+        AvailableLLM(id: "gpt-4", name: "GPT-4"),
+        AvailableLLM(id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo"),
+        AvailableLLM(id: "claude-3-opus-20240229", name: "Claude 3 Opus"),
+        AvailableLLM(id: "claude-3-sonnet-20240229", name: "Claude 3 Sonnet"),
+        AvailableLLM(id: "claude-3-haiku-20240307", name: "Claude 3 Haiku"),
+        AvailableLLM(id: "gemini-1.5-pro-latest", name: "Gemini 1.5 Pro"),
+        AvailableLLM(id: "gemini-1.0-pro", name: "Gemini 1.0 Pro"),
+        // TODO: Add other relevant models (e.g., local LLM identifiers if supported)
+        AvailableLLM(id: "deepseek-coder", name: "Deepseek Coder (via OpenRouter)"),
+        AvailableLLM(id: "mistral-7b-instruct", name: "Mistral 7B Instruct (via OpenRouter)"),
+        AvailableLLM(id: "llama-2-70b-chat", name: "LLaMA-2 70B Chat (via OpenRouter)")
+    ]
+
+
     // MARK: - LLM Settings Section
     private var llmSettingsSection: some View {
         DisclosureGroup("LLM Settings") {
             VStack(alignment: .leading, spacing: 12) {
-                // Placeholder for LLM Selection (needs a list of available LLMs)
-                HStack {
-                    Text("Selected LLM ID:")
-                        .font(currentFont.weight(.medium))
-                    TextField("e.g., gpt-4, claude-2", text: $campaign.selectedLLMId.withDefault("default-llm-id"))
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .font(currentFont)
+                Picker("Selected LLM", selection: $campaign.selectedLLMId.withDefault(placeholderLLMs.first?.id ?? "default-llm-id")) {
+                    ForEach(placeholderLLMs) { llm in
+                        Text(llm.name).tag(llm.id)
+                    }
                 }
+                .pickerStyle(MenuPickerStyle()) // Or .automatic for default style
+                .font(currentFont) // Apply theme font to the picker label if desired
                 .onChange(of: campaign.selectedLLMId) { _ in
-                    // Debounce or save immediately. For simplicity, save immediately.
                     Task { await saveCampaignDetails(source: .llmSettingsChange, includeLLMSettings: true) }
                 }
+                Text("Note: This list is a placeholder. Ideally, available LLMs should be fetched from the server.")
+                    .font(.caption2)
+                    .foregroundColor(.orange)
+
 
                 // Temperature Setting
                 VStack(alignment: .leading) {
@@ -1187,6 +1219,7 @@ struct CampaignDetailView: View {
                     // For Slider, onChange is usually triggered when dragging ends.
                 }
                 .onChange(of: campaign.temperature) { _ in
+                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                      Task { await saveCampaignDetails(source: .llmSettingsChange, includeLLMSettings: true) }
                 }
 
