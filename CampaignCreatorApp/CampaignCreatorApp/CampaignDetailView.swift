@@ -37,6 +37,7 @@ struct CampaignDetailView: View {
     @State private var imageGeneratePrompt = "" // Prompt for image generation
     @State private var showingCampaignEditSheet = false // Renamed from showingThemeEditSheet
     @State private var showingMoodBoardSheet = false // ADDED for Mood Board sheet
+    @State private var showingCampaignThemeSheet: Bool = false // ADDED for Campaign Theme sheet
     
     @State private var viewRefreshTrigger = UUID() // <<<< ADDED to force view refresh
     
@@ -680,11 +681,20 @@ struct CampaignDetailView: View {
     
     // MARK: - Campaign Custom Sections Editor
     private var campaignCustomSectionsEditorView: some View {
-        DisclosureGroup("Custom Campaign Sections") {
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach($localCampaignCustomSections) { section in // $section is Binding<CampaignCustomSection>
-                    DisclosureGroup(
-                        content: {
+        // Removed DisclosureGroup("Custom Campaign Sections") wrapper
+        // The content (VStack) will now be the root of this computed property.
+        // This view will be placed inside the parent "Campaign Sections" DisclosureGroup.
+        VStack(alignment: .leading, spacing: 12) {
+            // Add a Text header for "Custom Sections" if desired, or leave it to the parent group.
+            // For clarity within the "Campaign Sections" group, let's add a sub-header.
+            Text("Custom Sections")
+                .font(currentFont.weight(.semibold)) // Slightly less prominent than "Sections"
+                .foregroundColor(currentPrimaryColor.opacity(0.8)) // Slightly muted
+                .padding(.bottom, 2)
+
+            ForEach($localCampaignCustomSections) { section in // $section is Binding<CampaignCustomSection>
+                DisclosureGroup(
+                    content: {
                             Text(section.title.wrappedValue.isEmpty ? "New Custom Section" : section.title.wrappedValue)
                                 .font(currentFont.weight(.bold))
                                 .foregroundColor(currentTextColor)
@@ -796,12 +806,15 @@ struct CampaignDetailView: View {
                 .tint(currentPrimaryColor) // Use theme color
             }
             .padding(.top, 8)
+            // Removed the .padding().background().cornerRadius().foregroundColor().font()
+            // as these are now applied by the parent "Campaign Sections" DisclosureGroup
+            // or should be inherent to the content if needed.
+            // The individual custom section DisclosureGroups already handle their own internal styling.
         }
-        .padding().background(Color(.systemBackground)).cornerRadius(12)
-        .foregroundColor(currentTextColor)
-        .font(currentFont)
+        // Apply overall font and text color if not inherited, though parent group should handle it.
+        // .foregroundColor(currentTextColor)
+        // .font(currentFont)
     }
-    
     private func addCampaignCustomSection() {
         let newId = nextTemporaryClientSectionID
         nextTemporaryClientSectionID -= 1 // Decrement for next use
@@ -842,7 +855,7 @@ struct CampaignDetailView: View {
                     if let tocEntries = campaign.displayTOC, !tocEntries.isEmpty {
                         tableOfContentsSection // Using the extracted component
                     }
-                    campaignThemeDisplaySection // Using the extracted component
+                    // campaignThemeDisplaySection // REMOVED from inline
 
                     // MARK: - Combined Campaign Sections (Custom and Standard)
                     DisclosureGroup("Campaign Sections") {
@@ -1016,6 +1029,18 @@ struct CampaignDetailView: View {
             }
             .padding(.top) // Add some padding so X button isn't too close to status bar
         }
+        .sheet(isPresented: $showingCampaignThemeSheet) {
+            NavigationView {
+                campaignThemeDisplaySection // This already contains the "Edit Campaign Details" button
+                    .navigationTitle("Campaign Theme")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Done") { showingCampaignThemeSheet = false }
+                        }
+                    }
+            }
+        }
         .sheet(isPresented: $showingCampaignEditSheet) { // Renamed state variable
             CampaignEditView(campaign: $campaign, campaignCreator: campaignCreator, isPresented: $showingCampaignEditSheet) // Pass campaignCreator and isPresented
         }
@@ -1083,6 +1108,14 @@ struct CampaignDetailView: View {
                 if isSaving || isGeneratingText {
                     ProgressView()
                 } else {
+                    // Campaign Theme Button
+                    Button {
+                        showingCampaignThemeSheet = true
+                    } label: {
+                        Label("Theme", systemImage: "paintbrush.pointed.fill")
+                    }
+                    .disabled(isSaving || isGeneratingText)
+
                     // Mood Board Button
                     Button {
                         showingMoodBoardSheet = true
@@ -1330,29 +1363,32 @@ struct CampaignDetailView: View {
                 VStack(alignment: .leading) {
                     Text("Temperature: \(String(format: "%.2f", campaign.temperature ?? 0.7))")
                         .font(currentFont.weight(.medium))
-                    Slider(value: $campaign.temperature.withDefault(0.7), in: 0.0...2.0, step: 0.05) {
+                    Slider(value: $campaign.temperature.withDefault(0.7), in: 0.0...1.0, step: 0.05) { // Range changed to 0.0...1.0
                         Text("Temperature") // Accessibility label
                     }
                     // For Slider, onChange is usually triggered when dragging ends.
                 }
                 .onChange(of: campaign.temperature) { _ in
-                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    // Removed: UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     Task { await saveCampaignDetails(source: .llmSettingsChange, includeLLMSettings: true) }
                 }
                 
-                Text("Lower temperature (e.g., 0.2) means more focused output. Higher (e.g., 0.8) means more creative output.")
+                Text("Lower temperature (e.g., 0.2) means more focused output. Higher (e.g., 0.8 for more creative output, max 1.0).") // Updated help text
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 4)
+            // Removed .padding().background().cornerRadius() as this will be applied by the sheet or its container.
+            // Apply theme font and color directly to this VStack if needed, or rely on sheet's environment.
         }
-        .padding().background(Color(.systemBackground)).cornerRadius(12)
-        .foregroundColor(currentTextColor)
-        .font(currentFont)
+        .foregroundColor(currentTextColor) // Ensure text within this section uses themed color
+        .font(currentFont) // Ensure text within this section uses themed font
+        // If this section is used in a sheet, padding for the whole section might be better applied by the sheet's content view.
+        // For now, let's add some padding here for standalone use or if sheet doesn't pad.
+        .padding() // Add padding around the content of the mood board
     }
-    
     // MARK: - Linked Characters Section
     private var linkedCharactersSection: some View {
         DisclosureGroup("Linked Characters") {
@@ -1399,10 +1435,16 @@ struct CampaignDetailView: View {
     
     // MARK: - Mood Board Section
     private var moodBoardSection: some View {
-        DisclosureGroup("Mood Board") {
-            VStack(alignment: .leading, spacing: 10) {
-                if let urls = campaign.moodBoardImageURLs, !urls.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
+        // Removed DisclosureGroup to make content directly visible in its container (e.g., sheet)
+        VStack(alignment: .leading, spacing: 10) {
+            // Added a title for the section, as DisclosureGroup label is gone
+            Text("Mood Board Images")
+                .font(currentFont.weight(.bold))
+                .foregroundColor(currentPrimaryColor)
+                .padding(.bottom, 5)
+
+            if let urls = campaign.moodBoardImageURLs, !urls.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 10) {
                             ForEach(urls, id: \.self) { urlString in
                                 if let url = URL(string: urlString) {
