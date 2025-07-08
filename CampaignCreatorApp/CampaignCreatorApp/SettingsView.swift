@@ -19,6 +19,31 @@ struct SettingsView: View {
     @State private var alertMessage = ""
     @State private var showingForgetLoginAlert = false // New alert for forgetting login
 
+    // Stable Diffusion Engine Preference
+    enum StableDiffusionEngine: String, CaseIterable, Identifiable {
+        case systemDefault = ""
+        case core = "core"
+        case ultra = "ultra"
+        case sd3 = "sd3"
+
+        var id: String { self.rawValue }
+
+        var displayName: String {
+            switch self {
+            case .systemDefault: return "System Default"
+            case .core: return "Core"
+            case .ultra: return "Ultra (Experimental)"
+            case .sd3: return "SD3 (Experimental)"
+            }
+        }
+    }
+    @State private var selectedSdEngine: StableDiffusionEngine = .systemDefault
+    private let sdEnginePreferenceKey = "StableDiffusionEnginePreference"
+
+    @State private var serviceStatusMessage: String = "Tap Refresh to check."
+    @State private var isRefreshingServiceStatus: Bool = false
+
+
     private let lastUsernameKey = "LastUsername" // From LoginView, for consistency
     
     var body: some View {
@@ -28,11 +53,48 @@ struct SettingsView: View {
                 if let user = campaignCreator.currentUser {
                     Section(header: Text("Account")) {
                         HStack {
-                            Text("Logged in as:")
+                            VStack(alignment: .leading) {
+                                Text("Logged in as:")
+                                Text(user.email) // Or user.username if preferred
+                                    .font(.footnote)
+                                    .foregroundColor(.secondary)
+                            }
                             Spacer()
-                            Text(user.email) // Or user.username if preferred
-                                .foregroundColor(.secondary)
+                            // Profile Icon Display
+                            AsyncImage(url: URL(string: user.avatar_url ?? "")) { phase in
+                                if let image = phase.image {
+                                    image.resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(width: 50, height: 50)
+                                        .clipShape(Circle())
+                                } else if phase.error != nil {
+                                    Image(systemName: "person.circle.fill") // Error placeholder
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: 50, height: 50)
+                                        .foregroundColor(.gray)
+                                } else {
+                                    Image(systemName: "person.circle") // Default placeholder
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: 50, height: 50)
+                                        .foregroundColor(.gray)
+                                }
+                            }
                         }
+
+                        Button("Change Profile Icon (Coming Soon)") {
+                            // Placeholder action for now
+                            alertMessage = "Profile icon customization will be available in a future update."
+                            showingAPIKeyAlert = true // Re-use this alert for simplicity
+                        }
+
+                        Button("Change Password (Coming Soon)") {
+                            // Placeholder action for now
+                            alertMessage = "Password change functionality will be available in a future update."
+                            showingAPIKeyAlert = true // Re-use this alert for simplicity
+                        }
+
                         Button(action: {
                             campaignCreator.logout()
                             // The ContentView will react to isAuthenticated changing and show LoginView
@@ -74,6 +136,20 @@ struct SettingsView: View {
                     apiKeyField(label: "Stable Diffusion API Key", placeholder: "sd-...", apiKeyDisplay: stableDiffusionApiKey, apiKeyEdit: $editStableDiffusionApiKey, keyName: "STABLE_DIFFUSION_API_KEY")
                 }
 
+                Section(header: Text("Preferences")) {
+                    Picker("Preferred Stable Diffusion Engine", selection: $selectedSdEngine) {
+                        ForEach(StableDiffusionEngine.allCases) { engine in
+                            Text(engine.displayName).tag(engine)
+                        }
+                    }
+                    .onChange(of: selectedSdEngine) { newEngine in
+                        saveSdEnginePreference(engine: newEngine)
+                    }
+                    Text("Select your preferred engine for Stable Diffusion image generation. \"System Default\" will use the server's configured default.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
                 Section(header: Text("Security")) {
                     Button(action: forgetSavedLogin) {
                         Text("Forget Saved Login Credentials")
@@ -86,19 +162,50 @@ struct SettingsView: View {
                         VStack(alignment: .leading) {
                             Text("Available Services")
                                 .font(.subheadline).fontWeight(.medium)
-                            Text(getAvailableServices())
-                                .font(.caption).foregroundColor(.secondary)
+                            if isRefreshingServiceStatus {
+                                ProgressView()
+                                    .progressViewStyle(.circular)
+                                    .scaleEffect(0.8)
+                                Text("Checking...")
+                                    .font(.caption).foregroundColor(.orange)
+                            } else {
+                                Text(serviceStatusMessage)
+                                    .font(.caption).foregroundColor(.secondary)
+                            }
                         }
                         Spacer()
-                        Button("Refresh") { loadAPIKeys() }.buttonStyle(.bordered)
+                        Button(action: { refreshServiceStatus() }) { // Wrapped in a closure
+                            if isRefreshingServiceStatus {
+                                ProgressView() // Show spinner inside button if preferred
+                            } else {
+                                Text("Refresh")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(isRefreshingServiceStatus)
                     }
                 }
                 
-                Section(header: Text("About")) {
-                    Link(destination: URL(string: "https://github.com/AntonioCiolino/CampaignCreator")!) {
-                        HStack { Image(systemName: "link"); Text("View on GitHub"); Spacer(); Image(systemName: "arrow.up.right.square") }
+                DisclosureGroup("About") {
+                    VStack(alignment: .leading) { // Use VStack for proper layout within DisclosureGroup
+                        Link(destination: URL(string: "https://github.com/AntonioCiolino/CampaignCreator")!) {
+                            HStack {
+                                Image(systemName: "link")
+                                Text("View on GitHub")
+                                Spacer()
+                                Image(systemName: "arrow.up.right.square")
+                            }
+                        }
+                        // Add a divider for better visual separation if needed, or just rely on VStack spacing
+                        // Divider()
+                        HStack {
+                            Text("Version")
+                            Spacer()
+                            Text("1.0.1") // Example version
+                                .foregroundColor(.secondary)
+                        }
                     }
-                    HStack { Text("Version"); Spacer(); Text("1.0.1").foregroundColor(.secondary) } // Example version
+                    .padding(.top, 4) // Add a little padding at the top of the content
                 }
             }
             .navigationTitle("Settings")
@@ -108,6 +215,8 @@ struct SettingsView: View {
                 editOpenAIApiKey = UserDefaults.standard.string(forKey: "OPENAI_API_KEY") ?? ""
                 editGeminiApiKey = UserDefaults.standard.string(forKey: "GEMINI_API_KEY") ?? ""
                 editStableDiffusionApiKey = UserDefaults.standard.string(forKey: "STABLE_DIFFUSION_API_KEY") ?? ""
+                loadSdEnginePreference()
+                refreshServiceStatus(isInitialLoad: true) // Load initial status without delay
             }
             .alert("Login Credentials", isPresented: $showingForgetLoginAlert) { // Alert for forgetting login
                 Button("OK") { }
@@ -138,6 +247,22 @@ struct SettingsView: View {
             print("SettingsView: No saved login to forget.")
         }
         showingForgetLoginAlert = true
+    }
+
+    private func loadSdEnginePreference() {
+        if let rawValue = UserDefaults.standard.string(forKey: sdEnginePreferenceKey) {
+            selectedSdEngine = StableDiffusionEngine(rawValue: rawValue) ?? .systemDefault
+        } else {
+            selectedSdEngine = .systemDefault
+        }
+    }
+
+    private func saveSdEnginePreference(engine: StableDiffusionEngine) {
+        UserDefaults.standard.set(engine.rawValue, forKey: sdEnginePreferenceKey)
+        print("SettingsView: Saved Stable Diffusion Engine Preference: \(engine.displayName)")
+        // Optionally, show an alert or confirmation
+        // alertMessage = "Stable Diffusion engine preference saved."
+        // showingAPIKeyAlert = true // Can reuse this alert if desired, or create a new one
     }
 
     @ViewBuilder
@@ -195,11 +320,33 @@ struct SettingsView: View {
         
         alertMessage = "\(keyLabel) API Key has been saved."
         showingAPIKeyAlert = true
+        refreshServiceStatus() // Refresh status after saving a key
     }
     
-    private func getAvailableServices() -> String {
+    private func refreshServiceStatus(isInitialLoad: Bool = false) {
+        if isInitialLoad {
+            // For initial load, directly update the status without delay or "checking" state
+            self.serviceStatusMessage = getServiceStatusString()
+            return
+        }
+
+        isRefreshingServiceStatus = true
+        // Simulate a short delay to make the refresh feel more tangible
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
+            self.serviceStatusMessage = getServiceStatusString()
+            self.isRefreshingServiceStatus = false
+            // The loadAPIKeys() call here ensures that the masked display of keys
+            // also updates if a key was just entered and saved via onSubmit of a SecureField.
+            // If a key is saved, the onSubmit calls saveAPIKey which updates UserDefaults.
+            // Then, this refreshServiceStatus is called. loadAPIKeys() will then read the
+            // new state from UserDefaults and update the "Set"/"Not Set" display.
+            loadAPIKeys()
+        }
+    }
+
+    private func getServiceStatusString() -> String {
         let services = SecretsManager.shared.availableServices
-        return services.isEmpty ? "No services configured" : services.joined(separator: ", ")
+        return services.isEmpty ? "No AI services configured with API keys." : "Available: \(services.joined(separator: ", "))"
     }
 }
 
