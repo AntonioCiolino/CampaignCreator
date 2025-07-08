@@ -303,101 +303,101 @@ struct CampaignDetailView: View {
             } else {
                 // Use indices to bind to elements of campaign.sections array
                 ForEach($campaign.sections.indices, id: \.self) { index in
-                    let sectionBinding = $campaign.sections[index]
-                    VStack(alignment: .leading) {
-                        // Handle optional title for TextField
-                        TextField("Section Title", text: sectionBinding.title.withDefault("Untitled Section \(campaign.sections[index].order)"))
-                            .font(currentFont.weight(.semibold))
-                            .textFieldStyle(PlainTextFieldStyle())
-                            .padding(.bottom, 2)
-                            .onChange(of: campaign.sections[index].title) { _ in // Use index to ensure it's observing the correct instance if ForEach recreates views
-                                Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
-                            }
+                    DisclosureGroup(
+                        content: {
+                            let sectionBinding = $campaign.sections[index]
+                            VStack(alignment: .leading) {
+                                TextField("Section Title", text: sectionBinding.title.withDefault("Untitled Section \(campaign.sections[index].order)"))
+                                    .font(currentFont.weight(.semibold))
+                                    .textFieldStyle(PlainTextFieldStyle())
+                                    .padding(.bottom, 2)
+                                    .onChange(of: campaign.sections[index].title) { _ in
+                                        Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
+                                    }
 
-                        // Note: CustomTextView needs a binding to String.
-                        // We are binding directly to sectionBinding.content
-                        CustomTextView(
-                            text: sectionBinding.content,
-                            font: uiFontFrom(swiftUIFont: currentFont), // Ensure this font is appropriate
-                            textColor: UIColor(currentTextColor), // Ensure this color is appropriate
-                            onCoordinatorCreated: { coordinator in
-                                // Store coordinator if needed for advanced interactions, similar to custom sections
-                                // For standard sections, direct binding might be sufficient for basic editing.
-                                // If snippet processing or other advanced features are added, this will be necessary.
-                                 customTextViewCoordinators[campaign.sections[index].id] = coordinator
-                            }
-                        )
-                            .frame(minHeight: 100, maxHeight: 300) // Adjust frame as needed
-                            .background(Color(.secondarySystemGroupedBackground))
-                            .cornerRadius(8)
-                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
-                            .onChange(of: campaign.sections[index].content) { _ in // Use index for the same reason
-                                Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
-                            }
+                                CustomTextView(
+                                    text: sectionBinding.content,
+                                    font: uiFontFrom(swiftUIFont: currentFont),
+                                    textColor: UIColor(currentTextColor),
+                                    onCoordinatorCreated: { coordinator in
+                                         customTextViewCoordinators[campaign.sections[index].id] = coordinator
+                                    }
+                                )
+                                    .frame(minHeight: 100, maxHeight: 300)
+                                    .background(Color(.secondarySystemGroupedBackground))
+                                    .cornerRadius(8)
+                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+                                    .onChange(of: campaign.sections[index].content) { _ in
+                                        Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
+                                    }
 
-                        // Action Buttons for Standard Sections
-                        HStack {
-                            Button("Delete") {
-                                let sectionIdToDelete = campaign.sections[index].id // Get ID before removal
-                                campaign.sections.remove(at: index)
-                                customTextViewCoordinators.removeValue(forKey: sectionIdToDelete) // Use stored ID
-                                Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
-                            }
-                            .foregroundColor(.red)
-                            .buttonStyle(.borderless)
-
-                            Spacer()
-
-                            // Placeholder for "Process Snippet" - requires coordinator
-                            Menu {
-                                if isLoadingFeatures { Text("Loading features...") }
-                                else if snippetFeatures.isEmpty { Text("No snippet features.") }
-                                else {
-                                    ForEach(snippetFeatures) { feature in
-                                        Button(feature.name) {
-                                            // Ensure campaign.sections[index] is valid before using its ID
-                                            // This might be tricky if a section was just deleted.
-                                            // Need a stable way to get section ID or pass the section object.
-                                            handleStandardSnippetFeatureSelection(feature, forSectionAtIndex: index)
+                                HStack {
+                                    Button("Delete") {
+                                        if index < campaign.sections.count { // Check index validity before acting
+                                            let sectionIdToDelete = campaign.sections[index].id
+                                            campaign.sections.remove(at: index)
+                                            customTextViewCoordinators.removeValue(forKey: sectionIdToDelete)
+                                            Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
                                         }
                                     }
+                                    .foregroundColor(.red)
+                                    .buttonStyle(.borderless)
+
+                                    Spacer()
+
+                                    Menu {
+                                        if isLoadingFeatures { Text("Loading features...") }
+                                        else if snippetFeatures.isEmpty { Text("No snippet features.") }
+                                        else {
+                                            ForEach(snippetFeatures) { feature in
+                                                Button(feature.name) {
+                                                    if index < campaign.sections.count {
+                                                        handleStandardSnippetFeatureSelection(feature, forSectionAtIndex: index)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } label: {
+                                        Label("Snippet", systemImage: "wand.and.stars").font(.caption)
+                                    }
+                                    .buttonStyle(.bordered).disabled(isLoadingFeatures)
+
+                                    Button("Regen") {
+                                        if index < campaign.sections.count {
+                                            handleStandardSectionRegeneration(forSectionAtIndex: index)
+                                        }
+                                    }
+                                    .buttonStyle(.bordered).font(.caption)
+
+                                    Button {
+                                        if index < campaign.sections.count {
+                                            self.currentStandardSectionIndexForImageGen = index
+                                            self.imageGenPromptText = campaign.sections[index].title ?? "Image for section \(campaign.sections[index].order)"
+                                            self.showingImagePromptModalForStandardSection = true
+                                        }
+                                    } label: {
+                                        Label("Image", systemImage: "photo.badge.plus").font(.caption)
+                                    }
+                                    .buttonStyle(.bordered)
                                 }
-                            } label: {
-                                Label("Snippet", systemImage: "wand.and.stars").font(.caption)
+                                .padding(.top, 4)
                             }
-                            .buttonStyle(.bordered).disabled(isLoadingFeatures)
-
-
-                            // Placeholder for "Regenerate Content"
-                            Button("Regen") {
-                                handleStandardSectionRegeneration(forSectionAtIndex: index)
-                            }
-                            .buttonStyle(.bordered).font(.caption)
-
-                            // Placeholder for "Generate Image"
-                            Button {
-                                self.currentStandardSectionIndexForImageGen = index
-                                // Ensure title is not nil, or provide a default for the prompt
-                                self.imageGenPromptText = campaign.sections[index].title ?? "Image for section \(campaign.sections[index].order)"
-                                self.showingImagePromptModalForStandardSection = true
-                            } label: {
-                                Label("Image", systemImage: "photo.badge.plus").font(.caption)
-                            }
-                            .buttonStyle(.bordered)
+                            .padding(.vertical, 8) // Padding for the content of DisclosureGroup
+                        },
+                        label: {
+                            Text(campaign.sections[index].title ?? "Untitled Section \(campaign.sections[index].order)")
+                                .font(currentFont.weight(.bold))
+                                .foregroundColor(currentTextColor)
                         }
-                        .padding(.top, 4)
-                    }
-                    .padding(.vertical, 8)
+                    )
+                    .padding(.bottom, 4) // Spacing between disclosure groups
                     Divider()
                 }
             }
         }
         .padding() // Outer padding for the whole sections block
-        .onAppear { // Trigger save when content of standard sections might have changed
-            // This onAppear might be too broad. Consider more targeted save triggers.
-            // For now, this ensures that if CustomTextView bindings change, a save is attempted.
-            // Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
-        }
+        // Removed .onAppear as it was not clearly contributing to standard section save logic here.
+        // onChange for individual fields handles saves.
         // Note: Individual DisclosureGroup backgrounds/paddings might need adjustment
         // if they clash with the overall theme. For now, applying font/color broadly.
     }
@@ -685,99 +685,103 @@ struct CampaignDetailView: View {
     private var campaignCustomSectionsEditorView: some View {
         DisclosureGroup("Custom Campaign Sections") {
             VStack(alignment: .leading, spacing: 12) {
-                ForEach($localCampaignCustomSections) { $section in // Use localCampaignCustomSections
-                    VStack(alignment: .leading) {
-                        TextField("Section Title", text: $section.title)
-                            .font(currentFont.weight(.semibold)) // Use theme font
-                            .textFieldStyle(PlainTextFieldStyle())
-                            .padding(.bottom, 2)
-                            .onChange(of: section.title) { _ in // Auto-save on title change
-                                Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
-                            }
-
-                        Picker("Section Type", selection: $section.type.withDefault("Generic")) {
-                            ForEach(sectionTypes, id: \.self) { typeName in
-                                Text(typeName).tag(typeName)
-                            }
+                ForEach($localCampaignCustomSections) { $section in // $section is Binding<CampaignCustomSection>
+                    DisclosureGroup(
+                        label: {
+                            Text($section.title.wrappedValue.isEmpty ? "New Custom Section" : $section.title.wrappedValue)
+                                .font(currentFont.weight(.bold))
+                                .foregroundColor(currentTextColor)
                         }
-                        .pickerStyle(MenuPickerStyle())
-                        .font(.caption) // FIXED: Use system caption style
-                        .padding(.bottom, 4)
-
-                        CustomTextView(
-                            text: $section.content,
-                            font: uiFontFrom(swiftUIFont: currentFont),
-                            textColor: UIColor(currentTextColor),
-                            onCoordinatorCreated: { coordinator in
-                                customTextViewCoordinators[section.id] = coordinator
-                            }
-                        )
-                            .frame(minHeight: 100, maxHeight: 300)
-                            .background(Color(.secondarySystemGroupedBackground))
-                            .cornerRadius(8)
-                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
-                            .onChange(of: section.content) { _ in // Auto-save on content change
-                                Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
-                            }
-
-
-                        HStack { // Group Delete and Test Snippet buttons
-                            Button(role: section.id < 0 ? .none : .destructive) { // Use destructive role for actual delete
-                                let sectionIdToDelete = section.id
-                                localCampaignCustomSections.removeAll { $0.id == sectionIdToDelete }
-                                customTextViewCoordinators.removeValue(forKey: sectionIdToDelete)
-
-                                if sectionIdToDelete >= 0 { // Only call save if it was a persisted section
+                    ) { // Content for each custom section's DisclosureGroup
+                        VStack(alignment: .leading) {
+                            TextField("Section Title", text: $section.title)
+                                .font(currentFont.weight(.semibold))
+                                .textFieldStyle(PlainTextFieldStyle())
+                                .padding(.bottom, 2)
+                                .onChange(of: section.title) { _ in
                                     Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
                                 }
-                            } label: {
-                                Text(section.id < 0 ? "Remove" : "Delete Section")
+
+                            Picker("Section Type", selection: $section.type.withDefault("Generic")) {
+                                ForEach(sectionTypes, id: \.self) { typeName in
+                                    Text(typeName).tag(typeName)
+                                }
                             }
-                            .foregroundColor(section.id < 0 ? .blue : .red) // Different color for "Remove"
-                            .buttonStyle(.borderless)
+                            .pickerStyle(MenuPickerStyle())
+                            .font(.caption)
+                            .padding(.bottom, 4)
+                            .onChange(of: section.type) { _ in
+                               Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
+                            }
 
-                            Spacer()
+                            CustomTextView(
+                                text: $section.content,
+                                font: uiFontFrom(swiftUIFont: currentFont),
+                                textColor: UIColor(currentTextColor),
+                                onCoordinatorCreated: { coordinator in
+                                    customTextViewCoordinators[section.id.wrappedValue] = coordinator
+                                }
+                            )
+                                .frame(minHeight: 100, maxHeight: 300)
+                                .background(Color(.secondarySystemGroupedBackground))
+                                .cornerRadius(8)
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+                                .onChange(of: section.content) { _ in
+                                    Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
+                                }
 
-                            Menu {
-                                if isLoadingFeatures {
-                                    Text("Loading features...")
-                                } else if snippetFeatures.isEmpty {
-                                    Text("No snippet features available.")
-                                } else {
-                                    ForEach(snippetFeatures) { feature in
-                                        Button(feature.name) {
-                                            handleSnippetFeatureSelection(feature, forSection: section)
+                            HStack { // Action Buttons
+                                Button(role: section.id.wrappedValue < 0 ? .none : .destructive) {
+                                    let sectionIdToDelete = section.id.wrappedValue
+                                    localCampaignCustomSections.removeAll { $0.id == sectionIdToDelete }
+                                    customTextViewCoordinators.removeValue(forKey: sectionIdToDelete)
+                                    if sectionIdToDelete >= 0 {
+                                        Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
+                                    }
+                                } label: {
+                                    Text(section.id.wrappedValue < 0 ? "Remove" : "Delete Section")
+                                }
+                                .foregroundColor(section.id.wrappedValue < 0 ? .blue : .red)
+                                .buttonStyle(.borderless)
+
+                                Spacer()
+
+                                Menu {
+                                    if isLoadingFeatures { Text("Loading features...") }
+                                    else if snippetFeatures.isEmpty { Text("No snippet features available.") }
+                                    else {
+                                        ForEach(snippetFeatures) { feature in
+                                            Button(feature.name) {
+                                                handleSnippetFeatureSelection(feature, forSection: section.wrappedValue)
+                                            }
                                         }
                                     }
+                                } label: {
+                                    Label("Process Snippet", systemImage: "wand.and.stars").font(.caption)
                                 }
-                            } label: {
-                                Label("Process Snippet", systemImage: "wand.and.stars")
-                                    .font(.caption) // Apply caption font to the label
-                            }
-                            .buttonStyle(.bordered)
-                            // .font(.caption) // This on Menu might not style the internal label as expected, applied to Label directly.
-                            .disabled(isLoadingFeatures)
+                                .buttonStyle(.bordered)
+                                .disabled(isLoadingFeatures)
 
-                            Button("Regenerate Content") {
-                                handleFullSectionRegeneration(forSection: section)
-                            }
-                            .buttonStyle(.bordered)
-                            .font(.caption)
-                            .tint(currentPrimaryColor) // Optional: theme it or use default
+                                Button("Regenerate Content") {
+                                    handleFullSectionRegeneration(forSection: section.wrappedValue)
+                                }
+                                .buttonStyle(.bordered).font(.caption)
+                                .tint(currentPrimaryColor)
 
-                            Button { // Generate Image Button
-                                self.currentSectionIdForImageGen = section.id
-                                self.imageGenPromptText = section.title
-                                self.showingImagePromptModalForSection = true
-                            } label: {
-                                Label("Image", systemImage: "photo.badge.plus")
-                                   .font(.caption)
+                                Button {
+                                    self.currentSectionIdForImageGen = section.id.wrappedValue
+                                    self.imageGenPromptText = section.title.wrappedValue
+                                    self.showingImagePromptModalForSection = true
+                                } label: {
+                                    Label("Image", systemImage: "photo.badge.plus").font(.caption)
+                                }
+                                .buttonStyle(.bordered)
                             }
-                            .buttonStyle(.bordered)
+                            .padding(.top, 4)
                         }
-                        .padding(.top, 4)
+                        .padding(.vertical, 8) // Padding for the content of the inner DisclosureGroup
                     }
-                    .padding(.vertical, 8)
+                    .padding(.bottom, 4) // Spacing between disclosure groups
                     Divider()
                 }
                 Button(action: addCampaignCustomSection) {
@@ -843,6 +847,22 @@ struct CampaignDetailView: View {
                 .padding()
                 .font(currentFont) // Apply default theme font to all content within VStack
                 .foregroundColor(currentTextColor) // Apply default theme text color
+            }
+        }
+        .refreshable {
+            do {
+                print("[DetailView REFRESH] Attempting to refresh campaign ID: \(campaign.id)")
+                let refreshedCampaignData = try await campaignCreator.refreshCampaign(id: campaign.id)
+                self.campaign = refreshedCampaignData
+                self.editableTitle = refreshedCampaignData.title
+                self.editableConcept = refreshedCampaignData.concept ?? ""
+                self.localCampaignCustomSections = refreshedCampaignData.customSections ?? []
+                self.viewRefreshTrigger = UUID() // Trigger ID refresh as well
+                print("[DetailView REFRESH] Campaign \(campaign.id) refreshed successfully.")
+            } catch {
+                print("[DetailView REFRESH] Error refreshing campaign \(campaign.id): \(error.localizedDescription)")
+                self.errorMessage = "Failed to refresh campaign: \(error.localizedDescription)"
+                self.showErrorAlert = true
             }
         }
         .id(viewRefreshTrigger) // Force refresh when trigger changes
@@ -1470,8 +1490,26 @@ struct CampaignDetailView: View {
 
         do {
             let trulyRefreshedCampaign = try await campaignCreator.updateCampaign(campaignToUpdate)
+
+            print("[DetailView SAVE] Received trulyRefreshedCampaign ID: \(trulyRefreshedCampaign.id)")
+            print("[DetailView SAVE]   trulyRefreshedCampaign.themePrimaryColor: \(trulyRefreshedCampaign.themePrimaryColor ?? "nil")")
+            print("[DetailView SAVE]   trulyRefreshedCampaign.themeSecondaryColor: \(trulyRefreshedCampaign.themeSecondaryColor ?? "nil")")
+            print("[DetailView SAVE]   trulyRefreshedCampaign.themeBackgroundColor: \(trulyRefreshedCampaign.themeBackgroundColor ?? "nil")")
+            print("[DetailView SAVE]   trulyRefreshedCampaign.themeTextColor: \(trulyRefreshedCampaign.themeTextColor ?? "nil")")
+            print("[DetailView SAVE]   trulyRefreshedCampaign.themeFontFamily: \(trulyRefreshedCampaign.themeFontFamily ?? "nil")")
+            print("[DetailView SAVE]   trulyRefreshedCampaign.themeBackgroundImageURL: \(trulyRefreshedCampaign.themeBackgroundImageURL ?? "nil")")
+            print("[DetailView SAVE]   trulyRefreshedCampaign.themeBackgroundImageOpacity: \(String(describing: trulyRefreshedCampaign.themeBackgroundImageOpacity))")
+            print("[DetailView SAVE]   trulyRefreshedCampaign.modifiedAt: \(String(describing: trulyRefreshedCampaign.modifiedAt))")
+
             // Directly use the returned campaign object to refresh the local state
             self.campaign = trulyRefreshedCampaign
+
+            print("[DetailView SAVE] self.campaign set. Current theme values from self.campaign:")
+            print("[DetailView SAVE]   self.campaign.themePrimaryColor: \(self.campaign.themePrimaryColor ?? "nil")")
+            print("[DetailView SAVE]   self.campaign.themeFontFamily: \(self.campaign.themeFontFamily ?? "nil")")
+            print("[DetailView SAVE]   self.campaign.themeBackgroundImageURL: \(self.campaign.themeBackgroundImageURL ?? "nil")")
+            print("[DetailView SAVE]   self.campaign.modifiedAt: \(String(describing: self.campaign.modifiedAt))")
+
             self.editableTitle = trulyRefreshedCampaign.title
             self.editableConcept = trulyRefreshedCampaign.concept ?? ""
             self.localCampaignCustomSections = trulyRefreshedCampaign.customSections ?? []
