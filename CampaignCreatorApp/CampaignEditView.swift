@@ -157,6 +157,7 @@ struct CampaignEditView: View { // Renamed struct
                         }
                         .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
+                    }
                 }
             }
         }

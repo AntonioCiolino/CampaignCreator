@@ -189,6 +189,25 @@ public class CampaignCreator: ObservableObjectProtocol {
         return updatedCampaignFromAPI // MODIFIED: Added return
     }
 
+    public func refreshCampaign(id: Int) async throws -> Campaign {
+        guard isAuthenticated else { throw APIError.notAuthenticated }
+        print("[CampaignCreator] Refreshing campaign with ID: \(id)")
+        let fetchedCampaign = try await apiService.fetchCampaign(id: id) // This is a GET request for a single campaign
+        
+        // Update the campaign in the local @Published campaigns array
+        if let index = campaigns.firstIndex(where: { $0.id == id }) {
+            campaigns[index] = fetchedCampaign
+            print("[CampaignCreator] Campaign \(id) updated in local list after refresh.")
+        } else {
+            // If campaign wasn't in the list (e.g., if it's a new campaign somehow not yet in the list,
+            // or list was cleared), appending might make sense, or logging an error.
+            // For a typical refresh of an existing item, it should be found.
+            campaigns.append(fetchedCampaign)
+            print("[CampaignCreator] Campaign \(id) was not in local list, appended after refresh. This might indicate an unexpected state or a need to reload the entire list.")
+        }
+        return fetchedCampaign // Return the fetched campaign
+    }
+    
     public func deleteCampaign(_ campaign: Campaign) async throws {
         guard isAuthenticated else { throw APIError.notAuthenticated }
         try await apiService.deleteCampaign(id: campaign.id)

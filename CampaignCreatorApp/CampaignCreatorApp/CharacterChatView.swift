@@ -159,8 +159,7 @@ struct CharacterChatView_Previews: PreviewProvider {
         NavigationView {
             CharacterChatView(
                 campaignCreator: creator,
-                character: sampleCharacter,
-                chatMessages: sampleMessages // Pass initial messages for preview
+                character: sampleCharacter
             )
         }
     }

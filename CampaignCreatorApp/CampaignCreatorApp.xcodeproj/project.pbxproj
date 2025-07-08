@@ -19,12 +19,13 @@
 		943031832E1C8B1000F3C129 /* CustomTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9430317C2E1C8B1000F3C129 /* CustomTextView.swift */; };
 		943031842E1C8B1000F3C129 /* FeatureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9430317D2E1C8B1000F3C129 /* FeatureService.swift */; };
 		943031852E1C8B1000F3C129 /* SnippetContextInputModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9430317F2E1C8B1000F3C129 /* SnippetContextInputModal.swift */; };
-		9481FD632E1C3D180084268D /* CampaignThemeEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9481FD612E1C3D180084268D /* CampaignThemeEditView.swift */; };
+		943031BB2E1DCAFF00F3C129 /* CampaignDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 943031BA2E1DCAFF00F3C129 /* CampaignDetailView.swift */; };
+		943031BE2E1DCB0600F3C129 /* CharacterChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 943031BD2E1DCB0600F3C129 /* CharacterChatView.swift */; };
+		943031BF2E1DCB0600F3C129 /* CampaignEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 943031BC2E1DCB0600F3C129 /* CampaignEditView.swift */; };
 		9481FD642E1C3D180084268D /* SectionBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9481FD622E1C3D180084268D /* SectionBox.swift */; };
 		9481FD662E1C3D210084268D /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9481FD652E1C3D210084268D /* Color+Hex.swift */; };
 		949269E92E1AC11300376F0A /* CharacterCreateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949269E42E1AC11300376F0A /* CharacterCreateView.swift */; };
 		949269EA2E1AC11300376F0A /* CampaignListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949269E32E1AC11300376F0A /* CampaignListView.swift */; };
-		949269EB2E1AC11300376F0A /* CampaignDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949269E22E1AC11300376F0A /* CampaignDetailView.swift */; };
 		949269EC2E1AC11300376F0A /* CharacterListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949269E72E1AC11300376F0A /* CharacterListView.swift */; };
 		949269ED2E1AC11300376F0A /* CharacterDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949269E52E1AC11300376F0A /* CharacterDetailView.swift */; };
 		949269EE2E1AC11300376F0A /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949269E82E1AC11300376F0A /* LoginView.swift */; };
@@ -44,10 +45,11 @@
 		9430317D2E1C8B1000F3C129 /* FeatureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureService.swift; sourceTree = "<group>"; };
 		9430317E2E1C8B1000F3C129 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		9430317F2E1C8B1000F3C129 /* SnippetContextInputModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetContextInputModal.swift; sourceTree = "<group>"; };
-		9481FD612E1C3D180084268D /* CampaignThemeEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignThemeEditView.swift; sourceTree = "<group>"; };
+		943031BA2E1DCAFF00F3C129 /* CampaignDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignDetailView.swift; sourceTree = "<group>"; };
+		943031BC2E1DCB0600F3C129 /* CampaignEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignEditView.swift; sourceTree = "<group>"; };
+		943031BD2E1DCB0600F3C129 /* CharacterChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterChatView.swift; sourceTree = "<group>"; };
 		9481FD622E1C3D180084268D /* SectionBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionBox.swift; sourceTree = "<group>"; };
 		9481FD652E1C3D210084268D /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
-		949269E22E1AC11300376F0A /* CampaignDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignDetailView.swift; sourceTree = "<group>"; };
 		949269E32E1AC11300376F0A /* CampaignListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignListView.swift; sourceTree = "<group>"; };
 		949269E42E1AC11300376F0A /* CharacterCreateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterCreateView.swift; sourceTree = "<group>"; };
 		949269E52E1AC11300376F0A /* CharacterDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterDetailView.swift; sourceTree = "<group>"; };
@@ -87,6 +89,9 @@
 		3D92BBE32B8C8A8E00B8E8E8 /* CampaignCreatorApp */ = {
 			isa = PBXGroup;
 			children = (
+				943031BC2E1DCB0600F3C129 /* CampaignEditView.swift */,
+				943031BD2E1DCB0600F3C129 /* CharacterChatView.swift */,
+				943031BA2E1DCAFF00F3C129 /* CampaignDetailView.swift */,
 				9430317A2E1C8B1000F3C129 /* Binding+Helpers.swift */,
 				9430317B2E1C8B1000F3C129 /* CampaignThemeManager.swift */,
 				9430317C2E1C8B1000F3C129 /* CustomTextView.swift */,
@@ -94,9 +99,7 @@
 				9430317E2E1C8B1000F3C129 /* KeychainHelper.swift */,
 				9430317F2E1C8B1000F3C129 /* SnippetContextInputModal.swift */,
 				9481FD652E1C3D210084268D /* Color+Hex.swift */,
-				9481FD612E1C3D180084268D /* CampaignThemeEditView.swift */,
 				9481FD622E1C3D180084268D /* SectionBox.swift */,
-				949269E22E1AC11300376F0A /* CampaignDetailView.swift */,
 				949269E32E1AC11300376F0A /* CampaignListView.swift */,
 				949269E42E1AC11300376F0A /* CharacterCreateView.swift */,
 				949269E52E1AC11300376F0A /* CharacterDetailView.swift */,
@@ -196,18 +199,19 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				943031BE2E1DCB0600F3C129 /* CharacterChatView.swift in Sources */,
+				943031BF2E1DCB0600F3C129 /* CampaignEditView.swift in Sources */,
 				9481FD662E1C3D210084268D /* Color+Hex.swift in Sources */,
 				949269E92E1AC11300376F0A /* CharacterCreateView.swift in Sources */,
 				949269EA2E1AC11300376F0A /* CampaignListView.swift in Sources */,
-				949269EB2E1AC11300376F0A /* CampaignDetailView.swift in Sources */,
 				949269EC2E1AC11300376F0A /* CharacterListView.swift in Sources */,
+				943031BB2E1DCAFF00F3C129 /* CampaignDetailView.swift in Sources */,
 				949269ED2E1AC11300376F0A /* CharacterDetailView.swift in Sources */,
 				949269EE2E1AC11300376F0A /* LoginView.swift in Sources */,
 				949269EF2E1AC11300376F0A /* CharacterEditView.swift in Sources */,
 				3D92BBFA2B8C8D4C00B8E8E8 /* SettingsView.swift in Sources */,
 				3D92BBE72B8C8A8E00B8E8E8 /* ContentView.swift in Sources */,
 				3D92BBE52B8C8A8E00B8E8E8 /* CampaignCreatorApp.swift in Sources */,
-				9481FD632E1C3D180084268D /* CampaignThemeEditView.swift in Sources */,
 				9481FD642E1C3D180084268D /* SectionBox.swift in Sources */,
 				943031802E1C8B1000F3C129 /* KeychainHelper.swift in Sources */,
 				943031812E1C8B1000F3C129 /* Binding+Helpers.swift in Sources */,

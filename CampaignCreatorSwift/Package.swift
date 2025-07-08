@@ -40,7 +40,8 @@ let package = Package(
                 "Models/UserModel.swift", // Added UserModel.swift
                 "Models/FeatureModel.swift", // ADDED
                 "Models/ImageGenerationModels.swift", // ADDED
-                "Models/SectionRegeneratePayload.swift" // ADDED
+                "Models/SectionRegeneratePayload.swift", // ADDED
+                "Models/ChatMessageData.swift"
             ]
         ),
         .testTarget(
