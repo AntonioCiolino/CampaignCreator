@@ -223,9 +223,11 @@ public final class APIService: Sendable {
         self.tokenManager = tokenManager
         jsonDecoder = JSONDecoder()
         jsonDecoder.dateDecodingStrategy = .iso8601
+        jsonDecoder.keyDecodingStrategy = .convertFromSnakeCase // ADDED
 
         jsonEncoder = JSONEncoder()
         jsonEncoder.dateEncodingStrategy = .iso8601
+        jsonEncoder.keyEncodingStrategy = .convertToSnakeCase // ADDED
         jsonEncoder.outputFormatting = .prettyPrinted
     }
 
