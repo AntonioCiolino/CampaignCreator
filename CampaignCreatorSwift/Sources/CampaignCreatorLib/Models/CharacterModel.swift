@@ -57,13 +57,43 @@ public struct Character: Identifiable, Codable, Sendable {
         name = try container.decode(String.self, forKey: .name)
         description = try container.decodeIfPresent(String.self, forKey: .description)
 
-        appearanceDescription = try container.decodeIfPresent(String.self, forKey: .appearanceDescription)
-        print("[DECODE_DEBUG CharacterModel] Decoded appearanceDescription for ID \(id): '\(appearanceDescription ?? "nil")'")
+        // --- Debugging appearanceDescription ---
+        let appearanceKeyExists = container.contains(.appearanceDescription)
+        print("[DECODE_DEBUG CharacterModel] For ID \(id): appearanceDescription key exists in JSON: \(appearanceKeyExists)")
+        if appearanceKeyExists {
+            do {
+                let rawAppearance = try container.decode(String.self, forKey: .appearanceDescription)
+                print("[DECODE_DEBUG CharacterModel] For ID \(id): appearanceDescription successfully decoded as non-optional String: '\(rawAppearance)'")
+                appearanceDescription = rawAppearance // Assign if successfully decoded as non-optional
+            } catch {
+                print("[DECODE_DEBUG CharacterModel] For ID \(id): FAILED to decode appearanceDescription as non-optional String. Error: \(error.localizedDescription). Trying decodeIfPresent...")
+                appearanceDescription = try container.decodeIfPresent(String.self, forKey: .appearanceDescription)
+            }
+        } else {
+            appearanceDescription = nil // Key doesn't exist, so it's nil
+        }
+        print("[DECODE_DEBUG CharacterModel] For ID \(id): Final appearanceDescription value: '\(appearanceDescription ?? "nil")'")
+        // --- End Debugging appearanceDescription ---
 
         imageURLs = try container.decodeIfPresent([String].self, forKey: .imageURLs)
 
-        notesForLLM = try container.decodeIfPresent(String.self, forKey: .notesForLLM)
-        print("[DECODE_DEBUG CharacterModel] Decoded notesForLLM for ID \(id): '\(notesForLLM ?? "nil")'")
+        // --- Debugging notesForLLM ---
+        let notesKeyExists = container.contains(.notesForLLM)
+        print("[DECODE_DEBUG CharacterModel] For ID \(id): notesForLLM key exists in JSON: \(notesKeyExists)")
+        if notesKeyExists {
+            do {
+                let rawNotes = try container.decode(String.self, forKey: .notesForLLM)
+                print("[DECODE_DEBUG CharacterModel] For ID \(id): notesForLLM successfully decoded as non-optional String: '\(rawNotes)'")
+                notesForLLM = rawNotes // Assign if successfully decoded as non-optional
+            } catch {
+                print("[DECODE_DEBUG CharacterModel] For ID \(id): FAILED to decode notesForLLM as non-optional String. Error: \(error.localizedDescription). Trying decodeIfPresent...")
+                notesForLLM = try container.decodeIfPresent(String.self, forKey: .notesForLLM)
+            }
+        } else {
+            notesForLLM = nil // Key doesn't exist, so it's nil
+        }
+        print("[DECODE_DEBUG CharacterModel] For ID \(id): Final notesForLLM value: '\(notesForLLM ?? "nil")'")
+        // --- End Debugging notesForLLM ---
 
         stats = try container.decodeIfPresent(CharacterStats.self, forKey: .stats)
         exportFormatPreference = try container.decodeIfPresent(String.self, forKey: .exportFormatPreference)
