@@ -37,17 +37,17 @@ public struct Character: Identifiable, Codable, Sendable {
     public var modifiedAt: Date? // Changed to optional
     // public var customSections: [CustomSection]? // REMOVED
 
-    enum CodingKeys: String, CodingKey {
+    enum CodingKeys: String, CodingKey { // Or just `enum CodingKeys: CodingKey` if some conventions allow omitting String
         case id
         case name
         case description
-        case appearanceDescription = "appearance_description"
-        case imageURLs = "image_urls" // Explicitly map to snake_case
-        case notesForLLM = "notes_for_llm"
+        case appearanceDescription // Rely on global strategy
+        case imageURLs             // Rely on global strategy
+        case notesForLLM           // Rely on global strategy
         case stats
-        case exportFormatPreference = "export_format_preference"
-        case createdAt = "created_at"
-        case modifiedAt = "modified_at"
+        case exportFormatPreference// Rely on global strategy
+        case createdAt             // Rely on global strategy
+        case modifiedAt            // Rely on global strategy
     }
 
     // Custom init(from decoder: Decoder) for detailed logging
