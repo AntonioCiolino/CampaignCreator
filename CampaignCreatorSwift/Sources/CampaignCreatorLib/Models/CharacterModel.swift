@@ -22,96 +22,94 @@ public struct CharacterStats: Codable, Sendable {
 
 // Corresponds to TypeScript 'Character'
 public struct Character: Identifiable, Codable, Sendable {
-    public var id: Int // Changed from UUID to Int
-    // public var ownerId: UUID? // If we need to associate with a user someday
+    public var id: Int
     public var name: String
     public var description: String?
     public var appearanceDescription: String?
     public var imageURLs: [String]?
     public var notesForLLM: String?
     public var stats: CharacterStats?
-    public var exportFormatPreference: String? // e.g., "JSON", "Markdown"
+    public var exportFormatPreference: String?
+    public var createdAt: Date?
+    public var modifiedAt: Date?
 
-    // Metadata
-    public var createdAt: Date? // Changed to optional
-    public var modifiedAt: Date? // Changed to optional
-    // public var customSections: [CustomSection]? // REMOVED
-
-    enum CodingKeys: String, CodingKey { // Or just `enum CodingKeys: CodingKey` if some conventions allow omitting String
+    enum CodingKeys: String, CodingKey { // Simplified: camelCase, relying on global strategy
         case id
         case name
         case description
-        case appearanceDescription // Rely on global strategy
-        case imageURLs             // Rely on global strategy
-        case notesForLLM           // Rely on global strategy
+        case appearanceDescription
+        case imageURLs
+        case notesForLLM
         case stats
-        case exportFormatPreference// Rely on global strategy
-        case createdAt             // Rely on global strategy
-        case modifiedAt            // Rely on global strategy
+        case exportFormatPreference
+        case createdAt
+        case modifiedAt
     }
 
     // Custom init(from decoder: Decoder) for detailed logging
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        // Log all keys recognized by the container
-        let tempIdForLog = try? container.decode(Int.self, forKey: .id)
-        print("[DECODE_DEBUG CharacterModel] For ID \(tempIdForLog ?? -99): Container allKeys: \(container.allKeys.map { $0.stringValue })")
+        let tempIdForLog = try? container.decode(Int.self, forKey: .id) // For logging before full ID assignment
+        print("[DECODE_DEBUG CharacterModel] For ID \(tempIdForLog ?? -99): Attempting to decode. Container allKeys: \(container.allKeys.map { $0.stringValue })")
 
-        id = try container.decode(Int.self, forKey: .id) // Re-decode id for assignment or use tempIdForLog if it's guaranteed to be called first
+        id = try container.decode(Int.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)
         description = try container.decodeIfPresent(String.self, forKey: .description)
 
         // --- Debugging appearanceDescription ---
         let appearanceKeyExists = container.contains(.appearanceDescription)
-        print("[DECODE_DEBUG CharacterModel] For ID \(id): appearanceDescription key exists in JSON: \(appearanceKeyExists)")
+        print("[DECODE_DEBUG CharacterModel] For ID \(id): appearanceDescription key exists in JSON (via container.contains): \(appearanceKeyExists)")
         if appearanceKeyExists {
             do {
                 let rawAppearance = try container.decode(String.self, forKey: .appearanceDescription)
                 print("[DECODE_DEBUG CharacterModel] For ID \(id): appearanceDescription successfully decoded as non-optional String: '\(rawAppearance)'")
-                appearanceDescription = rawAppearance // Assign if successfully decoded as non-optional
+                appearanceDescription = rawAppearance
             } catch {
                 print("[DECODE_DEBUG CharacterModel] For ID \(id): FAILED to decode appearanceDescription as non-optional String. Error: \(error.localizedDescription). Trying decodeIfPresent...")
                 appearanceDescription = try container.decodeIfPresent(String.self, forKey: .appearanceDescription)
             }
         } else {
-            appearanceDescription = nil // Key doesn't exist, so it's nil
+            print("[DECODE_DEBUG CharacterModel] For ID \(id): appearanceDescription key NOT found by container.contains. Assigning nil.")
+            appearanceDescription = nil
         }
         print("[DECODE_DEBUG CharacterModel] For ID \(id): Final appearanceDescription value: '\(appearanceDescription ?? "nil")'")
         // --- End Debugging appearanceDescription ---
 
         // --- Debugging imageURLs ---
         let imageURLsKeyExists = container.contains(.imageURLs)
-        print("[DECODE_DEBUG CharacterModel] For ID \(id): imageURLs key exists in JSON: \(imageURLsKeyExists)")
+        print("[DECODE_DEBUG CharacterModel] For ID \(id): imageURLs key exists in JSON (via container.contains): \(imageURLsKeyExists)")
         if imageURLsKeyExists {
             do {
                 let rawImageURLs = try container.decode([String].self, forKey: .imageURLs)
-                print("[DECODE_DEBUG CharacterModel] For ID \(id): imageURLs successfully decoded as non-optional [String]: '\(rawImageURLs)'")
+                print("[DECODE_DEBUG CharacterModel] For ID \(id): imageURLs successfully decoded as non-optional [String]: \(rawImageURLs)")
                 imageURLs = rawImageURLs
             } catch {
                 print("[DECODE_DEBUG CharacterModel] For ID \(id): FAILED to decode imageURLs as non-optional [String]. Error: \(error.localizedDescription). Trying decodeIfPresent...")
                 imageURLs = try container.decodeIfPresent([String].self, forKey: .imageURLs)
             }
         } else {
-            imageURLs = nil // Key doesn't exist, so it's nil
+            print("[DECODE_DEBUG CharacterModel] For ID \(id): imageURLs key NOT found by container.contains. Assigning nil.")
+            imageURLs = nil
         }
-        print("[DECODE_DEBUG CharacterModel] For ID \(id): Final imageURLs value: \(imageURLs ?? [])") // Print empty array if nil for clarity
+        print("[DECODE_DEBUG CharacterModel] For ID \(id): Final imageURLs value: \(imageURLs ?? [])")
         // --- End Debugging imageURLs ---
 
         // --- Debugging notesForLLM ---
         let notesKeyExists = container.contains(.notesForLLM)
-        print("[DECODE_DEBUG CharacterModel] For ID \(id): notesForLLM key exists in JSON: \(notesKeyExists)")
+        print("[DECODE_DEBUG CharacterModel] For ID \(id): notesForLLM key exists in JSON (via container.contains): \(notesKeyExists)")
         if notesKeyExists {
             do {
                 let rawNotes = try container.decode(String.self, forKey: .notesForLLM)
                 print("[DECODE_DEBUG CharacterModel] For ID \(id): notesForLLM successfully decoded as non-optional String: '\(rawNotes)'")
-                notesForLLM = rawNotes // Assign if successfully decoded as non-optional
+                notesForLLM = rawNotes
             } catch {
                 print("[DECODE_DEBUG CharacterModel] For ID \(id): FAILED to decode notesForLLM as non-optional String. Error: \(error.localizedDescription). Trying decodeIfPresent...")
                 notesForLLM = try container.decodeIfPresent(String.self, forKey: .notesForLLM)
             }
         } else {
-            notesForLLM = nil // Key doesn't exist, so it's nil
+            print("[DECODE_DEBUG CharacterModel] For ID \(id): notesForLLM key NOT found by container.contains. Assigning nil.")
+            notesForLLM = nil
         }
         print("[DECODE_DEBUG CharacterModel] For ID \(id): Final notesForLLM value: '\(notesForLLM ?? "nil")'")
         // --- End Debugging notesForLLM ---
@@ -120,6 +118,8 @@ public struct Character: Identifiable, Codable, Sendable {
         exportFormatPreference = try container.decodeIfPresent(String.self, forKey: .exportFormatPreference)
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt)
         modifiedAt = try container.decodeIfPresent(Date.self, forKey: .modifiedAt)
+
+        print("[DECODE_DEBUG CharacterModel] For ID \(id): Decoding complete. Final values - appearance: '\(appearanceDescription ?? "nil")', notes: '\(notesForLLM ?? "nil")', images: \(imageURLs ?? [])")
     }
 
     // Original memberwise initializer - keep for non-Codable instantiation if needed, or for tests
@@ -150,5 +150,3 @@ public struct Character: Identifiable, Codable, Sendable {
         self.modifiedAt = Date()
     }
 }
-
-// CustomSection struct REMOVED from here (will be added to CampaignModel.swift)
