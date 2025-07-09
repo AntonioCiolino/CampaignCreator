@@ -324,9 +324,9 @@ public class CampaignCreator: ObservableObjectProtocol {
             exportFormatPreference: character.exportFormatPreference
             // customSections: character.customSections // REMOVED
         )
-        print("[CHAR_NOTES_DEBUG CampaignCreator] updateCharacter: Sending DTO for char ID \(character.id). DTO.notesForLLM: \(dto.notesForLLM ?? "nil")")
+        print("[CHAR_DATA_DEBUG CampaignCreator] updateCharacter: Sending DTO for char ID \(character.id). DTO.notesForLLM: \(dto.notesForLLM ?? "nil"). DTO.exportFormatPreference: \(dto.exportFormatPreference ?? "nil"). DTO.imageURLs: \(dto.imageURLs ?? [])")
         let updatedCharacterFromAPI = try await apiService.updateCharacter(character.id, data: dto)
-        print("[CHAR_NOTES_DEBUG CampaignCreator] updateCharacter: Received updated character from API for char ID \(updatedCharacterFromAPI.id). API_notesForLLM: \(updatedCharacterFromAPI.notesForLLM ?? "nil")")
+        print("[CHAR_DATA_DEBUG CampaignCreator] updateCharacter: Received updated character from API for char ID \(updatedCharacterFromAPI.id). API_notesForLLM: \(updatedCharacterFromAPI.notesForLLM ?? "nil"). API_exportFormatPreference: \(updatedCharacterFromAPI.exportFormatPreference ?? "nil"). API_imageURLs: \(updatedCharacterFromAPI.imageURLs ?? [])")
 
         // Update the local list immediately with the response from the API before full refresh
         // This provides a more immediate reflection of the change.

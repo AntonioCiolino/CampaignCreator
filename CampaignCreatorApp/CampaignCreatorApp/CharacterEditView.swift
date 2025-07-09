@@ -15,15 +15,19 @@ struct CharacterEditView: View {
 
     // For Export Format Picker
     enum ExportFormat: String, CaseIterable, Identifiable {
-        case notSet = "Not Set"
-        case json = "JSON"
-        case markdown = "Markdown"
-        case complex = "Complex" // As seen in CharacterCreateDTO default
+        case notSet = "Not Set" // Represents clearing the preference
+        case complex = "Complex" // "Complex Stat Block (Elara Style)"
+        case simple = "Simple"   // "Simple Stat Block (Harlan Style)"
 
         var id: String { self.rawValue }
 
-        // Helper to get a display name if different from rawValue, though here they are the same
-        var displayName: String { self.rawValue }
+        var displayName: String {
+            switch self {
+            case .notSet: return "Not Set (Use Default)"
+            case .complex: return "Complex Stat Block"
+            case .simple: return "Simple Stat Block"
+            }
+        }
     }
     @State private var selectedExportFormat: ExportFormat
 
@@ -338,10 +342,17 @@ struct CharacterEditView: View {
             updatedCharacter.exportFormatPreference = selectedExportFormat.rawValue
         }
 
-        updatedCharacter.imageURLs = imageURLsText.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-        if updatedCharacter.imageURLs?.isEmpty ?? true { updatedCharacter.imageURLs = nil }
+        let finalImageURLs = imageURLsText.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        if finalImageURLs.isEmpty {
+            updatedCharacter.imageURLs = nil
+            print("[CHAR_IMAGE_DEBUG CharacterEditView] saveCharacterChanges for char ID \(characterToEdit.id). Final imageURLs being set on updatedCharacter: nil (empty list)")
+        } else {
+            updatedCharacter.imageURLs = finalImageURLs
+            print("[CHAR_IMAGE_DEBUG CharacterEditView] saveCharacterChanges for char ID \(characterToEdit.id). Final imageURLs being set on updatedCharacter: \(finalImageURLs)")
+        }
+
+        // if updatedCharacter.imageURLs?.isEmpty ?? true { updatedCharacter.imageURLs = nil } // Old logic replaced
         // updatedCharacter.customSections = localCustomSections.filter { !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } // REMOVED
-        // if updatedCharacter.customSections?.isEmpty ?? true { updatedCharacter.customSections = nil } // REMOVED
 
         var newStats = CharacterStats()
         newStats.strength = Int(statsStrength)
