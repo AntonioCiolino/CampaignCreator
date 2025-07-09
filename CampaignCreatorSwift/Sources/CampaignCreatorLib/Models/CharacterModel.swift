@@ -50,7 +50,29 @@ public struct Character: Identifiable, Codable, Sendable {
         case modifiedAt = "modified_at"
     }
 
-    public init(id: Int, // Changed from UUID to Int, removed default
+    // Custom init(from decoder: Decoder) for detailed logging
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+
+        appearanceDescription = try container.decodeIfPresent(String.self, forKey: .appearanceDescription)
+        print("[DECODE_DEBUG CharacterModel] Decoded appearanceDescription for ID \(id): '\(appearanceDescription ?? "nil")'")
+
+        imageURLs = try container.decodeIfPresent([String].self, forKey: .imageURLs)
+
+        notesForLLM = try container.decodeIfPresent(String.self, forKey: .notesForLLM)
+        print("[DECODE_DEBUG CharacterModel] Decoded notesForLLM for ID \(id): '\(notesForLLM ?? "nil")'")
+
+        stats = try container.decodeIfPresent(CharacterStats.self, forKey: .stats)
+        exportFormatPreference = try container.decodeIfPresent(String.self, forKey: .exportFormatPreference)
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt)
+        modifiedAt = try container.decodeIfPresent(Date.self, forKey: .modifiedAt)
+    }
+
+    // Original memberwise initializer - keep for non-Codable instantiation if needed, or for tests
+    public init(id: Int,
                 name: String,
                 description: String? = nil,
                 appearanceDescription: String? = nil,
@@ -58,9 +80,8 @@ public struct Character: Identifiable, Codable, Sendable {
                 notesForLLM: String? = nil,
                 stats: CharacterStats? = nil,
                 exportFormatPreference: String? = nil,
-                // customSections: [CustomSection]? = nil, // REMOVED
-                createdAt: Date? = nil, // Changed to optional, default nil
-                modifiedAt: Date? = nil) { // Changed to optional, default nil
+                createdAt: Date? = nil,
+                modifiedAt: Date? = nil) {
         self.id = id
         self.name = name
         self.description = description
@@ -69,7 +90,6 @@ public struct Character: Identifiable, Codable, Sendable {
         self.notesForLLM = notesForLLM
         self.stats = stats
         self.exportFormatPreference = exportFormatPreference
-        // self.customSections = customSections // REMOVED
         self.createdAt = createdAt
         self.modifiedAt = modifiedAt
     }

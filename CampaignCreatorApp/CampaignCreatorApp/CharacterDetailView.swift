@@ -98,7 +98,19 @@ struct CharacterDetailView: View {
         .navigationTitle(character.name)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            print("[CHAR_NOTES_DEBUG CharacterDetailView] View appeared for char ID \(character.id). Initial notesForLLM: \(character.notesForLLM ?? "nil")")
+            print("[CHAR_NOTES_DEBUG CharacterDetailView] View appeared for char ID \(character.id). Initial notesForLLM: '\(character.notesForLLM ?? "nil")', appearance: '\(character.appearanceDescription ?? "nil")'")
+        }
+        .refreshable {
+            print("[CHAR_DETAIL_REFRESH] Refresh triggered for character ID \(character.id).")
+            do {
+                let refreshedCharacter = try await campaignCreator.refreshCharacter(id: character.id)
+                // Update the local @State var character to reflect the refreshed data
+                self.character = refreshedCharacter
+                print("[CHAR_DETAIL_REFRESH] Successfully refreshed character ID \(character.id). New notes: '\(refreshedCharacter.notesForLLM ?? "nil")', new appearance: '\(refreshedCharacter.appearanceDescription ?? "nil")'")
+            } catch {
+                print("❌ [CHAR_DETAIL_REFRESH] Error refreshing character ID \(character.id): \(error.localizedDescription)")
+                // Optionally, show an alert to the user here
+            }
         }
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) { // Changed to ToolbarItemGroup

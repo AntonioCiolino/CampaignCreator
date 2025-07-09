@@ -340,6 +340,24 @@ public class CampaignCreator: ObservableObjectProtocol {
 
         await fetchCharacters() // Still fetch all to ensure full sync, though the specific item is already updated
     }
+
+    public func refreshCharacter(id: Int) async throws -> Character {
+        guard isAuthenticated else { throw APIError.notAuthenticated }
+        print("[CHAR_DATA_DEBUG CampaignCreator] refreshCharacter: Refreshing character with ID \(id)")
+        let refreshedChar = try await apiService.fetchCharacter(id: id)
+
+        // Update in the local list
+        if let index = characters.firstIndex(where: { $0.id == id }) {
+            characters[index] = refreshedChar
+            print("[CHAR_DATA_DEBUG CampaignCreator] refreshCharacter: Updated character ID \(id) in local list. New notes: \(refreshedChar.notesForLLM ?? "nil"), new appearance: \(refreshedChar.appearanceDescription ?? "nil")")
+        } else {
+            // If not in list, perhaps it's a new character somehow, or list was cleared.
+            // Depending on desired behavior, could append or log. For a typical refresh, it should be in the list.
+            characters.append(refreshedChar) // Or handle as an error/log if unexpected
+            print("[CHAR_DATA_DEBUG CampaignCreator] refreshCharacter: Character ID \(id) not found in local list, appended. This might be unexpected.")
+        }
+        return refreshedChar
+    }
     
     public func deleteCharacter(_ character: Character) async throws {
         guard isAuthenticated else { throw APIError.notAuthenticated }
