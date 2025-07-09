@@ -325,10 +325,31 @@ public final class APIService: Sendable {
                 if let voidValue = () as? T { return voidValue }
                 else if let optionalNil = Optional<Any>.none as? T { return optionalNil }
             }
+
+            // Log raw data before decoding if it's for Character types
+            if String(describing: T.self) == "Character" || String(describing: T.self) == "Array<Character>" || String(describing: T.self) == "Optional<Character>" {
+                print("[DECODE_DEBUG APIService] Raw data for Character type before decoding: \(String(data: data, encoding: .utf8) ?? "Unable to stringify data")")
+            }
+
             do {
-                return try jsonDecoder.decode(T.self, from: data)
+                let decodedObject = try jsonDecoder.decode(T.self, from: data)
+
+                // Log specific fields if it's a Character or [Character]
+                if let character = decodedObject as? Character {
+                    print("[DECODE_DEBUG APIService] Decoded Character (single): ID \(character.id), notesForLLM: '\(character.notesForLLM ?? "nil")', appearance: '\(character.appearanceDescription ?? "nil")'")
+                } else if let characters = decodedObject as? [Character] {
+                    if let firstChar = characters.first {
+                        print("[DECODE_DEBUG APIService] Decoded [Character] (first item): ID \(firstChar.id), notesForLLM: '\(firstChar.notesForLLM ?? "nil")', appearance: '\(firstChar.appearanceDescription ?? "nil")'")
+                    } else {
+                        print("[DECODE_DEBUG APIService] Decoded [Character]: Array is empty.")
+                    }
+                }
+                return decodedObject
             } catch {
                 print("❌ Decoding failed for type \(T.self): \(error.localizedDescription)")
+                if String(describing: T.self) == "Character" || String(describing: T.self) == "Array<Character>" {
+                     print("[DECODE_DEBUG APIService] Raw data that failed decoding for Character type: \(String(data: data, encoding: .utf8) ?? "Unable to stringify data")")
+                }
                 if let decodingError = error as? DecodingError {
                      switch decodingError {
                      case .typeMismatch(let type, let context):
