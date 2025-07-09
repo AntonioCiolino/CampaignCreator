@@ -135,6 +135,16 @@ public struct CharacterCreateDTO: Codable, Sendable {
     public var exportFormatPreference: String?
     // public var customSections: [CustomSection]? // REMOVED
 
+    enum CodingKeys: String, CodingKey {
+        case name
+        case description
+        case appearanceDescription = "appearance_description"
+        case imageURLs = "image_urls"
+        case notesForLLM = "notes_for_llm"
+        case stats
+        case exportFormatPreference = "export_format_preference"
+    }
+
     public init(name: String, description: String? = nil, appearanceDescription: String? = nil, imageURLs: [String]? = nil, notesForLLM: String? = nil, stats: CharacterStats? = nil, exportFormatPreference: String? = nil /*, customSections: [CustomSection]? = nil REMOVED */) {
         self.name = name
         self.description = description
@@ -156,6 +166,16 @@ public struct CharacterUpdateDTO: Codable, Sendable {
     public var stats: CharacterStats?
     public var exportFormatPreference: String?
     // public var customSections: [CustomSection]? // REMOVED
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case description
+        case appearanceDescription = "appearance_description"
+        case imageURLs = "image_urls"
+        case notesForLLM = "notes_for_llm"
+        case stats
+        case exportFormatPreference = "export_format_preference"
+    }
 
     public init(name: String? = nil, description: String? = nil, appearanceDescription: String? = nil, imageURLs: [String]? = nil, notesForLLM: String? = nil, stats: CharacterStats? = nil, exportFormatPreference: String? = nil /*, customSections: [CustomSection]? = nil REMOVED */) {
         self.name = name

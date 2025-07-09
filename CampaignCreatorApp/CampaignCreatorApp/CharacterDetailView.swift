@@ -90,13 +90,7 @@ struct CharacterDetailView: View {
 
                 // Display Custom Sections - REMOVED from Character
 
-                SectionBox(title: "Metadata") {
-                    HStack { Text("Created:"); Spacer(); Text(character.createdAt != nil ? "\(character.createdAt!, style: .date)" : "N/A") }
-                    .font(.caption).foregroundColor(.secondary)
-                    
-                    HStack { Text("Modified:"); Spacer(); Text(character.modifiedAt != nil ? "\(character.modifiedAt!, style: .date)" : "N/A") }
-                    .font(.caption).foregroundColor(.secondary)
-                }
+                // SectionBox for Metadata REMOVED
                 Spacer()
             }
             .padding()

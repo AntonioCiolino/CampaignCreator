@@ -41,11 +41,14 @@ public class CampaignCreator: ObservableObjectProtocol {
     }
     
     private func setupLLMService() {
+        print("[API_KEY_DEBUG CampaignCreator] setupLLMService: Attempting to setup LLMService.")
         do {
             self.llmService = try OpenAIClient()
-            print("✅ OpenAI service initialized")
+            print("✅ [API_KEY_DEBUG CampaignCreator] setupLLMService: OpenAIClient initialized successfully. llmService is now set.")
+        } catch let error as LLMError where error == .apiKeyMissing {
+            print("⚠️ [API_KEY_DEBUG CampaignCreator] setupLLMService: Failed to initialize OpenAIClient due to apiKeyMissing. llmService remains nil. Error: \(error.localizedDescription)")
         } catch {
-            print("⚠️ OpenAI service not available: \(error.localizedDescription)")
+            print("⚠️ [API_KEY_DEBUG CampaignCreator] setupLLMService: Failed to initialize OpenAIClient with an unexpected error. llmService remains nil. Error: \(error.localizedDescription)")
         }
     }
 

@@ -37,6 +37,19 @@ public struct Character: Identifiable, Codable, Sendable {
     public var modifiedAt: Date? // Changed to optional
     // public var customSections: [CustomSection]? // REMOVED
 
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case description
+        case appearanceDescription = "appearance_description"
+        case imageURLs = "image_urls" // Explicitly map to snake_case
+        case notesForLLM = "notes_for_llm"
+        case stats
+        case exportFormatPreference = "export_format_preference"
+        case createdAt = "created_at"
+        case modifiedAt = "modified_at"
+    }
+
     public init(id: Int, // Changed from UUID to Int, removed default
                 name: String,
                 description: String? = nil,
