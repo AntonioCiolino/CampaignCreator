@@ -1041,48 +1041,8 @@ struct CampaignDetailView: View {
                     }
             }
         }
-        .sheet(isPresented: $showingCampaignEditSheet) { // Renamed state variable
-            CampaignEditView(campaign: $campaign, campaignCreator: campaignCreator, isPresented: $showingCampaignEditSheet) // Pass campaignCreator and isPresented
-        }
-        .onDisappear { // MODIFIED .onDisappear - This needs to be attached to the View that triggers the sheet, not the sheet modifier itself.
-            // However, the context of onDisappear for a sheet is when the sheet is dismissed.
-            // Let's adjust the previous onDisappear for the sheet content if that's where it was intended,
-            // or ensure this onDisappear is correctly scoped if it's for the CampaignDetailView itself.
-            // The original onDisappear was for the sheet content.
-            // The current plan is to ensure CampaignDetailView refreshes when CampaignEditView (the sheet) is dismissed.
-            // So, this needs to be tied to the dismissal of showingCampaignEditSheet.
-            // A direct .onDisappear on the sheet modifier itself is not standard.
-            // The standard way is to use the onDismiss parameter of .sheet().
-            // Let's refine this. The .onDisappear on CampaignEditView's sheet presentation is the correct place.
-            // The previous code was:
-            // .sheet(isPresented: $showingCampaignEditSheet) { CampaignEditView(...) .onDisappear { /* logic */ } }
-            // This means the onDisappear is on the CampaignEditView content.
-            // Let's re-verify the placement. The onDisappear should be on the sheet CONTENT or use the onDismiss parameter of .sheet.
-            // The previous code was correct: .sheet(isPresented: $showingCampaignEditSheet) { CampaignEditView(...).onDisappear { /* THIS IS THE ONE TO MODIFY */ } }
-            // The current code structure for the sheet is:
-            // .sheet(isPresented: $showingCampaignEditSheet) { // Renamed state variable
-            //     CampaignEditView(campaign: $campaign, campaignCreator: campaignCreator, isPresented: $showingCampaignEditSheet) // Pass campaignCreator and isPresented
-            //         .onDisappear { /* OLD LOGIC WAS HERE */ }
-            // }
-            // We will replace the old .onDisappear logic with the new Task-based refresh.
-            // This requires editing the .onDisappear block INSIDE the sheet's content definition.
-            // The file was provided again, so I will make the change in the .onDisappear of the CampaignEditView sheet presentation.
-            // This change is ALREADY in the provided file structure from the previous read.
-            // The previous change to .onDisappear on CampaignEditView was:
-            // .onDisappear {
-            //    if let updatedCampaign = campaignCreator.campaigns.first(where: { $0.id == self.campaign.id }) { ... }
-            // }
-            // This needs to be replaced by the Task { await campaignCreator.refreshCampaign... }
-            // The structure for the sheet is:
-            // .sheet(isPresented: $showingCampaignEditSheet) {
-            //      CampaignEditView(...) // THIS IS THE CONTENT
-            //          .onDisappear { /* MODIFY THIS BLOCK */ }
-            // }
-            // The current file has this structure. I will apply the change to that specific .onDisappear.
-            // This was identified as a complex part. The .onDisappear for the *sheet* itself (not its content) is not standard.
-            // The correct way to handle sheet dismissal is the `onDismiss` parameter of the `.sheet` modifier.
-            // Let's use that.
-        }
+        // The .onDisappear that was here was misplaced and has been removed.
+        // The following .sheet modifier with onDismiss is the correct one for CampaignEditView.
         .sheet(isPresented: $showingCampaignEditSheet,
                onDismiss: { // Using onDismiss for when the sheet is dismissed
                    Task {
