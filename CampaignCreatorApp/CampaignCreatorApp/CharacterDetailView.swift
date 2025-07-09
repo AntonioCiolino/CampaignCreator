@@ -123,18 +123,16 @@ struct CharacterDetailView: View {
             }
         }
         .sheet(isPresented: $showingEditView, onDismiss: {
-            // Refresh character data if needed after edit view is dismissed
-            // This is important if CharacterEditView modifies the character
-            // and CampaignCreator.characters array is updated.
-            // We need to find the updated character from the list.
-            if let updatedCharacter = campaignCreator.characters.first(where: { $0.id == character.id }) {
-                print("[CHAR_NOTES_DEBUG CharacterDetailView] Edit sheet dismissed for char ID \(character.id). Refreshed notesForLLM from campaignCreator: \(updatedCharacter.notesForLLM ?? "nil")")
-                self.character = updatedCharacter
-            } else {
-                print("[CHAR_NOTES_DEBUG CharacterDetailView] Edit sheet dismissed for char ID \(character.id). Character not found in campaignCreator list for refresh.")
-            }
+            // Optional: Any logic that still needs to run on dismiss,
+            // but the primary character update is now handled by the callback.
+            // For example, if there was a general list refresh pending, it could go here.
+            // For now, we can leave it empty or remove it if the callback handles all needed updates.
+            print("[CHAR_NOTES_DEBUG CharacterDetailView] Edit sheet dismissed for char ID \(character.id). Primary update via callback.")
         }) {
-            CharacterEditView(character: character, campaignCreator: campaignCreator, isPresented: $showingEditView)
+            CharacterEditView(character: character, campaignCreator: campaignCreator, isPresented: $showingEditView, onCharacterUpdated: { updatedCharacter in
+                print("[CHAR_NOTES_DEBUG CharacterDetailView] onCharacterUpdated callback received for char ID \(updatedCharacter.id). New notesForLLM: \(updatedCharacter.notesForLLM ?? "nil"), imageURLs: \(updatedCharacter.imageURLs ?? [])")
+                self.character = updatedCharacter // Update the local state directly
+            })
         }
         .sheet(isPresented: $showingFullCharacterImageSheet) {
             FullCharacterImageView(imageURL: $selectedImageURLForSheet)

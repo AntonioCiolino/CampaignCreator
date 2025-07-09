@@ -49,6 +49,9 @@ struct CharacterEditView: View {
     @State private var showErrorAlert: Bool = false
     @State private var errorMessage: String = ""
 
+    // Callback for when a character is successfully updated
+    var onCharacterUpdated: ((Character) -> Void)?
+
     @State private var isGeneratingAspect: Bool = false
     @State private var aspectGenerationError: String? = nil
     enum AspectField { case description, appearance }
@@ -62,10 +65,11 @@ struct CharacterEditView: View {
 
     @Environment(\.dismiss) var dismiss
 
-    init(character: Character, campaignCreator: CampaignCreator, isPresented: Binding<Bool>) {
+    init(character: Character, campaignCreator: CampaignCreator, isPresented: Binding<Bool>, onCharacterUpdated: ((Character) -> Void)? = nil) {
         self._characterToEdit = State(initialValue: character)
         self._campaignCreator = ObservedObject(wrappedValue: campaignCreator)
         self._isPresented = isPresented
+        self.onCharacterUpdated = onCharacterUpdated // Store the callback
 
         self._name = State(initialValue: character.name)
         self._descriptionText = State(initialValue: character.description ?? "")
@@ -367,7 +371,9 @@ struct CharacterEditView: View {
         updatedCharacter.markAsModified()
 
         do {
-            try await campaignCreator.updateCharacter(updatedCharacter)
+            let savedCharacter = try await campaignCreator.updateCharacter(updatedCharacter)
+            // Call the callback with the character returned from the API
+            onCharacterUpdated?(savedCharacter)
             dismissView()
         } catch let error as APIError {
             errorMessage = error.localizedDescription; showErrorAlert = true

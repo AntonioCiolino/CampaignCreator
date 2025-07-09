@@ -318,7 +318,7 @@ public class CampaignCreator: ObservableObjectProtocol {
         return newCharacter
     }
 
-    public func updateCharacter(_ character: Character) async throws {
+    public func updateCharacter(_ character: Character) async throws -> Character { // MODIFIED: Added return type
         guard isAuthenticated else { throw APIError.notAuthenticated }
         let dto = CharacterUpdateDTO(
             name: character.name, description: character.description,
@@ -336,9 +336,21 @@ public class CampaignCreator: ObservableObjectProtocol {
         if let index = characters.firstIndex(where: { $0.id == updatedCharacterFromAPI.id }) {
             characters[index] = updatedCharacterFromAPI
             print("[CHAR_NOTES_DEBUG CampaignCreator] updateCharacter: Updated local character list with API response for char ID \(updatedCharacterFromAPI.id). Local_notesForLLM: \(characters[index].notesForLLM ?? "nil")")
+        } else {
+            // If the character wasn't found, it might be a new one or list is out of sync.
+            // Add it to the list. This scenario should be less common if lists are kept fresh.
+            characters.append(updatedCharacterFromAPI)
+            print("[CHAR_NOTES_DEBUG CampaignCreator] updateCharacter: Character ID \(updatedCharacterFromAPI.id) not found in local list, appended API response.")
         }
 
-        await fetchCharacters() // Still fetch all to ensure full sync, though the specific item is already updated
+        // Consider if fetchCharacters() is still strictly necessary here if the primary goal is
+        // to return the single updated character for immediate UI update.
+        // If other parts of the app rely on the `characters` list being exhaustively fresh
+        // *immediately* after any update, then keep it. Otherwise, it might be deferred
+        // or handled by a background refresh mechanism.
+        // For now, keeping it to maintain existing behavior, but the returned character is key.
+        await fetchCharacters()
+        return updatedCharacterFromAPI // MODIFIED: Added return
     }
 
     public func refreshCharacter(id: Int) async throws -> Character {
