@@ -61,7 +61,7 @@ struct SettingsView: View {
                             }
                             Spacer()
                             // Profile Icon Display
-                            AsyncImage(url: URL(string: user.avatar_url ?? "")) { phase in
+                            AsyncImage(url: URL(string: user.avatarUrl ?? "")) { phase in // Changed user.avatar_url to user.avatarUrl
                                 if let image = phase.image {
                                     image.resizable()
                                         .aspectRatio(contentMode: .fill)
