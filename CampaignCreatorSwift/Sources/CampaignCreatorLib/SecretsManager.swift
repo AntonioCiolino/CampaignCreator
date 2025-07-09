@@ -16,9 +16,10 @@ public struct SecretsManager: Sendable {
     private init() {}
     
     public var openAIAPIKey: String? {
-        // Access UserDefaults directly in the computed property
-        let key = UserDefaults.standard.string(forKey: APIKeyNames.openAI.rawValue)
-        return isValidKey(key) ? key : nil
+        let rawKey = UserDefaults.standard.string(forKey: APIKeyNames.openAI.rawValue)
+        let valid = isValidKey(rawKey)
+        print("[API_KEY_DEBUG SecretsManager] openAIAPIKey: Raw key from UserDefaults for '\(APIKeyNames.openAI.rawValue)': '\(rawKey ?? "nil")'. isValidKey: \(valid)")
+        return valid ? rawKey : nil
     }
     
     public var geminiAPIKey: String? {

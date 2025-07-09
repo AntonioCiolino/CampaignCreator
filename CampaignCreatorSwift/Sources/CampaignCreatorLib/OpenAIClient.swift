@@ -10,15 +10,22 @@ public class OpenAIClient: LLMService {
     private static let openAIAPIURL = "https://api.openai.com/v1/chat/completions"
 
     public init() throws {
-        guard let apiKey = SecretsManager.shared.openAIAPIKey,
-              SecretsManager.shared.isValidKey(apiKey) else {
+        let retrievedApiKey = SecretsManager.shared.openAIAPIKey
+        print("[API_KEY_DEBUG OpenAIClient] init: Attempting to initialize. Retrieved API key from SecretsManager: '\(retrievedApiKey ?? "nil")'")
+
+        // The isValidKey check here is somewhat redundant if SecretsManager.openAIAPIKey already filters,
+        // but it provides an explicit check point.
+        guard let apiKey = retrievedApiKey, SecretsManager.shared.isValidKey(apiKey) else {
+            print("[API_KEY_DEBUG OpenAIClient] init: API key is nil or invalid after retrieval. Throwing apiKeyMissing.")
             throw LLMError.apiKeyMissing
         }
         self.apiKey = apiKey
+        print("[API_KEY_DEBUG OpenAIClient] init: Successfully initialized with valid API key.")
         self.session = URLSession(configuration: .default)
     }
 
     public func generateCompletion(prompt: String, completionHandler: @escaping @Sendable (Result<String, LLMError>) -> Void) {
+        print("[API_KEY_DEBUG OpenAIClient] generateCompletion: Using API Key: '\(apiKey.prefix(5))...\(apiKey.suffix(4))'") // Log sanitized key
         guard let url = URL(string: Self.openAIAPIURL) else {
             completionHandler(.failure(.invalidURL))
             return

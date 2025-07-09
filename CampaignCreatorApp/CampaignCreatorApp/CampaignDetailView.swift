@@ -40,7 +40,8 @@ struct CampaignDetailView: View {
     @State private var showingCampaignThemeSheet: Bool = false // ADDED for Campaign Theme sheet
     
     @State private var viewRefreshTrigger = UUID() // <<<< ADDED to force view refresh
-    
+    @State private var initialLLMSettingsLoaded = false // Track initial load
+
     @State private var titleDebounceTimer: Timer?
     // Debounce timers for custom section title and content
     @State private var customSectionTitleDebounceTimers: [Int: Timer] = [:]
@@ -835,6 +836,11 @@ struct CampaignDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .disabled(isSaving || isGeneratingText)
         .onAppear {
+            // Log initial LLM settings when the view appears
+            if !initialLLMSettingsLoaded {
+                print("[LLM_DEBUG CampaignDetailView] View appeared. Initial campaign LLM Settings: ID=\(campaign.selectedLLMId ?? "nil"), Temp=\(campaign.temperature?.description ?? "nil")")
+                initialLLMSettingsLoaded = true
+            }
             Task {
                 await fetchSnippetFeatures() // Existing call
                 // Fetch characters if not already attempted or if there was an error
@@ -1490,6 +1496,11 @@ struct CampaignDetailView: View {
             self.editableConcept = trulyRefreshedCampaign.concept ?? ""
             self.localCampaignCustomSections = trulyRefreshedCampaign.customSections ?? []
             // campaign.sections is part of self.campaign, so it's also updated.
+
+            // Log LLM settings from the refreshed campaign data
+            print("[LLM_DEBUG CampaignDetailView] saveCampaignDetails: trulyRefreshedCampaign LLM Settings: ID=\(trulyRefreshedCampaign.selectedLLMId ?? "nil"), Temp=\(trulyRefreshedCampaign.temperature?.description ?? "nil")")
+            print("[LLM_DEBUG CampaignDetailView] saveCampaignDetails: self.campaign (after update) LLM Settings: ID=\(self.campaign.selectedLLMId ?? "nil"), Temp=\(self.campaign.temperature?.description ?? "nil")")
+
             self.viewRefreshTrigger = UUID() // Force UI refresh
             
             print("Campaign details saved successfully via \(source). UI refreshed with direct API response.")

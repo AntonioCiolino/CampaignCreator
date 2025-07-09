@@ -1,6 +1,6 @@
 import Foundation
 
-public enum LLMError: Error, LocalizedError {
+public enum LLMError: Error, LocalizedError, Equatable { // Added Equatable
     case apiKeyMissing
     case invalidURL
     case requestFailed(underlyingError: Error)
@@ -29,6 +29,29 @@ public enum LLMError: Error, LocalizedError {
             return "The API did not return any completions."
         case .other(let message):
             return message
+        }
+    }
+
+    // Equatable conformance
+    public static func == (lhs: LLMError, rhs: LLMError) -> Bool {
+        switch (lhs, rhs) {
+        case (.apiKeyMissing, .apiKeyMissing):
+            return true
+        case (.invalidURL, .invalidURL):
+            return true
+        case (.requestFailed(let lhsError), .requestFailed(let rhsError)):
+            // Comparing localizedDescription as Error itself is not Equatable
+            return lhsError.localizedDescription == rhsError.localizedDescription
+        case (.unexpectedStatusCode(let lhsCode, let lhsBody), .unexpectedStatusCode(let rhsCode, let rhsBody)):
+            return lhsCode == rhsCode && lhsBody == rhsBody
+        case (.decodingError(let lhsError), .decodingError(let rhsError)):
+            return lhsError.localizedDescription == rhsError.localizedDescription
+        case (.noCompletionGenerated, .noCompletionGenerated):
+            return true
+        case (.other(let lhsMessage), .other(let rhsMessage)):
+            return lhsMessage == rhsMessage
+        default:
+            return false
         }
     }
 }

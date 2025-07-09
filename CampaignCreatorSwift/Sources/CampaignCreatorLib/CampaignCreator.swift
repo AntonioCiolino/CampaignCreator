@@ -41,11 +41,14 @@ public class CampaignCreator: ObservableObjectProtocol {
     }
     
     private func setupLLMService() {
+        print("[API_KEY_DEBUG CampaignCreator] setupLLMService: Attempting to setup LLMService.")
         do {
             self.llmService = try OpenAIClient()
-            print("✅ OpenAI service initialized")
+            print("✅ [API_KEY_DEBUG CampaignCreator] setupLLMService: OpenAIClient initialized successfully. llmService is now set.")
+        } catch let error as LLMError where error == .apiKeyMissing {
+            print("⚠️ [API_KEY_DEBUG CampaignCreator] setupLLMService: Failed to initialize OpenAIClient due to apiKeyMissing. llmService remains nil. Error: \(error.localizedDescription)")
         } catch {
-            print("⚠️ OpenAI service not available: \(error.localizedDescription)")
+            print("⚠️ [API_KEY_DEBUG CampaignCreator] setupLLMService: Failed to initialize OpenAIClient with an unexpected error. llmService remains nil. Error: \(error.localizedDescription)")
         }
     }
 
@@ -88,7 +91,7 @@ public class CampaignCreator: ObservableObjectProtocol {
         print("Logged out.")
     }
     
-    private func fetchCurrentUser() async {
+    public func fetchCurrentUser() async { // Changed from private to public
         guard isAuthenticated else { // Still gate by initial token presence
             isUserSessionValid = false
             return
@@ -271,7 +274,14 @@ public class CampaignCreator: ObservableObjectProtocol {
             self.initialCharacterFetchAttempted = true
         }
         do {
-            self.characters = try await apiService.fetchCharacters()
+            let fetchedChars = try await apiService.fetchCharacters()
+            self.characters = fetchedChars
+            // Log notes for all fetched characters (or a sample if too many)
+            if let firstChar = fetchedChars.first { // Example: Log for the first character if list is not empty
+                print("[CHAR_NOTES_DEBUG CampaignCreator] fetchCharacters: Fetched \(fetchedChars.count) chars. First char ID \(firstChar.id) notesForLLM: \(firstChar.notesForLLM ?? "nil")")
+            } else {
+                print("[CHAR_NOTES_DEBUG CampaignCreator] fetchCharacters: Fetched 0 characters.")
+            }
         } catch let error as APIError {
             self.characterError = error; print("❌ Error fetching characters: \(error.localizedDescription)")
             if case .notAuthenticated = error { self.logout() }
@@ -317,8 +327,36 @@ public class CampaignCreator: ObservableObjectProtocol {
             exportFormatPreference: character.exportFormatPreference
             // customSections: character.customSections // REMOVED
         )
-        _ = try await apiService.updateCharacter(character.id, data: dto)
-        await fetchCharacters()
+        print("[CHAR_DATA_DEBUG CampaignCreator] updateCharacter: Sending DTO for char ID \(character.id). DTO.notesForLLM: \(dto.notesForLLM ?? "nil"). DTO.exportFormatPreference: \(dto.exportFormatPreference ?? "nil"). DTO.imageURLs: \(dto.imageURLs ?? [])")
+        let updatedCharacterFromAPI = try await apiService.updateCharacter(character.id, data: dto)
+        print("[CHAR_DATA_DEBUG CampaignCreator] updateCharacter: Received updated character from API for char ID \(updatedCharacterFromAPI.id). API_notesForLLM: \(updatedCharacterFromAPI.notesForLLM ?? "nil"). API_exportFormatPreference: \(updatedCharacterFromAPI.exportFormatPreference ?? "nil"). API_imageURLs: \(updatedCharacterFromAPI.imageURLs ?? [])")
+
+        // Update the local list immediately with the response from the API before full refresh
+        // This provides a more immediate reflection of the change.
+        if let index = characters.firstIndex(where: { $0.id == updatedCharacterFromAPI.id }) {
+            characters[index] = updatedCharacterFromAPI
+            print("[CHAR_NOTES_DEBUG CampaignCreator] updateCharacter: Updated local character list with API response for char ID \(updatedCharacterFromAPI.id). Local_notesForLLM: \(characters[index].notesForLLM ?? "nil")")
+        }
+
+        await fetchCharacters() // Still fetch all to ensure full sync, though the specific item is already updated
+    }
+
+    public func refreshCharacter(id: Int) async throws -> Character {
+        guard isAuthenticated else { throw APIError.notAuthenticated }
+        print("[CHAR_DATA_DEBUG CampaignCreator] refreshCharacter: Refreshing character with ID \(id)")
+        let refreshedChar = try await apiService.fetchCharacter(id: id)
+
+        // Update in the local list
+        if let index = characters.firstIndex(where: { $0.id == id }) {
+            characters[index] = refreshedChar
+            print("[CHAR_DATA_DEBUG CampaignCreator] refreshCharacter: Updated character ID \(id) in local list. New notes: \(refreshedChar.notesForLLM ?? "nil"), new appearance: \(refreshedChar.appearanceDescription ?? "nil")")
+        } else {
+            // If not in list, perhaps it's a new character somehow, or list was cleared.
+            // Depending on desired behavior, could append or log. For a typical refresh, it should be in the list.
+            characters.append(refreshedChar) // Or handle as an error/log if unexpected
+            print("[CHAR_DATA_DEBUG CampaignCreator] refreshCharacter: Character ID \(id) not found in local list, appended. This might be unexpected.")
+        }
+        return refreshedChar
     }
     
     public func deleteCharacter(_ character: Character) async throws {
