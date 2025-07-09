@@ -48,6 +48,10 @@ struct CharacterListView: View {
                         }
                         .onDelete(perform: deleteCharacters)
                     }
+                    .refreshable {
+                        print("CharacterListView: Refresh triggered. Fetching characters.")
+                        await campaignCreator.fetchCharacters()
+                    }
                 }
             }
             .navigationTitle("Characters")

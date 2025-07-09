@@ -213,6 +213,13 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .refreshable {
+                print("SettingsView: Refresh triggered.")
+                await campaignCreator.fetchCurrentUser() // Refresh user details
+                loadAPIKeys()                          // Re-load API key display status
+                refreshServiceStatus()                 // Refresh service status section
+                loadSdEnginePreference()               // Re-load SD engine preference
+            }
             .onAppear {
                 // Log avatar_url when view appears
                 if let user = campaignCreator.currentUser {
