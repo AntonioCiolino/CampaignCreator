@@ -34,19 +34,18 @@ public struct Character: Identifiable, Codable, Sendable {
     public var modifiedAt: Date?
 
     enum CodingKeys: String, CodingKey {
-        // Rely on global .convertFromSnakeCase strategy for these (Swift property name = camelCase version of JSON snake_case)
         case id
         case name
         case description
-        case appearanceDescription // JSON: appearance_description -> Swift: appearanceDescription
+        case appearanceDescription = "appearance_description"
+        case imageURLs = "image_urls"
+        case notesForLLM = "notes_for_llm"
         case stats
-        case exportFormatPreference // JSON: export_format_preference -> Swift: exportFormatPreference
-        case createdAt              // JSON: created_at -> Swift: createdAt
-        case modifiedAt             // JSON: modified_at -> Swift: modifiedAt
-
-        // Explicit snake_case for keys where global strategy might be ambiguous with initialisms
-        case imageURLs = "image_urls"       // Swift property: imageURLs, JSON: image_urls
-        case notesForLLM = "notes_for_llm" // Swift property: notesForLLM, JSON: notes_for_llm
+        case exportFormatPreference = "export_format_preference"
+        case createdAt = "created_at"
+        case modifiedAt = "modified_at"
+        // owner_id is in the JSON but not in the Swift struct, so it's not included here.
+        // If it were needed in the struct, it would be: case ownerId = "owner_id"
     }
 
     // Custom init(from decoder: Decoder) for detailed logging
