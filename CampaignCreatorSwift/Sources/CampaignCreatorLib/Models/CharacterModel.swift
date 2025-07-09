@@ -33,17 +33,20 @@ public struct Character: Identifiable, Codable, Sendable {
     public var createdAt: Date?
     public var modifiedAt: Date?
 
-    enum CodingKeys: String, CodingKey { // Simplified: camelCase, relying on global strategy
+    enum CodingKeys: String, CodingKey {
+        // Rely on global .convertFromSnakeCase strategy for these (Swift property name = camelCase version of JSON snake_case)
         case id
         case name
         case description
-        case appearanceDescription
-        case imageURLs
-        case notesForLLM
+        case appearanceDescription // JSON: appearance_description -> Swift: appearanceDescription
         case stats
-        case exportFormatPreference
-        case createdAt
-        case modifiedAt
+        case exportFormatPreference // JSON: export_format_preference -> Swift: exportFormatPreference
+        case createdAt              // JSON: created_at -> Swift: createdAt
+        case modifiedAt             // JSON: modified_at -> Swift: modifiedAt
+
+        // Explicit snake_case for keys where global strategy might be ambiguous with initialisms
+        case imageURLs = "image_urls"       // Swift property: imageURLs, JSON: image_urls
+        case notesForLLM = "notes_for_llm" // Swift property: notesForLLM, JSON: notes_for_llm
     }
 
     // Custom init(from decoder: Decoder) for detailed logging
