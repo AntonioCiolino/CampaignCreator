@@ -65,14 +65,10 @@ struct SettingsView: View {
                 SettingsAIServiceConfigSection()
                 
                 SettingsAPIKeysSection(
-                    openAIApiKeyDisplay: $openAIApiKey, // This binding is for the parent's @State openAIApiKey (masked)
-                    geminiApiKeyDisplay: $geminiApiKey,   // This binding is for the parent's @State geminiApiKey (masked)
-                    stableDiffusionApiKeyDisplay: $stableDiffusionApiKey, // This binding is for the parent's @State stableDiffusionApiKey (masked)
+                    // openAIApiKeyDisplay, geminiApiKeyDisplay, stableDiffusionApiKeyDisplay parameters removed
                     editOpenAIApiKey: $editOpenAIApiKey,
                     editGeminiApiKey: $editGeminiApiKey,
                     editStableDiffusionApiKey: $editStableDiffusionApiKey,
-                    // The apiKeyFieldBuilder is no longer needed as APIKeyEditableField is self-contained
-                    // apiKeyFieldBuilder: self.apiKeyField, // This would not work as apiKeyField is instance method
                     saveAPIKeyAction: self.saveAPIKey
                 )
                 
