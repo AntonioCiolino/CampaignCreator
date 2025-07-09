@@ -1697,101 +1697,10 @@ struct CampaignDetailView: View {
     
     // MARK: - Extracted Subviews
     
-    struct CampaignHeaderView: View {
-        let campaign: Campaign
-        @Binding var editableTitle: String
-        let isSaving: Bool
-        let isGeneratingText: Bool
-        @Binding var showingGenerateSheet: Bool
-        @Binding var showingGenerateImageSheet: Bool
-        let exportCampaignContent: () -> Void
-        let saveTitleAction: () -> Void // For debounced save
-        
-        var body: some View {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("\(campaign.wordCount) words (from sections)")
-                            .font(.caption).foregroundColor(.secondary)
-                        Text(campaign.modifiedAt != nil ? "Modified: \(campaign.modifiedAt!, style: .date)" : "Modified: N/A")
-                            .font(.caption).foregroundColor(.secondary)
-                    }
-                    Spacer()
-                    if isSaving || isGeneratingText { // Show progress if saving or generating
-                        ProgressView().padding(.trailing, 5)
-                    }
-                    // Action buttons
-                    HStack(spacing: 12) {
-                        Button(action: { showingGenerateSheet = true }) {
-                            Label("Text", systemImage: "sparkles")
-                        }
-                        .buttonStyle(.borderedProminent).disabled(isSaving || isGeneratingText)
-                        
-                        Button(action: { showingGenerateImageSheet = true }) {
-                            Label("Image", systemImage: "photo")
-                        }
-                        .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
-                        
-                        Button(action: exportCampaignContent) {
-                            Label("Export", systemImage: "square.and.arrow.up")
-                        }
-                        .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
-                    }
-                }
-                
-                TextField("Campaign Title", text: $editableTitle)
-                    .font(.largeTitle)
-                    .textFieldStyle(PlainTextFieldStyle())
-                    .padding(.bottom, 4)
-                    .disabled(isSaving || isGeneratingText)
-                    .onChange(of: editableTitle) { _ in
-                        saveTitleAction() // Call the debounced save action
-                    }
-            }
-            .padding().background(Color(.systemGroupedBackground)).cornerRadius(12)
-        }
-    }
-    
-    struct CampaignConceptView: View {
-        @Binding var editableConcept: String
-        @Binding var isEditingConcept: Bool
-        let isSaving: Bool
-        let isGeneratingText: Bool
-        let saveConceptAction: () async -> Void
-        
-        var body: some View {
-            DisclosureGroup("Campaign Concept", isExpanded: $isEditingConcept) {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Spacer() // Pushes button to the right
-                        Button(isEditingConcept ? "Done" : "Edit") {
-                            isEditingConcept.toggle()
-                            if !isEditingConcept {
-                                Task { await saveConceptAction() }
-                            }
-                        }
-                        .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
-                    }
-                    
-                    if isEditingConcept {
-                        TextEditor(text: $editableConcept)
-                            .frame(minHeight: 200, maxHeight: 400).padding(8)
-                            .background(Color(.systemBackground)).cornerRadius(8)
-                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
-                            .disabled(isSaving || isGeneratingText)
-                    } else {
-                        Text(editableConcept.isEmpty ? "Tap Edit to add campaign concept..." : editableConcept)
-                            .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 100)
-                            .padding().background(Color(.systemGroupedBackground)).cornerRadius(8)
-                            .foregroundColor(editableConcept.isEmpty ? .secondary : .primary)
-                            .onTapGesture { if !isSaving && !isGeneratingText { isEditingConcept = true } }
-                    }
-                }
-            }
-            .padding().background(Color(.systemBackground)).cornerRadius(12)
-        }
-    }
+    // Removed nested struct CampaignHeaderView: View { ... } - This now lives in CampaignHeaderView.swift
 
+    // Removed nested struct CampaignConceptView: View { ... } - This now lives in CampaignConceptEditorView.swift (or similar)
+    
     #Preview {
         let campaignCreator = CampaignCreator()
         // Ensure all model instantiations have their required 'id: Int'
