@@ -53,7 +53,12 @@ public struct Character: Identifiable, Codable, Sendable {
     // Custom init(from decoder: Decoder) for detailed logging
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decode(Int.self, forKey: .id)
+
+        // Log all keys recognized by the container
+        let tempIdForLog = try? container.decode(Int.self, forKey: .id)
+        print("[DECODE_DEBUG CharacterModel] For ID \(tempIdForLog ?? -99): Container allKeys: \(container.allKeys.map { $0.stringValue })")
+
+        id = try container.decode(Int.self, forKey: .id) // Re-decode id for assignment or use tempIdForLog if it's guaranteed to be called first
         name = try container.decode(String.self, forKey: .name)
         description = try container.decodeIfPresent(String.self, forKey: .description)
 
