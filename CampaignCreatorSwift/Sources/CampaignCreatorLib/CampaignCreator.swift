@@ -88,7 +88,7 @@ public class CampaignCreator: ObservableObjectProtocol {
         print("Logged out.")
     }
     
-    private func fetchCurrentUser() async {
+    public func fetchCurrentUser() async { // Changed from private to public
         guard isAuthenticated else { // Still gate by initial token presence
             isUserSessionValid = false
             return
