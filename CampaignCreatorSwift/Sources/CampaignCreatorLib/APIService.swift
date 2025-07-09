@@ -332,6 +332,35 @@ public final class APIService: Sendable {
             }
 
             do {
+                // MARK: Pre-decode raw dictionary check for Character types
+                if T.self == Character.self {
+                    print("[APIService PRE-DECODE DEBUG] Attempting to decode Character.self as [String: Any]")
+                    do {
+                        if let dict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+                            print("[APIService PRE-DECODE DEBUG] Character.self: Successfully parsed as [String: Any]. Keys found: \(dict.keys.sorted())")
+                        } else {
+                            print("[APIService PRE-DECODE DEBUG] Character.self: Failed to cast to [String: Any].")
+                        }
+                    } catch {
+                        print("[APIService PRE-DECODE DEBUG] Character.self: Error parsing as [String: Any]: \(error.localizedDescription)")
+                    }
+                } else if T.self == [Character].self {
+                    print("[APIService PRE-DECODE DEBUG] Attempting to decode [Character].self as [[String: Any]]")
+                    do {
+                        if let arr = try JSONSerialization.jsonObject(with: data, options: []) as? [[String: Any]] {
+                            if let firstDict = arr.first {
+                                print("[APIService PRE-DECODE DEBUG] [Character].self: Successfully parsed as [[String: Any]]. Keys in first element: \(firstDict.keys.sorted())")
+                            } else {
+                                print("[APIService PRE-DECODE DEBUG] [Character].self: Parsed as [[String: Any]], but array is empty.")
+                            }
+                        } else {
+                            print("[APIService PRE-DECODE DEBUG] [Character].self: Failed to cast to [[String: Any]].")
+                        }
+                    } catch {
+                        print("[APIService PRE-DECODE DEBUG] [Character].self: Error parsing as [[String: Any]]: \(error.localizedDescription)")
+                    }
+                }
+
                 let decodedObject = try jsonDecoder.decode(T.self, from: data)
 
                 // Log specific fields if it's a Character or [Character]
@@ -347,8 +376,10 @@ public final class APIService: Sendable {
                 return decodedObject
             } catch {
                 print("❌ Decoding failed for type \(T.self): \(error.localizedDescription)")
+                // It's important to log the raw data if T.self is Character or [Character] here as well,
+                // because the JSONSerialization above might succeed, but the Codable decoding might fail for other reasons.
                 if String(describing: T.self) == "Character" || String(describing: T.self) == "Array<Character>" {
-                     print("[DECODE_DEBUG APIService] Raw data that failed decoding for Character type: \(String(data: data, encoding: .utf8) ?? "Unable to stringify data")")
+                     print("[DECODE_DEBUG APIService] Raw data that FAILED Codable decoding for Character type: \(String(data: data, encoding: .utf8) ?? "Unable to stringify data")")
                 }
                 if let decodingError = error as? DecodingError {
                      switch decodingError {
