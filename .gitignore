@@ -138,3 +138,5 @@ TextEditorApp/TextEditorApp/Secrets.swift
 *.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
 *.xcodeproj/project.xcworkspace/
+.DS_Store
+*.xcuserstate
