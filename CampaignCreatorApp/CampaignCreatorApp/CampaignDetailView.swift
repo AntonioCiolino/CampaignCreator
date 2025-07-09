@@ -250,9 +250,9 @@ struct CampaignDetailView: View {
                                 }
                                 .foregroundColor(.red)
                                 .buttonStyle(.borderless)
-
+                                
                                 Spacer()
-
+                                
                                 Menu {
                                     if isLoadingFeatures { Text("Loading features...") }
                                     else if snippetFeatures.isEmpty { Text("No snippet features.") }
@@ -269,14 +269,14 @@ struct CampaignDetailView: View {
                                     Label("Snippet", systemImage: "wand.and.stars").font(.caption)
                                 }
                                 .buttonStyle(.bordered).disabled(isLoadingFeatures)
-
+                                
                                 Button("Regen") {
                                     if index < campaign.sections.count {
                                         handleStandardSectionRegeneration(forSectionAtIndex: index)
                                     }
                                 }
                                 .buttonStyle(.bordered).font(.caption)
-
+                                
                                 Button {
                                     if index < campaign.sections.count {
                                         self.currentStandardSectionIndexForImageGen = index
@@ -593,130 +593,130 @@ struct CampaignDetailView: View {
                 .font(currentFont.weight(.semibold)) // Slightly less prominent than "Sections"
                 .foregroundColor(currentPrimaryColor.opacity(0.8)) // Slightly muted
                 .padding(.bottom, 2)
-
+            
             ForEach($localCampaignCustomSections) { section in // $section is Binding<CampaignCustomSection>
                 DisclosureGroup(
                     content: {
-                            Text(section.title.wrappedValue.isEmpty ? "New Custom Section" : section.title.wrappedValue)
-                                .font(currentFont.weight(.bold))
-                                .foregroundColor(currentTextColor)
-                        }
-                    ) { // Content for each custom section's DisclosureGroup
-                        VStack(alignment: .leading) {
-                            TextField("Section Title", text: section.title)
-                                .font(currentFont.weight(.semibold))
-                                .textFieldStyle(PlainTextFieldStyle())
-                                .padding(.bottom, 2)
-                                .onChange(of: section.title.wrappedValue) { newValue in // Observe .wrappedValue
-                                    let sectionId = section.id.wrappedValue
-                                    customSectionTitleDebounceTimers[sectionId]?.invalidate()
-                                    customSectionTitleDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
-                                        Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
-                                    }
-                                }
-
-                            Picker("Section Type", selection: section.type.withDefault("Generic")) {
-                                ForEach(sectionTypes, id: \.self) { typeName in
-                                    Text(typeName).tag(typeName)
+                        Text(section.title.wrappedValue.isEmpty ? "New Custom Section" : section.title.wrappedValue)
+                            .font(currentFont.weight(.bold))
+                            .foregroundColor(currentTextColor)
+                    }
+                ) { // Content for each custom section's DisclosureGroup
+                    VStack(alignment: .leading) {
+                        TextField("Section Title", text: section.title)
+                            .font(currentFont.weight(.semibold))
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .padding(.bottom, 2)
+                            .onChange(of: section.title.wrappedValue) { newValue in // Observe .wrappedValue
+                                let sectionId = section.id.wrappedValue
+                                customSectionTitleDebounceTimers[sectionId]?.invalidate()
+                                customSectionTitleDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
+                                    Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
                                 }
                             }
-                            .pickerStyle(MenuPickerStyle())
-                            .font(.caption)
-                            .padding(.bottom, 4)
-                            .onChange(of: section.type.wrappedValue) { _ in // Observe .wrappedValue
+                        
+                        Picker("Section Type", selection: section.type.withDefault("Generic")) {
+                            ForEach(sectionTypes, id: \.self) { typeName in
+                                Text(typeName).tag(typeName)
+                            }
+                        }
+                        .pickerStyle(MenuPickerStyle())
+                        .font(.caption)
+                        .padding(.bottom, 4)
+                        .onChange(of: section.type.wrappedValue) { _ in // Observe .wrappedValue
+                            Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
+                        }
+                        
+                        CustomTextView(
+                            text: section.content,
+                            font: uiFontFrom(swiftUIFont: currentFont),
+                            textColor: UIColor(currentTextColor),
+                            onCoordinatorCreated: { coordinator in
+                                customTextViewCoordinators[section.id.wrappedValue] = coordinator // Corrected access
+                            }
+                        )
+                        .frame(minHeight: 100, maxHeight: 300)
+                        .background(Color(.secondarySystemGroupedBackground))
+                        .cornerRadius(8)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+                        .onChange(of: section.content.wrappedValue) { newValue in // Observe .wrappedValue
+                            let sectionId = section.id.wrappedValue
+                            customSectionContentDebounceTimers[sectionId]?.invalidate()
+                            customSectionContentDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in // Slightly longer timer for content
                                 Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
                             }
-
-                            CustomTextView(
-                                text: section.content,
-                                font: uiFontFrom(swiftUIFont: currentFont),
-                                textColor: UIColor(currentTextColor),
-                                onCoordinatorCreated: { coordinator in
-                                    customTextViewCoordinators[section.id.wrappedValue] = coordinator // Corrected access
+                        }
+                        
+                        HStack { // Action Buttons
+                            Button(role: section.id.wrappedValue < 0 ? .none : .destructive) {
+                                let sectionIdToDelete = section.id.wrappedValue
+                                localCampaignCustomSections.removeAll { $0.id == sectionIdToDelete }
+                                customTextViewCoordinators.removeValue(forKey: sectionIdToDelete)
+                                if sectionIdToDelete >= 0 {
+                                    Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
                                 }
-                            )
-                            .frame(minHeight: 100, maxHeight: 300)
-                            .background(Color(.secondarySystemGroupedBackground))
-                            .cornerRadius(8)
-                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
-                                .onChange(of: section.content.wrappedValue) { newValue in // Observe .wrappedValue
-                                    let sectionId = section.id.wrappedValue
-                                    customSectionContentDebounceTimers[sectionId]?.invalidate()
-                                    customSectionContentDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in // Slightly longer timer for content
-                                        Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
-                                    }
+                            } label: {
+                                Text(section.id.wrappedValue < 0 ? "Remove" : "Delete Section")
                             }
+                            .foregroundColor(section.id.wrappedValue < 0 ? .blue : .red)
+                            .buttonStyle(.borderless)
                             
-                            HStack { // Action Buttons
-                                Button(role: section.id.wrappedValue < 0 ? .none : .destructive) {
-                                    let sectionIdToDelete = section.id.wrappedValue
-                                    localCampaignCustomSections.removeAll { $0.id == sectionIdToDelete }
-                                    customTextViewCoordinators.removeValue(forKey: sectionIdToDelete)
-                                    if sectionIdToDelete >= 0 {
-                                        Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
-                                    }
-                                } label: {
-                                    Text(section.id.wrappedValue < 0 ? "Remove" : "Delete Section")
-                                }
-                                .foregroundColor(section.id.wrappedValue < 0 ? .blue : .red)
-                                .buttonStyle(.borderless)
-
-                                Spacer()
-
-                                Menu {
-                                    if isLoadingFeatures { Text("Loading features...") }
-                                    else if snippetFeatures.isEmpty { Text("No snippet features available.") }
-                                    else {
-                                        ForEach(snippetFeatures) { feature in
-                                            Button(feature.name) {
-                                                handleSnippetFeatureSelection(feature, forSection: section.wrappedValue)
-                                            }
+                            Spacer()
+                            
+                            Menu {
+                                if isLoadingFeatures { Text("Loading features...") }
+                                else if snippetFeatures.isEmpty { Text("No snippet features available.") }
+                                else {
+                                    ForEach(snippetFeatures) { feature in
+                                        Button(feature.name) {
+                                            handleSnippetFeatureSelection(feature, forSection: section.wrappedValue)
                                         }
                                     }
-                                } label: {
-                                    Label("Process Snippet", systemImage: "wand.and.stars").font(.caption)
                                 }
-                                .buttonStyle(.bordered)
-                                .disabled(isLoadingFeatures)
-
-                                Button("Regenerate Content") {
-                                    handleFullSectionRegeneration(forSection: section.wrappedValue)
-                                }
-                                .buttonStyle(.bordered).font(.caption)
-                                .tint(currentPrimaryColor)
-
-                                Button {
-                                    self.currentSectionIdForImageGen = section.id.wrappedValue
-                                    self.imageGenPromptText = section.title.wrappedValue
-                                    self.showingImagePromptModalForSection = true
-                                } label: {
-                                    Label("Image", systemImage: "photo.badge.plus").font(.caption)
-                                }
-                                .buttonStyle(.bordered)
+                            } label: {
+                                Label("Process Snippet", systemImage: "wand.and.stars").font(.caption)
                             }
-                            .padding(.top, 4)
+                            .buttonStyle(.bordered)
+                            .disabled(isLoadingFeatures)
+                            
+                            Button("Regenerate Content") {
+                                handleFullSectionRegeneration(forSection: section.wrappedValue)
+                            }
+                            .buttonStyle(.bordered).font(.caption)
+                            .tint(currentPrimaryColor)
+                            
+                            Button {
+                                self.currentSectionIdForImageGen = section.id.wrappedValue
+                                self.imageGenPromptText = section.title.wrappedValue
+                                self.showingImagePromptModalForSection = true
+                            } label: {
+                                Label("Image", systemImage: "photo.badge.plus").font(.caption)
+                            }
+                            .buttonStyle(.bordered)
                         }
-                        .padding(.vertical, 8) // Padding for the content of the inner DisclosureGroup
+                        .padding(.top, 4)
                     }
-                    .padding(.bottom, 4) // Spacing between disclosure groups
-                    Divider()
+                    .padding(.vertical, 8) // Padding for the content of the inner DisclosureGroup
                 }
-                Button(action: addCampaignCustomSection) {
-                    Label("Add Custom Section", systemImage: "plus.circle.fill")
-                }
-                .buttonStyle(.bordered)
-                .tint(currentPrimaryColor) // Use theme color
+                .padding(.bottom, 4) // Spacing between disclosure groups
+                Divider()
             }
-            .padding(.top, 8)
-            // Removed the .padding().background().cornerRadius().foregroundColor().font()
-            // as these are now applied by the parent "Campaign Sections" DisclosureGroup
-            // or should be inherent to the content if needed.
-            // The individual custom section DisclosureGroups already handle their own internal styling.
+            Button(action: addCampaignCustomSection) {
+                Label("Add Custom Section", systemImage: "plus.circle.fill")
+            }
+            .buttonStyle(.bordered)
+            .tint(currentPrimaryColor) // Use theme color
         }
-        // Apply overall font and text color if not inherited, though parent group should handle it.
-        // .foregroundColor(currentTextColor)
-        // .font(currentFont)
+        .padding(.top, 8)
+        // Removed the .padding().background().cornerRadius().foregroundColor().font()
+        // as these are now applied by the parent "Campaign Sections" DisclosureGroup
+        // or should be inherent to the content if needed.
+        // The individual custom section DisclosureGroups already handle their own internal styling.
     }
+    // Apply overall font and text color if not inherited, though parent group should handle it.
+    // .foregroundColor(currentTextColor)
+    // .font(currentFont)
+    
     private func addCampaignCustomSection() {
         let newId = nextTemporaryClientSectionID
         nextTemporaryClientSectionID -= 1 // Decrement for next use
@@ -763,7 +763,7 @@ struct CampaignDetailView: View {
                     )
                     // The .onChange for editableTitle is already on CampaignDetailView's editableTitle property
                     // and will continue to function for debounced saving.
-
+                    
                     CampaignConceptEditorView(
                         isEditingConcept: $isEditingConcept,
                         editableConcept: $editableConcept,
@@ -782,7 +782,7 @@ struct CampaignDetailView: View {
                         tableOfContentsSection // Using the extracted component
                     }
                     // campaignThemeDisplaySection // REMOVED from inline
-
+                    
                     // MARK: - Combined Campaign Sections (Custom and Standard)
                     DisclosureGroup("Campaign Sections") {
                         VStack(alignment: .leading, spacing: 16) { // Added spacing to match outer VStack
@@ -794,7 +794,7 @@ struct CampaignDetailView: View {
                     .padding().background(Color(.systemBackground)).cornerRadius(12) // Style to match other top-level DisclosureGroups
                     .font(currentFont) // Apply theme font
                     .foregroundColor(currentTextColor) // Apply theme text color
-
+                    
                     // moodBoardSection // REMOVED Mood Board Section from inline
                     linkedCharactersSection // ADDED Linked Characters Section
                     // llmSettingsSection // REPLACED with CampaignLLMSettingsView
@@ -929,7 +929,7 @@ struct CampaignDetailView: View {
             customSectionContentDebounceTimers.values.forEach { $0.invalidate() }
             customSectionTitleDebounceTimers.removeAll()
             customSectionContentDebounceTimers.removeAll()
-
+            
             if campaign.title != editableTitle || campaign.concept ?? "" != editableConcept {
                 Task { await saveCampaignDetails(source: .onDisappear) }
             }
@@ -981,22 +981,22 @@ struct CampaignDetailView: View {
         // The following .sheet modifier with onDismiss is the correct one for CampaignEditView.
         .sheet(isPresented: $showingCampaignEditSheet,
                onDismiss: { // Using onDismiss for when the sheet is dismissed
-                   Task {
-                       print("CampaignEditView (sheet) dismissed. Attempting to refresh campaign: \(self.campaign.id)")
-                       do {
-                           let refreshedCampaign = try await campaignCreator.refreshCampaign(id: self.campaign.id)
-                           self.campaign = refreshedCampaign
-                           self.editableTitle = refreshedCampaign.title
-                           self.editableConcept = refreshedCampaign.concept ?? ""
-                           self.localCampaignCustomSections = refreshedCampaign.customSections ?? []
-                           print("CampaignDetailView refreshed with latest data after CampaignEditView dismissal.")
-                       } catch {
-                           print("Error refreshing campaign in CampaignDetailView.onDismiss (for CampaignEditView sheet): \(error.localizedDescription)")
-                           self.errorMessage = "Failed to update campaign details. Please try refreshing."
-                           self.showErrorAlert = true
-                       }
-                   }
-               }) {
+            Task {
+                print("CampaignEditView (sheet) dismissed. Attempting to refresh campaign: \(self.campaign.id)")
+                do {
+                    let refreshedCampaign = try await campaignCreator.refreshCampaign(id: self.campaign.id)
+                    self.campaign = refreshedCampaign
+                    self.editableTitle = refreshedCampaign.title
+                    self.editableConcept = refreshedCampaign.concept ?? ""
+                    self.localCampaignCustomSections = refreshedCampaign.customSections ?? []
+                    print("CampaignDetailView refreshed with latest data after CampaignEditView dismissal.")
+                } catch {
+                    print("Error refreshing campaign in CampaignDetailView.onDismiss (for CampaignEditView sheet): \(error.localizedDescription)")
+                    self.errorMessage = "Failed to update campaign details. Please try refreshing."
+                    self.showErrorAlert = true
+                }
+            }
+        }) {
             CampaignEditView(campaign: $campaign, campaignCreator: campaignCreator, isPresented: $showingCampaignEditSheet)
         }
         .toolbar {
@@ -1011,7 +1011,7 @@ struct CampaignDetailView: View {
                         Label("Theme", systemImage: "paintbrush.pointed.fill")
                     }
                     .disabled(isSaving || isGeneratingText)
-
+                    
                     // Mood Board Button
                     Button {
                         showingMoodBoardSheet = true
@@ -1019,7 +1019,7 @@ struct CampaignDetailView: View {
                         Label("Mood Board", systemImage: "photo.on.rectangle.angled")
                     }
                     .disabled(isSaving || isGeneratingText)
-
+                    
                     // Button to open the sheet for generating a new campaign section
                     Button {
                         showingGenerateSheet = true
@@ -1238,7 +1238,7 @@ struct CampaignDetailView: View {
     
     // MARK: - LLM Settings Section
     // private var llmSettingsSection: some View { ... } // REMOVED - Extracted to CampaignLLMSettingsView.swift
-
+    
     // MARK: - Linked Characters Section
     private var linkedCharactersSection: some View {
         DisclosureGroup("Linked Characters") {
@@ -1292,70 +1292,70 @@ struct CampaignDetailView: View {
                 .font(currentFont.weight(.bold))
                 .foregroundColor(currentPrimaryColor)
                 .padding(.bottom, 5)
-
+            
             if let urls = campaign.moodBoardImageURLs, !urls.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
-                            ForEach(urls, id: \.self) { urlString in
-                                if let url = URL(string: urlString) {
-                                    AsyncImage(url: url) { phase in
-                                        switch phase {
-                                        case .empty:
-                                            ProgressView()
-                                                .frame(width: 100, height: 100)
-                                        case .success(let image):
-                                            image.resizable()
-                                                .aspectRatio(contentMode: .fill)
-                                                .frame(width: 100, height: 100)
-                                                .clipped()
-                                                .cornerRadius(8)
-                                        case .failure:
-                                            Image(systemName: "photo")
-                                                .resizable()
-                                                .scaledToFit()
-                                                .frame(width: 50, height: 50)
-                                                .padding()
-                                                .frame(width: 100, height: 100)
-                                                .background(Color.gray.opacity(0.3))
-                                                .cornerRadius(8)
-                                        @unknown default:
-                                            EmptyView()
-                                                .frame(width: 100, height: 100)
-                                        }
+                    HStack(spacing: 10) {
+                        ForEach(urls, id: \.self) { urlString in
+                            if let url = URL(string: urlString) {
+                                AsyncImage(url: url) { phase in
+                                    switch phase {
+                                    case .empty:
+                                        ProgressView()
+                                            .frame(width: 100, height: 100)
+                                    case .success(let image):
+                                        image.resizable()
+                                            .aspectRatio(contentMode: .fill)
+                                            .frame(width: 100, height: 100)
+                                            .clipped()
+                                            .cornerRadius(8)
+                                    case .failure:
+                                        Image(systemName: "photo")
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(width: 50, height: 50)
+                                            .padding()
+                                            .frame(width: 100, height: 100)
+                                            .background(Color.gray.opacity(0.3))
+                                            .cornerRadius(8)
+                                    @unknown default:
+                                        EmptyView()
+                                            .frame(width: 100, height: 100)
                                     }
-                                } else {
-                                    Text("Invalid URL: \(urlString)")
-                                        .font(.caption)
-                                        .foregroundColor(.red)
-                                        .frame(width: 100, height: 100)
-                                        .background(Color.gray.opacity(0.1))
-                                        .cornerRadius(8)
                                 }
+                            } else {
+                                Text("Invalid URL: \(urlString)")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                                    .frame(width: 100, height: 100)
+                                    .background(Color.gray.opacity(0.1))
+                                    .cornerRadius(8)
                             }
                         }
-                        .padding(.vertical, 5)
                     }
-                } else {
-                    Text("No mood board images have been added yet.")
-                        .font(currentFont.italic())
-                        .foregroundColor(currentTextColor.opacity(0.7))
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 5)
                 }
-
-                Button("Manage Mood Board (Placeholder)") {
-                    // Action: Show a sheet or navigate to a mood board management view
-                    print("Manage Mood Board tapped - functionality not yet implemented.")
-                    // self.errorMessage = "Mood board management is not yet implemented."
-                    // self.showErrorAlert = true
-                }
-                .buttonStyle(.bordered)
-                .tint(currentPrimaryColor)
-                .padding(.top, 5)
+            } else {
+                Text("No mood board images have been added yet.")
+                    .font(currentFont.italic())
+                    .foregroundColor(currentTextColor.opacity(0.7))
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 4)
+            
+            Button("Manage Mood Board (Placeholder)") {
+                // Action: Show a sheet or navigate to a mood board management view
+                print("Manage Mood Board tapped - functionality not yet implemented.")
+                // self.errorMessage = "Mood board management is not yet implemented."
+                // self.showErrorAlert = true
+            }
+            .buttonStyle(.bordered)
+            .tint(currentPrimaryColor)
+            .padding(.top, 5)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 4)
+        
         .padding().background(Color(.systemBackground)).cornerRadius(12)
         .foregroundColor(currentTextColor)
         .font(currentFont)
@@ -1546,14 +1546,14 @@ struct CampaignDetailView: View {
         
         do {
             let generatedText = try await campaignCreator.generateText(prompt: generatePrompt)
-
+            
             // This function creates a new STANDARD section from the main generation prompt.
             // The ID should be temporary if the backend assigns final IDs on save.
             // If standard sections are to be saved, their IDs need to be handled like custom sections.
             // For now, using generateTemporaryClientSectionID which is also used for custom sections.
             // This might need adjustment if backend treats standard section IDs differently.
             let newSectionId = generateTemporaryClientSectionID() // Ensure this ID is unique across both types if they mix before save.
-
+            
             var updatedCampaign = self.campaign // Operate on a copy
             let newSection = CampaignSection(
                 id: newSectionId, // Use temporary client-side ID
@@ -1563,11 +1563,11 @@ struct CampaignDetailView: View {
             )
             updatedCampaign.sections.append(newSection)
             updatedCampaign.markAsModified()
-
+            
             // Pass includeStandardSections: true to ensure these are part of the DTO
             // This requires CampaignUpdateDTO to support 'sections'
             try await campaignCreator.updateCampaign(updatedCampaign) // This now needs to handle standard sections in DTO
-
+            
             if let refreshedCampaign = campaignCreator.campaigns.first(where: { $0.id == updatedCampaign.id }) {
                 self.campaign = refreshedCampaign
                 self.editableTitle = refreshedCampaign.title
@@ -1575,7 +1575,7 @@ struct CampaignDetailView: View {
                 // self.localCampaignCustomSections will be updated if changed by this operation,
                 // and self.campaign.sections is part of self.campaign.
             }
-
+            
             showingGenerateSheet = false
             generatePrompt = ""
         } catch let error as LLMError {
@@ -1590,7 +1590,7 @@ struct CampaignDetailView: View {
         }
         isGeneratingText = false
     }
-
+    
     // MARK: - Export Logic
     private var exportSheetView: some View {
         // This is the CORRECT exportSheetView
@@ -1609,12 +1609,12 @@ struct CampaignDetailView: View {
             .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Done") { showingExportSheet = false } } }
         }
     }
-
+    
     private func exportCampaignContent() {
         exportedMarkdown = campaignCreator.exportCampaignToHomebrewery(campaign)
         showingExportSheet = true
     }
-
+    
     
     struct CampaignSectionsListView: View {
         let campaign: Campaign
@@ -1698,7 +1698,7 @@ struct CampaignDetailView: View {
     // MARK: - Extracted Subviews
     
     // Removed nested struct CampaignHeaderView: View { ... } - This now lives in CampaignHeaderView.swift
-
+    
     // Removed nested struct CampaignConceptView: View { ... } - This now lives in CampaignConceptEditorView.swift (or similar)
     
     #Preview {
@@ -1741,36 +1741,36 @@ struct CampaignDetailView: View {
     }
     
     // Helper view for displaying theme properties
-}
-
-struct ThemePropertyRow: View {
-    let label: String
-    let value: String?
-    var isURL: Bool = false
-
-    var body: some View {
-        HStack {
-            Text(label + ":")
-                .font(.caption)
-                .fontWeight(.medium)
-            if let val = value, !val.isEmpty {
-                if isURL, let url = URL(string: val) {
-                    Link(val, destination: url)
-                        .font(.caption)
-                        .lineLimit(1)
-                } else {
-                    Text(val)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            } else {
-                Text("Not set")
+    
+    
+    struct ThemePropertyRow: View {
+        let label: String
+        let value: String?
+        var isURL: Bool = false
+        
+        var body: some View {
+            HStack {
+                Text(label + ":")
                     .font(.caption)
-                    .italic()
-                    .foregroundColor(.gray)
+                    .fontWeight(.medium)
+                if let val = value, !val.isEmpty {
+                    if isURL, let url = URL(string: val) {
+                        Link(val, destination: url)
+                            .font(.caption)
+                            .lineLimit(1)
+                    } else {
+                        Text(val)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                } else {
+                    Text("Not set")
+                        .font(.caption)
+                        .italic()
+                        .foregroundColor(.gray)
+                }
+                Spacer() // Pushes content to the left
             }
-            Spacer() // Pushes content to the left
         }
     }
 }
-// NO EXTRANEOUS BRACE AT THE VERY END OF THE FILE

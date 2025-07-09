@@ -22,6 +22,9 @@
 		943031BB2E1DCAFF00F3C129 /* CampaignDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 943031BA2E1DCAFF00F3C129 /* CampaignDetailView.swift */; };
 		943031BE2E1DCB0600F3C129 /* CharacterChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 943031BD2E1DCB0600F3C129 /* CharacterChatView.swift */; };
 		943031BF2E1DCB0600F3C129 /* CampaignEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 943031BC2E1DCB0600F3C129 /* CampaignEditView.swift */; };
+		943A92012E1EC4C40081BA3A /* CampaignLLMSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 943A92002E1EC4C40081BA3A /* CampaignLLMSettingsView.swift */; };
+		943A92022E1EC4C40081BA3A /* CampaignHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 943A91FF2E1EC4C40081BA3A /* CampaignHeaderView.swift */; };
+		943A92032E1EC4C40081BA3A /* CampaignConceptEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 943A91FE2E1EC4C40081BA3A /* CampaignConceptEditorView.swift */; };
 		9481FD642E1C3D180084268D /* SectionBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9481FD622E1C3D180084268D /* SectionBox.swift */; };
 		9481FD662E1C3D210084268D /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9481FD652E1C3D210084268D /* Color+Hex.swift */; };
 		949269E92E1AC11300376F0A /* CharacterCreateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949269E42E1AC11300376F0A /* CharacterCreateView.swift */; };
@@ -48,6 +51,9 @@
 		943031BA2E1DCAFF00F3C129 /* CampaignDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignDetailView.swift; sourceTree = "<group>"; };
 		943031BC2E1DCB0600F3C129 /* CampaignEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignEditView.swift; sourceTree = "<group>"; };
 		943031BD2E1DCB0600F3C129 /* CharacterChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterChatView.swift; sourceTree = "<group>"; };
+		943A91FE2E1EC4C40081BA3A /* CampaignConceptEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignConceptEditorView.swift; sourceTree = "<group>"; };
+		943A91FF2E1EC4C40081BA3A /* CampaignHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignHeaderView.swift; sourceTree = "<group>"; };
+		943A92002E1EC4C40081BA3A /* CampaignLLMSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignLLMSettingsView.swift; sourceTree = "<group>"; };
 		9481FD622E1C3D180084268D /* SectionBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionBox.swift; sourceTree = "<group>"; };
 		9481FD652E1C3D210084268D /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
 		949269E32E1AC11300376F0A /* CampaignListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignListView.swift; sourceTree = "<group>"; };
@@ -89,6 +95,9 @@
 		3D92BBE32B8C8A8E00B8E8E8 /* CampaignCreatorApp */ = {
 			isa = PBXGroup;
 			children = (
+				943A91FE2E1EC4C40081BA3A /* CampaignConceptEditorView.swift */,
+				943A91FF2E1EC4C40081BA3A /* CampaignHeaderView.swift */,
+				943A92002E1EC4C40081BA3A /* CampaignLLMSettingsView.swift */,
 				943031BC2E1DCB0600F3C129 /* CampaignEditView.swift */,
 				943031BD2E1DCB0600F3C129 /* CharacterChatView.swift */,
 				943031BA2E1DCAFF00F3C129 /* CampaignDetailView.swift */,
@@ -217,6 +226,9 @@
 				943031812E1C8B1000F3C129 /* Binding+Helpers.swift in Sources */,
 				943031822E1C8B1000F3C129 /* CampaignThemeManager.swift in Sources */,
 				943031832E1C8B1000F3C129 /* CustomTextView.swift in Sources */,
+				943A92012E1EC4C40081BA3A /* CampaignLLMSettingsView.swift in Sources */,
+				943A92022E1EC4C40081BA3A /* CampaignHeaderView.swift in Sources */,
+				943A92032E1EC4C40081BA3A /* CampaignConceptEditorView.swift in Sources */,
 				943031842E1C8B1000F3C129 /* FeatureService.swift in Sources */,
 				943031852E1C8B1000F3C129 /* SnippetContextInputModal.swift in Sources */,
 			);
