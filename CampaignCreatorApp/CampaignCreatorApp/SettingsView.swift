@@ -54,163 +54,42 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             Form {
-                // User Info Section (if user is logged in)
-                if let user = campaignCreator.currentUser {
-                    Section(header: Text("Account")) {
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text("Logged in as:")
-                                Text(user.email) // Or user.username if preferred
-                                    .font(.footnote)
-                                    .foregroundColor(.secondary)
-                            }
-                            Spacer()
-                            // Profile Icon Display
-                            AsyncImage(url: URL(string: user.avatarUrl ?? "")) { phase in // Changed user.avatar_url to user.avatarUrl
-                                if let image = phase.image {
-                                    image.resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(width: 50, height: 50)
-                                        .clipShape(Circle())
-                                } else if let error = phase.error {
-                                    let _ = print("[USER_ICON_DEBUG SettingsView] AsyncImage error: \(error.localizedDescription). Avatar URL was: \(user.avatar_url ?? "nil")")
-                                    Image(systemName: "person.circle.fill") // Error placeholder
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fit)
-                                        .frame(width: 50, height: 50)
-                                        .foregroundColor(.gray)
-                                } else {
-                                    Image(systemName: "person.circle") // Default placeholder
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fit)
-                                        .frame(width: 50, height: 50)
-                                        .foregroundColor(.gray)
-                                }
-                            }
-                        }
-
-                        Button("Change Profile Icon (Coming Soon)") {
-                            featureInfoAlertMessage = "Profile icon customization will be available in a future update."
-                            showingFeatureInfoAlert = true
-                        }
-
-                        Button("Change Password (Coming Soon)") {
-                            featureInfoAlertMessage = "Password change functionality will be available in a future update."
-                            showingFeatureInfoAlert = true
-                        }
-
-                        Button(action: {
-                            campaignCreator.logout()
-                            // The ContentView will react to isAuthenticated changing and show LoginView
-                        }) {
-                            Text("Logout")
-                                .foregroundColor(.red)
-                        }
-                        // The "Profile Details" DisclosureGroup has been removed.
-                    }
-                }
-
-                Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Campaign Creator")
-                            .font(.title2).fontWeight(.semibold)
-                        Text("A powerful tool for creating and managing tabletop RPG campaigns with AI assistance.")
-                            .font(.subheadline).foregroundColor(.secondary)
-                    }
-                    .padding(.vertical, 8)
-                }
+                SettingsAccountSection(
+                    campaignCreator: campaignCreator,
+                    featureInfoAlertMessage: $featureInfoAlertMessage,
+                    showingFeatureInfoAlert: $showingFeatureInfoAlert
+                )
                 
-                Section(header: Text("AI Service Configuration")) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("To use AI text generation features, you'll need to provide API keys for supported services:")
-                            .font(.subheadline).foregroundColor(.secondary)
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("• Visit the respective AI service provider's website (e.g., OpenAI, Google AI Studio).")
-                            Text("• Create an account or sign in.")
-                            Text("• Navigate to the API key section and generate a new API key.")
-                            Text("• Copy the generated key and paste it into the appropriate field below.")
-                        }
-                        .font(.caption).foregroundColor(.secondary)
-                    }
-                }
+                SettingsAppInfoSection()
                 
-                Section(header: Text("API Keys"), footer: Text("API keys are stored securely on your device.").font(.caption)) {
-                    apiKeyField(label: "OpenAI API Key", placeholder: "sk-...", apiKeyDisplay: openAIApiKey, apiKeyEdit: $editOpenAIApiKey, keyName: "OPENAI_API_KEY")
-                    apiKeyField(label: "Gemini API Key", placeholder: "AIza...", apiKeyDisplay: geminiApiKey, apiKeyEdit: $editGeminiApiKey, keyName: "GEMINI_API_KEY")
-                    apiKeyField(label: "Stable Diffusion API Key", placeholder: "sd-...", apiKeyDisplay: stableDiffusionApiKey, apiKeyEdit: $editStableDiffusionApiKey, keyName: "STABLE_DIFFUSION_API_KEY")
-                }
+                SettingsAIServiceConfigSection()
+                
+                SettingsAPIKeysSection(
+                    openAIApiKeyDisplay: $openAIApiKey, // This binding is for the parent's @State openAIApiKey (masked)
+                    geminiApiKeyDisplay: $geminiApiKey,   // This binding is for the parent's @State geminiApiKey (masked)
+                    stableDiffusionApiKeyDisplay: $stableDiffusionApiKey, // This binding is for the parent's @State stableDiffusionApiKey (masked)
+                    editOpenAIApiKey: $editOpenAIApiKey,
+                    editGeminiApiKey: $editGeminiApiKey,
+                    editStableDiffusionApiKey: $editStableDiffusionApiKey,
+                    // The apiKeyFieldBuilder is no longer needed as APIKeyEditableField is self-contained
+                    // apiKeyFieldBuilder: self.apiKeyField, // This would not work as apiKeyField is instance method
+                    saveAPIKeyAction: self.saveAPIKey
+                )
+                
+                SettingsPreferencesSection(
+                    selectedSdEngine: $selectedSdEngine,
+                    saveSdEnginePreferenceAction: self.saveSdEnginePreference
+                )
 
-                Section(header: Text("Preferences")) {
-                    Picker("Preferred Stable Diffusion Engine", selection: $selectedSdEngine) {
-                        ForEach(StableDiffusionEngine.allCases) { engine in
-                            Text(engine.displayName).tag(engine)
-                        }
-                    }
-                    .onChange(of: selectedSdEngine) { newEngine in
-                        saveSdEnginePreference(engine: newEngine)
-                    }
-                    Text("Select your preferred engine for Stable Diffusion image generation. \"System Default\" will use the server's configured default.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
+                SettingsSecuritySection(forgetSavedLoginAction: self.forgetSavedLogin)
 
-                Section(header: Text("Security")) {
-                    Button(action: forgetSavedLogin) {
-                        Text("Forget Saved Login Credentials")
-                            .foregroundColor(.orange) // Use a distinct color
-                    }
-                }
-                
-                Section(header: Text("Service Status")) {
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text("Available Services")
-                                .font(.subheadline).fontWeight(.medium)
-                            if isRefreshingServiceStatus {
-                                ProgressView()
-                                    .progressViewStyle(.circular)
-                                    .scaleEffect(0.8)
-                                Text("Checking...")
-                                    .font(.caption).foregroundColor(.orange)
-                            } else {
-                                Text(serviceStatusMessage)
-                                    .font(.caption).foregroundColor(.secondary)
-                            }
-                        }
-                        Spacer()
-                        Button(action: { refreshServiceStatus() }) { // Wrapped in a closure
-                            if isRefreshingServiceStatus {
-                                ProgressView() // Show spinner inside button if preferred
-                            } else {
-                                Text("Refresh")
-                            }
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(isRefreshingServiceStatus)
-                    }
-                }
-                
-                DisclosureGroup("About") {
-                    VStack(alignment: .leading) { // Use VStack for proper layout within DisclosureGroup
-                        Link(destination: URL(string: "https://github.com/AntonioCiolino/CampaignCreator")!) {
-                            HStack {
-                                Image(systemName: "link")
-                                Text("View on GitHub")
-                                Spacer()
-                                Image(systemName: "arrow.up.right.square")
-                            }
-                        }
-                        // Add a divider for better visual separation if needed, or just rely on VStack spacing
-                        // Divider()
-                        HStack {
-                            Text("Version")
-                            Spacer()
-                            Text("1.0.1") // Example version
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .padding(.top, 4) // Add a little padding at the top of the content
-                }
+                SettingsServiceStatusSection(
+                    serviceStatusMessage: $serviceStatusMessage,
+                    isRefreshingServiceStatus: $isRefreshingServiceStatus,
+                    refreshServiceStatusAction: { self.refreshServiceStatus() } // Explicit closure
+                )
+
+                SettingsAboutSection()
             }
             .navigationTitle("Settings")
             .refreshable {
@@ -373,6 +252,259 @@ struct SettingsView: View {
         return services.isEmpty ? "No AI services configured with API keys." : "Available: \(services.joined(separator: ", "))"
     }
 }
+
+// MARK: - Subviews for Settings Sections
+
+private struct SettingsAccountSection: View {
+    @ObservedObject var campaignCreator: CampaignCreator
+    @Binding var featureInfoAlertMessage: String
+    @Binding var showingFeatureInfoAlert: Bool
+
+    var body: some View {
+        if let user = campaignCreator.currentUser {
+            Section(header: Text("Account")) {
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("Logged in as:")
+                        Text(user.email) // Or user.username if preferred
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    // Profile Icon Display
+                    AsyncImage(url: URL(string: user.avatar_url ?? "")) { phase in
+                        if let image = phase.image {
+                            image.resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 50, height: 50)
+                                .clipShape(Circle())
+                        } else if let error = phase.error {
+                            let _ = print("[USER_ICON_DEBUG SettingsView] AsyncImage error: \(error.localizedDescription). Avatar URL was: \(user.avatar_url ?? "nil")")
+                            Image(systemName: "person.circle.fill") // Error placeholder
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 50, height: 50)
+                                .foregroundColor(.gray)
+                        } else {
+                            Image(systemName: "person.circle") // Default placeholder
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 50, height: 50)
+                                .foregroundColor(.gray)
+                        }
+                    }
+                }
+
+                Button("Change Profile Icon (Coming Soon)") {
+                    featureInfoAlertMessage = "Profile icon customization will be available in a future update."
+                    showingFeatureInfoAlert = true
+                }
+
+                Button("Change Password (Coming Soon)") {
+                    featureInfoAlertMessage = "Password change functionality will be available in a future update."
+                    showingFeatureInfoAlert = true
+                }
+
+                Button(action: {
+                    campaignCreator.logout()
+                    // The ContentView will react to isAuthenticated changing and show LoginView
+                }) {
+                    Text("Logout")
+                        .foregroundColor(.red)
+                }
+            }
+        }
+    }
+}
+
+private struct SettingsAppInfoSection: View {
+    var body: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Campaign Creator")
+                    .font(.title2).fontWeight(.semibold)
+                Text("A powerful tool for creating and managing tabletop RPG campaigns with AI assistance.")
+                    .font(.subheadline).foregroundColor(.secondary)
+            }
+            .padding(.vertical, 8)
+        }
+    }
+}
+
+private struct SettingsAIServiceConfigSection: View {
+    var body: some View {
+        Section(header: Text("AI Service Configuration")) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("To use AI text generation features, you'll need to provide API keys for supported services:")
+                    .font(.subheadline).foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("• Visit the respective AI service provider's website (e.g., OpenAI, Google AI Studio).")
+                    Text("• Create an account or sign in.")
+                    Text("• Navigate to the API key section and generate a new API key.")
+                    Text("• Copy the generated key and paste it into the appropriate field below.")
+                }
+                .font(.caption).foregroundColor(.secondary)
+            }
+        }
+    }
+}
+
+// Using a type alias for the function signature for less repetition
+// Removed typealias APIKeyFieldViewBuilder as it's no longer needed
+
+private struct SettingsAPIKeysSection: View {
+    // Display state bindings are removed as APIKeyEditableField now derives this
+    @Binding var editOpenAIApiKey: String
+    @Binding var editGeminiApiKey: String
+    @Binding var editStableDiffusionApiKey: String
+
+    let saveAPIKeyAction: (String, String) -> Void
+
+    var body: some View {
+        Section(header: Text("API Keys"), footer: Text("API keys are stored securely on your device.").font(.caption)) {
+            APIKeyEditableField(label: "OpenAI API Key", placeholder: "sk-...",
+                                apiKeyIsSet: !editOpenAIApiKey.isEmpty,
+                                apiKeyEdit: $editOpenAIApiKey,
+                                keyName: "OPENAI_API_KEY",
+                                saveAPIKeyAction: saveAPIKeyAction)
+            APIKeyEditableField(label: "Gemini API Key", placeholder: "AIza...",
+                                apiKeyIsSet: !editGeminiApiKey.isEmpty,
+                                apiKeyEdit: $editGeminiApiKey,
+                                keyName: "GEMINI_API_KEY",
+                                saveAPIKeyAction: saveAPIKeyAction)
+            APIKeyEditableField(label: "Stable Diffusion API Key", placeholder: "sd-...",
+                                apiKeyIsSet: !editStableDiffusionApiKey.isEmpty,
+                                apiKeyEdit: $editStableDiffusionApiKey,
+                                keyName: "STABLE_DIFFUSION_API_KEY",
+                                saveAPIKeyAction: saveAPIKeyAction)
+        }
+    }
+}
+
+// New struct for the APIKeyEditableField, effectively replacing the old @ViewBuilder func
+private struct APIKeyEditableField: View {
+    let label: String
+    let placeholder: String
+    let apiKeyIsSet: Bool // Derived from whether the actual key (in edit field) is empty
+    @Binding var apiKeyEdit: String
+    let keyName: String
+    let saveAPIKeyAction: (String, String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(label).font(.subheadline).fontWeight(.medium)
+                Spacer()
+                Text(apiKeyIsSet ? "Set" : "Not Set")
+                    .font(.caption)
+                    .foregroundColor(apiKeyIsSet ? .green : .red)
+                    .fontWeight(.medium)
+            }
+            SecureField(placeholder, text: $apiKeyEdit)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit {
+                    saveAPIKeyAction(keyName, apiKeyEdit)
+                }
+        }
+    }
+}
+
+
+private struct SettingsPreferencesSection: View {
+    @Binding var selectedSdEngine: SettingsView.StableDiffusionEngine // Use fully qualified name
+    let saveSdEnginePreferenceAction: (SettingsView.StableDiffusionEngine) -> Void
+
+    var body: some View {
+        Section(header: Text("Preferences")) {
+            Picker("Preferred Stable Diffusion Engine", selection: $selectedSdEngine) {
+                ForEach(SettingsView.StableDiffusionEngine.allCases) { engine in // Use fully qualified name
+                    Text(engine.displayName).tag(engine)
+                }
+            }
+            .onChange(of: selectedSdEngine) { newEngine in
+                saveSdEnginePreferenceAction(newEngine)
+            }
+            Text("Select your preferred engine for Stable Diffusion image generation. \"System Default\" will use the server's configured default.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+    }
+}
+
+private struct SettingsSecuritySection: View {
+    let forgetSavedLoginAction: () -> Void
+
+    var body: some View {
+        Section(header: Text("Security")) {
+            Button(action: forgetSavedLoginAction) {
+                Text("Forget Saved Login Credentials")
+                    .foregroundColor(.orange) // Use a distinct color
+            }
+        }
+    }
+}
+
+private struct SettingsServiceStatusSection: View {
+    @Binding var serviceStatusMessage: String
+    @Binding var isRefreshingServiceStatus: Bool
+    let refreshServiceStatusAction: () -> Void
+
+    var body: some View {
+        Section(header: Text("Service Status")) {
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("Available Services")
+                        .font(.subheadline).fontWeight(.medium)
+                    if isRefreshingServiceStatus {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .scaleEffect(0.8)
+                        Text("Checking...")
+                            .font(.caption).foregroundColor(.orange)
+                    } else {
+                        Text(serviceStatusMessage)
+                            .font(.caption).foregroundColor(.secondary)
+                    }
+                }
+                Spacer()
+                Button(action: refreshServiceStatusAction) {
+                    if isRefreshingServiceStatus {
+                        ProgressView()
+                    } else {
+                        Text("Refresh")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled(isRefreshingServiceStatus)
+            }
+        }
+    }
+}
+
+private struct SettingsAboutSection: View {
+    var body: some View {
+        DisclosureGroup("About") {
+            VStack(alignment: .leading) {
+                Link(destination: URL(string: "https://github.com/AntonioCiolino/CampaignCreator")!) {
+                    HStack {
+                        Image(systemName: "link")
+                        Text("View on GitHub")
+                        Spacer()
+                        Image(systemName: "arrow.up.right.square")
+                    }
+                }
+                HStack {
+                    Text("Version")
+                    Spacer()
+                    Text("1.0.1") // Example version
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.top, 4)
+        }
+    }
+}
+
 
 #Preview {
     // Pass a CampaignCreator instance for the preview
