@@ -80,7 +80,23 @@ public struct Character: Identifiable, Codable, Sendable {
         print("[DECODE_DEBUG CharacterModel] For ID \(id): Final appearanceDescription value: '\(appearanceDescription ?? "nil")'")
         // --- End Debugging appearanceDescription ---
 
-        imageURLs = try container.decodeIfPresent([String].self, forKey: .imageURLs)
+        // --- Debugging imageURLs ---
+        let imageURLsKeyExists = container.contains(.imageURLs)
+        print("[DECODE_DEBUG CharacterModel] For ID \(id): imageURLs key exists in JSON: \(imageURLsKeyExists)")
+        if imageURLsKeyExists {
+            do {
+                let rawImageURLs = try container.decode([String].self, forKey: .imageURLs)
+                print("[DECODE_DEBUG CharacterModel] For ID \(id): imageURLs successfully decoded as non-optional [String]: '\(rawImageURLs)'")
+                imageURLs = rawImageURLs
+            } catch {
+                print("[DECODE_DEBUG CharacterModel] For ID \(id): FAILED to decode imageURLs as non-optional [String]. Error: \(error.localizedDescription). Trying decodeIfPresent...")
+                imageURLs = try container.decodeIfPresent([String].self, forKey: .imageURLs)
+            }
+        } else {
+            imageURLs = nil // Key doesn't exist, so it's nil
+        }
+        print("[DECODE_DEBUG CharacterModel] For ID \(id): Final imageURLs value: \(imageURLs ?? [])") // Print empty array if nil for clarity
+        // --- End Debugging imageURLs ---
 
         // --- Debugging notesForLLM ---
         let notesKeyExists = container.contains(.notesForLLM)
