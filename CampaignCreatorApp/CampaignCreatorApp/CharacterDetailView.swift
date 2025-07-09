@@ -8,25 +8,62 @@ struct CharacterDetailView: View {
     @ObservedObject var campaignCreator: CampaignCreator
 
     @State private var showingEditView = false
+    @State private var showingFullCharacterImageSheet = false
+    @State private var selectedImageURLForSheet: URL? = nil
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text(character.name)
-                    .font(.largeTitle)
-                    .padding(.bottom, 5)
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading) {
+                        Text(character.name)
+                            .font(.largeTitle)
+                        // Potentially other brief info here if desired
+                    }
+                    Spacer()
 
-                if let imageURLs = character.imageURLs, !imageURLs.isEmpty {
-                    SectionBox(title: "Image URLs") {
-                        ForEach(imageURLs, id: \.self) { urlString in
-                            Text(urlString)
-                                .font(.caption)
-                                .foregroundColor(.blue)
-                                .onTapGesture {
-                                    if let url = URL(string: urlString) {
-                                        UIApplication.shared.open(url)
-                                    }
+                    // Character Image Thumbnail/Icon
+                    if let firstImageURLString = character.imageURLs?.first, let imageURL = URL(string: firstImageURLString) {
+                        Button(action: {
+                            selectedImageURLForSheet = imageURL
+                            showingFullCharacterImageSheet = true
+                        }) {
+                            AsyncImage(url: imageURL) { phase in
+                                if let image = phase.image {
+                                    image.resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(width: 60, height: 60) // Slightly larger for tap target
+                                        .clipShape(Circle())
+                                        .overlay(Circle().stroke(Color.secondary, lineWidth: 1))
+                                } else if phase.error != nil {
+                                    Image(systemName: "person.crop.circle.badge.exclamationmark")
+                                        .resizable().scaledToFit().frame(width: 50, height: 50).foregroundColor(.gray)
+                                } else {
+                                    ProgressView().frame(width: 50, height: 50)
                                 }
+                            }
+                        }
+                        .buttonStyle(.plain) // Use plain to make the image itself the button
+                    } else {
+                        Image(systemName: "person.crop.circle") // Default placeholder if no image
+                            .resizable().scaledToFit().frame(width: 50, height: 50).foregroundColor(.gray)
+                    }
+                }
+                .padding(.bottom, 5)
+
+                // The original Image URLs list can be kept or removed based on preference
+                // For now, I'll keep it so users can still see all URLs if multiple exist.
+                if let imageURLs = character.imageURLs, !imageURLs.isEmpty {
+                    SectionBox(title: "Image URLs (Links)") {
+                        ForEach(imageURLs, id: \.self) { urlString in
+                            if let url = URL(string: urlString) {
+                                Link(urlString, destination: url)
+                                    .font(.caption)
+                            } else {
+                                Text(urlString + " (Invalid URL)")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            }
                         }
                     }
                 }
@@ -66,6 +103,9 @@ struct CharacterDetailView: View {
         }
         .navigationTitle(character.name)
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            print("[CHAR_NOTES_DEBUG CharacterDetailView] View appeared for char ID \(character.id). Initial notesForLLM: \(character.notesForLLM ?? "nil")")
+        }
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) { // Changed to ToolbarItemGroup
                 // Navigate to Chat View
@@ -82,10 +122,66 @@ struct CharacterDetailView: View {
             // and CampaignCreator.characters array is updated.
             // We need to find the updated character from the list.
             if let updatedCharacter = campaignCreator.characters.first(where: { $0.id == character.id }) {
+                print("[CHAR_NOTES_DEBUG CharacterDetailView] Edit sheet dismissed for char ID \(character.id). Refreshed notesForLLM from campaignCreator: \(updatedCharacter.notesForLLM ?? "nil")")
                 self.character = updatedCharacter
+            } else {
+                print("[CHAR_NOTES_DEBUG CharacterDetailView] Edit sheet dismissed for char ID \(character.id). Character not found in campaignCreator list for refresh.")
             }
         }) {
             CharacterEditView(character: character, campaignCreator: campaignCreator, isPresented: $showingEditView)
+        }
+        .sheet(isPresented: $showingFullCharacterImageSheet) {
+            FullCharacterImageView(imageURL: $selectedImageURLForSheet)
+        }
+    }
+}
+
+// New View for displaying the full character image in a sheet
+struct FullCharacterImageView: View {
+    @Binding var imageURL: URL? // Use binding if URL could change or needs to be cleared
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        NavigationView { // NavigationView for a title and dismiss button
+            VStack {
+                if let url = imageURL {
+                    AsyncImage(url: url) { phase in
+                        if let image = phase.image {
+                            image.resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .padding()
+                        } else if phase.error != nil {
+                            Text("Error loading image.")
+                                .foregroundColor(.red)
+                            Image(systemName: "photo.fill") // Placeholder on error
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 100, height: 100)
+                                .foregroundColor(.gray)
+                        } else {
+                            ProgressView("Loading Image...")
+                        }
+                    }
+                } else {
+                    Text("No image URL provided.")
+                    Image(systemName: "photo.fill") // Placeholder if no URL
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 100, height: 100)
+                        .foregroundColor(.gray)
+                }
+                Spacer() // Pushes image to the top
+            }
+            .navigationTitle("Character Image")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        imageURL = nil // Clear the URL when dismissing
+                        dismiss()
+                    }
+                }
+            }
         }
     }
 }

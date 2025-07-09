@@ -11,7 +11,21 @@ struct CharacterEditView: View {
     @State private var descriptionText: String
     @State private var appearanceDescriptionText: String
     @State private var notesForLLMText: String
-    @State private var exportFormatPreferenceText: String
+    // Removed: @State private var exportFormatPreferenceText: String
+
+    // For Export Format Picker
+    enum ExportFormat: String, CaseIterable, Identifiable {
+        case notSet = "Not Set"
+        case json = "JSON"
+        case markdown = "Markdown"
+        case complex = "Complex" // As seen in CharacterCreateDTO default
+
+        var id: String { self.rawValue }
+
+        // Helper to get a display name if different from rawValue, though here they are the same
+        var displayName: String { self.rawValue }
+    }
+    @State private var selectedExportFormat: ExportFormat
 
     // For image URLs - simple list of text fields for now
     @State private var imageURLsText: [String] // Store URLs as strings for editing
@@ -53,7 +67,12 @@ struct CharacterEditView: View {
         self._descriptionText = State(initialValue: character.description ?? "")
         self._appearanceDescriptionText = State(initialValue: character.appearanceDescription ?? "")
         self._notesForLLMText = State(initialValue: character.notesForLLM ?? "")
-        self._exportFormatPreferenceText = State(initialValue: character.exportFormatPreference ?? "")
+        // Initialize selectedExportFormat
+        if let currentPreference = character.exportFormatPreference, !currentPreference.isEmpty {
+            self._selectedExportFormat = State(initialValue: ExportFormat(rawValue: currentPreference) ?? .notSet)
+        } else {
+            self._selectedExportFormat = State(initialValue: .notSet)
+        }
         self._imageURLsText = State(initialValue: character.imageURLs ?? [])
 
         self._statsStrength = State(initialValue: character.stats?.strength.map(String.init) ?? "")
@@ -63,6 +82,7 @@ struct CharacterEditView: View {
         self._statsWisdom = State(initialValue: character.stats?.wisdom.map(String.init) ?? "")
         self._statsCharisma = State(initialValue: character.stats?.charisma.map(String.init) ?? "")
         // self._localCustomSections = State(initialValue: character.customSections ?? []) // REMOVED
+        print("[CHAR_NOTES_DEBUG CharacterEditView] Initializing for char ID \(character.id). Initial notesForLLMText: \(self._notesForLLMText.wrappedValue)")
     }
 
     var body: some View {
@@ -129,7 +149,11 @@ struct CharacterEditView: View {
                         TextEditor(text: $notesForLLMText).frame(height: 80)
                             .overlay(formElementOverlay())
                     }
-                    TextField("Export Format Preference (Optional)", text: $exportFormatPreferenceText)
+                    Picker("Export Format Preference", selection: $selectedExportFormat) {
+                        ForEach(ExportFormat.allCases) { format in
+                            Text(format.displayName).tag(format)
+                        }
+                    }
                 }
 
                 // Section for "Custom Sections" REMOVED
@@ -302,8 +326,18 @@ struct CharacterEditView: View {
         updatedCharacter.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         updatedCharacter.description = descriptionText.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty()
         updatedCharacter.appearanceDescription = appearanceDescriptionText.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty()
-        updatedCharacter.notesForLLM = notesForLLMText.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty()
-        updatedCharacter.exportFormatPreference = exportFormatPreferenceText.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty()
+
+        let finalNotesForLLM = notesForLLMText.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty()
+        print("[CHAR_NOTES_DEBUG CharacterEditView] saveCharacterChanges for char ID \(characterToEdit.id). Final notesForLLM being set on updatedCharacter: \(finalNotesForLLM ?? "nil")")
+        updatedCharacter.notesForLLM = finalNotesForLLM
+
+        // Save selected export format
+        if selectedExportFormat == .notSet {
+            updatedCharacter.exportFormatPreference = nil
+        } else {
+            updatedCharacter.exportFormatPreference = selectedExportFormat.rawValue
+        }
+
         updatedCharacter.imageURLs = imageURLsText.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
         if updatedCharacter.imageURLs?.isEmpty ?? true { updatedCharacter.imageURLs = nil }
         // updatedCharacter.customSections = localCustomSections.filter { !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } // REMOVED

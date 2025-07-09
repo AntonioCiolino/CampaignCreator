@@ -271,7 +271,14 @@ public class CampaignCreator: ObservableObjectProtocol {
             self.initialCharacterFetchAttempted = true
         }
         do {
-            self.characters = try await apiService.fetchCharacters()
+            let fetchedChars = try await apiService.fetchCharacters()
+            self.characters = fetchedChars
+            // Log notes for all fetched characters (or a sample if too many)
+            if let firstChar = fetchedChars.first { // Example: Log for the first character if list is not empty
+                print("[CHAR_NOTES_DEBUG CampaignCreator] fetchCharacters: Fetched \(fetchedChars.count) chars. First char ID \(firstChar.id) notesForLLM: \(firstChar.notesForLLM ?? "nil")")
+            } else {
+                print("[CHAR_NOTES_DEBUG CampaignCreator] fetchCharacters: Fetched 0 characters.")
+            }
         } catch let error as APIError {
             self.characterError = error; print("❌ Error fetching characters: \(error.localizedDescription)")
             if case .notAuthenticated = error { self.logout() }
@@ -317,8 +324,18 @@ public class CampaignCreator: ObservableObjectProtocol {
             exportFormatPreference: character.exportFormatPreference
             // customSections: character.customSections // REMOVED
         )
-        _ = try await apiService.updateCharacter(character.id, data: dto)
-        await fetchCharacters()
+        print("[CHAR_NOTES_DEBUG CampaignCreator] updateCharacter: Sending DTO for char ID \(character.id). DTO.notesForLLM: \(dto.notesForLLM ?? "nil")")
+        let updatedCharacterFromAPI = try await apiService.updateCharacter(character.id, data: dto)
+        print("[CHAR_NOTES_DEBUG CampaignCreator] updateCharacter: Received updated character from API for char ID \(updatedCharacterFromAPI.id). API_notesForLLM: \(updatedCharacterFromAPI.notesForLLM ?? "nil")")
+
+        // Update the local list immediately with the response from the API before full refresh
+        // This provides a more immediate reflection of the change.
+        if let index = characters.firstIndex(where: { $0.id == updatedCharacterFromAPI.id }) {
+            characters[index] = updatedCharacterFromAPI
+            print("[CHAR_NOTES_DEBUG CampaignCreator] updateCharacter: Updated local character list with API response for char ID \(updatedCharacterFromAPI.id). Local_notesForLLM: \(characters[index].notesForLLM ?? "nil")")
+        }
+
+        await fetchCharacters() // Still fetch all to ensure full sync, though the specific item is already updated
     }
     
     public func deleteCharacter(_ character: Character) async throws {

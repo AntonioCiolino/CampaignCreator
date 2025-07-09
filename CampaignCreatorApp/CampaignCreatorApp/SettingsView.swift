@@ -16,8 +16,13 @@ struct SettingsView: View {
     @State private var editStableDiffusionApiKey = "" // New state for Stable Diffusion key
 
     @State private var showingAPIKeyAlert = false
-    @State private var alertMessage = ""
-    @State private var showingForgetLoginAlert = false // New alert for forgetting login
+    @State private var apiKeyAlertMessage = "" // Renamed for clarity
+    @State private var showingForgetLoginAlert = false
+    @State private var forgetLoginAlertMessage = "" // Specific message for this alert
+
+    // New state for generic info alerts (e.g., for placeholder buttons)
+    @State private var showingFeatureInfoAlert = false
+    @State private var featureInfoAlertMessage = ""
 
     // Stable Diffusion Engine Preference
     enum StableDiffusionEngine: String, CaseIterable, Identifiable {
@@ -67,7 +72,8 @@ struct SettingsView: View {
                                         .aspectRatio(contentMode: .fill)
                                         .frame(width: 50, height: 50)
                                         .clipShape(Circle())
-                                } else if phase.error != nil {
+                                } else if let error = phase.error {
+                                    let _ = print("[USER_ICON_DEBUG SettingsView] AsyncImage error: \(error.localizedDescription). Avatar URL was: \(user.avatar_url ?? "nil")")
                                     Image(systemName: "person.circle.fill") // Error placeholder
                                         .resizable()
                                         .aspectRatio(contentMode: .fit)
@@ -84,15 +90,13 @@ struct SettingsView: View {
                         }
 
                         Button("Change Profile Icon (Coming Soon)") {
-                            // Placeholder action for now
-                            alertMessage = "Profile icon customization will be available in a future update."
-                            showingAPIKeyAlert = true // Re-use this alert for simplicity
+                            featureInfoAlertMessage = "Profile icon customization will be available in a future update."
+                            showingFeatureInfoAlert = true
                         }
 
                         Button("Change Password (Coming Soon)") {
-                            // Placeholder action for now
-                            alertMessage = "Password change functionality will be available in a future update."
-                            showingAPIKeyAlert = true // Re-use this alert for simplicity
+                            featureInfoAlertMessage = "Password change functionality will be available in a future update."
+                            showingFeatureInfoAlert = true
                         }
 
                         Button(action: {
@@ -210,6 +214,13 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .onAppear {
+                // Log avatar_url when view appears
+                if let user = campaignCreator.currentUser {
+                    print("[USER_ICON_DEBUG SettingsView] View appeared. User: \(user.email), Avatar URL: \(user.avatar_url ?? "nil")")
+                } else {
+                    print("[USER_ICON_DEBUG SettingsView] View appeared. No current user.")
+                }
+
                 loadAPIKeys() // Load current keys for display
                 // Initialize edit fields with actual stored values, not the masked ones
                 editOpenAIApiKey = UserDefaults.standard.string(forKey: "OPENAI_API_KEY") ?? ""
@@ -218,15 +229,21 @@ struct SettingsView: View {
                 loadSdEnginePreference()
                 refreshServiceStatus(isInitialLoad: true) // Load initial status without delay
             }
-            .alert("Login Credentials", isPresented: $showingForgetLoginAlert) { // Alert for forgetting login
+            .alert("Login Credentials", isPresented: $showingForgetLoginAlert) {
                 Button("OK") { }
             } message: {
-                Text(alertMessage) // Re-use alertMessage for this too
+                Text(forgetLoginAlertMessage) // Use specific message variable
             }
-            .alert("API Key Saved", isPresented: $showingAPIKeyAlert) { // Specific title for API Key save
+            .alert("API Key Saved", isPresented: $showingAPIKeyAlert) {
                 Button("OK") { }
             } message: {
-                Text(alertMessage)
+                Text(apiKeyAlertMessage) // Use specific message variable
+            }
+            // New alert for feature info
+            .alert("Information", isPresented: $showingFeatureInfoAlert) {
+                Button("OK") { }
+            } message: {
+                Text(featureInfoAlertMessage)
             }
         }
     }
@@ -236,14 +253,14 @@ struct SettingsView: View {
             do {
                 try KeychainHelper.delete(username: username)
                 UserDefaults.standard.removeObject(forKey: lastUsernameKey)
-                alertMessage = "Saved login credentials for '\(username)' have been forgotten."
+                forgetLoginAlertMessage = "Saved login credentials for '\(username)' have been forgotten."
                 print("SettingsView: Forgotten login for \(username)")
             } catch {
-                alertMessage = "Could not forget login credentials for '\(username)': \(error.localizedDescription)"
+                forgetLoginAlertMessage = "Could not forget login credentials for '\(username)': \(error.localizedDescription)"
                 print("SettingsView: Error forgetting login for \(username): \(error.localizedDescription)")
             }
         } else {
-            alertMessage = "No saved login credentials to forget."
+            forgetLoginAlertMessage = "No saved login credentials to forget."
             print("SettingsView: No saved login to forget.")
         }
         showingForgetLoginAlert = true
@@ -318,7 +335,7 @@ struct SettingsView: View {
             keyLabel = "Stable Diffusion" // Custom label for alert
         }
         
-        alertMessage = "\(keyLabel) API Key has been saved."
+        apiKeyAlertMessage = "\(keyLabel) API Key has been saved."
         showingAPIKeyAlert = true
         refreshServiceStatus() // Refresh status after saving a key
     }

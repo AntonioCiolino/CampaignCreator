@@ -13,7 +13,7 @@ This file provides guidelines and instructions for AI agents working on this pro
 
 ## Project-Specific Guidelines
 
-*   **Primary Focus**: Development efforts are concentrated on `campaign_crafter_api` (FastAPI backend) and `campaign_crafter_ui` (React frontend). The iOS application (`TextEditorApp`) is legacy and not a current priority.
+*   **Primary Focus**: Development efforts are concentrated on `campaign_crafter_api` (FastAPI backend), `campaign_crafter_ui` (React frontend), and the `CampaignCreatorApp` (iOS application).
 *   **API Development (`campaign_crafter_api`)**:
     *   Follow FastAPI best practices.
     *   Ensure new endpoints are documented (e.g., OpenAPI schema).
