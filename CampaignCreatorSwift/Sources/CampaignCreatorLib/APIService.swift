@@ -235,7 +235,7 @@ public final class UserDefaultsTokenManager: TokenManaging {
 
 
 public final class APIService: ObservableObject, Sendable { // Added ObservableObject conformance
-    private let baseURLString = "https://campaigncreator-api.onrender.com/api/v1"
+    public let baseURLString = "https://campaigncreator-api.onrender.com/api/v1" // Made public
     private let tokenManager: TokenManaging
     // @Published properties are not strictly necessary for this service if its state doesn't change
     // or if UI doesn't need to react to its internal state changes directly.
@@ -254,6 +254,11 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
         jsonEncoder.dateEncodingStrategy = .iso8601
         jsonEncoder.keyEncodingStrategy = .convertToSnakeCase // ADDED
         jsonEncoder.outputFormatting = .prettyPrinted
+    }
+
+    // Public getter for the token
+    public func getToken() -> String? {
+        return tokenManager.getToken()
     }
 
     @MainActor

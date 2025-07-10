@@ -1,5 +1,6 @@
 import SwiftUI
 import CampaignCreatorLib
+import PhotosUI // Import PhotosUI
 
 // Helper extension for Binding<Double?> to Double for Slider
 extension Binding where Value == Double? {
@@ -15,6 +16,7 @@ extension Binding where Value == Double? {
 struct CampaignDetailView: View {
     @State var campaign: Campaign
     @ObservedObject var campaignCreator: CampaignCreator
+    private let imageUploadService: ImageUploadService // Added image upload service
     
     @State private var editableTitle: String
     @State private var editableConcept: String
@@ -65,6 +67,7 @@ struct CampaignDetailView: View {
     @State private var showingImagePromptModalForSection: Bool = false
     @State private var currentSectionIdForImageGen: Int? = nil // CHANGED UUID to Int
     @State private var imageGenPromptText: String = ""
+    @State private var selectedBadgeImageItem: PhotosPickerItem? = nil // For campaign badge
     
     // Error states for specific operations
     @State private var featureFetchError: String? = nil
@@ -97,6 +100,7 @@ struct CampaignDetailView: View {
         self._editableTitle = State(initialValue: campaign.title)
         self._editableConcept = State(initialValue: campaign.concept ?? "")
         self._localCampaignCustomSections = State(initialValue: campaign.customSections ?? [])
+        self.imageUploadService = ImageUploadService(apiService: campaignCreator.apiService) // Initialize service
         
         print("[THEME_DEBUG CampaignDetailView] init: Campaign '\(campaign.title)' (ID: \(campaign.id)) loaded with theme values:") // DEBUG LOG
         print("[THEME_DEBUG CampaignDetailView]   PrimaryColor: \(campaign.themePrimaryColor ?? "nil")") // DEBUG LOG
@@ -758,9 +762,11 @@ struct CampaignDetailView: View {
                         isGeneratingText: isGeneratingText,
                         currentPrimaryColor: currentPrimaryColor,
                         onSetBadgeAction: {
-                            self.errorMessage = "Campaign badge management is not yet implemented."
-                            self.showErrorAlert = true
-                        }
+                            // This callback is no longer strictly needed here as PhotosPicker handles presentation.
+                            // Image processing will be handled by an .onChange modifier on selectedBadgeImageItem.
+                            print("Set Badge button was tapped (now a PhotosPicker).")
+                        },
+                        selectedBadgeImage: $selectedBadgeImageItem // Pass the binding
                     )
                     // The .onChange for editableTitle is already on CampaignDetailView's editableTitle property
                     // and will continue to function for debounced saving.
@@ -1031,8 +1037,57 @@ struct CampaignDetailView: View {
             // .labelStyle modifier handles the change automatically.
             print("Horizontal size class changed to: \(String(describing: newSizeClass))")
         }
+        .onChange(of: selectedBadgeImageItem) { newItem in
+            Task {
+                guard let item = newItem else {
+                    print("Badge image item deselected.")
+                    return
+                }
+                do {
+                    if let data = try await item.loadTransferable(type: Data.self) {
+                        let filename = item.itemIdentifier ?? UUID().uuidString
+                        let mimeType = item.supportedContentTypes.first?.preferredMIMEType ?? "application/octet-stream"
+
+                        // Use the ImageUploadService
+                        let result = await imageUploadService.uploadImage(
+                            imageData: data,
+                            filename: filename,
+                            mimeType: mimeType
+                        )
+
+                        switch result {
+                        case .success(let urlString):
+                            campaign.badgeImageURL = urlString
+                            campaign.markAsModified()
+                            await saveCampaignDetails(source: .badgeImageUpdate) // Using the new source
+                            print("Campaign badge image URL updated to: \(urlString)")
+                        case .failure(let error):
+                            // Ensure error is an instance of ImageUploadError or handle general Error
+                            if let uploadError = error as? ImageUploadError {
+                                self.errorMessage = "Badge Upload Failed: \(uploadError.localizedDescription)"
+                            } else {
+                                self.errorMessage = "Badge Upload Failed: \(error.localizedDescription)"
+                            }
+                            self.showErrorAlert = true
+                            print("Badge image upload failed: \(error.localizedDescription)")
+                        }
+                    } else {
+                        errorMessage = "Failed to load image data from picker."
+                        showErrorAlert = true
+                        print("Failed to load image data from PhotosPickerItem.")
+                    }
+                } catch {
+                    errorMessage = "Error processing badge image: \(error.localizedDescription)"
+                    showErrorAlert = true
+                    print("Error processing badge image: \(error.localizedDescription)")
+                }
+            }
+        }
     }
     
+    // The local uploadCampaignBadgeImage method is now removed.
+    // Its logic has been moved to ImageUploadService and is called from the .onChange block above.
+
     @ViewBuilder
     private var commonToolbarButtons: some View {
         // This approach allows for dynamic labelStyle but might be overly complex
@@ -1140,7 +1195,7 @@ struct CampaignDetailView: View {
     }
     
     // MARK: - Save Logic
-    enum SaveSource { case titleField, conceptEditorDoneButton, onDisappear, themeEditorDismissed, customSectionChange, standardSectionChange, llmSettingsChange } // Added llmSettingsChange
+    enum SaveSource { case titleField, conceptEditorDoneButton, onDisappear, themeEditorDismissed, customSectionChange, standardSectionChange, llmSettingsChange, badgeImageUpdate } // Added badgeImageUpdate
     
     // Placeholder functions for standard section actions
     private func handleStandardSnippetFeatureSelection(_ feature: Feature, forSectionAtIndex index: Int) {
@@ -1452,6 +1507,14 @@ struct CampaignDetailView: View {
             }
         }
         
+        if source == .badgeImageUpdate {
+            // This source implies the campaign.badgeImageURL was just updated.
+            // We mark 'changed = true' to ensure the save operation proceeds with the new URL.
+            // This assumes that if badgeImageUpdate is the source, a meaningful change to badgeImageURL has occurred.
+            print("Save triggered by badgeImageUpdate source. Marking as changed.")
+            changed = true
+        }
+
         guard changed else { print("No changes to save from source: \(source)."); return }
         
         isSaving = true
@@ -1796,5 +1859,15 @@ struct CampaignDetailView: View {
                 Spacer() // Pushes content to the left
             }
         }
+    }
+}
+
+// Helper extension for String to strip suffix if present
+extension String {
+    func stripSuffix(_ suffix: String) -> String {
+        if self.hasSuffix(suffix) {
+            return String(self.dropLast(suffix.count))
+        }
+        return self
     }
 }
