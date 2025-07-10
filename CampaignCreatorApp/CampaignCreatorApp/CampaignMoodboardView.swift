@@ -47,39 +47,8 @@ struct CampaignMoodboardView: View {
             } else {
                 LazyVGrid(columns: gridItemLayout, spacing: 2) {
                     ForEach(allImageURLs, id: \.self) { urlString in
-                        let _ = print("[CampaignMoodboardView ForEach] Processing urlString for link: \(urlString)")
-                        let destinationURL = URL(string: urlString) // Convert to URL?
-                        // NavigationLink to FullCharacterImageView (which is generic enough for any image URL)
-                        NavigationLink(destination: FullCharacterImageViewWrapper(initialDisplayURL: destinationURL) // Pass URL?
-                                        .navigationTitle("Image Detail") // More specific title
-                                        .navigationBarTitleDisplayMode(.inline)
-                        ) {
-                            AsyncImage(url: URL(string: urlString)) { phase in // Keep URL(string:) for AsyncImage source
-                                switch phase {
-                                case .empty:
-                                    ProgressView()
-                                        .frame(maxWidth: .infinity, idealHeight: 120)
-                                        .background(Color.gray.opacity(0.1))
-                                case .success(let image):
-                                    image.resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(minWidth: 0, maxWidth: .infinity)
-                                        .frame(height: 120)
-                                        .clipped()
-                                case .failure:
-                                    Image(systemName: "photo.fill")
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 50, height: 50)
-                                        .foregroundColor(.gray)
-                                        .frame(maxWidth: .infinity, idealHeight: 120)
-                                        .background(Color.gray.opacity(0.1))
-                                @unknown default:
-                                    EmptyView()
-                                }
-                            }
-                        }
-                        .buttonStyle(.plain)
+                        let _ = print("[CampaignMoodboardView ForEach] Processing urlString for cell: \(urlString)")
+                        CampaignMoodboardCellView(urlString: urlString)
                     }
                 }
                 .padding(2)
@@ -87,6 +56,46 @@ struct CampaignMoodboardView: View {
         }
         .navigationTitle("\(campaign.title) Moodboard")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    // Private helper view for each cell in the campaign moodboard grid
+    private struct CampaignMoodboardCellView: View {
+        let urlString: String
+
+        var body: some View {
+            // NavigationLink to FullCharacterImageView (which is generic enough for any image URL)
+            let destinationURL = URL(string: urlString)
+            NavigationLink(destination: FullCharacterImageViewWrapper(initialDisplayURL: destinationURL)
+                            .navigationTitle("Image Detail")
+                            .navigationBarTitleDisplayMode(.inline)
+            ) {
+                AsyncImage(url: URL(string: urlString)) { phase in
+                    switch phase {
+                    case .empty:
+                        ProgressView()
+                            .frame(maxWidth: .infinity, idealHeight: 120)
+                            .background(Color.gray.opacity(0.1))
+                    case .success(let image):
+                        image.resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(minWidth: 0, maxWidth: .infinity)
+                            .frame(height: 120)
+                            .clipped()
+                    case .failure:
+                        Image(systemName: "photo.fill")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 50, height: 50)
+                            .foregroundColor(.gray)
+                            .frame(maxWidth: .infinity, idealHeight: 120)
+                            .background(Color.gray.opacity(0.1))
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+        }
     }
 }
 

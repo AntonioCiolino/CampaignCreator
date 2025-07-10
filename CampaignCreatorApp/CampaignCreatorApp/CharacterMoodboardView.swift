@@ -1,5 +1,11 @@
 import SwiftUI
 
+// Helper struct for .sheet(item: ...)
+struct IdentifiableURLContainer: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
 struct CharacterMoodboardView: View {
     let imageURLs: [String]
     let characterName: String // Optional: for a more descriptive title
@@ -7,9 +13,7 @@ struct CharacterMoodboardView: View {
     // Define the grid layout: 3 columns, flexible size
     private let gridItemLayout = [GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2)]
 
-    // @State private var selectedImageURLString: String? = nil // Replaced
-    @State private var sheetTargetURL: URL? = nil // New state variable
-    @State private var showingFullImageView = false
+    @State private var sheetItemForImageView: IdentifiableURLContainer? = nil
 
     var body: some View {
         NavigationView {
@@ -26,7 +30,7 @@ struct CharacterMoodboardView: View {
                 } else {
                     LazyVGrid(columns: gridItemLayout, spacing: 2) {
                         ForEach(imageURLs, id: \.self) { urlString in
-                            Button(action: {
+                            MoodboardCellView(urlString: urlString, action: {
                                 print("[CharacterMoodboardView] Tapped image. Original urlString: \(urlString)")
                                 if let url = URL(string: urlString) {
                                     self.sheetItemForImageView = IdentifiableURLContainer(url: url)
@@ -35,34 +39,7 @@ struct CharacterMoodboardView: View {
                                     self.sheetItemForImageView = nil // Ensure it's nil if URL is bad
                                     print("[CharacterMoodboardView] Failed to create URL from string, sheetItemForImageView set to nil.")
                                 }
-                            }) {
-                                AsyncImage(url: URL(string: urlString)) { phase in
-                                    switch phase {
-                                    case .empty:
-                                        ProgressView()
-                                            .frame(maxWidth: .infinity, idealHeight: 120) // Give it some size
-                                            .background(Color.gray.opacity(0.1))
-                                    case .success(let image):
-                                        image.resizable()
-                                            .aspectRatio(contentMode: .fill) // Fill the frame
-                                            .frame(minWidth: 0, maxWidth: .infinity) // Expand to column width
-                                            .frame(height: 120) // Fixed height for uniformity
-                                            .clipped() // Clip excess
-                                            .contentShape(Rectangle()) // Ensure tappable area covers the image
-                                    case .failure:
-                                        Image(systemName: "photo.fill")
-                                            .resizable()
-                                            .scaledToFit()
-                                            .frame(width: 50, height: 50)
-                                            .foregroundColor(.gray)
-                                            .frame(maxWidth: .infinity, idealHeight: 120)
-                                            .background(Color.gray.opacity(0.1))
-                                    @unknown default:
-                                        EmptyView()
-                                    }
-                                }
-                            }
-                            .buttonStyle(.plain) // Use plain button style for image-only tap
+                            })
                         }
                     }
                     .padding(2) // Add a little padding around the grid
@@ -86,6 +63,43 @@ struct CharacterMoodboardView: View {
         // If pushed, the parent view's NavigationView would handle the title.
         // Let's remove the NavigationView here and assume it's pushed.
         // The navigationTitle will be handled by the pushing NavigationView.
+    }
+
+    // Private helper view for each cell in the moodboard grid
+    private struct MoodboardCellView: View {
+        let urlString: String
+        let action: () -> Void // Action to perform on tap
+
+        var body: some View {
+            Button(action: action) {
+                AsyncImage(url: URL(string: urlString)) { phase in
+                    switch phase {
+                    case .empty:
+                        ProgressView()
+                            .frame(maxWidth: .infinity, idealHeight: 120)
+                            .background(Color.gray.opacity(0.1))
+                    case .success(let image):
+                        image.resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(minWidth: 0, maxWidth: .infinity)
+                            .frame(height: 120)
+                            .clipped()
+                            .contentShape(Rectangle())
+                    case .failure:
+                        Image(systemName: "photo.fill")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 50, height: 50)
+                            .foregroundColor(.gray)
+                            .frame(maxWidth: .infinity, idealHeight: 120)
+                            .background(Color.gray.opacity(0.1))
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+        }
     }
 }
 
