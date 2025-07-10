@@ -83,16 +83,22 @@ describe('CharacterChatPanel', () => {
         // Check user message structure (example)
         const helloGandalfMsg = screen.getByText('Hello Gandalf!');
         const gandalfRow = helloGandalfMsg.closest('.chat-message-row');
+        expect(gandalfRow).toBeInTheDocument();
         expect(gandalfRow).toHaveClass('user-message-row');
-        expect(within(gandalfRow!).getByRole('img', {name: 'user'})).toHaveAttribute('src', defaultProps.currentUserAvatar);
+        if (gandalfRow) { // Type guard
+            expect(within(gandalfRow as HTMLElement).getByRole('img', {name: 'user'})).toHaveAttribute('src', defaultProps.currentUserAvatar);
+        }
 
 
         // Check AI message structure (example)
         const helloFrodoMsg = screen.getByText('Hello Frodo!');
         const frodoRow = helloFrodoMsg.closest('.chat-message-row');
+        expect(frodoRow).toBeInTheDocument();
         expect(frodoRow).toHaveClass('ai-message-row');
-        expect(within(frodoRow!).getByRole('img', {name: defaultProps.characterName})).toHaveAttribute('src', defaultProps.characterImage);
-        expect(within(frodoRow!).getByText(`${defaultProps.characterName}:`)).toBeInTheDocument();
+        if (frodoRow) { // Type guard
+            expect(within(frodoRow as HTMLElement).getByRole('img', {name: defaultProps.characterName})).toHaveAttribute('src', defaultProps.characterImage);
+            expect(within(frodoRow as HTMLElement).getByText(`${defaultProps.characterName}:`)).toBeInTheDocument();
+        }
     });
 
     test('updates llmUserPrompt on textarea change', async () => {

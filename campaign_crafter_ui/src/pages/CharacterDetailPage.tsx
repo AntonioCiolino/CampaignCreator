@@ -441,7 +441,7 @@ const CharacterDetailPage: React.FC = () => {
 
             // After successful generation and saving on backend, refresh the chat history from DB
             fetchChatHistory(); // This will include the user message and the new AI message with correct IDs/timestamps
-            setLlmResponse(null); // Clear any old direct llmResponse display if it was used
+            // setLlmResponse(null); // This was removed as llmResponse state is no longer used
         } catch (err: any) {
             console.error("Failed to generate character response:", err);
             const errorMessage = err.response?.data?.detail || "Failed to get response from character.";
