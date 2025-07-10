@@ -40,7 +40,7 @@ public struct ImageGenerationParams: Codable, Sendable {
 
 public struct ImageGenerationResponse: Codable, Sendable {
     public let imageUrl: String? // Changed to optional
-    public let promptUsed: String
+    public let promptUsed: String?
     public let modelUsed: ImageModelName
     public let sizeUsed: String
     public let qualityUsed: String?
@@ -60,7 +60,7 @@ public struct ImageGenerationResponse: Codable, Sendable {
     }
 
     // Update init to accept optional imageUrl
-    public init(imageUrl: String?, promptUsed: String, modelUsed: ImageModelName, sizeUsed: String, qualityUsed: String? = nil, stepsUsed: Int? = nil, cfgScaleUsed: Double? = nil, geminiModelNameUsed: String? = nil) {
+    public init(imageUrl: String?, promptUsed: String?, modelUsed: ImageModelName, sizeUsed: String, qualityUsed: String? = nil, stepsUsed: Int? = nil, cfgScaleUsed: Double? = nil, geminiModelNameUsed: String? = nil) {
         self.imageUrl = imageUrl
         self.promptUsed = promptUsed
         self.modelUsed = modelUsed
