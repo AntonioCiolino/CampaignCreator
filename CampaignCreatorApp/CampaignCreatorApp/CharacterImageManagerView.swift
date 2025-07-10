@@ -3,8 +3,11 @@ import CampaignCreatorLib // Required for ImageModelName, ImageGenerationParams,
 
 struct CharacterImageManagerView: View {
     @Binding var imageURLs: [String]
+    let characterID: Int // Added characterID
+
     @Environment(\.dismiss) var dismiss
-    @EnvironmentObject var apiService: APIService // Assuming APIService is an EnvironmentObject
+    @EnvironmentObject var apiService: APIService
+    @EnvironmentObject var campaignCreator: CampaignCreator // Added for auto-save method
 
     // For manual URL entry
     @State private var newImageURL: String = ""
@@ -24,6 +27,11 @@ struct CharacterImageManagerView: View {
     // For now, assuming it's not strictly required for this view or is handled by APIService if needed globally
     // @State var campaignId: Int? = nil // Example if needed
 
+    // Initializer to accept characterID
+    init(imageURLs: Binding<[String]>, characterID: Int) {
+        self._imageURLs = imageURLs
+        self.characterID = characterID
+    }
 
     private func isValidURL(_ urlString: String) -> Bool {
         if urlString.isEmpty { return false }
@@ -82,19 +90,33 @@ struct CharacterImageManagerView: View {
             do {
                 let response = try await apiService.generateImage(payload: params)
                 if let newURL = response.imageUrl, !newURL.isEmpty {
-                    if !imageURLs.contains(newURL) {
-                        imageURLs.append(newURL)
-                        print("[CharacterImageManagerView] Added new image URL: \(newURL). Current count: \(imageURLs.count)")
-                    } else {
-                        // Optionally inform user that this exact URL was already present
-                        print("[CharacterImageManagerView] Generated image URL already exists in the list: \(newURL)")
+                    var updatedURLs = imageURLs // Create a mutable copy
+                    if !updatedURLs.contains(newURL) {
+                        updatedURLs.append(newURL)
                     }
+
+                    // Update the binding first to reflect in UI immediately
+                    self.imageURLs = updatedURLs
+                    print("[CharacterImageManagerView] Added new image URL to local list: \(newURL). Current count: \(self.imageURLs.count)")
                     imagePrompt = "" // Clear prompt on success
+
+                    // Attempt to auto-save
+                    do {
+                        print("[CharacterImageManagerView] Attempting to auto-save image URLs for character ID: \(self.characterID)")
+                        try await campaignCreator.autosaveCharacterImageURLs(characterID: self.characterID, imageURLs: self.imageURLs)
+                        print("[CharacterImageManagerView] Successfully auto-saved image URLs.")
+                    } catch {
+                        // Auto-save failed, present this error.
+                        // The URL is already in the local list; user can try saving via CharacterEditView's main save.
+                        generationError = "Auto-save failed: \(error.localizedDescription). Image added locally, try saving character details."
+                        showGenerationErrorAlert = true
+                        // Do not revert imageURLs append, as it's in the local UI
+                    }
                 } else {
-                    generationError = "Image generation succeeded but returned no URL."
+                    generationError = "AI image generation succeeded but returned no URL."
                     showGenerationErrorAlert = true
                 }
-            } catch {
+            } catch { // Catch errors from apiService.generateImage
                 generationError = "Failed to generate image: \(error.localizedDescription)"
                 showGenerationErrorAlert = true
             }
@@ -223,6 +245,9 @@ struct CharacterImageManagerView_Previews: PreviewProvider {
             "http://example.com/another-image.png"
         ]
         @State var emptyUrls: [String] = []
+        let mockApiService = APIService() // Create mock/dummy instances for preview
+        let mockCampaignCreator = CampaignCreator(apiService: mockApiService)
+
 
         var body: some View {
             VStack {
@@ -230,18 +255,26 @@ struct CharacterImageManagerView_Previews: PreviewProvider {
                 Button("Show Image Manager (With URLs)") {
                     // This doesn't work directly in previews like a sheet presentation would
                 }
-                CharacterImageManagerView(imageURLs: $urls) // Direct preview
+                // Provide a dummy characterID for preview
+                CharacterImageManagerView(imageURLs: $urls, characterID: 1)
+                    .environmentObject(mockApiService)
+                    .environmentObject(mockCampaignCreator)
+
 
                 Button("Show Image Manager (Empty)") {
                 }
-                CharacterImageManagerView(imageURLs: $emptyUrls) // Direct preview
+                CharacterImageManagerView(imageURLs: $emptyUrls, characterID: 2)  // Provide a dummy characterID for preview
+                    .environmentObject(mockApiService)
+                    .environmentObject(mockCampaignCreator)
             }
         }
     }
 
     static var previews: some View {
         PreviewWrapper()
-        // For a sheet-like preview, you'd need a state to control presentation:
-        // CharacterImageManagerView(imageURLs: .constant(["https://picsum.photos/seed/preview/50/50"]))
+        // For a sheet-like preview, you'd need a state to control presentation and pass environment objects.
+        // CharacterImageManagerView(imageURLs: .constant(["https://picsum.photos/seed/preview/50/50"]), characterID: 1)
+        //     .environmentObject(APIService())
+        //     .environmentObject(CampaignCreator(apiService: APIService()))
     }
 }

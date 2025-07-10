@@ -425,6 +425,24 @@ public class CampaignCreator: ObservableObjectProtocol {
         await fetchCharacters()
     }
 
+    public func autosaveCharacterImageURLs(characterID: Int, imageURLs: [String]) async throws {
+        guard isAuthenticated else { throw APIError.notAuthenticated }
+        print("[CampaignCreator] Autosaving image URLs for character ID \(characterID): \(imageURLs)")
+        let dto = CharacterUpdateDTO(imageURLs: imageURLs)
+        // We call updateCharacter, which internally calls apiService.updateCharacter
+        // This will also refresh the character in the local list if updateCharacter is implemented to do so,
+        // or trigger a full fetchCharacters.
+        // For auto-save, we might not need an immediate full list refresh if CharacterEditView's state is primary.
+
+        // Refined approach: Direct API call for partial update of imageURLs
+        let directDto = CharacterUpdateDTO(imageURLs: imageURLs)
+        _ = try await apiService.updateCharacter(characterID, data: directDto)
+        print("[CampaignCreator] Autosave API call for image URLs successful for character ID \(characterID).")
+        // No local list refresh here to keep it lightweight; CharacterEditView has the state.
+        // The Character object in CharacterEditView's state will be fully saved with all fields (including these URLs)
+        // when its main 'Save' button is eventually pressed.
+    }
+
     // MARK: - LLM Features
     public func generateText(prompt: String, completion: @escaping @Sendable (Result<String, LLMError>) -> Void) {
         guard isAuthenticated else { completion(.failure(.other(message: "Not authenticated."))); return }

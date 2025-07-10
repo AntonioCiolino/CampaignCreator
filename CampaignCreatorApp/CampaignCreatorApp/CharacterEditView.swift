@@ -241,8 +241,9 @@ struct CharacterEditView: View {
             .disabled(isSaving || isGeneratingAspect) // Removed isGeneratingCharacterImage
             // .sheet for old AI image generation - REMOVED
             .sheet(isPresented: $showingImageManager) {
-                CharacterImageManagerView(imageURLs: $imageURLsText)
-                    .environmentObject(campaignCreator.apiService) // Pass APIService to the sheet
+                CharacterImageManagerView(imageURLs: $imageURLsText, characterID: characterToEdit.id) // Pass characterID
+                    .environmentObject(campaignCreator.apiService)
+                    .environmentObject(campaignCreator) // Pass CampaignCreator for auto-save
             }
             .onChange(of: imageURLsText) { newValue in
                 print("[CharacterEditView] imageURLsText changed. New value: \(newValue)")
