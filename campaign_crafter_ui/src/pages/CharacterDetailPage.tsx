@@ -426,11 +426,9 @@ const CharacterDetailPage: React.FC = () => {
             user_avatar_url: currentUser?.avatar_url || undefined,
             character_avatar_url: character?.image_urls?.[0] || undefined,
         };
-        setChatHistory(prev => [...prev, optimisticUserMessage]);
+        setChatHistory(prevHistory => [...prevHistory, optimisticUserMessage]);
 
         try {
-            // The backend's /generate-response endpoint now handles saving user and AI messages
-            // and uses history from DB. We just send the prompt.
             const payload: LLMChatGenerationRequest = {
                 prompt: currentPrompt,
             };
