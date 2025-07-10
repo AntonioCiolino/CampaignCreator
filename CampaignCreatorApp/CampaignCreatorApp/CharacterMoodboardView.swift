@@ -7,7 +7,8 @@ struct CharacterMoodboardView: View {
     // Define the grid layout: 3 columns, flexible size
     private let gridItemLayout = [GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2)]
 
-    @State private var selectedImageURLString: String? = nil
+    // @State private var selectedImageURLString: String? = nil // Replaced
+    @State private var sheetTargetURL: URL? = nil // New state variable
     @State private var showingFullImageView = false
 
     var body: some View {
@@ -26,9 +27,10 @@ struct CharacterMoodboardView: View {
                     LazyVGrid(columns: gridItemLayout, spacing: 2) {
                         ForEach(imageURLs, id: \.self) { urlString in
                             Button(action: {
-                                print("[CharacterMoodboardView] Tapped image. Selected URLString: \(urlString)")
-                                self.selectedImageURLString = urlString
-                                self.showingFullImageView = true
+                                print("[CharacterMoodboardView] Tapped image. Original urlString: \(urlString)")
+                                self.sheetTargetURL = URL(string: urlString)
+                                print("[CharacterMoodboardView] Set sheetTargetURL to: \(self.sheetTargetURL?.absoluteString ?? "nil")")
+                                self.showingFullImageView = (self.sheetTargetURL != nil) // Only show if URL is valid
                             }) {
                                 AsyncImage(url: URL(string: urlString)) { phase in
                                     switch phase {
@@ -64,13 +66,14 @@ struct CharacterMoodboardView: View {
             }
             .navigationTitle("\(characterName) Moodboard")
             .navigationBarTitleDisplayMode(.inline)
-            .sheet(isPresented: $showingFullImageView) {
-                // Check if selectedImageURLString is not nil and can be converted to a URL
-                if let urlStr = selectedImageURLString, URL(string: urlStr) != nil {
-                    FullCharacterImageViewWrapper(urlString: urlStr)
+            .sheet(isPresented: $showingFullImageView, onDismiss: { self.sheetTargetURL = nil }) {
+                let _ = print("[CharacterMoodboardView .sheet] Content closure. sheetTargetURL: \(sheetTargetURL?.absoluteString ?? "nil")")
+                if let concreteURL = sheetTargetURL {
+                    FullCharacterImageViewWrapper(initialDisplayURL: concreteURL)
+                } else {
+                    Text("Error: URL for sheet was nil or invalid.")
+                    let _ = print("[CharacterMoodboardView .sheet] Error: sheetTargetURL is nil.")
                 }
-                // If urlStr is nil or not a valid URL, sheet content won't be built.
-                // This implicitly handles the case where selectedImageURLString might be an invalid URL string.
             }
         }
         // If this view is meant to be pushed onto an existing NavigationView stack,
@@ -84,20 +87,15 @@ struct CharacterMoodboardView: View {
 
 // Wrapper to manage the @State URL for the sheet, as sheet items need stable identity.
 struct FullCharacterImageViewWrapper: View {
-    let urlString: String?
+    let initialDisplayURL: URL? // Changed from urlString
     @State private var imageURLForSheet: URL?
 
-    init(urlString: String?) {
-        self.urlString = urlString
-        print("[Wrapper init] Received urlString: \(urlString ?? "nil")")
-        if let str = urlString {
-            let initialUrl = URL(string: str)
-            print("[Wrapper init] Initialized imageURLForSheet with URL: \(initialUrl?.absoluteString ?? "nil URL from string")")
-            self._imageURLForSheet = State(initialValue: initialUrl)
-        } else {
-            print("[Wrapper init] Initialized imageURLForSheet with nil (urlString was nil)")
-            self._imageURLForSheet = State(initialValue: nil)
-        }
+    init(initialDisplayURL: URL?) { // Changed parameter name and type
+        self.initialDisplayURL = initialDisplayURL
+        print("[Wrapper init] Received initialDisplayURL: \(initialDisplayURL?.absoluteString ?? "nil")")
+        // Directly use the passed URL for the state's initial value
+        self._imageURLForSheet = State(initialValue: initialDisplayURL)
+        print("[Wrapper init] Initialized imageURLForSheet with: \(self._imageURLForSheet.wrappedValue?.absoluteString ?? "nil")")
     }
 
     var body: some View {
