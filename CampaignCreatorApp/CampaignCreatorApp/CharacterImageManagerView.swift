@@ -97,14 +97,14 @@ struct CharacterImageManagerView: View {
 
                     // Update the binding first to reflect in UI immediately
                     self.imageURLs = updatedURLs
-                    print("[CharacterImageManagerView] Added new image URL to local list: \(newURL). Current count: \(self.imageURLs.count)")
+                    // print("[CharacterImageManagerView] Added new image URL to local list: \(newURL). Current count: \(self.imageURLs.count)") // LOG REMOVED
                     imagePrompt = "" // Clear prompt on success
 
                     // Attempt to auto-save
                     do {
-                        print("[CharacterImageManagerView] Attempting to auto-save image URLs for character ID: \(self.characterID)")
+                        // print("[CharacterImageManagerView] Attempting to auto-save image URLs for character ID: \(self.characterID)") // LOG REMOVED
                         try await campaignCreator.autosaveCharacterImageURLs(characterID: self.characterID, imageURLs: self.imageURLs)
-                        print("[CharacterImageManagerView] Successfully auto-saved image URLs.")
+                        // print("[CharacterImageManagerView] Successfully auto-saved image URLs.") // LOG REMOVED
                     } catch {
                         // Auto-save failed, present this error.
                         // The URL is already in the local list; user can try saving via CharacterEditView's main save.

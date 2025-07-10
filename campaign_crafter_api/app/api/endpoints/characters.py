@@ -44,11 +44,11 @@ def read_single_character(
     Retrieve a specific character by ID.
     Ensures the character belongs to the current user.
     """
-    print(f"[API PUT /characters/{character_id}] Received update request. Payload: {character_update.model_dump_json(indent=2)}")
-    if character_update.image_urls is not None:
-        print(f"[API PUT /characters/{character_id}] image_urls in request: {character_update.image_urls}")
-    else:
-        print(f"[API PUT /characters/{character_id}] image_urls field is None in request.")
+    # print(f"[API PUT /characters/{character_id}] Received update request. Payload: {character_update.model_dump_json(indent=2)}") # LOG REMOVED
+    # if character_update.image_urls is not None: # LOG REMOVED
+    #     print(f"[API PUT /characters/{character_id}] image_urls in request: {character_update.image_urls}") # LOG REMOVED
+    # else: # LOG REMOVED
+    #     print(f"[API PUT /characters/{character_id}] image_urls field is None in request.") # LOG REMOVED
 
     db_character = crud.get_character(db=db, character_id=character_id)
     if db_character is None:

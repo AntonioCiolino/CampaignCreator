@@ -339,9 +339,9 @@ def update_character(db: Session, character_id: int, character_update: models.Ch
         return None
 
     update_data = character_update.model_dump(exclude_unset=True)
-    print(f"[CRUD update_character] Character ID: {character_id}. Incoming update_data: {update_data}")
-    if 'image_urls' in update_data:
-        print(f"[CRUD update_character] image_urls in update_data: {update_data.get('image_urls')}")
+    # print(f"[CRUD update_character] Character ID: {character_id}. Incoming update_data: {update_data}") # LOG REMOVED
+    # if 'image_urls' in update_data: # LOG REMOVED
+    #     print(f"[CRUD update_character] image_urls in update_data: {update_data.get('image_urls')}") # LOG REMOVED
 
     # Handle stats separately if they are part of the update
     stats_update_data = update_data.pop('stats', None)
@@ -356,11 +356,11 @@ def update_character(db: Session, character_id: int, character_update: models.Ch
             if hasattr(db_character, key) and value is not None: # Ensure stat exists and value is provided
                 setattr(db_character, key, value)
 
-    print(f"[CRUD update_character] ORM character {character_id} image_urls BEFORE save: {db_character.image_urls}")
+    # print(f"[CRUD update_character] ORM character {character_id} image_urls BEFORE save: {db_character.image_urls}") # LOG REMOVED
     db.add(db_character)
     db.commit()
     db.refresh(db_character)
-    print(f"[CRUD update_character] ORM character {character_id} image_urls AFTER save & refresh: {db_character.image_urls}")
+    # print(f"[CRUD update_character] ORM character {character_id} image_urls AFTER save & refresh: {db_character.image_urls}") # LOG REMOVED
     return db_character
 
 def delete_character(db: Session, character_id: int) -> Optional[orm_models.Character]:
