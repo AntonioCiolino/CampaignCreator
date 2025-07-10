@@ -361,7 +361,17 @@ public final class APIService: Sendable {
                     }
                 }
 
-                let decodedObject = try jsonDecoder.decode(T.self, from: data)
+                let decodedObject: T
+                if T.self == Character.self || T.self == [Character].self {
+                    print("[APIService DECODE-STRATEGY] Using LOCAL JSONDecoder for Character type (\(String(describing: T.self))).")
+                    let localCharacterDecoder = JSONDecoder()
+                    localCharacterDecoder.dateDecodingStrategy = .iso8601
+                    localCharacterDecoder.keyDecodingStrategy = .convertFromSnakeCase // Match shared decoder config
+                    decodedObject = try localCharacterDecoder.decode(T.self, from: data)
+                } else {
+                    // print("[APIService DECODE-STRATEGY] Using SHARED JSONDecoder for type \(String(describing: T.self)).") // Optional: log for non-character types
+                    decodedObject = try self.jsonDecoder.decode(T.self, from: data)
+                }
 
                 // Log specific fields if it's a Character or [Character]
                 if let character = decodedObject as? Character {
