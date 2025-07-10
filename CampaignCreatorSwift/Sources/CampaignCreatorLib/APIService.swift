@@ -367,10 +367,17 @@ public final class APIService: Sendable {
                     let localCharacterDecoder = JSONDecoder()
                     localCharacterDecoder.dateDecodingStrategy = .iso8601
                     localCharacterDecoder.keyDecodingStrategy = .convertFromSnakeCase // Match shared decoder config
+                    // Pass rawData via userInfo for detailed debugging in CharacterModel
+                    let rawDataUserInfoKey = CodingUserInfoKey(rawValue: "rawData")!
+                    localCharacterDecoder.userInfo[rawDataUserInfoKey] = data
                     decodedObject = try localCharacterDecoder.decode(T.self, from: data)
                 } else {
                     // print("[APIService DECODE-STRATEGY] Using SHARED JSONDecoder for type \(String(describing: T.self)).") // Optional: log for non-character types
+                    // Pass rawData via userInfo for other types too, if they adopt similar debugging
+                    let rawDataUserInfoKey = CodingUserInfoKey(rawValue: "rawData")!
+                    self.jsonDecoder.userInfo[rawDataUserInfoKey] = data // Modify the shared decoder's userInfo
                     decodedObject = try self.jsonDecoder.decode(T.self, from: data)
+                    self.jsonDecoder.userInfo.removeValue(forKey: rawDataUserInfoKey) // Clean up userInfo
                 }
 
                 // Log specific fields if it's a Character or [Character]
