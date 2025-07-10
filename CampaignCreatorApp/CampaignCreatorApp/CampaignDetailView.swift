@@ -810,7 +810,7 @@ struct CampaignDetailView: View {
                         }
                     )
                     // Add the LLM configuration note here if service is nil
-                    if campaignCreator.llmService == nil {
+                    if !campaignCreator.isLLMServiceAvailable { // Use new property
                         Text("Note: AI Text Generation features require OpenAI API key configuration in settings.")
                             .font(.caption)
                             .foregroundColor(.orange)
@@ -1021,7 +1021,7 @@ struct CampaignDetailView: View {
                     } label: {
                         Label("Generate Section", systemImage: "sparkles")
                     }
-                    .disabled(isSaving || isGeneratingText || campaignCreator.llmService == nil) // Disable if already saving, generating, or LLM not configured
+                    .disabled(isSaving || isGeneratingText || !campaignCreator.isLLMServiceAvailable) // Use new property
                 }
             }
             // Note: The conditional Text for LLM service availability will be moved into the ScrollView content.
@@ -1543,9 +1543,9 @@ struct CampaignDetailView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(generatePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGeneratingText || campaignCreator.llmService == nil)
+                .disabled(generatePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGeneratingText || !campaignCreator.isLLMServiceAvailable) // Use new property
             }
-            if campaignCreator.llmService == nil {
+            if !campaignCreator.isLLMServiceAvailable { // Use new property
                 Text("OpenAI API key not configured in settings.")
                     .font(.caption)
                     .foregroundColor(.orange)

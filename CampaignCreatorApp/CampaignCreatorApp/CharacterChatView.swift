@@ -67,11 +67,11 @@ struct CharacterChatView: View {
                         Image(systemName: "paperplane.fill")
                     }
                 }
-                .disabled(userInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSendingMessage || campaignCreator.llmService == nil)
+                .disabled(userInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSendingMessage || !campaignCreator.isLLMServiceAvailable)
                 .padding(.leading, 4)
             }
             .padding()
-            if campaignCreator.llmService == nil {
+            if !campaignCreator.isLLMServiceAvailable {
                 Text("Chat requires OpenAI API key configuration in settings.")
                     .font(.caption)
                     .foregroundColor(.orange)

@@ -271,9 +271,9 @@ struct CharacterEditView: View {
                     Label("Generate", systemImage: "sparkles")
                 }
                 .buttonStyle(.borderless)
-                .disabled(isGeneratingAspect || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || campaignCreator.llmService == nil)
+                .disabled(isGeneratingAspect || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !campaignCreator.isLLMServiceAvailable)
             }
-            if campaignCreator.llmService == nil {
+            if !campaignCreator.isLLMServiceAvailable {
                 Text("OpenAI API key not configured in settings.")
                     .font(.caption)
                     .foregroundColor(.orange)

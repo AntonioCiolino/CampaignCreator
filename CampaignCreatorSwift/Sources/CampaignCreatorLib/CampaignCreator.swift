@@ -27,6 +27,10 @@ public class CampaignCreator: ObservableObjectProtocol {
     @Published public var currentUser: User? = nil
     @Published public var isUserSessionValid: Bool = false // New state for session validity
 
+    public var isLLMServiceAvailable: Bool {
+        return llmService != nil
+    }
+
     public init(apiService: APIService = APIService()) {
         self.markdownGenerator = MarkdownGenerator()
         self.apiService = apiService
@@ -254,7 +258,7 @@ public class CampaignCreator: ObservableObjectProtocol {
         return updatedSection // Return the directly updated section for immediate UI feedback if possible.
     }
 
-    public func generateImageForSection(prompt: String, campaignId: Int, model: ImageModelName = .dalle, size: String? = "1024x1024", quality: String? = "standard") async throws -> ImageGenerationResponse {
+    public func generateImageForSection(prompt: String, campaignId: Int, model: ImageModelName = ImageModelName.defaultOpenAI, size: String? = "1024x1024", quality: String? = "standard") async throws -> ImageGenerationResponse {
         guard isAuthenticated else { throw APIError.notAuthenticated }
 
         let params = ImageGenerationParams(
