@@ -9,6 +9,16 @@ public struct CharacterStats: Codable, Sendable {
     public var wisdom: Int?
     public var charisma: Int?
 
+    // Explicit CodingKeys for CharacterStats to be absolutely sure
+    enum CodingKeys: String, CodingKey {
+        case strength
+        case dexterity
+        case constitution
+        case intelligence
+        case wisdom
+        case charisma
+    }
+
     public init(strength: Int? = nil, dexterity: Int? = nil, constitution: Int? = nil,
                 intelligence: Int? = nil, wisdom: Int? = nil, charisma: Int? = nil) {
         self.strength = strength
