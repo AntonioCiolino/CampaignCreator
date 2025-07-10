@@ -7,7 +7,7 @@ import Combine
 public class CampaignCreator: ObservableObjectProtocol {
     public let markdownGenerator: MarkdownGenerator
     private var llmService: LLMService?
-    private let apiService: APIService
+    public let apiService: APIService // Changed from private to public
     
     @Published public var campaigns: [Campaign] = []
     @Published public var characters: [Character] = []
