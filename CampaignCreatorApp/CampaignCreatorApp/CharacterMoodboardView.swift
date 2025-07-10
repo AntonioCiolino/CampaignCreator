@@ -26,10 +26,11 @@ struct CharacterMoodboardView: View {
 
     @State private var localImageURLs: [String] // Local copy for reordering
     @State private var identifiableImageURLs: [IdentifiableString] // For UI with .onMove
+    @State private var isManualEditing: Bool = false // Explicit state for edit mode
 
     private let gridItemLayout = [GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2)]
     @State private var sheetItemForImageView: IdentifiableURLContainer? = nil
-    @Environment(\.editMode) private var editMode
+    // @Environment(\.editMode) private var editMode // REMOVED - using isManualEditing
     @Environment(\.dismiss) private var dismiss
 
     // Callback to inform the presenter that the character was updated
@@ -56,11 +57,7 @@ struct CharacterMoodboardView: View {
     private struct MoodboardCellView: View {
         let urlString: String
         let action: () -> Void // Action to perform on tap
-        @Environment(\.editMode) private var editMode // Access editMode here
-
-        private var isEditing: Bool {
-            editMode?.wrappedValue.isEditing ?? false
-        }
+        let isEditing: Bool // Pass editing state explicitly
 
         @ViewBuilder
         private var cellContent: some View {
@@ -105,12 +102,12 @@ struct CharacterMoodboardView: View {
         }
     }
 
-    private var isEditing: Bool { // Helper computed property for readability
-        editMode?.wrappedValue.isEditing ?? false
-    }
+    // private var isEditing: Bool { // Helper computed property for readability - REMOVED, will use explicit @State
+    //     editMode?.wrappedValue.isEditing ?? false
+    // }
 
     var body: some View {
-        ScrollView(isEditing ? [] : .vertical) { // Conditionally disable scrolling
+        ScrollView { // Reverted to default ScrollView initialization
             if identifiableImageURLs.isEmpty {
                 VStack {
                     Spacer()
@@ -130,9 +127,9 @@ struct CharacterMoodboardView: View {
                             } else {
                                 self.sheetItemForImageView = nil
                             }
-                        })
+                        }, isEditing: isManualEditing) // Pass isManualEditing state
                     }
-                    .onMove(perform: moveImage) // Added .onMove
+                    .onMove(perform: isManualEditing ? moveImage : nil) // Conditionally enable .onMove
                 }
                 .padding(2)
             }
@@ -141,31 +138,35 @@ struct CharacterMoodboardView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                if editMode?.wrappedValue.isEditing ?? false {
+                if isManualEditing {
                     Button("Cancel") {
                         // Revert changes and exit edit mode
                         localImageURLs = character.imageURLs ?? []
                         identifiableImageURLs = localImageURLs.map { IdentifiableString(value: $0) }
-                        editMode?.wrappedValue = .inactive
+                        isManualEditing = false
                     }
                     .disabled(isSaving)
                 } else {
-                    Button("Close") { // Changed from "Done" to "Close" for clarity when not editing
+                    Button("Close") {
                         dismiss()
                     }
                 }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
-                if editMode?.wrappedValue.isEditing ?? false {
+                if isManualEditing {
                     Button("Save") {
-                        Task { await saveChanges() }
+                        Task { await saveChanges() } // saveChanges will set isManualEditing = false on success
                     }
                     .disabled(!hasChanges || isSaving)
                 } else {
-                    EditButton().disabled(isSaving)
+                    Button("Edit") { // Custom Edit button
+                        isManualEditing = true
+                    }
+                    .disabled(isSaving || identifiableImageURLs.isEmpty) // Disable Edit if no images or saving
                 }
             }
         }
+        .environment(\.editMode, .constant(isManualEditing ? .active : .inactive)) // Propagate manual edit state if needed by sub-views that use @Environment(\.editMode)
         .sheet(item: $sheetItemForImageView) { itemWrapper in
             FullCharacterImageViewWrapper(initialDisplayURL: itemWrapper.url)
         }
