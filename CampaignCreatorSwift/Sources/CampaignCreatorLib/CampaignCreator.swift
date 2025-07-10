@@ -266,7 +266,7 @@ public class CampaignCreator: ObservableObjectProtocol {
             model: model, // Defaulting to dall-e, could be configurable
             size: size,
             quality: quality,
-            campaignId: String(campaignId) // API expects string campaign_id
+            campaignId: campaignId // Pass Int directly
         )
         let response = try await apiService.generateImage(payload: params)
 
@@ -304,10 +304,10 @@ public class CampaignCreator: ObservableObjectProtocol {
             // steps: nil, // Only for SD
             // cfgScale: nil, // Only for SD
             // geminiModelName: nil, // Only for Gemini
-            campaignId: associatedCampaignId
+            campaignId: associatedCampaignId != nil ? Int(associatedCampaignId!) : nil
         )
 
-        print("[CampaignCreator] Generating image with params: Prompt='\(prompt.prefix(50))...', Model='\(modelName)', Size='\(size ?? "default")', Quality='\(quality ?? "default")', CampaignID='\(associatedCampaignId ?? "nil")'")
+        print("[CampaignCreator] Generating image with params: Prompt='\(prompt.prefix(50))...', Model='\(modelName)', Size='\(size ?? "default")', Quality='\(quality ?? "default")', CampaignID='\(associatedCampaignId ?? "nil")' (attempted Int conversion)")
         return try await apiService.generateImage(payload: params)
     }
 
