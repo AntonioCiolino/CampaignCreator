@@ -36,7 +36,7 @@ struct CampaignDetailView: View {
     @State private var showingGenerateImageSheet = false // New state for image sheet
     @State private var imageGeneratePrompt = "" // Prompt for image generation
     @State private var showingCampaignEditSheet = false // Renamed from showingThemeEditSheet
-    @State private var showingMoodBoardSheet = false // ADDED for Mood Board sheet
+    // @State private var showingMoodBoardSheet = false // REPLACED by NavigationLink for new moodboard view
     @State private var showingCampaignThemeSheet: Bool = false // ADDED for Campaign Theme sheet
     
     @State private var viewRefreshTrigger = UUID() // <<<< ADDED to force view refresh
@@ -953,24 +953,7 @@ struct CampaignDetailView: View {
         .sheet(isPresented: $showingExportSheet) {
             exportSheetView
         }
-        .sheet(isPresented: $showingMoodBoardSheet) {
-            // Present moodBoardSection directly without NavigationView
-            // Add a way to dismiss if necessary, e.g. a button within moodBoardSection or rely on swipe
-            VStack {
-                HStack {
-                    Spacer()
-                    Button { showingMoodBoardSheet = false } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .padding([.top, .trailing])
-                            .foregroundColor(.gray)
-                    }
-                }
-                moodBoardSection
-                Spacer() // Pushes content to top
-            }
-            .padding(.top) // Add some padding so X button isn't too close to status bar
-        }
+        // Removed .sheet(isPresented: $showingMoodBoardSheet) as it's now a NavigationLink
         .sheet(isPresented: $showingCampaignThemeSheet) {
             NavigationView {
                 campaignThemeDisplaySection // This already contains the "Edit Campaign Details" button
@@ -1018,10 +1001,8 @@ struct CampaignDetailView: View {
                     }
                     .disabled(isSaving || isGeneratingText)
                     
-                    // Mood Board Button
-                    Button {
-                        showingMoodBoardSheet = true
-                    } label: {
+                    // Mood Board Button - Changed to NavigationLink
+                    NavigationLink(destination: CampaignMoodboardView(campaign: campaign)) {
                         Label("Mood Board", systemImage: "photo.on.rectangle.angled")
                     }
                     .disabled(isSaving || isGeneratingText)

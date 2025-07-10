@@ -119,6 +119,13 @@ struct CharacterDetailView: View {
                     Image(systemName: "message.fill")
                 }
 
+                // Moodboard Button
+                if let urls = character.imageURLs, !urls.isEmpty {
+                    NavigationLink(destination: CharacterMoodboardView(imageURLs: urls, characterName: character.name)) {
+                        Image(systemName: "photo.stack") // Icon for moodboard/gallery
+                    }
+                }
+
                 Button("Edit") { showingEditView = true }
             }
         }
@@ -185,8 +192,24 @@ struct FullCharacterImageView: View {
                         dismiss()
                     }
                 }
+                ToolbarItem(placement: .bottomBar) { // Or another suitable placement
+                    if let url = imageURL {
+                        Button(action: {
+                            UIApplication.shared.open(url)
+                        }) {
+                            Label("Open in Browser", systemImage: "safari.fill")
+                        }
+                        .disabled(imageURL == nil) // Disable if no URL
+                    } else {
+                        EmptyView() // Show nothing if no URL
+                    }
+                }
             }
         }
+        // Ensure the toolbar is visible, especially for .bottomBar items
+        // This might require embedding in a NavigationView if not already,
+        // or ensuring the parent context supports bottom bars.
+        // The existing NavigationView should suffice.
     }
 }
 

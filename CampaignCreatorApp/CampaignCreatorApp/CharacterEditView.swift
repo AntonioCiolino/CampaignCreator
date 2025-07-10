@@ -31,9 +31,11 @@ struct CharacterEditView: View {
     }
     @State private var selectedExportFormat: ExportFormat
 
-    // For image URLs - simple list of text fields for now
+    // For image URLs - managed via CharacterImageManagerView
     @State private var imageURLsText: [String] // Store URLs as strings for editing
-    @State private var newImageURL: String = "" // For adding a new URL
+    // @State private var newImageURL: String = "" // REMOVED - Handled by manager view
+
+    @State private var showingImageManager = false // State to present the image manager sheet
 
     @State private var statsStrength: String
     @State private var statsDexterity: String
@@ -105,31 +107,16 @@ struct CharacterEditView: View {
                     generateableTextField(title: "Appearance", text: $appearanceDescriptionText, fieldType: .appearance)
                 }
 
-                Section(header: Text("Character Image")) {
-                    // Display current image URLs (if any)
-                    if !imageURLsText.isEmpty {
-                        ForEach(imageURLsText.indices, id: \.self) { index in
-                            HStack {
-                                TextField("Image URL", text: $imageURLsText[index])
-                                Button(action: { imageURLsText.remove(at: index) }) {
-                                    Image(systemName: "trash").foregroundColor(.red)
-                                }
-                            }
-                        }
+                Section(header: Text("Character Images")) {
+                    Button(action: {
+                        showingImageManager = true
+                    }) {
+                        Label("Manage Image URLs", systemImage: "photo.on.rectangle.angled")
                     }
-                    // Add new image URL
-                    HStack {
-                        TextField("Add new image URL", text: $newImageURL)
-                        Button(action: {
-                            if !newImageURL.isEmpty, let _ = URL(string: newImageURL) { // Basic URL validation
-                                imageURLsText.append(newImageURL)
-                                newImageURL = ""
-                            }
-                        }) {
-                            Image(systemName: "plus.circle.fill")
-                        }
-                        .disabled(newImageURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    }
+                    // Display a count of current images
+                    Text("\(imageURLsText.count) image URL(s) associated.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
 
                     Button(action: {
                         // Reset prompt and error before showing sheet
@@ -193,6 +180,9 @@ struct CharacterEditView: View {
             .disabled(isSaving || isGeneratingAspect || isGeneratingCharacterImage)
             .sheet(isPresented: $showingCharacterImageSheet) {
                 characterImageGenerateSheet
+            }
+            .sheet(isPresented: $showingImageManager) {
+                CharacterImageManagerView(imageURLs: $imageURLsText)
             }
         }
     }
