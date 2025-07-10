@@ -437,12 +437,18 @@ const CharacterDetailPage: React.FC = () => {
         }
 
         // Construct payload according to LLMTextGenerationParams
+        const recentHistory = chatHistory.slice(-10).map(msg => {
+            // Map sender to 'user' or 'assistant' (common for LLMs)
+            // The actual values might need to be 'user' and the character's name,
+            // or specific roles like 'system', 'user', 'assistant' depending on the LLM API.
+            // For now, 'user' and 'assistant' is a safe default.
+            const speaker = msg.sender === 'user' ? 'user' : 'assistant';
+            return { speaker: speaker, text: msg.text };
+        });
+
         const payload: LLMTextGenerationParams = {
-            prompt: finalPrompt,
-            // chat_history: chatHistory.slice(-10).map(msg => ({ // Example if sending recent history
-            //    speaker: msg.sender === 'user' ? 'user' : 'assistant', // Adjust 'speaker' based on LLM needs
-            //    text: msg.text
-            // })),
+            prompt: finalPrompt, // The current user message (potentially with notes prepended)
+            chat_history: recentHistory, // The array of recent messages for context
             // model_id_with_prefix, temperature, max_tokens can be added if configurable by user
         };
 
