@@ -2,16 +2,49 @@ import SwiftUI
 
 // Helper struct for .sheet(item: ...)
 struct IdentifiableURLContainer: Identifiable {
-    let id = UUID()
+    let id = UUID() // Stable ID for the sheet item
     let url: URL
 }
 
+// To make String identifiable for ForEach with .onMove, if they are not unique
+struct IdentifiableString: Identifiable {
+    let id = UUID()
+    let value: String
+}
+
+import CampaignCreatorLib // Required for Character and CampaignCreator
+
 struct CharacterMoodboardView: View {
-    let imageURLs: [String]
-    let characterName: String
+    @ObservedObject var campaignCreator: CampaignCreator
+    @State var character: Character // Pass the full character
+
+    @State private var localImageURLs: [String] // Local copy for reordering
+    @State private var identifiableImageURLs: [IdentifiableString] // For UI with .onMove
 
     private let gridItemLayout = [GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2)]
     @State private var sheetItemForImageView: IdentifiableURLContainer? = nil
+    @Environment(\.editMode) private var editMode
+    @Environment(\.dismiss) private var dismiss
+
+    // Callback to inform the presenter that the character was updated
+    var onCharacterUpdated: ((Character) -> Void)?
+
+    @State private var isSaving: Bool = false
+    @State private var showErrorAlert: Bool = false
+    @State private var errorMessage: String = ""
+
+    private var hasChanges: Bool {
+        character.imageURLs ?? [] != localImageURLs
+    }
+
+    init(campaignCreator: CampaignCreator, character: Character, onCharacterUpdated: ((Character) -> Void)? = nil) {
+        self.campaignCreator = campaignCreator
+        self._character = State(initialValue: character)
+        let initialURLs = character.imageURLs ?? []
+        self._localImageURLs = State(initialValue: initialURLs)
+        self._identifiableImageURLs = State(initialValue: initialURLs.map { IdentifiableString(value: $0) })
+        self.onCharacterUpdated = onCharacterUpdated
+    }
 
     // Private helper view for each cell in the moodboard grid
     private struct MoodboardCellView: View {
@@ -52,7 +85,7 @@ struct CharacterMoodboardView: View {
 
     var body: some View {
         ScrollView {
-            if imageURLs.isEmpty {
+            if identifiableImageURLs.isEmpty {
                 VStack {
                     Spacer()
                     Text("No images available for this character.")
@@ -63,29 +96,98 @@ struct CharacterMoodboardView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 LazyVGrid(columns: gridItemLayout, spacing: 2) {
-                    ForEach(imageURLs, id: \.self) { urlString in
-                        MoodboardCellView(urlString: urlString, action: {
-                            // print("[CharacterMoodboardView] Tapped image. Original urlString: \(urlString)")
-                            if let url = URL(string: urlString) {
+                    // Use identifiableImageURLs for ForEach to support .onMove
+                    ForEach(identifiableImageURLs) { identifiableURL in
+                        MoodboardCellView(urlString: identifiableURL.value, action: {
+                            if let url = URL(string: identifiableURL.value) {
                                 self.sheetItemForImageView = IdentifiableURLContainer(url: url)
-                                // print("[CharacterMoodboardView] Set sheetItemForImageView with URL: \(url.absoluteString)")
                             } else {
                                 self.sheetItemForImageView = nil
-                                // print("[CharacterMoodboardView] Failed to create URL from string, sheetItemForImageView set to nil.")
                             }
                         })
                     }
+                    .onMove(perform: moveImage) // Added .onMove
                 }
                 .padding(2)
             }
         }
-        .navigationTitle("\(characterName) Moodboard")
+        .navigationTitle("\(character.name) Moodboard") // Use character name
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $sheetItemForImageView, onDismiss: {
-            // print("[CharacterMoodboardView .sheet(item:)] Sheet dismissed. sheetItemForImageView automatically set to nil.")
-        }) { itemWrapper in // itemWrapper is IdentifiableURLContainer
-            // let _ = print("[CharacterMoodboardView .sheet(item:)] Content closure. URL: \(itemWrapper.url.absoluteString)")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                if editMode?.wrappedValue.isEditing ?? false {
+                    Button("Cancel") {
+                        // Revert changes and exit edit mode
+                        localImageURLs = character.imageURLs ?? []
+                        identifiableImageURLs = localImageURLs.map { IdentifiableString(value: $0) }
+                        editMode?.wrappedValue = .inactive
+                    }
+                    .disabled(isSaving)
+                } else {
+                    Button("Close") { // Changed from "Done" to "Close" for clarity when not editing
+                        dismiss()
+                    }
+                }
+            }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                if editMode?.wrappedValue.isEditing ?? false {
+                    Button("Save") {
+                        Task { await saveChanges() }
+                    }
+                    .disabled(!hasChanges || isSaving)
+                } else {
+                    EditButton().disabled(isSaving)
+                }
+            }
+        }
+        .sheet(item: $sheetItemForImageView) { itemWrapper in
             FullCharacterImageViewWrapper(initialDisplayURL: itemWrapper.url)
+        }
+        .alert("Error Saving Changes", isPresented: $showErrorAlert) {
+            Button("OK") { }
+        } message: {
+            Text(errorMessage)
+        }
+        // No specific onChange needed here now as moveImage directly updates localImageURLs
+    }
+
+    private func moveImage(from source: IndexSet, to destination: Int) {
+        identifiableImageURLs.move(fromOffsets: source, toOffset: destination)
+        localImageURLs = identifiableImageURLs.map { $0.value }
+    }
+
+    private func saveChanges() async {
+        guard hasChanges else {
+            editMode?.wrappedValue = .inactive // Exit edit mode if no changes
+            return
+        }
+
+        isSaving = true
+        var updatedCharacter = character
+        updatedCharacter.imageURLs = localImageURLs.isEmpty ? nil : localImageURLs
+        updatedCharacter.markAsModified()
+
+        do {
+            let savedCharacter = try await campaignCreator.updateCharacter(updatedCharacter)
+            // Update the @State character to reflect the saved changes (including new modifiedAt)
+            self.character = savedCharacter
+            // Update localImageURLs to match the saved state, in case nil was set for empty array
+            self.localImageURLs = savedCharacter.imageURLs ?? []
+            self.identifiableImageURLs = self.localImageURLs.map { IdentifiableString(value: $0) }
+
+            onCharacterUpdated?(savedCharacter) // Call the callback
+            isSaving = false
+            editMode?.wrappedValue = .inactive // Exit edit mode
+            // Optionally dismiss if save is successful and that's the desired UX
+            // dismiss()
+        } catch let error as APIError {
+            errorMessage = "API Error: \(error.localizedDescription)"
+            showErrorAlert = true
+            isSaving = false
+        } catch {
+            errorMessage = "An unexpected error occurred: \(error.localizedDescription)"
+            showErrorAlert = true
+            isSaving = false
         }
     }
 }
@@ -96,13 +198,10 @@ struct FullCharacterImageViewWrapper: View {
 
     init(initialDisplayURL: URL?) {
         self.initialDisplayURL = initialDisplayURL
-        // print("[Wrapper init] Received initialDisplayURL: \(initialDisplayURL?.absoluteString ?? "nil")")
         self._imageURLForSheet = State(initialValue: initialDisplayURL)
-        // print("[Wrapper init] Initialized imageURLForSheet with: \(self._imageURLForSheet.wrappedValue?.absoluteString ?? "nil")")
     }
 
     var body: some View {
-        // let _ = print("[Wrapper body] Current imageURLForSheet for FullCharacterImageView: \(imageURLForSheet?.absoluteString ?? "nil")")
         FullCharacterImageView(imageURL: $imageURLForSheet) // FullCharacterImageView is defined in CharacterDetailView.swift
     }
 }
@@ -113,14 +212,17 @@ struct CharacterMoodboardView_Previews: PreviewProvider {
             "https://picsum.photos/seed/chara_mb1/200/300",
             "https://picsum.photos/seed/chara_mb2/300/200",
             "https://picsum.photos/seed/chara_mb3/250/250",
+            "https://picsum.photos/seed/chara_mb4/220/220",
+            "https://picsum.photos/seed/chara_mb5/280/210",
         ]
         let emptyURLs: [String] = []
 
         Group {
             NavigationView {
-                 CharacterMoodboardView(imageURLs: sampleURLs, characterName: "Hero With Images")
+                 CharacterMoodboardView(imageURLs: sampleURLs, characterName: "Hero With Images"/*, onOrderSave: { urls in print("Preview save: \(urls)") }*/)
             }
             .previewDisplayName("With Images")
+            .environment(\.editMode, .constant(.active)) // Preview in edit mode
 
             NavigationView {
                 CharacterMoodboardView(imageURLs: emptyURLs, characterName: "Hero No Images")
