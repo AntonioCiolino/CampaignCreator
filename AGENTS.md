@@ -31,6 +31,11 @@ This file provides guidelines and instructions for AI agents working on this pro
     *   Write component and integration tests (e.g., using Jest/React Testing Library, as configured by Create React App).
     *   Manage dependencies with `npm` or `yarn` and `package.json`.
     *   Refer to `campaign_crafter_ui/README.md` for detailed setup and contribution guidelines.
+*   **IOS Development (`CampaignCreatorApp`)**:
+    *   Follow Swift best practices
+    *   Ensure new code is documented
+    *   Write unit and integration tests for new services and endpoints. Don't run tests.
+    *   Refer to `CampaignCreatorApp/README.md` for detailed setup and contribution guidelines.  
 *   **AI-Assisted Development**: This project has significantly benefited from AI-assisted development (e.g., using tools like GitHub Copilot, Aider, or similar agents like yourself, Jules).
     *   When AI-generated code is used, ensure it is reviewed, understood, and tested thoroughly.
     *   Credit AI assistance appropriately if company/project policy dictates.
