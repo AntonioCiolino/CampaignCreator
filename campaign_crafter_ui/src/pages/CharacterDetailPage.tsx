@@ -431,9 +431,6 @@ const CharacterDetailPage: React.FC = () => {
         try {
             // The backend's /generate-response endpoint now handles saving user and AI messages
             // and uses history from DB. We just send the prompt.
-            // The `chat_history` in LLMGenerationRequest is optional and can be omitted
-            // if backend primarily relies on its DB fetched history.
-            // For this call, we are concerned with the *new* prompt.
             const payload: LLMChatGenerationRequest = {
                 prompt: currentPrompt,
             };
