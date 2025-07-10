@@ -17,7 +17,7 @@ public struct ImageGenerationParams: Codable, Sendable {
     public let steps: Int?      // Stable Diffusion specific
     public let cfgScale: Double? // Stable Diffusion specific (cfg_scale)
     public let geminiModelName: String? // Gemini specific
-    public let campaignId: String? // String to match web, though Int might be better if always internal ID
+    public let campaignId: Int? // Changed to Int? to match backend expectation
 
     enum CodingKeys: String, CodingKey {
         case prompt, model, size, quality, steps
@@ -26,7 +26,7 @@ public struct ImageGenerationParams: Codable, Sendable {
         case campaignId = "campaign_id"
     }
 
-    public init(prompt: String, model: ImageModelName, size: String? = nil, quality: String? = nil, steps: Int? = nil, cfgScale: Double? = nil, geminiModelName: String? = nil, campaignId: String? = nil) {
+    public init(prompt: String, model: ImageModelName, size: String? = nil, quality: String? = nil, steps: Int? = nil, cfgScale: Double? = nil, geminiModelName: String? = nil, campaignId: Int? = nil) {
         self.prompt = prompt
         self.model = model
         self.size = size

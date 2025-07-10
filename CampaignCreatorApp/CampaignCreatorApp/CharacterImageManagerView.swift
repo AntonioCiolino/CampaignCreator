@@ -1,24 +1,36 @@
 import SwiftUI
+import CampaignCreatorLib // Required for ImageModelName, ImageGenerationParams, APIService
 
 struct CharacterImageManagerView: View {
     @Binding var imageURLs: [String]
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var apiService: APIService // Assuming APIService is an EnvironmentObject
 
+    // For manual URL entry
     @State private var newImageURL: String = ""
-    @State private var showErrorAlert = false
-    @State private var errorMessage = ""
+
+    // For AI Image Generation
+    @State private var imagePrompt: String = ""
+    @State private var selectedModel: ImageModelName = .openAIDalle // Default model
+    @State private var isGeneratingImage: Bool = false
+    @State private var generationError: String? = nil
+    @State private var showGenerationErrorAlert: Bool = false
+
+    // General error display
+    @State private var showErrorAlert = false // For URL validation errors
+    @State private var errorMessage = ""     // For URL validation errors
+
+    // We might need a campaignId if images are associated with campaigns
+    // For now, assuming it's not strictly required for this view or is handled by APIService if needed globally
+    // @State var campaignId: Int? = nil // Example if needed
+
 
     private func isValidURL(_ urlString: String) -> Bool {
         if urlString.isEmpty { return false }
-        // Basic check for http/https prefix and some content after.
-        // A more robust validation might involve regex or URLComponents.
         if let url = URL(string: urlString), (url.scheme == "http" || url.scheme == "https") {
-            return UIApplication.shared.canOpenURL(url) // More thorough check if it looks like a typical web URL
+            return UIApplication.shared.canOpenURL(url)
         }
-        // Allow simpler strings if they are just identifiers for local assets later,
-        // but for now, assume web URLs. For a very basic check:
-        // return urlString.lowercased().hasPrefix("http://") || urlString.lowercased().hasPrefix("https://")
-        return URL(string: urlString) != nil // Basic check: can it be parsed as a URL?
+        return URL(string: urlString) != nil
     }
 
     private func addURL() {
@@ -28,7 +40,6 @@ struct CharacterImageManagerView: View {
             showErrorAlert = true
             return
         }
-        // More robust URL validation could be added here if needed
         if URL(string: trimmedURL) == nil {
              errorMessage = "Invalid URL format."
              showErrorAlert = true
@@ -47,25 +58,106 @@ struct CharacterImageManagerView: View {
         imageURLs.remove(atOffsets: offsets)
     }
 
+    private func generateImage() {
+        guard !imagePrompt.isEmpty else {
+            generationError = "Image prompt cannot be empty."
+            showGenerationErrorAlert = true
+            return
+        }
+
+        isGeneratingImage = true
+        generationError = nil
+
+        // Assuming default size and quality for now, or they could be additional @State vars
+        let params = ImageGenerationParams(
+            prompt: imagePrompt,
+            model: selectedModel,
+            size: "1024x1024", // Example default, make this configurable if needed
+            quality: selectedModel == .openAIDalle ? "standard" : nil, // DALL-E specific
+            // campaignId: campaignId // Pass if campaignId is available and needed
+            campaignId: nil // Not passing campaignId for now
+        )
+
+        Task {
+            do {
+                let response = try await apiService.generateImage(payload: params)
+                if let newURL = response.imageUrl, !newURL.isEmpty {
+                    if !imageURLs.contains(newURL) {
+                        imageURLs.append(newURL)
+                    } else {
+                        // Optionally inform user that this exact URL was already present
+                        print("Generated image URL already exists in the list.")
+                    }
+                    imagePrompt = "" // Clear prompt on success
+                } else {
+                    generationError = "Image generation succeeded but returned no URL."
+                    showGenerationErrorAlert = true
+                }
+            } catch {
+                generationError = "Failed to generate image: \(error.localizedDescription)"
+                showGenerationErrorAlert = true
+            }
+            isGeneratingImage = false
+        }
+    }
+
+
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
-                HStack {
-                    TextField("Enter new image URL", text: $newImageURL)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .autocapitalization(.none)
-                        .keyboardType(.URL)
-                    Button(action: addURL) {
-                        Image(systemName: "plus.circle.fill")
-                            .imageScale(.large)
-                    }
-                    .disabled(newImageURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-                .padding()
+            Form { // Changed VStack to Form for better structure with sections
+                Section(header: Text("AI Image Generation")) {
+                    TextField("Enter image prompt", text: $imagePrompt)
+                        .disabled(isGeneratingImage)
 
-                List {
+                    Picker("Select Model", selection: $selectedModel) {
+                        ForEach(ImageModelName.allCases, id: \.self) { model in
+                            Text(model.rawValue.capitalized).tag(model)
+                        }
+                    }
+                    .disabled(isGeneratingImage)
+
+                    Button(action: generateImage) {
+                        HStack {
+                            if isGeneratingImage {
+                                ProgressView()
+                                    .padding(.trailing, 4)
+                                Text("Generating...")
+                            } else {
+                                Image(systemName: "sparkles")
+                                Text("Generate Image")
+                            }
+                        }
+                    }
+                    .disabled(isGeneratingImage || imagePrompt.isEmpty)
+                }
+                .alert("Image Generation Error", isPresented: $showGenerationErrorAlert) {
+                    Button("OK") { showGenerationErrorAlert = false }
+                } message: {
+                    Text(generationError ?? "An unknown error occurred.")
+                }
+
+                Section(header: Text("Add Image URL Manually")) {
+                    HStack {
+                        TextField("Enter new image URL", text: $newImageURL)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .autocapitalization(.none)
+                            .keyboardType(.URL)
+                        Button(action: addURL) {
+                            Image(systemName: "plus.circle.fill")
+                                .imageScale(.large)
+                        }
+                        .disabled(newImageURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                }
+                .alert("URL Error", isPresented: $showErrorAlert) { // Changed title to be specific
+                    Button("OK") { }
+                } message: {
+                    Text(errorMessage)
+                }
+
+                Section(header: Text("Current Images")) {
                     if imageURLs.isEmpty {
-                        Text("No image URLs added yet. Add some above.")
+                        Text("No image URLs added yet. Add some above or generate one.")
                             .foregroundColor(.secondary)
                             .padding(.vertical)
                     } else {
