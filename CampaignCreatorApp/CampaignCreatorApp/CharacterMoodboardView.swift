@@ -28,9 +28,13 @@ struct CharacterMoodboardView: View {
                         ForEach(imageURLs, id: \.self) { urlString in
                             Button(action: {
                                 print("[CharacterMoodboardView] Tapped image. Original urlString: \(urlString)")
-                                self.sheetTargetURL = URL(string: urlString)
-                                print("[CharacterMoodboardView] Set sheetTargetURL to: \(self.sheetTargetURL?.absoluteString ?? "nil")")
-                                self.showingFullImageView = (self.sheetTargetURL != nil) // Only show if URL is valid
+                                if let url = URL(string: urlString) {
+                                    self.sheetItemForImageView = IdentifiableURLContainer(url: url)
+                                    print("[CharacterMoodboardView] Set sheetItemForImageView with URL: \(url.absoluteString)")
+                                } else {
+                                    self.sheetItemForImageView = nil // Ensure it's nil if URL is bad
+                                    print("[CharacterMoodboardView] Failed to create URL from string, sheetItemForImageView set to nil.")
+                                }
                             }) {
                                 AsyncImage(url: URL(string: urlString)) { phase in
                                     switch phase {
