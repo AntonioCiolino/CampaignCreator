@@ -7,7 +7,7 @@ import Combine
 public class CampaignCreator: ObservableObjectProtocol {
     public let markdownGenerator: MarkdownGenerator
     private var llmService: LLMService?
-    private let apiService: APIService
+    public let apiService: APIService // Changed from private to public
     
     @Published public var campaigns: [Campaign] = []
     @Published public var characters: [Character] = []
@@ -266,7 +266,7 @@ public class CampaignCreator: ObservableObjectProtocol {
             model: model, // Defaulting to dall-e, could be configurable
             size: size,
             quality: quality,
-            campaignId: String(campaignId) // API expects string campaign_id
+            campaignId: campaignId // Pass Int directly
         )
         let response = try await apiService.generateImage(payload: params)
 
@@ -304,10 +304,10 @@ public class CampaignCreator: ObservableObjectProtocol {
             // steps: nil, // Only for SD
             // cfgScale: nil, // Only for SD
             // geminiModelName: nil, // Only for Gemini
-            campaignId: associatedCampaignId
+            campaignId: associatedCampaignId != nil ? Int(associatedCampaignId!) : nil
         )
 
-        print("[CampaignCreator] Generating image with params: Prompt='\(prompt.prefix(50))...', Model='\(modelName)', Size='\(size ?? "default")', Quality='\(quality ?? "default")', CampaignID='\(associatedCampaignId ?? "nil")'")
+        print("[CampaignCreator] Generating image with params: Prompt='\(prompt.prefix(50))...', Model='\(modelName)', Size='\(size ?? "default")', Quality='\(quality ?? "default")', CampaignID='\(associatedCampaignId ?? "nil")' (attempted Int conversion)")
         return try await apiService.generateImage(payload: params)
     }
 
@@ -423,6 +423,24 @@ public class CampaignCreator: ObservableObjectProtocol {
         guard isAuthenticated else { throw APIError.notAuthenticated }
         try await apiService.deleteCharacter(id: character.id)
         await fetchCharacters()
+    }
+
+    public func autosaveCharacterImageURLs(characterID: Int, imageURLs: [String]) async throws {
+        guard isAuthenticated else { throw APIError.notAuthenticated }
+        print("[CampaignCreator] Autosaving image URLs for character ID \(characterID): \(imageURLs)")
+        let dto = CharacterUpdateDTO(imageURLs: imageURLs)
+        // We call updateCharacter, which internally calls apiService.updateCharacter
+        // This will also refresh the character in the local list if updateCharacter is implemented to do so,
+        // or trigger a full fetchCharacters.
+        // For auto-save, we might not need an immediate full list refresh if CharacterEditView's state is primary.
+
+        // Refined approach: Direct API call for partial update of imageURLs
+        let directDto = CharacterUpdateDTO(imageURLs: imageURLs)
+        _ = try await apiService.updateCharacter(characterID, data: directDto)
+        print("[CampaignCreator] Autosave API call for image URLs successful for character ID \(characterID).")
+        // No local list refresh here to keep it lightweight; CharacterEditView has the state.
+        // The Character object in CharacterEditView's state will be fully saved with all fields (including these URLs)
+        // when its main 'Save' button is eventually pressed.
     }
 
     // MARK: - LLM Features

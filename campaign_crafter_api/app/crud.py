@@ -1,5 +1,6 @@
 from typing import Optional, List, Dict # Added List and Dict
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified # Added for flagging JSON field modifications
 from sqlalchemy.dialects.postgresql import JSONB # Added for JSONB casting
 from fastapi import HTTPException # Added HTTPException
 from passlib.context import CryptContext
@@ -338,21 +339,28 @@ def update_character(db: Session, character_id: int, character_update: models.Ch
         return None
 
     update_data = character_update.model_dump(exclude_unset=True)
+    # print(f"[CRUD update_character] Character ID: {character_id}. Incoming update_data: {update_data}") # LOG REMOVED
+    # if 'image_urls' in update_data: # LOG REMOVED
+    #     print(f"[CRUD update_character] image_urls in update_data: {update_data.get('image_urls')}") # LOG REMOVED
 
     # Handle stats separately if they are part of the update
     stats_update_data = update_data.pop('stats', None)
 
     for key, value in update_data.items():
         setattr(db_character, key, value)
+        if key == "image_urls":
+            flag_modified(db_character, "image_urls") # Explicitly flag image_urls as modified
 
     if stats_update_data:
         for key, value in stats_update_data.items():
             if hasattr(db_character, key) and value is not None: # Ensure stat exists and value is provided
                 setattr(db_character, key, value)
 
+    # print(f"[CRUD update_character] ORM character {character_id} image_urls BEFORE save: {db_character.image_urls}") # LOG REMOVED
     db.add(db_character)
     db.commit()
     db.refresh(db_character)
+    # print(f"[CRUD update_character] ORM character {character_id} image_urls AFTER save & refresh: {db_character.image_urls}") # LOG REMOVED
     return db_character
 
 def delete_character(db: Session, character_id: int) -> Optional[orm_models.Character]:

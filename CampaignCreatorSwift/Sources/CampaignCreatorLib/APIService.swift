@@ -1,4 +1,5 @@
 import Foundation
+import Combine // Import Combine for ObservableObject
 
 // Error enum for API related issues
 public enum APIError: Error, LocalizedError, Sendable, Equatable { // Added Equatable
@@ -233,9 +234,12 @@ public final class UserDefaultsTokenManager: TokenManaging {
 }
 
 
-public final class APIService: Sendable {
+public final class APIService: ObservableObject, Sendable { // Added ObservableObject conformance
     private let baseURLString = "https://campaigncreator-api.onrender.com/api/v1"
     private let tokenManager: TokenManaging
+    // @Published properties are not strictly necessary for this service if its state doesn't change
+    // or if UI doesn't need to react to its internal state changes directly.
+    // However, if token changes should refresh UI, tokenManager could be @Published or methods could publish.
     private let jsonDecoder: JSONDecoder
     private let jsonEncoder: JSONEncoder
 
@@ -335,13 +339,19 @@ public final class APIService: Sendable {
                 let decodedObject: T
                 if T.self == Character.self || T.self == [Character].self {
                     // Using LOCAL JSONDecoder for Character type WITHOUT .convertFromSnakeCase strategy.
-                    // This was the fix for CharacterModel decoding issues.
                     let localCharacterDecoder = JSONDecoder()
                     localCharacterDecoder.dateDecodingStrategy = .iso8601
-                    // Key strategy intentionally omitted to rely on CharacterModel's explicit CodingKeys.
                     decodedObject = try localCharacterDecoder.decode(T.self, from: data)
-                } else {
-                    // For non-Character types, continue using the shared decoder with its existing config.
+                } else if T.self == ImageGenerationResponse.self {
+                    // Using LOCAL JSONDecoder for ImageGenerationResponse WITHOUT .convertFromSnakeCase strategy.
+                    // This is to rely solely on its explicit CodingKeys, similar to Character.
+                    let localImageResponseDecoder = JSONDecoder()
+                    localImageResponseDecoder.dateDecodingStrategy = .iso8601 // Good practice, though not used by this specific struct
+                    // No keyDecodingStrategy set, relying on CodingKeys
+                    decodedObject = try localImageResponseDecoder.decode(T.self, from: data)
+                }
+                else {
+                    // For other non-Character, non-ImageGenerationResponse types, use the shared decoder.
                     decodedObject = try self.jsonDecoder.decode(T.self, from: data)
                 }
 

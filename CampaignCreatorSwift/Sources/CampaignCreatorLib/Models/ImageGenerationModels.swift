@@ -17,7 +17,7 @@ public struct ImageGenerationParams: Codable, Sendable {
     public let steps: Int?      // Stable Diffusion specific
     public let cfgScale: Double? // Stable Diffusion specific (cfg_scale)
     public let geminiModelName: String? // Gemini specific
-    public let campaignId: String? // String to match web, though Int might be better if always internal ID
+    public let campaignId: Int? // Changed to Int? to match backend expectation
 
     enum CodingKeys: String, CodingKey {
         case prompt, model, size, quality, steps
@@ -26,7 +26,7 @@ public struct ImageGenerationParams: Codable, Sendable {
         case campaignId = "campaign_id"
     }
 
-    public init(prompt: String, model: ImageModelName, size: String? = nil, quality: String? = nil, steps: Int? = nil, cfgScale: Double? = nil, geminiModelName: String? = nil, campaignId: String? = nil) {
+    public init(prompt: String, model: ImageModelName, size: String? = nil, quality: String? = nil, steps: Int? = nil, cfgScale: Double? = nil, geminiModelName: String? = nil, campaignId: Int? = nil) {
         self.prompt = prompt
         self.model = model
         self.size = size
@@ -40,8 +40,8 @@ public struct ImageGenerationParams: Codable, Sendable {
 
 public struct ImageGenerationResponse: Codable, Sendable {
     public let imageUrl: String? // Changed to optional
-    public let promptUsed: String
-    public let modelUsed: ImageModelName
+    public let promptUsed: String // Reverted to non-optional
+    public let modelUsed: ImageModelName // Reverted to non-optional
     public let sizeUsed: String
     public let qualityUsed: String?
     public let stepsUsed: Int?
@@ -50,7 +50,7 @@ public struct ImageGenerationResponse: Codable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case imageUrl = "image_url"
-        case promptUsed = "prompt_used"
+        case promptUsed = "prompt_used" // This mapping is correct
         case modelUsed = "model_used"
         case sizeUsed = "size_used"
         case qualityUsed = "quality_used"
@@ -59,7 +59,7 @@ public struct ImageGenerationResponse: Codable, Sendable {
         case geminiModelNameUsed = "gemini_model_name_used"
     }
 
-    // Update init to accept optional imageUrl
+    // Update init to reflect non-optional promptUsed and modelUsed
     public init(imageUrl: String?, promptUsed: String, modelUsed: ImageModelName, sizeUsed: String, qualityUsed: String? = nil, stepsUsed: Int? = nil, cfgScaleUsed: Double? = nil, geminiModelNameUsed: String? = nil) {
         self.imageUrl = imageUrl
         self.promptUsed = promptUsed
