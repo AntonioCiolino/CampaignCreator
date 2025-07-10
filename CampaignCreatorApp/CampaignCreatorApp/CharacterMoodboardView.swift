@@ -51,7 +51,6 @@ struct CharacterMoodboardView: View {
     }
 
     var body: some View {
-        // This view is typically pushed onto an existing NavigationView stack.
         ScrollView {
             if imageURLs.isEmpty {
                 VStack {
@@ -66,13 +65,13 @@ struct CharacterMoodboardView: View {
                 LazyVGrid(columns: gridItemLayout, spacing: 2) {
                     ForEach(imageURLs, id: \.self) { urlString in
                         MoodboardCellView(urlString: urlString, action: {
-                            print("[CharacterMoodboardView] Tapped image. Original urlString: \(urlString)")
+                            // print("[CharacterMoodboardView] Tapped image. Original urlString: \(urlString)")
                             if let url = URL(string: urlString) {
                                 self.sheetItemForImageView = IdentifiableURLContainer(url: url)
-                                print("[CharacterMoodboardView] Set sheetItemForImageView with URL: \(url.absoluteString)")
+                                // print("[CharacterMoodboardView] Set sheetItemForImageView with URL: \(url.absoluteString)")
                             } else {
                                 self.sheetItemForImageView = nil
-                                print("[CharacterMoodboardView] Failed to create URL from string, sheetItemForImageView set to nil.")
+                                // print("[CharacterMoodboardView] Failed to create URL from string, sheetItemForImageView set to nil.")
                             }
                         })
                     }
@@ -83,17 +82,14 @@ struct CharacterMoodboardView: View {
         .navigationTitle("\(characterName) Moodboard")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $sheetItemForImageView, onDismiss: {
-            print("[CharacterMoodboardView .sheet(item:)] Sheet dismissed. sheetItemForImageView automatically set to nil.")
+            // print("[CharacterMoodboardView .sheet(item:)] Sheet dismissed. sheetItemForImageView automatically set to nil.")
         }) { itemWrapper in // itemWrapper is IdentifiableURLContainer
-            let _ = print("[CharacterMoodboardView .sheet(item:)] Content closure. URL: \(itemWrapper.url.absoluteString)")
+            // let _ = print("[CharacterMoodboardView .sheet(item:)] Content closure. URL: \(itemWrapper.url.absoluteString)")
             FullCharacterImageViewWrapper(initialDisplayURL: itemWrapper.url)
         }
     }
 }
 
-// Wrapper to manage the @State URL for the sheet.
-// This should ideally be co-located with FullCharacterImageView or be a more general utility
-// if CampaignMoodboardView also uses it via a sheet (currently CampaignMoodboardView uses NavigationLink).
 struct FullCharacterImageViewWrapper: View {
     let initialDisplayURL: URL?
     @State private var imageURLForSheet: URL?

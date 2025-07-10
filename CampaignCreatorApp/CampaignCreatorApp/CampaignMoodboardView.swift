@@ -47,7 +47,7 @@ struct CampaignMoodboardView: View {
             } else {
                 LazyVGrid(columns: gridItemLayout, spacing: 2) {
                     ForEach(allImageURLs, id: \.self) { urlString in
-                        let _ = print("[CampaignMoodboardView ForEach] Processing urlString for cell: \(urlString)")
+                        // let _ = print("[CampaignMoodboardView ForEach] Processing urlString for cell: \(urlString)")
                         CampaignMoodboardCellView(urlString: urlString)
                     }
                 }
