@@ -1,14 +1,14 @@
 import Foundation
 
 public enum ImageModelName: String, Codable, Sendable, CaseIterable { // Added CaseIterable for potential pickers
-    case dalle2 = "dall-e-2"
-    case dalle3 = "dall-e-3"
-    // case dalle = "dall-e" // Consider removing if dalle2 and dalle3 are preferred explicit options
+    case dalle2 = "dall-e" // Changed rawValue to "dall-e"
+    case dalle3 = "dall-e" // Changed rawValue to "dall-e"
+    // case dalle = "dall-e" // This was the original generic one, effectively covered by dalle2/dalle3 now for client-side distinction if needed.
     case stableDiffusion = "stable-diffusion" // Example, actual value might differ
     case gemini // Assuming "gemini" is the raw value for Gemini models
 
     // Convenience for a default or common model
-    public static var defaultOpenAI: ImageModelName { .dalle3 }
+    public static var defaultOpenAI: ImageModelName { .dalle3 } // This will now yield rawValue "dall-e"
 }
 
 public struct ImageGenerationParams: Codable, Sendable {

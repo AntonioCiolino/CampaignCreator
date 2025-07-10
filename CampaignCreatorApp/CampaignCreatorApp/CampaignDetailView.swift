@@ -1544,14 +1544,16 @@ struct CampaignDetailView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(generatePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGeneratingText || !campaignCreator.isLLMServiceAvailable) // Use new property
+
+                if !campaignCreator.isLLMServiceAvailable { // Use new property
+                    Text("OpenAI API key not configured in settings.")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                        .padding(.horizontal) // Padding for the text itself
+                        .padding(.top, 5) // Some spacing from the button
+                }
             }
-            if !campaignCreator.isLLMServiceAvailable { // Use new property
-                Text("OpenAI API key not configured in settings.")
-                    .font(.caption)
-                    .foregroundColor(.orange)
-                    .padding(.horizontal)
-            }
-            .padding()
+            .padding() // This padding applies to the VStack
             .navigationTitle("Generate Content").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
