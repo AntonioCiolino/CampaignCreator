@@ -1,5 +1,11 @@
 import SwiftUI
 
+// TODO: Implement Robust Image Caching
+// Consider implementing a more robust image caching mechanism (e.g., using NSCache for in-memory caching
+// and potentially a disk cache) to improve performance and reduce repeated downloads.
+// This could involve creating a custom ImageLoader class or service that AsyncImage
+// (or a replacement custom view) can use. This would benefit both the moodboard and character thumbnail.
+
 // Helper struct for .sheet(item: ...)
 struct IdentifiableURLContainer: Identifiable {
     let id = UUID() // Stable ID for the sheet item
@@ -50,36 +56,50 @@ struct CharacterMoodboardView: View {
     private struct MoodboardCellView: View {
         let urlString: String
         let action: () -> Void // Action to perform on tap
+        @Environment(\.editMode) private var editMode // Access editMode here
 
-        var body: some View {
-            Button(action: action) {
-                AsyncImage(url: URL(string: urlString)) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView()
-                            .frame(maxWidth: .infinity, idealHeight: 120)
-                            .background(Color.gray.opacity(0.1))
-                    case .success(let image):
-                        image.resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(minWidth: 0, maxWidth: .infinity)
-                            .frame(height: 120)
-                            .clipped()
-                            .contentShape(Rectangle())
-                    case .failure:
-                        Image(systemName: "photo.fill")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 50, height: 50)
-                            .foregroundColor(.gray)
-                            .frame(maxWidth: .infinity, idealHeight: 120)
-                            .background(Color.gray.opacity(0.1))
-                    @unknown default:
-                        EmptyView()
-                    }
+        private var isEditing: Bool {
+            editMode?.wrappedValue.isEditing ?? false
+        }
+
+        @ViewBuilder
+        private var cellContent: some View {
+            AsyncImage(url: URL(string: urlString)) { phase in
+                switch phase {
+                case .empty:
+                    ProgressView()
+                        .frame(maxWidth: .infinity, idealHeight: 120)
+                        .background(Color.gray.opacity(0.1))
+                case .success(let image):
+                    image.resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(minWidth: 0, maxWidth: .infinity)
+                        .frame(height: 120)
+                        .clipped()
+                        .contentShape(Rectangle()) // Important for hit testing if not a button
+                case .failure:
+                    Image(systemName: "photo.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 50, height: 50)
+                        .foregroundColor(.gray)
+                        .frame(maxWidth: .infinity, idealHeight: 120)
+                        .background(Color.gray.opacity(0.1))
+                @unknown default:
+                    EmptyView()
                 }
             }
-            .buttonStyle(.plain)
+        }
+
+        var body: some View {
+            if isEditing {
+                cellContent // Just the content, no button, to allow drag
+            } else {
+                Button(action: action) {
+                    cellContent
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 

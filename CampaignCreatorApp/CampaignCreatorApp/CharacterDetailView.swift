@@ -23,6 +23,9 @@ struct CharacterDetailView: View {
                     Spacer()
 
                     // Character Image Thumbnail/Icon
+                    // TODO: Implement Robust Image Caching (see also CharacterMoodboardView.swift)
+                    // This AsyncImage could benefit from a shared, robust caching solution to prevent
+                    // re-downloading the same image if viewed multiple times or across different app sessions.
                     if let firstImageURLString = character.imageURLs?.first, let imageURL = URL(string: firstImageURLString) {
                         Button(action: {
                             selectedImageURLForSheet = imageURL
