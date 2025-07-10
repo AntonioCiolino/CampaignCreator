@@ -119,22 +119,27 @@ struct CharacterDetailView: View {
                     Image(systemName: "message.fill")
                 }
 
+                // Moodboard Button
+                if let urls = character.imageURLs, !urls.isEmpty {
+                    NavigationLink(destination: CharacterMoodboardView(imageURLs: urls, characterName: character.name)) {
+                        Image(systemName: "photo.stack") // Icon for moodboard/gallery
+                    }
+                }
+
                 Button("Edit") { showingEditView = true }
             }
         }
         .sheet(isPresented: $showingEditView, onDismiss: {
-            // Refresh character data if needed after edit view is dismissed
-            // This is important if CharacterEditView modifies the character
-            // and CampaignCreator.characters array is updated.
-            // We need to find the updated character from the list.
-            if let updatedCharacter = campaignCreator.characters.first(where: { $0.id == character.id }) {
-                print("[CHAR_NOTES_DEBUG CharacterDetailView] Edit sheet dismissed for char ID \(character.id). Refreshed notesForLLM from campaignCreator: \(updatedCharacter.notesForLLM ?? "nil")")
-                self.character = updatedCharacter
-            } else {
-                print("[CHAR_NOTES_DEBUG CharacterDetailView] Edit sheet dismissed for char ID \(character.id). Character not found in campaignCreator list for refresh.")
-            }
+            // Optional: Any logic that still needs to run on dismiss,
+            // but the primary character update is now handled by the callback.
+            // For example, if there was a general list refresh pending, it could go here.
+            // For now, we can leave it empty or remove it if the callback handles all needed updates.
+            print("[CHAR_NOTES_DEBUG CharacterDetailView] Edit sheet dismissed for char ID \(character.id). Primary update via callback.")
         }) {
-            CharacterEditView(character: character, campaignCreator: campaignCreator, isPresented: $showingEditView)
+            CharacterEditView(character: character, campaignCreator: campaignCreator, isPresented: $showingEditView, onCharacterUpdated: { updatedCharacter in
+                print("[CHAR_NOTES_DEBUG CharacterDetailView] onCharacterUpdated callback received for char ID \(updatedCharacter.id). New notesForLLM: \(updatedCharacter.notesForLLM ?? "nil"), imageURLs: \(updatedCharacter.imageURLs ?? [])")
+                self.character = updatedCharacter // Update the local state directly
+            })
         }
         .sheet(isPresented: $showingFullCharacterImageSheet) {
             FullCharacterImageView(imageURL: $selectedImageURLForSheet)
@@ -148,7 +153,8 @@ struct FullCharacterImageView: View {
     @Environment(\.dismiss) var dismiss
 
     var body: some View {
-        NavigationView { // NavigationView for a title and dismiss button
+        // let _ = print("[FullCharacterImageView body] Received imageURL via binding: \(imageURL?.absoluteString ?? "nil")")
+        return NavigationView { // NavigationView for a title and dismiss button
             VStack {
                 if let url = imageURL {
                     AsyncImage(url: url) { phase in
@@ -187,8 +193,24 @@ struct FullCharacterImageView: View {
                         dismiss()
                     }
                 }
+                ToolbarItem(placement: .bottomBar) { // Or another suitable placement
+                    if let url = imageURL {
+                        Button(action: {
+                            UIApplication.shared.open(url)
+                        }) {
+                            Label("Open in Browser", systemImage: "safari.fill")
+                        }
+                        .disabled(imageURL == nil) // Disable if no URL
+                    } else {
+                        EmptyView() // Show nothing if no URL
+                    }
+                }
             }
         }
+        // Ensure the toolbar is visible, especially for .bottomBar items
+        // This might require embedding in a NavigationView if not already,
+        // or ensuring the parent context supports bottom bars.
+        // The existing NavigationView should suffice.
     }
 }
 

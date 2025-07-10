@@ -31,9 +31,11 @@ struct CharacterEditView: View {
     }
     @State private var selectedExportFormat: ExportFormat
 
-    // For image URLs - simple list of text fields for now
+    // For image URLs - managed via CharacterImageManagerView
     @State private var imageURLsText: [String] // Store URLs as strings for editing
-    @State private var newImageURL: String = "" // For adding a new URL
+    // @State private var newImageURL: String = "" // REMOVED - Handled by manager view
+
+    @State private var showingImageManager = false // State to present the image manager sheet
 
     @State private var statsStrength: String
     @State private var statsDexterity: String
@@ -49,6 +51,9 @@ struct CharacterEditView: View {
     @State private var showErrorAlert: Bool = false
     @State private var errorMessage: String = ""
 
+    // Callback for when a character is successfully updated
+    var onCharacterUpdated: ((Character) -> Void)?
+
     @State private var isGeneratingAspect: Bool = false
     @State private var aspectGenerationError: String? = nil
     enum AspectField { case description, appearance }
@@ -62,10 +67,11 @@ struct CharacterEditView: View {
 
     @Environment(\.dismiss) var dismiss
 
-    init(character: Character, campaignCreator: CampaignCreator, isPresented: Binding<Bool>) {
+    init(character: Character, campaignCreator: CampaignCreator, isPresented: Binding<Bool>, onCharacterUpdated: ((Character) -> Void)? = nil) {
         self._characterToEdit = State(initialValue: character)
         self._campaignCreator = ObservedObject(wrappedValue: campaignCreator)
         self._isPresented = isPresented
+        self.onCharacterUpdated = onCharacterUpdated // Store the callback
 
         self._name = State(initialValue: character.name)
         self._descriptionText = State(initialValue: character.description ?? "")
@@ -101,31 +107,16 @@ struct CharacterEditView: View {
                     generateableTextField(title: "Appearance", text: $appearanceDescriptionText, fieldType: .appearance)
                 }
 
-                Section(header: Text("Character Image")) {
-                    // Display current image URLs (if any)
-                    if !imageURLsText.isEmpty {
-                        ForEach(imageURLsText.indices, id: \.self) { index in
-                            HStack {
-                                TextField("Image URL", text: $imageURLsText[index])
-                                Button(action: { imageURLsText.remove(at: index) }) {
-                                    Image(systemName: "trash").foregroundColor(.red)
-                                }
-                            }
-                        }
+                Section(header: Text("Character Images")) {
+                    Button(action: {
+                        showingImageManager = true
+                    }) {
+                        Label("Manage Image URLs", systemImage: "photo.on.rectangle.angled")
                     }
-                    // Add new image URL
-                    HStack {
-                        TextField("Add new image URL", text: $newImageURL)
-                        Button(action: {
-                            if !newImageURL.isEmpty, let _ = URL(string: newImageURL) { // Basic URL validation
-                                imageURLsText.append(newImageURL)
-                                newImageURL = ""
-                            }
-                        }) {
-                            Image(systemName: "plus.circle.fill")
-                        }
-                        .disabled(newImageURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    }
+                    // Display a count of current images
+                    Text("\(imageURLsText.count) image URL(s) associated.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
 
                     Button(action: {
                         // Reset prompt and error before showing sheet
@@ -190,6 +181,9 @@ struct CharacterEditView: View {
             .sheet(isPresented: $showingCharacterImageSheet) {
                 characterImageGenerateSheet
             }
+            .sheet(isPresented: $showingImageManager) {
+                CharacterImageManagerView(imageURLs: $imageURLsText)
+            }
         }
     }
 
@@ -232,21 +226,36 @@ struct CharacterEditView: View {
         isGeneratingCharacterImage = true
         characterImageGenerationError = nil
 
+        // Determine the model to use - defaulting to DALL-E 3
+        let modelToUse = ImageModelName.defaultOpenAI.rawValue // e.g., "dall-e-3"
+
+        print("[CharacterEditView] Attempting to generate image with prompt: '\(characterImageGeneratePrompt)', model: \(modelToUse)")
+
         do {
-            // Placeholder for actual image generation call
-            // let imageURL = try await campaignCreator.generateCharacterImage(characterId: characterToEdit.id, prompt: characterImageGeneratePrompt)
-            try await Task.sleep(nanoseconds: 2_000_000_000) // Simulate network request
-            let simulatedImageURL = "https://picsum.photos/seed/\(UUID().uuidString)/300/300" // Different size for character
+            let response = try await campaignCreator.generateImage(
+                prompt: characterImageGeneratePrompt,
+                modelName: modelToUse
+                // size and quality can be default or made configurable later
+                // associatedCampaignId is nil for character images here
+            )
 
-            imageURLsText.append(simulatedImageURL) // Add to the list
+            print("[CharacterEditView] Image generated successfully. Azure URL: \(response.imageUrl), Prompt used by backend: \(response.promptUsed)")
+            imageURLsText.append(response.imageUrl)
+            showingCharacterImageSheet = false // Dismiss sheet on success
 
-            showingCharacterImageSheet = false
-            // characterImageGeneratePrompt = "" // Keep prompt in case user wants to tweak and retry
-            print("Simulated character image generated and URL added.")
-
-        } catch { // Catches any error, including potential LLMError or APIError if those were real.
-            characterImageGenerationError = "An unexpected error occurred: \(error.localizedDescription)"
-            print("❌ Unexpected error during character image generation: \(error.localizedDescription)")
+        } catch let error as APIError {
+            let specificMessage = "API Error: \(error.localizedDescription)"
+            print("❌ [CharacterEditView] APIError during character image generation: \(specificMessage)")
+            characterImageGenerationError = specificMessage
+        } catch let error as LLMError { // LLMError might be thrown by generateImage if llmService is nil
+            let specificMessage = "LLM Service Error: \(error.localizedDescription)"
+            print("❌ [CharacterEditView] LLMError during character image generation: \(specificMessage)")
+            characterImageGenerationError = specificMessage
+        }
+        catch {
+            let specificMessage = "An unexpected error occurred: \(error.localizedDescription)"
+            print("❌ [CharacterEditView] Unexpected error during character image generation: \(specificMessage)")
+            characterImageGenerationError = specificMessage
         }
         isGeneratingCharacterImage = false
     }
@@ -262,7 +271,12 @@ struct CharacterEditView: View {
                     Label("Generate", systemImage: "sparkles")
                 }
                 .buttonStyle(.borderless)
-                .disabled(isGeneratingAspect || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(isGeneratingAspect || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !campaignCreator.isLLMServiceAvailable)
+            }
+            if !campaignCreator.isLLMServiceAvailable {
+                Text("OpenAI API key not configured in settings.")
+                    .font(.caption)
+                    .foregroundColor(.orange)
             }
             TextEditor(text: text).frame(height: 100)
                 .overlay(formElementOverlay())
@@ -367,7 +381,9 @@ struct CharacterEditView: View {
         updatedCharacter.markAsModified()
 
         do {
-            try await campaignCreator.updateCharacter(updatedCharacter)
+            let savedCharacter = try await campaignCreator.updateCharacter(updatedCharacter)
+            // Call the callback with the character returned from the API
+            onCharacterUpdated?(savedCharacter)
             dismissView()
         } catch let error as APIError {
             errorMessage = error.localizedDescription; showErrorAlert = true

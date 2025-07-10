@@ -9,6 +9,16 @@ public struct CharacterStats: Codable, Sendable {
     public var wisdom: Int?
     public var charisma: Int?
 
+    // Explicit CodingKeys for CharacterStats to be absolutely sure
+    enum CodingKeys: String, CodingKey {
+        case strength
+        case dexterity
+        case constitution
+        case intelligence
+        case wisdom
+        case charisma
+    }
+
     public init(strength: Int? = nil, dexterity: Int? = nil, constitution: Int? = nil,
                 intelligence: Int? = nil, wisdom: Int? = nil, charisma: Int? = nil) {
         self.strength = strength
@@ -34,98 +44,25 @@ public struct Character: Identifiable, Codable, Sendable {
     public var modifiedAt: Date?
 
     enum CodingKeys: String, CodingKey {
-        // Rely on global .convertFromSnakeCase strategy for these (Swift property name = camelCase version of JSON snake_case)
         case id
         case name
         case description
-        case appearanceDescription // JSON: appearance_description -> Swift: appearanceDescription
+        case appearanceDescription = "appearance_description"
+        case imageURLs = "image_urls"
+        case notesForLLM = "notes_for_llm"
         case stats
-        case exportFormatPreference // JSON: export_format_preference -> Swift: exportFormatPreference
-        case createdAt              // JSON: created_at -> Swift: createdAt
-        case modifiedAt             // JSON: modified_at -> Swift: modifiedAt
-
-        // Explicit snake_case for keys where global strategy might be ambiguous with initialisms
-        case imageURLs = "image_urls"       // Swift property: imageURLs, JSON: image_urls
-        case notesForLLM = "notes_for_llm" // Swift property: notesForLLM, JSON: notes_for_llm
+        case exportFormatPreference = "export_format_preference"
+        case createdAt = "created_at"
+        case modifiedAt = "modified_at"
+        // owner_id is in the JSON but not in the Swift struct, so it's not included here.
+        // If it were needed in the struct, it would be: case ownerId = "owner_id"
     }
 
-    // Custom init(from decoder: Decoder) for detailed logging
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
+    // Custom init(from: Decoder) is removed.
+    // Swift will synthesize Codable conformance using the explicit CodingKeys defined in the Character struct.
+    // The CharacterStats struct also uses synthesized Codable conformance with its explicit CodingKeys.
 
-        let tempIdForLog = try? container.decode(Int.self, forKey: .id) // For logging before full ID assignment
-        print("[DECODE_DEBUG CharacterModel] For ID \(tempIdForLog ?? -99): Attempting to decode. Container allKeys: \(container.allKeys.map { $0.stringValue })")
-
-        id = try container.decode(Int.self, forKey: .id)
-        name = try container.decode(String.self, forKey: .name)
-        description = try container.decodeIfPresent(String.self, forKey: .description)
-
-        // --- Debugging appearanceDescription ---
-        let appearanceKeyExists = container.contains(.appearanceDescription)
-        print("[DECODE_DEBUG CharacterModel] For ID \(id): appearanceDescription key exists in JSON (via container.contains): \(appearanceKeyExists)")
-        if appearanceKeyExists {
-            do {
-                let rawAppearance = try container.decode(String.self, forKey: .appearanceDescription)
-                print("[DECODE_DEBUG CharacterModel] For ID \(id): appearanceDescription successfully decoded as non-optional String: '\(rawAppearance)'")
-                appearanceDescription = rawAppearance
-            } catch {
-                print("[DECODE_DEBUG CharacterModel] For ID \(id): FAILED to decode appearanceDescription as non-optional String. Error: \(error.localizedDescription). Trying decodeIfPresent...")
-                appearanceDescription = try container.decodeIfPresent(String.self, forKey: .appearanceDescription)
-            }
-        } else {
-            print("[DECODE_DEBUG CharacterModel] For ID \(id): appearanceDescription key NOT found by container.contains. Assigning nil.")
-            appearanceDescription = nil
-        }
-        print("[DECODE_DEBUG CharacterModel] For ID \(id): Final appearanceDescription value: '\(appearanceDescription ?? "nil")'")
-        // --- End Debugging appearanceDescription ---
-
-        // --- Debugging imageURLs ---
-        let imageURLsKeyExists = container.contains(.imageURLs)
-        print("[DECODE_DEBUG CharacterModel] For ID \(id): imageURLs key exists in JSON (via container.contains): \(imageURLsKeyExists)")
-        if imageURLsKeyExists {
-            do {
-                let rawImageURLs = try container.decode([String].self, forKey: .imageURLs)
-                print("[DECODE_DEBUG CharacterModel] For ID \(id): imageURLs successfully decoded as non-optional [String]: \(rawImageURLs)")
-                imageURLs = rawImageURLs
-            } catch {
-                print("[DECODE_DEBUG CharacterModel] For ID \(id): FAILED to decode imageURLs as non-optional [String]. Error: \(error.localizedDescription). Trying decodeIfPresent...")
-                imageURLs = try container.decodeIfPresent([String].self, forKey: .imageURLs)
-            }
-        } else {
-            print("[DECODE_DEBUG CharacterModel] For ID \(id): imageURLs key NOT found by container.contains. Assigning nil.")
-            imageURLs = nil
-        }
-        print("[DECODE_DEBUG CharacterModel] For ID \(id): Final imageURLs value: \(imageURLs ?? [])")
-        // --- End Debugging imageURLs ---
-
-        // --- Debugging notesForLLM ---
-        let notesKeyExists = container.contains(.notesForLLM)
-        print("[DECODE_DEBUG CharacterModel] For ID \(id): notesForLLM key exists in JSON (via container.contains): \(notesKeyExists)")
-        if notesKeyExists {
-            do {
-                let rawNotes = try container.decode(String.self, forKey: .notesForLLM)
-                print("[DECODE_DEBUG CharacterModel] For ID \(id): notesForLLM successfully decoded as non-optional String: '\(rawNotes)'")
-                notesForLLM = rawNotes
-            } catch {
-                print("[DECODE_DEBUG CharacterModel] For ID \(id): FAILED to decode notesForLLM as non-optional String. Error: \(error.localizedDescription). Trying decodeIfPresent...")
-                notesForLLM = try container.decodeIfPresent(String.self, forKey: .notesForLLM)
-            }
-        } else {
-            print("[DECODE_DEBUG CharacterModel] For ID \(id): notesForLLM key NOT found by container.contains. Assigning nil.")
-            notesForLLM = nil
-        }
-        print("[DECODE_DEBUG CharacterModel] For ID \(id): Final notesForLLM value: '\(notesForLLM ?? "nil")'")
-        // --- End Debugging notesForLLM ---
-
-        stats = try container.decodeIfPresent(CharacterStats.self, forKey: .stats)
-        exportFormatPreference = try container.decodeIfPresent(String.self, forKey: .exportFormatPreference)
-        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt)
-        modifiedAt = try container.decodeIfPresent(Date.self, forKey: .modifiedAt)
-
-        print("[DECODE_DEBUG CharacterModel] For ID \(id): Decoding complete. Final values - appearance: '\(appearanceDescription ?? "nil")', notes: '\(notesForLLM ?? "nil")', images: \(imageURLs ?? [])")
-    }
-
-    // Original memberwise initializer - keep for non-Codable instantiation if needed, or for tests
+    // Memberwise initializer - keep for non-Codable instantiation if needed, or for tests/previews
     public init(id: Int,
                 name: String,
                 description: String? = nil,

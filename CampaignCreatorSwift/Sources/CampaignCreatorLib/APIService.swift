@@ -332,7 +332,18 @@ public final class APIService: Sendable {
             }
 
             do {
-                let decodedObject = try jsonDecoder.decode(T.self, from: data)
+                let decodedObject: T
+                if T.self == Character.self || T.self == [Character].self {
+                    // Using LOCAL JSONDecoder for Character type WITHOUT .convertFromSnakeCase strategy.
+                    // This was the fix for CharacterModel decoding issues.
+                    let localCharacterDecoder = JSONDecoder()
+                    localCharacterDecoder.dateDecodingStrategy = .iso8601
+                    // Key strategy intentionally omitted to rely on CharacterModel's explicit CodingKeys.
+                    decodedObject = try localCharacterDecoder.decode(T.self, from: data)
+                } else {
+                    // For non-Character types, continue using the shared decoder with its existing config.
+                    decodedObject = try self.jsonDecoder.decode(T.self, from: data)
+                }
 
                 // Log specific fields if it's a Character or [Character]
                 if let character = decodedObject as? Character {
@@ -347,8 +358,10 @@ public final class APIService: Sendable {
                 return decodedObject
             } catch {
                 print("❌ Decoding failed for type \(T.self): \(error.localizedDescription)")
+                // It's important to log the raw data if T.self is Character or [Character] here as well,
+                // because the JSONSerialization above might succeed, but the Codable decoding might fail for other reasons.
                 if String(describing: T.self) == "Character" || String(describing: T.self) == "Array<Character>" {
-                     print("[DECODE_DEBUG APIService] Raw data that failed decoding for Character type: \(String(data: data, encoding: .utf8) ?? "Unable to stringify data")")
+                     print("[DECODE_DEBUG APIService] Raw data that FAILED Codable decoding for Character type: \(String(data: data, encoding: .utf8) ?? "Unable to stringify data")")
                 }
                 if let decodingError = error as? DecodingError {
                      switch decodingError {

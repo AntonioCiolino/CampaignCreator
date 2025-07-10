@@ -27,6 +27,10 @@ public class CampaignCreator: ObservableObjectProtocol {
     @Published public var currentUser: User? = nil
     @Published public var isUserSessionValid: Bool = false // New state for session validity
 
+    public var isLLMServiceAvailable: Bool {
+        return llmService != nil
+    }
+
     public init(apiService: APIService = APIService()) {
         self.markdownGenerator = MarkdownGenerator()
         self.apiService = apiService
@@ -40,8 +44,12 @@ public class CampaignCreator: ObservableObjectProtocol {
         }
     }
     
-    private func setupLLMService() {
+    // Made public to allow re-attempting setup if keys change
+    public func setupLLMService() {
         print("[API_KEY_DEBUG CampaignCreator] setupLLMService: Attempting to setup LLMService.")
+        // Reset to nil first in case a previous configuration existed but is now invalid
+        // or to ensure a fresh attempt if keys were added.
+        self.llmService = nil
         do {
             self.llmService = try OpenAIClient()
             print("✅ [API_KEY_DEBUG CampaignCreator] setupLLMService: OpenAIClient initialized successfully. llmService is now set.")
@@ -250,7 +258,7 @@ public class CampaignCreator: ObservableObjectProtocol {
         return updatedSection // Return the directly updated section for immediate UI feedback if possible.
     }
 
-    public func generateImageForSection(prompt: String, campaignId: Int, model: ImageModelName = .dalle, size: String? = "1024x1024", quality: String? = "standard") async throws -> ImageGenerationResponse {
+    public func generateImageForSection(prompt: String, campaignId: Int, model: ImageModelName = .defaultOpenAI, size: String? = "1024x1024", quality: String? = "standard") async throws -> ImageGenerationResponse {
         guard isAuthenticated else { throw APIError.notAuthenticated }
 
         let params = ImageGenerationParams(
@@ -260,9 +268,49 @@ public class CampaignCreator: ObservableObjectProtocol {
             quality: quality,
             campaignId: String(campaignId) // API expects string campaign_id
         )
+        let response = try await apiService.generateImage(payload: params)
+
+        guard let imageUrl = response.imageUrl, !imageUrl.isEmpty else {
+            print("❌ [CampaignCreator] Image generation for section response successful, but imageUrl is missing or empty. Prompt used: \(response.promptUsed)")
+            throw APIError.custom("Image generation for section response did not include a valid image URL.")
+        }
+        return response
+    }
+
+    // New public method for generic image generation
+    public func generateImage(
+        prompt: String,
+        modelName: String, // Raw string value for ImageModelName
+        size: String? = "1024x1024", // Default DALL-E 3 size
+        quality: String? = "standard", // Default DALL-E quality
+        associatedCampaignId: String? = nil
+        // Add other params like steps, cfgScale if more models are deeply integrated here
+    ) async throws -> ImageGenerationResponse {
+        guard isAuthenticated else { throw APIError.notAuthenticated }
+        guard llmService != nil else { // Check if any LLM service is configured, assuming it implies image gen capability for now
+            // This check might need refinement if image generation uses separate keys/services not tied to llmService
+            throw LLMError.other(message: "Image generation service not available. API keys might be missing.")
+        }
+
+        guard let imageModel = ImageModelName(rawValue: modelName) else {
+            throw APIError.custom("Invalid image model name provided: \(modelName)")
+        }
+
+        let params = ImageGenerationParams(
+            prompt: prompt,
+            model: imageModel,
+            size: size,
+            quality: quality,
+            // steps: nil, // Only for SD
+            // cfgScale: nil, // Only for SD
+            // geminiModelName: nil, // Only for Gemini
+            campaignId: associatedCampaignId
+        )
+
+        print("[CampaignCreator] Generating image with params: Prompt='\(prompt.prefix(50))...', Model='\(modelName)', Size='\(size ?? "default")', Quality='\(quality ?? "default")', CampaignID='\(associatedCampaignId ?? "nil")'")
         return try await apiService.generateImage(payload: params)
     }
-    
+
     // MARK: - Character Management (Networked)
     public func fetchCharacters() async {
         guard isAuthenticated else {
@@ -318,7 +366,7 @@ public class CampaignCreator: ObservableObjectProtocol {
         return newCharacter
     }
 
-    public func updateCharacter(_ character: Character) async throws {
+    public func updateCharacter(_ character: Character) async throws -> Character { // MODIFIED: Added return type
         guard isAuthenticated else { throw APIError.notAuthenticated }
         let dto = CharacterUpdateDTO(
             name: character.name, description: character.description,
@@ -336,9 +384,21 @@ public class CampaignCreator: ObservableObjectProtocol {
         if let index = characters.firstIndex(where: { $0.id == updatedCharacterFromAPI.id }) {
             characters[index] = updatedCharacterFromAPI
             print("[CHAR_NOTES_DEBUG CampaignCreator] updateCharacter: Updated local character list with API response for char ID \(updatedCharacterFromAPI.id). Local_notesForLLM: \(characters[index].notesForLLM ?? "nil")")
+        } else {
+            // If the character wasn't found, it might be a new one or list is out of sync.
+            // Add it to the list. This scenario should be less common if lists are kept fresh.
+            characters.append(updatedCharacterFromAPI)
+            print("[CHAR_NOTES_DEBUG CampaignCreator] updateCharacter: Character ID \(updatedCharacterFromAPI.id) not found in local list, appended API response.")
         }
 
-        await fetchCharacters() // Still fetch all to ensure full sync, though the specific item is already updated
+        // Consider if fetchCharacters() is still strictly necessary here if the primary goal is
+        // to return the single updated character for immediate UI update.
+        // If other parts of the app rely on the `characters` list being exhaustively fresh
+        // *immediately* after any update, then keep it. Otherwise, it might be deferred
+        // or handled by a background refresh mechanism.
+        // For now, keeping it to maintain existing behavior, but the returned character is key.
+        await fetchCharacters()
+        return updatedCharacterFromAPI // MODIFIED: Added return
     }
 
     public func refreshCharacter(id: Int) async throws -> Character {

@@ -36,7 +36,7 @@ struct CampaignDetailView: View {
     @State private var showingGenerateImageSheet = false // New state for image sheet
     @State private var imageGeneratePrompt = "" // Prompt for image generation
     @State private var showingCampaignEditSheet = false // Renamed from showingThemeEditSheet
-    @State private var showingMoodBoardSheet = false // ADDED for Mood Board sheet
+    // @State private var showingMoodBoardSheet = false // REPLACED by NavigationLink for new moodboard view
     @State private var showingCampaignThemeSheet: Bool = false // ADDED for Campaign Theme sheet
     
     @State private var viewRefreshTrigger = UUID() // <<<< ADDED to force view refresh
@@ -809,6 +809,14 @@ struct CampaignDetailView: View {
                             await self.saveCampaignDetails(source: .llmSettingsChange, includeLLMSettings: true)
                         }
                     )
+                    // Add the LLM configuration note here if service is nil
+                    if !campaignCreator.isLLMServiceAvailable { // Use new property
+                        Text("Note: AI Text Generation features require OpenAI API key configuration in settings.")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                            .padding(.vertical) // Add some vertical padding
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
                 }
                 .padding()
                 .font(currentFont) // Apply default theme font to all content within VStack
@@ -953,24 +961,7 @@ struct CampaignDetailView: View {
         .sheet(isPresented: $showingExportSheet) {
             exportSheetView
         }
-        .sheet(isPresented: $showingMoodBoardSheet) {
-            // Present moodBoardSection directly without NavigationView
-            // Add a way to dismiss if necessary, e.g. a button within moodBoardSection or rely on swipe
-            VStack {
-                HStack {
-                    Spacer()
-                    Button { showingMoodBoardSheet = false } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .padding([.top, .trailing])
-                            .foregroundColor(.gray)
-                    }
-                }
-                moodBoardSection
-                Spacer() // Pushes content to top
-            }
-            .padding(.top) // Add some padding so X button isn't too close to status bar
-        }
+        // Removed .sheet(isPresented: $showingMoodBoardSheet) as it's now a NavigationLink
         .sheet(isPresented: $showingCampaignThemeSheet) {
             NavigationView {
                 campaignThemeDisplaySection // This already contains the "Edit Campaign Details" button
@@ -1018,10 +1009,8 @@ struct CampaignDetailView: View {
                     }
                     .disabled(isSaving || isGeneratingText)
                     
-                    // Mood Board Button
-                    Button {
-                        showingMoodBoardSheet = true
-                    } label: {
+                    // Mood Board Button - Changed to NavigationLink
+                    NavigationLink(destination: CampaignMoodboardView(campaign: campaign)) {
                         Label("Mood Board", systemImage: "photo.on.rectangle.angled")
                     }
                     .disabled(isSaving || isGeneratingText)
@@ -1032,9 +1021,10 @@ struct CampaignDetailView: View {
                     } label: {
                         Label("Generate Section", systemImage: "sparkles")
                     }
-                    .disabled(isSaving || isGeneratingText) // Disable if already saving or generating
+                    .disabled(isSaving || isGeneratingText || !campaignCreator.isLLMServiceAvailable) // Use new property
                 }
             }
+            // Note: The conditional Text for LLM service availability will be moved into the ScrollView content.
         }
         .onChange(of: horizontalSizeClass) { newSizeClass in
             // This is mostly for debugging or if specific non-label-style changes were needed.
@@ -1099,36 +1089,52 @@ struct CampaignDetailView: View {
         isGeneratingText = true // Or a new @State isGeneratingImage = true
         imageGenerationError = nil
         
+        // Determine the model to use - defaulting to DALL-E 3 for campaigns too for now
+        let modelToUse = ImageModelName.defaultOpenAI.rawValue // e.g., "dall-e-3"
+
+        print("[CampaignDetailView] Attempting to generate thematic image for campaign ID \(campaign.id) with prompt: '\(imageGeneratePrompt)', model: \(modelToUse)")
+
         do {
-            // Placeholder for actual image generation call
-            // let imageURL = try await campaignCreator.generateCampaignImage(campaignId: campaign.id, prompt: imageGeneratePrompt)
-            // For now, simulate a delay and a fake URL
-            try await Task.sleep(nanoseconds: 2_000_000_000) // Simulate network request
-            let simulatedImageURL = "https://picsum.photos/seed/\(UUID().uuidString)/600/400"
+            let response = try await campaignCreator.generateImage(
+                prompt: imageGeneratePrompt,
+                modelName: modelToUse,
+                // size: "1792x1024", // Example: DALL-E 3 supports various sizes
+                quality: "hd", // Example: Request HD if desired
+                associatedCampaignId: String(campaign.id) // Pass campaign ID
+            )
             
+            print("[CampaignDetailView] Thematic image generated. Azure URL: \(response.imageUrl), Prompt used by backend: \(response.promptUsed)")
+
             var campaignToUpdate = self.campaign
-            campaignToUpdate.thematicImageURL = simulatedImageURL
-            campaignToUpdate.thematicImagePrompt = imageGeneratePrompt // Save the prompt used
+            campaignToUpdate.thematicImageURL = response.imageUrl
+            campaignToUpdate.thematicImagePrompt = response.promptUsed // Save the prompt used
             campaignToUpdate.markAsModified()
             
-            try await campaignCreator.updateCampaign(campaignToUpdate)
+            // Use the specific update method that returns the updated campaign
+            let updatedCampaignFromAPI = try await campaignCreator.updateCampaign(campaignToUpdate)
             
-            if let refreshedCampaign = campaignCreator.campaigns.first(where: { $0.id == campaignToUpdate.id }) {
-                self.campaign = refreshedCampaign
-                self.editableTitle = refreshedCampaign.title
-                self.editableConcept = refreshedCampaign.concept ?? ""
-            }
+            // Update the local @State campaign variable with the fully updated one from the API
+            self.campaign = updatedCampaignFromAPI
+            // Also update other @State vars that depend on campaign properties if they aren't automatically via @State campaign
+            self.editableTitle = updatedCampaignFromAPI.title
+            self.editableConcept = updatedCampaignFromAPI.concept ?? ""
+            self.localCampaignCustomSections = updatedCampaignFromAPI.customSections ?? []
             
             showingGenerateImageSheet = false
-            imageGeneratePrompt = ""
-            print("Simulated campaign image generated and campaign updated.")
+            // imageGeneratePrompt = "" // Keep prompt in sheet in case user wants to tweak and retry? Or clear.
             
         } catch let error as APIError {
-            imageGenerationError = "Failed to save campaign with new image: \(error.localizedDescription)"
-            print("❌ API Error saving campaign after image generation: \(error.localizedDescription)")
+            let specificMessage = "API Error: \(error.localizedDescription)"
+            print("❌ [CampaignDetailView] APIError during thematic image generation/update: \(specificMessage)")
+            imageGenerationError = specificMessage
+        } catch let error as LLMError {
+            let specificMessage = "LLM Service Error: \(error.localizedDescription)"
+            print("❌ [CampaignDetailView] LLMError during thematic image generation: \(specificMessage)")
+            imageGenerationError = specificMessage
         } catch {
-            imageGenerationError = "An unexpected error occurred: \(error.localizedDescription)"
-            print("❌ Unexpected error during campaign image generation: \(error.localizedDescription)")
+            let specificMessage = "An unexpected error occurred: \(error.localizedDescription)"
+            print("❌ [CampaignDetailView] Unexpected error during thematic image generation: \(specificMessage)")
+            imageGenerationError = specificMessage
         }
         isGeneratingText = false // Or isGeneratingImage = false
     }
@@ -1537,9 +1543,17 @@ struct CampaignDetailView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(generatePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGeneratingText)
+                .disabled(generatePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGeneratingText || !campaignCreator.isLLMServiceAvailable) // Use new property
+
+                if !campaignCreator.isLLMServiceAvailable { // Use new property
+                    Text("OpenAI API key not configured in settings.")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                        .padding(.horizontal) // Padding for the text itself
+                        .padding(.top, 5) // Some spacing from the button
+                }
             }
-            .padding()
+            .padding() // This padding applies to the VStack
             .navigationTitle("Generate Content").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -1577,15 +1591,14 @@ struct CampaignDetailView: View {
             
             // Pass includeStandardSections: true to ensure these are part of the DTO
             // This requires CampaignUpdateDTO to support 'sections'
-            try await campaignCreator.updateCampaign(updatedCampaign) // This now needs to handle standard sections in DTO
+            let refreshedCampaignFromAPI = try await campaignCreator.updateCampaign(updatedCampaign) // This now needs to handle standard sections in DTO
             
-            if let refreshedCampaign = campaignCreator.campaigns.first(where: { $0.id == updatedCampaign.id }) {
-                self.campaign = refreshedCampaign
-                self.editableTitle = refreshedCampaign.title
-                self.editableConcept = refreshedCampaign.concept ?? ""
-                // self.localCampaignCustomSections will be updated if changed by this operation,
-                // and self.campaign.sections is part of self.campaign.
-            }
+            // Update local state with the direct response from the API
+            self.campaign = refreshedCampaignFromAPI
+            self.editableTitle = refreshedCampaignFromAPI.title
+            self.editableConcept = refreshedCampaignFromAPI.concept ?? ""
+            self.localCampaignCustomSections = refreshedCampaignFromAPI.customSections ?? []
+            // self.campaign.sections is part of self.campaign and thus updated.
             
             showingGenerateSheet = false
             generatePrompt = ""

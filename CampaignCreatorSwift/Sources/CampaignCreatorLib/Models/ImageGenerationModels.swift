@@ -1,9 +1,12 @@
 import Foundation
 
-public enum ImageModelName: String, Codable, Sendable {
-    case dalle = "dall-e" // Using "dalle" to be more Swift-idiomatic for enum case
-    case stableDiffusion = "stable-diffusion"
-    case gemini // Assuming "gemini" is the raw value from backend if it matches
+public enum ImageModelName: String, Codable, Sendable, CaseIterable { // Added CaseIterable for potential pickers
+    case openAIDalle = "dall-e" // Single case for DALL-E, rawValue matches backend
+    case stableDiffusion = "stable-diffusion" // Example, actual value might differ
+    case gemini // Assuming "gemini" is the raw value for Gemini models
+
+    // Convenience for a default or common model
+    public static var defaultOpenAI: ImageModelName { .openAIDalle }
 }
 
 public struct ImageGenerationParams: Codable, Sendable {
@@ -36,7 +39,7 @@ public struct ImageGenerationParams: Codable, Sendable {
 }
 
 public struct ImageGenerationResponse: Codable, Sendable {
-    public let imageUrl: String
+    public let imageUrl: String? // Changed to optional
     public let promptUsed: String
     public let modelUsed: ImageModelName
     public let sizeUsed: String
@@ -56,7 +59,8 @@ public struct ImageGenerationResponse: Codable, Sendable {
         case geminiModelNameUsed = "gemini_model_name_used"
     }
 
-    public init(imageUrl: String, promptUsed: String, modelUsed: ImageModelName, sizeUsed: String, qualityUsed: String? = nil, stepsUsed: Int? = nil, cfgScaleUsed: Double? = nil, geminiModelNameUsed: String? = nil) {
+    // Update init to accept optional imageUrl
+    public init(imageUrl: String?, promptUsed: String, modelUsed: ImageModelName, sizeUsed: String, qualityUsed: String? = nil, stepsUsed: Int? = nil, cfgScaleUsed: Double? = nil, geminiModelNameUsed: String? = nil) {
         self.imageUrl = imageUrl
         self.promptUsed = promptUsed
         self.modelUsed = modelUsed

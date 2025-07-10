@@ -67,10 +67,17 @@ struct CharacterChatView: View {
                         Image(systemName: "paperplane.fill")
                     }
                 }
-                .disabled(userInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSendingMessage)
+                .disabled(userInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSendingMessage || !campaignCreator.isLLMServiceAvailable)
                 .padding(.leading, 4)
             }
             .padding()
+            if !campaignCreator.isLLMServiceAvailable {
+                Text("Chat requires OpenAI API key configuration in settings.")
+                    .font(.caption)
+                    .foregroundColor(.orange)
+                    .padding(.horizontal)
+                    .multilineTextAlignment(.center)
+            }
         }
         .navigationTitle("\(character.name) - Chat")
         .navigationBarTitleDisplayMode(.inline)
@@ -151,10 +158,10 @@ struct CharacterChatView_Previews: PreviewProvider {
             notesForLLM: "Loves nature."
         )
 
-        let sampleMessages = [
-            ChatMessage(text: "Hello Aella!", sender: .user),
-            ChatMessage(text: "Greetings, traveler. How may I assist you?", sender: .llm)
-        ]
+        // let sampleMessages = [ // REMOVED as it was unused
+        //     ChatMessage(text: "Hello Aella!", sender: .user),
+        //     ChatMessage(text: "Greetings, traveler. How may I assist you?", sender: .llm)
+        // ]
 
         return NavigationView {
             CharacterChatView(
