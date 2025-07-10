@@ -105,8 +105,12 @@ struct CharacterMoodboardView: View {
         }
     }
 
+    private var isEditing: Bool { // Helper computed property for readability
+        editMode?.wrappedValue.isEditing ?? false
+    }
+
     var body: some View {
-        ScrollView {
+        ScrollView(isEditing ? [] : .vertical) { // Conditionally disable scrolling
             if identifiableImageURLs.isEmpty {
                 VStack {
                     Spacer()
