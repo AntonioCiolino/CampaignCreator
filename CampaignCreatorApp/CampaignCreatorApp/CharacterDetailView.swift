@@ -51,22 +51,7 @@ struct CharacterDetailView: View {
                 }
                 .padding(.bottom, 5)
 
-                // The original Image URLs list can be kept or removed based on preference
-                // For now, I'll keep it so users can still see all URLs if multiple exist.
-                if let imageURLs = character.imageURLs, !imageURLs.isEmpty {
-                    SectionBox(title: "Image URLs (Links)") {
-                        ForEach(imageURLs, id: \.self) { urlString in
-                            if let url = URL(string: urlString) {
-                                Link(urlString, destination: url)
-                                    .font(.caption)
-                            } else {
-                                Text(urlString + " (Invalid URL)")
-                                    .font(.caption)
-                                    .foregroundColor(.red)
-                            }
-                        }
-                    }
-                }
+                // Image URLs (Links) section REMOVED as per user request
 
                 if let description = character.description, !description.isEmpty {
                     SectionBox(title: "Description") { Text(description) }
