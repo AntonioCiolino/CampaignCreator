@@ -2,8 +2,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import * as characterService from '../services/characterService';
 // Corrected import: CharacterImageGenerationRequest and CharacterUpdate from characterTypes
-// Also importing the new ChatMessage type from characterTypes
-import { Character, CharacterStats, CharacterImageGenerationRequest, CharacterUpdate, ChatMessage } from '../types/characterTypes';
+// Also importing the new ChatMessage type and LLMChatGenerationRequest from characterTypes
+import { Character, CharacterStats, CharacterImageGenerationRequest, CharacterUpdate, ChatMessage, LLMChatGenerationRequest } from '../types/characterTypes';
 import * as campaignService from '../services/campaignService';
 import { Campaign } from '../types/campaignTypes';
 // Removed CharacterChatMessage import from CharacterChatPanel, will use ChatMessage from characterTypes
@@ -434,10 +434,14 @@ const CharacterDetailPage: React.FC = () => {
             // The `chat_history` in LLMGenerationRequest is optional and can be omitted
             // if backend primarily relies on its DB fetched history.
             // For this call, we are concerned with the *new* prompt.
-            await characterService.generateCharacterResponse(character.id, {
+            const payload: LLMChatGenerationRequest = {
                 prompt: currentPrompt,
-                // chat_history: [], // Can be empty as backend fetches recent from DB
-            });
+            };
+            if (character.notes_for_llm) {
+                payload.character_notes = character.notes_for_llm;
+            }
+
+            await characterService.generateCharacterResponse(character.id, payload);
 
             // After successful generation and saving on backend, refresh the chat history from DB
             fetchChatHistory(); // This will include the user message and the new AI message with correct IDs/timestamps

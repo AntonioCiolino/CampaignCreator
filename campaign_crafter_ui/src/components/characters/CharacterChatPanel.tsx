@@ -132,10 +132,14 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
                         </div>
                     ))}
                     {isGeneratingResponse && !chatLoading && ( // Only show "thinking" if not loading history
-                        <div className="chat-loading-indicator">
-                             <img src={characterImage || DEFAULT_AVATAR} alt="loading" className="chat-avatar" />
-                            <div className="chat-message-bubble ai-message-bubble">
-                                <LoadingSpinner size="sm" />
+                        <div className="chat-message-row ai-message-row thinking-indicator-row"> {/* Use standard row classes */}
+                            <img
+                                src={characterImage || DEFAULT_AVATAR}
+                                alt={`${characterName} thinking`} // More descriptive alt text
+                                className="chat-avatar"
+                            />
+                            <div className="chat-message-bubble ai-message-bubble"> {/* Bubble for spinner and text */}
+                                <LoadingSpinner size="sm" inline={true} /> {/* Ensure spinner can be inline */}
                                 <span className="message-text-italic"> {characterName} is thinking...</span>
                             </div>
                         </div>

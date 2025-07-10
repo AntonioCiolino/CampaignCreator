@@ -101,3 +101,10 @@ export interface ChatMessage extends ChatMessageBase {
     user_avatar_url?: string; // URL for user's avatar
     character_avatar_url?: string; // URL for character's avatar/thumbnail
 }
+
+// Request payload for generating a chat response from an LLM
+export interface LLMChatGenerationRequest {
+    prompt: string;
+    character_notes?: string | null; // Optional: notes about the character for context
+    // chat_history?: ChatMessageBase[]; // Optional: recent chat history (if frontend were to manage it for some LLMs)
+}
