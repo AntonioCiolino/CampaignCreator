@@ -215,3 +215,15 @@ class Character(Base):
 # secondary=character_campaign_association,
 # back_populates="campaigns"
 # )
+
+# Chat Message Model
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    character_id = Column(Integer, ForeignKey("characters.id"), nullable=False, index=True)
+    sender = Column(String, nullable=False)  # "user" or "llm" or character name
+    text = Column(Text, nullable=False)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+
+    character = relationship("Character", backref="chat_history_entries") # Changed backref to avoid conflict

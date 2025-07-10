@@ -511,4 +511,31 @@ public final class APIService: Sendable {
         // Endpoint from web UI is /api/v1/images/generate
         return try await performRequest(endpoint: "/images/generate", method: "POST", body: body)
     }
+
+    // MARK: - Chat Message Methods
+    public func saveChatMessage(characterId: Int, message: APIChatMessageCreate) async throws -> APIChatMessage {
+        let body = try jsonEncoder.encode(message)
+        return try await performRequest(endpoint: "/characters/\(characterId)/chat", method: "POST", body: body)
+    }
+
+    public func getChatHistory(characterId: Int, skip: Int? = nil, limit: Int? = nil) async throws -> [APIChatMessage] {
+        var queryItems: [URLQueryItem] = []
+        if let skip = skip {
+            queryItems.append(URLQueryItem(name: "skip", value: String(skip)))
+        }
+        if let limit = limit {
+            queryItems.append(URLQueryItem(name: "limit", value: String(limit)))
+        }
+
+        var endpointString = "/characters/\(characterId)/chat"
+        if !queryItems.isEmpty {
+            var components = URLComponents()
+            components.queryItems = queryItems
+            if let query = components.query {
+                endpointString += "?\(query)"
+            }
+        }
+        // performRequest handles adding the base URL
+        return try await performRequest(endpoint: endpointString, method: "GET")
+    }
 }

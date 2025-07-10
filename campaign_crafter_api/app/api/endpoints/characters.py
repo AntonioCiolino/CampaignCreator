@@ -392,6 +392,179 @@ async def generate_character_aspect(
 ):
     """
     Generates text for a specific aspect of a character (e.g., description, appearance)
+"""
+    # Fetch the ORM user model as crud.generate_character_aspect_text expects it
+    # to potentially access API keys via relationships or direct attributes on the ORM model.
+    current_user_orm = crud.get_user(db, user_id=current_user.id)
+    if not current_user_orm:
+        # This should ideally not happen if current_user (Pydantic model) is valid
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User not found or not authorized.")
+
+    try:
+        generated_text = await crud.generate_character_aspect_text(
+            db=db,
+            current_user_orm=current_user_orm,
+            request=request
+        )
+        return models.CharacterAspectGenerationResponse(generated_text=generated_text)
+    except crud.LLMServiceUnavailableError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
+    except Exception as e:
+        # Log the full error for debugging on the server
+        # import traceback; traceback.print_exc(); # Consider for detailed logging
+        print(f"API Error in /generate-aspect: {type(e).__name__} - {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate character aspect: {str(e)}")
+
+
+# --- Character Chat Endpoints ---
+
+@router.post("/{character_id}/chat", response_model=models.ChatMessage)
+def create_character_chat_message(
+    character_id: int,
+    message_in: models.ChatMessageCreate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+):
+    """
+    Saves a chat message for a character.
+    The sender in `message_in` should be "user" or the name of the character/LLM.
+    """
+    db_character = crud.get_character(db=db, character_id=character_id)
+    if db_character is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
+    if db_character.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to chat with this character")
+
+    # The sender_identifier for crud.create_chat_message is taken from message_in.sender
+    # This assumes the client correctly sets "user" for user messages,
+    # and this endpoint will be called again by the system to save LLM responses with sender as character_name.
+    created_message = crud.create_chat_message(
+        db=db,
+        character_id=character_id,
+        message=message_in,
+        sender_identifier=message_in.sender
+    )
+    return created_message
+
+
+@router.get("/{character_id}/chat", response_model=List[models.ChatMessage])
+def get_character_chat_history(
+    character_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)],
+    skip: int = 0,
+    limit: int = 1000 # Default to a higher limit for chat history
+):
+    """
+    Retrieves the chat history for a specific character.
+    """
+    db_character = crud.get_character(db=db, character_id=character_id)
+    if db_character is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
+    if db_character.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to view this chat history")
+
+    messages = crud.get_chat_messages_for_character(db=db, character_id=character_id, skip=skip, limit=limit)
+    return messages
+
+
+@router.post("/{character_id}/generate-response", response_model=models.LLMTextGenerationResponse)
+async def generate_character_llm_response_with_history( # Renamed for clarity
+    character_id: int,
+    request_body: models.LLMGenerationRequest, # This already contains prompt and optional chat_history from client
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+):
+    """
+    Generates a text response from the character, saves the user's prompt and the LLM's response
+    to the chat history, and uses recent history for context.
+    """
+    db_character = crud.get_character(db=db, character_id=character_id)
+    if db_character is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
+    if db_character.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to generate responses for this character")
+
+    if not request_body.prompt:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Prompt cannot be empty.")
+
+    # 1. Save the user's message
+    user_message_create = models.ChatMessageCreate(text=request_body.prompt, sender="user")
+    crud.create_chat_message(db=db, character_id=character_id, message=user_message_create, sender_identifier="user")
+
+    # 2. Prepare context for LLM: get recent messages from DB
+    # The request_body.chat_history from client might be stale or incomplete,
+    # so we prioritize fetching fresh history from DB.
+    # However, the plan stated "chat_history should be saved *after* the LLM response is generated."
+    # Let's stick to the plan for now and use client-provided history if available,
+    # or fetch if not. The better approach is to always fetch from DB.
+    # For this iteration, we'll fetch from DB to ensure context is accurate.
+
+    recent_history_orm = crud.get_recent_chat_messages_for_character(db=db, character_id=character_id, limit=10)
+    # Convert ORM messages to Pydantic model suitable for LLM service
+    chat_history_for_llm = [
+        models.ChatMessage(
+            id=msg.id,
+            character_id=msg.character_id,
+            text=msg.text,
+            sender=msg.sender,
+            timestamp=msg.timestamp
+        ) for msg in recent_history_orm
+    ]
+    # The user's current prompt is the latest interaction, not yet in recent_history_orm for the LLM call.
+    # The LLM service's generate_character_response expects the user_prompt separately.
+
+    provider_name_from_request: Optional[str] = None
+    model_specific_id_from_request: Optional[str] = None
+    if request_body.model_id_with_prefix and "/" in request_body.model_id_with_prefix:
+        provider_name_from_request, model_specific_id_from_request = request_body.model_id_with_prefix.split("/",1)
+    elif request_body.model_id_with_prefix:
+        model_specific_id_from_request = request_body.model_id_with_prefix
+
+    try:
+        orm_user = crud.get_user(db, current_user.id)
+        if not orm_user:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not retrieve user data for LLM service.")
+
+        llm_service = crud.get_llm_service(
+            db=db,
+            current_user_orm=orm_user,
+            provider_name=provider_name_from_request,
+            model_id_with_prefix=request_body.model_id_with_prefix,
+        )
+
+        # Pass the fetched history to the LLM service
+        generated_text = await llm_service.generate_character_response(
+            character_name=db_character.name,
+            character_notes=db_character.notes_for_llm or "",
+            user_prompt=request_body.prompt, # The current user message
+            chat_history=chat_history_for_llm, # The history *before* this user message
+            current_user=current_user, # Pydantic model
+            db=db,
+            model=model_specific_id_from_request,
+            temperature=request_body.temperature,
+            max_tokens=request_body.max_tokens
+        )
+
+        # 3. Save LLM's response
+        llm_response_message_create = models.ChatMessageCreate(text=generated_text, sender=db_character.name) # LLM speaks as character
+        crud.create_chat_message(db=db, character_id=character_id, message=llm_response_message_create, sender_identifier=db_character.name)
+
+        return models.LLMTextGenerationResponse(text=generated_text)
+
+    except crud.LLMServiceUnavailableError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
+    except crud.LLMGenerationError as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        print(f"Unexpected error during character response generation: {type(e).__name__} - {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred while generating the character response.")
+
+@router.post("/{character_id}/generate-image", response_model=models.Character)
+async def generate_character_image_endpoint(
+    character_id: int,
     using an LLM.
     """
     # Fetch the ORM user model as crud.generate_character_aspect_text expects it

@@ -417,3 +417,22 @@ class CharacterAspectGenerationRequest(BaseModel):
 
 class CharacterAspectGenerationResponse(BaseModel):
     generated_text: str
+
+# Chat Message Models
+class ChatMessageBase(BaseModel):
+    text: str
+    sender: str # "user", "llm", or character name for context
+
+class ChatMessageCreate(ChatMessageBase):
+    pass
+
+class ChatMessageInDB(ChatMessageBase):
+    id: int
+    character_id: int
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True # Pydantic V2
+
+class ChatMessage(ChatMessageInDB): # For API responses
+    pass

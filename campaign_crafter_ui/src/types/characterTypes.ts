@@ -81,3 +81,23 @@ export interface CharacterAspectGenerationRequestPayload {
 export interface CharacterAspectGenerationResponseData {
     generated_text: string;
 }
+
+// --- Chat Message Types ---
+export interface ChatMessageBase {
+    text: string;
+    sender: string; // "user", "llm", or character name
+}
+
+export interface ChatMessageCreate extends ChatMessageBase {
+    // No extra fields needed for creation beyond base typically
+    // Backend will assign character_id and timestamp
+}
+
+export interface ChatMessage extends ChatMessageBase {
+    id: number;
+    character_id: number;
+    timestamp: string; // Assuming ISO date string from backend (e.g., "2023-10-26T10:00:00Z")
+    // For UI display, potentially enriched by frontend after fetching:
+    user_avatar_url?: string; // URL for user's avatar
+    character_avatar_url?: string; // URL for character's avatar/thumbnail
+}
