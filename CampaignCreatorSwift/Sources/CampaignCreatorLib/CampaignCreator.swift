@@ -267,6 +267,40 @@ public class CampaignCreator: ObservableObjectProtocol {
         return try await apiService.generateImage(payload: params)
     }
     
+    // New public method for generic image generation
+    public func generateImage(
+        prompt: String,
+        modelName: String, // Raw string value for ImageModelName
+        size: String? = "1024x1024", // Default DALL-E 3 size
+        quality: String? = "standard", // Default DALL-E quality
+        associatedCampaignId: String? = nil
+        // Add other params like steps, cfgScale if more models are deeply integrated here
+    ) async throws -> ImageGenerationResponse {
+        guard isAuthenticated else { throw APIError.notAuthenticated }
+        guard llmService != nil else { // Check if any LLM service is configured, assuming it implies image gen capability for now
+            // This check might need refinement if image generation uses separate keys/services not tied to llmService
+            throw LLMError.other(message: "Image generation service not available. API keys might be missing.")
+        }
+
+        guard let imageModel = ImageModelName(rawValue: modelName) else {
+            throw APIError.custom("Invalid image model name provided: \(modelName)")
+        }
+
+        let params = ImageGenerationParams(
+            prompt: prompt,
+            model: imageModel,
+            size: size,
+            quality: quality,
+            // steps: nil, // Only for SD
+            // cfgScale: nil, // Only for SD
+            // geminiModelName: nil, // Only for Gemini
+            campaignId: associatedCampaignId
+        )
+
+        print("[CampaignCreator] Generating image with params: Prompt='\(prompt.prefix(50))...', Model='\(modelName)', Size='\(size ?? "default")', Quality='\(quality ?? "default")', CampaignID='\(associatedCampaignId ?? "nil")'")
+        return try await apiService.generateImage(payload: params)
+    }
+
     // MARK: - Character Management (Networked)
     public func fetchCharacters() async {
         guard isAuthenticated else {

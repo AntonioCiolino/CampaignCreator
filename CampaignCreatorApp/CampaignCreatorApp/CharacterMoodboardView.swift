@@ -64,16 +64,12 @@ struct CharacterMoodboardView: View {
             .navigationTitle("\(characterName) Moodboard")
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingFullImageView) {
-                // Ensure selectedImageURLString can be converted to URL for FullCharacterImageView
-                if let urlStr = selectedImageURLString, let url = URL(string: urlStr) {
-                    // Pass a binding to a URL? or just the URL?
-                    // FullCharacterImageView expects @Binding var imageURL: URL?
-                    // We need to manage this state carefully if it's a binding.
-                    // For simplicity, let's make a temporary state if FullCharacterImageView can accept a non-binding URL or adapt it.
-                    // Re-checking FullCharacterImageView: It uses @Binding. So we need a @State URL here.
-                    // Let's create a dedicated @State for the URL to pass to the sheet.
-                    FullCharacterImageViewWrapper(urlString: selectedImageURLString)
+                // Check if selectedImageURLString is not nil and can be converted to a URL
+                if let urlStr = selectedImageURLString, URL(string: urlStr) != nil {
+                    FullCharacterImageViewWrapper(urlString: urlStr)
                 }
+                // If urlStr is nil or not a valid URL, sheet content won't be built.
+                // This implicitly handles the case where selectedImageURLString might be an invalid URL string.
             }
         }
         // If this view is meant to be pushed onto an existing NavigationView stack,

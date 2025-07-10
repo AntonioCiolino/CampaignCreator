@@ -158,10 +158,10 @@ struct CharacterChatView_Previews: PreviewProvider {
             notesForLLM: "Loves nature."
         )
 
-        let sampleMessages = [
-            ChatMessage(text: "Hello Aella!", sender: .user),
-            ChatMessage(text: "Greetings, traveler. How may I assist you?", sender: .llm)
-        ]
+        // let sampleMessages = [ // REMOVED as it was unused
+        //     ChatMessage(text: "Hello Aella!", sender: .user),
+        //     ChatMessage(text: "Greetings, traveler. How may I assist you?", sender: .llm)
+        // ]
 
         return NavigationView {
             CharacterChatView(

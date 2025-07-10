@@ -226,21 +226,36 @@ struct CharacterEditView: View {
         isGeneratingCharacterImage = true
         characterImageGenerationError = nil
 
+        // Determine the model to use - defaulting to DALL-E 3
+        let modelToUse = ImageModelName.defaultOpenAI.rawValue // e.g., "dall-e-3"
+
+        print("[CharacterEditView] Attempting to generate image with prompt: '\(characterImageGeneratePrompt)', model: \(modelToUse)")
+
         do {
-            // Placeholder for actual image generation call
-            // let imageURL = try await campaignCreator.generateCharacterImage(characterId: characterToEdit.id, prompt: characterImageGeneratePrompt)
-            try await Task.sleep(nanoseconds: 2_000_000_000) // Simulate network request
-            let simulatedImageURL = "https://picsum.photos/seed/\(UUID().uuidString)/300/300" // Different size for character
+            let response = try await campaignCreator.generateImage(
+                prompt: characterImageGeneratePrompt,
+                modelName: modelToUse
+                // size and quality can be default or made configurable later
+                // associatedCampaignId is nil for character images here
+            )
 
-            imageURLsText.append(simulatedImageURL) // Add to the list
+            print("[CharacterEditView] Image generated successfully. Azure URL: \(response.imageUrl), Prompt used by backend: \(response.promptUsed)")
+            imageURLsText.append(response.imageUrl)
+            showingCharacterImageSheet = false // Dismiss sheet on success
 
-            showingCharacterImageSheet = false
-            // characterImageGeneratePrompt = "" // Keep prompt in case user wants to tweak and retry
-            print("Simulated character image generated and URL added.")
-
-        } catch { // Catches any error, including potential LLMError or APIError if those were real.
-            characterImageGenerationError = "An unexpected error occurred: \(error.localizedDescription)"
-            print("❌ Unexpected error during character image generation: \(error.localizedDescription)")
+        } catch let error as APIError {
+            let specificMessage = "API Error: \(error.localizedDescription)"
+            print("❌ [CharacterEditView] APIError during character image generation: \(specificMessage)")
+            characterImageGenerationError = specificMessage
+        } catch let error as LLMError { // LLMError might be thrown by generateImage if llmService is nil
+            let specificMessage = "LLM Service Error: \(error.localizedDescription)"
+            print("❌ [CharacterEditView] LLMError during character image generation: \(specificMessage)")
+            characterImageGenerationError = specificMessage
+        }
+        catch {
+            let specificMessage = "An unexpected error occurred: \(error.localizedDescription)"
+            print("❌ [CharacterEditView] Unexpected error during character image generation: \(specificMessage)")
+            characterImageGenerationError = specificMessage
         }
         isGeneratingCharacterImage = false
     }
