@@ -208,26 +208,86 @@ struct FullCharacterImageViewWrapper: View {
 
 struct CharacterMoodboardView_Previews: PreviewProvider {
     static var previews: some View {
-        let sampleURLs = [
-            "https://picsum.photos/seed/chara_mb1/200/300",
-            "https://picsum.photos/seed/chara_mb2/300/200",
-            "https://picsum.photos/seed/chara_mb3/250/250",
-            "https://picsum.photos/seed/chara_mb4/220/220",
-            "https://picsum.photos/seed/chara_mb5/280/210",
+        // Sample data for preview
+        let sampleImageURLs = [
+            "https://picsum.photos/seed/chara_mb_preview1/200/300",
+            "https://picsum.photos/seed/chara_mb_preview2/300/200",
+            "https://picsum.photos/seed/chara_mb_preview3/250/250",
         ]
-        let emptyURLs: [String] = []
+
+        let sampleCharacterWithImages = Character(
+            id: 101, // Using a distinct ID for preview character
+            name: "Preview Hero With Images",
+            imageURLs: sampleImageURLs,
+            createdAt: Date(),
+            modifiedAt: Date()
+        )
+
+        let sampleCharacterNoImages = Character(
+            id: 102,
+            name: "Preview Hero No Images",
+            imageURLs: [], // Empty array
+            createdAt: Date(),
+            modifiedAt: Date()
+        )
+
+        let sampleCharacterNilImages = Character(
+            id: 103,
+            name: "Preview Hero Nil Images",
+            imageURLs: nil, // Explicitly nil
+            createdAt: Date(),
+            modifiedAt: Date()
+        )
+
+        // Dummy CampaignCreator for preview
+        let previewCampaignCreator = CampaignCreator()
 
         Group {
             NavigationView {
-                 CharacterMoodboardView(imageURLs: sampleURLs, characterName: "Hero With Images"/*, onOrderSave: { urls in print("Preview save: \(urls)") }*/)
+                CharacterMoodboardView(
+                    campaignCreator: previewCampaignCreator,
+                    character: sampleCharacterWithImages,
+                    onCharacterUpdated: { updatedChar in
+                        print("Preview: Character updated - \(updatedChar.name)")
+                    }
+                )
             }
-            .previewDisplayName("With Images")
-            .environment(\.editMode, .constant(.active)) // Preview in edit mode
+            .previewDisplayName("With Images (Active Edit)")
+            .environment(\.editMode, .constant(.active)) // Start in active edit mode for easy testing
 
             NavigationView {
-                CharacterMoodboardView(imageURLs: emptyURLs, characterName: "Hero No Images")
+                CharacterMoodboardView(
+                    campaignCreator: previewCampaignCreator,
+                    character: sampleCharacterWithImages,
+                    onCharacterUpdated: { updatedChar in
+                        print("Preview: Character updated - \(updatedChar.name)")
+                    }
+                )
             }
-            .previewDisplayName("No Images")
+            .previewDisplayName("With Images (Inactive Edit)")
+            // .environment(\.editMode, .constant(.inactive)) // Default, not strictly needed to set
+
+            NavigationView {
+                CharacterMoodboardView(
+                    campaignCreator: previewCampaignCreator,
+                    character: sampleCharacterNoImages,
+                    onCharacterUpdated: { updatedChar in
+                        print("Preview: Character updated - \(updatedChar.name)")
+                    }
+                )
+            }
+            .previewDisplayName("No Images (Empty Array)")
+
+            NavigationView {
+                CharacterMoodboardView(
+                    campaignCreator: previewCampaignCreator,
+                    character: sampleCharacterNilImages,
+                    onCharacterUpdated: { updatedChar in
+                        print("Preview: Character updated - \(updatedChar.name)")
+                    }
+                )
+            }
+            .previewDisplayName("No Images (Nil Array)")
         }
     }
 }
