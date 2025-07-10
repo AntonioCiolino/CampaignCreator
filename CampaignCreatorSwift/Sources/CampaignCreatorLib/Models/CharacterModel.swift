@@ -58,10 +58,9 @@ public struct Character: Identifiable, Codable, Sendable {
         // If it were needed in the struct, it would be: case ownerId = "owner_id"
     }
 
-    }
-
     // Custom init(from: Decoder) is removed.
-    // Swift will synthesize Codable conformance using the explicit CodingKeys below.
+    // Swift will synthesize Codable conformance using the explicit CodingKeys defined in the Character struct.
+    // The CharacterStats struct also uses synthesized Codable conformance with its explicit CodingKeys.
 
     // Memberwise initializer - keep for non-Codable instantiation if needed, or for tests/previews
     public init(id: Int,

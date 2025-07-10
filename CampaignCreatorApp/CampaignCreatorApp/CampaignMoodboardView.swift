@@ -93,14 +93,15 @@ struct CampaignMoodboardView_Previews: PreviewProvider {
         let sampleCampaignWithImages = Campaign(
             id: 1,
             title: "Test Campaign",
+            sections: [], // sections comes before badgeImageURL
             badgeImageURL: "https://picsum.photos/seed/badge/200/200",
             thematicImageURL: "https://picsum.photos/seed/thematic/600/400",
             moodBoardImageURLs: [
                 "https://picsum.photos/seed/mb1/300/300",
                 "https://picsum.photos/seed/mb2/300/300",
                 "http://example.com/invalid.jpg"
-            ],
-            sections: []
+            ]
+            // other parameters will use their defaults
         )
 
         let sampleCampaignNoImages = Campaign(

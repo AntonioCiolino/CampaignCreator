@@ -1013,8 +1013,15 @@ struct CampaignDetailView: View {
                     } label: {
                         Label("Generate Section", systemImage: "sparkles")
                     }
-                    .disabled(isSaving || isGeneratingText) // Disable if already saving or generating
+                    .disabled(isSaving || isGeneratingText || campaignCreator.llmService == nil) // Disable if already saving, generating, or LLM not configured
                 }
+            }
+            if campaignCreator.llmService == nil {
+                Text("Note: AI Text Generation features require OpenAI API key configuration in settings.")
+                    .font(.caption)
+                    .foregroundColor(.orange)
+                    .padding(.horizontal)
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
         }
         .onChange(of: horizontalSizeClass) { newSizeClass in
@@ -1518,7 +1525,13 @@ struct CampaignDetailView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(generatePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGeneratingText)
+                .disabled(generatePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGeneratingText || campaignCreator.llmService == nil)
+            }
+            if campaignCreator.llmService == nil {
+                Text("OpenAI API key not configured in settings.")
+                    .font(.caption)
+                    .foregroundColor(.orange)
+                    .padding(.horizontal)
             }
             .padding()
             .navigationTitle("Generate Content").navigationBarTitleDisplayMode(.inline)

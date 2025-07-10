@@ -40,8 +40,12 @@ public class CampaignCreator: ObservableObjectProtocol {
         }
     }
     
-    private func setupLLMService() {
+    // Made public to allow re-attempting setup if keys change
+    public func setupLLMService() {
         print("[API_KEY_DEBUG CampaignCreator] setupLLMService: Attempting to setup LLMService.")
+        // Reset to nil first in case a previous configuration existed but is now invalid
+        // or to ensure a fresh attempt if keys were added.
+        self.llmService = nil
         do {
             self.llmService = try OpenAIClient()
             print("✅ [API_KEY_DEBUG CampaignCreator] setupLLMService: OpenAIClient initialized successfully. llmService is now set.")
