@@ -61,6 +61,7 @@ public struct ImageGenerationResponse: Codable, Sendable {
 
     // Custom init(from:) to handle decoding explicitly
     public init(from decoder: Decoder) throws {
+        print("[CUSTOM DECODER] ImageGenerationResponse init(from decoder:) called.")
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
         self.promptUsed = try container.decode(String.self, forKey: .promptUsed)
@@ -74,6 +75,7 @@ public struct ImageGenerationResponse: Codable, Sendable {
 
     // Update init to accept optional imageUrl
     public init(imageUrl: String?, promptUsed: String, modelUsed: ImageModelName, sizeUsed: String, qualityUsed: String? = nil, stepsUsed: Int? = nil, cfgScaleUsed: Double? = nil, geminiModelNameUsed: String? = nil) {
+        print("[MEMBERWISE INIT] ImageGenerationResponse init(imageUrl:...) called.")
         self.imageUrl = imageUrl
         self.promptUsed = promptUsed
         self.modelUsed = modelUsed
