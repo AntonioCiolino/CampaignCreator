@@ -84,9 +84,10 @@ struct CharacterImageManagerView: View {
                 if let newURL = response.imageUrl, !newURL.isEmpty {
                     if !imageURLs.contains(newURL) {
                         imageURLs.append(newURL)
+                        print("[CharacterImageManagerView] Added new image URL: \(newURL). Current count: \(imageURLs.count)")
                     } else {
                         // Optionally inform user that this exact URL was already present
-                        print("Generated image URL already exists in the list.")
+                        print("[CharacterImageManagerView] Generated image URL already exists in the list: \(newURL)")
                     }
                     imagePrompt = "" // Clear prompt on success
                 } else {

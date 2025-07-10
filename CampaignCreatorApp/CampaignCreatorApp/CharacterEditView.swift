@@ -244,6 +244,9 @@ struct CharacterEditView: View {
                 CharacterImageManagerView(imageURLs: $imageURLsText)
                     .environmentObject(campaignCreator.apiService) // Pass APIService to the sheet
             }
+            .onChange(of: imageURLsText) { newValue in
+                print("[CharacterEditView] imageURLsText changed. New value: \(newValue)")
+            }
         }
     }
 
@@ -324,14 +327,14 @@ struct CharacterEditView: View {
             updatedCharacter.exportFormatPreference = selectedExportFormat.rawValue
         }
 
+        print("[CharacterEditView saveCharacterChanges] Current imageURLsText before processing: \(imageURLsText)")
         let finalImageURLs = imageURLsText.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
         if finalImageURLs.isEmpty {
             updatedCharacter.imageURLs = nil
-            print("[CHAR_IMAGE_DEBUG CharacterEditView] saveCharacterChanges for char ID \(characterToEdit.id). Final imageURLs being set on updatedCharacter: nil (empty list)")
         } else {
             updatedCharacter.imageURLs = finalImageURLs
-            print("[CHAR_IMAGE_DEBUG CharacterEditView] saveCharacterChanges for char ID \(characterToEdit.id). Final imageURLs being set on updatedCharacter: \(finalImageURLs)")
         }
+        print("[CharacterEditView saveCharacterChanges] updatedCharacter.imageURLs set to: \(updatedCharacter.imageURLs ?? [])")
 
         // if updatedCharacter.imageURLs?.isEmpty ?? true { updatedCharacter.imageURLs = nil } // Old logic replaced
         // updatedCharacter.customSections = localCustomSections.filter { !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } // REMOVED
