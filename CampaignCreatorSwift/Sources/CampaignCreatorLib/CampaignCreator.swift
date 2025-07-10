@@ -268,9 +268,15 @@ public class CampaignCreator: ObservableObjectProtocol {
             quality: quality,
             campaignId: String(campaignId) // API expects string campaign_id
         )
-        return try await apiService.generateImage(payload: params)
+        let response = try await apiService.generateImage(payload: params)
+
+        guard let imageUrl = response.imageUrl, !imageUrl.isEmpty else {
+            print("❌ [CampaignCreator] Image generation for section response successful, but imageUrl is missing or empty. Prompt used: \(response.promptUsed)")
+            throw APIError.custom("Image generation for section response did not include a valid image URL.")
+        }
+        return response
     }
-    
+
     // New public method for generic image generation
     public func generateImage(
         prompt: String,

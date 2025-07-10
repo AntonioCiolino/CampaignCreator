@@ -48,12 +48,13 @@ struct CampaignMoodboardView: View {
                 LazyVGrid(columns: gridItemLayout, spacing: 2) {
                     ForEach(allImageURLs, id: \.self) { urlString in
                         let _ = print("[CampaignMoodboardView ForEach] Processing urlString for link: \(urlString)")
+                        let destinationURL = URL(string: urlString) // Convert to URL?
                         // NavigationLink to FullCharacterImageView (which is generic enough for any image URL)
-                        NavigationLink(destination: FullCharacterImageViewWrapper(urlString: urlString)
-                                        .navigationTitle("Image") // Set a generic title for the detail view
+                        NavigationLink(destination: FullCharacterImageViewWrapper(initialDisplayURL: destinationURL) // Pass URL?
+                                        .navigationTitle("Image Detail") // More specific title
                                         .navigationBarTitleDisplayMode(.inline)
                         ) {
-                            AsyncImage(url: URL(string: urlString)) { phase in
+                            AsyncImage(url: URL(string: urlString)) { phase in // Keep URL(string:) for AsyncImage source
                                 switch phase {
                                 case .empty:
                                     ProgressView()
