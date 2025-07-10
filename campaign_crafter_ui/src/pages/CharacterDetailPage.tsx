@@ -414,9 +414,9 @@ const CharacterDetailPage: React.FC = () => {
         setChatError(null); // Clear chat error as well
 
         const currentPrompt = llmUserPrompt; // Capture before clearing
-        setLlmUserPrompt(''); // Clear the input field immediately
+        // NOTE: setLlmUserPrompt('') is MOVED TILL AFTER generateCharacterResponse succeeds.
 
-        // Optimistic update for user message (will be replaced by fetchChatHistory)
+        // Optimistic update for user message
         const optimisticUserMessage: ChatMessage = {
             id: Date.now(), // Temporary ID for optimistic update
             character_id: character.id,
@@ -426,6 +426,7 @@ const CharacterDetailPage: React.FC = () => {
             user_avatar_url: currentUser?.avatar_url || undefined,
             character_avatar_url: character?.image_urls?.[0] || undefined,
         };
+        // 1. Optimistically add the user's message to the chatHistory state
         setChatHistory(prevHistory => [...prevHistory, optimisticUserMessage]);
 
         try {
@@ -436,18 +437,43 @@ const CharacterDetailPage: React.FC = () => {
                 payload.character_notes = character.notes_for_llm;
             }
 
+            // 2. Attempt to send the message via characterService.generateCharacterResponse
             await characterService.generateCharacterResponse(character.id, payload);
 
-            // After successful generation and saving on backend, refresh the chat history from DB
-            fetchChatHistory(); // This will include the user message and the new AI message with correct IDs/timestamps
-            // setLlmResponse(null); // This was removed as llmResponse state is no longer used
-        } catch (err: any) {
-            console.error("Failed to generate character response:", err);
-            const errorMessage = err.response?.data?.detail || "Failed to get response from character.";
-            setLlmError(errorMessage);
-            setChatError(errorMessage); // Also show error in chat panel context
-            // Revert optimistic update if backend call failed before history could be refreshed
-            setChatHistory(prev => prev.filter(msg => msg.id !== optimisticUserMessage.id));
+            // 3. If generateCharacterResponse is successful, clear llmUserPrompt
+            setLlmUserPrompt('');
+
+            // 4. Following that, explicitly call characterService.getChatHistory
+            // We are not using the wrapper `fetchChatHistory` here to have direct control over the state update logic.
+            const rawHistoryFromServer = await characterService.getChatHistory(parseInt(characterId!, 10));
+
+            // 5. If getChatHistory returns a non-empty array, process and update chatHistory state
+            if (rawHistoryFromServer && rawHistoryFromServer.length > 0) {
+                const processedHistory = rawHistoryFromServer.map(msg => ({
+                    ...msg,
+                    user_avatar_url: currentUser?.avatar_url || undefined,
+                    character_avatar_url: character?.image_urls?.[0] || undefined,
+                }));
+                setChatHistory(processedHistory);
+                // console.log("CharacterDetailPage: Chat history updated from server.");
+            } else if (rawHistoryFromServer && rawHistoryFromServer.length === 0) {
+                // 6. If getChatHistory returns an empty array (and the call was successful),
+                //    do not modify the chatHistory state, thereby preserving the optimistic user message.
+                console.log("CharacterDetailPage: Chat history from server is empty, optimistic message preserved.");
+            }
+            // If rawHistoryFromServer is null/undefined, it implies an error that should have been caught by the catch block.
+
+        } catch (error: any) {
+            // 7. If any part (generateCharacterResponse or getChatHistory) fails,
+            //    revert the optimistic message from chatHistory and handle error display.
+            console.error("CharacterDetailPage: Failed to generate character response or fetch/process history:", error);
+            const errorMessage = error.response?.data?.detail || error.message || "Failed to send message or update chat.";
+            setLlmError(errorMessage); // Error for the input area context
+            setChatError(errorMessage); // Error for the chat panel context
+
+            setChatHistory(prevHistory => prevHistory.filter(msg => msg.id !== optimisticUserMessage.id));
+            // Note: llmUserPrompt is not cleared if generateCharacterResponse failed.
+            // If generateCharacterResponse succeeded but getChatHistory failed, prompt was already cleared (step 3), which is acceptable.
         } finally {
             setIsGeneratingResponse(false);
         }
