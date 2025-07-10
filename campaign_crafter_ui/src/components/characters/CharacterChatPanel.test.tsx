@@ -1,7 +1,8 @@
 import React from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import CharacterChatPanel, { CharacterChatPanelProps, ChatMessage } from './CharacterChatPanel';
+import CharacterChatPanel, { CharacterChatPanelProps } from './CharacterChatPanel';
+import { ChatMessage } from '../../types/characterTypes'; // Import ChatMessage from the correct location
 
 // Mock the LoadingSpinner component as it's not relevant to these tests
 jest.mock('../common/LoadingSpinner', () => () => <div data-testid="loading-spinner">Loading...</div>);
@@ -18,9 +19,12 @@ const defaultProps: CharacterChatPanelProps = {
     setLlmUserPrompt: mockSetLlmUserPrompt,
     handleGenerateCharacterResponse: mockHandleGenerateCharacterResponse,
     isGeneratingResponse: false,
-    llmResponse: null, // Will be mostly ignored in favor of chatHistory
+    // llmResponse: null, // Removed as it's no longer a prop
     llmError: null,
     chatHistory: [],
+    characterImage: 'char.png', // Add new required/optional props
+    currentUserAvatar: 'user.png',
+    chatLoading: false,
 };
 
 describe('CharacterChatPanel', () => {
@@ -29,6 +33,16 @@ describe('CharacterChatPanel', () => {
         mockOnClose.mockClear();
         mockSetLlmUserPrompt.mockClear();
         mockHandleGenerateCharacterResponse.mockClear();
+    });
+
+    const getMockChatMessage = (id: number, sender: string, text: string): ChatMessage => ({
+        id,
+        character_id: 1, // Placeholder
+        sender,
+        text,
+        timestamp: new Date().toISOString(),
+        user_avatar_url: sender === 'user' ? defaultProps.currentUserAvatar : undefined,
+        character_avatar_url: sender !== 'user' ? defaultProps.characterImage : undefined,
     });
 
     test('renders nothing when isOpen is false', () => {
@@ -40,7 +54,8 @@ describe('CharacterChatPanel', () => {
         render(<CharacterChatPanel {...defaultProps} />);
         expect(screen.getByRole('dialog')).toBeInTheDocument();
         expect(screen.getByText(`Chat with ${defaultProps.characterName}`)).toBeInTheDocument();
-        expect(screen.getByPlaceholderText(`Ask ${defaultProps.characterName} anything...`)).toBeInTheDocument();
+        // Placeholder text now uses "Message CharacterName..."
+        expect(screen.getByPlaceholderText(`Message ${defaultProps.characterName}...`)).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Close chat panel' })).toBeInTheDocument();
     });
@@ -53,25 +68,37 @@ describe('CharacterChatPanel', () => {
 
     test('displays chat history correctly', () => {
         const chatHistory: ChatMessage[] = [
-            { speaker: 'user', text: 'Hello Gandalf!' },
-            { speaker: defaultProps.characterName, text: 'Hello Frodo!' },
-            { speaker: 'user', text: 'How are you?' },
+            getMockChatMessage(1, 'user', 'Hello Gandalf!'),
+            getMockChatMessage(2, defaultProps.characterName, 'Hello Frodo!'),
+            getMockChatMessage(3, 'user', 'How are you?'),
         ];
         render(<CharacterChatPanel {...defaultProps} chatHistory={chatHistory} />);
 
-        const messagesArea = screen.getByRole('generic', { name: /messages area/i }); // Assuming a label or find by testId if added
+        // The messages area is now identified by its content, not a specific role name
+        // We'll find messages and check their content and structure.
+        expect(screen.getByText('Hello Gandalf!')).toBeInTheDocument();
+        expect(screen.getByText('Hello Frodo!')).toBeInTheDocument();
+        expect(screen.getByText('How are you?')).toBeInTheDocument();
 
-        const userMessages = within(messagesArea).getAllByText(/Hello Gandalf!|How are you?/);
-        expect(userMessages.length).toBe(2);
-        userMessages.forEach(msgElement => {
-            expect(msgElement.closest('.chat-message')).toHaveClass('user-message');
-        });
+        // Check user message structure (example)
+        const helloGandalfMsg = screen.getByText('Hello Gandalf!');
+        const gandalfRow = helloGandalfMsg.closest('.chat-message-row');
+        expect(gandalfRow).toBeInTheDocument();
+        expect(gandalfRow).toHaveClass('user-message-row');
+        if (gandalfRow) { // Type guard
+            expect(within(gandalfRow as HTMLElement).getByRole('img', {name: 'user'})).toHaveAttribute('src', defaultProps.currentUserAvatar);
+        }
 
-        const aiMessage = within(messagesArea).getByText('Hello Frodo!');
-        expect(aiMessage).toBeInTheDocument();
-        expect(aiMessage.closest('.chat-message')).toHaveClass('ai-message');
-        // Check speaker name is rendered for AI message
-        expect(within(aiMessage.closest('.ai-message')!).getByText(`${defaultProps.characterName}:`)).toBeInTheDocument();
+
+        // Check AI message structure (example)
+        const helloFrodoMsg = screen.getByText('Hello Frodo!');
+        const frodoRow = helloFrodoMsg.closest('.chat-message-row');
+        expect(frodoRow).toBeInTheDocument();
+        expect(frodoRow).toHaveClass('ai-message-row');
+        if (frodoRow) { // Type guard
+            expect(within(frodoRow as HTMLElement).getByRole('img', {name: defaultProps.characterName})).toHaveAttribute('src', defaultProps.characterImage);
+            expect(within(frodoRow as HTMLElement).getByText(`${defaultProps.characterName}:`)).toBeInTheDocument();
+        }
     });
 
     test('updates llmUserPrompt on textarea change', async () => {
@@ -142,7 +169,7 @@ describe('CharacterChatPanel', () => {
     test('messages area has the correct ref for scrolling (conceptual)', () => {
         // This test is more about ensuring the structure for scrolling is in place.
         // Actual scroll behavior is hard to test in JSDOM.
-        render(<CharacterChatPanel {...defaultProps} chatHistory={[{ speaker: 'user', text: 'Test' }]} />);
+        render(<CharacterChatPanel {...defaultProps} chatHistory={[getMockChatMessage(100, 'user', 'Test')]} />);
         // The CharacterChatPanel component itself uses a ref internally.
         // We can't directly access that ref from outside without exposing it, which is not typical.
         // We trust that if messages are rendered, the useEffect for scrolling will attempt to work.

@@ -1,46 +1,56 @@
-import React, { useEffect, useRef } from 'react'; // Added useEffect, useRef
+import React, { useEffect, useRef } from 'react';
 import LoadingSpinner from '../common/LoadingSpinner';
+import { ChatMessage } from '../../types/characterTypes'; // Corrected path
 import './CharacterChatPanel.css';
 
-// Define ChatMessage interface
-export interface ChatMessage {
-    speaker: string; // 'user', or characterName for AI responses
-    text: string;
-}
+// ChatMessage interface is now imported from characterTypes
 
 export interface CharacterChatPanelProps {
     characterName: string;
+    characterImage?: string; // For character avatar
+    currentUserAvatar?: string; // For user avatar
     isOpen: boolean;
     onClose: () => void;
     llmUserPrompt: string;
     setLlmUserPrompt: (value: string) => void;
     handleGenerateCharacterResponse: () => Promise<void>;
     isGeneratingResponse: boolean;
-    llmResponse: string | null; // This will likely be removed or handled by parent adding to chatHistory
-    llmError: string | null;
-    chatHistory: Array<ChatMessage>; // Added chatHistory
-    // setChatHistory is managed by the parent component
+    llmError: string | null; // Combined error from parent
+    chatHistory: Array<ChatMessage>;
+    chatLoading: boolean; // For loading history
 }
+
+const DEFAULT_AVATAR = '/logo_placeholder.svg'; // A default placeholder
 
 const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
     characterName,
+    characterImage,
+    currentUserAvatar,
     isOpen,
     onClose,
     llmUserPrompt,
     setLlmUserPrompt,
     handleGenerateCharacterResponse,
     isGeneratingResponse,
-    llmResponse, // Keep for now, but ideally this becomes part of chatHistory via parent
     llmError,
-    chatHistory, // Added chatHistory
+    chatHistory,
+    chatLoading,
 }) => {
     const messagesContainerRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null); // Ref for textarea
 
     useEffect(() => {
         if (messagesContainerRef.current) {
             messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
         }
-    }, [chatHistory, isGeneratingResponse, llmError, llmResponse]); // Scroll on new messages or status changes
+    }, [chatHistory, isGeneratingResponse, llmError]);
+
+    // Focus textarea when panel opens
+    useEffect(() => {
+        if (isOpen && textareaRef.current) {
+            textareaRef.current.focus();
+        }
+    }, [isOpen]);
 
     if (!isOpen) {
         return null;
@@ -48,11 +58,25 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
 
     const panelTitle = `Chat with ${characterName}`;
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        // User's message is added to chatHistory by the parent component
-        // inside handleGenerateCharacterResponse or its wrapper.
+    const handleSubmit = (e?: React.FormEvent) => { // Make event optional for Enter key
+        if (e) e.preventDefault();
+        if (!llmUserPrompt.trim() || isGeneratingResponse) return;
         handleGenerateCharacterResponse();
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmit();
+        }
+    };
+
+    const getAvatar = (sender: string) => {
+        if (sender === 'user') {
+            return currentUserAvatar || DEFAULT_AVATAR;
+        }
+        // For LLM/character messages, use characterImage
+        return characterImage || DEFAULT_AVATAR;
     };
 
     return (
@@ -64,6 +88,7 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
         >
             <div className="character-chat-panel-content-wrapper">
                 <div className="character-chat-panel-header">
+                    <img src={characterImage || DEFAULT_AVATAR} alt={characterName} className="chat-header-avatar" />
                     <span id="character-chat-panel-title" className="character-chat-panel-title">
                         {panelTitle}
                     </span>
@@ -77,36 +102,50 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
                 </div>
 
                 <div className="character-chat-panel-messages-area" ref={messagesContainerRef}>
-                    {chatHistory.map((msg, index) => (
-                        <div
-                            key={index}
-                            className={`chat-message ${
-                                msg.speaker === 'user' ? 'user-message' : 'ai-message'
-                            }`}
-                        >
-                            {msg.speaker !== 'user' && (
-                                <strong>{msg.speaker}:</strong>
-                            )}
-                            <p style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</p>
-                        </div>
-                    ))}
-                    {/* Displaying llmResponse directly here is temporary if parent doesn't immediately add to history */}
-                    {/* This should ideally be handled by parent adding to chatHistory */}
-                    {/* {llmResponse && !chatHistory.find(msg => msg.text === llmResponse && msg.speaker === characterName) && (
-                        <div className="chat-message ai-message">
-                            <strong>{characterName}:</strong>
-                            <p style={{ whiteSpace: 'pre-wrap' }}>{llmResponse}</p>
-                        </div>
-                    )} */}
-                    {isGeneratingResponse && (
+                    {chatLoading && (
                         <div className="chat-loading-indicator">
                             <LoadingSpinner />
-                            <p>{characterName} is thinking...</p>
+                            <p>Loading history...</p>
                         </div>
                     )}
-                     {llmError && (
-                        <div className="chat-message error-message">
-                            <p>Error: {llmError}</p>
+                    {!chatLoading && chatHistory.map((msg) => (
+                        <div
+                            key={msg.id} // Use message ID as key
+                            className={`chat-message-row ${
+                                msg.sender === 'user' ? 'user-message-row' : 'ai-message-row'
+                            }`}
+                        >
+                            <img
+                                src={getAvatar(msg.sender)}
+                                alt={msg.sender}
+                                className="chat-avatar"
+                            />
+                            <div className={`chat-message-bubble ${msg.sender === 'user' ? 'user-message-bubble' : 'ai-message-bubble'}`}>
+                                {msg.sender !== 'user' && (
+                                    <strong className="message-sender-name">{msg.sender}:</strong>
+                                )}
+                                <p className="message-text">{msg.text}</p>
+                                <span className="message-timestamp">
+                                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            </div>
+                        </div>
+                    ))}
+                    {isGeneratingResponse && !chatLoading && ( // Only show "thinking" if not loading history
+                        <div className="chat-loading-indicator">
+                             <img src={characterImage || DEFAULT_AVATAR} alt="loading" className="chat-avatar" />
+                            <div className="chat-message-bubble ai-message-bubble">
+                                <LoadingSpinner size="sm" />
+                                <span className="message-text-italic"> {characterName} is thinking...</span>
+                            </div>
+                        </div>
+                    )}
+                     {llmError && !isGeneratingResponse && ( // Only show error if not currently generating
+                        <div className="chat-message-row error-message-row">
+                             <img src={getAvatar('system')} alt="error" className="chat-avatar" />
+                             <div className="chat-message-bubble error-bubble">
+                                <p>Error: {llmError}</p>
+                             </div>
                         </div>
                     )}
                 </div>
@@ -114,20 +153,22 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
                 <div className="character-chat-panel-input-area">
                     <form onSubmit={handleSubmit} className="chat-input-form">
                         <textarea
+                            ref={textareaRef} // Assign ref
                             id="llmUserChatPrompt"
                             className="form-control chat-textarea"
-                            rows={3}
+                            rows={2} // Adjusted default rows
                             value={llmUserPrompt}
                             onChange={(e) => setLlmUserPrompt(e.target.value)}
-                            placeholder={`Ask ${characterName} anything...`}
-                            disabled={isGeneratingResponse}
+                            onKeyDown={handleKeyDown} // Added Enter key handler
+                            placeholder={`Message ${characterName}...`}
+                            disabled={isGeneratingResponse || chatLoading}
                         />
                         <button
                             type="submit"
                             className="btn btn-primary btn-sm send-chat-button"
-                            disabled={isGeneratingResponse || !llmUserPrompt.trim()}
+                            disabled={isGeneratingResponse || chatLoading || !llmUserPrompt.trim()}
                         >
-                            {isGeneratingResponse ? <LoadingSpinner /> : 'Send'}
+                            {isGeneratingResponse ? <LoadingSpinner size="sm" inline={true} /> : 'Send'}
                         </button>
                     </form>
                 </div>

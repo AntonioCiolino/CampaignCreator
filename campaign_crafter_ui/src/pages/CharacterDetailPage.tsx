@@ -2,10 +2,11 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import * as characterService from '../services/characterService';
 // Corrected import: CharacterImageGenerationRequest and CharacterUpdate from characterTypes
-import { Character, CharacterStats, CharacterImageGenerationRequest, CharacterUpdate } from '../types/characterTypes';
+// Also importing the new ChatMessage type from characterTypes
+import { Character, CharacterStats, CharacterImageGenerationRequest, CharacterUpdate, ChatMessage } from '../types/characterTypes';
 import * as campaignService from '../services/campaignService';
 import { Campaign } from '../types/campaignTypes';
-import { ChatMessage as CharacterChatMessage } from '../components/characters/CharacterChatPanel'; // Import ChatMessage type
+// Removed CharacterChatMessage import from CharacterChatPanel, will use ChatMessage from characterTypes
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ImagePreviewModal from '../components/modals/ImagePreviewModal';
 import AlertMessage from '../components/common/AlertMessage';
@@ -29,6 +30,7 @@ import {
   rectSortingStrategy, // Or verticalListSortingStrategy if preferred for single column
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useAuth } from '../contexts/AuthContext'; // Import useAuth
 import './CharacterDetailPage.css';
 
 const DEFAULT_PLACEHOLDER_IMAGE = '/logo_placeholder.svg';
@@ -87,6 +89,7 @@ const SortableCharacterImage: React.FC<SortableCharacterImageProps> = ({ id, url
 const CharacterDetailPage: React.FC = () => {
     const { characterId } = useParams<{ characterId: string }>();
     const navigate = useNavigate();
+    const { user: currentUser } = useAuth(); // Get current user from AuthContext
 
     const [character, setCharacter] = useState<Character | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
@@ -103,7 +106,7 @@ const CharacterDetailPage: React.FC = () => {
 
     // LLM Interaction state
     const [llmUserPrompt, setLlmUserPrompt] = useState<string>('');
-    const [llmResponse, setLlmResponse] = useState<string | null>(null);
+    // const [llmResponse, setLlmResponse] = useState<string | null>(null); // No longer used directly
     const [isGeneratingResponse, setIsGeneratingResponse] = useState<boolean>(false);
     const [llmError, setLlmError] = useState<string | null>(null);
 
@@ -124,8 +127,9 @@ const CharacterDetailPage: React.FC = () => {
 
     // Character Chat Panel State
     const [isChatPanelOpen, setIsChatPanelOpen] = useState<boolean>(false);
-
-    const [chatHistory, setChatHistory] = useState<Array<CharacterChatMessage>>([]);
+    const [chatHistory, setChatHistory] = useState<Array<ChatMessage>>([]); // Use new ChatMessage type
+    const [chatLoading, setChatLoading] = useState<boolean>(false);
+    const [chatError, setChatError] = useState<string | null>(null);
 
     // State for LLM Notes visibility
     const [showLlmNotes, setShowLlmNotes] = useState<boolean>(false); // Default to collapsed
@@ -233,6 +237,34 @@ const CharacterDetailPage: React.FC = () => {
     useEffect(() => {
         fetchCharacterAndCampaignData();
     }, [fetchCharacterAndCampaignData]);
+
+    const fetchChatHistory = useCallback(async () => {
+        if (!characterId) return;
+        setChatLoading(true);
+        setChatError(null);
+        try {
+            const id = parseInt(characterId, 10);
+            const history = await characterService.getChatHistory(id);
+            // Enrich messages with avatar URLs for display
+            setChatHistory(history.map(msg => ({
+                ...msg,
+                user_avatar_url: currentUser?.avatar_url || undefined, // Use current user's avatar
+                character_avatar_url: character?.image_urls?.[0] || undefined // Use character's first image
+            })));
+        } catch (err: any) {
+            console.error("Failed to fetch chat history:", err);
+            setChatError(err.response?.data?.detail || "Failed to load chat history.");
+        } finally {
+            setChatLoading(false);
+        }
+    }, [characterId, currentUser, character]); // Added currentUser and character as dependencies
+
+    useEffect(() => {
+        if (isChatPanelOpen && characterId) {
+            fetchChatHistory();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isChatPanelOpen, characterId]); // fetchChatHistory is not added here to avoid re-fetching on avatar/image changes if user/char objects update
 
 
     const handleLinkCampaign = async () => {
@@ -379,42 +411,44 @@ const CharacterDetailPage: React.FC = () => {
         }
         setIsGeneratingResponse(true);
         setLlmError(null);
-        // setLlmResponse(null); // Clear previous direct response, new one will come via history
-
-        const userMessage: CharacterChatMessage = { speaker: 'user', text: llmUserPrompt };
-        // Optimistically update UI with user's message
-        // Create a snapshot of history *before* this user message for the API call
-        const historyForApi = [...chatHistory];
-        setChatHistory(prevHistory => [...prevHistory, userMessage]);
+        setChatError(null); // Clear chat error as well
 
         const currentPrompt = llmUserPrompt; // Capture before clearing
         setLlmUserPrompt(''); // Clear the input field immediately
 
-        try {
-            // Send the history *before* the current user message for context,
-            // and the current user message as the new prompt.
-            // The backend is expected to handle the prompt and the history separately.
-            // The `historyForApi` is what the character is responding *to*, considering `currentPrompt` as the newest thing.
-            // However, the backend was updated to expect chat_history to include the latest user message.
-            // So, we send `chatHistory` including the just-added user message.
-            const updatedHistoryForApi = [...historyForApi, userMessage];
+        // Optimistic update for user message (will be replaced by fetchChatHistory)
+        const optimisticUserMessage: ChatMessage = {
+            id: Date.now(), // Temporary ID for optimistic update
+            character_id: character.id,
+            text: currentPrompt,
+            sender: 'user',
+            timestamp: new Date().toISOString(),
+            user_avatar_url: currentUser?.avatar_url || undefined,
+            character_avatar_url: character?.image_urls?.[0] || undefined,
+        };
+        setChatHistory(prev => [...prev, optimisticUserMessage]);
 
-            const response = await characterService.generateCharacterResponse(character.id, {
-                prompt: currentPrompt, // Still send the current prompt explicitly
-                chat_history: updatedHistoryForApi.map(msg => ({ // Ensure plain objects if service expects that
-                    speaker: msg.speaker,
-                    text: msg.text,
-                })),
+        try {
+            // The backend's /generate-response endpoint now handles saving user and AI messages
+            // and uses history from DB. We just send the prompt.
+            // The `chat_history` in LLMGenerationRequest is optional and can be omitted
+            // if backend primarily relies on its DB fetched history.
+            // For this call, we are concerned with the *new* prompt.
+            await characterService.generateCharacterResponse(character.id, {
+                prompt: currentPrompt,
+                // chat_history: [], // Can be empty as backend fetches recent from DB
             });
 
-            const aiMessage: CharacterChatMessage = { speaker: character.name, text: response.text };
-            setChatHistory(prevHistory => [...prevHistory, aiMessage]);
-            setLlmResponse(null); // Ensure any old direct llmResponse is cleared
+            // After successful generation and saving on backend, refresh the chat history from DB
+            fetchChatHistory(); // This will include the user message and the new AI message with correct IDs/timestamps
+            // setLlmResponse(null); // This was removed as llmResponse state is no longer used
         } catch (err: any) {
             console.error("Failed to generate character response:", err);
-            setLlmError(err.response?.data?.detail || "Failed to get response from character.");
-            // Optional: If user message failed to send, remove it from history
-            // setChatHistory(prevHistory => prevHistory.slice(0, -1));
+            const errorMessage = err.response?.data?.detail || "Failed to get response from character.";
+            setLlmError(errorMessage);
+            setChatError(errorMessage); // Also show error in chat panel context
+            // Revert optimistic update if backend call failed before history could be refreshed
+            setChatHistory(prev => prev.filter(msg => msg.id !== optimisticUserMessage.id));
         } finally {
             setIsGeneratingResponse(false);
         }
@@ -800,15 +834,17 @@ const CharacterDetailPage: React.FC = () => {
             {character && (
                 <CharacterChatPanel
                     characterName={character.name}
+                    characterImage={character.image_urls?.[0] || DEFAULT_PLACEHOLDER_IMAGE} // Pass first image as avatar
+                    currentUserAvatar={currentUser?.avatar_url || DEFAULT_PLACEHOLDER_IMAGE} // Pass current user's avatar
                     isOpen={isChatPanelOpen}
                     onClose={() => setIsChatPanelOpen(false)}
                     llmUserPrompt={llmUserPrompt}
                     setLlmUserPrompt={setLlmUserPrompt}
                     handleGenerateCharacterResponse={handleGenerateCharacterResponse}
                     isGeneratingResponse={isGeneratingResponse}
-                    llmResponse={llmResponse} // This could be removed if panel solely relies on chatHistory
-                    llmError={llmError}
-                    chatHistory={chatHistory} // Pass the chat history
+                    llmError={llmError || chatError} // Combine errors for display in panel
+                    chatHistory={chatHistory}
+                    chatLoading={chatLoading} // Pass chat loading state
                 />
             )}
         </div>

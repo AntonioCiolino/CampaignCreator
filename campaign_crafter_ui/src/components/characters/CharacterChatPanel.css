@@ -185,3 +185,156 @@
     --primary-color-border: #d0e7ff;
     --primary-color-dark: #004085;
 }
+
+/* New Avatar and Message Row Styles */
+.chat-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0; /* Prevent avatar from shrinking */
+}
+
+.chat-header-avatar {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.chat-message-row {
+  display: flex;
+  align-items: flex-end; /* Aligns avatar with bottom of message bubble */
+  margin-bottom: 10px; /* Replaces gap on messages-area for row-level spacing */
+  max-width: 95%; /* Prevent row from taking full width if bubble is small */
+}
+
+.user-message-row {
+  justify-content: flex-end;
+  align-self: flex-end; /* Make the whole row align to the right */
+}
+
+.ai-message-row {
+  justify-content: flex-start;
+  align-self: flex-start; /* Make the whole row align to the left */
+}
+
+.chat-message-bubble {
+  padding: 8px 12px;
+  border-radius: 15px;
+  max-width: 85%; /* Max width relative to the row */
+  display: flex;
+  flex-direction: column;
+  word-wrap: break-word; /* Ensure long words break */
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.user-message-row .chat-message-bubble {
+  order: 1; /* Bubble first */
+  margin-right: 8px;
+  background-color: var(--primary-color, #007bff); /* Use primary theme color */
+  color: white;
+}
+.user-message-row .chat-avatar {
+  order: 2; /* Avatar second */
+}
+
+.ai-message-row .chat-message-bubble {
+  order: 2; /* Bubble second */
+  margin-left: 8px;
+  background-color: var(--surface-color-secondary, #e9ecef); /* A light grey, or other theme variable */
+  color: var(--text-color, #212529);
+}
+.ai-message-row .chat-avatar {
+  order: 1; /* Avatar first */
+}
+
+.message-sender-name {
+  font-weight: bold;
+  font-size: 0.8em;
+  margin-bottom: 2px;
+  color: var(--text-color-muted, #555);
+}
+.user-message-row .message-sender-name { /* User doesn't usually show their own name in their bubble */
+  display: none;
+}
+
+.message-text {
+  margin: 0;
+  white-space: pre-wrap; /* Respect newlines in messages */
+  font-size: 0.95rem;
+}
+.message-text-italic { /* For "Character is thinking..." */
+    font-style: italic;
+    color: var(--text-color-muted, #6c757d);
+}
+
+.message-timestamp {
+  font-size: 0.7em;
+  color: var(--text-color-placeholder, #999); /* Muted color for timestamp */
+  align-self: flex-end; /* Timestamp to the bottom-right of the bubble */
+  margin-top: 4px;
+}
+.user-message-row .message-timestamp {
+    color: var(--text-color-inverted-muted, #f0f0f0); /* Lighter timestamp for dark user bubble */
+}
+
+/* Adjustments to existing styles that might conflict or need refinement */
+.character-chat-panel-messages-area {
+    gap: 0; /* Remove gap as margin-bottom on rows will handle it */
+}
+
+.chat-message { /* This class was previously on the bubble itself, now it's on the row or can be removed if not needed */
+    /* padding: 0.5rem 0.75rem; */ /* Moved to bubble */
+    /* border-radius: var(--border-radius-md, 0.4rem); */ /* Moved to bubble */
+    /* max-width: 85%; */ /* Moved to bubble or row */
+    /* word-wrap: break-word; */ /* Moved to bubble */
+}
+
+.chat-message.ai-message {
+    /* background-color: var(--primary-color-light, #e7f3ff); */ /* Moved to bubble */
+    /* border: 1px solid var(--primary-color-border, #d0e7ff); */ /* Moved to bubble */
+    /* align-self: flex-start; */ /* Now on ai-message-row */
+    /* color: var(--primary-color-dark, #004085); */ /* Moved to bubble */
+}
+.chat-message.ai-message strong { /* Replaced by message-sender-name */
+   /* display: block; */
+   /* font-size: 0.8em; */
+   /* color: var(--primary-color, #0056b3); */
+   /* margin-bottom: 0.25rem; */
+}
+.chat-message.ai-message p { /* Replaced by message-text */
+    /* margin: 0; */
+    /* font-size: 0.95rem; */
+}
+
+.chat-message.user-message {
+    /* background-color: var(--user-message-bg-color, #f0f0f0); */ /* Moved to bubble */
+    /* border: 1px solid var(--user-message-border-color, #e0e0e0); */ /* Moved to bubble */
+    /* align-self: flex-end; */ /* Now on user-message-row */
+    /* color: var(--user-message-text-color, #212529); */ /* Moved to bubble */
+}
+.chat-message.user-message p { /* Replaced by message-text */
+    /* margin: 0; */
+    /* font-size: 0.95rem; */
+}
+
+.chat-loading-indicator .chat-message-bubble { /* Ensure thinking indicator bubble also has some styling */
+    padding: 8px 12px;
+    border-radius: 15px;
+    background-color: var(--surface-color-secondary, #e9ecef);
+    color: var(--text-color, #212529);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.chat-message-row.error-message-row .chat-message-bubble.error-bubble {
+    background-color: var(--danger-color-light, #f8d7da);
+    color: var(--danger-color-dark, #721c24);
+    border: 1px solid var(--danger-color, #f5c6cb);
+}
+.chat-message-row.error-message-row .chat-message-bubble.error-bubble p {
+    margin:0;
+}

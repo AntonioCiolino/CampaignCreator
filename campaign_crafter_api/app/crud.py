@@ -894,3 +894,49 @@ async def generate_character_aspect_text(
         print(f"Unexpected error during character aspect generation: {e}")
         # Consider logging traceback: import traceback; traceback.print_exc()
         raise Exception(f"Failed to generate character aspect: {str(e)}") # To be caught by API endpoint
+
+
+# --- ChatMessage CRUD Functions ---
+
+def create_chat_message(db: Session, character_id: int, message: models.ChatMessageCreate, sender_identifier: str) -> orm_models.ChatMessage:
+    """
+    Creates a new chat message for a given character.
+    The 'sender' in ChatMessageCreate might be nuanced (e.g. "user" from client, "llm" from system).
+    The sender_identifier could be the actual character name if LLM is speaking as character, or "user".
+    For now, let's assume message.sender clearly indicates "user" or the name of the LLM/character.
+    """
+    db_message = orm_models.ChatMessage(
+        character_id=character_id,
+        text=message.text,
+        sender=message.sender # Use the sender from the input model directly
+        # timestamp is server_default
+    )
+    db.add(db_message)
+    db.commit()
+    db.refresh(db_message)
+    return db_message
+
+def get_chat_messages_for_character(db: Session, character_id: int, skip: int = 0, limit: int = 100) -> List[orm_models.ChatMessage]:
+    """
+    Retrieves chat messages for a specific character, ordered by timestamp.
+    """
+    return (
+        db.query(orm_models.ChatMessage)
+        .filter(orm_models.ChatMessage.character_id == character_id)
+        .order_by(orm_models.ChatMessage.timestamp.asc()) # Oldest first
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+def get_recent_chat_messages_for_character(db: Session, character_id: int, limit: int = 10) -> List[orm_models.ChatMessage]:
+    """
+    Retrieves the most recent chat messages for a specific character.
+    """
+    return (
+        db.query(orm_models.ChatMessage)
+        .filter(orm_models.ChatMessage.character_id == character_id)
+        .order_by(orm_models.ChatMessage.timestamp.desc()) # Newest first
+        .limit(limit)
+        .all()[::-1] # Reverse to get them in chronological order for the prompt
+    )

@@ -103,6 +103,39 @@ export const generateCharacterResponse = async (
     return response.data;
 };
 
+// --- Chat Message Service Functions ---
+
+// Assuming ChatMessage and ChatMessageCreate types will be defined in characterTypes.ts
+// If not, they need to be imported from their actual location or defined here.
+import { ChatMessage, ChatMessageCreate } from '../types/characterTypes'; // Ensure these are added to types
+
+/**
+ * Saves a chat message for a character.
+ * @param characterId The ID of the character.
+ * @param message The chat message payload.
+ * @returns The saved chat message.
+ */
+export const saveChatMessage = async (characterId: number, message: ChatMessageCreate): Promise<ChatMessage> => {
+  const response = await apiClient.post<ChatMessage>(`${CHARACTER_API_URL}/${characterId}/chat`, message);
+  return response.data;
+};
+
+/**
+ * Fetches the chat history for a character.
+ * @param characterId The ID of the character.
+ * @param skip Optional number of messages to skip (for pagination).
+ * @param limit Optional limit on the number of messages to retrieve.
+ * @returns A list of chat messages.
+ */
+export const getChatHistory = async (characterId: number, skip?: number, limit?: number): Promise<ChatMessage[]> => {
+  const params: Record<string, number> = {};
+  if (skip !== undefined) params.skip = skip;
+  if (limit !== undefined) params.limit = limit;
+
+  const response = await apiClient.get<ChatMessage[]>(`${CHARACTER_API_URL}/${characterId}/chat`, { params });
+  return response.data;
+};
+
 /**
  * Generates text for a specific aspect of a character (e.g., description, appearance).
  */
