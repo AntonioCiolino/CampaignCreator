@@ -1,4 +1,5 @@
 import Foundation
+import Combine // Import Combine for ObservableObject
 
 // Error enum for API related issues
 public enum APIError: Error, LocalizedError, Sendable, Equatable { // Added Equatable
@@ -233,9 +234,12 @@ public final class UserDefaultsTokenManager: TokenManaging {
 }
 
 
-public final class APIService: Sendable {
+public final class APIService: ObservableObject, Sendable { // Added ObservableObject conformance
     private let baseURLString = "https://campaigncreator-api.onrender.com/api/v1"
     private let tokenManager: TokenManaging
+    // @Published properties are not strictly necessary for this service if its state doesn't change
+    // or if UI doesn't need to react to its internal state changes directly.
+    // However, if token changes should refresh UI, tokenManager could be @Published or methods could publish.
     private let jsonDecoder: JSONDecoder
     private let jsonEncoder: JSONEncoder
 
