@@ -258,7 +258,7 @@ public class CampaignCreator: ObservableObjectProtocol {
         return updatedSection // Return the directly updated section for immediate UI feedback if possible.
     }
 
-    public func generateImageForSection(prompt: String, campaignId: Int, model: ImageModelName = ImageModelName.defaultOpenAI, size: String? = "1024x1024", quality: String? = "standard") async throws -> ImageGenerationResponse {
+    public func generateImageForSection(prompt: String, campaignId: Int, model: ImageModelName = .defaultOpenAI, size: String? = "1024x1024", quality: String? = "standard") async throws -> ImageGenerationResponse {
         guard isAuthenticated else { throw APIError.notAuthenticated }
 
         let params = ImageGenerationParams(
