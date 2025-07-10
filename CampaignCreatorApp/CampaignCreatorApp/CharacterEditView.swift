@@ -47,6 +47,10 @@ struct CharacterEditView: View {
     // State for custom sections // REMOVED
     // @State private var localCustomSections: [CustomSection]
 
+    // State for collapsible sections
+    @State private var isDescriptionExpanded: Bool = true // Default to expanded
+    @State private var isAppearanceExpanded: Bool = true // Default to expanded
+
     @State private var isSaving: Bool = false
     @State private var showErrorAlert: Bool = false
     @State private var errorMessage: String = ""
@@ -59,10 +63,10 @@ struct CharacterEditView: View {
     enum AspectField { case description, appearance }
 
     // New states for character image generation sheet
-    @State private var showingCharacterImageSheet = false
-    @State private var characterImageGeneratePrompt = ""
-    @State private var characterImageGenerationError: String?
-    @State private var isGeneratingCharacterImage = false
+    // @State private var showingCharacterImageSheet = false // REMOVED - Old AI Gen UI
+    // @State private var characterImageGeneratePrompt = "" // REMOVED - Old AI Gen UI
+    // @State private var characterImageGenerationError: String? // REMOVED - Old AI Gen UI
+    // @State private var isGeneratingCharacterImage = false // REMOVED - Old AI Gen UI
 
 
     @Environment(\.dismiss) var dismiss
@@ -102,33 +106,6 @@ struct CharacterEditView: View {
                     TextField("Name*", text: $name)
                 }
 
-                Section(header: Text("Narrative Details")) {
-                    generateableTextField(title: "Description", text: $descriptionText, fieldType: .description)
-                    generateableTextField(title: "Appearance", text: $appearanceDescriptionText, fieldType: .appearance)
-                }
-
-                Section(header: Text("Character Images")) {
-                    Button(action: {
-                        showingImageManager = true
-                    }) {
-                        Label("Manage Image URLs", systemImage: "photo.on.rectangle.angled")
-                    }
-                    // Display a count of current images
-                    Text("\(imageURLsText.count) image URL(s) associated.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-
-                    Button(action: {
-                        // Reset prompt and error before showing sheet
-                        characterImageGeneratePrompt = "\(name) - \(appearanceDescriptionText)" // Pre-fill prompt
-                        characterImageGenerationError = nil
-                        showingCharacterImageSheet = true
-                    }) {
-                        Label("Generate Character Image (AI)", systemImage: "photo.on.rectangle.angled")
-                    }
-                    .disabled(isGeneratingAspect || isGeneratingCharacterImage)
-                }
-
                 Section(header: Text("Statistics (Optional)")) {
                     StatEditableRow(label: "Strength", valueString: $statsStrength)
                     StatEditableRow(label: "Dexterity", valueString: $statsDexterity)
@@ -136,6 +113,90 @@ struct CharacterEditView: View {
                     StatEditableRow(label: "Intelligence", valueString: $statsIntelligence)
                     StatEditableRow(label: "Wisdom", valueString: $statsWisdom)
                     StatEditableRow(label: "Charisma", valueString: $statsCharisma)
+                }
+
+                Section(header: Text("Narrative Details")) {
+                    DisclosureGroup("Description", isExpanded: $isDescriptionExpanded) {
+                        VStack(alignment: .leading) {
+                            TextEditor(text: $descriptionText)
+                                .frame(height: 100)
+                                .overlay(formElementOverlay())
+                            Button(action: { Task { await generateAspect(forField: .description) } }) {
+                                Label("Generate Description", systemImage: "sparkles")
+                            }
+                            .buttonStyle(.borderless)
+                            .disabled(isGeneratingAspect || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !campaignCreator.isLLMServiceAvailable)
+                            if !campaignCreator.isLLMServiceAvailable {
+                                Text("OpenAI API key not configured for generation.")
+                                    .font(.caption)
+                                    .foregroundColor(.orange)
+                            }
+                        }
+                    }
+
+                    DisclosureGroup("Appearance", isExpanded: $isAppearanceExpanded) {
+                        VStack(alignment: .leading) {
+                            TextEditor(text: $appearanceDescriptionText)
+                                .frame(height: 100)
+                                .overlay(formElementOverlay())
+                            Button(action: { Task { await generateAspect(forField: .appearance) } }) {
+                                Label("Generate Appearance", systemImage: "sparkles")
+                            }
+                            .buttonStyle(.borderless)
+                            .disabled(isGeneratingAspect || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !campaignCreator.isLLMServiceAvailable)
+                            if !campaignCreator.isLLMServiceAvailable {
+                                Text("OpenAI API key not configured for generation.")
+                                    .font(.caption)
+                                    .foregroundColor(.orange)
+                            }
+                        }
+                    }
+                }
+
+                Section(header: Text("Character Images")) {
+                    if imageURLsText.isEmpty {
+                        Text("No images. Manage images to add or generate new ones.")
+                            .foregroundColor(.secondary)
+                            .padding(.vertical)
+                    } else {
+                        TabView {
+                            ForEach(imageURLsText, id: \.self) { urlString in
+                                if let url = URL(string: urlString) {
+                                    AsyncImage(url: url) { phase in
+                                        switch phase {
+                                        case .empty:
+                                            ProgressView()
+                                        case .success(let image):
+                                            image.resizable()
+                                                .aspectRatio(contentMode: .fit)
+                                        case .failure:
+                                            Image(systemName: "photo.fill")
+                                                .foregroundColor(.gray)
+                                                .overlay(Text("Error").font(.caption).foregroundColor(.red))
+                                        @unknown default:
+                                            EmptyView()
+                                        }
+                                    }
+                                    .frame(height: 200) // Define a reasonable height for the carousel items
+                                    .clipped()
+                                } else {
+                                    Image(systemName: "photo.fill")
+                                        .foregroundColor(.gray)
+                                        .overlay(Text("Invalid URL").font(.caption).foregroundColor(.red))
+                                        .frame(height: 200)
+                                }
+                            }
+                        }
+                        .tabViewStyle(PageTabViewStyle())
+                        .frame(height: 220) // Adjust height to accommodate PageTabViewStyle indicators
+                        // .listRowInsets(EdgeInsets()) // Use if section spacing is an issue
+                    }
+
+                    Button(action: {
+                        showingImageManager = true
+                    }) {
+                        Label("Manage Images", systemImage: "photo.on.rectangle.angled")
+                    }
                 }
 
                 Section(header: Text("Additional Information")) {
@@ -177,111 +238,18 @@ struct CharacterEditView: View {
             .alert("Error Updating Character", isPresented: $showErrorAlert) {
                 Button("OK") { }
             } message: { Text(errorMessage) }
-            .disabled(isSaving || isGeneratingAspect || isGeneratingCharacterImage)
-            .sheet(isPresented: $showingCharacterImageSheet) {
-                characterImageGenerateSheet
-            }
+            .disabled(isSaving || isGeneratingAspect) // Removed isGeneratingCharacterImage
+            // .sheet for old AI image generation - REMOVED
             .sheet(isPresented: $showingImageManager) {
                 CharacterImageManagerView(imageURLs: $imageURLsText)
+                    .environmentObject(campaignCreator.apiService) // Pass APIService to the sheet
             }
         }
     }
 
-    // MARK: - Character Image Generation Sheet
-    private var characterImageGenerateSheet: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                Text("AI Character Image Generation").font(.headline)
-                Text("Describe the character image you'd like to generate. Initial prompt based on name and appearance.")
-                    .font(.subheadline).foregroundColor(.secondary)
-                TextEditor(text: $characterImageGeneratePrompt)
-                    .frame(height: 150).padding(8)
-                    .background(Color(.systemGroupedBackground)).cornerRadius(8)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+    // MARK: - Character Image Generation Sheet and performCharacterImageGeneration() - REMOVED
 
-                if let error = characterImageGenerationError { Text(error).foregroundColor(.red).font(.caption) }
-                Spacer()
-                Button(action: { Task { await performCharacterImageGeneration() } }) {
-                    HStack {
-                        if isGeneratingCharacterImage { ProgressView().progressViewStyle(.circular).tint(.white) }
-                        Text(isGeneratingCharacterImage ? "Generating..." : "Generate Image")
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(characterImageGeneratePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGeneratingCharacterImage || isGeneratingAspect)
-            }
-            .padding()
-            .navigationTitle("Generate Character Image").navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { showingCharacterImageSheet = false }
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
-    }
-
-    private func performCharacterImageGeneration() async {
-        guard !characterImageGeneratePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        isGeneratingCharacterImage = true
-        characterImageGenerationError = nil
-
-        // Determine the model to use - defaulting to DALL-E 3
-        let modelToUse = ImageModelName.defaultOpenAI.rawValue // e.g., "dall-e-3"
-
-        print("[CharacterEditView] Attempting to generate image with prompt: '\(characterImageGeneratePrompt)', model: \(modelToUse)")
-
-        do {
-            let response = try await campaignCreator.generateImage(
-                prompt: characterImageGeneratePrompt,
-                modelName: modelToUse
-                // size and quality can be default or made configurable later
-                // associatedCampaignId is nil for character images here
-            )
-
-            print("[CharacterEditView] Image generated successfully. Azure URL: \(response.imageUrl), Prompt used by backend: \(response.promptUsed)")
-            imageURLsText.append(response.imageUrl!)
-            showingCharacterImageSheet = false // Dismiss sheet on success
-
-        } catch let error as APIError {
-            let specificMessage = "API Error: \(error.localizedDescription)"
-            print("❌ [CharacterEditView] APIError during character image generation: \(specificMessage)")
-            characterImageGenerationError = specificMessage
-        } catch let error as LLMError { // LLMError might be thrown by generateImage if llmService is nil
-            let specificMessage = "LLM Service Error: \(error.localizedDescription)"
-            print("❌ [CharacterEditView] LLMError during character image generation: \(specificMessage)")
-            characterImageGenerationError = specificMessage
-        }
-        catch {
-            let specificMessage = "An unexpected error occurred: \(error.localizedDescription)"
-            print("❌ [CharacterEditView] Unexpected error during character image generation: \(specificMessage)")
-            characterImageGenerationError = specificMessage
-        }
-        isGeneratingCharacterImage = false
-    }
-
-
-    @ViewBuilder
-    private func generateableTextField(title: String, text: Binding<String>, fieldType: AspectField) -> some View {
-        VStack(alignment: .leading) {
-            HStack {
-                Text(title).font(.caption).foregroundColor(.gray)
-                Spacer()
-                Button(action: { Task { await generateAspect(forField: fieldType)} }) {
-                    Label("Generate", systemImage: "sparkles")
-                }
-                .buttonStyle(.borderless)
-                .disabled(isGeneratingAspect || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !campaignCreator.isLLMServiceAvailable)
-            }
-            if !campaignCreator.isLLMServiceAvailable {
-                Text("OpenAI API key not configured in settings.")
-                    .font(.caption)
-                    .foregroundColor(.orange)
-            }
-            TextEditor(text: text).frame(height: 100)
-                .overlay(formElementOverlay())
-        }
-    }
+    // generateableTextField has been removed as its functionality is now inline with DisclosureGroups.
 
     private func formElementOverlay() -> some View {
         RoundedRectangle(cornerRadius: 5).stroke(Color.gray.opacity(0.5), lineWidth: 1)
