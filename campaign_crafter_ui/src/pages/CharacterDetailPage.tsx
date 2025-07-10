@@ -834,9 +834,6 @@ const CharacterDetailPage: React.FC = () => {
             {character && (
                 <CharacterChatPanel
                     characterName={character.name}
-                    isOpen={isChatPanelOpen}
-                    onClose={() => setIsChatPanelOpen(false)}
-                    characterName={character.name} // Already passing this
                     characterImage={character.image_urls?.[0] || DEFAULT_PLACEHOLDER_IMAGE} // Pass first image as avatar
                     currentUserAvatar={currentUser?.avatar_url || DEFAULT_PLACEHOLDER_IMAGE} // Pass current user's avatar
                     isOpen={isChatPanelOpen}

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import LoadingSpinner from '../common/LoadingSpinner';
-import { ChatMessage } from '../../../types/characterTypes'; // Adjusted path
+import { ChatMessage } from '../../types/characterTypes'; // Corrected path
 import './CharacterChatPanel.css';
 
 // ChatMessage interface is now imported from characterTypes
@@ -168,7 +168,7 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
                             className="btn btn-primary btn-sm send-chat-button"
                             disabled={isGeneratingResponse || chatLoading || !llmUserPrompt.trim()}
                         >
-                            {isGeneratingResponse ? <LoadingSpinner size="sm" /> : 'Send'}
+                            {isGeneratingResponse ? <LoadingSpinner size="sm" inline={true} /> : 'Send'}
                         </button>
                     </form>
                 </div>

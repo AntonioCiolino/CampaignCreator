@@ -1,7 +1,8 @@
 import React from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import CharacterChatPanel, { CharacterChatPanelProps, ChatMessage } from './CharacterChatPanel';
+import CharacterChatPanel, { CharacterChatPanelProps } from './CharacterChatPanel';
+import { ChatMessage } from '../../types/characterTypes'; // Import ChatMessage from the correct location
 
 // Mock the LoadingSpinner component as it's not relevant to these tests
 jest.mock('../common/LoadingSpinner', () => () => <div data-testid="loading-spinner">Loading...</div>);
@@ -18,9 +19,12 @@ const defaultProps: CharacterChatPanelProps = {
     setLlmUserPrompt: mockSetLlmUserPrompt,
     handleGenerateCharacterResponse: mockHandleGenerateCharacterResponse,
     isGeneratingResponse: false,
-    llmResponse: null, // Will be mostly ignored in favor of chatHistory
+    // llmResponse: null, // Removed as it's no longer a prop
     llmError: null,
     chatHistory: [],
+    characterImage: 'char.png', // Add new required/optional props
+    currentUserAvatar: 'user.png',
+    chatLoading: false,
 };
 
 describe('CharacterChatPanel', () => {

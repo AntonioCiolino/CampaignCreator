@@ -565,15 +565,110 @@ async def generate_character_llm_response_with_history( # Renamed for clarity
 @router.post("/{character_id}/generate-image", response_model=models.Character)
 async def generate_character_image_endpoint(
     character_id: int,
-    using an LLM.
+    request_body: models.CharacterImageGenerationRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)],
+    img_gen_service: Annotated[crud.ImageGenerationService, Depends(crud.ImageGenerationService)]
+):
     """
-    # Fetch the ORM user model as crud.generate_character_aspect_text expects it
-    # to potentially access API keys via relationships or direct attributes on the ORM model.
+    Generates an image for a character based on their appearance description
+    and optional additional details. Adds the image URL to the character's image_urls list.
+    """
+    db_character = crud.get_character(db=db, character_id=character_id)
+    if db_character is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
+    if db_character.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to generate images for this character")
+
+    base_prompt = f"Character: {db_character.name}."
+    if db_character.appearance_description:
+        base_prompt += f" Appearance: {db_character.appearance_description}."
+    else:
+        base_prompt += " A typical fantasy character."
+
+    if request_body.additional_prompt_details:
+        base_prompt += f" Additional details: {request_body.additional_prompt_details}."
+
+    if "digital art" not in base_prompt.lower() and "photo" not in base_prompt.lower() and "illustration" not in base_prompt.lower():
+        base_prompt += " Style: detailed digital illustration."
+
+    image_url: Optional[str] = None
+    model_to_use = request_body.model_name or "dall-e"
+
+    try:
+        if model_to_use == "dall-e":
+            image_url = await img_gen_service.generate_image_dalle(
+                prompt=base_prompt,
+                db=db,
+                current_user=current_user,
+                size=request_body.size,
+                quality=request_body.quality,
+                user_id=current_user.id,
+            )
+        elif model_to_use == "stable-diffusion":
+            user_orm = crud.get_user(db, current_user.id)
+            # This line had settings.STABLE_DIFFUSION_DEFAULT_ENGINE, which is not defined here.
+            # Assuming a default or that it's handled by the service if not set.
+            # For now, I'll remove direct reference to settings from here.
+            # The service itself should have a default.
+            sd_engine_to_use = user_orm.sd_engine_preference if user_orm and user_orm.sd_engine_preference else None
+
+            image_url = await img_gen_service.generate_image_stable_diffusion(
+                prompt=base_prompt,
+                db=db,
+                current_user=current_user,
+                size=request_body.size,
+                steps=request_body.steps,
+                cfg_scale=request_body.cfg_scale,
+                user_id=current_user.id,
+                sd_engine_id=sd_engine_to_use
+            )
+        elif model_to_use == "gemini":
+             image_url = await img_gen_service.generate_image_gemini(
+                prompt=base_prompt,
+                db=db,
+                current_user=current_user,
+                size=request_body.size,
+                model=request_body.gemini_model_name,
+                user_id=current_user.id
+            )
+        else:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unsupported image generation model: {model_to_use}")
+
+        if not image_url:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Image generation succeeded but no URL was returned.")
+
+        updated_image_urls = list(db_character.image_urls) if db_character.image_urls else []
+        if image_url not in updated_image_urls:
+            updated_image_urls.append(image_url)
+
+        character_update_payload = models.CharacterUpdate(image_urls=updated_image_urls)
+        updated_db_character = crud.update_character(
+            db=db,
+            character_id=character_id,
+            character_update=character_update_payload
+        )
+        if not updated_db_character:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update character with new image URL.")
+        return updated_db_character
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"Unexpected error during character image generation: {type(e).__name__} - {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred while generating the character image.")
+
+@router.post("/generate-aspect", response_model=models.CharacterAspectGenerationResponse)
+async def generate_character_aspect(
+    request: models.CharacterAspectGenerationRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+):
+    """
+    Generates text for a specific aspect of a character (e.g., description, appearance)
+"""
     current_user_orm = crud.get_user(db, user_id=current_user.id)
     if not current_user_orm:
-        # This should ideally not happen if current_user (Pydantic model) is valid
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User not found or not authorized.")
-
     try:
         generated_text = await crud.generate_character_aspect_text(
             db=db,
@@ -584,7 +679,135 @@ async def generate_character_image_endpoint(
     except crud.LLMServiceUnavailableError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except Exception as e:
-        # Log the full error for debugging on the server
-        # import traceback; traceback.print_exc(); # Consider for detailed logging
         print(f"API Error in /generate-aspect: {type(e).__name__} - {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate character aspect: {str(e)}")
+
+
+# --- Character Chat Endpoints ---
+
+@router.post("/{character_id}/chat", response_model=models.ChatMessage)
+def create_character_chat_message(
+    character_id: int,
+    message_in: models.ChatMessageCreate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+):
+    """
+    Saves a chat message for a character.
+    The sender in `message_in` should be "user" or the name of the character/LLM.
+    """
+    db_character = crud.get_character(db=db, character_id=character_id)
+    if db_character is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
+    if db_character.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to chat with this character")
+
+    created_message = crud.create_chat_message(
+        db=db,
+        character_id=character_id,
+        message=message_in,
+        sender_identifier=message_in.sender
+    )
+    return created_message
+
+
+@router.get("/{character_id}/chat", response_model=List[models.ChatMessage])
+def get_character_chat_history(
+    character_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)],
+    skip: int = 0,
+    limit: int = 1000
+):
+    """
+    Retrieves the chat history for a specific character.
+    """
+    db_character = crud.get_character(db=db, character_id=character_id)
+    if db_character is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
+    if db_character.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to view this chat history")
+
+    messages = crud.get_chat_messages_for_character(db=db, character_id=character_id, skip=skip, limit=limit)
+    return messages
+
+
+@router.post("/{character_id}/generate-response", response_model=models.LLMTextGenerationResponse)
+async def generate_character_llm_response_with_history(
+    character_id: int,
+    request_body: models.LLMGenerationRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+):
+    """
+    Generates a text response from the character, saves the user's prompt and the LLM's response
+    to the chat history, and uses recent history for context.
+    """
+    db_character = crud.get_character(db=db, character_id=character_id)
+    if db_character is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
+    if db_character.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to generate responses for this character")
+
+    if not request_body.prompt:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Prompt cannot be empty.")
+
+    user_message_create = models.ChatMessageCreate(text=request_body.prompt, sender="user")
+    crud.create_chat_message(db=db, character_id=character_id, message=user_message_create, sender_identifier="user")
+
+    recent_history_orm = crud.get_recent_chat_messages_for_character(db=db, character_id=character_id, limit=10)
+    chat_history_for_llm = [
+        models.ChatMessage(
+            id=msg.id,
+            character_id=msg.character_id,
+            text=msg.text,
+            sender=msg.sender,
+            timestamp=msg.timestamp
+        ) for msg in recent_history_orm
+    ]
+
+    provider_name_from_request: Optional[str] = None
+    model_specific_id_from_request: Optional[str] = None
+    if request_body.model_id_with_prefix and "/" in request_body.model_id_with_prefix:
+        provider_name_from_request, model_specific_id_from_request = request_body.model_id_with_prefix.split("/",1)
+    elif request_body.model_id_with_prefix:
+        model_specific_id_from_request = request_body.model_id_with_prefix
+
+    try:
+        orm_user = crud.get_user(db, current_user.id)
+        if not orm_user:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not retrieve user data for LLM service.")
+
+        llm_service = crud.get_llm_service(
+            db=db,
+            current_user_orm=orm_user,
+            provider_name=provider_name_from_request,
+            model_id_with_prefix=request_body.model_id_with_prefix,
+        )
+
+        generated_text = await llm_service.generate_character_response(
+            character_name=db_character.name,
+            character_notes=db_character.notes_for_llm or "",
+            user_prompt=request_body.prompt,
+            chat_history=chat_history_for_llm,
+            current_user=current_user,
+            db=db,
+            model=model_specific_id_from_request,
+            temperature=request_body.temperature,
+            max_tokens=request_body.max_tokens
+        )
+
+        llm_response_message_create = models.ChatMessageCreate(text=generated_text, sender=db_character.name)
+        crud.create_chat_message(db=db, character_id=character_id, message=llm_response_message_create, sender_identifier=db_character.name)
+
+        return models.LLMTextGenerationResponse(text=generated_text)
+
+    except crud.LLMServiceUnavailableError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
+    except crud.LLMGenerationError as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        print(f"Unexpected error during character response generation: {type(e).__name__} - {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred while generating the character response.")
