@@ -898,18 +898,16 @@ async def generate_character_aspect_text(
 
 # --- ChatMessage CRUD Functions ---
 
-def create_chat_message(db: Session, character_id: int, message: models.ChatMessageCreate, sender_identifier: str) -> orm_models.ChatMessage:
+def create_chat_message(db: Session, character_id: int, message: models.ChatMessageCreate) -> orm_models.ChatMessage:
     """
     Creates a new chat message for a given character.
-    The 'sender' in ChatMessageCreate might be nuanced (e.g. "user" from client, "llm" from system).
-    The sender_identifier could be the actual character name if LLM is speaking as character, or "user".
-    For now, let's assume message.sender clearly indicates "user" or the name of the LLM/character.
+    The 'sender' field in the 'message' (models.ChatMessageCreate) object is used.
     """
     db_message = orm_models.ChatMessage(
         character_id=character_id,
         text=message.text,
-        sender=message.sender # Use the sender from the input model directly
-        # timestamp is server_default
+        sender=message.sender # Use the sender from the input Pydantic model
+        # timestamp is server_default by the database
     )
     db.add(db_message)
     db.commit()

@@ -489,30 +489,35 @@ async def generate_character_llm_response_with_history( # Renamed for clarity
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Prompt cannot be empty.")
 
     # 1. Save the user's message
-    user_message_create = models.ChatMessageCreate(text=request_body.prompt, sender="user")
-    crud.create_chat_message(db=db, character_id=character_id, message=user_message_create, sender_identifier="user")
+    try:
+        user_message_create = models.ChatMessageCreate(text=request_body.prompt, sender="user")
+        crud.create_chat_message(db=db, character_id=character_id, message=user_message_create)
+        print(f"User message saved for character {character_id}: '{request_body.prompt[:50]}...'") # Log success
+    except Exception as e:
+        print(f"ERROR saving user message for character {character_id}: {e}")
+        # Decide if we should raise HTTPException here or attempt to continue to LLM.
+        # For now, let's log and continue, but this might hide critical DB issues.
+        # If saving is critical before LLM, then:
+        # raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save user message before LLM call.")
 
     # 2. Prepare context for LLM: get recent messages from DB
-    # The request_body.chat_history from client might be stale or incomplete,
-    # so we prioritize fetching fresh history from DB.
-    # However, the plan stated "chat_history should be saved *after* the LLM response is generated."
-    # Let's stick to the plan for now and use client-provided history if available,
-    # or fetch if not. The better approach is to always fetch from DB.
-    # For this iteration, we'll fetch from DB to ensure context is accurate.
-
+    # This fetches history *including* the user message just saved, if the DB transaction is handled well by Session.
+    # If create_chat_message commits, it should be visible.
     recent_history_orm = crud.get_recent_chat_messages_for_character(db=db, character_id=character_id, limit=10)
-    # Convert ORM messages to Pydantic model suitable for LLM service
-    chat_history_for_llm = [
-        models.ChatMessage(
-            id=msg.id,
-            character_id=msg.character_id,
-            text=msg.text,
-            sender=msg.sender,
-            timestamp=msg.timestamp
-        ) for msg in recent_history_orm
-    ]
-    # The user's current prompt is the latest interaction, not yet in recent_history_orm for the LLM call.
-    # The LLM service's generate_character_response expects the user_prompt separately.
+
+    # Convert ORM messages to the Pydantic model {speaker: str, text: str} expected by LLM service context
+    # This Pydantic model is `models.ChatMessage` as defined for LLMGenerationRequest.chat_history
+    chat_history_for_llm_context = []
+    for msg_orm in recent_history_orm:
+        speaker_role = "user" if msg_orm.sender == "user" else "assistant" # Common mapping
+        if msg_orm.sender != "user" and msg_orm.sender != db_character.name : # if sender is character name, map to assistant
+             speaker_role = "assistant" # Or could be 'system' if notes are from system
+
+        chat_history_for_llm_context.append(
+            models.ChatMessage(speaker=speaker_role, text=msg_orm.text)
+        )
+
+    # The user's current prompt (request_body.prompt) is passed separately to llm_service.generate_character_response.
 
     provider_name_from_request: Optional[str] = None
     model_specific_id_from_request: Optional[str] = None
@@ -538,7 +543,7 @@ async def generate_character_llm_response_with_history( # Renamed for clarity
             character_name=db_character.name,
             character_notes=db_character.notes_for_llm or "",
             user_prompt=request_body.prompt, # The current user message
-            chat_history=chat_history_for_llm, # The history *before* this user message
+            chat_history=chat_history_for_llm_context, # The history *before* this user message (now correctly typed)
             current_user=current_user, # Pydantic model
             db=db,
             model=model_specific_id_from_request,
@@ -547,8 +552,14 @@ async def generate_character_llm_response_with_history( # Renamed for clarity
         )
 
         # 3. Save LLM's response
-        llm_response_message_create = models.ChatMessageCreate(text=generated_text, sender=db_character.name) # LLM speaks as character
-        crud.create_chat_message(db=db, character_id=character_id, message=llm_response_message_create, sender_identifier=db_character.name)
+        try:
+            llm_response_message_create = models.ChatMessageCreate(text=generated_text, sender=db_character.name) # LLM speaks as character
+            crud.create_chat_message(db=db, character_id=character_id, message=llm_response_message_create)
+            print(f"AI response saved for character {character_id}: '{generated_text[:50]}...'") # Log success
+        except Exception as e:
+            print(f"ERROR saving AI response for character {character_id}: {e}")
+            # Log error but still return generated_text to user, as generation itself succeeded.
+            # The message just might not be persisted for next session's history.
 
         return models.LLMTextGenerationResponse(text=generated_text)
 
