@@ -13,6 +13,9 @@
 		3D92BBEC2B8C8A8F00B8E8E8 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3D92BBEB2B8C8A8F00B8E8E8 /* Preview Assets.xcassets */; };
 		3D92BBF42B8C8B0200B8E8E8 /* CampaignCreatorLib in Frameworks */ = {isa = PBXBuildFile; productRef = 3D92BBF32B8C8B0200B8E8E8 /* CampaignCreatorLib */; };
 		3D92BBFA2B8C8D4C00B8E8E8 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D92BBF92B8C8D4C00B8E8E8 /* SettingsView.swift */; };
+		9414ACC62E203A08005C0B17 /* CharacterMoodboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9414ACC52E203A08005C0B17 /* CharacterMoodboardView.swift */; };
+		9414ACC72E203A08005C0B17 /* CampaignMoodboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9414ACC32E203A08005C0B17 /* CampaignMoodboardView.swift */; };
+		9414ACC82E203A08005C0B17 /* CharacterImageManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9414ACC42E203A08005C0B17 /* CharacterImageManagerView.swift */; };
 		943031802E1C8B1000F3C129 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9430317E2E1C8B1000F3C129 /* KeychainHelper.swift */; };
 		943031812E1C8B1000F3C129 /* Binding+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9430317A2E1C8B1000F3C129 /* Binding+Helpers.swift */; };
 		943031822E1C8B1000F3C129 /* CampaignThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9430317B2E1C8B1000F3C129 /* CampaignThemeManager.swift */; };
@@ -42,6 +45,9 @@
 		3D92BBE82B8C8A8F00B8E8E8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3D92BBEB2B8C8A8F00B8E8E8 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		3D92BBF92B8C8D4C00B8E8E8 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		9414ACC32E203A08005C0B17 /* CampaignMoodboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignMoodboardView.swift; sourceTree = "<group>"; };
+		9414ACC42E203A08005C0B17 /* CharacterImageManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterImageManagerView.swift; sourceTree = "<group>"; };
+		9414ACC52E203A08005C0B17 /* CharacterMoodboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterMoodboardView.swift; sourceTree = "<group>"; };
 		9430317A2E1C8B1000F3C129 /* Binding+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Binding+Helpers.swift"; sourceTree = "<group>"; };
 		9430317B2E1C8B1000F3C129 /* CampaignThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignThemeManager.swift; sourceTree = "<group>"; };
 		9430317C2E1C8B1000F3C129 /* CustomTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomTextView.swift; sourceTree = "<group>"; };
@@ -95,6 +101,9 @@
 		3D92BBE32B8C8A8E00B8E8E8 /* CampaignCreatorApp */ = {
 			isa = PBXGroup;
 			children = (
+				9414ACC32E203A08005C0B17 /* CampaignMoodboardView.swift */,
+				9414ACC42E203A08005C0B17 /* CharacterImageManagerView.swift */,
+				9414ACC52E203A08005C0B17 /* CharacterMoodboardView.swift */,
 				943A91FE2E1EC4C40081BA3A /* CampaignConceptEditorView.swift */,
 				943A91FF2E1EC4C40081BA3A /* CampaignHeaderView.swift */,
 				943A92002E1EC4C40081BA3A /* CampaignLLMSettingsView.swift */,
@@ -214,6 +223,9 @@
 				949269E92E1AC11300376F0A /* CharacterCreateView.swift in Sources */,
 				949269EA2E1AC11300376F0A /* CampaignListView.swift in Sources */,
 				949269EC2E1AC11300376F0A /* CharacterListView.swift in Sources */,
+				9414ACC62E203A08005C0B17 /* CharacterMoodboardView.swift in Sources */,
+				9414ACC72E203A08005C0B17 /* CampaignMoodboardView.swift in Sources */,
+				9414ACC82E203A08005C0B17 /* CharacterImageManagerView.swift in Sources */,
 				943031BB2E1DCAFF00F3C129 /* CampaignDetailView.swift in Sources */,
 				949269ED2E1AC11300376F0A /* CharacterDetailView.swift in Sources */,
 				949269EE2E1AC11300376F0A /* LoginView.swift in Sources */,

@@ -240,7 +240,7 @@ struct CharacterEditView: View {
             )
 
             print("[CharacterEditView] Image generated successfully. Azure URL: \(response.imageUrl), Prompt used by backend: \(response.promptUsed)")
-            imageURLsText.append(response.imageUrl)
+            imageURLsText.append(response.imageUrl!)
             showingCharacterImageSheet = false // Dismiss sheet on success
 
         } catch let error as APIError {
