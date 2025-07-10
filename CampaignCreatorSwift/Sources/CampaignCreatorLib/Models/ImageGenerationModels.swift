@@ -40,7 +40,7 @@ public struct ImageGenerationParams: Codable, Sendable {
 
 public struct ImageGenerationResponse: Codable, Sendable {
     public let imageUrl: String? // Changed to optional
-    public let promptUsed: String
+    public let promptUsed: String? // Temporarily changed to String? for diagnosis
     public let modelUsed: ImageModelName
     public let sizeUsed: String
     public let qualityUsed: String?
@@ -50,7 +50,7 @@ public struct ImageGenerationResponse: Codable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case imageUrl = "image_url"
-        case promptUsed = "prompt_used"
+        case promptUsed = "prompt_used" // This mapping is correct
         case modelUsed = "model_used"
         case sizeUsed = "size_used"
         case qualityUsed = "quality_used"
@@ -59,8 +59,8 @@ public struct ImageGenerationResponse: Codable, Sendable {
         case geminiModelNameUsed = "gemini_model_name_used"
     }
 
-    // Update init to accept optional imageUrl
-    public init(imageUrl: String?, promptUsed: String, modelUsed: ImageModelName, sizeUsed: String, qualityUsed: String? = nil, stepsUsed: Int? = nil, cfgScaleUsed: Double? = nil, geminiModelNameUsed: String? = nil) {
+    // Update init to accept optional imageUrl and promptUsed (for diagnosis)
+    public init(imageUrl: String?, promptUsed: String?, modelUsed: ImageModelName, sizeUsed: String, qualityUsed: String? = nil, stepsUsed: Int? = nil, cfgScaleUsed: Double? = nil, geminiModelNameUsed: String? = nil) {
         self.imageUrl = imageUrl
         self.promptUsed = promptUsed
         self.modelUsed = modelUsed
