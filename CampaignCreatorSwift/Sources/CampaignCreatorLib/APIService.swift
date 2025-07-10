@@ -363,21 +363,22 @@ public final class APIService: Sendable {
 
                 let decodedObject: T
                 if T.self == Character.self || T.self == [Character].self {
-                    print("[APIService DECODE-STRATEGY] Using LOCAL JSONDecoder for Character type (\(String(describing: T.self))).")
+                    print("[APIService DECODE-STRATEGY] Using LOCAL JSONDecoder for Character type (\(String(describing: T.self))) WITHOUT .convertFromSnakeCase strategy.")
                     let localCharacterDecoder = JSONDecoder()
                     localCharacterDecoder.dateDecodingStrategy = .iso8601
-                    localCharacterDecoder.keyDecodingStrategy = .convertFromSnakeCase // Match shared decoder config
-                    // Pass rawData via userInfo for detailed debugging in CharacterModel
-                    let rawDataUserInfoKey = CodingUserInfoKey(rawValue: "rawData")!
-                    localCharacterDecoder.userInfo[rawDataUserInfoKey] = data
+                    // DO NOT SET localCharacterDecoder.keyDecodingStrategy = .convertFromSnakeCase
+                    // Rely entirely on CharacterModel's explicit CodingKeys.
+                    // No longer passing rawData in userInfo as CharacterModel's custom init is removed.
                     decodedObject = try localCharacterDecoder.decode(T.self, from: data)
                 } else {
-                    // print("[APIService DECODE-STRATEGY] Using SHARED JSONDecoder for type \(String(describing: T.self)).") // Optional: log for non-character types
-                    // Pass rawData via userInfo for other types too, if they adopt similar debugging
-                    let rawDataUserInfoKey = CodingUserInfoKey(rawValue: "rawData")!
-                    self.jsonDecoder.userInfo[rawDataUserInfoKey] = data // Modify the shared decoder's userInfo
+                    // print("[APIService DECODE-STRATEGY] Using SHARED JSONDecoder for type \(String(describing: T.self)).")
+                    // For non-Character types, continue using the shared decoder with its existing config (including .convertFromSnakeCase and any userInfo).
+                    // If other types also had custom inits needing rawData, that userInfo logic would be here.
+                    // For now, assuming only CharacterModel had that specific debugging, so userInfo for shared decoder is not set here unless needed by other types.
+                    // If CharacterModel was the ONLY type needing special userInfo, then the userInfo logic for the shared decoder can also be simplified/removed.
+                    // Let's remove it for now for the shared decoder path as well, to simplify. If other types need it, it can be added back specifically for them.
+                    // self.jsonDecoder.userInfo.removeValue(forKey: CodingUserInfoKey(rawValue: "rawData")!) // Clean up if it was set
                     decodedObject = try self.jsonDecoder.decode(T.self, from: data)
-                    self.jsonDecoder.userInfo.removeValue(forKey: rawDataUserInfoKey) // Clean up userInfo
                 }
 
                 // Log specific fields if it's a Character or [Character]
