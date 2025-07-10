@@ -40,8 +40,8 @@ public struct ImageGenerationParams: Codable, Sendable {
 
 public struct ImageGenerationResponse: Codable, Sendable {
     public let imageUrl: String? // Changed to optional
-    public let promptUsed: String? // Temporarily changed to String? for diagnosis
-    public let modelUsed: ImageModelName? // Temporarily changed to ImageModelName? for diagnosis
+    public let promptUsed: String // Reverted to non-optional
+    public let modelUsed: ImageModelName // Reverted to non-optional
     public let sizeUsed: String
     public let qualityUsed: String?
     public let stepsUsed: Int?
@@ -59,8 +59,8 @@ public struct ImageGenerationResponse: Codable, Sendable {
         case geminiModelNameUsed = "gemini_model_name_used"
     }
 
-    // Update init to accept optional imageUrl, promptUsed, and modelUsed (for diagnosis)
-    public init(imageUrl: String?, promptUsed: String?, modelUsed: ImageModelName?, sizeUsed: String, qualityUsed: String? = nil, stepsUsed: Int? = nil, cfgScaleUsed: Double? = nil, geminiModelNameUsed: String? = nil) {
+    // Update init to reflect non-optional promptUsed and modelUsed
+    public init(imageUrl: String?, promptUsed: String, modelUsed: ImageModelName, sizeUsed: String, qualityUsed: String? = nil, stepsUsed: Int? = nil, cfgScaleUsed: Double? = nil, geminiModelNameUsed: String? = nil) {
         self.imageUrl = imageUrl
         self.promptUsed = promptUsed
         self.modelUsed = modelUsed
