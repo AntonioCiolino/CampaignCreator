@@ -93,7 +93,9 @@ struct CharacterMoodboardView: View {
 
         var body: some View {
             if isEditing {
-                cellContent // Just the content, no button, to allow drag
+                cellContent
+                    .frame(maxWidth: .infinity, idealHeight: 120) // Ensure a consistent frame for drag
+                    .contentShape(Rectangle()) // Make the whole area draggable
             } else {
                 Button(action: action) {
                     cellContent
