@@ -2,8 +2,10 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import * as characterService from '../services/characterService';
 // Corrected import: CharacterImageGenerationRequest and CharacterUpdate from characterTypes
-// Also importing the new ChatMessage type and LLMChatGenerationRequest from characterTypes
-import { Character, CharacterStats, CharacterImageGenerationRequest, CharacterUpdate, ChatMessage, LLMChatGenerationRequest } from '../types/characterTypes';
+// Also importing the new ChatMessage type. LLMChatGenerationRequest might be removed or adapted.
+import { Character, CharacterStats, CharacterImageGenerationRequest, CharacterUpdate, ChatMessage } from '../types/characterTypes';
+// Importing LLMTextGenerationParams for constructing the request payload
+import { LLMTextGenerationParams } from '../services/llmService';
 import * as campaignService from '../services/campaignService';
 import { Campaign } from '../types/campaignTypes';
 // Removed CharacterChatMessage import from CharacterChatPanel, will use ChatMessage from characterTypes
@@ -413,67 +415,73 @@ const CharacterDetailPage: React.FC = () => {
         setLlmError(null);
         setChatError(null); // Clear chat error as well
 
-        const currentPrompt = llmUserPrompt; // Capture before clearing
-        // NOTE: setLlmUserPrompt('') is MOVED TILL AFTER generateCharacterResponse succeeds.
+        const userMessageText = llmUserPrompt; // Capture before clearing
 
-        // Optimistic update for user message
+        // 1. Optimistically add the user's message to the chatHistory state
         const optimisticUserMessage: ChatMessage = {
             id: Date.now(), // Temporary ID for optimistic update
             character_id: character.id,
-            text: currentPrompt,
-            sender: 'user',
+            text: userMessageText,
+            sender: 'user', // Assuming 'user' is the sender string expected by ChatMessage
             timestamp: new Date().toISOString(),
             user_avatar_url: currentUser?.avatar_url || undefined,
             character_avatar_url: character?.image_urls?.[0] || undefined,
         };
-        // 1. Optimistically add the user's message to the chatHistory state
         setChatHistory(prevHistory => [...prevHistory, optimisticUserMessage]);
 
+        // Prepare the prompt for the LLM, potentially including character notes
+        let finalPrompt = userMessageText;
+        if (character.notes_for_llm && character.notes_for_llm.trim() !== "") {
+            // Simple prepending of notes. Consider a more structured approach if backend supports it.
+            finalPrompt = `Character Notes: ${character.notes_for_llm}\n\nUser: ${userMessageText}`;
+        }
+
+        // Construct payload according to LLMTextGenerationParams
+        const payload: LLMTextGenerationParams = {
+            prompt: finalPrompt,
+            // chat_history: chatHistory.slice(-10).map(msg => ({ // Example if sending recent history
+            //    speaker: msg.sender === 'user' ? 'user' : 'assistant', // Adjust 'speaker' based on LLM needs
+            //    text: msg.text
+            // })),
+            // model_id_with_prefix, temperature, max_tokens can be added if configurable by user
+        };
+
         try {
-            const payload: LLMChatGenerationRequest = {
-                prompt: currentPrompt,
+            // 2. await the call to characterService.generateCharacterResponse(...)
+            const aiResponse = await characterService.generateCharacterResponse(character.id, payload);
+
+            // 3. Receive the AI's response data and transform it into a ChatMessage
+            const aiMessage: ChatMessage = {
+                id: Date.now() + 1, // Temporary, unique ID for the AI message for React key
+                                     // This will be replaced if/when history is fetched from a persistent source
+                character_id: character.id,
+                text: aiResponse.text, // Assuming aiResponse.text contains the message
+                sender: 'llm', // Assuming 'llm' or character name is the sender string
+                timestamp: new Date().toISOString(), // Or use server timestamp if available in aiResponse
+                user_avatar_url: currentUser?.avatar_url || undefined, // Not relevant for AI message but part of type
+                character_avatar_url: character?.image_urls?.[0] || undefined,
             };
-            if (character.notes_for_llm) {
-                payload.character_notes = character.notes_for_llm;
-            }
 
-            // 2. Attempt to send the message via characterService.generateCharacterResponse
-            await characterService.generateCharacterResponse(character.id, payload);
+            // 4. Append this new AI ChatMessage to the chatHistory state
+            setChatHistory(prevHistory => [...prevHistory, aiMessage]);
 
-            // 3. If generateCharacterResponse is successful, clear llmUserPrompt
+            // 5. Clear the llmUserPrompt
             setLlmUserPrompt('');
 
-            // 4. Following that, explicitly call characterService.getChatHistory
-            // We are not using the wrapper `fetchChatHistory` here to have direct control over the state update logic.
-            const rawHistoryFromServer = await characterService.getChatHistory(parseInt(characterId!, 10));
-
-            // 5. If getChatHistory returns a non-empty array, process and update chatHistory state
-            if (rawHistoryFromServer && rawHistoryFromServer.length > 0) {
-                const processedHistory = rawHistoryFromServer.map(msg => ({
-                    ...msg,
-                    user_avatar_url: currentUser?.avatar_url || undefined,
-                    character_avatar_url: character?.image_urls?.[0] || undefined,
-                }));
-                setChatHistory(processedHistory);
-                // console.log("CharacterDetailPage: Chat history updated from server.");
-            } else if (rawHistoryFromServer && rawHistoryFromServer.length === 0) {
-                // 6. If getChatHistory returns an empty array (and the call was successful),
-                //    do not modify the chatHistory state, thereby preserving the optimistic user message.
-                console.log("CharacterDetailPage: Chat history from server is empty, optimistic message preserved.");
-            }
-            // If rawHistoryFromServer is null/undefined, it implies an error that should have been caught by the catch block.
+            // 6. Remove any calls to fetchChatHistory or getChatHistory from this immediate flow.
+            //    The existing fetchChatHistory in useEffect (when panel opens) handles initial load.
+            //    If backend persistence is added later, a refresh mechanism might be useful here,
+            //    but for now, we display what's returned directly.
 
         } catch (error: any) {
-            // 7. If any part (generateCharacterResponse or getChatHistory) fails,
-            //    revert the optimistic message from chatHistory and handle error display.
-            console.error("CharacterDetailPage: Failed to generate character response or fetch/process history:", error);
-            const errorMessage = error.response?.data?.detail || error.message || "Failed to send message or update chat.";
-            setLlmError(errorMessage); // Error for the input area context
-            setChatError(errorMessage); // Error for the chat panel context
+            console.error("CharacterDetailPage: Failed to generate character response:", error);
+            const errorMessage = error.response?.data?.detail || error.message || "Failed to get response from character.";
+            setLlmError(errorMessage);
+            setChatError(errorMessage);
 
+            // Revert the optimistic user message if AI response generation failed
             setChatHistory(prevHistory => prevHistory.filter(msg => msg.id !== optimisticUserMessage.id));
-            // Note: llmUserPrompt is not cleared if generateCharacterResponse failed.
-            // If generateCharacterResponse succeeded but getChatHistory failed, prompt was already cleared (step 3), which is acceptable.
+            // llmUserPrompt is not cleared, so user can retry.
         } finally {
             setIsGeneratingResponse(false);
         }
