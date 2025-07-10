@@ -106,7 +106,7 @@ const CharacterDetailPage: React.FC = () => {
 
     // LLM Interaction state
     const [llmUserPrompt, setLlmUserPrompt] = useState<string>('');
-    const [llmResponse, setLlmResponse] = useState<string | null>(null);
+    // const [llmResponse, setLlmResponse] = useState<string | null>(null); // No longer used directly
     const [isGeneratingResponse, setIsGeneratingResponse] = useState<boolean>(false);
     const [llmError, setLlmError] = useState<string | null>(null);
 
