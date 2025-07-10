@@ -332,52 +332,16 @@ public final class APIService: Sendable {
             }
 
             do {
-                // MARK: Pre-decode raw dictionary check for Character types
-                if T.self == Character.self {
-                    print("[APIService PRE-DECODE DEBUG] Attempting to decode Character.self as [String: Any]")
-                    do {
-                        if let dict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
-                            print("[APIService PRE-DECODE DEBUG] Character.self: Successfully parsed as [String: Any]. Keys found: \(dict.keys.sorted())")
-                        } else {
-                            print("[APIService PRE-DECODE DEBUG] Character.self: Failed to cast to [String: Any].")
-                        }
-                    } catch {
-                        print("[APIService PRE-DECODE DEBUG] Character.self: Error parsing as [String: Any]: \(error.localizedDescription)")
-                    }
-                } else if T.self == [Character].self {
-                    print("[APIService PRE-DECODE DEBUG] Attempting to decode [Character].self as [[String: Any]]")
-                    do {
-                        if let arr = try JSONSerialization.jsonObject(with: data, options: []) as? [[String: Any]] {
-                            if let firstDict = arr.first {
-                                print("[APIService PRE-DECODE DEBUG] [Character].self: Successfully parsed as [[String: Any]]. Keys in first element: \(firstDict.keys.sorted())")
-                            } else {
-                                print("[APIService PRE-DECODE DEBUG] [Character].self: Parsed as [[String: Any]], but array is empty.")
-                            }
-                        } else {
-                            print("[APIService PRE-DECODE DEBUG] [Character].self: Failed to cast to [[String: Any]].")
-                        }
-                    } catch {
-                        print("[APIService PRE-DECODE DEBUG] [Character].self: Error parsing as [[String: Any]]: \(error.localizedDescription)")
-                    }
-                }
-
                 let decodedObject: T
                 if T.self == Character.self || T.self == [Character].self {
-                    print("[APIService DECODE-STRATEGY] Using LOCAL JSONDecoder for Character type (\(String(describing: T.self))) WITHOUT .convertFromSnakeCase strategy.")
+                    // Using LOCAL JSONDecoder for Character type WITHOUT .convertFromSnakeCase strategy.
+                    // This was the fix for CharacterModel decoding issues.
                     let localCharacterDecoder = JSONDecoder()
                     localCharacterDecoder.dateDecodingStrategy = .iso8601
-                    // DO NOT SET localCharacterDecoder.keyDecodingStrategy = .convertFromSnakeCase
-                    // Rely entirely on CharacterModel's explicit CodingKeys.
-                    // No longer passing rawData in userInfo as CharacterModel's custom init is removed.
+                    // Key strategy intentionally omitted to rely on CharacterModel's explicit CodingKeys.
                     decodedObject = try localCharacterDecoder.decode(T.self, from: data)
                 } else {
-                    // print("[APIService DECODE-STRATEGY] Using SHARED JSONDecoder for type \(String(describing: T.self)).")
-                    // For non-Character types, continue using the shared decoder with its existing config (including .convertFromSnakeCase and any userInfo).
-                    // If other types also had custom inits needing rawData, that userInfo logic would be here.
-                    // For now, assuming only CharacterModel had that specific debugging, so userInfo for shared decoder is not set here unless needed by other types.
-                    // If CharacterModel was the ONLY type needing special userInfo, then the userInfo logic for the shared decoder can also be simplified/removed.
-                    // Let's remove it for now for the shared decoder path as well, to simplify. If other types need it, it can be added back specifically for them.
-                    // self.jsonDecoder.userInfo.removeValue(forKey: CodingUserInfoKey(rawValue: "rawData")!) // Clean up if it was set
+                    // For non-Character types, continue using the shared decoder with its existing config.
                     decodedObject = try self.jsonDecoder.decode(T.self, from: data)
                 }
 
