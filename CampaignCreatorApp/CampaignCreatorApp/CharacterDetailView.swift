@@ -51,23 +51,6 @@ struct CharacterDetailView: View {
                 }
                 .padding(.bottom, 5)
 
-                // The original Image URLs list can be kept or removed based on preference
-                // For now, I'll keep it so users can still see all URLs if multiple exist.
-                if let imageURLs = character.imageURLs, !imageURLs.isEmpty {
-                    SectionBox(title: "Image URLs (Links)") {
-                        ForEach(imageURLs, id: \.self) { urlString in
-                            if let url = URL(string: urlString) {
-                                Link(urlString, destination: url)
-                                    .font(.caption)
-                            } else {
-                                Text(urlString + " (Invalid URL)")
-                                    .font(.caption)
-                                    .foregroundColor(.red)
-                            }
-                        }
-                    }
-                }
-
                 if let description = character.description, !description.isEmpty {
                     SectionBox(title: "Description") { Text(description) }
                 }
@@ -86,6 +69,49 @@ struct CharacterDetailView: View {
 
                 if let exportFormat = character.exportFormatPreference, !exportFormat.isEmpty {
                      SectionBox(title: "Export Preference") { Text(exportFormat) }
+                }
+
+                // Image Carousel Section
+                if let imageURLs = character.imageURLs, !imageURLs.isEmpty {
+                    SectionBox(title: "Images") { // Using SectionBox for consistent styling
+                        TabView {
+                            ForEach(imageURLs, id: \.self) { urlString in
+                                if let url = URL(string: urlString) {
+                                    AsyncImage(url: url) { phase in
+                                        switch phase {
+                                        case .empty:
+                                            ProgressView()
+                                                .frame(height: 200) // Ensure ProgressView has a frame
+                                        case .success(let image):
+                                            image.resizable()
+                                                .aspectRatio(contentMode: .fit)
+                                        case .failure:
+                                            Image(systemName: "photo.fill")
+                                                .foregroundColor(.gray)
+                                                .overlay(Text("Error").font(.caption).foregroundColor(.red))
+                                                .frame(height: 200) // Ensure error placeholder has a frame
+                                        @unknown default:
+                                            EmptyView()
+                                        }
+                                    }
+                                    .frame(height: 200) // Define a reasonable height for the carousel items
+                                    .clipped()
+                                    .onTapGesture { // Allow tapping on image to show full screen
+                                        selectedImageURLForSheet = url
+                                        showingFullCharacterImageSheet = true
+                                    }
+                                } else {
+                                    Image(systemName: "photo.fill")
+                                        .foregroundColor(.gray)
+                                        .overlay(Text("Invalid URL").font(.caption).foregroundColor(.red))
+                                        .frame(height: 200) // Ensure invalid URL placeholder has a frame
+                                }
+                            }
+                        }
+                        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic)) // Add index display
+                        .frame(height: 220) // Adjust height to accommodate PageTabViewStyle indicators
+                    }
+                    .padding(.top) // Add some spacing above the carousel
                 }
 
                 // Display Custom Sections - REMOVED from Character
