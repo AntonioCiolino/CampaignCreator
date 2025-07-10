@@ -40,7 +40,7 @@ public struct ImageGenerationParams: Codable, Sendable {
 
 public struct ImageGenerationResponse: Codable, Sendable {
     public let imageUrl: String? // Changed to optional
-    public let promptUsed: String?
+    public let promptUsed: String
     public let modelUsed: ImageModelName
     public let sizeUsed: String
     public let qualityUsed: String?
@@ -59,8 +59,21 @@ public struct ImageGenerationResponse: Codable, Sendable {
         case geminiModelNameUsed = "gemini_model_name_used"
     }
 
+    // Custom init(from:) to handle decoding explicitly
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
+        self.promptUsed = try container.decode(String.self, forKey: .promptUsed)
+        self.modelUsed = try container.decode(ImageModelName.self, forKey: .modelUsed)
+        self.sizeUsed = try container.decode(String.self, forKey: .sizeUsed)
+        self.qualityUsed = try container.decodeIfPresent(String.self, forKey: .qualityUsed)
+        self.stepsUsed = try container.decodeIfPresent(Int.self, forKey: .stepsUsed)
+        self.cfgScaleUsed = try container.decodeIfPresent(Double.self, forKey: .cfgScaleUsed)
+        self.geminiModelNameUsed = try container.decodeIfPresent(String.self, forKey: .geminiModelNameUsed)
+    }
+
     // Update init to accept optional imageUrl
-    public init(imageUrl: String?, promptUsed: String?, modelUsed: ImageModelName, sizeUsed: String, qualityUsed: String? = nil, stepsUsed: Int? = nil, cfgScaleUsed: Double? = nil, geminiModelNameUsed: String? = nil) {
+    public init(imageUrl: String?, promptUsed: String, modelUsed: ImageModelName, sizeUsed: String, qualityUsed: String? = nil, stepsUsed: Int? = nil, cfgScaleUsed: Double? = nil, geminiModelNameUsed: String? = nil) {
         self.imageUrl = imageUrl
         self.promptUsed = promptUsed
         self.modelUsed = modelUsed
