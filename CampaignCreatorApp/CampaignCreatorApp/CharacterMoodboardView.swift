@@ -26,6 +26,7 @@ struct CharacterMoodboardView: View {
                     LazyVGrid(columns: gridItemLayout, spacing: 2) {
                         ForEach(imageURLs, id: \.self) { urlString in
                             Button(action: {
+                                print("[CharacterMoodboardView] Tapped image. Selected URLString: \(urlString)")
                                 self.selectedImageURLString = urlString
                                 self.showingFullImageView = true
                             }) {
@@ -88,14 +89,19 @@ struct FullCharacterImageViewWrapper: View {
 
     init(urlString: String?) {
         self.urlString = urlString
+        print("[Wrapper init] Received urlString: \(urlString ?? "nil")")
         if let str = urlString {
-            self._imageURLForSheet = State(initialValue: URL(string: str))
+            let initialUrl = URL(string: str)
+            print("[Wrapper init] Initialized imageURLForSheet with URL: \(initialUrl?.absoluteString ?? "nil URL from string")")
+            self._imageURLForSheet = State(initialValue: initialUrl)
         } else {
+            print("[Wrapper init] Initialized imageURLForSheet with nil (urlString was nil)")
             self._imageURLForSheet = State(initialValue: nil)
         }
     }
 
     var body: some View {
+        let _ = print("[Wrapper body] Current imageURLForSheet for FullCharacterImageView: \(imageURLForSheet?.absoluteString ?? "nil")")
         // This view now directly presents FullCharacterImageView,
         // which has its own NavigationView for its toolbar.
         FullCharacterImageView(imageURL: $imageURLForSheet)

@@ -153,7 +153,8 @@ struct FullCharacterImageView: View {
     @Environment(\.dismiss) var dismiss
 
     var body: some View {
-        NavigationView { // NavigationView for a title and dismiss button
+        let _ = print("[FullCharacterImageView body] Received imageURL via binding: \(imageURL?.absoluteString ?? "nil")")
+        return NavigationView { // NavigationView for a title and dismiss button
             VStack {
                 if let url = imageURL {
                     AsyncImage(url: url) { phase in

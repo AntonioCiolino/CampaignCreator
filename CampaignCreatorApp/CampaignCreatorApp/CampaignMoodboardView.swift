@@ -47,6 +47,7 @@ struct CampaignMoodboardView: View {
             } else {
                 LazyVGrid(columns: gridItemLayout, spacing: 2) {
                     ForEach(allImageURLs, id: \.self) { urlString in
+                        let _ = print("[CampaignMoodboardView ForEach] Processing urlString for link: \(urlString)")
                         // NavigationLink to FullCharacterImageView (which is generic enough for any image URL)
                         NavigationLink(destination: FullCharacterImageViewWrapper(urlString: urlString)
                                         .navigationTitle("Image") // Set a generic title for the detail view
