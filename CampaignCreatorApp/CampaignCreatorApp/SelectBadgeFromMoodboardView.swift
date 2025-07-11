@@ -1,4 +1,5 @@
 import SwiftUI
+import Kingfisher
 
 struct SelectBadgeFromMoodboardView: View {
     let moodBoardImageURLs: [String]
@@ -31,30 +32,22 @@ struct SelectBadgeFromMoodboardView: View {
                                 onImageSelected(urlString)
                                 dismiss()
                             }) {
-                                AsyncImage(url: URL(string: urlString)) { phase in
-                                    switch phase {
-                                    case .success(let image):
-                                        image.resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 100, maxHeight: 100) // Fixed height
-                                            .clipped()
-                                            .cornerRadius(8)
-                                    case .failure:
-                                        Image(systemName: "photo.on.rectangle.angled")
-                                            .resizable()
-                                            .scaledToFit()
-                                            .frame(width: 50, height: 50)
-                                            .padding()
-                                            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 100, maxHeight: 100)
-                                            .background(Color.gray.opacity(0.1))
-                                            .cornerRadius(8)
-                                    case .empty:
+                                // KFImage for asynchronous image loading and caching.
+                                KFImage(URL(string: urlString))
+                                    .placeholder { // Displayed while loading or if it fails.
                                         ProgressView()
                                             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 100, maxHeight: 100)
-                                    @unknown default:
-                                        EmptyView()
+                                            .background(Color.gray.opacity(0.05)) // Subtle background for placeholder
                                     }
-                                }
+                                    .onFailure { error in // Handle image loading failures.
+                                        print("KFImage failed to load image for badge selection \(urlString): \(error.localizedDescription)")
+                                        // Consider showing a more prominent error in the cell if needed.
+                                    }
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(minWidth: 0, maxWidth: .infinity, minHeight: 100, maxHeight: 100) // Fixed height
+                                    .clipped()
+                                    .cornerRadius(8)
                             }
                             .buttonStyle(.plain) // Use plain button style to make the image tappable without extra button chrome
                         }

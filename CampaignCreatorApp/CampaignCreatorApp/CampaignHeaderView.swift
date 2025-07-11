@@ -1,6 +1,7 @@
 import SwiftUI
 // import PhotosUI // No longer needed as PhotosPicker is removed
 import CampaignCreatorLib // Assuming Campaign model is here
+import Kingfisher
 
 struct CampaignHeaderView: View {
     // Properties passed from parent
@@ -35,35 +36,25 @@ struct CampaignHeaderView: View {
 
             // Campaign Badge Display
             if let badgeUrlString = campaign.badgeImageURL, let badgeUrl = URL(string: badgeUrlString) {
-                AsyncImage(url: badgeUrl) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(maxWidth: 100, maxHeight: 100)
-                            .clipShape(Circle())
-                            .overlay(Circle().stroke(currentPrimaryColor, lineWidth: 2))
-                            .padding(.top, 5)
-                    case .failure(_): // Error variable not used, changed 'let error' to '_'
-                        VStack { // Group error display
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .resizable().scaledToFit().frame(width: 40, height: 40)
-                                .foregroundColor(.red)
-                            Text("Load failed")
-                                .font(.caption)
-                                .foregroundColor(.red)
-                            // print("AsyncImage load failed: \(error.localizedDescription)") // Log error to console
-                        }
-                        .padding(.top, 5)
-                    case .empty:
+                // KFImage loads and caches the campaign badge.
+                // Displayed as a circular icon.
+                KFImage(badgeUrl)
+                    .placeholder { // Shown during loading.
                         ProgressView().frame(width: 50, height: 50).padding(.top, 5)
-                    @unknown default:
-                        EmptyView()
                     }
-                }
-                .id(campaign.badgeImageURL) // Apply .id modifier here to the AsyncImage itself
+                    .onFailure { error in // Log errors if image loading fails.
+                        print("KFImage failed to load campaign badge \(badgeUrlString): \(error.localizedDescription)")
+                    }
+                    .resizable()
+                    .aspectRatio(contentMode: .fit) // Ensures the entire image fits within the frame.
+                    .frame(maxWidth: 50, maxHeight: 50) // Sized for a small icon badge.
+                    .clipShape(Circle()) // Makes the badge circular.
+                    .overlay(Circle().stroke(currentPrimaryColor, lineWidth: 2)) // Adds a themed border.
+                    .padding(.top, 5)
+                    .id(campaign.badgeImageURL) // Ensures view redraws if the URL string changes.
             } else {
-                Image(systemName: "shield.lefthalf.filled.slash") // Default placeholder
+                // Default placeholder if no badgeImageURL is set.
+                Image(systemName: "shield.lefthalf.filled.slash")
                     .font(.largeTitle)
                     .foregroundColor(.secondary)
                     .frame(width: 50, height: 50)

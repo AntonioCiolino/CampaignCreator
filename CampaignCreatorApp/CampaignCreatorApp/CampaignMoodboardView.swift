@@ -1,5 +1,6 @@
 import SwiftUI
 import CampaignCreatorLib
+import Kingfisher
 
 struct CampaignMoodboardView: View {
     @State var localCampaign: Campaign // To allow modifications
@@ -331,30 +332,24 @@ struct CampaignMoodboardView: View {
                             .navigationTitle("Image Detail")
                             .navigationBarTitleDisplayMode(.inline)
             ) {
-                AsyncImage(url: URL(string: urlString)) { phase in
-                    switch phase {
-                    case .empty:
+                // Use KFImage for asynchronous image loading and caching from a URL.
+                // Kingfisher handles memory and disk caching automatically.
+                KFImage(URL(string: urlString))
+                    .placeholder { // Displayed while the image is loading.
                         ProgressView()
                             .frame(maxWidth: .infinity, idealHeight: 120)
                             .background(Color.gray.opacity(0.1))
-                    case .success(let image):
-                        image.resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(minWidth: 0, maxWidth: .infinity)
-                            .frame(height: 120)
-                            .clipped()
-                    case .failure:
-                        Image(systemName: "photo.fill")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 50, height: 50)
-                            .foregroundColor(.gray)
-                            .frame(maxWidth: .infinity, idealHeight: 120)
-                            .background(Color.gray.opacity(0.1))
-                    @unknown default:
-                        EmptyView()
                     }
-                }
+                    .onFailure { error in // Handle image loading failures.
+                        print("KFImage failed to load image \(urlString): \(error.localizedDescription)")
+                        // Optionally, display a specific error placeholder here too,
+                        // though KFImage's default is often to show the .placeholder content.
+                    }
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(minWidth: 0, maxWidth: .infinity)
+                    .frame(height: 120)
+                    .clipped()
             }
             .buttonStyle(.plain)
         }
@@ -366,7 +361,8 @@ struct CampaignMoodboardView_Previews: PreviewProvider {
         let sampleCampaignWithImages = Campaign(
             id: 1,
             title: "Test Campaign",
-            sections: [], // sections comes before badgeImageURL
+            // sections comes before badgeImageURL - ensure all required params are present
+            sections: [], // Assuming sections is required.
             badgeImageURL: "https://picsum.photos/seed/badge/200/200",
             thematicImageURL: "https://picsum.photos/seed/thematic/600/400",
             moodBoardImageURLs: [
@@ -374,7 +370,7 @@ struct CampaignMoodboardView_Previews: PreviewProvider {
                 "https://picsum.photos/seed/mb2/300/300",
                 "http://example.com/invalid.jpg"
             ]
-            // other parameters will use their defaults
+            // other parameters will use their defaults if Campaign init has them
         )
 
         let sampleCampaignNoImages = Campaign(
