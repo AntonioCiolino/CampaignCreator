@@ -16,9 +16,14 @@ struct CharacterImageOrderView: View {
     var onDismiss: (Bool) -> Void // Callback: true if saved, false if cancelled
 
     @Environment(\.dismiss) private var dismissEnvironment
+    @Environment(\.editMode) private var editMode // Added to manage list edit state
     @State private var isSaving: Bool = false
     @State private var showErrorAlert: Bool = false
     @State private var errorMessage: String = ""
+
+    private var isEditing: Bool { // Helper
+        editMode?.wrappedValue.isEditing ?? false
+    }
 
     private var hasChanges: Bool {
         let currentOrder = identifiableOrderedImageURLs.map { $0.urlString }
@@ -76,20 +81,47 @@ struct CharacterImageOrderView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        onDismiss(false)
-                        dismissEnvironment()
+                    if isEditing {
+                        Button("Cancel") {
+                            // Revert changes and exit edit mode
+                            identifiableOrderedImageURLs = originalImageURLs.map { IdentifiableURLString(urlString: $0) }
+                            editMode?.wrappedValue = .inactive
+                            // Don't dismiss the sheet, let user tap "Close" or "Done" (from EditButton)
+                        }
+                        .disabled(isSaving)
+                    } else {
+                        Button("Close") { // Changed from "Cancel" when not editing
+                            onDismiss(false) // Indicate no save occurred
+                            dismissEnvironment()
+                        }
+                        .disabled(isSaving)
                     }
-                    .disabled(isSaving)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    if isSaving {
-                        ProgressView()
-                    } else {
-                        Button("Save") {
-                            Task { await saveOrder() }
+                    if isEditing {
+                        if isSaving {
+                            ProgressView()
+                        } else {
+                            Button("Done") { // Changed from "Save" - action now tied to exiting edit mode
+                                if hasChanges {
+                                    Task { await saveOrder() }
+                                } else {
+                                    editMode?.wrappedValue = .inactive
+                                    // Optional: could also dismiss here if no changes and Done is tapped
+                                    // onDismiss(false)
+                                    // dismissEnvironment()
+                                }
+                            }
+                            // Save button (now "Done") is implicitly enabled/disabled by hasChanges logic within its action
+                            // Or, keep it always enabled and check hasChanges inside.
+                            // For clarity, disable if saving.
+                            .disabled(isSaving)
                         }
-                        .disabled(!hasChanges || isSaving || identifiableOrderedImageURLs.isEmpty)
+                    } else {
+                        // Show EditButton only if there are images to reorder
+                        if !identifiableOrderedImageURLs.isEmpty {
+                            EditButton().disabled(isSaving)
+                        }
                     }
                 }
             }
@@ -120,6 +152,7 @@ struct CharacterImageOrderView: View {
 
         do {
             _ = try await campaignCreator.updateCharacter(tempCharacter) // The updated character is returned
+            editMode?.wrappedValue = .inactive // Exit edit mode
             onDismiss(true) // Signal that save was successful
             dismissEnvironment()
         } catch let error as APIError {
