@@ -13,7 +13,7 @@ struct CampaignMoodboardView: View {
     @State private var newImageURLInput: String = "" // For URL input sheet
     @State private var aiImagePromptInput: String = "" // For AI generation sheet
     @State private var isGeneratingAIImage = false // For loading state of AI generation
-    @State private var alertMessage: String? = nil // For showing alerts
+    @State private var alertItem: AlertMessageItem? = nil // Changed for Identifiable alert
 
     // Initializer to receive the campaign and campaignCreator
     init(campaign: Campaign, campaignCreator: CampaignCreator) {
@@ -107,8 +107,8 @@ struct CampaignMoodboardView: View {
         .sheet(isPresented: $showingGenerateMoodboardImageSheet) {
             generateMoodboardImageSheetView
         }
-        .alert(item: $alertMessage) { message in // Alert for feedback
-            Alert(title: Text("Mood Board Update"), message: Text(message), dismissButton: .default(Text("OK")))
+        .alert(item: $alertItem) { item in // Use alertItem and access its message
+            Alert(title: Text("Mood Board Update"), message: Text(item.message), dismissButton: .default(Text("OK")))
         }
     }
 
@@ -143,7 +143,7 @@ struct CampaignMoodboardView: View {
     private func processAndAddExternalURL() async {
         let urlString = newImageURLInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !urlString.isEmpty, let url = URL(string: urlString) else {
-            self.alertMessage = "Invalid URL provided."
+            self.alertItem = AlertMessageItem(message: "Invalid URL provided.")
             return
         }
 
@@ -152,7 +152,7 @@ struct CampaignMoodboardView: View {
             print("[Moodboard] Downloading image from external URL: \(url)")
             let (data, response) = try await URLSession.shared.data(from: url)
             guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                self.alertMessage = "Failed to download image. Status: \((response as? HTTPURLResponse)?.statusCode ?? -1)"
+                self.alertItem = AlertMessageItem(message: "Failed to download image. Status: \((response as? HTTPURLResponse)?.statusCode ?? -1)")
                 return
             }
 
@@ -171,20 +171,20 @@ struct CampaignMoodboardView: View {
                 }
                 if !localCampaign.moodBoardImageURLs!.contains(newAzureURL) {
                     localCampaign.moodBoardImageURLs!.append(newAzureURL)
-                    self.alertMessage = "Image added to mood board! Remember to Save."
+                    self.alertItem = AlertMessageItem(message: "Image added to mood board! Remember to Save.")
                     print("[Moodboard] Image uploaded to Azure and URL added to local mood board: \(newAzureURL)")
                 } else {
-                    self.alertMessage = "This image is already on the mood board."
+                    self.alertItem = AlertMessageItem(message: "This image is already on the mood board.")
                 }
                 showingAddURLSheet = false
                 newImageURLInput = "" // Clear input
             case .failure(let error):
-                self.alertMessage = "Failed to upload image to our storage: \(error.localizedDescription)"
+                self.alertItem = AlertMessageItem(message: "Failed to upload image to our storage: \(error.localizedDescription)")
                 print("[Moodboard] Failed to upload image to Azure: \(error.localizedDescription)")
             }
 
         } catch {
-            self.alertMessage = "Failed to download or process image from URL: \(error.localizedDescription)"
+            self.alertItem = AlertMessageItem(message: "Failed to download or process image from URL: \(error.localizedDescription)")
             print("[Moodboard] Error downloading image from URL: \(error.localizedDescription)")
         }
     }
@@ -229,7 +229,7 @@ struct CampaignMoodboardView: View {
     private func performAIMoodboardImageGeneration() async {
         let prompt = aiImagePromptInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty else {
-            self.alertMessage = "AI image prompt cannot be empty."
+            self.alertItem = AlertMessageItem(message: "AI image prompt cannot be empty.")
             return
         }
 
@@ -249,17 +249,17 @@ struct CampaignMoodboardView: View {
                 }
                 if !localCampaign.moodBoardImageURLs!.contains(newAzureURL) {
                     localCampaign.moodBoardImageURLs!.append(newAzureURL)
-                    self.alertMessage = "AI Image generated and added to mood board! Remember to Save."
+                    self.alertItem = AlertMessageItem(message: "AI Image generated and added to mood board! Remember to Save.")
                     print("[Moodboard] AI Image generated and URL added to local mood board: \(newAzureURL)")
                 } else {
-                    self.alertMessage = "This AI generated image (or one with the same URL) is already on the mood board."
+                    self.alertItem = AlertMessageItem(message: "This AI generated image (or one with the same URL) is already on the mood board.")
                 }
                 aiImagePromptInput = "" // Clear prompt
             } else {
-                self.alertMessage = "AI image generation succeeded but returned no URL."
+                self.alertItem = AlertMessageItem(message: "AI image generation succeeded but returned no URL.")
             }
         } catch {
-            self.alertMessage = "Failed to generate AI image: \(error.localizedDescription)"
+            self.alertItem = AlertMessageItem(message: "Failed to generate AI image: \(error.localizedDescription)")
             print("[Moodboard] Failed to generate AI image: \(error.localizedDescription)")
         }
         isGeneratingAIImage = false
@@ -350,14 +350,23 @@ struct CampaignMoodboardView_Previews: PreviewProvider {
             sections: []
         )
 
+        // Create mock/dummy instances for preview
+        let mockApiService = APIService()
+        let mockCampaignCreator = CampaignCreator(apiService: mockApiService)
+        let mockImageUploadService = ImageUploadService(apiService: mockApiService)
+
         Group {
             NavigationView {
-                CampaignMoodboardView(campaign: sampleCampaignWithImages)
+                CampaignMoodboardView(campaign: sampleCampaignWithImages, campaignCreator: mockCampaignCreator)
+                    .environmentObject(mockCampaignCreator)
+                    .environmentObject(mockImageUploadService)
             }
             .previewDisplayName("With Images")
 
             NavigationView {
-                CampaignMoodboardView(campaign: sampleCampaignNoImages)
+                CampaignMoodboardView(campaign: sampleCampaignNoImages, campaignCreator: mockCampaignCreator)
+                    .environmentObject(mockCampaignCreator)
+                    .environmentObject(mockImageUploadService)
             }
             .previewDisplayName("No Images")
         }

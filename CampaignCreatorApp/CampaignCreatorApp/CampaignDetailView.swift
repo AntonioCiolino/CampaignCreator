@@ -1042,36 +1042,7 @@ struct CampaignDetailView: View {
             CampaignEditView(campaign: $campaign, campaignCreator: campaignCreator, isPresented: $showingCampaignEditSheet)
         }
         .toolbar {
-            ToolbarItemGroup(placement: .navigationBarTrailing) {
-                if isSaving || isGeneratingText {
-                    ProgressView()
-                } else {
-                    // Campaign Theme Button
-                    Button {
-                        showingCampaignThemeSheet = true
-                    } label: {
-                        Label("Theme", systemImage: "paintbrush.pointed.fill")
-                    }
-                    .disabled(isSaving || isGeneratingText)
-                    
-                    // Mood Board Button - Changed to NavigationLink
-                    NavigationLink(destination: CampaignMoodboardView(campaign: campaign, campaignCreator: campaignCreator)
-                        .environmentObject(imageUploadService) // Pass ImageUploadService
-                    ) {
-                        Label("Mood Board", systemImage: "photo.on.rectangle.angled")
-                    }
-                    .disabled(isSaving || isGeneratingText)
-                    
-                    // Button to open the sheet for generating a new campaign section
-                    Button {
-                        showingGenerateSheet = true
-                    } label: {
-                        Label("Generate Section", systemImage: "sparkles")
-                    }
-                    .disabled(isSaving || isGeneratingText || !campaignCreator.isLLMServiceAvailable) // Use new property
-                }
-            }
-            // Note: The conditional Text for LLM service availability will be moved into the ScrollView content.
+            detailViewToolbarContent()
         }
         .onChange(of: horizontalSizeClass) { newSizeClass in
             // This is mostly for debugging or if specific non-label-style changes were needed.
@@ -1119,9 +1090,42 @@ struct CampaignDetailView: View {
             Text("Choose a source for your campaign badge.")
         }
     }
-    
+
     // The local uploadCampaignBadgeImage method is now removed.
     // Its logic has been moved to ImageUploadService and is called from the .onChange block above.
+
+    @ToolbarContentBuilder
+    private func detailViewToolbarContent() -> some ToolbarContent {
+        ToolbarItemGroup(placement: .navigationBarTrailing) {
+            if isSaving || isGeneratingText {
+                ProgressView()
+            } else {
+                // Campaign Theme Button
+                Button {
+                    showingCampaignThemeSheet = true
+                } label: {
+                    Label("Theme", systemImage: "paintbrush.pointed.fill")
+                }
+                .disabled(isSaving || isGeneratingText)
+
+                // Mood Board Button
+                NavigationLink(destination: CampaignMoodboardView(campaign: campaign, campaignCreator: campaignCreator)
+                    .environmentObject(imageUploadService)
+                ) {
+                    Label("Mood Board", systemImage: "photo.on.rectangle.angled")
+                }
+                .disabled(isSaving || isGeneratingText)
+
+                // Generate Section Button
+                Button {
+                    showingGenerateSheet = true
+                } label: {
+                    Label("Generate Section", systemImage: "sparkles")
+                }
+                .disabled(isSaving || isGeneratingText || !campaignCreator.isLLMServiceAvailable)
+            }
+        }
+    }
 
     @ViewBuilder
     private var commonToolbarButtons: some View {

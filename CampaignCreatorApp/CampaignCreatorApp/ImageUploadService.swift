@@ -34,7 +34,7 @@ struct FileUploadResponse: Decodable {
     // For now, only imageUrl is strictly needed by the caller.
 }
 
-class ImageUploadService {
+class ImageUploadService: ObservableObject { // Conform to ObservableObject
     private let apiService: APIService
 
     init(apiService: APIService) {
