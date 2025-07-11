@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI // Added import for PhotosPicker
 import CampaignCreatorLib // Assuming Campaign model is here
 
 struct CampaignHeaderView: View {

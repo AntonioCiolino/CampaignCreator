@@ -1081,6 +1081,8 @@ struct CampaignDetailView: View {
                     showErrorAlert = true
                     print("Error processing badge image: \(error.localizedDescription)")
                 }
+                // Reset the picker item after processing is complete (success or failure)
+                selectedBadgeImageItem = nil
             }
         }
     }
@@ -1542,6 +1544,10 @@ struct CampaignDetailView: View {
         do {
             let trulyRefreshedCampaign = try await campaignCreator.updateCampaign(campaignToUpdate)
             
+            // Debug prints for badgeImageURL
+            print("[Badge Refresh Debug] campaignToUpdate.badgeImageURL sent to server: \(campaignToUpdate.badgeImageURL ?? "nil")")
+            print("[Badge Refresh Debug] trulyRefreshedCampaign.badgeImageURL from server: \(trulyRefreshedCampaign.badgeImageURL ?? "nil")")
+
             print("[DetailView SAVE] Received trulyRefreshedCampaign ID: \(trulyRefreshedCampaign.id)")
             print("[DetailView SAVE]   trulyRefreshedCampaign.themePrimaryColor: \(trulyRefreshedCampaign.themePrimaryColor ?? "nil")")
             print("[DetailView SAVE]   trulyRefreshedCampaign.themeSecondaryColor: \(trulyRefreshedCampaign.themeSecondaryColor ?? "nil")")
@@ -1555,6 +1561,9 @@ struct CampaignDetailView: View {
             // Directly use the returned campaign object to refresh the local state
             self.campaign = trulyRefreshedCampaign
             
+            // Debug print for badgeImageURL after self.campaign is updated
+            print("[Badge Refresh Debug] self.campaign.badgeImageURL after server update: \(self.campaign.badgeImageURL ?? "nil")")
+
             print("[DetailView SAVE] self.campaign set. Current theme values from self.campaign:")
             print("[DetailView SAVE]   self.campaign.themePrimaryColor: \(self.campaign.themePrimaryColor ?? "nil")")
             print("[DetailView SAVE]   self.campaign.themeFontFamily: \(self.campaign.themeFontFamily ?? "nil")")
