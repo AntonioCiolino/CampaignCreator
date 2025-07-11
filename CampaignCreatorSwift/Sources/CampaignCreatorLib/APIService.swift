@@ -234,6 +234,23 @@ public final class UserDefaultsTokenManager: TokenManaging {
 }
 
 
+// Payload for LLM Generation Request
+struct LLMGenerationRequestPayload: Encodable {
+    let prompt: String
+    let chatHistory: [ChatMessageData]?
+    let modelIdWithPrefix: String?
+    let temperature: Double?
+    let maxTokens: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case prompt
+        case chatHistory = "chat_history"
+        case modelIdWithPrefix = "model_id_with_prefix"
+        case temperature
+        case maxTokens = "max_tokens"
+    }
+}
+
 public final class APIService: ObservableObject, Sendable { // Added ObservableObject conformance
     public let baseURLString = "https://campaigncreator-api.onrender.com/api/v1" // Made public
     private let tokenManager: TokenManaging
@@ -588,25 +605,18 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
         maxTokens: Int?
     ) async throws -> LLMTextResponseDTO { // Returns the new DTO
 
-        // Construct the payload matching backend's LLMGenerationRequest
-        var payloadDict: [String: Any] = ["prompt": prompt]
-        if let chatHistory = chatHistory, !chatHistory.isEmpty {
-            // Convert [ChatMessageData] to array of dictionaries for JSON payload
-            payloadDict["chat_history"] = chatHistory.map { ["speaker": $0.speaker, "text": $0.text] }
-        }
-        if let modelIdWithPrefix = modelIdWithPrefix {
-            payloadDict["model_id_with_prefix"] = modelIdWithPrefix
-        }
-        if let temperature = temperature {
-            payloadDict["temperature"] = temperature
-        }
-        if let maxTokens = maxTokens {
-            payloadDict["max_tokens"] = maxTokens
-        }
+        // Construct the payload using the new struct
+        let payload = LLMGenerationRequestPayload(
+            prompt: prompt,
+            chatHistory: chatHistory,
+            modelIdWithPrefix: modelIdWithPrefix,
+            temperature: temperature,
+            maxTokens: maxTokens
+        )
         // Note: 'character_notes' are now handled by the backend by combining memory_summary and base notes.
         // The client does not send character_notes directly for this endpoint anymore.
 
-        let body = try jsonEncoder.encode(payloadDict) // Encode the dictionary
+        let body = try jsonEncoder.encode(payload) // Encode the struct
 
         return try await performRequest(
             endpoint: "/characters/\(characterId)/generate-response",
