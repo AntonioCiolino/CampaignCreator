@@ -200,10 +200,11 @@ struct CampaignEditView: View { // Renamed struct
         campaignToUpdate.markAsModified()
 
         do {
-            try await campaignCreator.updateCampaign(campaignToUpdate)
-            // After successful save, update the original binding to reflect changes if needed,
-            // though CampaignCreator should update its published array which should flow down.
-            // self.campaign = campaignToUpdate // This might be needed if direct binding update is preferred
+            let updatedCampaignFromServer = try await campaignCreator.updateCampaign(campaignToUpdate)
+            // After successful save, update the original binding to reflect changes
+            // This ensures that if the backend made any changes (e.g., updated `modifiedAt`),
+            // the local state reflects it.
+            self.campaign = updatedCampaignFromServer
             isPresented = false // Dismiss the sheet
         } catch let error as APIError {
             errorMessage = "Failed to update campaign: \(error.localizedDescription)"

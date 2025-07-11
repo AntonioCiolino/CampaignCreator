@@ -152,7 +152,7 @@ struct CharacterChatView: View {
         errorMessage = nil
 
         Task {
-            var tempChatMessages = self.chatMessages // Capture current state for context
+            let tempChatMessages = self.chatMessages // Capture current state for context
 
             do {
                 // 2. Prepare historyForLLMService (map to CampaignCreatorLib.ChatMessageData {speaker: String, text: String})

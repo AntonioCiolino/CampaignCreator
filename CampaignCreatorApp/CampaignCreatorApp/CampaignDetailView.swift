@@ -49,6 +49,10 @@ struct CampaignDetailView: View {
     @State private var availableLLMsFromAPI: [CampaignCreatorLib.AvailableLLM] = []
     @State private var llmFetchError: String? = nil
 
+    // State vars for standard section image generation (seemingly missing)
+    @State private var currentStandardSectionIndexForImageGen: Int? = nil
+    @State private var showingImagePromptModalForStandardSection: Bool = false
+
     @State private var titleDebounceTimer: Timer?
     // Debounce timers for custom section title and content
     @State private var customSectionTitleDebounceTimers: [Int: Timer] = [:]
@@ -134,6 +138,55 @@ struct CampaignDetailView: View {
             return .custom(fontName, size: 16) // Default size, can be made dynamic
         }
         return .body // Default system font
+    }
+
+    // Stub for missing linkedCharactersSection
+    private var linkedCharactersSection: some View {
+        // TODO: Implement actual linked characters section UI
+        Group { // Use Group to allow conditional content or multiple elements if needed
+            if let charIDs = campaign.linkedCharacterIDs, !charIDs.isEmpty {
+                DisclosureGroup("Linked Characters") {
+                    ForEach(charIDs, id: \.self) { id in
+                        if let char = campaignCreator.characters.first(where: { $0.id == id }) {
+                            Text(char.name)
+                        } else {
+                            Text("Character ID: \(id) (Not loaded)")
+                        }
+                    }
+                }
+                .padding().background(Color(.secondarySystemBackground)).cornerRadius(12)
+                .font(currentFont)
+                .foregroundColor(currentTextColor)
+            } else {
+                Text("No characters linked yet.")
+                    .font(currentFont.italic())
+                    .foregroundColor(currentTextColor.opacity(0.7))
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+        }
+    }
+
+    // Stub for missing handleStandardSnippetFeatureSelection
+    private func handleStandardSnippetFeatureSelection(_ feature: Feature, forSectionAtIndex index: Int) {
+        // TODO: Implement actual logic for standard sections
+        print("Placeholder: handleStandardSnippetFeatureSelection for feature \(feature.name) at index \(index) (Standard Section)")
+        let sectionTitle = (index < campaign.sections.count) ? (campaign.sections[index].title ?? "Untitled") : "Unknown Section"
+        self.errorMessage = "Snippet feature '\(feature.name)' not yet implemented for standard section '\(sectionTitle)'."
+        self.showErrorAlert = true
+    }
+
+    // Stub for missing handleStandardSectionRegeneration
+    private func handleStandardSectionRegeneration(forSectionAtIndex index: Int) {
+        // TODO: Implement actual logic for standard sections
+        print("Placeholder: handleStandardSectionRegeneration for section at index \(index) (Standard Section)")
+        if index < campaign.sections.count {
+            let sectionTitle = campaign.sections[index].title ?? "Untitled"
+            self.errorMessage = "Regeneration for standard section '\(sectionTitle)' not yet implemented."
+        } else {
+            self.errorMessage = "Regeneration for standard section (index out of bounds) not yet implemented."
+        }
+        self.showErrorAlert = true
     }
     
     // MARK: - Extracted View Components for Body
@@ -224,94 +277,7 @@ struct CampaignDetailView: View {
                         // Using the section's title (or a default) for the DisclosureGroup label
                         sectionBinding.title.wrappedValue ?? "Untitled Section \(campaign.sections[index].order)"
                     ) {
-                        VStack(alignment: .leading) {
-                            TextField("Section Title", text: sectionBinding.title.withDefault("Untitled Section \(campaign.sections[index].order)"))
-                                .font(currentFont.weight(.semibold))
-                                .textFieldStyle(PlainTextFieldStyle())
-                                .padding(.bottom, 2)
-                                .onChange(of: campaign.sections[index].title) { newTitle in
-                                    let sectionId = campaign.sections[index].id
-                                    // Assuming standard sections also have debounce timers if needed, or direct save
-                                    customSectionTitleDebounceTimers[sectionId]?.invalidate() // Use same timer dict for simplicity
-                                    customSectionTitleDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
-                                        Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true, editingSectionID: sectionId, latestSectionContent: nil) } // Pass nil for content
-                                    }
-                                }
-                            
-                            CustomTextView(
-                                text: sectionBinding.content,
-                                font: uiFontFrom(swiftUIFont: currentFont),
-                                textColor: UIColor(currentTextColor),
-                                onCoordinatorCreated: { coordinator in
-                                    customTextViewCoordinators[campaign.sections[index].id] = coordinator
-                                }
-                            )
-                            .frame(minHeight: 100, maxHeight: 300)
-                            .background(Color(.secondarySystemGroupedBackground))
-                            .cornerRadius(8)
-                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
-                            .onChange(of: campaign.sections[index].content) { newContent in
-                                let sectionId = campaign.sections[index].id
-                                // Assuming standard sections also have debounce timers if needed, or direct save
-                                // For consistency, let's add debounce, though it wasn't explicitly there before for standard content
-                                customSectionContentDebounceTimers[sectionId]?.invalidate() // Use same timer dict for simplicity
-                                customSectionContentDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in
-                                    Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true, editingSectionID: sectionId, latestSectionContent: newContent) }
-                                }
-                            }
-                            
-                            HStack {
-                                Button("Delete") {
-                                    if index < campaign.sections.count { // Check index validity before acting
-                                        let sectionIdToDelete = campaign.sections[index].id
-                                        campaign.sections.remove(at: index)
-                                        customTextViewCoordinators.removeValue(forKey: sectionIdToDelete)
-                                        Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
-                                    }
-                                }
-                                .foregroundColor(.red)
-                                .buttonStyle(.borderless)
-                                
-                                Spacer()
-                                
-                                Menu {
-                                    if isLoadingFeatures { Text("Loading features...") }
-                                    else if snippetFeatures.isEmpty { Text("No snippet features.") }
-                                    else {
-                                        ForEach(snippetFeatures) { feature in
-                                            Button(feature.name) {
-                                                if index < campaign.sections.count {
-                                                    handleStandardSnippetFeatureSelection(feature, forSectionAtIndex: index)
-                                                }
-                                            }
-                                        }
-                                    }
-                                } label: {
-                                    Label("Snippet", systemImage: "wand.and.stars").font(.caption)
-                                }
-                                .buttonStyle(.bordered).disabled(isLoadingFeatures)
-                                
-                                Button("Regen") {
-                                    if index < campaign.sections.count {
-                                        handleStandardSectionRegeneration(forSectionAtIndex: index)
-                                    }
-                                }
-                                .buttonStyle(.bordered).font(.caption)
-                                
-                                Button {
-                                    if index < campaign.sections.count {
-                                        self.currentStandardSectionIndexForImageGen = index
-                                        self.imageGenPromptText = campaign.sections[index].title ?? "Image for section \(campaign.sections[index].order)"
-                                        self.showingImagePromptModalForStandardSection = true
-                                    }
-                                } label: {
-                                    Label("Image", systemImage: "photo.badge.plus").font(.caption)
-                                }
-                                .buttonStyle(.bordered)
-                            }
-                            .padding(.top, 4)
-                        }
-                        .padding(.vertical, 8) // Padding for the content of DisclosureGroup
+                        standardSectionContentView(sectionBinding: sectionBinding, index: index)
                     }
                     .padding(.bottom, 4) // Spacing between individual section DisclosureGroups
                     Divider() // Keep a divider between sections
@@ -321,8 +287,1164 @@ struct CampaignDetailView: View {
         }
         .padding() // Outer padding for the whole sections block
     }
-    
-    
+
+    // Enum to differentiate section types for the helper function
+    private enum SectionDetailType {
+        case standard
+        case custom
+    }
+
+    @ViewBuilder
+    private func sectionView(for sectionBinding: Binding<CampaignSectionTypeProtocol>, at index: Int, sectionType: SectionDetailType) -> some View {
+        // This helper function builds the content for a single section (standard or custom)
+        // It requires sectionBinding to conform to a protocol that provides title, content, id, order, type (for custom)
+        // For simplicity in this refactor, I'll assume CampaignSection and CampaignCustomSection can be adapted
+        // or this function will be duplicated/specialized.
+        // For now, let's focus on the structure for CampaignSection (standard) as per the original error context.
+        // The error was in `sectionsDisplaySection` which iterates over `campaign.sections`.
+
+        // We'll need to cast or use specific logic based on sectionType if properties differ significantly.
+        // This is a placeholder for the actual binding type.
+        // Let's assume for now we are dealing with standard sections as per the original context of error.
+        // The binding for `campaign.sections[index]` is `Binding<CampaignSection>`.
+        // The binding for `localCampaignCustomSections[index]` is `Binding<CampaignCustomSection>`.
+        // We need a way to handle this polymorphism or have two helper functions.
+
+        // For now, let's assume this is for standard sections, matching the original error location.
+        // To make it truly generic, `CampaignSectionTypeProtocol` would need to be defined and adopted.
+        // Or, we make two distinct helper views/functions.
+        // Given the error was at line 207 (standard sections), let's make this specific to `Binding<CampaignSection>` first.
+        // The code below is essentially what was inside the standard section DisclosureGroup.
+        // I will need to create a similar function for custom sections.
+
+        // This function is not used yet, the refactor below will be more direct.
+        // The actual refactor will involve creating a specific function for standard section content
+        // and another for custom section content.
+
+        // The error specifically pointed to the DisclosureGroup within the ForEach of `campaign.sections`.
+        // So, the content of *that* specific DisclosureGroup is what needs to be extracted.
+        // The following is the content for a standard section:
+        VStack(alignment: .leading) {
+            // Assuming sectionBinding is Binding<CampaignSection> for this context
+            let stdSectionBinding = sectionBinding as! Binding<CampaignSection> // This cast is unsafe, indicates need for separate helpers or protocol
+
+            TextField("Section Title", text: stdSectionBinding.title.withDefault("Untitled Section \(stdSectionBinding.wrappedValue.order)"))
+                .font(currentFont.weight(.semibold))
+                .textFieldStyle(PlainTextFieldStyle())
+                .padding(.bottom, 2)
+                .onChange(of: stdSectionBinding.wrappedValue.title) { newTitle in
+                    let sectionId = stdSectionBinding.wrappedValue.id
+                    customSectionTitleDebounceTimers[sectionId]?.invalidate()
+                    customSectionTitleDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
+                        Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true, editingSectionID: sectionId, latestSectionContent: nil) }
+                    }
+                }
+
+            CustomTextView(
+                text: stdSectionBinding.content,
+                font: uiFontFrom(swiftUIFont: currentFont),
+                textColor: UIColor(currentTextColor),
+                onCoordinatorCreated: { coordinator in
+                    customTextViewCoordinators[stdSectionBinding.wrappedValue.id] = coordinator
+                }
+            )
+            .frame(minHeight: 100, maxHeight: 300)
+            .background(Color(.secondarySystemGroupedBackground))
+            .cornerRadius(8)
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+            .onChange(of: stdSectionBinding.wrappedValue.content) { newContent in
+                let sectionId = stdSectionBinding.wrappedValue.id
+                customSectionContentDebounceTimers[sectionId]?.invalidate()
+                customSectionContentDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in
+                    Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true, editingSectionID: sectionId, latestSectionContent: newContent) }
+                }
+            }
+
+            HStack {
+                Button("Delete") {
+                    // Need original index for removal from array
+                    // This helper function approach makes direct array modification harder
+                    // This indicates that the ForEach should pass the index if direct array mutation is needed,
+                    // or deletion should be handled by a callback with ID.
+                    // For now, this part of refactoring shows a challenge.
+                    // Let's assume `index` is passed to this helper.
+                     if index < campaign.sections.count {
+                        let sectionIdToDelete = campaign.sections[index].id
+                        campaign.sections.remove(at: index)
+                        customTextViewCoordinators.removeValue(forKey: sectionIdToDelete)
+                        Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
+                    }
+                }
+                .foregroundColor(.red)
+                .buttonStyle(.borderless)
+
+                Spacer()
+
+                Menu {
+                    if isLoadingFeatures { Text("Loading features...") }
+                    else if snippetFeatures.isEmpty { Text("No snippet features.") }
+                    else {
+                        ForEach(snippetFeatures) { feature in
+                            Button(feature.name) {
+                                 if index < campaign.sections.count {
+                                    // This function call needs to be available or passed in
+                                    // handleStandardSnippetFeatureSelection(feature, forSectionAtIndex: index)
+                                    // This is another challenge of simple extraction without more architectural change.
+                                 }
+                            }
+                        }
+                    }
+                } label: {
+                    Label("Snippet", systemImage: "wand.and.stars").font(.caption)
+                }
+                .buttonStyle(.bordered).disabled(isLoadingFeatures)
+
+                Button("Regen") {
+                     if index < campaign.sections.count {
+                        // handleStandardSectionRegeneration(forSectionAtIndex: index)
+                     }
+                }
+                .buttonStyle(.bordered).font(.caption)
+
+                Button {
+                     if index < campaign.sections.count {
+                        self.currentStandardSectionIndexForImageGen = index
+                        self.imageGenPromptText = campaign.sections[index].title ?? "Image for section \(campaign.sections[index].order)"
+                        self.showingImagePromptModalForStandardSection = true
+                     }
+                } label: {
+                    Label("Image", systemImage: "photo.badge.plus").font(.caption)
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding(.top, 4)
+        }
+        .padding(.vertical, 8)
+    }
+
+    // Extracted content view for a standard campaign section
+    @ViewBuilder
+    private func standardSectionContentView(sectionBinding: Binding<CampaignSection>, index: Int) -> some View {
+        VStack(alignment: .leading) {
+            TextField("Section Title", text: sectionBinding.title.withDefault("Untitled Section \(sectionBinding.wrappedValue.order)"))
+                .font(currentFont.weight(.semibold))
+                .textFieldStyle(PlainTextFieldStyle())
+                .padding(.bottom, 2)
+                .onChange(of: sectionBinding.wrappedValue.title) { newTitle in
+                    let sectionId = sectionBinding.wrappedValue.id
+                    customSectionTitleDebounceTimers[sectionId]?.invalidate()
+                    customSectionTitleDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
+                        Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true, editingSectionID: sectionId, latestSectionContent: nil) }
+                    }
+                }
+
+            CustomTextView(
+                text: sectionBinding.content,
+                font: uiFontFrom(swiftUIFont: currentFont),
+                textColor: UIColor(currentTextColor),
+                onCoordinatorCreated: { coordinator in
+                    customTextViewCoordinators[sectionBinding.wrappedValue.id] = coordinator
+                }
+            )
+            .frame(minHeight: 100, maxHeight: 300)
+            .background(Color(.secondarySystemGroupedBackground))
+            .cornerRadius(8)
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+            .onChange(of: sectionBinding.wrappedValue.content) { newContent in
+                let sectionId = sectionBinding.wrappedValue.id
+                customSectionContentDebounceTimers[sectionId]?.invalidate()
+                customSectionContentDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in
+                    Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true, editingSectionID: sectionId, latestSectionContent: newContent) }
+                }
+            }
+
+            standardSectionActionButtons(sectionBinding: sectionBinding, index: index)
+        }
+        .padding(.vertical, 8)
+    }
+
+    // Extracted action buttons for a standard campaign section
+    @ViewBuilder
+    private func standardSectionActionButtons(sectionBinding: Binding<CampaignSection>, index: Int) -> some View {
+        HStack {
+            Button("Delete") {
+                if index < campaign.sections.count {
+                    let sectionIdToDelete = campaign.sections[index].id
+                    campaign.sections.remove(at: index)
+                    customTextViewCoordinators.removeValue(forKey: sectionIdToDelete)
+                    Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
+                }
+            }
+            .foregroundColor(.red)
+            .buttonStyle(.borderless)
+
+            Spacer()
+
+            Menu {
+                if isLoadingFeatures { Text("Loading features...") }
+                else if snippetFeatures.isEmpty { Text("No snippet features.") }
+                else {
+                    ForEach(snippetFeatures) { feature in
+                        Button(feature.name) {
+                            if index < campaign.sections.count {
+                                handleStandardSnippetFeatureSelection(feature, forSectionAtIndex: index)
+                            }
+                        }
+                    }
+                }
+            } label: {
+                Label("Snippet", systemImage: "wand.and.stars").font(.caption)
+            }
+            .buttonStyle(.bordered).disabled(isLoadingFeatures)
+
+            Button("Regen") {
+                if index < campaign.sections.count {
+                    handleStandardSectionRegeneration(forSectionAtIndex: index)
+                }
+            }
+            .buttonStyle(.bordered).font(.caption)
+
+            Button {
+                if index < campaign.sections.count {
+                    self.currentStandardSectionIndexForImageGen = index
+                    self.imageGenPromptText = campaign.sections[index].title ?? "Image for section \(campaign.sections[index].order)"
+                    self.showingImagePromptModalForStandardSection = true
+                }
+            } label: {
+                Label("Image", systemImage: "photo.badge.plus").font(.caption)
+            }
+            .buttonStyle(.bordered)
+        }
+        .padding(.top, 4)
+    }
+
+    private func handleImageGenerationForSection() async {
+        sectionImageGenError = nil // Reset error
+        guard let sectionId = currentSectionIdForImageGen,
+              let coordinator = customTextViewCoordinators[sectionId] else {
+            let errorMsg = "Error: Missing section ID or coordinator for image generation."
+            print(errorMsg)
+            sectionImageGenError = errorMsg
+            // self.errorMessage = errorMsg; self.showErrorAlert = true // Optional: general alert
+            return
+        }
+
+        let prompt = imageGenPromptText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !prompt.isEmpty else {
+            let errorMsg = "Error: Image generation prompt is empty."
+            print(errorMsg)
+            sectionImageGenError = errorMsg
+            // self.errorMessage = errorMsg; self.showErrorAlert = true // Optional: general alert
+            return
+        }
+
+        // Consider adding loading state indication for this specific section or globally
+        print("Generating image for section \(sectionId) with prompt: \(prompt)")
+
+        do {
+            let response = try await campaignCreator.generateImageForSection(
+                prompt: prompt,
+                campaignId: Int(campaign.id) // Assuming campaign.id is Int
+                // Add other params like model, size if UI allows configuring them
+            )
+
+            let markdownImage = "\n![Generated Image: \(response.promptUsed)](\(response.imageUrl))\n"
+            coordinator.insertTextAtCurrentCursor(markdownImage) // This updates the binding via coordinator
+
+            // Note: insertTextAtCurrentCursor in Coordinator should be updating parent.text binding.
+            // This change will propagate to localCampaignCustomSections through the ForEach loop's binding section.content.
+            // So, an explicit re-sync of the *entire* campaign from CampaignCreator might not be strictly necessary
+            // if the image generation itself doesn't have other side effects on the campaign model on the backend
+            // that `CampaignCreator.generateImageForSection` doesn't already handle by returning the image response.
+            // However, the saveCampaignDetails below will persist the current state of `localCampaignCustomSections`.
+
+            // Let's ensure the local state is definitely what the coordinator now has, before saving.
+            // This is mostly a safeguard if the binding propagation has delays or issues.
+            if let index = localCampaignCustomSections.firstIndex(where: { $0.id == sectionId }),
+               let currentCoordinatorText = coordinator.textView?.text { // Access actual text from UITextView
+                if localCampaignCustomSections[index].content != currentCoordinatorText {
+                    localCampaignCustomSections[index].content = currentCoordinatorText
+                    print("ImageGen: Forcing localCampaignCustomSections content update from coordinator's text view for section \(sectionId).")
+                }
+            }
+
+            // Save the campaign to persist the new content with the image link
+            await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true)
+            print("Image generated and inserted for section \(sectionId).")
+
+        } catch {
+            let errorDescription = "Error generating image for section \(sectionId): \(error.localizedDescription)"
+            print(errorDescription)
+            sectionImageGenError = errorDescription
+            self.errorMessage = "Image Generation Failed (For section related to prompt: \"\(prompt.prefix(30))...\")"
+            self.showErrorAlert = true
+        }
+
+        // Reset state
+        self.currentSectionIdForImageGen = nil
+        self.imageGenPromptText = ""
+    }
+
+    private func handleSnippetFeatureSelection(_ feature: Feature, forSection section: CampaignCustomSection) {
+        guard let coordinator = customTextViewCoordinators[section.id] else {
+            print("Coordinator not found for section \(section.id) to process snippet feature '\(feature.name)'.")
+            // Optionally show an alert to the user
+            return
+        }
+
+        guard let selectedText = coordinator.getSelectedText(), !selectedText.isEmpty else {
+            print("No text selected in section \(section.id) for snippet feature '\(feature.name)'.")
+            // Optionally show an alert to the user to select text
+            return
+        }
+
+        let currentRange = coordinator.getCurrentSelectedRange() // Keep this to know where to replace later
+        print("Snippet Feature '\(feature.name)' selected for text: '\(selectedText)' in section \(section.id) at range \(currentRange)")
+
+        let additionalRequiredContext = feature.requiredContext?.filter { $0 != "selected_text" && $0 != "campaign_characters" } ?? []
+
+        if additionalRequiredContext.isEmpty {
+            // No additional context needed, proceed to (placeholder) LLM call
+            print("No additional context required for feature '\(feature.name)'. Calling placeholder process.")
+            // Placeholder for Step 4.D (Full LLM Interaction)
+            // For now, simulate by replacing text.
+            // This will eventually call a method that takes `feature`, `selectedText`, `section.id`, `currentRange`, and empty context.
+            processSnippetWithLLM(feature: feature, sectionId: section.id, selectedText: selectedText, rangeToReplace: currentRange, additionalContext: [:])
+
+        } else {
+            // Additional context required, show modal
+            print("Additional context required for feature '\(feature.name)': \(additionalRequiredContext). Showing modal.")
+            self.currentFeatureForModal = feature
+            self.currentSectionIdForModal = section.id
+            self.currentSelectedTextForModal = selectedText
+            // self.currentSelectionRangeForModal = currentRange // Store this if modal needs to pass it back for replacement
+            self.showingContextModal = true
+        }
+    }
+
+    private func handleFullSectionRegeneration(forSection section: CampaignCustomSection) {
+        fullSectionRegenError = nil // Reset error
+        guard let coordinator = customTextViewCoordinators[section.id] else {
+            let errorMsg = "Error: Coordinator not found for section \(section.id) for full regeneration."
+            print(errorMsg)
+            fullSectionRegenError = errorMsg
+            // self.errorMessage = errorMsg; self.showErrorAlert = true // Optional: general alert
+            return
+        }
+
+        // Determine the prompt: use selected text if any, otherwise the whole current content.
+        let selectedText = coordinator.getSelectedText()
+        let currentFullText = section.content // Use the bound content from localCampaignCustomSections
+
+        let promptForRegeneration = selectedText ?? currentFullText // If text is selected, it's a hint/focus. Otherwise, use current content.
+
+        Task {
+            let payload = SectionRegeneratePayload(
+                newPrompt: promptForRegeneration,
+                newTitle: section.title,
+                sectionType: section.type,
+                modelIdWithPrefix: campaign.selectedLLMId, // Use campaign's selected LLM
+                featureId: nil, // No specific feature for full regeneration
+                contextData: selectedText != nil ? ["user_instructions": selectedText!] : nil // Pass selected text as user_instructions if it exists
+            )
+
+            do {
+                print("Calling CampaignCreator to regenerate FULL content for section \(section.id)...")
+                let _ = try await campaignCreator.regenerateCampaignCustomSection( // returnedUpdatedSectionData can be ignored if we re-sync fully
+                    campaignId: Int(campaign.id),
+                    sectionId: section.id,
+                    payload: payload
+                )
+
+                // --- State Synchronization Start ---
+                if let refreshedCampaignFromCreator = campaignCreator.campaigns.first(where: { $0.id == self.campaign.id }) {
+                    self.campaign = refreshedCampaignFromCreator
+                    self.localCampaignCustomSections = refreshedCampaignFromCreator.customSections ?? [] // This re-syncs all sections
+                    let postSyncSectionIds = self.localCampaignCustomSections.map { $0.id }
+                    print("[SAVE_DEBUG CampaignDetailView] handleFullSectionRegeneration: Post-sync. localCampaignCustomSections IDs: \(postSyncSectionIds)") // DEBUG LOG
+                    // The CustomTextView for the target section will update automatically due to its binding to localCampaignCustomSections[index].content
+                } else {
+                    print("[SAVE_DEBUG CampaignDetailView] handleFullSectionRegeneration: Error - Could not find refreshed campaign \(self.campaign.id) in CampaignCreator.campaigns after full regen.") // DEBUG LOG
+                    // If campaign couldn't be refreshed, the local change might not be reflected unless we manually update from returnedUpdatedSectionData.
+                    // However, regenerateCampaignCustomSection in CampaignCreator already tries to refresh.
+                    // A more robust error handling might be needed here. For now, we assume it mostly succeeds or UI shows old data.
+                }
+                // --- State Synchronization End ---
+
+                await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true)
+                print("Full section content regeneration successful for section \(section.id).")
+
+            } catch {
+                let errorDescription = "Error regenerating full content for section \(section.title): \(error.localizedDescription)" // Fixed: section.title is not optional
+                print(errorDescription)
+                fullSectionRegenError = errorDescription
+                self.errorMessage = "Content Regeneration Failed (Section: \(section.title))" // Fixed: section.title is not optional
+                self.showErrorAlert = true
+            }
+        }
+    }
+
+    // Placeholder for actual LLM call logic (Step 4.D)
+    private func processSnippetWithLLM(feature: Feature, sectionId: Int, selectedText: String, rangeToReplace: NSRange, additionalContext: [String: String]) { // sectionId changed to Int
+        snippetProcessingError = nil // Reset error
+        guard let coordinator = customTextViewCoordinators[sectionId] else { // Ensure coordinator exists at the start
+            let errorMsg = "Error: Coordinator not found for section \(sectionId) during LLM processing."
+            print(errorMsg)
+            snippetProcessingError = errorMsg
+            return
+        }
+
+        // Get current section details to pass to payload
+        guard let currentCampaignSection = localCampaignCustomSections.first(where: { $0.id == sectionId }) else {
+            let errorMsg = "Error: Could not find current campaign section with ID \(sectionId) in local state for snippet processing."
+            print(errorMsg)
+            snippetProcessingError = errorMsg // Use the specific error state
+            return
+        }
+
+        Task {
+            let payload = SectionRegeneratePayload(
+                newPrompt: selectedText, // The selected text is the primary "prompt" for the snippet feature
+                newTitle: currentCampaignSection.title,
+                sectionType: currentCampaignSection.type,
+                modelIdWithPrefix: campaign.selectedLLMId, // Use campaign's selected LLM
+                featureId: feature.id,
+                contextData: additionalContext.merging(["selected_text": selectedText]) { (_, new) in new } // Ensure selected_text is in context
+            )
+
+            do {
+                print("Calling CampaignCreator to regenerate snippet for section \(sectionId), feature '\(feature.name)'...")
+                let returnedUpdatedSectionData = try await campaignCreator.regenerateCampaignCustomSection(
+                    campaignId: Int(campaign.id), // Assuming campaign.id is Int
+                    sectionId: sectionId,
+                    payload: payload
+                )
+
+                // The redundant declaration of returnedUpdatedSectionData has been removed.
+                // The first declaration above is the correct one.
+
+                // 2. Apply this specific change locally using the coordinator and the original range
+                // This updates the UITextView and the $section.content binding for this item
+                // in localCampaignCustomSections.
+                coordinator.replaceText(inRange: rangeToReplace, with: returnedUpdatedSectionData.content)
+
+                // 3. Now, re-sync the entire campaign state from CampaignCreator
+                if let refreshedCampaignFromCreator = campaignCreator.campaigns.first(where: { $0.id == self.campaign.id }) {
+                    self.campaign = refreshedCampaignFromCreator
+                    // This re-initialization is important.
+                    // The content of the section we just applied the snippet to should ideally match
+                    // returnedUpdatedSectionData.content after this line, if the backend is consistent
+                    // and CampaignCreator's refresh was successful and picked up the change.
+                    // If not, the coordinator.replaceText above has already updated the visual and the specific
+                    // $section.content binding which might be temporarily out of sync with the new localCampaignCustomSections
+                    // if the array was rebuilt without that exact content. This is a subtle point.
+                    // The saveCampaignDetails below will use the version from localCampaignCustomSections.
+                    // To be absolutely sure, we could find the section in the new localCampaignCustomSections and ensure its content
+                    // matches returnedUpdatedSectionData.content if there's a discrepancy.
+                    self.localCampaignCustomSections = refreshedCampaignFromCreator.customSections ?? []
+                    let postSyncSnippetSectionIds = self.localCampaignCustomSections.map { $0.id }
+                    print("[SAVE_DEBUG CampaignDetailView] processSnippetWithLLM: Post-sync. localCampaignCustomSections IDs: \(postSyncSnippetSectionIds)") // DEBUG LOG
+
+                    if let index = self.localCampaignCustomSections.firstIndex(where: { $0.id == sectionId }) {
+                        if self.localCampaignCustomSections[index].content != returnedUpdatedSectionData.content {
+                            print("[SAVE_DEBUG CampaignDetailView] processSnippetWithLLM: Snippet content from LLM ('\(returnedUpdatedSectionData.content.prefix(20))') differs from re-synced campaign's section content ('\(self.localCampaignCustomSections[index].content.prefix(20))'). Trusting LLM direct output for this section.") // DEBUG LOG
+                            // This ensures the text view, which was updated by the coordinator,
+                            // and the underlying data model for that section are aligned with the direct LLM output for the snippet.
+                            self.localCampaignCustomSections[index].content = returnedUpdatedSectionData.content
+                        }
+                    }
+
+                } else {
+                    print("[SAVE_DEBUG CampaignDetailView] processSnippetWithLLM: Error - Could not find refreshed campaign \(self.campaign.id) in CampaignCreator.campaigns after snippet. Saving local changes.") // DEBUG LOG
+                    // If full refresh fails, at least the local change via coordinator is likely in localCampaignCustomSections.
+                }
+
+                // 4. Save all details.
+                await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true)
+                print("Snippet processing successful for feature '\(feature.name)'.")
+
+            } catch {
+                let errorDescription = "Error processing snippet for feature '\(feature.name)': \(error.localizedDescription)"
+                print(errorDescription)
+                snippetProcessingError = errorDescription
+                self.errorMessage = "Snippet Processing Failed (Section: \(currentCampaignSection.title))" // Fixed: currentCampaignSection.title is not optional
+                self.showErrorAlert = true
+            }
+        }
+    }
+
+    private func fetchSnippetFeatures() async {
+        isLoadingFeatures = true
+        featureFetchError = nil // Reset error
+        do {
+            let allFeatures = try await featureService.fetchFeatures()
+            // Filter for "Snippet" category or other relevant criteria if needed
+            // For now, assuming all fetched features might be usable as snippets,
+            // or the backend / featureService already filters appropriately.
+            // The web UI filters for category 'Snippet' or specific non-campaign/TOC related names.
+            self.snippetFeatures = allFeatures.filter {
+                $0.featureCategory?.lowercased() == "snippet" ||
+                ($0.featureCategory == nil && !["Campaign", "TOC Homebrewery", "TOC Display", "Campaign Names"].contains($0.name))
+            }
+            print("Fetched \(self.snippetFeatures.count) snippet features.")
+        } catch {
+            let errorDescription = "Error fetching snippet features: \(error.localizedDescription)"
+            print(errorDescription)
+            featureFetchError = errorDescription
+            self.errorMessage = "Feature Loading Failed" // General title for alert
+            self.showErrorAlert = true
+        }
+        isLoadingFeatures = false
+    }
+
+    // MARK: - Campaign Custom Sections Editor
+    private var campaignCustomSectionsEditorView: some View {
+        // Removed DisclosureGroup("Custom Campaign Sections") wrapper
+        // The content (VStack) will now be the root of this computed property.
+        // This view will be placed inside the parent "Campaign Sections" DisclosureGroup.
+        VStack(alignment: .leading, spacing: 12) {
+            // Add a Text header for "Custom Sections" if desired, or leave it to the parent group.
+            // For clarity within the "Campaign Sections" group, let's add a sub-header.
+            Text("Custom Sections")
+                .font(currentFont.weight(.semibold)) // Slightly less prominent than "Sections"
+                .foregroundColor(currentPrimaryColor.opacity(0.8)) // Slightly muted
+                .padding(.bottom, 2)
+
+            ForEach($localCampaignCustomSections) { section in // $section is Binding<CampaignCustomSection>
+                DisclosureGroup(
+                    content: {
+                        Text(section.title.wrappedValue.isEmpty ? "New Custom Section" : section.title.wrappedValue)
+                            .font(currentFont.weight(.bold))
+                            .foregroundColor(currentTextColor)
+                    }
+                ) { // Content for each custom section's DisclosureGroup
+                    VStack(alignment: .leading) {
+                        TextField("Section Title", text: section.title)
+                            .font(currentFont.weight(.semibold))
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .padding(.bottom, 2)
+                            .onChange(of: section.title.wrappedValue) { newTitle in // Observe .wrappedValue
+                                let sectionId = section.id.wrappedValue
+                                customSectionTitleDebounceTimers[sectionId]?.invalidate()
+                                customSectionTitleDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
+                                    Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true, editingSectionID: sectionId, latestSectionContent: nil) } // Pass nil for content
+                                }
+                            }
+
+                        Picker("Section Type", selection: section.type.withDefault("Generic")) {
+                            ForEach(sectionTypes, id: \.self) { typeName in
+                                Text(typeName).tag(typeName)
+                            }
+                        }
+                        .pickerStyle(MenuPickerStyle())
+                        .font(.caption)
+                        .padding(.bottom, 4)
+                        .onChange(of: section.type.wrappedValue) { _ in // Observe .wrappedValue
+                            Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
+                        }
+
+                        CustomTextView(
+                            text: section.content,
+                            font: uiFontFrom(swiftUIFont: currentFont),
+                            textColor: UIColor(currentTextColor),
+                            onCoordinatorCreated: { coordinator in
+                                customTextViewCoordinators[section.id.wrappedValue] = coordinator // Corrected access
+                            }
+                        )
+                        .frame(minHeight: 100, maxHeight: 300)
+                        .background(Color(.secondarySystemGroupedBackground))
+                        .cornerRadius(8)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+                        .onChange(of: section.content.wrappedValue) { newContent in // Observe .wrappedValue
+                            let sectionId = section.id.wrappedValue
+                            customSectionContentDebounceTimers[sectionId]?.invalidate()
+                            customSectionContentDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in // Slightly longer timer for content
+                                Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true, editingSectionID: sectionId, latestSectionContent: newContent) }
+                            }
+                        }
+
+                        HStack { // Action Buttons
+                            Button(role: section.id.wrappedValue < 0 ? .none : .destructive) {
+                                let sectionIdToDelete = section.id.wrappedValue
+                                localCampaignCustomSections.removeAll { $0.id == sectionIdToDelete }
+                                customTextViewCoordinators.removeValue(forKey: sectionIdToDelete)
+                                if sectionIdToDelete >= 0 {
+                                    Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
+                                }
+                            } label: {
+                                Text(section.id.wrappedValue < 0 ? "Remove" : "Delete Section")
+                            }
+                            .foregroundColor(section.id.wrappedValue < 0 ? .blue : .red)
+                            .buttonStyle(.borderless)
+
+                            Spacer()
+
+                            Menu {
+                                if isLoadingFeatures { Text("Loading features...") }
+                                else if snippetFeatures.isEmpty { Text("No snippet features available.") }
+                                else {
+                                    ForEach(snippetFeatures) { feature in
+                                        Button(feature.name) {
+                                            handleSnippetFeatureSelection(feature, forSection: section.wrappedValue)
+                                        }
+                                    }
+                                }
+                            } label: {
+                                Label("Process Snippet", systemImage: "wand.and.stars").font(.caption)
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(isLoadingFeatures)
+
+                            Button("Regenerate Content") {
+                                handleFullSectionRegeneration(forSection: section.wrappedValue)
+                            }
+                            .buttonStyle(.bordered).font(.caption)
+                            .tint(currentPrimaryColor)
+
+                            Button {
+                                self.currentSectionIdForImageGen = section.id.wrappedValue
+                                self.imageGenPromptText = section.title.wrappedValue
+                                self.showingImagePromptModalForSection = true
+                            } label: {
+                                Label("Image", systemImage: "photo.badge.plus").font(.caption)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        .padding(.top, 4)
+                    }
+                    .padding(.vertical, 8) // Padding for the content of the inner DisclosureGroup
+                }
+                .padding(.bottom, 4) // Spacing between disclosure groups
+                Divider()
+            }
+            Button(action: addCampaignCustomSection) {
+                Label("Add Custom Section", systemImage: "plus.circle.fill")
+            }
+            .buttonStyle(.bordered)
+            .tint(currentPrimaryColor) // Use theme color
+        }
+        .padding(.top, 8)
+        // Removed the .padding().background().cornerRadius().foregroundColor().font()
+        // as these are now applied by the parent "Campaign Sections" DisclosureGroup
+        // or should be inherent to the content if needed.
+        // The individual custom section DisclosureGroups already handle their own internal styling.
+    }
+    // Apply overall font and text color if not inherited, though parent group should handle it.
+    // .foregroundColor(currentTextColor)
+    // .font(currentFont)
+
+    private func addCampaignCustomSection() {
+        let newId = nextTemporaryClientSectionID
+        nextTemporaryClientSectionID -= 1 // Decrement for next use
+        let newSection = CampaignCustomSection(id: newId, title: "New Section", content: "", type: "Generic") // Pass newId
+        localCampaignCustomSections.append(newSection)
+        print("[SAVE_DEBUG CampaignDetailView] addCampaignCustomSection: Added new section with temporary ID \(newId)") // DEBUG LOG
+        // Optionally trigger save immediately or rely on user saving via other actions
+        // For now, let user make edits and then save via other means or when view disappears.
+        // Or, if auto-save is desired here:
+        // Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
+    }
+
+
+    var body: some View {
+        ZStack { // Use ZStack for background image handling
+            // Background Image (if URL is provided)
+            if let bgImageURLString = campaign.themeBackgroundImageURL, let bgImageURL = URL(string: bgImageURLString) {
+                AsyncImage(url: bgImageURL) { image in
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Color.clear // Or a placeholder color/progress view
+                }
+                .opacity(campaign.themeBackgroundImageOpacity ?? 1.0)
+                .edgesIgnoringSafeArea(.all)
+                .clipped() // Added to prevent oversized image from causing scrolling
+            } else {
+                // Apply background color only if no image, or if image fails to load and placeholder is clear
+                currentBackgroundColor.edgesIgnoringSafeArea(.all)
+            }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Apply general text color and font to the content of the ScrollView
+                    // Specific elements can override this.
+                    CampaignHeaderView(
+                        campaign: campaign,
+                        editableTitle: $editableTitle,
+                        isSaving: isSaving,
+                        isGeneratingText: isGeneratingText,
+                        currentPrimaryColor: currentPrimaryColor,
+                        onSetBadgeAction: {
+                            self.showingSetBadgeOptions = true // Trigger the action sheet
+                        }
+                        // selectedBadgeImage binding is removed as PhotosPicker is removed
+                    )
+                    // The .onChange for editableTitle is already on CampaignDetailView's editableTitle property
+                    // and will continue to function for debounced saving.
+
+                    CampaignConceptEditorView(
+                        isEditingConcept: $isEditingConcept,
+                        editableConcept: $editableConcept,
+                        isSaving: isSaving,
+                        isGeneratingText: isGeneratingText,
+                        currentPrimaryColor: currentPrimaryColor,
+                        currentFont: currentFont,
+                        currentTextColor: currentTextColor,
+                        onSaveChanges: {
+                            await self.saveCampaignDetails(source: .conceptEditorDoneButton)
+                        }
+                    )
+
+                    // MARK: - Table of Contents
+                    if let tocEntries = campaign.displayTOC, !tocEntries.isEmpty {
+                        tableOfContentsSection // Using the extracted component
+                    }
+                    // campaignThemeDisplaySection // REMOVED from inline
+
+                    // MARK: - Combined Campaign Sections (Custom and Standard)
+                    DisclosureGroup("Campaign Sections") {
+                        VStack(alignment: .leading, spacing: 16) { // Added spacing to match outer VStack
+                            campaignCustomSectionsEditorView // ADDED Campaign Custom Sections UI
+                            sectionsDisplaySection // Using the extracted component (standard generated sections)
+                        }
+                        // .padding(.top, 8) // Optional: Add padding if needed inside the DisclosureGroup
+                    }
+                    .padding().background(Color(.systemBackground)).cornerRadius(12) // Style to match other top-level DisclosureGroups
+                    .font(currentFont) // Apply theme font
+                    .foregroundColor(currentTextColor) // Apply theme text color
+
+                    // moodBoardSection // REMOVED Mood Board Section from inline
+                    linkedCharactersSection // ADDED Linked Characters Section
+                    // llmSettingsSection // REPLACED with CampaignLLMSettingsView
+                    CampaignLLMSettingsView(
+                        selectedLLMId: $campaign.selectedLLMId.withDefault((availableLLMsFromAPI.first ?? CampaignCreatorApp.placeholderLLMs.first)?.id ?? "default-llm-id"),
+                        temperature: $campaign.temperature.withDefault(0.7),
+                        availableLLMs: availableLLMsFromAPI.isEmpty ? CampaignCreatorApp.placeholderLLMs : availableLLMsFromAPI,
+                        currentFont: currentFont,
+                        currentTextColor: currentTextColor,
+                        onLLMSettingsChange: {
+                            await self.saveCampaignDetails(source: .llmSettingsChange, includeLLMSettings: true, editingSectionID: nil, latestSectionContent: nil)
+                        }
+                    )
+                    // Add the LLM configuration note here if service is nil
+                    if !campaignCreator.isLLMServiceAvailable { // Use new property
+                        Text("Note: AI Text Generation features require OpenAI API key configuration in settings.")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                            .padding(.vertical) // Add some vertical padding
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                    if let llmFetchError = llmFetchError {
+                        Text("Error fetching LLM list: \(llmFetchError)")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                            .padding(.vertical)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                }
+                .padding()
+                .font(currentFont) // Apply default theme font to all content within VStack
+                .foregroundColor(currentTextColor) // Apply default theme text color
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity) // Constrain ZStack to screen bounds
+        .refreshable {
+            do {
+                print("[DetailView REFRESH] Attempting to refresh campaign ID: \(campaign.id)")
+                let refreshedCampaignData = try await campaignCreator.refreshCampaign(id: campaign.id)
+                self.campaign = refreshedCampaignData
+                self.editableTitle = refreshedCampaignData.title
+                self.editableConcept = refreshedCampaignData.concept ?? ""
+                self.localCampaignCustomSections = refreshedCampaignData.customSections ?? []
+                self.viewRefreshTrigger = UUID() // Trigger ID refresh as well
+                print("[DetailView REFRESH] Campaign \(campaign.id) refreshed successfully.")
+            } catch {
+                print("[DetailView REFRESH] Error refreshing campaign \(campaign.id): \(error.localizedDescription)")
+                self.errorMessage = "Failed to refresh campaign: \(error.localizedDescription)"
+                self.showErrorAlert = true
+            }
+        }
+        .id(viewRefreshTrigger) // Force refresh when trigger changes
+        .navigationTitle(editableTitle)
+        .navigationBarTitleDisplayMode(.inline)
+        .disabled(isSaving || isGeneratingText)
+        .onAppear {
+            // Log initial LLM settings when the view appears
+            if !initialLLMSettingsLoaded {
+                // This is line 1073, already fixed in a previous step to "not set"
+                print("[LLM_DEBUG CampaignDetailView] View appeared. Initial campaign LLM Settings: ID=\(campaign.selectedLLMId ?? "nil"), Temp=\(campaign.temperature?.description ?? "not set")") // Warning fix
+                initialLLMSettingsLoaded = true
+            }
+            Task {
+                // Fetch available LLMs
+                if availableLLMsFromAPI.isEmpty { // Fetch only if not already populated
+                    do {
+                        print("[CampaignDetailView .onAppear] Fetching available LLMs...")
+                        let fetchedLLMs = try await campaignCreator.apiService.fetchAvailableLLMs()
+                        self.availableLLMsFromAPI = fetchedLLMs
+                        self.llmFetchError = nil
+                        print("[CampaignDetailView .onAppear] Successfully fetched \(fetchedLLMs.count) LLMs.")
+                        // If current campaign.selectedLLMId is nil or not in the new list,
+                        // try to set it to the first available one from the API.
+                        if self.campaign.selectedLLMId == nil || !fetchedLLMs.contains(where: { $0.id == self.campaign.selectedLLMId }) {
+                            if let firstAPILLM = fetchedLLMs.first {
+                                print("[CampaignDetailView .onAppear] Auto-selecting first LLM from API: \(firstAPILLM.name) (\(firstAPILLM.id))")
+                                self.campaign.selectedLLMId = firstAPILLM.id
+                                // Optionally, save this change immediately
+                                await self.saveCampaignDetails(source: .llmSettingsChange, includeLLMSettings: true)
+                            }
+                        }
+                    } catch {
+                        print("❌ [CampaignDetailView .onAppear] Error fetching available LLMs: \(error.localizedDescription)")
+                        self.llmFetchError = error.localizedDescription
+                        // availableLLMsFromAPI will remain empty, CampaignLLMSettingsView will use placeholderLLMs
+                    }
+                }
+
+                await fetchSnippetFeatures() // Existing call
+
+                // Fetch characters if not already attempted or if there was an error
+                if (!campaignCreator.initialCharacterFetchAttempted || campaignCreator.characterError != nil) && !campaignCreator.isLoadingCharacters {
+                    print("[CampaignDetailView .onAppear] Attempting to fetch characters.")
+                    await campaignCreator.fetchCharacters()
+                } else {
+                    print("[CampaignDetailView .onAppear] Skipping character fetch. InitialAttempt: \(campaignCreator.initialCharacterFetchAttempted), Error: \(campaignCreator.characterError != nil), Loading: \(campaignCreator.isLoadingCharacters)")
+                }
+
+                // Refresh current campaign data from campaignCreator or backend
+            return .custom(fontName, size: 16) // Default size, can be made dynamic
+        }
+        return .body // Default system font
+    }
+
+    // MARK: - Extracted View Components for Body
+    // private var headerAndTitleSection: some View { ... } // REMOVED - Extracted to CampaignHeaderView.swift
+
+    // private var conceptEditorSection: some View { ... } // REMOVED - Extracted to CampaignConceptEditorView.swift
+
+    private var tableOfContentsSection: some View {
+        // Ensure this only appears if tocEntries are available and not empty
+        // The conditional logic is kept in the main body for clarity of structure
+        DisclosureGroup("Table of Contents") {
+            VStack(alignment: .leading, spacing: 8) {
+                // Ensure campaign.displayTOC is not nil before trying to iterate
+                ForEach(campaign.displayTOC ?? []) { entry in
+                    Text(entry.title)
+                        .font(.body) // Can be themed with currentFont if desired, or kept as .body
+                    // TODO: Add navigation to section
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 4)
+        }
+        .padding().background(Color(.systemBackground)).cornerRadius(12)
+        .foregroundColor(currentTextColor) // Apply theme text color
+        .font(currentFont) // Apply theme font
+    }
+
+    private var campaignThemeDisplaySection: some View {
+        DisclosureGroup("Campaign Theme") {
+            VStack(alignment: .leading, spacing: 8) {
+                ThemePropertyRow(label: "Primary Color", value: campaign.themePrimaryColor)
+                ThemePropertyRow(label: "Secondary Color", value: campaign.themeSecondaryColor)
+                ThemePropertyRow(label: "Background Color", value: campaign.themeBackgroundColor)
+                ThemePropertyRow(label: "Text Color", value: campaign.themeTextColor)
+                ThemePropertyRow(label: "Font Family", value: campaign.themeFontFamily)
+                ThemePropertyRow(label: "Background Image URL", value: campaign.themeBackgroundImageURL, isURL: true)
+                ThemePropertyRow(label: "BG Image Opacity", value: campaign.themeBackgroundImageOpacity.map { String(format: "%.2f", $0) })
+
+                // Display Linked Characters
+                if let linkedIDs = campaign.linkedCharacterIDs, !linkedIDs.isEmpty {
+                    Text("Linked Characters:").font(currentFont.weight(.semibold)).padding(.top, 5)
+                    ForEach(linkedIDs, id: \.self) { charID in
+                        if let char = campaignCreator.characters.first(where: { $0.id == charID }) {
+                            Text("  - \(char.name)")
+                                .font(currentFont)
+                        } else {
+                            Text("  - Character ID: \(charID) (Not found)")
+                                .font(currentFont.italic())
+                                .foregroundColor(.gray)
+                        }
+                    }
+                }
+
+
+                Button("Edit Campaign Details") { // Caption updated
+                    showingCampaignEditSheet = true // Use new state variable
+                }
+                .buttonStyle(.bordered)
+                .tint(currentPrimaryColor) // Apply theme primary color
+                .padding(.top, 8)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 4)
+        }
+        .padding().background(Color(.systemBackground)).cornerRadius(12)
+        .foregroundColor(currentTextColor) // Apply theme text color
+        .font(currentFont) // Apply theme font
+    }
+
+    private var sectionsDisplaySection: some View {
+        VStack(alignment: .leading) {
+            Text("Sections")
+                .font(currentFont.weight(.bold)) // Use theme font, make bold
+                .foregroundColor(currentPrimaryColor) // Use theme primary color for header
+                .padding(.bottom, 4)
+
+            if campaign.sections.isEmpty {
+                Text("No sections yet. Use 'Generate' to create the first section from a prompt.")
+                    .font(currentFont.italic()) // Theme font, italic
+                    .foregroundColor(currentTextColor.opacity(0.7)) // Theme text color, slightly muted
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .background(Color(.systemGroupedBackground)).cornerRadius(8)
+            } else {
+                ForEach($campaign.sections.indices, id: \.self) { index in
+                    let sectionBinding = $campaign.sections[index]
+                    DisclosureGroup(
+                        // Using the section's title (or a default) for the DisclosureGroup label
+                        sectionBinding.title.wrappedValue ?? "Untitled Section \(campaign.sections[index].order)"
+                    ) {
+                        sectionView(for: sectionBinding, at: index, sectionType: .standard)
+                    }
+                    .padding(.bottom, 4) // Spacing between individual section DisclosureGroups
+                    Divider() // Keep a divider between sections
+                }
+                // .padding(.vertical, 4) // Removed this as padding is now on individual DisclosureGroups
+            }
+        }
+        .padding() // Outer padding for the whole sections block
+    }
+
+    // Enum to differentiate section types for the helper function
+    private enum SectionDetailType {
+        case standard
+        case custom
+    }
+
+    @ViewBuilder
+    private func sectionView(for sectionBinding: Binding<CampaignSectionTypeProtocol>, at index: Int, sectionType: SectionDetailType) -> some View {
+        // This helper function builds the content for a single section (standard or custom)
+        // It requires sectionBinding to conform to a protocol that provides title, content, id, order, type (for custom)
+        // For simplicity in this refactor, I'll assume CampaignSection and CampaignCustomSection can be adapted
+        // or this function will be duplicated/specialized.
+        // For now, let's focus on the structure for CampaignSection (standard) as per the original error context.
+        // The error was in `sectionsDisplaySection` which iterates over `campaign.sections`.
+
+        // We'll need to cast or use specific logic based on sectionType if properties differ significantly.
+        // This is a placeholder for the actual binding type.
+        // Let's assume for now we are dealing with standard sections as per the original context of error.
+        // The binding for `campaign.sections[index]` is `Binding<CampaignSection>`.
+        // The binding for `localCampaignCustomSections[index]` is `Binding<CampaignCustomSection>`.
+        // We need a way to handle this polymorphism or have two helper functions.
+
+        // For now, let's assume this is for standard sections, matching the original error location.
+        // To make it truly generic, `CampaignSectionTypeProtocol` would need to be defined and adopted.
+        // Or, we make two distinct helper views/functions.
+        // Given the error was at line 207 (standard sections), let's make this specific to `Binding<CampaignSection>` first.
+        // The code below is essentially what was inside the standard section DisclosureGroup.
+        // I will need to create a similar function for custom sections.
+
+        // This function is not used yet, the refactor below will be more direct.
+        // The actual refactor will involve creating a specific function for standard section content
+        // and another for custom section content.
+
+        // The error specifically pointed to the DisclosureGroup within the ForEach of `campaign.sections`.
+        // So, the content of *that* specific DisclosureGroup is what needs to be extracted.
+        // The following is the content for a standard section:
+        VStack(alignment: .leading) {
+            // Assuming sectionBinding is Binding<CampaignSection> for this context
+            let stdSectionBinding = sectionBinding as! Binding<CampaignSection> // This cast is unsafe, indicates need for separate helpers or protocol
+
+            TextField("Section Title", text: stdSectionBinding.title.withDefault("Untitled Section \(stdSectionBinding.wrappedValue.order)"))
+                .font(currentFont.weight(.semibold))
+                .textFieldStyle(PlainTextFieldStyle())
+                .padding(.bottom, 2)
+                .onChange(of: stdSectionBinding.wrappedValue.title) { newTitle in
+                    let sectionId = stdSectionBinding.wrappedValue.id
+                    customSectionTitleDebounceTimers[sectionId]?.invalidate()
+                    customSectionTitleDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
+                        Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true, editingSectionID: sectionId, latestSectionContent: nil) }
+                    }
+                }
+
+            CustomTextView(
+                text: stdSectionBinding.content,
+                font: uiFontFrom(swiftUIFont: currentFont),
+                textColor: UIColor(currentTextColor),
+                onCoordinatorCreated: { coordinator in
+                    customTextViewCoordinators[stdSectionBinding.wrappedValue.id] = coordinator
+                }
+            )
+            .frame(minHeight: 100, maxHeight: 300)
+            .background(Color(.secondarySystemGroupedBackground))
+            .cornerRadius(8)
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+            .onChange(of: stdSectionBinding.wrappedValue.content) { newContent in
+                let sectionId = stdSectionBinding.wrappedValue.id
+                customSectionContentDebounceTimers[sectionId]?.invalidate()
+                customSectionContentDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in
+                    Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true, editingSectionID: sectionId, latestSectionContent: newContent) }
+                }
+            }
+
+            HStack {
+                Button("Delete") {
+                    // Need original index for removal from array
+                    // This helper function approach makes direct array modification harder
+                    // This indicates that the ForEach should pass the index if direct array mutation is needed,
+                    // or deletion should be handled by a callback with ID.
+                    // For now, this part of refactoring shows a challenge.
+                    // Let's assume `index` is passed to this helper.
+                     if index < campaign.sections.count {
+                        let sectionIdToDelete = campaign.sections[index].id
+                        campaign.sections.remove(at: index)
+                        customTextViewCoordinators.removeValue(forKey: sectionIdToDelete)
+                        Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
+                    }
+                }
+                .foregroundColor(.red)
+                .buttonStyle(.borderless)
+
+                Spacer()
+
+                Menu {
+                    if isLoadingFeatures { Text("Loading features...") }
+                    else if snippetFeatures.isEmpty { Text("No snippet features.") }
+                    else {
+                        ForEach(snippetFeatures) { feature in
+                            Button(feature.name) {
+                                 if index < campaign.sections.count {
+                                    // This function call needs to be available or passed in
+                                    // handleStandardSnippetFeatureSelection(feature, forSectionAtIndex: index)
+                                    // This is another challenge of simple extraction without more architectural change.
+                                 }
+                            }
+                        }
+                    }
+                } label: {
+                    Label("Snippet", systemImage: "wand.and.stars").font(.caption)
+                }
+                .buttonStyle(.bordered).disabled(isLoadingFeatures)
+
+                Button("Regen") {
+                     if index < campaign.sections.count {
+                        // handleStandardSectionRegeneration(forSectionAtIndex: index)
+                     }
+                }
+                .buttonStyle(.bordered).font(.caption)
+
+                Button {
+                     if index < campaign.sections.count {
+                        self.currentStandardSectionIndexForImageGen = index
+                        self.imageGenPromptText = campaign.sections[index].title ?? "Image for section \(campaign.sections[index].order)"
+                        self.showingImagePromptModalForStandardSection = true
+                     }
+                } label: {
+                    Label("Image", systemImage: "photo.badge.plus").font(.caption)
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding(.top, 4)
+        }
+        .padding(.vertical, 8)
+    }
+
+    // Extracted content view for a standard campaign section
+    @ViewBuilder
+    private func standardSectionContentView(sectionBinding: Binding<CampaignSection>, index: Int) -> some View {
+        VStack(alignment: .leading) {
+            TextField("Section Title", text: sectionBinding.title.withDefault("Untitled Section \(sectionBinding.wrappedValue.order)"))
+                .font(currentFont.weight(.semibold))
+                .textFieldStyle(PlainTextFieldStyle())
+                .padding(.bottom, 2)
+                .onChange(of: sectionBinding.wrappedValue.title) { newTitle in
+                    let sectionId = sectionBinding.wrappedValue.id
+                    customSectionTitleDebounceTimers[sectionId]?.invalidate()
+                    customSectionTitleDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
+                        Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true, editingSectionID: sectionId, latestSectionContent: nil) }
+                    }
+                }
+
+            CustomTextView(
+                text: sectionBinding.content,
+                font: uiFontFrom(swiftUIFont: currentFont),
+                textColor: UIColor(currentTextColor),
+                onCoordinatorCreated: { coordinator in
+                    customTextViewCoordinators[sectionBinding.wrappedValue.id] = coordinator
+                }
+            )
+            .frame(minHeight: 100, maxHeight: 300)
+            .background(Color(.secondarySystemGroupedBackground))
+            .cornerRadius(8)
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+            .onChange(of: sectionBinding.wrappedValue.content) { newContent in
+                let sectionId = sectionBinding.wrappedValue.id
+                customSectionContentDebounceTimers[sectionId]?.invalidate()
+                customSectionContentDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in
+                    Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true, editingSectionID: sectionId, latestSectionContent: newContent) }
+                }
+            }
+
+            standardSectionActionButtons(sectionBinding: sectionBinding, index: index)
+        }
+        .padding(.vertical, 8)
+    }
+
+    // Extracted action buttons for a standard campaign section
+    @ViewBuilder
+    private func standardSectionActionButtons(sectionBinding: Binding<CampaignSection>, index: Int) -> some View {
+        HStack {
+            Button("Delete") {
+                if index < campaign.sections.count {
+                    let sectionIdToDelete = campaign.sections[index].id
+                    campaign.sections.remove(at: index)
+                    customTextViewCoordinators.removeValue(forKey: sectionIdToDelete)
+                    Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
+                }
+            }
+            .foregroundColor(.red)
+            .buttonStyle(.borderless)
+
+            Spacer()
+
+            Menu {
+                if isLoadingFeatures { Text("Loading features...") }
+                else if snippetFeatures.isEmpty { Text("No snippet features.") }
+                else {
+                    ForEach(snippetFeatures) { feature in
+                        Button(feature.name) {
+                            if index < campaign.sections.count {
+                                handleStandardSnippetFeatureSelection(feature, forSectionAtIndex: index)
+                            }
+                        }
+                    }
+                }
+            } label: {
+                Label("Snippet", systemImage: "wand.and.stars").font(.caption)
+            }
+            .buttonStyle(.bordered).disabled(isLoadingFeatures)
+
+            Button("Regen") {
+                if index < campaign.sections.count {
+                    handleStandardSectionRegeneration(forSectionAtIndex: index)
+                }
+            }
+            .buttonStyle(.bordered).font(.caption)
+
+            Button {
+                if index < campaign.sections.count {
+                    self.currentStandardSectionIndexForImageGen = index
+                    self.imageGenPromptText = campaign.sections[index].title ?? "Image for section \(campaign.sections[index].order)"
+                    self.showingImagePromptModalForStandardSection = true
+                }
+            } label: {
+                Label("Image", systemImage: "photo.badge.plus").font(.caption)
+            }
+            .buttonStyle(.bordered)
+        }
+        .padding(.top, 4)
+    }
+
     private func handleImageGenerationForSection() async {
         sectionImageGenError = nil // Reset error
         guard let sectionId = currentSectionIdForImageGen,
@@ -821,9 +1943,9 @@ struct CampaignDetailView: View {
                     linkedCharactersSection // ADDED Linked Characters Section
                     // llmSettingsSection // REPLACED with CampaignLLMSettingsView
                     CampaignLLMSettingsView(
-                        selectedLLMId: $campaign.selectedLLMId.withDefault((availableLLMsFromAPI.first ?? placeholderLLMs.first)?.id ?? "default-llm-id"),
+                        selectedLLMId: $campaign.selectedLLMId.withDefault((availableLLMsFromAPI.first ?? CampaignCreatorApp.placeholderLLMs.first)?.id ?? "default-llm-id"),
                         temperature: $campaign.temperature.withDefault(0.7),
-                        availableLLMs: availableLLMsFromAPI.isEmpty ? placeholderLLMs : availableLLMsFromAPI,
+                        availableLLMs: availableLLMsFromAPI.isEmpty ? CampaignCreatorApp.placeholderLLMs : availableLLMsFromAPI,
                         currentFont: currentFont,
                         currentTextColor: currentTextColor,
                         onLLMSettingsChange: {
@@ -1567,8 +2689,8 @@ struct CampaignDetailView: View {
             // campaign.sections is part of self.campaign, so it's also updated if self.campaign was set.
 
             // Log LLM settings from the refreshed campaign data
-            print("[LLM_DEBUG CampaignDetailView] saveCampaignDetails: trulyRefreshedCampaign LLM Settings: ID=\(trulyRefreshedCampaign.selectedLLMId ?? "nil"), Temp=\(trulyRefreshedCampaign.temperature?.description ?? "nil")")
-            print("[LLM_DEBUG CampaignDetailView] saveCampaignDetails: self.campaign (after update) LLM Settings: ID=\(self.campaign.selectedLLMId ?? "nil"), Temp=\(self.campaign.temperature?.description ?? "nil")")
+            print("[LLM_DEBUG CampaignDetailView] saveCampaignDetails: trulyRefreshedCampaign LLM Settings: ID=\(trulyRefreshedCampaign.selectedLLMId ?? "nil"), Temp=\(trulyRefreshedCampaign.temperature?.description ?? "not set")")
+            print("[LLM_DEBUG CampaignDetailView] saveCampaignDetails: self.campaign (after update) LLM Settings: ID=\(self.campaign.selectedLLMId ?? "nil"), Temp=\(self.campaign.temperature?.description ?? "not set")")
 
             // Only trigger full refresh for specific cases, not for every text field save
             // to prevent losing focus on text editors.
