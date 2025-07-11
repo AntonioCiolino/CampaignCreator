@@ -896,45 +896,59 @@ async def generate_character_aspect_text(
         raise Exception(f"Failed to generate character aspect: {str(e)}") # To be caught by API endpoint
 
 
-# --- ChatMessage CRUD Functions ---
+# --- New ChatMessage CRUD Functions (Single JSON history per character-user pair) ---
 
-def create_chat_message(db: Session, character_id: int, message: models.ChatMessageCreate) -> orm_models.ChatMessage:
+def get_or_create_user_character_conversation(db: Session, character_id: int, user_id: int) -> orm_models.ChatMessage:
     """
-    Creates a new chat message for a given character.
-    The 'sender' field in the 'message' (models.ChatMessageCreate) object is used.
+    Retrieves the single conversation record for a character and user.
+    If no record exists, it creates a new one with an empty conversation history.
+    The 'conversation_history' field in the ORM model is expected to be a JSON type
+    that SQLAlchemy handles for list-to-JSON string conversion.
     """
-    db_message = orm_models.ChatMessage(
-        character_id=character_id,
-        text=message.text,
-        sender=message.sender # Use the sender from the input Pydantic model
-        # timestamp is server_default by the database
-    )
-    db.add(db_message)
+    # Attempt to fetch the existing conversation record
+    conversation_record = db.query(orm_models.ChatMessage).filter(
+        orm_models.ChatMessage.character_id == character_id,
+        orm_models.ChatMessage.user_id == user_id
+    ).first()
+
+    if not conversation_record:
+        # Create a new record if one doesn't exist
+        # The 'conversation_history' field in orm_models.ChatMessage has default=[]
+        # The 'updated_at' field has server_default and onupdate triggers
+        conversation_record = orm_models.ChatMessage(
+            character_id=character_id,
+            user_id=user_id
+            # conversation_history will use its default=[]
+        )
+        db.add(conversation_record)
+        db.commit()
+        db.refresh(conversation_record)
+        print(f"CRUD: Created new conversation record for char_id={character_id}, user_id={user_id}")
+    else:
+        print(f"CRUD: Fetched existing conversation record for char_id={character_id}, user_id={user_id}")
+        # Ensure conversation_history is a list if it was NULL from DB and default didn't apply post-load
+        if conversation_record.conversation_history is None:
+            conversation_record.conversation_history = []
+
+    return conversation_record
+
+def update_user_character_conversation(
+    db: Session,
+    conversation_record: orm_models.ChatMessage,
+    new_history_list: List[Dict] # Expects a list of dicts, e.g. [{"speaker": "user", "text": "hi", "timestamp": "iso_str"}]
+) -> orm_models.ChatMessage:
+    """
+    Updates the 'conversation_history' of a given conversation record.
+    SQLAlchemy's JSON type should handle the serialization of the Python list of dicts.
+    """
+    conversation_record.conversation_history = new_history_list
+    # The 'updated_at' field should update automatically via onupdate=func.now() if defined in ORM
+    db.add(conversation_record) # Add to session to ensure it's persisted
     db.commit()
-    db.refresh(db_message)
-    return db_message
+    db.refresh(conversation_record)
+    print(f"CRUD: Updated conversation record for char_id={conversation_record.character_id}, user_id={conversation_record.user_id}")
+    return conversation_record
 
-def get_chat_messages_for_character(db: Session, character_id: int, skip: int = 0, limit: int = 100) -> List[orm_models.ChatMessage]:
-    """
-    Retrieves chat messages for a specific character, ordered by timestamp.
-    """
-    return (
-        db.query(orm_models.ChatMessage)
-        .filter(orm_models.ChatMessage.character_id == character_id)
-        .order_by(orm_models.ChatMessage.timestamp.asc()) # Oldest first
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
-
-def get_recent_chat_messages_for_character(db: Session, character_id: int, limit: int = 10) -> List[orm_models.ChatMessage]:
-    """
-    Retrieves the most recent chat messages for a specific character.
-    """
-    return (
-        db.query(orm_models.ChatMessage)
-        .filter(orm_models.ChatMessage.character_id == character_id)
-        .order_by(orm_models.ChatMessage.timestamp.desc()) # Newest first
-        .limit(limit)
-        .all()[::-1] # Reverse to get them in chronological order for the prompt
-    )
+# Old ChatMessage CRUD functions are now removed.
+# The new functions get_or_create_user_character_conversation and
+# update_user_character_conversation handle the new JSON-based storage.

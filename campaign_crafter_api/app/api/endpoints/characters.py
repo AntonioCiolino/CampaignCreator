@@ -373,38 +373,57 @@ def create_character_chat_message(
     return created_message
 
 
-@router.get("/{character_id}/chat", response_model=List[models.ChatMessage])
+@router.get("/{character_id}/chat", response_model=List[models.ConversationMessageEntry])
 def get_character_chat_history(
     character_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[models.User, Depends(get_current_active_user)],
-    skip: int = 0,
-    limit: int = 1000 # Default to a higher limit for chat history
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+    # skip and limit parameters are removed as we fetch the whole JSON blob now.
+    # Pagination would need to be handled client-side or by processing the list in Python here if required.
 ):
     """
-    Retrieves the chat history for a specific character.
+    Retrieves the chat history for a specific character-user interaction.
+    The history is stored as a JSON list in a single database row.
     """
     db_character = crud.get_character(db=db, character_id=character_id)
     if db_character is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
-    if db_character.owner_id != current_user.id:
+    if db_character.owner_id != current_user.id: # Character must belong to the user
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to view this chat history")
 
-    messages = crud.get_chat_messages_for_character(db=db, character_id=character_id, skip=skip, limit=limit)
-    return messages
+    # Fetch the single conversation record for this user and character
+    conversation_record = crud.get_or_create_user_character_conversation(
+        db=db, character_id=character_id, user_id=current_user.id
+    )
+
+    # conversation_record.conversation_history is a Python list of dictionaries.
+    # FastAPI will automatically convert this list of dicts to List[models.ConversationMessageEntry]
+    # based on the response_model. Each dict must match the fields of ConversationMessageEntry.
+    # (speaker: str, text: str, timestamp: datetime)
+
+    # Ensure conversation_history is not None (it defaults to [] in ORM and get_or_create)
+    history_list = conversation_record.conversation_history if conversation_record.conversation_history is not None else []
+
+    # Pydantic will validate each item in history_list against ConversationMessageEntry.
+    # If timestamps are ISO strings in JSON, Pydantic's datetime field will parse them.
+    return history_list
 
 
 @router.post("/{character_id}/generate-response", response_model=models.LLMTextGenerationResponse)
 async def generate_character_chat_response( # Renamed function
     character_id: int,
-    request_body: models.LLMGenerationRequest, # This already contains prompt and optional client-sent chat_history
+    request_body: models.LLMGenerationRequest,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
     """
-    Generates a text response from the character, saves the user's prompt and the LLM's response
-    to the chat history, and uses recent history from DB for LLM context.
+    Generates a text response from the character.
+    The entire conversation history for this user-character pair is stored
+    as a JSON list in a single row in the 'chat_messages' table.
+    This endpoint appends the new user message and AI response to this list.
     """
+    from datetime import datetime # Import here for usage
+
     db_character = crud.get_character(db=db, character_id=character_id)
     if db_character is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
@@ -414,29 +433,31 @@ async def generate_character_chat_response( # Renamed function
     if not request_body.prompt:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Prompt cannot be empty.")
 
-    # 1. Save the user's message
-    try:
-        user_message_create = models.ChatMessageCreate(text=request_body.prompt, sender="user")
-        crud.create_chat_message(db=db, character_id=character_id, message=user_message_create)
-        print(f"User message saved for character {character_id}: '{request_body.prompt[:50]}...'") # Log success
-    except Exception as e:
-        print(f"ERROR saving user message for character {character_id}: {e}")
-        # If saving user message fails, we might not want to proceed.
-        # For now, consistent with previous logic, log and continue.
-        # Consider raising HTTPException(status_code=500, detail="Failed to save user message.")
+    # 1. Get or create the conversation record for this user and character
+    conversation_orm_object = crud.get_or_create_user_character_conversation(
+        db=db, character_id=character_id, user_id=current_user.id
+    )
 
-    # 2. Prepare context for LLM: get recent messages from DB
-    recent_history_orm = crud.get_recent_chat_messages_for_character(db=db, character_id=character_id, limit=10)
+    # conversation_history is a Python list of dicts. Initialize if None (though ORM default should handle it).
+    current_conversation_list: List[Dict] = conversation_orm_object.conversation_history if conversation_orm_object.conversation_history is not None else []
 
-    chat_history_for_llm_context = []
-    for msg_orm in recent_history_orm:
-        # Map sender to 'user' or 'assistant' for the LLM context
-        speaker_role = "user" if msg_orm.sender == "user" else "assistant"
-        # If LLM responses are stored with character_name as sender, this maps them to 'assistant'
-        # Ensure models.LLMChatContextMessage (for LLM context) is {speaker: str, text: str}
-        chat_history_for_llm_context.append(
-            models.LLMChatContextMessage(speaker=speaker_role, text=msg_orm.text) # Using the renamed Pydantic model
-        )
+    # 2. Append the current user's message to this list
+    user_message_entry = {
+        "speaker": "user",
+        "text": request_body.prompt,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    current_conversation_list.append(user_message_entry)
+
+    # 3. Prepare context for the LLM (e.g., last N messages)
+    # Map to models.ConversationMessageContext (speaker, text) for LLM service
+    # Send up to last 10 entries (including current user's new message) for context
+    history_for_llm_context_dicts = current_conversation_list[-10:]
+
+    chat_history_for_llm_service = [
+        models.ConversationMessageContext(speaker=msg["speaker"], text=msg["text"])
+        for msg in history_for_llm_context_dicts
+    ]
 
     provider_name_from_request: Optional[str] = None
     model_specific_id_from_request: Optional[str] = None
@@ -447,7 +468,7 @@ async def generate_character_chat_response( # Renamed function
 
     try:
         orm_user = crud.get_user(db, current_user.id)
-        if not orm_user: # Should ideally not happen if current_user is valid from auth
+        if not orm_user:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not retrieve user data for LLM service.")
 
         llm_service = crud.get_llm_service(
@@ -457,11 +478,13 @@ async def generate_character_chat_response( # Renamed function
             model_id_with_prefix=request_body.model_id_with_prefix,
         )
 
+        # 4. Call the LLM service
+        # user_prompt is the current raw prompt, chat_history is the context *including* this latest user prompt
         generated_text = await llm_service.generate_character_response(
             character_name=db_character.name,
             character_notes=db_character.notes_for_llm or "",
             user_prompt=request_body.prompt,
-            chat_history=chat_history_for_llm_context,
+            chat_history=chat_history_for_llm_service, # Pass the context prepared
             current_user=current_user,
             db=db,
             model=model_specific_id_from_request,
@@ -469,29 +492,38 @@ async def generate_character_chat_response( # Renamed function
             max_tokens=request_body.max_tokens
         )
 
-        # 3. Save LLM's response
-        try:
-            # Use character's name as the sender for AI messages
-            llm_response_message_create = models.ChatMessageCreate(text=generated_text, sender=db_character.name)
-            crud.create_chat_message(db=db, character_id=character_id, message=llm_response_message_create)
-            print(f"AI response saved for character {character_id}: '{generated_text[:50]}...'")
-        except Exception as e:
-            print(f"ERROR saving AI response for character {character_id}: {e}")
-            # Log error but still return generated_text, as generation succeeded.
+        # 5. Append AI's response to the list
+        ai_message_entry = {
+            "speaker": "assistant", # Using "assistant" for AI role
+            "text": generated_text,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        current_conversation_list.append(ai_message_entry)
 
+        # 6. Save the updated conversation list back to the database
+        crud.update_user_character_conversation(
+            db=db,
+            conversation_record=conversation_orm_object,
+            new_history_list=current_conversation_list
+        )
+        print(f"Conversation (JSON) updated for char_id={character_id}, user_id={current_user.id}")
+
+        # 7. Return the AI's current textual response
         return models.LLMTextGenerationResponse(text=generated_text)
 
     except crud.LLMServiceUnavailableError as e:
+        # If LLM fails, we should decide if we still save the user's message.
+        # Current logic: user message was appended to list, but list not yet saved by update_user_character_conversation.
+        # To save user message even if LLM fails, call update_user_character_conversation before LLM call.
+        # For now, if LLM fails, the appended user message (and any AI message) won't be committed.
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except crud.LLMGenerationError as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-    except ValueError as e: # E.g., from LLM service validation
+    except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         print(f"Unexpected error during character response generation: {type(e).__name__} - {str(e)}")
-        # import traceback; traceback.print_exc(); # For more detailed server-side logging if needed
+        # import traceback; traceback.print_exc();
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred while generating the character response.")
 
-# The duplicated generate_character_llm_response_with_history function (previously at ~line 747) is removed by this change,
-# as this SEARCH block starts before it and the REPLACE block ends before where it would have been.
-# This ensures only one active endpoint for POST /{character_id}/generate-response.
+# This replaces all previous versions of the generate-response endpoint.
