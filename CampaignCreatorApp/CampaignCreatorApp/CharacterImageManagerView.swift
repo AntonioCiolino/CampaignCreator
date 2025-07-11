@@ -246,7 +246,7 @@ struct CharacterImageManagerView_Previews: PreviewProvider {
         ]
         @State var emptyUrls: [String] = []
         let mockApiService = APIService() // Create mock/dummy instances for preview
-        let mockCampaignCreator = CampaignCreator(apiService: mockApiService)
+        let mockCampaignCreator = CampaignCreator(apiService: APIService())
 
 
         var body: some View {
