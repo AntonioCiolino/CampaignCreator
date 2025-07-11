@@ -2,11 +2,28 @@ import Foundation
 
 // Corresponds to TypeScript 'TOCEntry'
 public struct TOCEntry: Identifiable, Codable, Sendable {
-    public var id: Int // Changed from UUID to Int
+    public let id: UUID // Client-generated, not from JSON. Made 'let' for stability after generation.
     public var title: String
     public var type: String // e.g., "Introduction", "Chapter 1", "Appendix"
 
-    public init(id: Int, title: String, type: String) { // Changed id from UUID to Int, removed default
+    enum CodingKeys: String, CodingKey {
+        // 'id' is not decoded from JSON for TOCEntry as API sends List[Dict[str,str]] for display_toc
+        // with only 'title' and 'type' keys.
+        case title
+        case type
+    }
+
+    // Custom decoder to handle 'title' and 'type' from JSON, and generate 'id' locally.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        title = try container.decode(String.self, forKey: .title)
+        type = try container.decode(String.self, forKey: .type)
+        // Generate 'id' client-side as it's not provided by the API for these TOC items.
+        id = UUID()
+    }
+
+    // Memberwise initializer for programmatic creation (e.g., previews, tests)
+    public init(id: UUID = UUID(), title: String, type: String) {
         self.id = id
         self.title = title
         self.type = type
