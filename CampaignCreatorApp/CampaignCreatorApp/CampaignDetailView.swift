@@ -1,6 +1,6 @@
 import SwiftUI
 import CampaignCreatorLib
-import PhotosUI // Import PhotosUI
+// import PhotosUI // REMOVED - No longer using PhotosPicker for badge
 
 // Helper extension for Binding<Double?> to Double for Slider
 extension Binding where Value == Double? {
@@ -40,6 +40,9 @@ struct CampaignDetailView: View {
     @State private var showingCampaignEditSheet = false // Renamed from showingThemeEditSheet
     // @State private var showingMoodBoardSheet = false // REPLACED by NavigationLink for new moodboard view
     @State private var showingCampaignThemeSheet: Bool = false // ADDED for Campaign Theme sheet
+    @State private var showingSetBadgeOptions = false // New state for badge options action sheet
+    @State private var showingGenerateBadgeWithAISheet = false // For AI generating a badge
+    @State private var showingSelectBadgeFromMoodboardSheet = false // For selecting badge from mood board
     
     @State private var viewRefreshTrigger = UUID() // <<<< ADDED to force view refresh
     @State private var initialLLMSettingsLoaded = false // Track initial load
@@ -67,7 +70,7 @@ struct CampaignDetailView: View {
     @State private var showingImagePromptModalForSection: Bool = false
     @State private var currentSectionIdForImageGen: Int? = nil // CHANGED UUID to Int
     @State private var imageGenPromptText: String = ""
-    @State private var selectedBadgeImageItem: PhotosPickerItem? = nil // For campaign badge
+    // @State private var selectedBadgeImageItem: PhotosPickerItem? = nil // REMOVED - No longer using PhotosPicker for badge
     
     // Error states for specific operations
     @State private var featureFetchError: String? = nil
@@ -762,11 +765,9 @@ struct CampaignDetailView: View {
                         isGeneratingText: isGeneratingText,
                         currentPrimaryColor: currentPrimaryColor,
                         onSetBadgeAction: {
-                            // This callback is no longer strictly needed here as PhotosPicker handles presentation.
-                            // Image processing will be handled by an .onChange modifier on selectedBadgeImageItem.
-                            print("Set Badge button was tapped (now a PhotosPicker).")
-                        },
-                        selectedBadgeImage: $selectedBadgeImageItem // Pass the binding
+                            self.showingSetBadgeOptions = true // Trigger the action sheet
+                        }
+                        // selectedBadgeImage binding is removed as PhotosPicker is removed
                     )
                     // The .onChange for editableTitle is already on CampaignDetailView's editableTitle property
                     // and will continue to function for debounced saving.
@@ -1037,53 +1038,32 @@ struct CampaignDetailView: View {
             // .labelStyle modifier handles the change automatically.
             print("Horizontal size class changed to: \(String(describing: newSizeClass))")
         }
-        .onChange(of: selectedBadgeImageItem) { newItem in
-            Task {
-                guard let item = newItem else {
-                    print("Badge image item deselected.")
-                    return
-                }
-                do {
-                    if let data = try await item.loadTransferable(type: Data.self) {
-                        let filename = item.itemIdentifier ?? UUID().uuidString
-                        let mimeType = item.supportedContentTypes.first?.preferredMIMEType ?? "application/octet-stream"
-
-                        // Use the ImageUploadService
-                        let result = await imageUploadService.uploadImage(
-                            imageData: data,
-                            filename: filename,
-                            mimeType: mimeType
-                        )
-
-                        switch result {
-                        case .success(let urlString):
-                            campaign.badgeImageURL = urlString
-                            campaign.markAsModified()
-                            await saveCampaignDetails(source: .badgeImageUpdate) // Using the new source
-                            print("Campaign badge image URL updated to: \(urlString)")
-                        case .failure(let error):
-                            // Ensure error is an instance of ImageUploadError or handle general Error
-                            if let uploadError = error as? ImageUploadError {
-                                self.errorMessage = "Badge Upload Failed: \(uploadError.localizedDescription)"
-                            } else {
-                                self.errorMessage = "Badge Upload Failed: \(error.localizedDescription)"
-                            }
-                            self.showErrorAlert = true
-                            print("Badge image upload failed: \(error.localizedDescription)")
-                        }
-                    } else {
-                        errorMessage = "Failed to load image data from picker."
-                        showErrorAlert = true
-                        print("Failed to load image data from PhotosPickerItem.")
-                    }
-                } catch {
-                    errorMessage = "Error processing badge image: \(error.localizedDescription)"
-                    showErrorAlert = true
-                    print("Error processing badge image: \(error.localizedDescription)")
-                }
-                // Reset the picker item after processing is complete (success or failure)
-                selectedBadgeImageItem = nil
+        // .onChange(of: selectedBadgeImageItem) { ... } // REMOVED - No longer using PhotosPicker for badge
+        .confirmationDialog("Set Campaign Badge", isPresented: $showingSetBadgeOptions, titleVisibility: .visible) {
+            Button("Generate with AI") {
+                // TODO: Implement AI generation flow for badge
+                print("Generate with AI tapped")
+                // This will likely involve setting another @State variable to show the AI image generation sheet,
+                // and a way to know that the generated image is for the badge.
             }
+            Button("Select from Mood Board") {
+                // TODO: Implement mood board selection flow for badge
+                print("Select from Mood Board tapped")
+                // This will likely involve setting another @State variable to show a mood board image picker.
+            }
+            if campaign.badgeImageURL != nil { // Show remove option only if a badge is currently set
+                Button("Remove Badge", role: .destructive) {
+                    campaign.badgeImageURL = nil
+                    campaign.markAsModified()
+                    Task {
+                        await saveCampaignDetails(source: .badgeImageUpdate) // Use same source, will save nil URL
+                    }
+                    print("Remove Badge tapped")
+                }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Choose a source for your campaign badge.")
         }
     }
     

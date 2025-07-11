@@ -1,5 +1,5 @@
 import SwiftUI
-import PhotosUI // Added import for PhotosPicker
+// import PhotosUI // No longer needed as PhotosPicker is removed
 import CampaignCreatorLib // Assuming Campaign model is here
 
 struct CampaignHeaderView: View {
@@ -12,8 +12,6 @@ struct CampaignHeaderView: View {
 
     // Callback for the placeholder button
     let onSetBadgeAction: () -> Void
-    @State private var showingImagePicker = false
-    @Binding var selectedBadgeImage: PhotosPickerItem?
     // Note: The .onChange for editableTitle and debouncing logic
     // will remain in CampaignDetailView as it owns the editableTitle @State
     // and the titleDebounceTimer.
@@ -72,17 +70,14 @@ struct CampaignHeaderView: View {
                     .frame(width: 50, height: 50)
                     .padding(.top, 5)
             }
-            PhotosPicker(
-                selection: $selectedBadgeImage,
-                matching: .images,
-                photoLibrary: .shared()
-            ) {
+            Button(action: {
+                onSetBadgeAction() // This action is passed from CampaignDetailView
+            }) {
                 Text("Set Campaign Badge")
             }
             .buttonStyle(.bordered)
             .font(.caption)
             .padding(.top, 2)
-            // The onSetBadgeAction callback might be triggered via .onChange of selectedBadgeImage in the parent view (CampaignDetailView)
 
         }
         .padding().background(Color(.systemGroupedBackground)).cornerRadius(12)
