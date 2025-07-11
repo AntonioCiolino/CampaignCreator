@@ -314,11 +314,11 @@ struct CampaignMoodboardView: View {
             // that reflects changes from CampaignCreator's list, it might show stale data
             // until it's reloaded or refreshed by other means.
             // For now, assuming CampaignCreator's update to its `campaigns` list will eventually propagate.
-        } catch {
-            print("❌ [CampaignMoodboardView] Error saving moodboard changes: \(error.localizedDescription)")
-            // TODO: Show error to user
-        }
-    }
+        // } catch { // Erroneous, duplicated catch block removed
+        //     print("❌ [CampaignMoodboardView] Error saving moodboard changes: \(error.localizedDescription)")
+        //     // TODO: Show error to user
+        // } // Erroneous closing brace removed
+    // } // Potential extra closing brace for saveMoodboardChanges if the above was intended to be part of it - removed
 
     // Private helper view for each cell in the campaign moodboard grid
     private struct CampaignMoodboardCellView: View {
