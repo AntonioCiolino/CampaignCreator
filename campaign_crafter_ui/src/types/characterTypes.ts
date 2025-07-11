@@ -82,22 +82,26 @@ export interface CharacterAspectGenerationResponseData {
     generated_text: string;
 }
 
-// --- Chat Message Types ---
-export interface ChatMessageBase {
+// --- Chat Message Types (New Architecture) ---
+
+// This interface defines the structure of individual messages
+// as stored in the backend's JSON conversation history
+// and as returned by the GET /chat endpoint.
+export interface ChatMessage {
+    speaker: string; // "user" or "assistant" (or character name)
     text: string;
-    sender: string; // "user", "llm", or character name
+    timestamp: string; // ISO date string
+
+    // The following fields are for UI enrichment on the client-side (in CharacterDetailPage.tsx)
+    // and are not part of the direct backend response structure for each message object.
+    uiKey?: string; // Client-side unique key for React list rendering
+    senderType?: 'user' | 'llm'; // Derived from 'speaker' for UI styling/logic
+    user_avatar_url?: string;
+    character_avatar_url?: string;
 }
 
-export interface ChatMessageCreate extends ChatMessageBase {
-    // No extra fields needed for creation beyond base typically
-    // Backend will assign character_id and timestamp
-}
+// Old ChatMessageBase, ChatMessageCreate, and the old ChatMessage (with id, character_id)
+// are now obsolete with the new JSON storage architecture.
 
-export interface ChatMessage extends ChatMessageBase {
-    id: number;
-    character_id: number;
-    timestamp: string; // Assuming ISO date string from backend (e.g., "2023-10-26T10:00:00Z")
-    // For UI display, potentially enriched by frontend after fetching:
-    user_avatar_url?: string; // URL for user's avatar
-    character_avatar_url?: string; // URL for character's avatar/thumbnail
-}
+// LLMChatGenerationRequest is also obsolete here, as CharacterDetailPage.tsx
+// now directly constructs an LLMTextGenerationParams object imported from llmService.ts.

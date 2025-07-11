@@ -114,7 +114,7 @@ class AbstractLLMService(ABC):
         user_prompt: str,     # The query or situation the character should respond to
         current_user: UserModel,
         db: Session,
-        chat_history: Optional[List[models.ChatMessage]] = None, # Corrected type hint
+        chat_history: Optional[List[models.ConversationMessageContext]] = None, # Changed to ConversationMessageContext
         model: Optional[str] = None,
         temperature: Optional[float] = 0.7,
         max_tokens: Optional[int] = 300 # Default to a moderate length for dialogue/response
@@ -255,7 +255,7 @@ class LLMService(AbstractLLMService): # Note: This is a dummy implementation
         user_prompt: str,
         current_user: UserModel,
         db: Session,
-        chat_history: Optional[List[models.ChatMessage]] = None, # Corrected type hint
+        chat_history: Optional[List[models.ConversationMessageContext]] = None, # Changed to ConversationMessageContext
         model: Optional[str] = None,
         temperature: Optional[float] = 0.7,
         max_tokens: Optional[int] = 300

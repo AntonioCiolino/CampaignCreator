@@ -453,7 +453,7 @@ class GeminiLLMService(AbstractLLMService):
         user_prompt: str,
         current_user: UserModel,
         db: Session,
-        chat_history: Optional[List[models.ChatMessage]] = None,
+        chat_history: Optional[List[models.ConversationMessageContext]] = None, # Changed type hint
         model: Optional[str] = None,
         temperature: Optional[float] = 0.7,
         max_tokens: Optional[int] = 300

@@ -6,8 +6,11 @@ from fastapi import HTTPException # Added HTTPException
 from passlib.context import CryptContext
 
 from app import models, orm_models # Standardized
+from app.core.config import settings # Import settings
 from app.core.security import encrypt_key # Added for API key encryption
 from app.services.image_generation_service import ImageGenerationService
+from app.services.llm_service import AbstractLLMService # Added this import
+from sqlalchemy.orm.attributes import flag_modified # Moved import to top
 # import asyncio # No longer needed here
 from urllib.parse import urlparse
 
@@ -904,47 +907,139 @@ async def generate_character_aspect_text(
         raise Exception(f"Failed to generate character aspect: {str(e)}") # To be caught by API endpoint
 
 
-# --- ChatMessage CRUD Functions ---
+# --- New ChatMessage CRUD Functions (Single JSON history per character-user pair) ---
 
-def create_chat_message(db: Session, character_id: int, message: models.ChatMessageCreate, sender_identifier: str) -> orm_models.ChatMessage:
+def get_or_create_user_character_conversation(db: Session, character_id: int, user_id: int) -> orm_models.ChatMessage:
     """
-    Creates a new chat message for a given character.
-    The 'sender' in ChatMessageCreate might be nuanced (e.g. "user" from client, "llm" from system).
-    The sender_identifier could be the actual character name if LLM is speaking as character, or "user".
-    For now, let's assume message.sender clearly indicates "user" or the name of the LLM/character.
+    Retrieves the single conversation record for a character and user.
+    If no record exists, it creates a new one with an empty conversation history.
+    The 'conversation_history' field in the ORM model is expected to be a JSON type
+    that SQLAlchemy handles for list-to-JSON string conversion.
     """
-    db_message = orm_models.ChatMessage(
-        character_id=character_id,
-        text=message.text,
-        sender=message.sender # Use the sender from the input model directly
-        # timestamp is server_default
-    )
-    db.add(db_message)
+    # Attempt to fetch the existing conversation record
+    conversation_record = db.query(orm_models.ChatMessage).filter(
+        orm_models.ChatMessage.character_id == character_id,
+        orm_models.ChatMessage.user_id == user_id
+    ).first()
+
+    if not conversation_record:
+        # Create a new record if one doesn't exist
+        # The 'conversation_history' field in orm_models.ChatMessage has default=[]
+        # The 'updated_at' field has server_default and onupdate triggers
+        conversation_record = orm_models.ChatMessage(
+            character_id=character_id,
+            user_id=user_id
+            # conversation_history will use its default=[]
+        )
+        db.add(conversation_record)
+        db.commit()
+        db.refresh(conversation_record)
+        # print(f"CRUD: Created new conversation record for char_id={character_id}, user_id={user_id}") # Debug print
+    else:
+        # print(f"CRUD: Fetched existing conversation record for char_id={character_id}, user_id={user_id}") # Debug print
+        # Ensure conversation_history is a list if it was NULL from DB and default didn't apply post-load
+        if conversation_record.conversation_history is None:
+            conversation_record.conversation_history = []
+
+    return conversation_record
+
+def update_user_character_conversation(
+    db: Session,
+    conversation_record: orm_models.ChatMessage,
+    new_history_list: List[Dict] # Expects a list of dicts, e.g. [{"speaker": "user", "text": "hi", "timestamp": "iso_str"}]
+) -> orm_models.ChatMessage:
+    """
+    Updates the 'conversation_history' of a given conversation record.
+    SQLAlchemy's JSON type should handle the serialization of the Python list of dicts.
+    """
+    conversation_record.conversation_history = new_history_list
+    # The 'updated_at' field should update automatically via onupdate=func.now() if defined in ORM
+    db.add(conversation_record) # Add to session to ensure it's persisted
     db.commit()
-    db.refresh(db_message)
-    return db_message
+    db.refresh(conversation_record)
+    # print(f"CRUD: Updated conversation record for char_id={conversation_record.character_id}, user_id={conversation_record.user_id}") # Debug print
+    return conversation_record
 
-def get_chat_messages_for_character(db: Session, character_id: int, skip: int = 0, limit: int = 100) -> List[orm_models.ChatMessage]:
+# Old ChatMessage CRUD functions are now removed.
+# The new functions get_or_create_user_character_conversation and
+# update_user_character_conversation handle the new JSON-based storage.
+
+async def update_conversation_summary(
+    db: Session,
+    conversation_orm: orm_models.ChatMessage,
+    llm_service: AbstractLLMService, # Type hint for AbstractLLMService
+    current_user_model: models.User, # Pydantic User model for LLM service call
+    character_name: str,
+    character_notes: Optional[str]
+) -> None:
     """
-    Retrieves chat messages for a specific character, ordered by timestamp.
+    Generates a summary of the conversation history (excluding very recent messages)
+    and updates the memory_summary field on the conversation ORM object.
     """
-    return (
-        db.query(orm_models.ChatMessage)
-        .filter(orm_models.ChatMessage.character_id == character_id)
-        .order_by(orm_models.ChatMessage.timestamp.asc()) # Oldest first
-        .offset(skip)
-        .limit(limit)
-        .all()
+    # from sqlalchemy.orm.attributes import flag_modified # Moved to top-level import
+
+    # Configuration for summarization from settings
+    # MIN_MESSAGES_FOR_SUMMARY_CRUD was defined in config.py
+    # RECENT_MESSAGES_TO_EXCLUDE_FROM_SUMMARY was defined in config.py
+
+    history_list: List[Dict] = conversation_orm.conversation_history or []
+
+    if len(history_list) < settings.CHAT_MIN_MESSAGES_FOR_SUMMARY_CRUD:
+        # This is a normal operational log, not necessarily a debug print, so it can stay.
+        print(f"CRUD: Conversation for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id} too short for summary. Length: {len(history_list)}, Min required: {settings.CHAT_MIN_MESSAGES_FOR_SUMMARY_CRUD}")
+        return
+
+    messages_to_summarize = history_list[:-settings.CHAT_RECENT_MESSAGES_TO_EXCLUDE_FROM_SUMMARY]
+
+    if not messages_to_summarize:
+        # This is also a normal operational log.
+        print(f"CRUD: No new messages to summarize for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id} after excluding recent {settings.CHAT_RECENT_MESSAGES_TO_EXCLUDE_FROM_SUMMARY}.")
+        return
+
+    conversation_excerpt_str = "\n".join([f"{msg['speaker']}: {msg['text']}" for msg in messages_to_summarize])
+
+    summary_prompt = (
+        f"You are an AI assistant helping to maintain long-term memory for a character in a role-playing chat. "
+        f"The character's name is {character_name}. "
+        f"Character details/persona: {character_notes if character_notes else 'No specific notes provided.'}\n\n"
+        f"Below is an excerpt of a conversation this character had with a user. "
+        f"Please provide a concise summary of the key facts, decisions made, important topics discussed, "
+        f"user preferences revealed, and the overall emotional tone or relationship development. "
+        f"This summary will be used to remind the character about past interactions. "
+        f"Focus on information crucial for maintaining conversational context and persona consistency in future interactions. "
+        f"Output only the summary itself.\n\n"
+        f"Conversation Excerpt:\n{conversation_excerpt_str}"
     )
 
-def get_recent_chat_messages_for_character(db: Session, character_id: int, limit: int = 10) -> List[orm_models.ChatMessage]:
-    """
-    Retrieves the most recent chat messages for a specific character.
-    """
-    return (
-        db.query(orm_models.ChatMessage)
-        .filter(orm_models.ChatMessage.character_id == character_id)
-        .order_by(orm_models.ChatMessage.timestamp.desc()) # Newest first
-        .limit(limit)
-        .all()[::-1] # Reverse to get them in chronological order for the prompt
-    )
+    # print(f"CRUD: Generating summary for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}. Excerpt length: {len(messages_to_summarize)} messages.") # Debug print
+
+    try:
+        # Assuming llm_service.generate_text can be used for summarization.
+        # We might need to select a model good for summarization if not default.
+        generated_summary = await llm_service.generate_text(
+            prompt=summary_prompt,
+            current_user=current_user_model, # Pass Pydantic User model
+            db=db,
+            # model= "gpt-3.5-turbo", # Optionally specify a model good for summarization
+            temperature=0.3, # Lower temperature for factual summary
+            max_tokens=500  # Adjust as needed for summary length
+        )
+
+        if generated_summary and generated_summary.strip():
+            # Strategy: Replace old summary with new one.
+            # Alternatively, append: new_summary = (conversation_orm.memory_summary + "\n\n---\n\n" if conversation_orm.memory_summary else "") + generated_summary.strip()
+            conversation_orm.memory_summary = generated_summary.strip()
+            flag_modified(conversation_orm, "memory_summary")
+            # The updated_at for the conversation_orm will also be set due to onupdate
+            db.add(conversation_orm)
+            db.commit()
+            db.refresh(conversation_orm)
+            print(f"CRUD: Memory summary updated for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}.") # Removed summary content from log
+        else:
+            print(f"CRUD: LLM returned empty summary for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}.")
+
+    except Exception as e:
+        # Using a more structured log for errors
+        print(f"ERROR:CRUD:update_conversation_summary: Failed for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}. Error: {e}")
+        # Optionally re-raise or handle. For now, just logging as per plan.
+        # However, create_chat_message in the endpoint commits, so this runs in its own transaction context effectively if called after.

@@ -1,5 +1,9 @@
 import Foundation
 
+// APIChatMessageCreate is likely obsolete with the new generate-response flow.
+// Commenting out for now. If a specific "create single message" API is ever re-added,
+// this would need to align with its payload.
+/*
 public struct APIChatMessageCreate: Codable, Sendable {
     public let text: String
     public let sender: String // "user" or character name for LLM
@@ -9,30 +13,28 @@ public struct APIChatMessageCreate: Codable, Sendable {
         self.sender = sender
     }
 }
+*/
 
-public struct APIChatMessage: Codable, Sendable, Identifiable { // Add Identifiable
-    public let id: Int
-    public let characterId: Int
+// This struct now represents an entry in the conversation history JSON array.
+// It's what GET /chat returns as a list.
+public struct APIChatMessage: Codable, Sendable, Identifiable {
+    public let speaker: String
     public let text: String
-    public let sender: String
-    public let timestamp: Date // Assuming ISO8601, decoder will handle
+    public let timestamp: Date
 
-    public init(id: Int, characterId: Int, text: String, sender: String, timestamp: Date) {
-        self.id = id
-        self.characterId = characterId
-        self.text = text
-        self.sender = sender
-        self.timestamp = timestamp
+    // Computed id for Identifiable conformance, NOT decoded from JSON.
+    public var id: String {
+        return "\(timestamp.timeIntervalSince1970)-\(speaker)-\(text.prefix(50).hashValue)"
     }
+}
 
-    // CodingKeys to map character_id from snake_case if jsonDecoder isn't globally set to convertFromSnakeCase
-    // However, APIService's jsonDecoder IS set to .convertFromSnakeCase, so this might not be strictly necessary
-    // but doesn't hurt for clarity or if this model is decoded elsewhere without that setting.
+// DTO for the response from the /generate-response endpoint
+public struct LLMTextResponseDTO: Codable, Sendable {
+    public let text: String
+    public let modelUsed: String?
+
     enum CodingKeys: String, CodingKey {
-        case id
-        case characterId = "character_id"
         case text
-        case sender
-        case timestamp
+        case modelUsed = "model_used"
     }
 }

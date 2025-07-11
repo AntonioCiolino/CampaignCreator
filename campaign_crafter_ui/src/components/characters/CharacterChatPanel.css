@@ -134,7 +134,16 @@
     margin-top: 0.5rem;
     font-size: 0.9em;
 }
+/* Removed .chat-loading-indicator specific flex-direction: column as it's no longer used for the "thinking" message structure */
+/* The .thinking-indicator-row now uses .ai-message-row for its layout */
 
+/* Ensure the bubble within the thinking indicator row correctly aligns spinner and text */
+.thinking-indicator-row .chat-message-bubble {
+    display: flex; /* Horizontally align spinner and text */
+    align-items: center; /* Vertically center spinner and text */
+    gap: 8px; /* Space between spinner and text */
+    /* Other bubble styles like padding, background are inherited from .ai-message-bubble */
+}
 
 .character-chat-panel-input-area {
     padding: 0.75rem 1rem;

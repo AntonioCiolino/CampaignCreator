@@ -545,10 +545,8 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
     }
 
     // MARK: - Chat Message Methods
-    public func saveChatMessage(characterId: Int, message: APIChatMessageCreate) async throws -> APIChatMessage {
-        let body = try jsonEncoder.encode(message)
-        return try await performRequest(endpoint: "/characters/\(characterId)/chat", method: "POST", body: body)
-    }
+    // The saveChatMessage method has been removed as it's obsolete.
+    // Message persistence is handled by the /generate-response endpoint.
 
     public func getChatHistory(characterId: Int, skip: Int? = nil, limit: Int? = nil) async throws -> [APIChatMessage] {
         var queryItems: [URLQueryItem] = []
@@ -569,5 +567,42 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
         }
         // performRequest handles adding the base URL
         return try await performRequest(endpoint: endpointString, method: "GET")
+    }
+
+    // New method for POST /characters/{character_id}/generate-response
+    public func generateCharacterChatResponse(
+        characterId: Int,
+        prompt: String,
+        chatHistory: [ChatMessageData]?, // ChatMessageData is {speaker: String, text: String}
+        modelIdWithPrefix: String?,
+        temperature: Double?,
+        maxTokens: Int?
+    ) async throws -> LLMTextResponseDTO { // Returns the new DTO
+
+        // Construct the payload matching backend's LLMGenerationRequest
+        var payloadDict: [String: Any] = ["prompt": prompt]
+        if let chatHistory = chatHistory, !chatHistory.isEmpty {
+            // Convert [ChatMessageData] to array of dictionaries for JSON payload
+            payloadDict["chat_history"] = chatHistory.map { ["speaker": $0.speaker, "text": $0.text] }
+        }
+        if let modelIdWithPrefix = modelIdWithPrefix {
+            payloadDict["model_id_with_prefix"] = modelIdWithPrefix
+        }
+        if let temperature = temperature {
+            payloadDict["temperature"] = temperature
+        }
+        if let maxTokens = maxTokens {
+            payloadDict["max_tokens"] = maxTokens
+        }
+        // Note: 'character_notes' are now handled by the backend by combining memory_summary and base notes.
+        // The client does not send character_notes directly for this endpoint anymore.
+
+        let body = try jsonEncoder.encode(payloadDict) // Encode the dictionary
+
+        return try await performRequest(
+            endpoint: "/characters/\(characterId)/generate-response",
+            method: "POST",
+            body: body
+        )
     }
 }

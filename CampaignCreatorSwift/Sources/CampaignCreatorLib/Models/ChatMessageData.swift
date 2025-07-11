@@ -1,18 +1,16 @@
 import Foundation
 
-// This struct is for passing chat message data to CampaignCreator functions
-// It mirrors the structure of ChatMessage in the App module but lives in the Lib.
+// This struct is for passing chat message data (context) to the backend /generate-response endpoint.
+// It should match the backend's Pydantic model: `ConversationMessageContext {speaker: str, text: str}`.
 public struct ChatMessageData: Codable, Sendable {
+    public let speaker: String // Should be "user" or "assistant"
     public let text: String
-    public let sender: Sender
 
-    public enum Sender: String, Codable, Sendable {
-        case user = "User"
-        case llm = "LLM"
-    }
-
-    public init(text: String, sender: Sender) {
+    public init(speaker: String, text: String) {
+        self.speaker = speaker
         self.text = text
-        self.sender = sender
     }
 }
+// The old Sender enum is removed as 'speaker' is now a direct String.
+// The mapping from the UI's ChatMessage.Sender enum to these speaker strings ("user", "assistant")
+// will occur in CharacterChatView.swift when preparing this payload.
