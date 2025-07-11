@@ -245,8 +245,8 @@ struct CharacterImageManagerView_Previews: PreviewProvider {
             "http://example.com/another-image.png"
         ]
         @State var emptyUrls: [String] = []
-        let mockApiService = APIService() // Create mock/dummy instances for preview
-        let mockCampaignCreator = CampaignCreator(apiService: mockApiService)
+        // let mockApiService = APIService() // No longer needed as APIService is instantiated directly below
+        let mockCampaignCreator = CampaignCreator(apiService: APIService()) // Corrected instantiation
 
 
         var body: some View {
@@ -257,14 +257,14 @@ struct CharacterImageManagerView_Previews: PreviewProvider {
                 }
                 // Provide a dummy characterID for preview
                 CharacterImageManagerView(imageURLs: $urls, characterID: 1)
-                    .environmentObject(mockApiService)
+                    .environmentObject(mockCampaignCreator.apiService) // Pass the APIService from the mockCampaignCreator
                     .environmentObject(mockCampaignCreator)
 
 
                 Button("Show Image Manager (Empty)") {
                 }
                 CharacterImageManagerView(imageURLs: $emptyUrls, characterID: 2)  // Provide a dummy characterID for preview
-                    .environmentObject(mockApiService)
+                    .environmentObject(mockCampaignCreator.apiService) // Pass the APIService from the mockCampaignCreator
                     .environmentObject(mockCampaignCreator)
             }
         }
