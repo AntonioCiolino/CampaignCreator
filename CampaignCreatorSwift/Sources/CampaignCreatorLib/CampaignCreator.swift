@@ -458,54 +458,45 @@ public class CampaignCreator: ObservableObjectProtocol {
     }
 
     @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
-    public func generateChatResponse(character: Character, message: String, chatHistory: [ChatMessageData]) async throws -> String { // Changed to ChatMessageData
-        guard isAuthenticated else { throw LLMError.other(message: "Not authenticated.") }
-        guard let llmService = llmService else { throw LLMError.other(message: "LLM not available.") }
+    public func generateChatResponse(
+        character: Character,
+        message: String, // This is the current user's prompt text
+        chatHistory: [ChatMessageData]?, // This is List[{speaker, text}] from CharacterChatView
+        modelIdWithPrefix: String?,
+        temperature: Double?,
+        maxTokens: Int?
+    ) async throws -> LLMTextResponseDTO { // Changed return type to the DTO from APIService
 
-        // Construct a more detailed prompt for the LLM
-        var prompt = """
-        You are roleplaying as the character '\(character.name)'.
-        Your known details are:
-        Description: \(character.description ?? "Not specified.")
-        Appearance: \(character.appearanceDescription ?? "Not specified.")
-        Notes for LLM (Personality, background, motivations, etc.): \(character.notesForLLM ?? "Not specified, rely on general knowledge and the persona derived from description and appearance.")
-
-        Current conversation context (last few messages):
-        """
-
-        // Add recent chat history to the prompt (e.g., last 5 messages)
-        // The ChatMessage struct needs to be accessible here or defined in a shared scope
-        // For now, assuming ChatMessage is defined in CampaignCreatorLib or accessible.
-        // If not, we'll need to adjust how chatHistory is passed or defined.
-        // For this example, let's assume ChatMessage.Sender and .text are available.
-        // This part needs ChatMessage to be defined in CampaignCreatorLib or a DTO.
-        // For now, I'll use a placeholder for history formatting.
-        // TODO: Define ChatMessage in CampaignCreatorLib or pass history as [(sender: String, text: String)]
-
-        let recentHistory = chatHistory.suffix(5) // Take last 5 messages
-        for chatMsg in recentHistory {
-            // Assuming ChatMessage has 'sender' (e.g., .user, .llm) and 'text'
-            // And ChatMessage.Sender has a rawValue or similar string representation
-            // This is a placeholder and needs ChatMessage to be defined in this scope.
-            // For now, let's use a simpler string representation if ChatMessage is not directly available
-            // Or assume it's passed as a simpler structure e.g. [(sender: String, text: String)]
-            // If ChatMessage is from App module, we can't use it here.
-            // Let's assume chatHistory is passed as [(sender: String, text: String)] for now.
-            // This means CharacterChatView needs to map its ChatMessage to this format.
-            // For the plan, I'll assume ChatMessage is defined in Lib.
-            // If not, CharacterChatView needs to pass history as [(sender: String, text: String)]
-            let senderPrefix = chatMsg.sender == .user ? "User" : character.name // LLM speaks as character
-            prompt += "\n\(senderPrefix): \(chatMsg.text)"
+        guard isAuthenticated else {
+            // Throw an error consistent with APIService or a custom domain error
+            // Using APIError.notAuthenticated for consistency with other auth checks
+            throw APIError.notAuthenticated
         }
+        // The direct llmService check here is less relevant now as APIService handles the call
+        // to the backend, which then invokes the appropriate LLM via its own factory.
+        // The primary gate is isAuthenticated for using APIService methods.
 
-        prompt += "\n\nUser: \(message)"
-        prompt += "\n\(character.name): " // Prompt LLM to respond as the character
+        print("[CampaignCreator] generateChatResponse: Preparing to call APIService.generateCharacterChatResponse for char ID \(character.id)")
+        print("[CampaignCreator]   User Prompt: \(message.prefix(100))...")
+        print("[CampaignCreator]   ChatHistory being sent (count): \(chatHistory?.count ?? 0)")
+        if let history = chatHistory, !history.isEmpty {
+            // Log only the last entry or a few for brevity if history is long
+            for item in history.suffix(3) {
+                print("[CampaignCreator]     - HistoryItem: \(item.speaker): \(item.text.prefix(50))...")
+            }
+        }
+        // Note: The character.notesForLLM and memory_summary are now handled by the backend.
+        // The client (iOS app via CampaignCreator) sends the prompt and recent chat history.
+        // The backend /generate-response endpoint combines these with character notes and memory summary.
 
-        print("--- Sending prompt to LLM for chat response for \(character.name) ---")
-        print(prompt)
-        print("--------------------------------------------------------------------")
-
-        return try await llmService.generateCompletion(prompt: prompt)
+        return try await apiService.generateCharacterChatResponse(
+            characterId: character.id, // Assuming your local Character model has an 'id' of type Int
+            prompt: message,
+            chatHistory: chatHistory, // This is [ChatMessageData] which is [{speaker, text}]
+            modelIdWithPrefix: modelIdWithPrefix, // Pass through
+            temperature: temperature,         // Pass through
+            maxTokens: maxTokens              // Pass through
+        )
     }
     
     // MARK: - Utility Functions
