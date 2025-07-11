@@ -82,6 +82,32 @@ public struct Campaign: Identifiable, Codable, Sendable {
     public var linkedCharacterIDs: [Int]? // CHANGED from [UUID]?
     public var customSections: [CampaignCustomSection]? // <<<< ADDED
 
+    // Explicit CodingKeys to handle potential snake_case to camelCase discrepancies if strategy isn't working perfectly
+    enum CodingKeys: String, CodingKey {
+        case id, title, concept, sections // Standard names, no mapping needed unless backend is different
+        case initialUserPrompt = "initial_user_prompt"
+        case displayTOC = "display_toc"
+        case badgeImageURL = "badge_image_url"
+        case thematicImageURL = "thematic_image_url"
+        case thematicImagePrompt = "thematic_image_prompt"
+        case selectedLLMId = "selected_llm_id"
+        case temperature
+        case moodBoardImageURLs = "mood_board_image_urls"
+        case themePrimaryColor = "theme_primary_color"
+        case themeSecondaryColor = "theme_secondary_color"
+        case themeBackgroundColor = "theme_background_color"
+        case themeTextColor = "theme_text_color"
+        case themeFontFamily = "theme_font_family"
+        case themeBackgroundImageURL = "theme_background_image_url"
+        case themeBackgroundImageOpacity = "theme_background_image_opacity"
+        case fileURL // Assuming fileURL is not snake_case from backend, if it is, map it.
+        case createdAt = "created_at"
+        case modifiedAt = "modified_at"
+        case linkedCharacterIDs = "linked_character_ids"
+        case customSections = "custom_sections"
+        // WordCount is a computed property, not decoded
+    }
+
     public init(id: Int, // Changed from UUID = UUID()
                 title: String = "Untitled Campaign",
                 initialUserPrompt: String? = nil,
