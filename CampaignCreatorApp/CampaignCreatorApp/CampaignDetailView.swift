@@ -1022,6 +1022,7 @@ struct CampaignDetailView: View {
                     self.editableTitle = refreshedCampaign.title
                     self.editableConcept = refreshedCampaign.concept ?? ""
                     self.localCampaignCustomSections = refreshedCampaign.customSections ?? []
+                    self.viewRefreshTrigger = UUID() // Ensure UI reflects theme changes
                     print("CampaignDetailView refreshed with latest data after CampaignEditView dismissal.")
                 } catch {
                     print("Error refreshing campaign in CampaignDetailView.onDismiss (for CampaignEditView sheet): \(error.localizedDescription)")

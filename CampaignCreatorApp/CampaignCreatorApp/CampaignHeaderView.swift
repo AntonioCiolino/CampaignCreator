@@ -22,8 +22,7 @@ struct CampaignHeaderView: View {
                 VStack(alignment: .leading) {
                     Text("\(campaign.wordCount) words (from sections)")
                         .font(.caption).foregroundColor(.secondary)
-                    Text(campaign.modifiedAt != nil ? "Modified: \(campaign.modifiedAt!, style: .date)" : "Modified: N/A")
-                        .font(.caption).foregroundColor(.secondary)
+                    // Removed "Modified At" Text View
                 }
                 Spacer()
             }

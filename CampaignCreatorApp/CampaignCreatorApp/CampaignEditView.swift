@@ -88,6 +88,14 @@ struct CampaignEditView: View { // Renamed struct
                     TextField("Image URL", text: $backgroundImageUrl)
                         .keyboardType(.URL)
                         .autocapitalization(.none)
+
+                    if !backgroundImageUrl.isEmpty {
+                        Button("Remove Background Image") {
+                            backgroundImageUrl = ""
+                        }
+                        .foregroundColor(.red)
+                    }
+
                     HStack {
                         Text("Opacity")
                         Slider(value: $backgroundImageOpacity, in: 0...1, step: 0.05)
