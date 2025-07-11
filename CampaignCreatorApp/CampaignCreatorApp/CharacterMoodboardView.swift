@@ -26,11 +26,11 @@ struct CharacterMoodboardView: View {
 
     @State private var localImageURLs: [String] // Local copy for reordering
     @State private var identifiableImageURLs: [IdentifiableString] // For UI with .onMove
-    @State private var isManualEditing: Bool = false // Explicit state for edit mode
+    // @State private var isManualEditing: Bool = false // REVERTED
 
     private let gridItemLayout = [GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2)]
     @State private var sheetItemForImageView: IdentifiableURLContainer? = nil
-    // @Environment(\.editMode) private var editMode // REMOVED - using isManualEditing
+    @Environment(\.editMode) private var editMode // RESTORED
     @Environment(\.dismiss) private var dismiss
 
     // Callback to inform the presenter that the character was updated
@@ -39,10 +39,10 @@ struct CharacterMoodboardView: View {
     @State private var isSaving: Bool = false
     @State private var showErrorAlert: Bool = false
     @State private var errorMessage: String = ""
+    @State private var showingReorderView: Bool = false // State to present CharacterImageOrderView
 
-    private var hasChanges: Bool {
-        character.imageURLs ?? [] != localImageURLs
-    }
+    // hasChanges, saveChanges, moveImage, EditButton, and .onMove are no longer needed here
+    // as reordering is delegated to CharacterImageOrderView.
 
     init(campaignCreator: CampaignCreator, character: Character, onCharacterUpdated: ((Character) -> Void)? = nil) {
         self.campaignCreator = campaignCreator
@@ -57,7 +57,11 @@ struct CharacterMoodboardView: View {
     private struct MoodboardCellView: View {
         let urlString: String
         let action: () -> Void // Action to perform on tap
-        let isEditing: Bool // Pass editing state explicitly
+        @Environment(\.editMode) private var editMode // RESTORED for cell's own logic if needed
+
+        private var isEditing: Bool { // Uses environment editMode
+            editMode?.wrappedValue.isEditing ?? false
+        }
 
         @ViewBuilder
         private var cellContent: some View {
@@ -73,7 +77,7 @@ struct CharacterMoodboardView: View {
                         .frame(minWidth: 0, maxWidth: .infinity)
                         .frame(height: 120)
                         .clipped()
-                        .contentShape(Rectangle()) // Important for hit testing if not a button
+                        .contentShape(Rectangle())
                 case .failure:
                     Image(systemName: "photo.fill")
                         .resizable()
@@ -127,96 +131,76 @@ struct CharacterMoodboardView: View {
                             } else {
                                 self.sheetItemForImageView = nil
                             }
-                        }, isEditing: isManualEditing) // Pass isManualEditing state
+                        }) // Cell no longer needs isEditing, it uses @Environment(\.editMode)
                     }
-                    .onMove(perform: isManualEditing ? moveImage : nil) // Conditionally enable .onMove
+                    // .onMove is REMOVED - reordering handled by CharacterImageOrderView
                 }
                 .padding(2)
             }
         }
-        .navigationTitle("\(character.name) Moodboard") // Use character name
+        .navigationTitle("\(character.name) Moodboard")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                if isManualEditing {
-                    Button("Cancel") {
-                        // Revert changes and exit edit mode
-                        localImageURLs = character.imageURLs ?? []
-                        identifiableImageURLs = localImageURLs.map { IdentifiableString(value: $0) }
-                        isManualEditing = false
-                    }
-                    .disabled(isSaving)
-                } else {
-                    Button("Close") {
-                        dismiss()
-                    }
+                Button("Close") {
+                    dismiss()
                 }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
-                if isManualEditing {
-                    Button("Save") {
-                        Task { await saveChanges() } // saveChanges will set isManualEditing = false on success
-                    }
-                    .disabled(!hasChanges || isSaving)
-                } else {
-                    Button("Edit") { // Custom Edit button
-                        isManualEditing = true
-                    }
-                    .disabled(isSaving || identifiableImageURLs.isEmpty) // Disable Edit if no images or saving
+                Button {
+                    showingReorderView = true
+                } label: {
+                    Label("Reorder Images", systemImage: "arrow.up.arrow.down.circle")
                 }
+                .disabled(identifiableImageURLs.isEmpty) // Disable if no images
             }
         }
-        .environment(\.editMode, .constant(isManualEditing ? .active : .inactive)) // Propagate manual edit state if needed by sub-views that use @Environment(\.editMode)
-        .sheet(item: $sheetItemForImageView) { itemWrapper in
+        .sheet(isPresented: $showingReorderView) {
+            CharacterImageOrderView(
+                campaignCreator: campaignCreator,
+                character: character, // Pass the current character state
+                onDismiss: { changesMade in
+                    showingReorderView = false // Dismiss the sheet
+                    if changesMade {
+                        // Re-fetch or update character to reflect new order
+                        // The CharacterImageOrderView handles saving, so we need to refresh the character state here
+                        // to get the updated imageURLs order.
+                        Task {
+                            do {
+                                // Refresh the character from the source of truth
+                                let refreshedCharacter = try await campaignCreator.refreshCharacter(id: character.id)
+                                self.character = refreshedCharacter // Update local @State
+
+                                // Update local URL arrays to reflect changes for the grid display
+                                let updatedURLs = refreshedCharacter.imageURLs ?? []
+                                self.localImageURLs = updatedURLs
+                                self.identifiableImageURLs = updatedURLs.map { IdentifiableString(value: $0) }
+
+                                // Propagate the updated character to the parent view (e.g., CharacterDetailView)
+                                onCharacterUpdated?(refreshedCharacter)
+                                print("[CharacterMoodboardView] Image order updated and character refreshed.")
+                            } catch {
+                                print("❌ Error refreshing character after image reorder: \(error.localizedDescription)")
+                                // Optionally show an alert to the user
+                                self.errorMessage = "Failed to refresh character after reordering images: \(error.localizedDescription)"
+                                self.showErrorAlert = true
+                            }
+                        }
+                    }
+                }
+            )
+        }
+        .sheet(item: $sheetItemForImageView) { itemWrapper in // For viewing single image
             FullCharacterImageViewWrapper(initialDisplayURL: itemWrapper.url)
         }
-        .alert("Error Saving Changes", isPresented: $showErrorAlert) {
+        .alert("Moodboard Error", isPresented: $showErrorAlert) { // Generic error alert
             Button("OK") { }
         } message: {
             Text(errorMessage)
         }
-        // No specific onChange needed here now as moveImage directly updates localImageURLs
     }
-
-    private func moveImage(from source: IndexSet, to destination: Int) {
-        identifiableImageURLs.move(fromOffsets: source, toOffset: destination)
-        localImageURLs = identifiableImageURLs.map { $0.value }
-    }
-
-    private func saveChanges() async {
-        guard hasChanges else {
-            editMode?.wrappedValue = .inactive // Exit edit mode if no changes
-            return
-        }
-
-        isSaving = true
-        var updatedCharacter = character
-        updatedCharacter.imageURLs = localImageURLs.isEmpty ? nil : localImageURLs
-        updatedCharacter.markAsModified()
-
-        do {
-            let savedCharacter = try await campaignCreator.updateCharacter(updatedCharacter)
-            // Update the @State character to reflect the saved changes (including new modifiedAt)
-            self.character = savedCharacter
-            // Update localImageURLs to match the saved state, in case nil was set for empty array
-            self.localImageURLs = savedCharacter.imageURLs ?? []
-            self.identifiableImageURLs = self.localImageURLs.map { IdentifiableString(value: $0) }
-
-            onCharacterUpdated?(savedCharacter) // Call the callback
-            isSaving = false
-            editMode?.wrappedValue = .inactive // Exit edit mode
-            // Optionally dismiss if save is successful and that's the desired UX
-            // dismiss()
-        } catch let error as APIError {
-            errorMessage = "API Error: \(error.localizedDescription)"
-            showErrorAlert = true
-            isSaving = false
-        } catch {
-            errorMessage = "An unexpected error occurred: \(error.localizedDescription)"
-            showErrorAlert = true
-            isSaving = false
-        }
-    }
+    // moveImage and saveChanges methods are REMOVED as they are no longer used here.
+    // EditButton and related @Environment(\.editMode) direct usage for reordering is removed.
 }
 
 struct FullCharacterImageViewWrapper: View {
