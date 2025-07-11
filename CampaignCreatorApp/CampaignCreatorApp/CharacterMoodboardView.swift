@@ -1,4 +1,5 @@
 import SwiftUI
+import Kingfisher
 
 // TODO: Implement Robust Image Caching
 // Consider implementing a more robust image caching mechanism (e.g., using NSCache for in-memory caching
@@ -65,31 +66,22 @@ struct CharacterMoodboardView: View {
 
         @ViewBuilder
         private var cellContent: some View {
-            AsyncImage(url: URL(string: urlString)) { phase in
-                switch phase {
-                case .empty:
+            // KFImage for asynchronous image loading and caching.
+            KFImage(URL(string: urlString))
+                .placeholder { // Displayed while loading or if it fails.
                     ProgressView()
                         .frame(maxWidth: .infinity, idealHeight: 120)
                         .background(Color.gray.opacity(0.1))
-                case .success(let image):
-                    image.resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(minWidth: 0, maxWidth: .infinity)
-                        .frame(height: 120)
-                        .clipped()
-                        .contentShape(Rectangle())
-                case .failure:
-                    Image(systemName: "photo.fill")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 50, height: 50)
-                        .foregroundColor(.gray)
-                        .frame(maxWidth: .infinity, idealHeight: 120)
-                        .background(Color.gray.opacity(0.1))
-                @unknown default:
-                    EmptyView()
                 }
-            }
+                .onFailure { error in // Handle image loading failures.
+                    print("KFImage failed to load character moodboard image \(urlString): \(error.localizedDescription)")
+                }
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(minWidth: 0, maxWidth: .infinity)
+                .frame(height: 120)
+                .clipped()
+                .contentShape(Rectangle()) // Ensures the tap area is correct.
         }
 
         var body: some View {
