@@ -1,7 +1,9 @@
-from typing import List, Optional, Annotated
+from typing import List, Optional, Annotated, Dict # Added Dict for type hint
+from datetime import datetime # Added for timestamping messages
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified # Added for JSON field modification tracking
 
 from app import crud, models, orm_models
 from app.db import get_db
@@ -476,11 +478,16 @@ async def generate_character_chat_response( # Renamed function
         }
         current_conversation_list.append(ai_message_entry)
 
+        # Explicitly mark the conversation_history field as modified before saving
+        flag_modified(conversation_orm_object, "conversation_history")
+
         # 6. Save the updated conversation list back to the database
         crud.update_user_character_conversation(
             db=db,
             conversation_record=conversation_orm_object,
             new_history_list=current_conversation_list
+            # Note: update_user_character_conversation itself also assigns new_history_list
+            # to conversation_record.conversation_history. The flag_modified ensures this is picked up by SQLAlchemy.
         )
         print(f"Conversation (JSON) updated for char_id={character_id}, user_id={current_user.id}")
 
