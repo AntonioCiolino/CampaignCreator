@@ -11,6 +11,7 @@ import {
 } from '../types/characterTypes';
 import { Campaign } from '../types/campaignTypes';
 import { LLMTextGenerationParams, LLMTextGenerationResponse } from './llmService';
+import { ChatMessage } from '../types/characterTypes';
 
 // --- API Service Functions ---
 
@@ -110,8 +111,6 @@ export const generateCharacterResponse = async (
 // into the new JSON conversation history structure.
 // import { ChatMessage, ChatMessageCreate } from '../types/characterTypes'; // ChatMessageCreate removed
 
-// We still need ChatMessage for getChatHistory return type
-import { ChatMessage } from '../types/characterTypes';
 
 /**
  * Fetches the chat history for a character.
