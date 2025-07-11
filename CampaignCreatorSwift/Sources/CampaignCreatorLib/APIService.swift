@@ -513,10 +513,8 @@ public final class APIService: Sendable {
     }
 
     // MARK: - Chat Message Methods
-    public func saveChatMessage(characterId: Int, message: APIChatMessageCreate) async throws -> APIChatMessage {
-        let body = try jsonEncoder.encode(message)
-        return try await performRequest(endpoint: "/characters/\(characterId)/chat", method: "POST", body: body)
-    }
+    // The saveChatMessage method has been removed as it's obsolete.
+    // Message persistence is handled by the /generate-response endpoint.
 
     public func getChatHistory(characterId: Int, skip: Int? = nil, limit: Int? = nil) async throws -> [APIChatMessage] {
         var queryItems: [URLQueryItem] = []
