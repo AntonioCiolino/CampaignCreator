@@ -4,7 +4,7 @@ from datetime import datetime # Added datetime
 
 # Removed ImageData model
 
-class ChatMessage(BaseModel):
+class LLMChatContextMessage(BaseModel): # Renamed from ChatMessage
     speaker: str
     text: str
 
@@ -38,7 +38,7 @@ class LLMGenerationRequest(BaseModel):
     model_id_with_prefix: Optional[str] = None
     temperature: Optional[float] = 0.7  # Defaulting as per llm_service.py abstract method
     max_tokens: Optional[int] = 500     # Defaulting as per llm_service.py abstract method
-    chat_history: Optional[List[ChatMessage]] = None
+    chat_history: Optional[List[LLMChatContextMessage]] = None # Updated to use renamed model
     # Fields for context-aware generic generation
     campaign_id: Optional[int] = None
     section_title_suggestion: Optional[str] = None
