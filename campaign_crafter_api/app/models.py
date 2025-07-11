@@ -4,9 +4,14 @@ from datetime import datetime # Added datetime
 
 # Removed ImageData model
 
-class LLMChatContextMessage(BaseModel): # Renamed from ChatMessage
-    speaker: str
+# Defines the basic structure for a message entry in a conversation (for LLM context)
+class ConversationMessageContext(BaseModel):
+    speaker: str # e.g., "user", "assistant"
     text: str
+
+# Defines the structure for a message entry as stored in the JSON history and returned by API
+class ConversationMessageEntry(ConversationMessageContext):
+    timestamp: datetime
 
 class LLMConfigBase(BaseModel):
     name: str
@@ -38,7 +43,7 @@ class LLMGenerationRequest(BaseModel):
     model_id_with_prefix: Optional[str] = None
     temperature: Optional[float] = 0.7  # Defaulting as per llm_service.py abstract method
     max_tokens: Optional[int] = 500     # Defaulting as per llm_service.py abstract method
-    chat_history: Optional[List[LLMChatContextMessage]] = None # Updated to use renamed model
+    chat_history: Optional[List[ConversationMessageContext]] = None # Use the new base type for LLM context
     # Fields for context-aware generic generation
     campaign_id: Optional[int] = None
     section_title_suggestion: Optional[str] = None
@@ -418,21 +423,7 @@ class CharacterAspectGenerationRequest(BaseModel):
 class CharacterAspectGenerationResponse(BaseModel):
     generated_text: str
 
-# Chat Message Models
-class ChatMessageBase(BaseModel):
-    text: str
-    sender: str # "user", "llm", or character name for context
-
-class ChatMessageCreate(ChatMessageBase):
-    pass
-
-class ChatMessageInDB(ChatMessageBase):
-    id: int
-    character_id: int
-    timestamp: datetime
-
-    class Config:
-        from_attributes = True # Pydantic V2
-
-class ChatMessage(ChatMessageInDB): # For API responses
-    pass
+# Old chat message Pydantic models (ChatMessageBase, ChatMessageCreate, ChatMessageInDB, ChatMessage)
+# have been removed. The new models ConversationMessageContext and ConversationMessageEntry
+# are used for chat-related data structures, aligning with the JSON history storage.
+# The GET /chat endpoint will use List[ConversationMessageEntry] as its response model.

@@ -71,13 +71,12 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
         }
     };
 
-    const getAvatar = (sender: string) => {
-        if (sender === 'user') {
-            return currentUserAvatar || DEFAULT_AVATAR;
-        }
-        // For LLM/character messages, use characterImage
-        return characterImage || DEFAULT_AVATAR;
+    // getAvatar function is no longer strictly needed if ChatMessage objects are pre-enriched with avatar URLs.
+    // However, it's used for the error message avatar, so let's keep a simplified version or handle it directly.
+    const getSystemAvatar = () => { // For system messages like errors
+        return DEFAULT_AVATAR; // Or a specific system/error icon
     };
+
 
     return (
         <div
@@ -110,19 +109,21 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
                     )}
                     {!chatLoading && chatHistory.map((msg) => (
                         <div
-                            key={msg.id} // Use message ID as key
+                            key={msg.uiKey || msg.timestamp} // Use uiKey (preferred) or fallback to timestamp if uiKey not present
                             className={`chat-message-row ${
-                                msg.sender === 'user' ? 'user-message-row' : 'ai-message-row'
+                                msg.senderType === 'user' ? 'user-message-row' : 'ai-message-row'
                             }`}
                         >
                             <img
-                                src={getAvatar(msg.sender)}
-                                alt={msg.sender}
+                                // Use pre-enriched avatar URLs from the ChatMessage object
+                                src={msg.senderType === 'user' ? (msg.user_avatar_url || DEFAULT_AVATAR) : (msg.character_avatar_url || DEFAULT_AVATAR)}
+                                alt={msg.senderType === 'user' ? 'User' : characterName} // Corrected alt text logic
                                 className="chat-avatar"
                             />
-                            <div className={`chat-message-bubble ${msg.sender === 'user' ? 'user-message-bubble' : 'ai-message-bubble'}`}>
-                                {msg.sender !== 'user' && (
-                                    <strong className="message-sender-name">{msg.sender}:</strong>
+                            <div className={`chat-message-bubble ${msg.senderType === 'user' ? 'user-message-bubble' : 'ai-message-bubble'}`}>
+                                {msg.senderType !== 'user' && (
+                                    // Display characterName for AI messages
+                                    <strong className="message-sender-name">{characterName}:</strong>
                                 )}
                                 <p className="message-text">{msg.text}</p>
                                 <span className="message-timestamp">
@@ -146,7 +147,7 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
                     )}
                      {llmError && !isGeneratingResponse && ( // Only show error if not currently generating
                         <div className="chat-message-row error-message-row">
-                             <img src={getAvatar('system')} alt="error" className="chat-avatar" />
+                             <img src={getSystemAvatar()} alt="error" className="chat-avatar" />
                              <div className="chat-message-bubble error-bubble">
                                 <p>Error: {llmError}</p>
                              </div>

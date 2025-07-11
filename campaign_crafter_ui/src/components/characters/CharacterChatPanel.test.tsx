@@ -35,15 +35,19 @@ describe('CharacterChatPanel', () => {
         mockHandleGenerateCharacterResponse.mockClear();
     });
 
-    const getMockChatMessage = (id: number, sender: string, text: string): ChatMessage => ({
-        id,
-        character_id: 1, // Placeholder
-        sender,
-        text,
-        timestamp: new Date().toISOString(),
-        user_avatar_url: sender === 'user' ? defaultProps.currentUserAvatar : undefined,
-        character_avatar_url: sender !== 'user' ? defaultProps.characterImage : undefined,
-    });
+    // Updated mock to match the new ChatMessage interface
+    const getMockChatMessage = (uiKey: string, speaker: string, text: string, timestamp?: string): ChatMessage => {
+        const isUser = speaker === 'user';
+        return {
+            uiKey,
+            speaker, // "user" or character name (or "assistant")
+            text,
+            timestamp: timestamp || new Date().toISOString(),
+            senderType: isUser ? 'user' : 'llm',
+            user_avatar_url: isUser ? defaultProps.currentUserAvatar : undefined,
+            character_avatar_url: !isUser ? defaultProps.characterImage : undefined,
+        };
+    };
 
     test('renders nothing when isOpen is false', () => {
         render(<CharacterChatPanel {...defaultProps} isOpen={false} />);
@@ -68,9 +72,9 @@ describe('CharacterChatPanel', () => {
 
     test('displays chat history correctly', () => {
         const chatHistory: ChatMessage[] = [
-            getMockChatMessage(1, 'user', 'Hello Gandalf!'),
-            getMockChatMessage(2, defaultProps.characterName, 'Hello Frodo!'),
-            getMockChatMessage(3, 'user', 'How are you?'),
+            getMockChatMessage('key1', 'user', 'Hello Gandalf!'),
+            getMockChatMessage('key2', 'assistant', 'Hello Frodo!'), // Using 'assistant' as speaker for AI
+            getMockChatMessage('key3', 'user', 'How are you?'),
         ];
         render(<CharacterChatPanel {...defaultProps} chatHistory={chatHistory} />);
 
@@ -86,7 +90,7 @@ describe('CharacterChatPanel', () => {
         expect(gandalfRow).toBeInTheDocument();
         expect(gandalfRow).toHaveClass('user-message-row');
         if (gandalfRow) { // Type guard
-            expect(within(gandalfRow as HTMLElement).getByRole('img', {name: 'user'})).toHaveAttribute('src', defaultProps.currentUserAvatar);
+            expect(within(gandalfRow as HTMLElement).getByRole('img', {name: 'User'})).toHaveAttribute('src', defaultProps.currentUserAvatar);
         }
 
 
@@ -169,7 +173,7 @@ describe('CharacterChatPanel', () => {
     test('messages area has the correct ref for scrolling (conceptual)', () => {
         // This test is more about ensuring the structure for scrolling is in place.
         // Actual scroll behavior is hard to test in JSDOM.
-        render(<CharacterChatPanel {...defaultProps} chatHistory={[getMockChatMessage(100, 'user', 'Test')]} />);
+        render(<CharacterChatPanel {...defaultProps} chatHistory={[getMockChatMessage('scroll-test-key-100', 'user', 'Test')]} />);
         // The CharacterChatPanel component itself uses a ref internally.
         // We can't directly access that ref from outside without exposing it, which is not typical.
         // We trust that if messages are rendered, the useEffect for scrolling will attempt to work.

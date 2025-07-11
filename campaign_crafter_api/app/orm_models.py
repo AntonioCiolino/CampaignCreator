@@ -216,14 +216,25 @@ class Character(Base):
 # back_populates="campaigns"
 # )
 
-# Chat Message Model
+from sqlalchemy.schema import UniqueConstraint # Added for UniqueConstraint
+
+# Chat Message Model - Re-architected to store conversation history as JSON
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True) # Still useful as a primary key for the row itself
     character_id = Column(Integer, ForeignKey("characters.id"), nullable=False, index=True)
-    sender = Column(String, nullable=False)  # "user" or "llm" or character name
-    text = Column(Text, nullable=False)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True) # Added user_id
 
-    character = relationship("Character", backref="chat_history_entries") # Changed backref to avoid conflict
+    # conversation_history will store a list of message objects, e.g., [{"speaker": "user", "text": "...", "timestamp": "..."}, ...]
+    conversation_history = Column(JSON, nullable=False, default=[]) # Stores the entire conversation as a JSON list/array
+    memory_summary = Column(Text, nullable=True) # Stores the LLM-generated summary of older parts of the conversation
+
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()) # Tracks last update to this conversation log
+
+    character = relationship("Character") # Simpler backref might be handled by SQLAlchemy or defined on Character if needed
+    user = relationship("User") # Relationship to User
+
+    __table_args__ = (
+        UniqueConstraint('character_id', 'user_id', name='uq_character_user_conversation'),
+    )
