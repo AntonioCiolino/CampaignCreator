@@ -1144,7 +1144,7 @@ struct CampaignDetailView: View {
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
 
                 // Consider a separate error state for badge generation if needed: e.g., badgeGenerationError
-                if let error = errorMessage, showErrorAlert { Text(error).foregroundColor(.red).font(.caption) }
+                if showErrorAlert && !errorMessage.isEmpty { Text(errorMessage).foregroundColor(.red).font(.caption) } // Corrected condition
                 Spacer()
                 Button(action: { Task { await performAIBadgeGeneration() } }) { // Calls new function
                     HStack {
