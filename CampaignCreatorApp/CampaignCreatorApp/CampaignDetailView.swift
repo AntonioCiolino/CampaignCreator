@@ -749,6 +749,7 @@ struct CampaignDetailView: View {
                 }
                 .opacity(campaign.themeBackgroundImageOpacity ?? 1.0)
                 .edgesIgnoringSafeArea(.all)
+                .clipped() // Added to prevent oversized image from causing scrolling
             } else {
                 // Apply background color only if no image, or if image fails to load and placeholder is clear
                 currentBackgroundColor.edgesIgnoringSafeArea(.all)
