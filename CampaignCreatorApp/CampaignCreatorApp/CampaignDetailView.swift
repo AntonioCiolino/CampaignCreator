@@ -2994,12 +2994,4 @@ struct CampaignDetailView: View {
     }
 }
 
-// Helper extension for String to strip suffix if present
-extension String {
-    func stripSuffix(_ suffix: String) -> String {
-        if self.hasSuffix(suffix) {
-            return String(self.dropLast(suffix.count))
-        }
-        return self
-    }
-}
+// String extensions like stripSuffix and nilIfEmpty are now in StringUtils.swift
