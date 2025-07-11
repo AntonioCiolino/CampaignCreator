@@ -257,14 +257,14 @@ struct CharacterImageManagerView_Previews: PreviewProvider {
                 }
                 // Provide a dummy characterID for preview
                 CharacterImageManagerView(imageURLs: $urls, characterID: 1)
-                    .environmentObject(mockApiService)
+                    .environmentObject(mockCampaignCreator.apiService) // Pass the APIService from the mockCampaignCreator
                     .environmentObject(mockCampaignCreator)
 
 
                 Button("Show Image Manager (Empty)") {
                 }
                 CharacterImageManagerView(imageURLs: $emptyUrls, characterID: 2)  // Provide a dummy characterID for preview
-                    .environmentObject(mockApiService)
+                    .environmentObject(mockCampaignCreator.apiService) // Pass the APIService from the mockCampaignCreator
                     .environmentObject(mockCampaignCreator)
             }
         }

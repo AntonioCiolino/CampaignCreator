@@ -235,7 +235,7 @@ public final class UserDefaultsTokenManager: TokenManaging {
 
 
 public final class APIService: ObservableObject, Sendable { // Added ObservableObject conformance
-    private let baseURLString = "https://campaigncreator-api.onrender.com/api/v1"
+    public let baseURLString = "https://campaigncreator-api.onrender.com/api/v1" // Made public
     private let tokenManager: TokenManaging
     // @Published properties are not strictly necessary for this service if its state doesn't change
     // or if UI doesn't need to react to its internal state changes directly.
@@ -254,6 +254,11 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
         jsonEncoder.dateEncodingStrategy = .iso8601
         jsonEncoder.keyEncodingStrategy = .convertToSnakeCase // ADDED
         jsonEncoder.outputFormatting = .prettyPrinted
+    }
+
+    // Public getter for the token
+    public func getToken() -> String? {
+        return tokenManager.getToken()
     }
 
     @MainActor
@@ -335,6 +340,11 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
                 print("[DECODE_DEBUG APIService] Raw data for Character type before decoding: \(String(data: data, encoding: .utf8) ?? "Unable to stringify data")")
             }
 
+            // Log raw JSON if T is Campaign
+            if T.self == Campaign.self || T.self == [Campaign].self {
+                print("[APIService Decode Debug - PRE] Raw JSON for Campaign(s): \(String(data: data, encoding: .utf8) ?? "Unable to stringify data")")
+            }
+
             do {
                 let decodedObject: T
                 if T.self == Character.self || T.self == [Character].self {
@@ -365,6 +375,18 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
                         print("[DECODE_DEBUG APIService] Decoded [Character]: Array is empty.")
                     }
                 }
+
+                // Log specific fields if T is Campaign
+                if T.self == Campaign.self, let campaignData = decodedObject as? Campaign {
+                    print("[APIService Decode Debug - POST] Decoded Campaign ID: \(campaignData.id)")
+                    print("[APIService Decode Debug - POST]   badgeImageURL: \(campaignData.badgeImageURL ?? "nil")")
+                    print("[APIService Decode Debug - POST]   moodBoardImageURLs: \(campaignData.moodBoardImageURLs?.joined(separator: ", ") ?? "nil")")
+                } else if T.self == [Campaign].self, let campaignsArray = decodedObject as? [Campaign], let firstCampaign = campaignsArray.first {
+                    print("[APIService Decode Debug - POST] Decoded [Campaign] (first item) ID: \(firstCampaign.id)")
+                    print("[APIService Decode Debug - POST]   badgeImageURL: \(firstCampaign.badgeImageURL ?? "nil")")
+                    print("[APIService Decode Debug - POST]   moodBoardImageURLs: \(firstCampaign.moodBoardImageURLs?.joined(separator: ", ") ?? "nil")")
+                }
+
                 return decodedObject
             } catch {
                 print("❌ Decoding failed for type \(T.self): \(error.localizedDescription)")

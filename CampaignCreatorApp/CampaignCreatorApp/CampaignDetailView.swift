@@ -1,5 +1,6 @@
 import SwiftUI
 import CampaignCreatorLib
+// import PhotosUI // REMOVED - No longer using PhotosPicker for badge
 
 // Helper extension for Binding<Double?> to Double for Slider
 extension Binding where Value == Double? {
@@ -15,6 +16,7 @@ extension Binding where Value == Double? {
 struct CampaignDetailView: View {
     @State var campaign: Campaign
     @ObservedObject var campaignCreator: CampaignCreator
+    private let imageUploadService: ImageUploadService // Added image upload service
     
     @State private var editableTitle: String
     @State private var editableConcept: String
@@ -38,6 +40,9 @@ struct CampaignDetailView: View {
     @State private var showingCampaignEditSheet = false // Renamed from showingThemeEditSheet
     // @State private var showingMoodBoardSheet = false // REPLACED by NavigationLink for new moodboard view
     @State private var showingCampaignThemeSheet: Bool = false // ADDED for Campaign Theme sheet
+    @State private var showingSetBadgeOptions = false // New state for badge options action sheet
+    @State private var showingGenerateBadgeWithAISheet = false // For AI generating a badge
+    @State private var showingSelectBadgeFromMoodboardSheet = false // For selecting badge from mood board
     
     @State private var viewRefreshTrigger = UUID() // <<<< ADDED to force view refresh
     @State private var initialLLMSettingsLoaded = false // Track initial load
@@ -65,6 +70,7 @@ struct CampaignDetailView: View {
     @State private var showingImagePromptModalForSection: Bool = false
     @State private var currentSectionIdForImageGen: Int? = nil // CHANGED UUID to Int
     @State private var imageGenPromptText: String = ""
+    // @State private var selectedBadgeImageItem: PhotosPickerItem? = nil // REMOVED - No longer using PhotosPicker for badge
     
     // Error states for specific operations
     @State private var featureFetchError: String? = nil
@@ -97,6 +103,7 @@ struct CampaignDetailView: View {
         self._editableTitle = State(initialValue: campaign.title)
         self._editableConcept = State(initialValue: campaign.concept ?? "")
         self._localCampaignCustomSections = State(initialValue: campaign.customSections ?? [])
+        self.imageUploadService = ImageUploadService(apiService: campaignCreator.apiService) // Initialize service
         
         print("[THEME_DEBUG CampaignDetailView] init: Campaign '\(campaign.title)' (ID: \(campaign.id)) loaded with theme values:") // DEBUG LOG
         print("[THEME_DEBUG CampaignDetailView]   PrimaryColor: \(campaign.themePrimaryColor ?? "nil")") // DEBUG LOG
@@ -758,9 +765,9 @@ struct CampaignDetailView: View {
                         isGeneratingText: isGeneratingText,
                         currentPrimaryColor: currentPrimaryColor,
                         onSetBadgeAction: {
-                            self.errorMessage = "Campaign badge management is not yet implemented."
-                            self.showErrorAlert = true
+                            self.showingSetBadgeOptions = true // Trigger the action sheet
                         }
+                        // selectedBadgeImage binding is removed as PhotosPicker is removed
                     )
                     // The .onChange for editableTitle is already on CampaignDetailView's editableTitle property
                     // and will continue to function for debounced saving.
@@ -851,12 +858,50 @@ struct CampaignDetailView: View {
             }
             Task {
                 await fetchSnippetFeatures() // Existing call
+
                 // Fetch characters if not already attempted or if there was an error
                 if (!campaignCreator.initialCharacterFetchAttempted || campaignCreator.characterError != nil) && !campaignCreator.isLoadingCharacters {
-                    print("CampaignDetailView: Attempting to fetch characters.")
+                    print("[CampaignDetailView .onAppear] Attempting to fetch characters.")
                     await campaignCreator.fetchCharacters()
                 } else {
-                    print("CampaignDetailView: Skipping character fetch. InitialAttempt: \(campaignCreator.initialCharacterFetchAttempted), Error: \(campaignCreator.characterError != nil), Loading: \(campaignCreator.isLoadingCharacters)")
+                    print("[CampaignDetailView .onAppear] Skipping character fetch. InitialAttempt: \(campaignCreator.initialCharacterFetchAttempted), Error: \(campaignCreator.characterError != nil), Loading: \(campaignCreator.isLoadingCharacters)")
+                }
+
+                // Refresh current campaign data from campaignCreator or backend
+                // This ensures that if a sub-view like CampaignMoodboardView updated the campaign,
+                // CampaignDetailView gets the latest state when it reappears.
+                print("[CampaignDetailView .onAppear] Checking for campaign (ID: \(self.campaign.id)) updates.")
+                if let updatedCampaignFromList = campaignCreator.campaigns.first(where: { $0.id == self.campaign.id }) {
+                    // Compare more than just modifiedAt if it's not always reliable or present
+                    if updatedCampaignFromList.modifiedAt != self.campaign.modifiedAt ||
+                       updatedCampaignFromList.moodBoardImageURLs != self.campaign.moodBoardImageURLs ||
+                       updatedCampaignFromList.badgeImageURL != self.campaign.badgeImageURL ||
+                       updatedCampaignFromList.title != self.campaign.title { // Add other key fields if necessary
+                        print("[CampaignDetailView .onAppear] Campaign data in CampaignCreator is different. Updating local state.")
+                        self.campaign = updatedCampaignFromList
+                        self.editableTitle = updatedCampaignFromList.title
+                        self.editableConcept = updatedCampaignFromList.concept ?? ""
+                        self.localCampaignCustomSections = updatedCampaignFromList.customSections ?? []
+                        self.viewRefreshTrigger = UUID() // Force UI refresh if needed
+                    } else {
+                        print("[CampaignDetailView .onAppear] Local campaign data appears up-to-date with CampaignCreator list.")
+                    }
+                } else {
+                    // If not in the list, or to be absolutely sure, refresh from backend
+                    print("[CampaignDetailView .onAppear] Campaign not found in CampaignCreator's list or forcing direct refresh for ID: \(self.campaign.id).")
+                    do {
+                        let refreshedCampaign = try await campaignCreator.refreshCampaign(id: self.campaign.id)
+                        self.campaign = refreshedCampaign
+                        self.editableTitle = refreshedCampaign.title
+                        self.editableConcept = refreshedCampaign.concept ?? ""
+                        self.localCampaignCustomSections = refreshedCampaign.customSections ?? []
+                        self.viewRefreshTrigger = UUID()
+                        print("[CampaignDetailView .onAppear] Successfully refreshed campaign from backend.")
+                    } catch {
+                        print("❌ [CampaignDetailView .onAppear] Error refreshing campaign from backend: \(error.localizedDescription)")
+                        self.errorMessage = "Failed to refresh campaign data: \(error.localizedDescription)"
+                        self.showErrorAlert = true
+                    }
                 }
             }
         }
@@ -997,42 +1042,91 @@ struct CampaignDetailView: View {
             CampaignEditView(campaign: $campaign, campaignCreator: campaignCreator, isPresented: $showingCampaignEditSheet)
         }
         .toolbar {
-            ToolbarItemGroup(placement: .navigationBarTrailing) {
-                if isSaving || isGeneratingText {
-                    ProgressView()
-                } else {
-                    // Campaign Theme Button
-                    Button {
-                        showingCampaignThemeSheet = true
-                    } label: {
-                        Label("Theme", systemImage: "paintbrush.pointed.fill")
-                    }
-                    .disabled(isSaving || isGeneratingText)
-                    
-                    // Mood Board Button - Changed to NavigationLink
-                    NavigationLink(destination: CampaignMoodboardView(campaign: campaign)) {
-                        Label("Mood Board", systemImage: "photo.on.rectangle.angled")
-                    }
-                    .disabled(isSaving || isGeneratingText)
-                    
-                    // Button to open the sheet for generating a new campaign section
-                    Button {
-                        showingGenerateSheet = true
-                    } label: {
-                        Label("Generate Section", systemImage: "sparkles")
-                    }
-                    .disabled(isSaving || isGeneratingText || !campaignCreator.isLLMServiceAvailable) // Use new property
-                }
-            }
-            // Note: The conditional Text for LLM service availability will be moved into the ScrollView content.
+            detailViewToolbarContent()
         }
         .onChange(of: horizontalSizeClass) { newSizeClass in
             // This is mostly for debugging or if specific non-label-style changes were needed.
             // .labelStyle modifier handles the change automatically.
             print("Horizontal size class changed to: \(String(describing: newSizeClass))")
         }
+        .sheet(isPresented: $showingGenerateBadgeWithAISheet) { // New sheet for badge generation
+            generateBadgeSheetView // Call the new sheet view
+        }
+        .sheet(isPresented: $showingSelectBadgeFromMoodboardSheet) {
+            SelectBadgeFromMoodboardView(
+                moodBoardImageURLs: campaign.moodBoardImageURLs ?? [],
+                thematicImageURL: campaign.thematicImageURL,
+                onImageSelected: { selectedURL in
+                    self.campaign.badgeImageURL = selectedURL
+                    self.campaign.markAsModified()
+                    Task {
+                        await self.saveCampaignDetails(source: .badgeImageUpdate)
+                    }
+                    self.showingSelectBadgeFromMoodboardSheet = false // Dismiss sheet
+                }
+            )
+        }
+        // .onChange(of: selectedBadgeImageItem) { ... } // REMOVED - No longer using PhotosPicker for badge
+        .confirmationDialog("Set Campaign Badge", isPresented: $showingSetBadgeOptions, titleVisibility: .visible) {
+            Button("Generate with AI") {
+                self.imageGeneratePrompt = "Campaign badge for: \(campaign.title)" // Pre-fill prompt
+                self.showingGenerateBadgeWithAISheet = true
+            }
+            Button("Select from Mood Board") {
+                self.showingSelectBadgeFromMoodboardSheet = true
+            }
+            if campaign.badgeImageURL != nil { // Show remove option only if a badge is currently set
+                Button("Remove Badge", role: .destructive) {
+                    campaign.badgeImageURL = nil
+                    campaign.markAsModified()
+                    Task {
+                        await saveCampaignDetails(source: .badgeImageUpdate) // Use same source, will save nil URL
+                    }
+                    print("Remove Badge tapped")
+                }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Choose a source for your campaign badge.")
+        }
     }
-    
+
+    // The local uploadCampaignBadgeImage method is now removed.
+    // Its logic has been moved to ImageUploadService and is called from the .onChange block above.
+
+    @ToolbarContentBuilder
+    private func detailViewToolbarContent() -> some ToolbarContent {
+        ToolbarItemGroup(placement: .navigationBarTrailing) {
+            if isSaving || isGeneratingText {
+                ProgressView()
+            } else {
+                // Campaign Theme Button
+                Button {
+                    showingCampaignThemeSheet = true
+                } label: {
+                    Label("Theme", systemImage: "paintbrush.pointed.fill")
+                }
+                .disabled(isSaving || isGeneratingText)
+
+                // Mood Board Button
+                NavigationLink(destination: CampaignMoodboardView(campaign: campaign, campaignCreator: campaignCreator)
+                    .environmentObject(imageUploadService)
+                ) {
+                    Label("Mood Board", systemImage: "photo.on.rectangle.angled")
+                }
+                .disabled(isSaving || isGeneratingText)
+
+                // Generate Section Button
+                Button {
+                    showingGenerateSheet = true
+                } label: {
+                    Label("Generate Section", systemImage: "sparkles")
+                }
+                .disabled(isSaving || isGeneratingText || !campaignCreator.isLLMServiceAvailable)
+            }
+        }
+    }
+
     @ViewBuilder
     private var commonToolbarButtons: some View {
         // This approach allows for dynamic labelStyle but might be overly complex
@@ -1059,11 +1153,10 @@ struct CampaignDetailView: View {
                     .background(Color(.systemGroupedBackground)).cornerRadius(8)
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
                 
-                if let error = imageGenerationError { Text(error).foregroundColor(.red).font(.caption) }
+                if let error = imageGenerationError { Text(error).foregroundColor(.red).font(.caption) } // This state might need to be specific if sheets are open concurrently
                 Spacer()
                 Button(action: { Task { await performAICampaignImageGeneration() } }) {
                     HStack {
-                        // Assuming isGeneratingText can be reused or a new @State isGeneratingImage exists
                         if isGeneratingText { ProgressView().progressViewStyle(.circular).tint(.white) }
                         Text(isGeneratingText ? "Generating..." : "Generate Thematic Image")
                     }
@@ -1072,10 +1165,45 @@ struct CampaignDetailView: View {
                 .disabled(imageGeneratePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGeneratingText)
             }
             .padding()
-            .navigationTitle("Generate Image").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Generate Thematic Image").navigationBarTitleDisplayMode(.inline) // Title updated for clarity
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { showingGenerateImageSheet = false; imageGeneratePrompt = ""; imageGenerationError = nil }
+                    Button("Cancel") { showingGenerateImageSheet = false; /* imageGeneratePrompt = ""; imageGenerationError = nil; */ } // Avoid clearing prompt if shared
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    // New sheet view for generating badge image
+    private var generateBadgeSheetView: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Text("AI Badge Generation").font(.headline)
+                Text("Describe the badge image you'd like to generate for your campaign.")
+                    .font(.subheadline).foregroundColor(.secondary)
+                TextEditor(text: $imageGeneratePrompt) // Reuses imageGeneratePrompt
+                    .frame(height: 120).padding(8)
+                    .background(Color(.systemGroupedBackground)).cornerRadius(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+
+                // Consider a separate error state for badge generation if needed: e.g., badgeGenerationError
+                if showErrorAlert && !errorMessage.isEmpty { Text(errorMessage).foregroundColor(.red).font(.caption) } // Corrected condition
+                Spacer()
+                Button(action: { Task { await performAIBadgeGeneration() } }) { // Calls new function
+                    HStack {
+                        if isGeneratingText { ProgressView().progressViewStyle(.circular).tint(.white) }
+                        Text(isGeneratingText ? "Generating..." : "Generate Badge")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(imageGeneratePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGeneratingText)
+            }
+            .padding()
+            .navigationTitle("Generate Badge Image").navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { showingGenerateBadgeWithAISheet = false; /* imageGeneratePrompt = ""; errorMessage = ""; showErrorAlert = false; */ } // Avoid clearing shared prompt
                 }
             }
         }
@@ -1139,8 +1267,84 @@ struct CampaignDetailView: View {
         isGeneratingText = false // Or isGeneratingImage = false
     }
     
+    private func performAIBadgeGeneration() async {
+        print("[PerformAIBadgeGeneration] Started.")
+        guard !imageGeneratePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            self.errorMessage = "Badge image prompt cannot be empty."
+            self.showErrorAlert = true // Use general error alert
+            print("[PerformAIBadgeGeneration] Prompt was empty.")
+            return
+        }
+        isGeneratingText = true
+        imageGenerationError = nil
+
+        let modelToUse = ImageModelName.defaultOpenAI.rawValue
+
+        print("[PerformAIBadgeGeneration] Attempting to generate badge image for campaign ID \(campaign.id) with prompt: '\(imageGeneratePrompt)', model: \(modelToUse)")
+
+        do {
+            print("[PerformAIBadgeGeneration] Calling campaignCreator.generateImage...")
+            let response = try await campaignCreator.generateImage(
+                prompt: imageGeneratePrompt,
+                modelName: modelToUse,
+                quality: "standard",
+                associatedCampaignId: String(campaign.id)
+            )
+            print("[PerformAIBadgeGeneration] campaignCreator.generateImage response received. Image URL: \(response.imageUrl ?? "nil")")
+
+            guard let newBadgeUrl = response.imageUrl, !newBadgeUrl.isEmpty else {
+                print("[PerformAIBadgeGeneration] Error: Generated image URL is nil or empty.")
+                self.errorMessage = "AI image generation succeeded but returned no valid URL."
+                self.showErrorAlert = true
+                isGeneratingText = false
+                return
+            }
+
+            print("[PerformAIBadgeGeneration] Assigning new badge URL: \(newBadgeUrl)")
+            campaign.badgeImageURL = newBadgeUrl
+
+            print("[PerformAIBadgeGeneration] Adding to mood board. Current moodboard URLs: \(campaign.moodBoardImageURLs ?? [])")
+            if campaign.moodBoardImageURLs == nil {
+                campaign.moodBoardImageURLs = []
+            }
+            if !campaign.moodBoardImageURLs!.contains(newBadgeUrl) {
+                campaign.moodBoardImageURLs!.append(newBadgeUrl)
+                print("[PerformAIBadgeGeneration] Appended to moodBoardImageURLs. New count: \(campaign.moodBoardImageURLs!.count)")
+            } else {
+                print("[PerformAIBadgeGeneration] URL already in moodBoardImageURLs.")
+            }
+
+            campaign.markAsModified()
+            print("[PerformAIBadgeGeneration] Calling saveCampaignDetails...")
+            await saveCampaignDetails(source: .badgeImageUpdate)
+            print("[PerformAIBadgeGeneration] saveCampaignDetails finished.")
+
+            showingGenerateBadgeWithAISheet = false
+            print("[PerformAIBadgeGeneration] Dismissed sheet.")
+            // imageGeneratePrompt = ""
+
+        } catch let error as APIError {
+            let specificMessage = "API Error: \(error.localizedDescription)"
+            print("❌ [PerformAIBadgeGeneration] APIError: \(specificMessage)")
+            self.errorMessage = specificMessage
+            self.showErrorAlert = true
+        } catch let error as LLMError {
+            let specificMessage = "LLM Service Error: \(error.localizedDescription)"
+            print("❌ [PerformAIBadgeGeneration] LLMError: \(specificMessage)")
+            self.errorMessage = specificMessage
+            self.showErrorAlert = true
+        } catch {
+            let specificMessage = "An unexpected error occurred: \(error.localizedDescription)"
+            print("❌ [PerformAIBadgeGeneration] Unexpected error: \(specificMessage)")
+            self.errorMessage = specificMessage
+            self.showErrorAlert = true
+        }
+        isGeneratingText = false
+        print("[PerformAIBadgeGeneration] Finished.")
+    }
+
     // MARK: - Save Logic
-    enum SaveSource { case titleField, conceptEditorDoneButton, onDisappear, themeEditorDismissed, customSectionChange, standardSectionChange, llmSettingsChange } // Added llmSettingsChange
+    enum SaveSource { case titleField, conceptEditorDoneButton, onDisappear, themeEditorDismissed, customSectionChange, standardSectionChange, llmSettingsChange, badgeImageUpdate } // Added badgeImageUpdate
     
     // Placeholder functions for standard section actions
     private func handleStandardSnippetFeatureSelection(_ feature: Feature, forSectionAtIndex index: Int) {
@@ -1452,6 +1656,14 @@ struct CampaignDetailView: View {
             }
         }
         
+        if source == .badgeImageUpdate {
+            // This source implies the campaign.badgeImageURL was just updated.
+            // We mark 'changed = true' to ensure the save operation proceeds with the new URL.
+            // This assumes that if badgeImageUpdate is the source, a meaningful change to badgeImageURL has occurred.
+            print("Save triggered by badgeImageUpdate source. Marking as changed.")
+            changed = true
+        }
+
         guard changed else { print("No changes to save from source: \(source)."); return }
         
         isSaving = true
@@ -1479,6 +1691,10 @@ struct CampaignDetailView: View {
         do {
             let trulyRefreshedCampaign = try await campaignCreator.updateCampaign(campaignToUpdate)
             
+            // Debug prints for badgeImageURL
+            print("[Badge Refresh Debug] campaignToUpdate.badgeImageURL sent to server: \(campaignToUpdate.badgeImageURL ?? "nil")")
+            print("[Badge Refresh Debug] trulyRefreshedCampaign.badgeImageURL from server: \(trulyRefreshedCampaign.badgeImageURL ?? "nil")")
+
             print("[DetailView SAVE] Received trulyRefreshedCampaign ID: \(trulyRefreshedCampaign.id)")
             print("[DetailView SAVE]   trulyRefreshedCampaign.themePrimaryColor: \(trulyRefreshedCampaign.themePrimaryColor ?? "nil")")
             print("[DetailView SAVE]   trulyRefreshedCampaign.themeSecondaryColor: \(trulyRefreshedCampaign.themeSecondaryColor ?? "nil")")
@@ -1492,6 +1708,9 @@ struct CampaignDetailView: View {
             // Directly use the returned campaign object to refresh the local state
             self.campaign = trulyRefreshedCampaign
             
+            // Debug print for badgeImageURL after self.campaign is updated
+            print("[Badge Refresh Debug] self.campaign.badgeImageURL after server update: \(self.campaign.badgeImageURL ?? "nil")")
+
             print("[DetailView SAVE] self.campaign set. Current theme values from self.campaign:")
             print("[DetailView SAVE]   self.campaign.themePrimaryColor: \(self.campaign.themePrimaryColor ?? "nil")")
             print("[DetailView SAVE]   self.campaign.themeFontFamily: \(self.campaign.themeFontFamily ?? "nil")")
@@ -1796,5 +2015,15 @@ struct CampaignDetailView: View {
                 Spacer() // Pushes content to the left
             }
         }
+    }
+}
+
+// Helper extension for String to strip suffix if present
+extension String {
+    func stripSuffix(_ suffix: String) -> String {
+        if self.hasSuffix(suffix) {
+            return String(self.dropLast(suffix.count))
+        }
+        return self
     }
 }
