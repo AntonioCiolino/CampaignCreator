@@ -118,17 +118,48 @@ public struct Campaign: Identifiable, Codable, Sendable {
         displayTOC = try container.decodeIfPresent([TOCEntry].self, forKey: .displayTOC)
         sections = try container.decode([CampaignSection].self, forKey: .sections)
 
-        print("[Campaign Decodable] Checking for key .badgeImageURL: \(CodingKeys.badgeImageURL.stringValue). Key Found in JSON container: \(container.contains(.badgeImageURL))")
-        do {
-            badgeImageURL = try container.decodeIfPresent(String.self, forKey: .badgeImageURL)
-            print("[Campaign Decodable] badgeImageURL successfully decoded (or was nil in JSON): \(badgeImageURL ?? "nil")")
-        } catch let error as DecodingError {
-            print("❗️ [Campaign Decodable] DecodingError for badgeImageURL: \(error) - Key: \(CodingKeys.badgeImageURL.stringValue)")
-            badgeImageURL = nil // Ensure it's nil if decoding fails for an optional property
-        } catch {
-            print("❗️ [Campaign Decodable] UNKNOWN error decoding badgeImageURL: \(error) - Key: \(CodingKeys.badgeImageURL.stringValue)")
-            badgeImageURL = nil
+        print("[Campaign Decodable] --- Aggressive Debug for badgeImageURL ---")
+        print("[Campaign Decodable] Checking for key .badgeImageURL using string value '\(CodingKeys.badgeImageURL.stringValue)': \(container.contains(.badgeImageURL))")
+        if container.contains(.badgeImageURL) {
+            print("[Campaign Decodable] Key .badgeImageURL FOUND.")
+            do {
+                // Try to decode as non-optional String first to force an error if value is null or wrong type
+                let tempBadgeURL = try container.decode(String.self, forKey: .badgeImageURL)
+                self.badgeImageURL = tempBadgeURL
+                print("[Campaign Decodable] badgeImageURL DECODED SUCCESSFULLY (as non-optional String): \(self.badgeImageURL ?? "nil but shouldn't be")")
+            } catch let error as DecodingError {
+                print("❗️ [Campaign Decodable] DecodingError for badgeImageURL (when trying non-optional String): \(error)")
+                // print("    Context: \(error.localizedDescription)") // localizedDescription might be too generic
+                switch error {
+                case .typeMismatch(let type, let context):
+                    print("    Type Mismatch: Expected String, got \(type). Path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")), Debug: \(context.debugDescription)")
+                    // If type mismatch, try decodeIfPresent as a fallback for logging, though it likely still results in nil
+                    self.badgeImageURL = try? container.decodeIfPresent(String.self, forKey: .badgeImageURL)
+                    print("    [Campaign Decodable] badgeImageURL after trying decodeIfPresent (following typeMismatch): \(self.badgeImageURL ?? "nil")")
+                case .valueNotFound(let type, let context): // This means JSON value was 'null'
+                    print("    Value Not Found: Expected String, but JSON value was null for type \(type). Path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")), Debug: \(context.debugDescription)")
+                    // Now try decodeIfPresent as it should handle null by returning nil
+                    self.badgeImageURL = try? container.decodeIfPresent(String.self, forKey: .badgeImageURL)
+                    print("    [Campaign Decodable] badgeImageURL after trying decodeIfPresent (following valueNotFound): \(self.badgeImageURL ?? "nil")")
+                case .keyNotFound(let key, let context): // Should not happen if container.contains was true
+                    print("    Key Not Found: \(key.stringValue). Path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")), Debug: \(context.debugDescription)")
+                    self.badgeImageURL = nil
+                case .dataCorrupted(let context):
+                    print("    Data Corrupted. Path: \(context.codingPath.map { $0.stringValue }.joined(separator: ".")), Debug: \(context.debugDescription)")
+                    self.badgeImageURL = nil
+                @unknown default:
+                    print("    Unknown DecodingError for badgeImageURL.")
+                    self.badgeImageURL = nil
+                }
+            } catch {
+                print("❗️ [Campaign Decodable] UNKNOWN non-DecodingError for badgeImageURL: \(error)")
+                self.badgeImageURL = nil
+            }
+        } else {
+            print("❗️ [Campaign Decodable] Key .badgeImageURL NOT FOUND in container.")
+            self.badgeImageURL = nil
         }
+        print("[Campaign Decodable] --- End Aggressive Debug for badgeImageURL ---")
 
         thematicImageURL = try container.decodeIfPresent(String.self, forKey: .thematicImageURL)
         thematicImagePrompt = try container.decodeIfPresent(String.self, forKey: .thematicImagePrompt)
