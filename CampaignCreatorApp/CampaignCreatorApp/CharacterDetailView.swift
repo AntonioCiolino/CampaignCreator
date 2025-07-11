@@ -23,6 +23,9 @@ struct CharacterDetailView: View {
                     Spacer()
 
                     // Character Image Thumbnail/Icon
+                    // TODO: Implement Robust Image Caching (see also CharacterMoodboardView.swift)
+                    // This AsyncImage could benefit from a shared, robust caching solution to prevent
+                    // re-downloading the same image if viewed multiple times or across different app sessions.
                     if let firstImageURLString = character.imageURLs?.first, let imageURL = URL(string: firstImageURLString) {
                         Button(action: {
                             selectedImageURLForSheet = imageURL
@@ -51,22 +54,7 @@ struct CharacterDetailView: View {
                 }
                 .padding(.bottom, 5)
 
-                // The original Image URLs list can be kept or removed based on preference
-                // For now, I'll keep it so users can still see all URLs if multiple exist.
-                if let imageURLs = character.imageURLs, !imageURLs.isEmpty {
-                    SectionBox(title: "Image URLs (Links)") {
-                        ForEach(imageURLs, id: \.self) { urlString in
-                            if let url = URL(string: urlString) {
-                                Link(urlString, destination: url)
-                                    .font(.caption)
-                            } else {
-                                Text(urlString + " (Invalid URL)")
-                                    .font(.caption)
-                                    .foregroundColor(.red)
-                            }
-                        }
-                    }
-                }
+                // Image URLs (Links) section REMOVED as per user request
 
                 if let description = character.description, !description.isEmpty {
                     SectionBox(title: "Description") { Text(description) }
@@ -120,8 +108,14 @@ struct CharacterDetailView: View {
                 }
 
                 // Moodboard Button
-                if let urls = character.imageURLs, !urls.isEmpty {
-                    NavigationLink(destination: CharacterMoodboardView(imageURLs: urls, characterName: character.name)) {
+                if let _ = character.imageURLs, !(character.imageURLs?.isEmpty ?? true) { // Ensure urls exist and are not empty
+                    // The actual URLs are now passed via the character object to the moodboard
+                    NavigationLink(destination: CharacterMoodboardView(campaignCreator: campaignCreator, character: character, onCharacterUpdated: { updatedCharacter in
+                        // This callback is crucial for reflecting changes made in the moodboard (e.g., reordered images)
+                        // back in this detail view.
+                        self.character = updatedCharacter
+                        print("[CharacterDetailView] Moodboard updated character ID \(updatedCharacter.id).")
+                    })) {
                         Image(systemName: "photo.stack") // Icon for moodboard/gallery
                     }
                 }
