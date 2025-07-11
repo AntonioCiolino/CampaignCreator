@@ -346,32 +346,8 @@ async def generate_character_aspect(
 
 # --- Character Chat Endpoints ---
 
-@router.post("/{character_id}/chat", response_model=models.ChatMessage)
-def create_character_chat_message(
-    character_id: int,
-    message_in: models.ChatMessageCreate,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[models.User, Depends(get_current_active_user)]
-):
-    """
-    Saves a chat message for a character.
-    The sender in `message_in` should be "user" or the name of the character/LLM.
-    """
-    db_character = crud.get_character(db=db, character_id=character_id)
-    if db_character is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
-    if db_character.owner_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to chat with this character")
-
-    # The sender_identifier parameter was removed from crud.create_chat_message,
-    # it now relies on message_in.sender.
-    created_message = crud.create_chat_message(
-        db=db,
-        character_id=character_id,
-        message=message_in # message_in.sender should be "user" or character_name
-    )
-    return created_message
-
+# The POST /{character_id}/chat endpoint (create_character_chat_message) has been removed.
+# Message creation and persistence are now handled by the POST /{character_id}/generate-response endpoint.
 
 @router.get("/{character_id}/chat", response_model=List[models.ConversationMessageEntry])
 def get_character_chat_history(
