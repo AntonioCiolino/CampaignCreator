@@ -173,7 +173,7 @@ describe('CharacterChatPanel', () => {
     test('messages area has the correct ref for scrolling (conceptual)', () => {
         // This test is more about ensuring the structure for scrolling is in place.
         // Actual scroll behavior is hard to test in JSDOM.
-        render(<CharacterChatPanel {...defaultProps} chatHistory={[getMockChatMessage(100, 'user', 'Test')]} />);
+        render(<CharacterChatPanel {...defaultProps} chatHistory={[getMockChatMessage('scroll-test-key-100', 'user', 'Test')]} />);
         // The CharacterChatPanel component itself uses a ref internally.
         // We can't directly access that ref from outside without exposing it, which is not typical.
         // We trust that if messages are rendered, the useEffect for scrolling will attempt to work.
