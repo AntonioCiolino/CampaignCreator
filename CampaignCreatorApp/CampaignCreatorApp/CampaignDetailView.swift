@@ -1268,63 +1268,79 @@ struct CampaignDetailView: View {
     }
     
     private func performAIBadgeGeneration() async {
+        print("[PerformAIBadgeGeneration] Started.")
         guard !imageGeneratePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             self.errorMessage = "Badge image prompt cannot be empty."
             self.showErrorAlert = true // Use general error alert
+            print("[PerformAIBadgeGeneration] Prompt was empty.")
             return
         }
-        isGeneratingText = true // Reuse for general AI image generation state
-        imageGenerationError = nil // Clear previous specific errors
+        isGeneratingText = true
+        imageGenerationError = nil
 
-        let modelToUse = ImageModelName.defaultOpenAI.rawValue // Or allow selection
+        let modelToUse = ImageModelName.defaultOpenAI.rawValue
 
-        print("[Badge Generation] Attempting to generate badge image for campaign ID \(campaign.id) with prompt: '\(imageGeneratePrompt)', model: \(modelToUse)")
+        print("[PerformAIBadgeGeneration] Attempting to generate badge image for campaign ID \(campaign.id) with prompt: '\(imageGeneratePrompt)', model: \(modelToUse)")
 
         do {
+            print("[PerformAIBadgeGeneration] Calling campaignCreator.generateImage...")
             let response = try await campaignCreator.generateImage(
                 prompt: imageGeneratePrompt,
                 modelName: modelToUse,
-                quality: "standard", // Badges might not need 'hd'
+                quality: "standard",
                 associatedCampaignId: String(campaign.id)
             )
+            print("[PerformAIBadgeGeneration] campaignCreator.generateImage response received. Image URL: \(response.imageUrl ?? "nil")")
 
-            print("[Badge Generation] AI Badge image generated. URL: \(response.imageUrl)")
+            guard let newBadgeUrl = response.imageUrl, !newBadgeUrl.isEmpty else {
+                print("[PerformAIBadgeGeneration] Error: Generated image URL is nil or empty.")
+                self.errorMessage = "AI image generation succeeded but returned no valid URL."
+                self.showErrorAlert = true
+                isGeneratingText = false
+                return
+            }
 
-            // Update the badgeImageURL specifically
-            campaign.badgeImageURL = response.imageUrl
+            print("[PerformAIBadgeGeneration] Assigning new badge URL: \(newBadgeUrl)")
+            campaign.badgeImageURL = newBadgeUrl
 
-            // Also add to mood board if not already present
+            print("[PerformAIBadgeGeneration] Adding to mood board. Current moodboard URLs: \(campaign.moodBoardImageURLs ?? [])")
             if campaign.moodBoardImageURLs == nil {
                 campaign.moodBoardImageURLs = []
             }
-            if let newUrl = response.imageUrl, !campaign.moodBoardImageURLs!.contains(newUrl) {
-                campaign.moodBoardImageURLs!.append(newUrl)
+            if !campaign.moodBoardImageURLs!.contains(newBadgeUrl) {
+                campaign.moodBoardImageURLs!.append(newBadgeUrl)
+                print("[PerformAIBadgeGeneration] Appended to moodBoardImageURLs. New count: \(campaign.moodBoardImageURLs!.count)")
+            } else {
+                print("[PerformAIBadgeGeneration] URL already in moodBoardImageURLs.")
             }
 
             campaign.markAsModified()
+            print("[PerformAIBadgeGeneration] Calling saveCampaignDetails...")
+            await saveCampaignDetails(source: .badgeImageUpdate)
+            print("[PerformAIBadgeGeneration] saveCampaignDetails finished.")
 
-            await saveCampaignDetails(source: .badgeImageUpdate) // Save the campaign with new badge URL & updated mood board
-
-            showingGenerateBadgeWithAISheet = false // Dismiss the sheet
-            // imageGeneratePrompt = "" // Optionally clear prompt
+            showingGenerateBadgeWithAISheet = false
+            print("[PerformAIBadgeGeneration] Dismissed sheet.")
+            // imageGeneratePrompt = ""
 
         } catch let error as APIError {
             let specificMessage = "API Error: \(error.localizedDescription)"
-            print("❌ [Badge Generation] APIError: \(specificMessage)")
+            print("❌ [PerformAIBadgeGeneration] APIError: \(specificMessage)")
             self.errorMessage = specificMessage
             self.showErrorAlert = true
         } catch let error as LLMError {
             let specificMessage = "LLM Service Error: \(error.localizedDescription)"
-            print("❌ [Badge Generation] LLMError: \(specificMessage)")
+            print("❌ [PerformAIBadgeGeneration] LLMError: \(specificMessage)")
             self.errorMessage = specificMessage
             self.showErrorAlert = true
         } catch {
             let specificMessage = "An unexpected error occurred: \(error.localizedDescription)"
-            print("❌ [Badge Generation] Unexpected error: \(specificMessage)")
+            print("❌ [PerformAIBadgeGeneration] Unexpected error: \(specificMessage)")
             self.errorMessage = specificMessage
             self.showErrorAlert = true
         }
         isGeneratingText = false
+        print("[PerformAIBadgeGeneration] Finished.")
     }
 
     // MARK: - Save Logic

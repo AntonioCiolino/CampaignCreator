@@ -116,10 +116,10 @@ public struct Campaign: Identifiable, Codable, Sendable {
         initialUserPrompt = try container.decodeIfPresent(String.self, forKey: .initialUserPrompt)
         concept = try container.decodeIfPresent(String.self, forKey: .concept)
         displayTOC = try container.decodeIfPresent([TOCEntry].self, forKey: .displayTOC)
-        sections = try container.decode([CampaignSection].self, forKey: .sections) // Assuming not optional based on property def
+        sections = try container.decode([CampaignSection].self, forKey: .sections)
 
         badgeImageURL = try container.decodeIfPresent(String.self, forKey: .badgeImageURL)
-        // print("[Campaign Codable Debug] Decoded badgeImageURL: \(badgeImageURL ?? "nil")")
+        print("[Campaign Decodable] Attempted to decode badgeImageURL: \(badgeImageURL ?? "nil")")
 
         thematicImageURL = try container.decodeIfPresent(String.self, forKey: .thematicImageURL)
         thematicImagePrompt = try container.decodeIfPresent(String.self, forKey: .thematicImagePrompt)
@@ -127,7 +127,7 @@ public struct Campaign: Identifiable, Codable, Sendable {
         temperature = try container.decodeIfPresent(Double.self, forKey: .temperature)
 
         moodBoardImageURLs = try container.decodeIfPresent([String].self, forKey: .moodBoardImageURLs)
-        // print("[Campaign Codable Debug] Decoded moodBoardImageURLs: \(moodBoardImageURLs?.joined(separator: ", ") ?? "nil")")
+        print("[Campaign Decodable] Attempted to decode moodBoardImageURLs: \(moodBoardImageURLs?.joined(separator: ", ") ?? "nil")")
 
         themePrimaryColor = try container.decodeIfPresent(String.self, forKey: .themePrimaryColor)
         themeSecondaryColor = try container.decodeIfPresent(String.self, forKey: .themeSecondaryColor)
@@ -153,10 +153,10 @@ public struct Campaign: Identifiable, Codable, Sendable {
         try container.encodeIfPresent(initialUserPrompt, forKey: .initialUserPrompt)
         try container.encodeIfPresent(concept, forKey: .concept)
         try container.encodeIfPresent(displayTOC, forKey: .displayTOC)
-        try container.encode(sections, forKey: .sections) // Assuming not optional
+        try container.encode(sections, forKey: .sections)
 
         try container.encodeIfPresent(badgeImageURL, forKey: .badgeImageURL)
-        // print("[Campaign Codable Debug] Encoding badgeImageURL: \(badgeImageURL ?? "nil")")
+        print("[Campaign Encodable] Attempting to encode badgeImageURL: \(badgeImageURL ?? "nil")")
 
         try container.encodeIfPresent(thematicImageURL, forKey: .thematicImageURL)
         try container.encodeIfPresent(thematicImagePrompt, forKey: .thematicImagePrompt)
@@ -164,7 +164,7 @@ public struct Campaign: Identifiable, Codable, Sendable {
         try container.encodeIfPresent(temperature, forKey: .temperature)
 
         try container.encodeIfPresent(moodBoardImageURLs, forKey: .moodBoardImageURLs)
-        // print("[Campaign Codable Debug] Encoding moodBoardImageURLs: \(moodBoardImageURLs?.joined(separator: ", ") ?? "nil")")
+        print("[Campaign Encodable] Attempting to encode moodBoardImageURLs: \(moodBoardImageURLs?.joined(separator: ", ") ?? "nil")")
 
         try container.encodeIfPresent(themePrimaryColor, forKey: .themePrimaryColor)
         try container.encodeIfPresent(themeSecondaryColor, forKey: .themeSecondaryColor)

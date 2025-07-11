@@ -141,52 +141,71 @@ struct CampaignMoodboardView: View {
     }
 
     private func processAndAddExternalURL() async {
+        print("[Moodboard AddURL] processAndAddExternalURL started.")
         let urlString = newImageURLInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !urlString.isEmpty, let url = URL(string: urlString) else {
+            print("[Moodboard AddURL] Invalid URL: \(urlString)")
             self.alertItem = AlertMessageItem(message: "Invalid URL provided.")
             return
         }
+        print("[Moodboard AddURL] URL validated: \(url)")
 
         // 1. Download image data from external URL
         do {
-            print("[Moodboard] Downloading image from external URL: \(url)")
+            print("[Moodboard AddURL] Downloading image from external URL: \(url)")
             let (data, response) = try await URLSession.shared.data(from: url)
+            print("[Moodboard AddURL] Download response received.")
             guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+                print("[Moodboard AddURL] Failed to download image. Status: \((response as? HTTPURLResponse)?.statusCode ?? -1)")
                 self.alertItem = AlertMessageItem(message: "Failed to download image. Status: \((response as? HTTPURLResponse)?.statusCode ?? -1)")
                 return
             }
+            print("[Moodboard AddURL] Image data downloaded successfully (\(data.count) bytes).")
 
             // Determine filename and MIME type (best effort)
             let filename = url.lastPathComponent
             let mimeType = response.mimeType ?? "application/octet-stream"
-            print("[Moodboard] Downloaded \(data.count) bytes. Filename: \(filename), MIME: \(mimeType)")
+            print("[Moodboard AddURL] Filename: \(filename), MIME: \(mimeType)")
 
             // 2. Upload to our Azure Blob Storage via ImageUploadService
+            print("[Moodboard AddURL] Attempting to upload to ImageUploadService.")
             let uploadResult = await imageUploadService.uploadImage(imageData: data, filename: filename, mimeType: mimeType)
+            print("[Moodboard AddURL] ImageUploadService result: \(uploadResult)")
 
             switch uploadResult {
             case .success(let newAzureURL):
+                print("[Moodboard AddURL] Upload success. New Azure URL: \(newAzureURL)")
                 if localCampaign.moodBoardImageURLs == nil {
                     localCampaign.moodBoardImageURLs = []
+                    print("[Moodboard AddURL] Initialized moodBoardImageURLs.")
                 }
                 if !localCampaign.moodBoardImageURLs!.contains(newAzureURL) {
                     localCampaign.moodBoardImageURLs!.append(newAzureURL)
                     self.alertItem = AlertMessageItem(message: "Image added to mood board! Remember to Save.")
-                    print("[Moodboard] Image uploaded to Azure and URL added to local mood board: \(newAzureURL)")
+                    print("[Moodboard AddURL] Image URL appended to localCampaign.moodBoardImageURLs.")
                 } else {
                     self.alertItem = AlertMessageItem(message: "This image is already on the mood board.")
+                    print("[Moodboard AddURL] Image already in moodboard.")
                 }
-                showingAddURLSheet = false
                 newImageURLInput = "" // Clear input
+                print("[Moodboard AddURL] Setting showingAddURLSheet = false")
+                showingAddURLSheet = false // This should dismiss the sheet
             case .failure(let error):
                 self.alertItem = AlertMessageItem(message: "Failed to upload image to our storage: \(error.localizedDescription)")
-                print("[Moodboard] Failed to upload image to Azure: \(error.localizedDescription)")
+                print("[Moodboard AddURL] Failed to upload image to Azure: \(error.localizedDescription)")
+                // Ensure sheet is dismissed even on failure if that's desired, or keep it open.
+                // For now, let's assume we want to dismiss it.
+                print("[Moodboard AddURL] Setting showingAddURLSheet = false (on failure)")
+                showingAddURLSheet = false
             }
 
         } catch {
             self.alertItem = AlertMessageItem(message: "Failed to download or process image from URL: \(error.localizedDescription)")
-            print("[Moodboard] Error downloading image from URL: \(error.localizedDescription)")
+            print("[Moodboard AddURL] Error downloading image from URL: \(error.localizedDescription)")
+            print("[Moodboard AddURL] Setting showingAddURLSheet = false (on catch)")
+            showingAddURLSheet = false
         }
+        print("[Moodboard AddURL] processAndAddExternalURL finished.")
     }
 
     // View for generating an AI image for the mood board
@@ -227,56 +246,70 @@ struct CampaignMoodboardView: View {
     }
 
     private func performAIMoodboardImageGeneration() async {
+        print("[Moodboard AI Gen] Started.")
         let prompt = aiImagePromptInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty else {
             self.alertItem = AlertMessageItem(message: "AI image prompt cannot be empty.")
+            print("[Moodboard AI Gen] Prompt was empty.")
             return
         }
 
         isGeneratingAIImage = true
-        // Assuming campaignCreator.generateImage handles errors by throwing
-        // and returns an ImageGenerationResponse with an imageUrl.
+        print("[Moodboard AI Gen] Calling campaignCreator.generateImage with prompt: \(prompt)")
         do {
             let response = try await campaignCreator.generateImage(
                 prompt: prompt,
-                modelName: ImageModelName.defaultOpenAI.rawValue, // Or make this selectable
-                associatedCampaignId: String(localCampaign.id) // Associate with campaign for context/storage path
+                modelName: ImageModelName.defaultOpenAI.rawValue,
+                associatedCampaignId: String(localCampaign.id)
             )
+            print("[Moodboard AI Gen] campaignCreator.generateImage response received. Image URL: \(response.imageUrl ?? "nil")")
 
-            if let newAzureURL = response.imageUrl {
+            if let newAzureURL = response.imageUrl, !newAzureURL.isEmpty {
                 if localCampaign.moodBoardImageURLs == nil {
                     localCampaign.moodBoardImageURLs = []
+                    print("[Moodboard AI Gen] Initialized moodBoardImageURLs.")
                 }
                 if !localCampaign.moodBoardImageURLs!.contains(newAzureURL) {
                     localCampaign.moodBoardImageURLs!.append(newAzureURL)
                     self.alertItem = AlertMessageItem(message: "AI Image generated and added to mood board! Remember to Save.")
-                    print("[Moodboard] AI Image generated and URL added to local mood board: \(newAzureURL)")
+                    print("[Moodboard AI Gen] Image URL appended. New moodboard URLs: \(localCampaign.moodBoardImageURLs!)")
                 } else {
                     self.alertItem = AlertMessageItem(message: "This AI generated image (or one with the same URL) is already on the mood board.")
+                    print("[Moodboard AI Gen] URL already in moodboard.")
                 }
-                aiImagePromptInput = "" // Clear prompt
+                aiImagePromptInput = ""
             } else {
                 self.alertItem = AlertMessageItem(message: "AI image generation succeeded but returned no URL.")
+                print("[Moodboard AI Gen] Generated image URL was nil or empty from service.")
             }
         } catch {
             self.alertItem = AlertMessageItem(message: "Failed to generate AI image: \(error.localizedDescription)")
-            print("[Moodboard] Failed to generate AI image: \(error.localizedDescription)")
+            print("[Moodboard AI Gen] Error during AI image generation: \(error.localizedDescription)")
         }
         isGeneratingAIImage = false
-        showingGenerateMoodboardImageSheet = false // Dismiss sheet
+        showingGenerateMoodboardImageSheet = false
+        print("[Moodboard AI Gen] Finished. Dismissing sheet.")
     }
 
     private func saveMoodboardChanges() async {
-        print("[CampaignMoodboardView] Attempting to save moodboard changes for campaign ID: \(localCampaign.id)")
+        print("[CMV SaveChanges] Attempting to save moodboard for campaign ID: \(localCampaign.id)")
+        print("[CMV SaveChanges] Current localCampaign.moodBoardImageURLs before save: \(localCampaign.moodBoardImageURLs ?? [])")
         do {
-            // The campaignCreator.updateCampaign expects the full campaign object.
-            // localCampaign already has the modifications to moodBoardImageURLs.
-            // Make sure markAsModified is called if not done automatically by @State changes triggering this save.
-            localCampaign.markAsModified() // Ensure modifiedAt is updated
-            _ = try await campaignCreator.updateCampaign(localCampaign)
-            print("[CampaignMoodboardView] Successfully saved campaign with updated moodboard.")
-            // Optionally, provide user feedback like an alert or toast.
-            // Consider if the parent view (CampaignDetailView) needs to be explicitly refreshed.
+            localCampaign.markAsModified()
+            print("[CMV SaveChanges] Calling campaignCreator.updateCampaign...")
+            let updatedCampaign = try await campaignCreator.updateCampaign(localCampaign)
+            print("[CMV SaveChanges] Successfully called campaignCreator.updateCampaign. Response moodboard URLs: \(updatedCampaign.moodBoardImageURLs ?? [])")
+            // Update localCampaign with the version from the server to ensure consistency,
+            // especially for modifiedAt and any other server-side changes.
+            self.localCampaign = updatedCampaign
+            self.alertItem = AlertMessageItem(message: "Moodboard changes saved successfully!")
+        } catch {
+            print("❌ [CMV SaveChanges] Error saving moodboard changes: \(error.localizedDescription)")
+            self.alertItem = AlertMessageItem(message: "Failed to save moodboard: \(error.localizedDescription)")
+        }
+    }
+
+    // Private helper view for each cell in the campaign moodboard grid
             // If CampaignDetailView's campaign object is not a @Binding or @ObservedObject
             // that reflects changes from CampaignCreator's list, it might show stale data
             // until it's reloaded or refreshed by other means.
