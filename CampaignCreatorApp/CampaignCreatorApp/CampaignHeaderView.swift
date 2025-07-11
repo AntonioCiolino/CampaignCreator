@@ -45,7 +45,7 @@ struct CampaignHeaderView: View {
                             .clipShape(Circle())
                             .overlay(Circle().stroke(currentPrimaryColor, lineWidth: 2))
                             .padding(.top, 5)
-                    case .failure(let error): // Capture error
+                    case .failure(_): // Error variable not used, changed 'let error' to '_'
                         VStack { // Group error display
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .resizable().scaledToFit().frame(width: 40, height: 40)

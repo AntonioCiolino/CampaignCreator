@@ -853,7 +853,7 @@ struct CampaignDetailView: View {
         .onAppear {
             // Log initial LLM settings when the view appears
             if !initialLLMSettingsLoaded {
-                print("[LLM_DEBUG CampaignDetailView] View appeared. Initial campaign LLM Settings: ID=\(campaign.selectedLLMId ?? "nil"), Temp=\(campaign.temperature?.description ?? "nil")")
+                print("[LLM_DEBUG CampaignDetailView] View appeared. Initial campaign LLM Settings: ID=\(campaign.selectedLLMId ?? "nil"), Temp=\(campaign.temperature?.description ?? "nil")") // Warning fix
                 initialLLMSettingsLoaded = true
             }
             Task {
@@ -1047,7 +1047,7 @@ struct CampaignDetailView: View {
         .onChange(of: horizontalSizeClass) { newSizeClass in
             // This is mostly for debugging or if specific non-label-style changes were needed.
             // .labelStyle modifier handles the change automatically.
-            print("Horizontal size class changed to: \(String(describing: newSizeClass))")
+            print("Horizontal size class changed to: \((newSizeClass != nil ? String(describing: newSizeClass!) : "nil"))") // Warning fix
         }
         .sheet(isPresented: $showingGenerateBadgeWithAISheet) { // New sheet for badge generation
             generateBadgeSheetView // Call the new sheet view
@@ -1952,8 +1952,8 @@ struct CampaignDetailView: View {
             title: "My Preview Saga",
             concept: "A test concept.",
             displayTOC: [ // Corrected order: displayTOC before sections
-                TOCEntry(id: 201, title: "Introduction", type: "Introduction"),
-                TOCEntry(id: 202, title: "Chapter 1 Link", type: "Chapter")
+                TOCEntry(id: UUID(), title: "Introduction", type: "Introduction"), // Error fix
+                TOCEntry(id: UUID(), title: "Chapter 1 Link", type: "Chapter")       // Error fix
                         ],
             sections: [
                 CampaignSection(
