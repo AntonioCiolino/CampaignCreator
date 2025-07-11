@@ -227,8 +227,13 @@ struct CampaignDetailView: View {
                                 .font(currentFont.weight(.semibold))
                                 .textFieldStyle(PlainTextFieldStyle())
                                 .padding(.bottom, 2)
-                                .onChange(of: campaign.sections[index].title) { _ in
-                                    Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
+                                .onChange(of: campaign.sections[index].title) { newTitle in
+                                    let sectionId = campaign.sections[index].id
+                                    // Assuming standard sections also have debounce timers if needed, or direct save
+                                    customSectionTitleDebounceTimers[sectionId]?.invalidate() // Use same timer dict for simplicity
+                                    customSectionTitleDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
+                                        Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true, editingSectionID: sectionId, latestSectionContent: nil) } // Pass nil for content
+                                    }
                                 }
                             
                             CustomTextView(
@@ -243,8 +248,14 @@ struct CampaignDetailView: View {
                             .background(Color(.secondarySystemGroupedBackground))
                             .cornerRadius(8)
                             .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
-                            .onChange(of: campaign.sections[index].content) { _ in
-                                Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
+                            .onChange(of: campaign.sections[index].content) { newContent in
+                                let sectionId = campaign.sections[index].id
+                                // Assuming standard sections also have debounce timers if needed, or direct save
+                                // For consistency, let's add debounce, though it wasn't explicitly there before for standard content
+                                customSectionContentDebounceTimers[sectionId]?.invalidate() // Use same timer dict for simplicity
+                                customSectionContentDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in
+                                    Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true, editingSectionID: sectionId, latestSectionContent: newContent) }
+                                }
                             }
                             
                             HStack {
@@ -615,11 +626,11 @@ struct CampaignDetailView: View {
                             .font(currentFont.weight(.semibold))
                             .textFieldStyle(PlainTextFieldStyle())
                             .padding(.bottom, 2)
-                            .onChange(of: section.title.wrappedValue) { newValue in // Observe .wrappedValue
+                            .onChange(of: section.title.wrappedValue) { newTitle in // Observe .wrappedValue
                                 let sectionId = section.id.wrappedValue
                                 customSectionTitleDebounceTimers[sectionId]?.invalidate()
                                 customSectionTitleDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
-                                    Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
+                                    Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true, editingSectionID: sectionId, latestSectionContent: nil) } // Pass nil for content
                                 }
                             }
                         
@@ -647,11 +658,11 @@ struct CampaignDetailView: View {
                         .background(Color(.secondarySystemGroupedBackground))
                         .cornerRadius(8)
                         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
-                        .onChange(of: section.content.wrappedValue) { newValue in // Observe .wrappedValue
+                        .onChange(of: section.content.wrappedValue) { newContent in // Observe .wrappedValue
                             let sectionId = section.id.wrappedValue
                             customSectionContentDebounceTimers[sectionId]?.invalidate()
                             customSectionContentDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in // Slightly longer timer for content
-                                Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true) }
+                                Task { await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true, editingSectionID: sectionId, latestSectionContent: newContent) }
                             }
                         }
                         
@@ -814,7 +825,7 @@ struct CampaignDetailView: View {
                         currentFont: currentFont,
                         currentTextColor: currentTextColor,
                         onLLMSettingsChange: {
-                            await self.saveCampaignDetails(source: .llmSettingsChange, includeLLMSettings: true)
+                            await self.saveCampaignDetails(source: .llmSettingsChange, includeLLMSettings: true, editingSectionID: nil, latestSectionContent: nil)
                         }
                     )
                     // Add the LLM configuration note here if service is nil
@@ -992,7 +1003,7 @@ struct CampaignDetailView: View {
             customSectionContentDebounceTimers.removeAll()
             
             if campaign.title != editableTitle || campaign.concept ?? "" != editableConcept {
-                Task { await saveCampaignDetails(source: .onDisappear) }
+                Task { await saveCampaignDetails(source: .onDisappear, editingSectionID: nil, latestSectionContent: nil) }
             }
             // Consider if a final save for any pending custom section changes is needed here,
             // though debounced saves might not have fired. This could be complex if saves are mid-flight.
@@ -1052,7 +1063,7 @@ struct CampaignDetailView: View {
                     self.campaign.badgeImageURL = selectedURL
                     self.campaign.markAsModified()
                     Task {
-                        await self.saveCampaignDetails(source: .badgeImageUpdate)
+                        await self.saveCampaignDetails(source: .badgeImageUpdate, editingSectionID: nil, latestSectionContent: nil)
                     }
                     self.showingSelectBadgeFromMoodboardSheet = false // Dismiss sheet
                 }
@@ -1072,7 +1083,7 @@ struct CampaignDetailView: View {
                     campaign.badgeImageURL = nil
                     campaign.markAsModified()
                     Task {
-                        await saveCampaignDetails(source: .badgeImageUpdate) // Use same source, will save nil URL
+                        await saveCampaignDetails(source: .badgeImageUpdate, editingSectionID: nil, latestSectionContent: nil) // Use same source, will save nil URL
                     }
                     print("Remove Badge tapped")
                 }
@@ -1338,239 +1349,13 @@ struct CampaignDetailView: View {
     // MARK: - Save Logic
     enum SaveSource { case titleField, conceptEditorDoneButton, onDisappear, themeEditorDismissed, customSectionChange, standardSectionChange, llmSettingsChange, badgeImageUpdate } // Added badgeImageUpdate
     
-    // Placeholder functions for standard section actions
-    private func handleStandardSnippetFeatureSelection(_ feature: Feature, forSectionAtIndex index: Int) {
-        print("Standard Snippet: \(feature.name) for section at index \(index)")
-        guard index < campaign.sections.count else {
-            print("Error: Index out of bounds for standard section snippet selection.")
-            return
-        }
-        let section = campaign.sections[index] // This is a value copy
-        guard let coordinator = customTextViewCoordinators[section.id] else {
-            print("Coordinator not found for standard section \(section.id)")
-            // self.errorMessage = "Cannot process snippet: text editor not ready for section '\(section.title ?? "")'."
-            // self.showErrorAlert = true
-            return
-        }
-        // TODO: Implement logic similar to handleSnippetFeatureSelection, adapting for CampaignSection
-        // This will involve:
-        // 1. Getting selected text from coordinator.
-        // 2. Checking for additional context via feature.requiredContext.
-        // 3. Possibly showing a context modal (a new one or adapt existing for standard sections).
-        // 4. Calling a new LLM processing function (e.g., processStandardSectionSnippetWithLLM)
-        //    that takes CampaignSection details and updates campaign.sections[index].content.
-        // For now, just log and perhaps insert a placeholder.
-        if let selectedText = coordinator.getSelectedText(), !selectedText.isEmpty {
-            coordinator.insertTextAtCurrentCursor(" [Snippet: \(feature.name) on '\(selectedText)'] ")
-        } else {
-            coordinator.insertTextAtCurrentCursor(" [Snippet: \(feature.name)] ")
-        }
-        Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
-    }
-    
-    private func handleStandardSectionRegeneration(forSectionAtIndex index: Int) {
-        print("Standard Regen for section at index \(index)")
-        guard index < campaign.sections.count else {
-            print("Error: Index out of bounds for standard section regeneration.")
-            return
-        }
-        let section = campaign.sections[index] // Value copy
-        guard let coordinator = customTextViewCoordinators[section.id] else {
-            print("Coordinator not found for standard section \(section.id) for regeneration.")
-            // self.errorMessage = "Cannot regenerate: text editor not ready for section '\(section.title ?? "")'."
-            // self.showErrorAlert = true
-            return
-        }
-        // TODO: Implement logic similar to handleFullSectionRegeneration, adapting for CampaignSection
-        // This will involve:
-        // 1. Creating a SectionRegeneratePayload.
-        // 2. Calling an appropriate method on campaignCreator (likely a new one for standard sections or an adapted one).
-        // 3. Updating campaign.sections[index].content with the result.
-        // For now, update content with a placeholder.
-        let oldContent = section.content
-        campaign.sections[index].content = "[Regenerated Content for: \(section.title ?? "Untitled")]\nOriginal length: \(oldContent.count) characters."
-        Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
-    }
-    
-    private func handleStandardSectionImageGeneration(forSectionAtIndex index: Int, prompt: String) async {
-        print("Standard Image for section at index \(index) with prompt: \(prompt)")
-        guard index < campaign.sections.count else {
-            print("Error: Index out of bounds for standard section image generation.")
-            return
-        }
-        let section = campaign.sections[index] // Value copy
-        guard let coordinator = customTextViewCoordinators[section.id] else {
-            print("Coordinator not found for standard section \(section.id) for image generation.")
-            // self.errorMessage = "Cannot generate image: text editor not ready for section '\(section.title ?? "")'."
-            // self.showErrorAlert = true
-            return
-        }
-        // TODO: Implement logic similar to handleImageGenerationForSection
-        // This will involve:
-        // 1. Calling campaignCreator.generateImageForSection (or a new method for standard sections).
-        // 2. Inserting the markdown image link into campaign.sections[index].content via coordinator.
-        // For now, insert a placeholder.
-        let markdownImage = "\n![Generated Image for Standard Section: \(prompt)](\(URL(string: "https://picsum.photos/seed/\(UUID().uuidString)/300/200")!.absoluteString))\n"
-        coordinator.insertTextAtCurrentCursor(markdownImage)
-        Task { await self.saveCampaignDetails(source: .standardSectionChange, includeStandardSections: true) }
-    }
-    
-    // State for image generation modal for standard sections (can reuse existing if logic is careful)
-    @State private var showingImagePromptModalForStandardSection: Bool = false
-    @State private var currentStandardSectionIndexForImageGen: Int? = nil
-    // Re-use imageGenPromptText for the modal's text editor.
-    
-    // Struct for LLM Picker
-    struct AvailableLLM: Identifiable, Hashable {
-        let id: String
-        let name: String
-    }
-    
-    // Placeholder list of LLMs - ideally, this would be fetched from a service
-    let placeholderLLMs: [AvailableLLM] = [
-        AvailableLLM(id: "gpt-4o", name: "GPT-4o"),
-        AvailableLLM(id: "gpt-4-turbo", name: "GPT-4 Turbo"),
-        AvailableLLM(id: "gpt-4", name: "GPT-4"),
-        AvailableLLM(id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo"),
-        AvailableLLM(id: "claude-3-opus-20240229", name: "Claude 3 Opus"),
-        AvailableLLM(id: "claude-3-sonnet-20240229", name: "Claude 3 Sonnet"),
-        AvailableLLM(id: "claude-3-haiku-20240307", name: "Claude 3 Haiku"),
-        AvailableLLM(id: "gemini-1.5-pro-latest", name: "Gemini 1.5 Pro"),
-        AvailableLLM(id: "gemini-1.0-pro", name: "Gemini 1.0 Pro"),
-        // TODO: Add other relevant models (e.g., local LLM identifiers if supported)
-        AvailableLLM(id: "deepseek-coder", name: "Deepseek Coder (via OpenRouter)"),
-        AvailableLLM(id: "mistral-7b-instruct", name: "Mistral 7B Instruct (via OpenRouter)"),
-        AvailableLLM(id: "llama-2-70b-chat", name: "LLaMA-2 70B Chat (via OpenRouter)")
-    ]
-    
-    
-    // MARK: - LLM Settings Section
-    // private var llmSettingsSection: some View { ... } // REMOVED - Extracted to CampaignLLMSettingsView.swift
-    
-    // MARK: - Linked Characters Section
-    private var linkedCharactersSection: some View {
-        DisclosureGroup("Linked Characters") {
-            VStack(alignment: .leading, spacing: 10) {
-                if campaignCreator.isLoadingCharacters {
-                    ProgressView("Loading characters...")
-                } else if let characterError = campaignCreator.characterError {
-                    Text("Error loading characters: \(characterError.localizedDescription)")
-                        .font(.caption)
-                        .foregroundColor(.red)
-                } else {
-                    let resolvedCharacters = campaign.linkedCharacterIDs?.compactMap { idToFind in
-                        campaignCreator.characters.first { $0.id == idToFind }
-                    } ?? []
-                    
-                    if resolvedCharacters.isEmpty {
-                        Text("No characters have been linked to this campaign yet.")
-                            .font(currentFont.italic())
-                            .foregroundColor(currentTextColor.opacity(0.7))
-                    } else {
-                        ForEach(resolvedCharacters) { character in
-                            // TODO: Potentially make this a NavigationLink to a CharacterDetailView if one exists
-                            Text(character.name)
-                                .font(currentFont)
-                                .padding(.vertical, 2)
-                        }
-                    }
-                }
-                
-                Button("Manage Linked Characters") { // Updated label
-                    showingCampaignEditSheet = true // Action to show CampaignEditView sheet
-                }
-                .buttonStyle(.bordered)
-                .tint(currentPrimaryColor)
-                .padding(.top, 5)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 4)
-        }
-        .padding().background(Color(.systemBackground)).cornerRadius(12)
-        .foregroundColor(currentTextColor)
-        .font(currentFont)
-    }
-    
-    // MARK: - Mood Board Section
-    private var moodBoardSection: some View {
-        // Removed DisclosureGroup to make content directly visible in its container (e.g., sheet)
-        VStack(alignment: .leading, spacing: 10) {
-            // Added a title for the section, as DisclosureGroup label is gone
-            Text("Mood Board Images")
-                .font(currentFont.weight(.bold))
-                .foregroundColor(currentPrimaryColor)
-                .padding(.bottom, 5)
-            
-            if let urls = campaign.moodBoardImageURLs, !urls.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(urls, id: \.self) { urlString in
-                            if let url = URL(string: urlString) {
-                                AsyncImage(url: url) { phase in
-                                    switch phase {
-                                    case .empty:
-                                        ProgressView()
-                                            .frame(width: 100, height: 100)
-                                    case .success(let image):
-                                        image.resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                            .frame(width: 100, height: 100)
-                                            .clipped()
-                                            .cornerRadius(8)
-                                    case .failure:
-                                        Image(systemName: "photo")
-                                            .resizable()
-                                            .scaledToFit()
-                                            .frame(width: 50, height: 50)
-                                            .padding()
-                                            .frame(width: 100, height: 100)
-                                            .background(Color.gray.opacity(0.3))
-                                            .cornerRadius(8)
-                                    @unknown default:
-                                        EmptyView()
-                                            .frame(width: 100, height: 100)
-                                    }
-                                }
-                            } else {
-                                Text("Invalid URL: \(urlString)")
-                                    .font(.caption)
-                                    .foregroundColor(.red)
-                                    .frame(width: 100, height: 100)
-                                    .background(Color.gray.opacity(0.1))
-                                    .cornerRadius(8)
-                            }
-                        }
-                    }
-                    .padding(.vertical, 5)
-                }
-            } else {
-                Text("No mood board images have been added yet.")
-                    .font(currentFont.italic())
-                    .foregroundColor(currentTextColor.opacity(0.7))
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }
-            
-            Button("Manage Mood Board (Placeholder)") {
-                // Action: Show a sheet or navigate to a mood board management view
-                print("Manage Mood Board tapped - functionality not yet implemented.")
-                // self.errorMessage = "Mood board management is not yet implemented."
-                // self.showErrorAlert = true
-            }
-            .buttonStyle(.bordered)
-            .tint(currentPrimaryColor)
-            .padding(.top, 5)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 4)
-        
-        .padding().background(Color(.systemBackground)).cornerRadius(12)
-        .foregroundColor(currentTextColor)
-        .font(currentFont)
-    }
-    
-    
-    private func saveCampaignDetails(source: SaveSource, includeTheme: Bool = false, includeCustomSections: Bool = false, includeStandardSections: Bool = false, includeLLMSettings: Bool = false) async { // Added includeLLMSettings
+    private func saveCampaignDetails(source: SaveSource,
+                                     includeTheme: Bool = false,
+                                     includeCustomSections: Bool = false,
+                                     includeStandardSections: Bool = false,
+                                     includeLLMSettings: Bool = false,
+                                     editingSectionID: Int? = nil, // New parameter
+                                     latestSectionContent: String? = nil) async { // New parameter
         guard !isSaving else { print("Save already in progress from source: \(source). Skipping."); return }
         
         var campaignToUpdate = self.campaign // Start with current campaign state
@@ -1711,8 +1496,41 @@ struct CampaignDetailView: View {
             
             self.editableTitle = trulyRefreshedCampaign.title
             self.editableConcept = trulyRefreshedCampaign.concept ?? ""
-            self.localCampaignCustomSections = trulyRefreshedCampaign.customSections ?? []
-            // campaign.sections is part of self.campaign, so it's also updated.
+
+            // Preserve the content of the section that was just edited, if applicable
+            if let editingID = editingSectionID, let latestContent = latestSectionContent {
+                if let index = trulyRefreshedCampaign.customSections?.firstIndex(where: { $0.id == editingID }) {
+                    var mutableRefreshedCampaign = trulyRefreshedCampaign
+                    if mutableRefreshedCampaign.customSections?[index].content != latestContent {
+                        print("Restoring latest content for custom section ID \(editingID) as API response was potentially stale.")
+                        mutableRefreshedCampaign.customSections?[index].content = latestContent
+                        self.campaign = mutableRefreshedCampaign // Update self.campaign with this modification
+                        self.localCampaignCustomSections = mutableRefreshedCampaign.customSections ?? []
+                    } else {
+                        self.campaign = trulyRefreshedCampaign // API response was up-to-date for this section
+                        self.localCampaignCustomSections = trulyRefreshedCampaign.customSections ?? []
+                    }
+                } else if let index = trulyRefreshedCampaign.sections.firstIndex(where: { $0.id == editingID }) {
+                    var mutableRefreshedCampaign = trulyRefreshedCampaign
+                    if mutableRefreshedCampaign.sections[index].content != latestContent {
+                        print("Restoring latest content for standard section ID \(editingID) as API response was potentially stale.")
+                        mutableRefreshedCampaign.sections[index].content = latestContent
+                        self.campaign = mutableRefreshedCampaign // Update self.campaign with this modification
+                        // campaign.sections is part of self.campaign, so it's updated.
+                    } else {
+                        self.campaign = trulyRefreshedCampaign // API response was up-to-date
+                    }
+                } else {
+                    // Section not found in refreshed data, this is unusual. Fallback to full refresh.
+                    self.campaign = trulyRefreshedCampaign
+                    self.localCampaignCustomSections = trulyRefreshedCampaign.customSections ?? []
+                }
+            } else {
+                // No specific section edit triggered this, or no latest content provided.
+                self.campaign = trulyRefreshedCampaign
+                self.localCampaignCustomSections = trulyRefreshedCampaign.customSections ?? []
+            }
+            // campaign.sections is part of self.campaign, so it's also updated if self.campaign was set.
 
             // Log LLM settings from the refreshed campaign data
             print("[LLM_DEBUG CampaignDetailView] saveCampaignDetails: trulyRefreshedCampaign LLM Settings: ID=\(trulyRefreshedCampaign.selectedLLMId ?? "nil"), Temp=\(trulyRefreshedCampaign.temperature?.description ?? "nil")")
