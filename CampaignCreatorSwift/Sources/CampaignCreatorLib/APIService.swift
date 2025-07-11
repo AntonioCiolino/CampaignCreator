@@ -647,4 +647,14 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
             body: body
         )
     }
+
+    // MARK: - LLM Methods
+    public func fetchAvailableLLMs() async throws -> [AvailableLLM] {
+        // The web app calls /api/v1/llm/models. baseURLString already includes /api/v1
+        // The response structure is { "models": [AvailableLLM] }
+        // We need to decode LLMModelsResponse first, then return its models property.
+        // This endpoint is public and does not require authentication.
+        let response: LLMModelsResponse = try await performRequest(endpoint: "/llm/models", requiresAuth: false)
+        return response.models
+    }
 }

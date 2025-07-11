@@ -46,6 +46,8 @@ struct CampaignDetailView: View {
     
     @State private var viewRefreshTrigger = UUID() // <<<< ADDED to force view refresh
     @State private var initialLLMSettingsLoaded = false // Track initial load
+    @State private var availableLLMsFromAPI: [CampaignCreatorLib.AvailableLLM] = []
+    @State private var llmFetchError: String? = nil
 
     @State private var titleDebounceTimer: Timer?
     // Debounce timers for custom section title and content
@@ -819,9 +821,9 @@ struct CampaignDetailView: View {
                     linkedCharactersSection // ADDED Linked Characters Section
                     // llmSettingsSection // REPLACED with CampaignLLMSettingsView
                     CampaignLLMSettingsView(
-                        selectedLLMId: $campaign.selectedLLMId.withDefault(placeholderLLMs.first?.id ?? "default-llm-id"),
+                        selectedLLMId: $campaign.selectedLLMId.withDefault((availableLLMsFromAPI.first ?? placeholderLLMs.first)?.id ?? "default-llm-id"),
                         temperature: $campaign.temperature.withDefault(0.7),
-                        availableLLMs: placeholderLLMs,
+                        availableLLMs: availableLLMsFromAPI.isEmpty ? placeholderLLMs : availableLLMsFromAPI,
                         currentFont: currentFont,
                         currentTextColor: currentTextColor,
                         onLLMSettingsChange: {
@@ -834,6 +836,13 @@ struct CampaignDetailView: View {
                             .font(.caption)
                             .foregroundColor(.orange)
                             .padding(.vertical) // Add some vertical padding
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                    if let llmFetchError = llmFetchError {
+                        Text("Error fetching LLM list: \(llmFetchError)")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                            .padding(.vertical)
                             .frame(maxWidth: .infinity, alignment: .center)
                     }
                 }
@@ -870,6 +879,31 @@ struct CampaignDetailView: View {
                 initialLLMSettingsLoaded = true
             }
             Task {
+                // Fetch available LLMs
+                if availableLLMsFromAPI.isEmpty { // Fetch only if not already populated
+                    do {
+                        print("[CampaignDetailView .onAppear] Fetching available LLMs...")
+                        let fetchedLLMs = try await campaignCreator.apiService.fetchAvailableLLMs()
+                        self.availableLLMsFromAPI = fetchedLLMs
+                        self.llmFetchError = nil
+                        print("[CampaignDetailView .onAppear] Successfully fetched \(fetchedLLMs.count) LLMs.")
+                        // If current campaign.selectedLLMId is nil or not in the new list,
+                        // try to set it to the first available one from the API.
+                        if self.campaign.selectedLLMId == nil || !fetchedLLMs.contains(where: { $0.id == self.campaign.selectedLLMId }) {
+                            if let firstAPILLM = fetchedLLMs.first {
+                                print("[CampaignDetailView .onAppear] Auto-selecting first LLM from API: \(firstAPILLM.name) (\(firstAPILLM.id))")
+                                self.campaign.selectedLLMId = firstAPILLM.id
+                                // Optionally, save this change immediately
+                                await self.saveCampaignDetails(source: .llmSettingsChange, includeLLMSettings: true)
+                            }
+                        }
+                    } catch {
+                        print("❌ [CampaignDetailView .onAppear] Error fetching available LLMs: \(error.localizedDescription)")
+                        self.llmFetchError = error.localizedDescription
+                        // availableLLMsFromAPI will remain empty, CampaignLLMSettingsView will use placeholderLLMs
+                    }
+                }
+
                 await fetchSnippetFeatures() // Existing call
 
                 // Fetch characters if not already attempted or if there was an error
