@@ -1,41 +1,44 @@
 import SwiftUI
-import CampaignCreatorLib
+import CampaignCreatorLib // Assuming this library contains the updated APIService and models
 
 struct ChatMessage: Identifiable, Equatable {
-    let id: Int // Changed from UUID to Int to match APIChatMessage
+    let id: String // Changed to String, typically a UUID for local, or derived from APIChatMessage.id
     let text: String
-    let sender: Sender
-    let timestamp: Date // Added timestamp
-    let userAvatarUrl: URL? // Added for thumbnail
-    let characterAvatarUrl: URL? // Added for thumbnail
+    let sender: Sender // UI-specific enum for sender type
+    let timestamp: Date
+    let userAvatarUrl: URL?
+    let characterAvatarUrl: URL?
 
     enum Sender: String {
         case user = "User"
-        case llm = "LLM" // Represents the character/LLM
+        case llm = "LLM"
     }
 
-    // Initializer from APIChatMessage
+    // Initializer from the new APIChatMessage (which is {speaker, text, timestamp, id: String})
     init(from apiMessage: CampaignCreatorLib.APIChatMessage, character: Character, currentUser: User?) {
-        self.id = apiMessage.id
+        self.id = apiMessage.id // APIChatMessage.id is now a String (derived from its content)
         self.text = apiMessage.text
         self.timestamp = apiMessage.timestamp
 
-        if apiMessage.sender.lowercased() == "user" {
+        // Derive local Sender enum from apiMessage.speaker
+        if apiMessage.speaker.lowercased() == "user" {
             self.sender = .user
-        } else { // Assume other sender is LLM/character
+        } else { // "assistant" or character name maps to .llm
             self.sender = .llm
         }
 
-        self.userAvatarUrl = URL(string: currentUser?.avatarUrl ?? "")
-        self.characterAvatarUrl = URL(string: character.imageURLs?.first ?? "")
+        // Avatar logic remains similar, based on derived sender
+        self.userAvatarUrl = (self.sender == .user) ? URL(string: currentUser?.avatarUrl ?? "") : nil
+        self.characterAvatarUrl = (self.sender == .llm) ? URL(string: character.imageURLs?.first ?? "") : nil
     }
 
-    // Original initializer for optimistic updates (if needed) or previews
-    init(id: Int? = nil, text: String, sender: Sender, timestamp: Date? = nil, userAvatarUrl: URL? = nil, characterAvatarUrl: URL? = nil) {
-        self.id = id ?? Int.random(in: 1_000_000...2_000_000) // Temporary ID for optimistic updates
+    // Initializer for optimistic updates (e.g., user-sent messages before backend confirmation)
+    // or for AI messages created directly from LLM text response.
+    init(id: String = UUID().uuidString, text: String, sender: Sender, timestamp: Date = Date(), userAvatarUrl: URL? = nil, characterAvatarUrl: URL? = nil) {
+        self.id = id
         self.text = text
         self.sender = sender
-        self.timestamp = timestamp ?? Date()
+        self.timestamp = timestamp
         self.userAvatarUrl = userAvatarUrl
         self.characterAvatarUrl = characterAvatarUrl
     }
@@ -132,50 +135,73 @@ struct CharacterChatView: View {
         let messageText = userInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !messageText.isEmpty else { return }
 
+        // 1. Optimistic User Message (ID is now String via UUID)
         let optimisticUserMessage = ChatMessage(
+            // id will be UUID().uuidString by default initializer
             text: messageText,
             sender: .user,
-            userAvatarUrl: URL(string: campaignCreator.currentUser?.avatarUrl ?? ""), // Placeholder if no user
+            timestamp: Date(),
+            userAvatarUrl: URL(string: campaignCreator.currentUser?.avatarUrl ?? ""),
             characterAvatarUrl: URL(string: character.imageURLs?.first ?? "")
         )
         chatMessages.append(optimisticUserMessage)
 
-        let currentInput = userInput
-        userInput = ""
+        let currentInput = userInput // Store before clearing
+        userInput = "" // Clear input field
         isSendingMessage = true
         errorMessage = nil
 
         Task {
-            do {
-                // The backend /generate-response endpoint now handles saving messages and using DB history.
-                // We send the current user prompt.
-                // The chatHistory parameter in generateChatResponse is for client-side context if needed by LLM immediately,
-                // but primary history context is now from backend DB.
-                // For this call, we can pass a limited recent history if the function expects it,
-                // or an empty array if it's truly just for the current prompt.
+            var tempChatMessages = self.chatMessages // Capture current state for context
 
-                let historyForLLMService = chatMessages.suffix(10).map { msg in // Send recent messages
-                    CampaignCreatorLib.ChatMessageData(
-                        text: msg.text,
-                        sender: CampaignCreatorLib.ChatMessageData.Sender(rawValue: msg.sender.rawValue) ?? .user
-                    )
+            do {
+                // 2. Prepare historyForLLMService (map to CampaignCreatorLib.ChatMessageData {speaker: String, text: String})
+                // Send up to last 10 messages from the current UI state for context.
+                // The current user's message is already in tempChatMessages.
+                let historyForContextPayload = tempChatMessages.suffix(10).map { uiMsg -> CampaignCreatorLib.ChatMessageData in
+                    let speakerText = uiMsg.sender == .user ? "user" : "assistant" // Map enum to string
+                    return CampaignCreatorLib.ChatMessageData(speaker: speakerText, text: uiMsg.text)
                 }
 
-                _ = try await campaignCreator.generateChatResponse( // We don't need the direct response text here
+                // 3. Call generateChatResponse - this should now return the AI's response text
+                // Assuming campaignCreator.generateChatResponse and APIService.generateCharacterChatResponse
+                // are updated to accept modelId, temperature, maxTokens.
+                // For now, passing nil for those, assuming APIService method has defaults or they are not yet implemented in CampaignCreator.
+                let aiResponseDTO = try await campaignCreator.generateChatResponse( // Expects LLMTextResponseDTO
                     character: character,
-                    message: currentInput, // Send the current message text
-                    chatHistory: historyForLLMService
+                    message: currentInput,
+                    chatHistory: historyForContextPayload, // Pass history *including* current user prompt for LLM service
+                    modelIdWithPrefix: nil, // Placeholder for actual model selection UI
+                    temperature: nil,       // Placeholder
+                    maxTokens: nil          // Placeholder
                 )
+                let aiResponseText = aiResponseDTO.text
 
-                // After the backend processes and saves, fetch the updated history.
-                fetchChatHistory()
+                // 4. Optimistic AI Message
+                let aiMessage = ChatMessage(
+                    // id will be UUID().uuidString by default
+                    text: aiResponseText,
+                    sender: .llm,
+                    timestamp: Date(), // Use current time, or server time if DTO provided it
+                    userAvatarUrl: nil,
+                    characterAvatarUrl: URL(string: character.imageURLs?.first ?? "")
+                )
+                self.chatMessages.append(aiMessage)
+
+                // 5. Optional: Fetch full history in background to reconcile if needed,
+                // but not strictly necessary for displaying this turn's AI response.
+                // If backend persistence is slow, this might still overwrite the optimistic AI message
+                // with an older state if not handled carefully.
+                // For now, let's rely on the direct response and the onAppear fetch.
+                // fetchChatHistory() // Consider if this is needed or if it causes issues.
 
             } catch {
-                errorMessage = "Error: \(error.localizedDescription)"
-                // Optionally, remove optimistic message if send failed catastrophically
-                // chatMessages.removeAll { $0.id == optimisticUserMessage.id }
+                self.errorMessage = "Error: \(error.localizedDescription)"
+                // If AI response failed, remove the optimistic USER message as the exchange failed.
+                self.chatMessages.removeAll { $0.id == optimisticUserMessage.id }
+                self.userInput = currentInput // Restore user input
             }
-            isSendingMessage = false
+            self.isSendingMessage = false
         }
     }
 }
