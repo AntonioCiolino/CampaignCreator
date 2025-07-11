@@ -47,18 +47,26 @@ struct CampaignHeaderView: View {
                             .clipShape(Circle())
                             .overlay(Circle().stroke(currentPrimaryColor, lineWidth: 2))
                             .padding(.top, 5)
-                    case .failure:
-                        Image(systemName: "photo.circle")
-                            .resizable().scaledToFit().frame(width: 50, height: 50)
-                            .padding(.top, 5)
+                    case .failure(let error): // Capture error
+                        VStack { // Group error display
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .resizable().scaledToFit().frame(width: 40, height: 40)
+                                .foregroundColor(.red)
+                            Text("Load failed")
+                                .font(.caption)
+                                .foregroundColor(.red)
+                            // print("AsyncImage load failed: \(error.localizedDescription)") // Log error to console
+                        }
+                        .padding(.top, 5)
                     case .empty:
                         ProgressView().frame(width: 50, height: 50).padding(.top, 5)
                     @unknown default:
                         EmptyView()
                     }
                 }
+                .id(campaign.badgeImageURL) // Apply .id modifier here to the AsyncImage itself
             } else {
-                Image(systemName: "shield.lefthalf.filled.slash")
+                Image(systemName: "shield.lefthalf.filled.slash") // Default placeholder
                     .font(.largeTitle)
                     .foregroundColor(.secondary)
                     .frame(width: 50, height: 50)
