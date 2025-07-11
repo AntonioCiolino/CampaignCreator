@@ -108,7 +108,82 @@ public struct Campaign: Identifiable, Codable, Sendable {
         // WordCount is a computed property, not decoded
     }
 
-    public init(id: Int, // Changed from UUID = UUID()
+    // Custom Initializer for Decodable
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        initialUserPrompt = try container.decodeIfPresent(String.self, forKey: .initialUserPrompt)
+        concept = try container.decodeIfPresent(String.self, forKey: .concept)
+        displayTOC = try container.decodeIfPresent([TOCEntry].self, forKey: .displayTOC)
+        sections = try container.decode([CampaignSection].self, forKey: .sections) // Assuming not optional based on property def
+
+        badgeImageURL = try container.decodeIfPresent(String.self, forKey: .badgeImageURL)
+        // print("[Campaign Codable Debug] Decoded badgeImageURL: \(badgeImageURL ?? "nil")")
+
+        thematicImageURL = try container.decodeIfPresent(String.self, forKey: .thematicImageURL)
+        thematicImagePrompt = try container.decodeIfPresent(String.self, forKey: .thematicImagePrompt)
+        selectedLLMId = try container.decodeIfPresent(String.self, forKey: .selectedLLMId)
+        temperature = try container.decodeIfPresent(Double.self, forKey: .temperature)
+
+        moodBoardImageURLs = try container.decodeIfPresent([String].self, forKey: .moodBoardImageURLs)
+        // print("[Campaign Codable Debug] Decoded moodBoardImageURLs: \(moodBoardImageURLs?.joined(separator: ", ") ?? "nil")")
+
+        themePrimaryColor = try container.decodeIfPresent(String.self, forKey: .themePrimaryColor)
+        themeSecondaryColor = try container.decodeIfPresent(String.self, forKey: .themeSecondaryColor)
+        themeBackgroundColor = try container.decodeIfPresent(String.self, forKey: .themeBackgroundColor)
+        themeTextColor = try container.decodeIfPresent(String.self, forKey: .themeTextColor)
+        themeFontFamily = try container.decodeIfPresent(String.self, forKey: .themeFontFamily)
+        themeBackgroundImageURL = try container.decodeIfPresent(String.self, forKey: .themeBackgroundImageURL)
+        themeBackgroundImageOpacity = try container.decodeIfPresent(Double.self, forKey: .themeBackgroundImageOpacity)
+
+        fileURL = try container.decodeIfPresent(URL.self, forKey: .fileURL) // URL might need special handling if it's just a string in JSON
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt)
+        modifiedAt = try container.decodeIfPresent(Date.self, forKey: .modifiedAt)
+
+        linkedCharacterIDs = try container.decodeIfPresent([Int].self, forKey: .linkedCharacterIDs)
+        customSections = try container.decodeIfPresent([CampaignCustomSection].self, forKey: .customSections)
+    }
+
+    // Custom Encoder for Encodable
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encodeIfPresent(initialUserPrompt, forKey: .initialUserPrompt)
+        try container.encodeIfPresent(concept, forKey: .concept)
+        try container.encodeIfPresent(displayTOC, forKey: .displayTOC)
+        try container.encode(sections, forKey: .sections) // Assuming not optional
+
+        try container.encodeIfPresent(badgeImageURL, forKey: .badgeImageURL)
+        // print("[Campaign Codable Debug] Encoding badgeImageURL: \(badgeImageURL ?? "nil")")
+
+        try container.encodeIfPresent(thematicImageURL, forKey: .thematicImageURL)
+        try container.encodeIfPresent(thematicImagePrompt, forKey: .thematicImagePrompt)
+        try container.encodeIfPresent(selectedLLMId, forKey: .selectedLLMId)
+        try container.encodeIfPresent(temperature, forKey: .temperature)
+
+        try container.encodeIfPresent(moodBoardImageURLs, forKey: .moodBoardImageURLs)
+        // print("[Campaign Codable Debug] Encoding moodBoardImageURLs: \(moodBoardImageURLs?.joined(separator: ", ") ?? "nil")")
+
+        try container.encodeIfPresent(themePrimaryColor, forKey: .themePrimaryColor)
+        try container.encodeIfPresent(themeSecondaryColor, forKey: .themeSecondaryColor)
+        try container.encodeIfPresent(themeBackgroundColor, forKey: .themeBackgroundColor)
+        try container.encodeIfPresent(themeTextColor, forKey: .themeTextColor)
+        try container.encodeIfPresent(themeFontFamily, forKey: .themeFontFamily)
+        try container.encodeIfPresent(themeBackgroundImageURL, forKey: .themeBackgroundImageURL)
+        try container.encodeIfPresent(themeBackgroundImageOpacity, forKey: .themeBackgroundImageOpacity)
+
+        try container.encodeIfPresent(fileURL, forKey: .fileURL)
+        try container.encodeIfPresent(createdAt, forKey: .createdAt)
+        try container.encodeIfPresent(modifiedAt, forKey: .modifiedAt)
+
+        try container.encodeIfPresent(linkedCharacterIDs, forKey: .linkedCharacterIDs)
+        try container.encodeIfPresent(customSections, forKey: .customSections)
+    }
+
+    // Existing memberwise initializer - keep it for programmatic creation
+    public init(id: Int,
                 title: String = "Untitled Campaign",
                 initialUserPrompt: String? = nil,
                 concept: String? = nil,
