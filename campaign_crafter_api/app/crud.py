@@ -7,6 +7,7 @@ from passlib.context import CryptContext
 from app import models, orm_models # Standardized
 from app.core.security import encrypt_key # Added for API key encryption
 from app.services.image_generation_service import ImageGenerationService
+from app.services.llm_service import AbstractLLMService # Added this import
 # import asyncio # No longer needed here
 from urllib.parse import urlparse
 
