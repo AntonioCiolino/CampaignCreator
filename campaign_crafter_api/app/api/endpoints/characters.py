@@ -360,40 +360,9 @@ async def generate_character_aspect(
 
 # --- Character Chat Endpoints ---
 
-@router.post("/{character_id}/chat", response_model=models.ChatMessage)
-def create_character_chat_message(
-    character_id: int,
-    message_in: models.ChatMessageCreate,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[models.User, Depends(get_current_active_user)]
-):
-    """
-    Saves a chat message for a character.
-    The sender in `message_in` should be "user" or the name of the character/LLM.
-    """
-    db_character = crud.get_character(db=db, character_id=character_id)
-    if db_character is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
-    if db_character.owner_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to chat with this character")
-
-    # Fetch the single conversation record for this user and character
-    conversation_record = crud.get_or_create_user_character_conversation(
-        db=db, character_id=character_id, user_id=current_user.id
-    )
-
-    # conversation_record.conversation_history is a Python list of dictionaries.
-    # FastAPI will automatically convert this list of dicts to List[models.ConversationMessageEntry]
-    # based on the response_model. Each dict must match the fields of ConversationMessageEntry.
-    # (speaker: str, text: str, timestamp: datetime)
-
-    # Ensure conversation_history is not None (it defaults to [] in ORM and get_or_create)
-    history_list = conversation_record.conversation_history if conversation_record.conversation_history is not None else []
-
-    # Pydantic will validate each item in history_list against ConversationMessageEntry.
-    # If timestamps are ISO strings in JSON, Pydantic's datetime field will parse them.
-    return history_list
-
+# The create_character_chat_message endpoint has been removed as its functionality
+# (saving messages and returning history) is effectively covered by generate_character_chat_response
+# and a dedicated GET endpoint for history would be more appropriate if needed.
 
 @router.post("/{character_id}/generate-response", response_model=models.LLMTextGenerationResponse)
 async def generate_character_chat_response( # Renamed function
