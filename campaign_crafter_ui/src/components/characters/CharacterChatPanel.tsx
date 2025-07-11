@@ -117,7 +117,7 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
                             <img
                                 // Use pre-enriched avatar URLs from the ChatMessage object
                                 src={msg.senderType === 'user' ? (msg.user_avatar_url || DEFAULT_AVATAR) : (msg.character_avatar_url || DEFAULT_AVATAR)}
-                                alt={msg.speaker || (msg.senderType === 'user' ? 'User' : characterName)}
+                                alt={msg.senderType === 'user' ? 'User' : characterName} // Corrected alt text logic
                                 className="chat-avatar"
                             />
                             <div className={`chat-message-bubble ${msg.senderType === 'user' ? 'user-message-bubble' : 'ai-message-bubble'}`}>

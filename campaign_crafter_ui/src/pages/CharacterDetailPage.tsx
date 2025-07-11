@@ -249,7 +249,7 @@ const CharacterDetailPage: React.FC = () => {
             // Assuming characterService.getChatHistory now returns Promise<Array<{ speaker: string; text: string; timestamp: string; }>>
             const backendHistory = await characterService.getChatHistory(id);
 
-            const uiHistory = backendHistory.map((msg, index) => ({
+            const uiHistory: ChatMessage[] = backendHistory.map((msg, index) => ({ // Explicitly type uiHistory
                 speaker: msg.speaker,
                 text: msg.text,
                 timestamp: msg.timestamp,
@@ -445,11 +445,12 @@ const CharacterDetailPage: React.FC = () => {
 
         // Construct payload according to LLMTextGenerationParams
         const recentHistory = chatHistory.slice(-10).map(msg => {
-            // Map sender to 'user' or 'assistant' (common for LLMs)
+            // Map senderType to 'user' or 'assistant' (common for LLMs)
             // The actual values might need to be 'user' and the character's name,
             // or specific roles like 'system', 'user', 'assistant' depending on the LLM API.
-            // For now, 'user' and 'assistant' is a safe default.
-            const speaker = msg.sender === 'user' ? 'user' : 'assistant';
+            // Using senderType as it's already 'user' | 'llm'.
+            // The LLM context expects 'speaker', so we map senderType or speaker.
+            const speaker = msg.senderType === 'user' ? 'user' : 'assistant';
             return { speaker: speaker, text: msg.text };
         });
 
@@ -493,7 +494,7 @@ const CharacterDetailPage: React.FC = () => {
             setChatError(errorMessage);
 
             // Revert the optimistic user message if AI response generation failed
-            setChatHistory(prevHistory => prevHistory.filter(msg => msg.id !== optimisticUserMessage.id));
+            setChatHistory(prevHistory => prevHistory.filter(msg => msg.uiKey !== optimisticUserMessage.uiKey));
             // llmUserPrompt is not cleared, so user can retry.
         } finally {
             setIsGeneratingResponse(false);

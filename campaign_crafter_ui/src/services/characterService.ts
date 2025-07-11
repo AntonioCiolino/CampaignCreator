@@ -105,20 +105,13 @@ export const generateCharacterResponse = async (
 
 // --- Chat Message Service Functions ---
 
-// Assuming ChatMessage and ChatMessageCreate types will be defined in characterTypes.ts
-// If not, they need to be imported from their actual location or defined here.
-import { ChatMessage, ChatMessageCreate } from '../types/characterTypes'; // Ensure these are added to types
+// The saveChatMessage function is now obsolete as the backend's
+// generate-response endpoint handles persistence of both user and AI messages
+// into the new JSON conversation history structure.
+// import { ChatMessage, ChatMessageCreate } from '../types/characterTypes'; // ChatMessageCreate removed
 
-/**
- * Saves a chat message for a character.
- * @param characterId The ID of the character.
- * @param message The chat message payload.
- * @returns The saved chat message.
- */
-export const saveChatMessage = async (characterId: number, message: ChatMessageCreate): Promise<ChatMessage> => {
-  const response = await apiClient.post<ChatMessage>(`${CHARACTER_API_URL}/${characterId}/chat`, message);
-  return response.data;
-};
+// We still need ChatMessage for getChatHistory return type
+import { ChatMessage } from '../types/characterTypes';
 
 /**
  * Fetches the chat history for a character.

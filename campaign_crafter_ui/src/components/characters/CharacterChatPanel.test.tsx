@@ -35,15 +35,19 @@ describe('CharacterChatPanel', () => {
         mockHandleGenerateCharacterResponse.mockClear();
     });
 
-    const getMockChatMessage = (id: number, sender: string, text: string): ChatMessage => ({
-        id,
-        character_id: 1, // Placeholder
-        sender,
-        text,
-        timestamp: new Date().toISOString(),
-        user_avatar_url: sender === 'user' ? defaultProps.currentUserAvatar : undefined,
-        character_avatar_url: sender !== 'user' ? defaultProps.characterImage : undefined,
-    });
+    // Updated mock to match the new ChatMessage interface
+    const getMockChatMessage = (uiKey: string, speaker: string, text: string, timestamp?: string): ChatMessage => {
+        const isUser = speaker === 'user';
+        return {
+            uiKey,
+            speaker, // "user" or character name (or "assistant")
+            text,
+            timestamp: timestamp || new Date().toISOString(),
+            senderType: isUser ? 'user' : 'llm',
+            user_avatar_url: isUser ? defaultProps.currentUserAvatar : undefined,
+            character_avatar_url: !isUser ? defaultProps.characterImage : undefined,
+        };
+    };
 
     test('renders nothing when isOpen is false', () => {
         render(<CharacterChatPanel {...defaultProps} isOpen={false} />);
@@ -68,9 +72,9 @@ describe('CharacterChatPanel', () => {
 
     test('displays chat history correctly', () => {
         const chatHistory: ChatMessage[] = [
-            getMockChatMessage(1, 'user', 'Hello Gandalf!'),
-            getMockChatMessage(2, defaultProps.characterName, 'Hello Frodo!'),
-            getMockChatMessage(3, 'user', 'How are you?'),
+            getMockChatMessage('key1', 'user', 'Hello Gandalf!'),
+            getMockChatMessage('key2', 'assistant', 'Hello Frodo!'), // Using 'assistant' as speaker for AI
+            getMockChatMessage('key3', 'user', 'How are you?'),
         ];
         render(<CharacterChatPanel {...defaultProps} chatHistory={chatHistory} />);
 
@@ -86,7 +90,7 @@ describe('CharacterChatPanel', () => {
         expect(gandalfRow).toBeInTheDocument();
         expect(gandalfRow).toHaveClass('user-message-row');
         if (gandalfRow) { // Type guard
-            expect(within(gandalfRow as HTMLElement).getByRole('img', {name: 'user'})).toHaveAttribute('src', defaultProps.currentUserAvatar);
+            expect(within(gandalfRow as HTMLElement).getByRole('img', {name: 'User'})).toHaveAttribute('src', defaultProps.currentUserAvatar);
         }
 
 
