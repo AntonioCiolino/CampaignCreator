@@ -1038,18 +1038,31 @@ struct CampaignDetailView: View {
             // .labelStyle modifier handles the change automatically.
             print("Horizontal size class changed to: \(String(describing: newSizeClass))")
         }
+        .sheet(isPresented: $showingGenerateBadgeWithAISheet) { // New sheet for badge generation
+            generateBadgeSheetView // Call the new sheet view
+        }
+        .sheet(isPresented: $showingSelectBadgeFromMoodboardSheet) {
+            SelectBadgeFromMoodboardView(
+                moodBoardImageURLs: campaign.moodBoardImageURLs ?? [],
+                thematicImageURL: campaign.thematicImageURL,
+                onImageSelected: { selectedURL in
+                    self.campaign.badgeImageURL = selectedURL
+                    self.campaign.markAsModified()
+                    Task {
+                        await self.saveCampaignDetails(source: .badgeImageUpdate)
+                    }
+                    self.showingSelectBadgeFromMoodboardSheet = false // Dismiss sheet
+                }
+            )
+        }
         // .onChange(of: selectedBadgeImageItem) { ... } // REMOVED - No longer using PhotosPicker for badge
         .confirmationDialog("Set Campaign Badge", isPresented: $showingSetBadgeOptions, titleVisibility: .visible) {
             Button("Generate with AI") {
-                // TODO: Implement AI generation flow for badge
-                print("Generate with AI tapped")
-                // This will likely involve setting another @State variable to show the AI image generation sheet,
-                // and a way to know that the generated image is for the badge.
+                self.imageGeneratePrompt = "Campaign badge for: \(campaign.title)" // Pre-fill prompt
+                self.showingGenerateBadgeWithAISheet = true
             }
             Button("Select from Mood Board") {
-                // TODO: Implement mood board selection flow for badge
-                print("Select from Mood Board tapped")
-                // This will likely involve setting another @State variable to show a mood board image picker.
+                self.showingSelectBadgeFromMoodboardSheet = true
             }
             if campaign.badgeImageURL != nil { // Show remove option only if a badge is currently set
                 Button("Remove Badge", role: .destructive) {
@@ -1096,11 +1109,10 @@ struct CampaignDetailView: View {
                     .background(Color(.systemGroupedBackground)).cornerRadius(8)
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
                 
-                if let error = imageGenerationError { Text(error).foregroundColor(.red).font(.caption) }
+                if let error = imageGenerationError { Text(error).foregroundColor(.red).font(.caption) } // This state might need to be specific if sheets are open concurrently
                 Spacer()
                 Button(action: { Task { await performAICampaignImageGeneration() } }) {
                     HStack {
-                        // Assuming isGeneratingText can be reused or a new @State isGeneratingImage exists
                         if isGeneratingText { ProgressView().progressViewStyle(.circular).tint(.white) }
                         Text(isGeneratingText ? "Generating..." : "Generate Thematic Image")
                     }
@@ -1109,10 +1121,45 @@ struct CampaignDetailView: View {
                 .disabled(imageGeneratePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGeneratingText)
             }
             .padding()
-            .navigationTitle("Generate Image").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Generate Thematic Image").navigationBarTitleDisplayMode(.inline) // Title updated for clarity
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { showingGenerateImageSheet = false; imageGeneratePrompt = ""; imageGenerationError = nil }
+                    Button("Cancel") { showingGenerateImageSheet = false; /* imageGeneratePrompt = ""; imageGenerationError = nil; */ } // Avoid clearing prompt if shared
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    // New sheet view for generating badge image
+    private var generateBadgeSheetView: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Text("AI Badge Generation").font(.headline)
+                Text("Describe the badge image you'd like to generate for your campaign.")
+                    .font(.subheadline).foregroundColor(.secondary)
+                TextEditor(text: $imageGeneratePrompt) // Reuses imageGeneratePrompt
+                    .frame(height: 120).padding(8)
+                    .background(Color(.systemGroupedBackground)).cornerRadius(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
+
+                // Consider a separate error state for badge generation if needed: e.g., badgeGenerationError
+                if let error = errorMessage, showErrorAlert { Text(error).foregroundColor(.red).font(.caption) }
+                Spacer()
+                Button(action: { Task { await performAIBadgeGeneration() } }) { // Calls new function
+                    HStack {
+                        if isGeneratingText { ProgressView().progressViewStyle(.circular).tint(.white) }
+                        Text(isGeneratingText ? "Generating..." : "Generate Badge")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(imageGeneratePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGeneratingText)
+            }
+            .padding()
+            .navigationTitle("Generate Badge Image").navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { showingGenerateBadgeWithAISheet = false; /* imageGeneratePrompt = ""; errorMessage = ""; showErrorAlert = false; */ } // Avoid clearing shared prompt
                 }
             }
         }
@@ -1176,6 +1223,58 @@ struct CampaignDetailView: View {
         isGeneratingText = false // Or isGeneratingImage = false
     }
     
+    private func performAIBadgeGeneration() async {
+        guard !imageGeneratePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            self.errorMessage = "Badge image prompt cannot be empty."
+            self.showErrorAlert = true // Use general error alert
+            return
+        }
+        isGeneratingText = true // Reuse for general AI image generation state
+        imageGenerationError = nil // Clear previous specific errors
+
+        let modelToUse = ImageModelName.defaultOpenAI.rawValue // Or allow selection
+
+        print("[Badge Generation] Attempting to generate badge image for campaign ID \(campaign.id) with prompt: '\(imageGeneratePrompt)', model: \(modelToUse)")
+
+        do {
+            let response = try await campaignCreator.generateImage(
+                prompt: imageGeneratePrompt,
+                modelName: modelToUse,
+                quality: "standard", // Badges might not need 'hd'
+                associatedCampaignId: String(campaign.id)
+            )
+
+            print("[Badge Generation] AI Badge image generated. URL: \(response.imageUrl)")
+
+            // Update the badgeImageURL specifically
+            campaign.badgeImageURL = response.imageUrl
+            // campaign.thematicImagePrompt = response.promptUsed // Not for badge prompt
+            campaign.markAsModified()
+
+            await saveCampaignDetails(source: .badgeImageUpdate) // Save the campaign with new badge URL
+
+            showingGenerateBadgeWithAISheet = false // Dismiss the sheet
+            // imageGeneratePrompt = "" // Optionally clear prompt
+
+        } catch let error as APIError {
+            let specificMessage = "API Error: \(error.localizedDescription)"
+            print("❌ [Badge Generation] APIError: \(specificMessage)")
+            self.errorMessage = specificMessage
+            self.showErrorAlert = true
+        } catch let error as LLMError {
+            let specificMessage = "LLM Service Error: \(error.localizedDescription)"
+            print("❌ [Badge Generation] LLMError: \(specificMessage)")
+            self.errorMessage = specificMessage
+            self.showErrorAlert = true
+        } catch {
+            let specificMessage = "An unexpected error occurred: \(error.localizedDescription)"
+            print("❌ [Badge Generation] Unexpected error: \(specificMessage)")
+            self.errorMessage = specificMessage
+            self.showErrorAlert = true
+        }
+        isGeneratingText = false
+    }
+
     // MARK: - Save Logic
     enum SaveSource { case titleField, conceptEditorDoneButton, onDisappear, themeEditorDismissed, customSectionChange, standardSectionChange, llmSettingsChange, badgeImageUpdate } // Added badgeImageUpdate
     
