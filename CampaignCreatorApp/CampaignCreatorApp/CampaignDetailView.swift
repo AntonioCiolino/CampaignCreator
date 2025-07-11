@@ -858,12 +858,50 @@ struct CampaignDetailView: View {
             }
             Task {
                 await fetchSnippetFeatures() // Existing call
+
                 // Fetch characters if not already attempted or if there was an error
                 if (!campaignCreator.initialCharacterFetchAttempted || campaignCreator.characterError != nil) && !campaignCreator.isLoadingCharacters {
-                    print("CampaignDetailView: Attempting to fetch characters.")
+                    print("[CampaignDetailView .onAppear] Attempting to fetch characters.")
                     await campaignCreator.fetchCharacters()
                 } else {
-                    print("CampaignDetailView: Skipping character fetch. InitialAttempt: \(campaignCreator.initialCharacterFetchAttempted), Error: \(campaignCreator.characterError != nil), Loading: \(campaignCreator.isLoadingCharacters)")
+                    print("[CampaignDetailView .onAppear] Skipping character fetch. InitialAttempt: \(campaignCreator.initialCharacterFetchAttempted), Error: \(campaignCreator.characterError != nil), Loading: \(campaignCreator.isLoadingCharacters)")
+                }
+
+                // Refresh current campaign data from campaignCreator or backend
+                // This ensures that if a sub-view like CampaignMoodboardView updated the campaign,
+                // CampaignDetailView gets the latest state when it reappears.
+                print("[CampaignDetailView .onAppear] Checking for campaign (ID: \(self.campaign.id)) updates.")
+                if let updatedCampaignFromList = campaignCreator.campaigns.first(where: { $0.id == self.campaign.id }) {
+                    // Compare more than just modifiedAt if it's not always reliable or present
+                    if updatedCampaignFromList.modifiedAt != self.campaign.modifiedAt ||
+                       updatedCampaignFromList.moodBoardImageURLs != self.campaign.moodBoardImageURLs ||
+                       updatedCampaignFromList.badgeImageURL != self.campaign.badgeImageURL ||
+                       updatedCampaignFromList.title != self.campaign.title { // Add other key fields if necessary
+                        print("[CampaignDetailView .onAppear] Campaign data in CampaignCreator is different. Updating local state.")
+                        self.campaign = updatedCampaignFromList
+                        self.editableTitle = updatedCampaignFromList.title
+                        self.editableConcept = updatedCampaignFromList.concept ?? ""
+                        self.localCampaignCustomSections = updatedCampaignFromList.customSections ?? []
+                        self.viewRefreshTrigger = UUID() // Force UI refresh if needed
+                    } else {
+                        print("[CampaignDetailView .onAppear] Local campaign data appears up-to-date with CampaignCreator list.")
+                    }
+                } else {
+                    // If not in the list, or to be absolutely sure, refresh from backend
+                    print("[CampaignDetailView .onAppear] Campaign not found in CampaignCreator's list or forcing direct refresh for ID: \(self.campaign.id).")
+                    do {
+                        let refreshedCampaign = try await campaignCreator.refreshCampaign(id: self.campaign.id)
+                        self.campaign = refreshedCampaign
+                        self.editableTitle = refreshedCampaign.title
+                        self.editableConcept = refreshedCampaign.concept ?? ""
+                        self.localCampaignCustomSections = refreshedCampaign.customSections ?? []
+                        self.viewRefreshTrigger = UUID()
+                        print("[CampaignDetailView .onAppear] Successfully refreshed campaign from backend.")
+                    } catch {
+                        print("❌ [CampaignDetailView .onAppear] Error refreshing campaign from backend: \(error.localizedDescription)")
+                        self.errorMessage = "Failed to refresh campaign data: \(error.localizedDescription)"
+                        self.showErrorAlert = true
+                    }
                 }
             }
         }
@@ -1017,7 +1055,9 @@ struct CampaignDetailView: View {
                     .disabled(isSaving || isGeneratingText)
                     
                     // Mood Board Button - Changed to NavigationLink
-                    NavigationLink(destination: CampaignMoodboardView(campaign: campaign)) {
+                    NavigationLink(destination: CampaignMoodboardView(campaign: campaign, campaignCreator: campaignCreator)
+                        .environmentObject(imageUploadService) // Pass ImageUploadService
+                    ) {
                         Label("Mood Board", systemImage: "photo.on.rectangle.angled")
                     }
                     .disabled(isSaving || isGeneratingText)
@@ -1248,10 +1288,18 @@ struct CampaignDetailView: View {
 
             // Update the badgeImageURL specifically
             campaign.badgeImageURL = response.imageUrl
-            // campaign.thematicImagePrompt = response.promptUsed // Not for badge prompt
+
+            // Also add to mood board if not already present
+            if campaign.moodBoardImageURLs == nil {
+                campaign.moodBoardImageURLs = []
+            }
+            if let newUrl = response.imageUrl, !campaign.moodBoardImageURLs!.contains(newUrl) {
+                campaign.moodBoardImageURLs!.append(newUrl)
+            }
+
             campaign.markAsModified()
 
-            await saveCampaignDetails(source: .badgeImageUpdate) // Save the campaign with new badge URL
+            await saveCampaignDetails(source: .badgeImageUpdate) // Save the campaign with new badge URL & updated mood board
 
             showingGenerateBadgeWithAISheet = false // Dismiss the sheet
             // imageGeneratePrompt = "" // Optionally clear prompt
