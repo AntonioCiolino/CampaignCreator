@@ -433,9 +433,9 @@ async def generate_character_chat_response( # Renamed function
         # Map sender to 'user' or 'assistant' for the LLM context
         speaker_role = "user" if msg_orm.sender == "user" else "assistant"
         # If LLM responses are stored with character_name as sender, this maps them to 'assistant'
-        # Ensure models.ChatMessage (for LLM context) is {speaker: str, text: str}
+        # Ensure models.LLMChatContextMessage (for LLM context) is {speaker: str, text: str}
         chat_history_for_llm_context.append(
-            models.ChatMessage(speaker=speaker_role, text=msg_orm.text) # Using the Pydantic model for LLM context
+            models.LLMChatContextMessage(speaker=speaker_role, text=msg_orm.text) # Using the renamed Pydantic model
         )
 
     provider_name_from_request: Optional[str] = None
