@@ -538,4 +538,41 @@ public final class APIService: Sendable {
         // performRequest handles adding the base URL
         return try await performRequest(endpoint: endpointString, method: "GET")
     }
+
+    // New method for POST /characters/{character_id}/generate-response
+    public func generateCharacterChatResponse(
+        characterId: Int,
+        prompt: String,
+        chatHistory: [ChatMessageData]?, // ChatMessageData is {speaker: String, text: String}
+        modelIdWithPrefix: String?,
+        temperature: Double?,
+        maxTokens: Int?
+    ) async throws -> LLMTextResponseDTO { // Returns the new DTO
+
+        // Construct the payload matching backend's LLMGenerationRequest
+        var payloadDict: [String: Any] = ["prompt": prompt]
+        if let chatHistory = chatHistory, !chatHistory.isEmpty {
+            // Convert [ChatMessageData] to array of dictionaries for JSON payload
+            payloadDict["chat_history"] = chatHistory.map { ["speaker": $0.speaker, "text": $0.text] }
+        }
+        if let modelIdWithPrefix = modelIdWithPrefix {
+            payloadDict["model_id_with_prefix"] = modelIdWithPrefix
+        }
+        if let temperature = temperature {
+            payloadDict["temperature"] = temperature
+        }
+        if let maxTokens = maxTokens {
+            payloadDict["max_tokens"] = maxTokens
+        }
+        // Note: 'character_notes' are now handled by the backend by combining memory_summary and base notes.
+        // The client does not send character_notes directly for this endpoint anymore.
+
+        let body = try jsonEncoder.encode(payloadDict) // Encode the dictionary
+
+        return try await performRequest(
+            endpoint: "/characters/\(characterId)/generate-response",
+            method: "POST",
+            body: body
+        )
+    }
 }
