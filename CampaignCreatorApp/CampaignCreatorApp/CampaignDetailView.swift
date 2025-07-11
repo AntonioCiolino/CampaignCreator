@@ -39,7 +39,7 @@ struct CampaignDetailView: View {
     @State private var imageGeneratePrompt = "" // Prompt for image generation
     @State private var showingCampaignEditSheet = false // Renamed from showingThemeEditSheet
     // @State private var showingMoodBoardSheet = false // REPLACED by NavigationLink for new moodboard view
-    @State private var showingCampaignThemeSheet: Bool = false // ADDED for Campaign Theme sheet
+    // @State private var showingCampaignThemeSheet: Bool = false // REMOVED - Theme icon now directly shows CampaignEditView
     @State private var showingSetBadgeOptions = false // New state for badge options action sheet
     @State private var showingGenerateBadgeWithAISheet = false // For AI generating a badge
     @State private var showingSelectBadgeFromMoodboardSheet = false // For selecting badge from mood board
@@ -1008,18 +1008,7 @@ struct CampaignDetailView: View {
             exportSheetView
         }
         // Removed .sheet(isPresented: $showingMoodBoardSheet) as it's now a NavigationLink
-        .sheet(isPresented: $showingCampaignThemeSheet) {
-            NavigationView {
-                campaignThemeDisplaySection // This already contains the "Edit Campaign Details" button
-                    .navigationTitle("Campaign Theme")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Button("Done") { showingCampaignThemeSheet = false }
-                        }
-                    }
-            }
-        }
+        // REMOVED .sheet(isPresented: $showingCampaignThemeSheet) as it's no longer used
         // The .onDisappear that was here was misplaced and has been removed.
         // The following .sheet modifier with onDismiss is the correct one for CampaignEditView.
         .sheet(isPresented: $showingCampaignEditSheet,
@@ -1103,7 +1092,7 @@ struct CampaignDetailView: View {
             } else {
                 // Campaign Theme Button
                 Button {
-                    showingCampaignThemeSheet = true
+                    showingCampaignEditSheet = true // Directly show the edit sheet
                 } label: {
                     Label("Theme", systemImage: "paintbrush.pointed.fill")
                 }
