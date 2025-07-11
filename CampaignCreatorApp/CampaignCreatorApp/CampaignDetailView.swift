@@ -1718,9 +1718,19 @@ struct CampaignDetailView: View {
             print("[LLM_DEBUG CampaignDetailView] saveCampaignDetails: trulyRefreshedCampaign LLM Settings: ID=\(trulyRefreshedCampaign.selectedLLMId ?? "nil"), Temp=\(trulyRefreshedCampaign.temperature?.description ?? "nil")")
             print("[LLM_DEBUG CampaignDetailView] saveCampaignDetails: self.campaign (after update) LLM Settings: ID=\(self.campaign.selectedLLMId ?? "nil"), Temp=\(self.campaign.temperature?.description ?? "nil")")
 
-            self.viewRefreshTrigger = UUID() // Force UI refresh
+            // Only trigger full refresh for specific cases, not for every text field save
+            // to prevent losing focus on text editors.
+            if source != .titleField &&
+               source != .customSectionChange &&
+               source != .standardSectionChange &&
+               source != .conceptEditorDoneButton { // Concept editor also involves text input
+                self.viewRefreshTrigger = UUID()
+                print("Campaign details saved via \(source). Full view refresh triggered.")
+            } else {
+                print("Campaign details saved via \(source). Relied on @State update for UI refresh.")
+            }
             
-            print("Campaign details saved successfully via \(source). UI refreshed with direct API response.")
+            // print("Campaign details saved successfully via \(source). UI refreshed with direct API response.") // Message adjusted by conditional log
         } catch let error as APIError {
             errorMessage = "Save failed: \(error.localizedDescription)"
             showErrorAlert = true
