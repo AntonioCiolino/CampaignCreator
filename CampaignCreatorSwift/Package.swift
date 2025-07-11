@@ -17,6 +17,7 @@ let package = Package(
     ],
     dependencies: [
         // Add dependencies here as needed
+        .package(url: "https://github.com/onevcat/Kingfisher.git", from: "8.0.0")
     ],
     targets: [
         .executableTarget(
@@ -25,7 +26,9 @@ let package = Package(
         ),
         .target(
             name: "CampaignCreatorLib",
-            dependencies: [],
+            dependencies: [
+                .product(name: "Kingfisher", package: "Kingfisher")
+            ],
             sources: [
                 "CampaignCreator.swift",
                 "APIService.swift", // Ensure APIService is here

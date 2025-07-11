@@ -1,5 +1,6 @@
 import SwiftUI
 import CampaignCreatorLib
+import Kingfisher
 
 struct CharacterDetailView: View {
     // Use @State for the character if its properties will be updated by an Edit sheet
@@ -31,24 +32,25 @@ struct CharacterDetailView: View {
                             selectedImageURLForSheet = imageURL
                             showingFullCharacterImageSheet = true
                         }) {
-                            AsyncImage(url: imageURL) { phase in
-                                if let image = phase.image {
-                                    image.resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(width: 60, height: 60) // Slightly larger for tap target
-                                        .clipShape(Circle())
-                                        .overlay(Circle().stroke(Color.secondary, lineWidth: 1))
-                                } else if phase.error != nil {
-                                    Image(systemName: "person.crop.circle.badge.exclamationmark")
-                                        .resizable().scaledToFit().frame(width: 50, height: 50).foregroundColor(.gray)
-                                } else {
+                            // KFImage loads and caches the character's avatar (first imageURL).
+                            // Displayed as a circular icon.
+                            KFImage(imageURL)
+                                .placeholder { // Shown during loading or on failure.
                                     ProgressView().frame(width: 50, height: 50)
                                 }
-                            }
+                                .resizable()
+                                .aspectRatio(contentMode: .fill) // Fills the circular frame.
+                                .frame(width: 50, height: 50) // Sized for a small icon/avatar.
+                                .clipShape(Circle()) // Makes the avatar circular.
+                                .overlay(Circle().stroke(Color.secondary, lineWidth: 1))
+                                .onFailure { error in // Log errors if image loading fails.
+                                    print("KFImage failed to load character image \(imageURL.absoluteString): \(error.localizedDescription)")
+                                }
                         }
                         .buttonStyle(.plain) // Use plain to make the image itself the button
                     } else {
-                        Image(systemName: "person.crop.circle") // Default placeholder if no image
+                        // Default placeholder if no imageURLs are available.
+                        Image(systemName: "person.crop.circle")
                             .resizable().scaledToFit().frame(width: 50, height: 50).foregroundColor(.gray)
                     }
                 }
@@ -151,26 +153,21 @@ struct FullCharacterImageView: View {
         return NavigationView { // NavigationView for a title and dismiss button
             VStack {
                 if let url = imageURL {
-                    AsyncImage(url: url) { phase in
-                        if let image = phase.image {
-                            image.resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .padding()
-                        } else if phase.error != nil {
-                            Text("Error loading image.")
-                                .foregroundColor(.red)
-                            Image(systemName: "photo.fill") // Placeholder on error
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 100, height: 100)
-                                .foregroundColor(.gray)
-                        } else {
+                    // KFImage loads and caches the full-size character image.
+                    KFImage(url)
+                        .placeholder { // Shown during loading or on failure.
                             ProgressView("Loading Image...")
                         }
-                    }
+                        .resizable()
+                        .aspectRatio(contentMode: .fit) // Ensures the entire image is visible.
+                        .padding()
+                        .onFailure { error in // Log errors if image loading fails.
+                            print("KFImage failed to load full character image \(url.absoluteString): \(error.localizedDescription)")
+                        }
                 } else {
+                    // Shown if no URL is provided to the sheet.
                     Text("No image URL provided.")
-                    Image(systemName: "photo.fill") // Placeholder if no URL
+                    Image(systemName: "photo.fill") // Generic placeholder.
                         .resizable()
                         .scaledToFit()
                         .frame(width: 100, height: 100)
