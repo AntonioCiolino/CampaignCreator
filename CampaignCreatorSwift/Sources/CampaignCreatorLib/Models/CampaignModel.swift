@@ -118,6 +118,7 @@ public struct Campaign: Identifiable, Codable, Sendable {
         displayTOC = try container.decodeIfPresent([TOCEntry].self, forKey: .displayTOC)
         sections = try container.decode([CampaignSection].self, forKey: .sections)
 
+        print("[Campaign Decodable] Checking for key .badgeImageURL: \(CodingKeys.badgeImageURL.stringValue). Key Found in JSON container: \(container.contains(.badgeImageURL))")
         do {
             badgeImageURL = try container.decodeIfPresent(String.self, forKey: .badgeImageURL)
             print("[Campaign Decodable] badgeImageURL successfully decoded (or was nil in JSON): \(badgeImageURL ?? "nil")")
@@ -134,6 +135,7 @@ public struct Campaign: Identifiable, Codable, Sendable {
         selectedLLMId = try container.decodeIfPresent(String.self, forKey: .selectedLLMId)
         temperature = try container.decodeIfPresent(Double.self, forKey: .temperature)
 
+        print("[Campaign Decodable] Checking for key .moodBoardImageURLs: \(CodingKeys.moodBoardImageURLs.stringValue). Key Found in JSON container: \(container.contains(.moodBoardImageURLs))")
         do {
             moodBoardImageURLs = try container.decodeIfPresent([String].self, forKey: .moodBoardImageURLs)
             print("[Campaign Decodable] moodBoardImageURLs successfully decoded (or was nil in JSON): \(moodBoardImageURLs?.joined(separator: ", ") ?? "nil")")
