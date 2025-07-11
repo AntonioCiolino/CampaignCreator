@@ -29,6 +29,10 @@
 		943A92012E1EC4C40081BA3A /* CampaignLLMSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 943A92002E1EC4C40081BA3A /* CampaignLLMSettingsView.swift */; };
 		943A92022E1EC4C40081BA3A /* CampaignHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 943A91FF2E1EC4C40081BA3A /* CampaignHeaderView.swift */; };
 		943A92032E1EC4C40081BA3A /* CampaignConceptEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 943A91FE2E1EC4C40081BA3A /* CampaignConceptEditorView.swift */; };
+		944C2C422E21C32F009FDCCB /* SelectBadgeFromMoodboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 944C2C412E21C32F009FDCCB /* SelectBadgeFromMoodboardView.swift */; };
+		944C2C432E21C32F009FDCCB /* AlertMessageItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 944C2C3F2E21C32F009FDCCB /* AlertMessageItem.swift */; };
+		944C2C442E21C32F009FDCCB /* ImageUploadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 944C2C402E21C32F009FDCCB /* ImageUploadService.swift */; };
+		944C2C472E21C345009FDCCB /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 944C2C462E21C345009FDCCB /* Kingfisher */; };
 		9481FD642E1C3D180084268D /* SectionBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9481FD622E1C3D180084268D /* SectionBox.swift */; };
 		9481FD662E1C3D210084268D /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9481FD652E1C3D210084268D /* Color+Hex.swift */; };
 		949269E92E1AC11300376F0A /* CharacterCreateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949269E42E1AC11300376F0A /* CharacterCreateView.swift */; };
@@ -62,6 +66,9 @@
 		943A91FE2E1EC4C40081BA3A /* CampaignConceptEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignConceptEditorView.swift; sourceTree = "<group>"; };
 		943A91FF2E1EC4C40081BA3A /* CampaignHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignHeaderView.swift; sourceTree = "<group>"; };
 		943A92002E1EC4C40081BA3A /* CampaignLLMSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignLLMSettingsView.swift; sourceTree = "<group>"; };
+		944C2C3F2E21C32F009FDCCB /* AlertMessageItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlertMessageItem.swift; sourceTree = "<group>"; };
+		944C2C402E21C32F009FDCCB /* ImageUploadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageUploadService.swift; sourceTree = "<group>"; };
+		944C2C412E21C32F009FDCCB /* SelectBadgeFromMoodboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectBadgeFromMoodboardView.swift; sourceTree = "<group>"; };
 		9481FD622E1C3D180084268D /* SectionBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionBox.swift; sourceTree = "<group>"; };
 		9481FD652E1C3D210084268D /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
 		949269E32E1AC11300376F0A /* CampaignListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignListView.swift; sourceTree = "<group>"; };
@@ -77,6 +84,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				944C2C472E21C345009FDCCB /* Kingfisher in Frameworks */,
 				3D92BBF42B8C8B0200B8E8E8 /* CampaignCreatorLib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -103,6 +111,9 @@
 		3D92BBE32B8C8A8E00B8E8E8 /* CampaignCreatorApp */ = {
 			isa = PBXGroup;
 			children = (
+				944C2C3F2E21C32F009FDCCB /* AlertMessageItem.swift */,
+				944C2C402E21C32F009FDCCB /* ImageUploadService.swift */,
+				944C2C412E21C32F009FDCCB /* SelectBadgeFromMoodboardView.swift */,
 				9414ACD12E20903A005C0B17 /* CharacterImageOrderView.swift */,
 				9414ACC32E203A08005C0B17 /* CampaignMoodboardView.swift */,
 				9414ACC42E203A08005C0B17 /* CharacterImageManagerView.swift */,
@@ -162,6 +173,7 @@
 			name = CampaignCreatorApp;
 			packageProductDependencies = (
 				3D92BBF32B8C8B0200B8E8E8 /* CampaignCreatorLib */,
+				944C2C462E21C345009FDCCB /* Kingfisher */,
 			);
 			productName = CampaignCreatorApp;
 			productReference = 3D92BBE12B8C8A8E00B8E8E8 /* CampaignCreatorApp.app */;
@@ -193,6 +205,7 @@
 			mainGroup = 3D92BBD82B8C8A8E00B8E8E8;
 			packageReferences = (
 				3D92BBF22B8C8B0200B8E8E8 /* XCLocalSwiftPackageReference "../CampaignCreatorSwift" */,
+				944C2C452E21C345009FDCCB /* XCRemoteSwiftPackageReference "Kingfisher" */,
 			);
 			productRefGroup = 3D92BBE22B8C8A8E00B8E8E8 /* Products */;
 			projectDirPath = "";
@@ -235,6 +248,9 @@
 				949269EE2E1AC11300376F0A /* LoginView.swift in Sources */,
 				949269EF2E1AC11300376F0A /* CharacterEditView.swift in Sources */,
 				3D92BBFA2B8C8D4C00B8E8E8 /* SettingsView.swift in Sources */,
+				944C2C422E21C32F009FDCCB /* SelectBadgeFromMoodboardView.swift in Sources */,
+				944C2C432E21C32F009FDCCB /* AlertMessageItem.swift in Sources */,
+				944C2C442E21C32F009FDCCB /* ImageUploadService.swift in Sources */,
 				3D92BBE72B8C8A8E00B8E8E8 /* ContentView.swift in Sources */,
 				3D92BBE52B8C8A8E00B8E8E8 /* CampaignCreatorApp.swift in Sources */,
 				9481FD642E1C3D180084268D /* SectionBox.swift in Sources */,
@@ -463,11 +479,27 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		944C2C452E21C345009FDCCB /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/onevcat/Kingfisher.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.4.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		3D92BBF32B8C8B0200B8E8E8 /* CampaignCreatorLib */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 3D92BBF22B8C8B0200B8E8E8 /* XCLocalSwiftPackageReference "../CampaignCreatorSwift" */;
 			productName = CampaignCreatorLib;
+		};
+		944C2C462E21C345009FDCCB /* Kingfisher */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 944C2C452E21C345009FDCCB /* XCRemoteSwiftPackageReference "Kingfisher" */;
+			productName = Kingfisher;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
