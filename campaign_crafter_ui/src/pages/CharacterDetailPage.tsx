@@ -241,25 +241,31 @@ const CharacterDetailPage: React.FC = () => {
     }, [fetchCharacterAndCampaignData]);
 
     const fetchChatHistory = useCallback(async () => {
-        if (!characterId) return;
+        if (!characterId || !character) return; // Ensure character is loaded for avatar
         setChatLoading(true);
         setChatError(null);
         try {
             const id = parseInt(characterId, 10);
-            const history = await characterService.getChatHistory(id);
-            // Enrich messages with avatar URLs for display
-            setChatHistory(history.map(msg => ({
-                ...msg,
-                user_avatar_url: currentUser?.avatar_url || undefined, // Use current user's avatar
-                character_avatar_url: character?.image_urls?.[0] || undefined // Use character's first image
-            })));
+            // Assuming characterService.getChatHistory now returns Promise<Array<{ speaker: string; text: string; timestamp: string; }>>
+            const backendHistory = await characterService.getChatHistory(id);
+
+            const uiHistory = backendHistory.map((msg, index) => ({
+                speaker: msg.speaker,
+                text: msg.text,
+                timestamp: msg.timestamp,
+                uiKey: `${new Date(msg.timestamp).getTime()}-${index}`, // More stable key based on timestamp and index
+                senderType: msg.speaker === 'user' ? 'user' : 'llm',
+                user_avatar_url: msg.speaker === 'user' ? (currentUser?.avatar_url || undefined) : undefined,
+                character_avatar_url: msg.speaker !== 'user' ? (character?.image_urls?.[0] || undefined) : undefined,
+            }));
+            setChatHistory(uiHistory);
         } catch (err: any) {
             console.error("Failed to fetch chat history:", err);
             setChatError(err.response?.data?.detail || "Failed to load chat history.");
         } finally {
             setChatLoading(false);
         }
-    }, [characterId, currentUser, character]); // Added currentUser and character as dependencies
+    }, [characterId, currentUser, character]);
 
     useEffect(() => {
         if (isChatPanelOpen && characterId) {
@@ -419,13 +425,14 @@ const CharacterDetailPage: React.FC = () => {
 
         // 1. Optimistically add the user's message to the chatHistory state
         const optimisticUserMessage: ChatMessage = {
-            id: Date.now(), // Temporary ID for optimistic update
-            character_id: character.id,
+            speaker: 'user',
             text: userMessageText,
-            sender: 'user', // Assuming 'user' is the sender string expected by ChatMessage
             timestamp: new Date().toISOString(),
+            uiKey: `optimistic-${Date.now()}`, // Unique key for optimistic message
+            senderType: 'user',
             user_avatar_url: currentUser?.avatar_url || undefined,
             character_avatar_url: character?.image_urls?.[0] || undefined,
+            // id and character_id are no longer part of the base ChatMessage from backend
         };
         setChatHistory(prevHistory => [...prevHistory, optimisticUserMessage]);
 
@@ -458,14 +465,14 @@ const CharacterDetailPage: React.FC = () => {
 
             // 3. Receive the AI's response data and transform it into a ChatMessage
             const aiMessage: ChatMessage = {
-                id: Date.now() + 1, // Temporary, unique ID for the AI message for React key
-                                     // This will be replaced if/when history is fetched from a persistent source
-                character_id: character.id,
-                text: aiResponse.text, // Assuming aiResponse.text contains the message
-                sender: 'llm', // Assuming 'llm' or character name is the sender string
-                timestamp: new Date().toISOString(), // Or use server timestamp if available in aiResponse
-                user_avatar_url: currentUser?.avatar_url || undefined, // Not relevant for AI message but part of type
+                speaker: 'assistant', // Or db_character.name if that's what backend uses for AI sender
+                text: aiResponse.text,
+                timestamp: new Date().toISOString(), // Or use server timestamp if aiResponse provided one
+                uiKey: `ai-${Date.now()}`, // Unique key for AI message
+                senderType: 'llm',
+                user_avatar_url: undefined, // AI doesn't have a user avatar
                 character_avatar_url: character?.image_urls?.[0] || undefined,
+                // id and character_id are no longer part of the base ChatMessage from backend
             };
 
             // 4. Append this new AI ChatMessage to the chatHistory state
