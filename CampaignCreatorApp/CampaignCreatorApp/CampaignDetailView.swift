@@ -831,6 +831,7 @@ struct CampaignDetailView: View {
                 .foregroundColor(currentTextColor) // Apply default theme text color
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity) // Constrain ZStack to screen bounds
         .refreshable {
             do {
                 print("[DetailView REFRESH] Attempting to refresh campaign ID: \(campaign.id)")
