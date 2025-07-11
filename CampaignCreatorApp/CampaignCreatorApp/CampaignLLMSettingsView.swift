@@ -12,7 +12,7 @@ struct CampaignLLMSettingsView: View {
 
     // Using the specific nested type from CampaignDetailView.
     // This could be improved by moving AvailableLLM to a shared scope.
-    let availableLLMs: [CampaignDetailView.AvailableLLM]
+    let availableLLMs: [AvailableLLM] // Corrected: Use the global AvailableLLM type
 
     let currentFont: Font
     let currentTextColor: Color
