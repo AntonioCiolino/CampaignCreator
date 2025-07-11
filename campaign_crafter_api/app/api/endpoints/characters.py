@@ -509,7 +509,7 @@ async def generate_character_llm_response_with_history( # Renamed for clarity
     recent_history_orm = crud.get_recent_chat_messages_for_character(db=db, character_id=character_id, limit=10)
     # Convert ORM messages to Pydantic model suitable for LLM service
     chat_history_for_llm = [
-        models.ChatMessage(
+        models.ChatMessage( # Reverted to ChatMessage
             id=msg.id,
             character_id=msg.character_id,
             text=msg.text,
