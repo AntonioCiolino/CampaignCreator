@@ -483,8 +483,8 @@ async def generate_character_chat_response( # Renamed function
         generated_text = await llm_service.generate_character_response(
             character_name=db_character.name,
             character_notes=db_character.notes_for_llm or "",
-            user_prompt=request_body.prompt,
-            chat_history=chat_history_for_llm_service, # Pass the context prepared
+            user_prompt=request_body.prompt, # Current user's immediate message
+            chat_history=chat_history_for_llm_service[:-1] if chat_history_for_llm_service else [], # Pass history *before* current prompt
             current_user=current_user,
             db=db,
             model=model_specific_id_from_request,
