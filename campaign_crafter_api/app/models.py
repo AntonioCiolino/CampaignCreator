@@ -423,25 +423,7 @@ class CharacterAspectGenerationRequest(BaseModel):
 class CharacterAspectGenerationResponse(BaseModel):
     generated_text: str
 
-# Chat Message Models (Old, to be removed or deprecated)
-# class ChatMessageBase(BaseModel):
-#     text: str
-#     sender: str # "user", "llm", or character name for context
-
-# class ChatMessageCreate(ChatMessageBase):
-#     pass
-
-# class ChatMessageInDB(ChatMessageBase):
-#     id: int
-#     character_id: int
-#     timestamp: datetime
-
-#     class Config:
-#         from_attributes = True # Pydantic V2
-
-# class ChatMessage(ChatMessageInDB): # For API responses
-#     pass
-
-# The new ConversationMessageEntry and ConversationMessageContext defined earlier
-# will replace these for representing chat messages in API responses and internal structures.
-# The GET /chat endpoint will now return List[ConversationMessageEntry].
+# Old chat message Pydantic models (ChatMessageBase, ChatMessageCreate, ChatMessageInDB, ChatMessage)
+# have been removed. The new models ConversationMessageContext and ConversationMessageEntry
+# are used for chat-related data structures, aligning with the JSON history storage.
+# The GET /chat endpoint will use List[ConversationMessageEntry] as its response model.

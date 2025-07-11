@@ -5,9 +5,11 @@ from fastapi import HTTPException # Added HTTPException
 from passlib.context import CryptContext
 
 from app import models, orm_models # Standardized
+from app.core.config import settings # Import settings
 from app.core.security import encrypt_key # Added for API key encryption
 from app.services.image_generation_service import ImageGenerationService
 from app.services.llm_service import AbstractLLMService # Added this import
+from sqlalchemy.orm.attributes import flag_modified # Moved import to top
 # import asyncio # No longer needed here
 from urllib.parse import urlparse
 
@@ -924,9 +926,9 @@ def get_or_create_user_character_conversation(db: Session, character_id: int, us
         db.add(conversation_record)
         db.commit()
         db.refresh(conversation_record)
-        print(f"CRUD: Created new conversation record for char_id={character_id}, user_id={user_id}")
+        # print(f"CRUD: Created new conversation record for char_id={character_id}, user_id={user_id}") # Debug print
     else:
-        print(f"CRUD: Fetched existing conversation record for char_id={character_id}, user_id={user_id}")
+        # print(f"CRUD: Fetched existing conversation record for char_id={character_id}, user_id={user_id}") # Debug print
         # Ensure conversation_history is a list if it was NULL from DB and default didn't apply post-load
         if conversation_record.conversation_history is None:
             conversation_record.conversation_history = []
@@ -947,7 +949,7 @@ def update_user_character_conversation(
     db.add(conversation_record) # Add to session to ensure it's persisted
     db.commit()
     db.refresh(conversation_record)
-    print(f"CRUD: Updated conversation record for char_id={conversation_record.character_id}, user_id={conversation_record.user_id}")
+    # print(f"CRUD: Updated conversation record for char_id={conversation_record.character_id}, user_id={conversation_record.user_id}") # Debug print
     return conversation_record
 
 # Old ChatMessage CRUD functions are now removed.
@@ -966,32 +968,26 @@ async def update_conversation_summary(
     Generates a summary of the conversation history (excluding very recent messages)
     and updates the memory_summary field on the conversation ORM object.
     """
-    from sqlalchemy.orm.attributes import flag_modified # Local import
+    # from sqlalchemy.orm.attributes import flag_modified # Moved to top-level import
 
-    # Configuration for summarization
-    MIN_MESSAGES_FOR_SUMMARY = 15 # Don't summarize if conversation is too short
-    RECENT_MESSAGES_TO_EXCLUDE_FROM_SUMMARY = 5 # Keep these as short-term context, summarize older ones
+    # Configuration for summarization from settings
+    # MIN_MESSAGES_FOR_SUMMARY_CRUD was defined in config.py
+    # RECENT_MESSAGES_TO_EXCLUDE_FROM_SUMMARY was defined in config.py
 
     history_list: List[Dict] = conversation_orm.conversation_history or []
 
-    if len(history_list) < MIN_MESSAGES_FOR_SUMMARY:
-        print(f"CRUD: Conversation too short for summary (char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}). Length: {len(history_list)}")
+    if len(history_list) < settings.CHAT_MIN_MESSAGES_FOR_SUMMARY_CRUD:
+        # This is a normal operational log, not necessarily a debug print, so it can stay.
+        print(f"CRUD: Conversation for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id} too short for summary. Length: {len(history_list)}, Min required: {settings.CHAT_MIN_MESSAGES_FOR_SUMMARY_CRUD}")
         return
 
-    # Select messages to summarize: all except the most recent ones
-    # If a summary already exists, we might want to summarize only new messages since last summary.
-    # For simplicity now, we'll re-summarize the bulk of the history each time.
-    # A more advanced approach would be to append new interactions to the existing summary,
-    # or summarize chunks and then summarize summaries.
-
-    messages_to_summarize = history_list[:-RECENT_MESSAGES_TO_EXCLUDE_FROM_SUMMARY]
+    messages_to_summarize = history_list[:-settings.CHAT_RECENT_MESSAGES_TO_EXCLUDE_FROM_SUMMARY]
 
     if not messages_to_summarize:
-        print(f"CRUD: No messages to summarize for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id} after excluding recent ones.")
+        # This is also a normal operational log.
+        print(f"CRUD: No new messages to summarize for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id} after excluding recent {settings.CHAT_RECENT_MESSAGES_TO_EXCLUDE_FROM_SUMMARY}.")
         return
 
-    # Format the excerpt for the LLM prompt
-    # Each message in history_list is a dict: {"speaker": "...", "text": "...", "timestamp": "..."}
     conversation_excerpt_str = "\n".join([f"{msg['speaker']}: {msg['text']}" for msg in messages_to_summarize])
 
     summary_prompt = (
@@ -1007,7 +1003,7 @@ async def update_conversation_summary(
         f"Conversation Excerpt:\n{conversation_excerpt_str}"
     )
 
-    print(f"CRUD: Generating summary for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}. Excerpt length: {len(messages_to_summarize)} messages.")
+    # print(f"CRUD: Generating summary for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}. Excerpt length: {len(messages_to_summarize)} messages.") # Debug print
 
     try:
         # Assuming llm_service.generate_text can be used for summarization.
@@ -1030,12 +1026,12 @@ async def update_conversation_summary(
             db.add(conversation_orm)
             db.commit()
             db.refresh(conversation_orm)
-            print(f"CRUD: Memory summary updated for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}. Summary: {conversation_orm.memory_summary[:100]}...")
+            print(f"CRUD: Memory summary updated for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}.") # Removed summary content from log
         else:
             print(f"CRUD: LLM returned empty summary for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}.")
 
     except Exception as e:
-        print(f"CRUD ERROR: Failed to generate or save conversation summary for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}: {e}")
-        # Optionally re-raise or handle. For now, just logging.
-        # If this was part of a larger transaction, db.rollback() might be needed here if error is critical.
+        # Using a more structured log for errors
+        print(f"ERROR:CRUD:update_conversation_summary: Failed for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}. Error: {e}")
+        # Optionally re-raise or handle. For now, just logging as per plan.
         # However, create_chat_message in the endpoint commits, so this runs in its own transaction context effectively if called after.

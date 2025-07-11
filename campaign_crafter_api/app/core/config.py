@@ -62,6 +62,12 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    # Chat Summarization Settings
+    CHAT_SUMMARIZATION_INTERVAL: int = 20  # Summarize after N total messages (user + AI)
+    CHAT_MIN_MESSAGES_FOR_SUMMARY_TRIGGER: int = 30 # Min total messages before first summary
+    CHAT_MIN_MESSAGES_FOR_SUMMARY_CRUD: int = 15 # Min messages in conversation before crud.update_conversation_summary attempts to summarize
+    CHAT_RECENT_MESSAGES_TO_EXCLUDE_FROM_SUMMARY: int = 5 # Number of recent messages to keep out of summary, send as direct short-term context
+
     class Config:
         env_file = ".env"
         env_file_encoding = 'utf-8'

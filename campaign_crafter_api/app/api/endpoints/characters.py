@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified # Added for JSON field modification tracking
 
 from app import crud, models, orm_models
+from app.core.config import settings # Import settings
 from app.db import get_db
 from app.services.auth_service import get_current_active_user
 
@@ -402,9 +403,10 @@ async def generate_character_chat_response( # Renamed function
     """
     from datetime import datetime # Import here for usage
 
-    # Constants for summarization trigger
-    SUMMARIZATION_INTERVAL = 20 # Number of messages (user + AI = 2 per exchange) to trigger summary
-    MIN_MESSAGES_FOR_SUMMARIZATION_TRIGGER = 30 # Minimum total messages before summarization starts
+    # Constants for summarization trigger are now imported from settings
+    # SUMMARIZATION_INTERVAL = settings.CHAT_SUMMARIZATION_INTERVAL
+    # MIN_MESSAGES_FOR_SUMMARIZATION_TRIGGER = settings.CHAT_MIN_MESSAGES_FOR_SUMMARY_TRIGGER
+    # These specific constants are used in the trigger logic below.
 
     db_character = crud.get_character(db=db, character_id=character_id)
     if db_character is None:
@@ -505,13 +507,13 @@ async def generate_character_chat_response( # Renamed function
             # Note: update_user_character_conversation itself also assigns new_history_list
             # to conversation_record.conversation_history. The flag_modified ensures this is picked up by SQLAlchemy.
         )
-        print(f"Conversation (JSON) updated for char_id={character_id}, user_id={current_user.id}")
+        # print(f"Conversation (JSON) updated for char_id={character_id}, user_id={current_user.id}") # Debug print removed
 
         # After saving the current turn, check if summarization should be triggered
-        if len(current_conversation_list) >= MIN_MESSAGES_FOR_SUMMARIZATION_TRIGGER and \
-           len(current_conversation_list) % SUMMARIZATION_INTERVAL == 0:
+        if len(current_conversation_list) >= settings.CHAT_MIN_MESSAGES_FOR_SUMMARY_TRIGGER and \
+           len(current_conversation_list) % settings.CHAT_SUMMARIZATION_INTERVAL == 0:
             try:
-                print(f"Attempting to summarize conversation for char_id={character_id}, user_id={current_user.id}")
+                # print(f"Attempting to summarize conversation for char_id={character_id}, user_id={current_user.id}") # Debug print removed
                 await crud.update_conversation_summary(
                     db=db,
                     conversation_orm=conversation_orm_object, # Pass the updated ORM object
@@ -520,10 +522,11 @@ async def generate_character_chat_response( # Renamed function
                     character_name=db_character.name,
                     character_notes=(db_character.notes_for_llm or "") # Pass original notes for summary context
                 )
-                print(f"Summarization task completed for char_id={character_id}, user_id={current_user.id}")
+                # print(f"Summarization task completed for char_id={character_id}, user_id={current_user.id}") # Debug print removed
             except Exception as summary_ex:
                 # Log summarization error but don't let it fail the main response to the user
-                print(f"ERROR during background summarization for char_id={character_id}, user_id={current_user.id}: {summary_ex}")
+                # This print is an error log, so it can stay.
+                print(f"ERROR:API:generate_character_chat_response: Summarization failed for char_id={character_id}, user_id={current_user.id}: {summary_ex}")
 
         # 7. Return the AI's current textual response
         return models.LLMTextGenerationResponse(text=generated_text)
