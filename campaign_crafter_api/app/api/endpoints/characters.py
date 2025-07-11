@@ -402,6 +402,10 @@ async def generate_character_chat_response( # Renamed function
     """
     from datetime import datetime # Import here for usage
 
+    # Constants for summarization trigger
+    SUMMARIZATION_INTERVAL = 20 # Number of messages (user + AI = 2 per exchange) to trigger summary
+    MIN_MESSAGES_FOR_SUMMARIZATION_TRIGGER = 30 # Minimum total messages before summarization starts
+
     db_character = crud.get_character(db=db, character_id=character_id)
     if db_character is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
@@ -458,9 +462,21 @@ async def generate_character_chat_response( # Renamed function
 
         # 4. Call the LLM service
         # user_prompt is the current raw prompt, chat_history is the context *including* this latest user prompt
+        # Prepare augmented character notes including memory summary for the LLM service call
+        base_character_notes = db_character.notes_for_llm or ""
+        # The conversation_orm_object was fetched/created earlier and contains the latest memory_summary
+        memory_summary_text = conversation_orm_object.memory_summary or ""
+
+        effective_character_notes_for_llm = base_character_notes
+        if memory_summary_text:
+            effective_character_notes_for_llm = (
+                f"**Summary of Your Past Interactions with this User:**\n{memory_summary_text}\n\n"
+                f"**Your Core Persona & Notes:**\n{base_character_notes}"
+            )
+
         generated_text = await llm_service.generate_character_response(
             character_name=db_character.name,
-            character_notes=db_character.notes_for_llm or "",
+            character_notes=effective_character_notes_for_llm, # Pass augmented notes
             user_prompt=request_body.prompt, # Current user's immediate message
             chat_history=chat_history_for_llm_service[:-1] if chat_history_for_llm_service else [], # Pass history *before* current prompt
             current_user=current_user,
@@ -490,6 +506,24 @@ async def generate_character_chat_response( # Renamed function
             # to conversation_record.conversation_history. The flag_modified ensures this is picked up by SQLAlchemy.
         )
         print(f"Conversation (JSON) updated for char_id={character_id}, user_id={current_user.id}")
+
+        # After saving the current turn, check if summarization should be triggered
+        if len(current_conversation_list) >= MIN_MESSAGES_FOR_SUMMARIZATION_TRIGGER and \
+           len(current_conversation_list) % SUMMARIZATION_INTERVAL == 0:
+            try:
+                print(f"Attempting to summarize conversation for char_id={character_id}, user_id={current_user.id}")
+                await crud.update_conversation_summary(
+                    db=db,
+                    conversation_orm=conversation_orm_object, # Pass the updated ORM object
+                    llm_service=llm_service, # Reuse the initialized LLM service
+                    current_user_model=current_user, # Pass Pydantic User
+                    character_name=db_character.name,
+                    character_notes=(db_character.notes_for_llm or "") # Pass original notes for summary context
+                )
+                print(f"Summarization task completed for char_id={character_id}, user_id={current_user.id}")
+            except Exception as summary_ex:
+                # Log summarization error but don't let it fail the main response to the user
+                print(f"ERROR during background summarization for char_id={character_id}, user_id={current_user.id}: {summary_ex}")
 
         # 7. Return the AI's current textual response
         return models.LLMTextGenerationResponse(text=generated_text)

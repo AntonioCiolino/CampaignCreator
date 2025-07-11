@@ -952,3 +952,89 @@ def update_user_character_conversation(
 # Old ChatMessage CRUD functions are now removed.
 # The new functions get_or_create_user_character_conversation and
 # update_user_character_conversation handle the new JSON-based storage.
+
+async def update_conversation_summary(
+    db: Session,
+    conversation_orm: orm_models.ChatMessage,
+    llm_service: AbstractLLMService, # Type hint for AbstractLLMService
+    current_user_model: models.User, # Pydantic User model for LLM service call
+    character_name: str,
+    character_notes: Optional[str]
+) -> None:
+    """
+    Generates a summary of the conversation history (excluding very recent messages)
+    and updates the memory_summary field on the conversation ORM object.
+    """
+    from sqlalchemy.orm.attributes import flag_modified # Local import
+
+    # Configuration for summarization
+    MIN_MESSAGES_FOR_SUMMARY = 15 # Don't summarize if conversation is too short
+    RECENT_MESSAGES_TO_EXCLUDE_FROM_SUMMARY = 5 # Keep these as short-term context, summarize older ones
+
+    history_list: List[Dict] = conversation_orm.conversation_history or []
+
+    if len(history_list) < MIN_MESSAGES_FOR_SUMMARY:
+        print(f"CRUD: Conversation too short for summary (char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}). Length: {len(history_list)}")
+        return
+
+    # Select messages to summarize: all except the most recent ones
+    # If a summary already exists, we might want to summarize only new messages since last summary.
+    # For simplicity now, we'll re-summarize the bulk of the history each time.
+    # A more advanced approach would be to append new interactions to the existing summary,
+    # or summarize chunks and then summarize summaries.
+
+    messages_to_summarize = history_list[:-RECENT_MESSAGES_TO_EXCLUDE_FROM_SUMMARY]
+
+    if not messages_to_summarize:
+        print(f"CRUD: No messages to summarize for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id} after excluding recent ones.")
+        return
+
+    # Format the excerpt for the LLM prompt
+    # Each message in history_list is a dict: {"speaker": "...", "text": "...", "timestamp": "..."}
+    conversation_excerpt_str = "\n".join([f"{msg['speaker']}: {msg['text']}" for msg in messages_to_summarize])
+
+    summary_prompt = (
+        f"You are an AI assistant helping to maintain long-term memory for a character in a role-playing chat. "
+        f"The character's name is {character_name}. "
+        f"Character details/persona: {character_notes if character_notes else 'No specific notes provided.'}\n\n"
+        f"Below is an excerpt of a conversation this character had with a user. "
+        f"Please provide a concise summary of the key facts, decisions made, important topics discussed, "
+        f"user preferences revealed, and the overall emotional tone or relationship development. "
+        f"This summary will be used to remind the character about past interactions. "
+        f"Focus on information crucial for maintaining conversational context and persona consistency in future interactions. "
+        f"Output only the summary itself.\n\n"
+        f"Conversation Excerpt:\n{conversation_excerpt_str}"
+    )
+
+    print(f"CRUD: Generating summary for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}. Excerpt length: {len(messages_to_summarize)} messages.")
+
+    try:
+        # Assuming llm_service.generate_text can be used for summarization.
+        # We might need to select a model good for summarization if not default.
+        generated_summary = await llm_service.generate_text(
+            prompt=summary_prompt,
+            current_user=current_user_model, # Pass Pydantic User model
+            db=db,
+            # model= "gpt-3.5-turbo", # Optionally specify a model good for summarization
+            temperature=0.3, # Lower temperature for factual summary
+            max_tokens=500  # Adjust as needed for summary length
+        )
+
+        if generated_summary and generated_summary.strip():
+            # Strategy: Replace old summary with new one.
+            # Alternatively, append: new_summary = (conversation_orm.memory_summary + "\n\n---\n\n" if conversation_orm.memory_summary else "") + generated_summary.strip()
+            conversation_orm.memory_summary = generated_summary.strip()
+            flag_modified(conversation_orm, "memory_summary")
+            # The updated_at for the conversation_orm will also be set due to onupdate
+            db.add(conversation_orm)
+            db.commit()
+            db.refresh(conversation_orm)
+            print(f"CRUD: Memory summary updated for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}. Summary: {conversation_orm.memory_summary[:100]}...")
+        else:
+            print(f"CRUD: LLM returned empty summary for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}.")
+
+    except Exception as e:
+        print(f"CRUD ERROR: Failed to generate or save conversation summary for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}: {e}")
+        # Optionally re-raise or handle. For now, just logging.
+        # If this was part of a larger transaction, db.rollback() might be needed here if error is critical.
+        # However, create_chat_message in the endpoint commits, so this runs in its own transaction context effectively if called after.
