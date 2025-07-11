@@ -102,6 +102,29 @@ public struct CampaignUpdateDTO: Codable, Sendable {
     public var customSections: [CampaignCustomSection]? // ADDED
     public var sections: [CampaignSection]? // ADDED for standard sections
 
+    enum CodingKeys: String, CodingKey {
+        case title
+        case initialUserPrompt = "initial_user_prompt"
+        case concept
+        case displayTOC = "display_toc"
+        case badgeImageURL = "badge_image_url"
+        case thematicImageURL = "thematic_image_url"
+        case thematicImagePrompt = "thematic_image_prompt"
+        case selectedLLMId = "selected_llm_id"
+        case temperature
+        case moodBoardImageURLs = "mood_board_image_urls" // Explicitly correct snake_case
+        case themePrimaryColor = "theme_primary_color"
+        case themeSecondaryColor = "theme_secondary_color"
+        case themeBackgroundColor = "theme_background_color"
+        case themeTextColor = "theme_text_color"
+        case themeFontFamily = "theme_font_family"
+        case themeBackgroundImageURL = "theme_background_image_url"
+        case themeBackgroundImageOpacity = "theme_background_image_opacity"
+        case linkedCharacterIDs = "linked_character_ids"
+        case customSections = "custom_sections"
+        case sections
+    }
+
     public init(title: String? = nil, initialUserPrompt: String? = nil, concept: String? = nil, displayTOC: [TOCEntry]? = nil, badgeImageURL: String? = nil, thematicImageURL: String? = nil, thematicImagePrompt: String? = nil, selectedLLMId: String? = nil, temperature: Double? = nil, moodBoardImageURLs: [String]? = nil, themePrimaryColor: String? = nil, themeSecondaryColor: String? = nil, themeBackgroundColor: String? = nil, themeTextColor: String? = nil, themeFontFamily: String? = nil, themeBackgroundImageURL: String? = nil, themeBackgroundImageOpacity: Double? = nil, linkedCharacterIDs: [Int]? = nil, customSections: [CampaignCustomSection]? = nil, sections: [CampaignSection]? = nil) { // CHANGED linkedCharacterIDs to [Int]?, ADDED sections
         self.title = title
         self.initialUserPrompt = initialUserPrompt
