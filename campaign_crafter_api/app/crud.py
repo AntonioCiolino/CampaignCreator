@@ -551,18 +551,36 @@ async def update_campaign(db: Session, campaign_id: int, campaign_update: models
         if hasattr(db_campaign, 'mood_board_image_urls') and db_campaign.mood_board_image_urls is not None:
             old_image_urls = list(db_campaign.mood_board_image_urls)
 
-        update_data = campaign_update.model_dump(exclude_unset=True)
+        update_data = campaign_update.model_dump(exclude_unset=True) # Keep for general updates
         
-        mood_board_updated = 'mood_board_image_urls' in update_data
+        # Explicitly handle theme background URL and opacity
+        if "theme_background_image_url" in campaign_update.model_fields_set:
+            db_campaign.theme_background_image_url = campaign_update.theme_background_image_url
+            # If URL is being cleared, also clear opacity regardless of whether opacity was in payload
+            if campaign_update.theme_background_image_url is None:
+                db_campaign.theme_background_image_opacity = None
 
+        # Handle opacity if it was explicitly set AND URL is not None (or not being set to None in this same update)
+        # If URL is None, opacity should also be None (handled above).
+        if "theme_background_image_opacity" in campaign_update.model_fields_set:
+            if db_campaign.theme_background_image_url is not None: # Only set opacity if there's a URL
+                db_campaign.theme_background_image_opacity = campaign_update.theme_background_image_opacity
+            else: # If URL is None (either from this update or previously), ensure opacity is also None
+                db_campaign.theme_background_image_opacity = None
+
+        # Handle other fields from update_data, excluding those explicitly handled
+        # This ensures other theme properties and campaign fields are updated as before.
+        explicitly_handled_keys = {"theme_background_image_url", "theme_background_image_opacity"}
         for key, value in update_data.items():
-            if hasattr(db_campaign, key):
-                setattr(db_campaign, key, value)
-            # else:
-                # Optionally log or handle fields in payload that are not in ORM model
+            if key not in explicitly_handled_keys:
+                if hasattr(db_campaign, key):
+                    setattr(db_campaign, key, value)
 
-        if mood_board_updated:
-            new_image_urls = set(db_campaign.mood_board_image_urls if db_campaign.mood_board_image_urls else [])
+        mood_board_updated = 'mood_board_image_urls' in update_data # Check if mood_board_image_urls was part of the update
+
+        if mood_board_updated: # This check is now more accurate
+            new_image_urls = set(campaign_update.mood_board_image_urls if campaign_update.mood_board_image_urls is not None else [])
+            # old_image_urls was captured before any setattr, so it's the state before this update logic.
             deleted_urls = [url for url in old_image_urls if url not in new_image_urls]
 
             if deleted_urls:

@@ -29,11 +29,9 @@ struct LoginView: View {
                 VideoPlayer(player: player)
                     .disabled(true) // Make it non-interactive
                     .aspectRatio(contentMode: .fill)
-                    .edgesIgnoringSafeArea(.all)
                     .opacity(0.3) // Adjust opacity to make it a background
-                    .aspectRatio(contentMode: .fill)
                     .edgesIgnoringSafeArea(.all)
-                    .opacity(0.3) // Adjust opacity to make it a background
+                    .clipped() // Added to ensure video player respects bounds
                     // .onAppear { player.play() } // player.play() is now called reliably in setupVideoPlayer
                     .onDisappear {
                         player.pause()
@@ -120,6 +118,7 @@ struct LoginView: View {
             }
             .padding()
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity) // Constrain ZStack to screen bounds
         .onAppear {
             setupVideoPlayer()
             loadSavedCredentials()

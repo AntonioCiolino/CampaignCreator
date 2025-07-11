@@ -39,7 +39,7 @@ struct CampaignDetailView: View {
     @State private var imageGeneratePrompt = "" // Prompt for image generation
     @State private var showingCampaignEditSheet = false // Renamed from showingThemeEditSheet
     // @State private var showingMoodBoardSheet = false // REPLACED by NavigationLink for new moodboard view
-    @State private var showingCampaignThemeSheet: Bool = false // ADDED for Campaign Theme sheet
+    // @State private var showingCampaignThemeSheet: Bool = false // REMOVED - Theme icon now directly shows CampaignEditView
     @State private var showingSetBadgeOptions = false // New state for badge options action sheet
     @State private var showingGenerateBadgeWithAISheet = false // For AI generating a badge
     @State private var showingSelectBadgeFromMoodboardSheet = false // For selecting badge from mood board
@@ -749,6 +749,7 @@ struct CampaignDetailView: View {
                 }
                 .opacity(campaign.themeBackgroundImageOpacity ?? 1.0)
                 .edgesIgnoringSafeArea(.all)
+                .clipped() // Added to prevent oversized image from causing scrolling
             } else {
                 // Apply background color only if no image, or if image fails to load and placeholder is clear
                 currentBackgroundColor.edgesIgnoringSafeArea(.all)
@@ -830,6 +831,7 @@ struct CampaignDetailView: View {
                 .foregroundColor(currentTextColor) // Apply default theme text color
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity) // Constrain ZStack to screen bounds
         .refreshable {
             do {
                 print("[DetailView REFRESH] Attempting to refresh campaign ID: \(campaign.id)")
@@ -853,7 +855,7 @@ struct CampaignDetailView: View {
         .onAppear {
             // Log initial LLM settings when the view appears
             if !initialLLMSettingsLoaded {
-                print("[LLM_DEBUG CampaignDetailView] View appeared. Initial campaign LLM Settings: ID=\(campaign.selectedLLMId ?? "nil"), Temp=\(campaign.temperature?.description ?? "nil")")
+                print("[LLM_DEBUG CampaignDetailView] View appeared. Initial campaign LLM Settings: ID=\(campaign.selectedLLMId ?? "nil"), Temp=\(campaign.temperature?.description ?? "nil")") // Warning fix
                 initialLLMSettingsLoaded = true
             }
             Task {
@@ -1007,18 +1009,7 @@ struct CampaignDetailView: View {
             exportSheetView
         }
         // Removed .sheet(isPresented: $showingMoodBoardSheet) as it's now a NavigationLink
-        .sheet(isPresented: $showingCampaignThemeSheet) {
-            NavigationView {
-                campaignThemeDisplaySection // This already contains the "Edit Campaign Details" button
-                    .navigationTitle("Campaign Theme")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Button("Done") { showingCampaignThemeSheet = false }
-                        }
-                    }
-            }
-        }
+        // REMOVED .sheet(isPresented: $showingCampaignThemeSheet) as it's no longer used
         // The .onDisappear that was here was misplaced and has been removed.
         // The following .sheet modifier with onDismiss is the correct one for CampaignEditView.
         .sheet(isPresented: $showingCampaignEditSheet,
@@ -1031,6 +1022,7 @@ struct CampaignDetailView: View {
                     self.editableTitle = refreshedCampaign.title
                     self.editableConcept = refreshedCampaign.concept ?? ""
                     self.localCampaignCustomSections = refreshedCampaign.customSections ?? []
+                    self.viewRefreshTrigger = UUID() // Ensure UI reflects theme changes
                     print("CampaignDetailView refreshed with latest data after CampaignEditView dismissal.")
                 } catch {
                     print("Error refreshing campaign in CampaignDetailView.onDismiss (for CampaignEditView sheet): \(error.localizedDescription)")
@@ -1047,7 +1039,7 @@ struct CampaignDetailView: View {
         .onChange(of: horizontalSizeClass) { newSizeClass in
             // This is mostly for debugging or if specific non-label-style changes were needed.
             // .labelStyle modifier handles the change automatically.
-            print("Horizontal size class changed to: \(String(describing: newSizeClass))")
+            print("Horizontal size class changed to: \((newSizeClass != nil ? String(describing: newSizeClass!) : "nil"))") // Warning fix
         }
         .sheet(isPresented: $showingGenerateBadgeWithAISheet) { // New sheet for badge generation
             generateBadgeSheetView // Call the new sheet view
@@ -1102,7 +1094,7 @@ struct CampaignDetailView: View {
             } else {
                 // Campaign Theme Button
                 Button {
-                    showingCampaignThemeSheet = true
+                    showingCampaignEditSheet = true // Directly show the edit sheet
                 } label: {
                     Label("Theme", systemImage: "paintbrush.pointed.fill")
                 }
@@ -1952,8 +1944,8 @@ struct CampaignDetailView: View {
             title: "My Preview Saga",
             concept: "A test concept.",
             displayTOC: [ // Corrected order: displayTOC before sections
-                TOCEntry(id: 201, title: "Introduction", type: "Introduction"),
-                TOCEntry(id: 202, title: "Chapter 1 Link", type: "Chapter")
+                TOCEntry(id: UUID(), title: "Introduction", type: "Introduction"), // Error fix
+                TOCEntry(id: UUID(), title: "Chapter 1 Link", type: "Chapter")       // Error fix
                         ],
             sections: [
                 CampaignSection(

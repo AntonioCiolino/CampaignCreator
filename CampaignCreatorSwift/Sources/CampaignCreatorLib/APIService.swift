@@ -359,9 +359,18 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
                     localImageResponseDecoder.dateDecodingStrategy = .iso8601 // Good practice, though not used by this specific struct
                     // No keyDecodingStrategy set, relying on CodingKeys
                     decodedObject = try localImageResponseDecoder.decode(T.self, from: data)
+                } else if T.self == Campaign.self || T.self == [Campaign].self {
+                    // Using LOCAL JSONDecoder for Campaign type WITHOUT .convertFromSnakeCase strategy.
+                    // This allows Campaign's own CodingKeys to handle the snake_case to camelCase mapping.
+                    let localCampaignDecoder = JSONDecoder()
+                    localCampaignDecoder.dateDecodingStrategy = .iso8601
+                    // DO NOT SET: localCampaignDecoder.keyDecodingStrategy = .convertFromSnakeCase
+                    // This ensures that the keys are passed as-is (e.g. "badge_image_url") to the Campaign's decoder,
+                    // which expects to find them via its CodingKeys.
+                    decodedObject = try localCampaignDecoder.decode(T.self, from: data)
                 }
                 else {
-                    // For other non-Character, non-ImageGenerationResponse types, use the shared decoder.
+                    // For other types, use the shared decoder with .convertFromSnakeCase.
                     decodedObject = try self.jsonDecoder.decode(T.self, from: data)
                 }
 

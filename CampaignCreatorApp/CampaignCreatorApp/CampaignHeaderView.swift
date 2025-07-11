@@ -22,8 +22,7 @@ struct CampaignHeaderView: View {
                 VStack(alignment: .leading) {
                     Text("\(campaign.wordCount) words (from sections)")
                         .font(.caption).foregroundColor(.secondary)
-                    Text(campaign.modifiedAt != nil ? "Modified: \(campaign.modifiedAt!, style: .date)" : "Modified: N/A")
-                        .font(.caption).foregroundColor(.secondary)
+                    // Removed "Modified At" Text View
                 }
                 Spacer()
             }
@@ -45,7 +44,7 @@ struct CampaignHeaderView: View {
                             .clipShape(Circle())
                             .overlay(Circle().stroke(currentPrimaryColor, lineWidth: 2))
                             .padding(.top, 5)
-                    case .failure(let error): // Capture error
+                    case .failure(_): // Error variable not used, changed 'let error' to '_'
                         VStack { // Group error display
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .resizable().scaledToFit().frame(width: 40, height: 40)
