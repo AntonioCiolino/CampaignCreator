@@ -118,16 +118,32 @@ public struct Campaign: Identifiable, Codable, Sendable {
         displayTOC = try container.decodeIfPresent([TOCEntry].self, forKey: .displayTOC)
         sections = try container.decode([CampaignSection].self, forKey: .sections)
 
-        badgeImageURL = try container.decodeIfPresent(String.self, forKey: .badgeImageURL)
-        print("[Campaign Decodable] Attempted to decode badgeImageURL: \(badgeImageURL ?? "nil")")
+        do {
+            badgeImageURL = try container.decodeIfPresent(String.self, forKey: .badgeImageURL)
+            print("[Campaign Decodable] badgeImageURL successfully decoded (or was nil in JSON): \(badgeImageURL ?? "nil")")
+        } catch let error as DecodingError {
+            print("❗️ [Campaign Decodable] DecodingError for badgeImageURL: \(error) - Key: \(CodingKeys.badgeImageURL.stringValue)")
+            badgeImageURL = nil // Ensure it's nil if decoding fails for an optional property
+        } catch {
+            print("❗️ [Campaign Decodable] UNKNOWN error decoding badgeImageURL: \(error) - Key: \(CodingKeys.badgeImageURL.stringValue)")
+            badgeImageURL = nil
+        }
 
         thematicImageURL = try container.decodeIfPresent(String.self, forKey: .thematicImageURL)
         thematicImagePrompt = try container.decodeIfPresent(String.self, forKey: .thematicImagePrompt)
         selectedLLMId = try container.decodeIfPresent(String.self, forKey: .selectedLLMId)
         temperature = try container.decodeIfPresent(Double.self, forKey: .temperature)
 
-        moodBoardImageURLs = try container.decodeIfPresent([String].self, forKey: .moodBoardImageURLs)
-        print("[Campaign Decodable] Attempted to decode moodBoardImageURLs: \(moodBoardImageURLs?.joined(separator: ", ") ?? "nil")")
+        do {
+            moodBoardImageURLs = try container.decodeIfPresent([String].self, forKey: .moodBoardImageURLs)
+            print("[Campaign Decodable] moodBoardImageURLs successfully decoded (or was nil in JSON): \(moodBoardImageURLs?.joined(separator: ", ") ?? "nil")")
+        } catch let error as DecodingError {
+            print("❗️ [Campaign Decodable] DecodingError for moodBoardImageURLs: \(error) - Key: \(CodingKeys.moodBoardImageURLs.stringValue)")
+            moodBoardImageURLs = nil
+        } catch {
+            print("❗️ [Campaign Decodable] UNKNOWN error decoding moodBoardImageURLs: \(error) - Key: \(CodingKeys.moodBoardImageURLs.stringValue)")
+            moodBoardImageURLs = nil
+        }
 
         themePrimaryColor = try container.decodeIfPresent(String.self, forKey: .themePrimaryColor)
         themeSecondaryColor = try container.decodeIfPresent(String.self, forKey: .themeSecondaryColor)
