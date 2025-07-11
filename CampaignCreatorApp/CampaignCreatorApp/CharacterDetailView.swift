@@ -35,17 +35,17 @@ struct CharacterDetailView: View {
                             // KFImage loads and caches the character's avatar (first imageURL).
                             // Displayed as a circular icon.
                             KFImage(imageURL)
-                                .placeholder { // Shown during loading or on failure.
+                                .placeholder { // Shown during loading.
                                     ProgressView().frame(width: 50, height: 50)
+                                }
+                                .onFailure { error in // Log errors if image loading fails.
+                                    print("KFImage failed to load character image \(imageURL.absoluteString): \(error.localizedDescription)")
                                 }
                                 .resizable()
                                 .aspectRatio(contentMode: .fill) // Fills the circular frame.
                                 .frame(width: 50, height: 50) // Sized for a small icon/avatar.
                                 .clipShape(Circle()) // Makes the avatar circular.
                                 .overlay(Circle().stroke(Color.secondary, lineWidth: 1))
-                                .onFailure { error in // Log errors if image loading fails.
-                                    print("KFImage failed to load character image \(imageURL.absoluteString): \(error.localizedDescription)")
-                                }
                         }
                         .buttonStyle(.plain) // Use plain to make the image itself the button
                     } else {
@@ -155,15 +155,15 @@ struct FullCharacterImageView: View {
                 if let url = imageURL {
                     // KFImage loads and caches the full-size character image.
                     KFImage(url)
-                        .placeholder { // Shown during loading or on failure.
+                        .placeholder { // Shown during loading.
                             ProgressView("Loading Image...")
+                        }
+                        .onFailure { error in // Log errors if image loading fails.
+                            print("KFImage failed to load full character image \(url.absoluteString): \(error.localizedDescription)")
                         }
                         .resizable()
                         .aspectRatio(contentMode: .fit) // Ensures the entire image is visible.
                         .padding()
-                        .onFailure { error in // Log errors if image loading fails.
-                            print("KFImage failed to load full character image \(url.absoluteString): \(error.localizedDescription)")
-                        }
                 } else {
                     // Shown if no URL is provided to the sheet.
                     Text("No image URL provided.")

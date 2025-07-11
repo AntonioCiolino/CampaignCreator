@@ -39,8 +39,11 @@ struct CampaignHeaderView: View {
                 // KFImage loads and caches the campaign badge.
                 // Displayed as a circular icon.
                 KFImage(badgeUrl)
-                    .placeholder { // Shown during loading or on failure.
+                    .placeholder { // Shown during loading.
                         ProgressView().frame(width: 50, height: 50).padding(.top, 5)
+                    }
+                    .onFailure { error in // Log errors if image loading fails.
+                        print("KFImage failed to load campaign badge \(badgeUrlString): \(error.localizedDescription)")
                     }
                     .resizable()
                     .aspectRatio(contentMode: .fit) // Ensures the entire image fits within the frame.
@@ -48,9 +51,6 @@ struct CampaignHeaderView: View {
                     .clipShape(Circle()) // Makes the badge circular.
                     .overlay(Circle().stroke(currentPrimaryColor, lineWidth: 2)) // Adds a themed border.
                     .padding(.top, 5)
-                    .onFailure { error in // Log errors if image loading fails.
-                        print("KFImage failed to load campaign badge \(badgeUrlString): \(error.localizedDescription)")
-                    }
                     .id(campaign.badgeImageURL) // Ensures view redraws if the URL string changes.
             } else {
                 // Default placeholder if no badgeImageURL is set.

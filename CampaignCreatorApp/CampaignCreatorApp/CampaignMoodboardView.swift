@@ -335,19 +335,21 @@ struct CampaignMoodboardView: View {
                 // Use KFImage for asynchronous image loading and caching from a URL.
                 // Kingfisher handles memory and disk caching automatically.
                 KFImage(URL(string: urlString))
-                    .placeholder { // Displayed while the image is loading or if it fails.
+                    .placeholder { // Displayed while the image is loading.
                         ProgressView()
                             .frame(maxWidth: .infinity, idealHeight: 120)
                             .background(Color.gray.opacity(0.1))
+                    }
+                    .onFailure { error in // Handle image loading failures.
+                        print("KFImage failed to load image \(urlString): \(error.localizedDescription)")
+                        // Optionally, display a specific error placeholder here too,
+                        // though KFImage's default is often to show the .placeholder content.
                     }
                     .resizable()
                     .aspectRatio(contentMode: .fill)
                     .frame(minWidth: 0, maxWidth: .infinity)
                     .frame(height: 120)
                     .clipped()
-                    .onFailure { error in
-                        print("KFImage failed to load image \(urlString): \(error.localizedDescription)")
-                    }
             }
             .buttonStyle(.plain)
         }
