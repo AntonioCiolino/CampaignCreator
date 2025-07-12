@@ -363,6 +363,78 @@ struct CampaignDetailView: View {
         isLoadingFeatures = false
     }
 
+    // Extracted view for campaign content sections
+    @ViewBuilder
+    private var campaignContentSections: some View {
+        DisclosureGroup("Campaign Sections") {
+            VStack(alignment: .leading, spacing: 16) {
+                CampaignCustomSectionsEditor(
+                    localCampaignCustomSections: $localCampaignCustomSections,
+                    customSectionTitleDebounceTimers: $customSectionTitleDebounceTimers,
+                    customSectionContentDebounceTimers: $customSectionContentDebounceTimers,
+                    customTextViewCoordinators: $customTextViewCoordinators,
+                    nextTemporaryClientSectionID: $nextTemporaryClientSectionID,
+                    showingImagePromptModalForSection: $showingImagePromptModalForSection,
+                    currentSectionIdForImageGen: $currentSectionIdForImageGen,
+                    imageGenPromptText: $imageGenPromptText,
+                    currentFont: currentFont,
+                    currentPrimaryColor: currentPrimaryColor,
+                    currentTextColor: currentTextColor,
+                    sectionTypes: sectionTypes,
+                    snippetFeatures: snippetFeatures,
+                    isLoadingFeatures: isLoadingFeatures,
+                    saveCampaignDetails: { source, includeTheme, includeCustom, includeStandard, editingSectionID, latestContent in
+                        await self.saveCampaignDetails(source: source, includeTheme: includeTheme, includeCustomSections: includeCustom, includeStandardSections: includeStandard, editingSectionID: editingSectionID, latestSectionContent: latestContent)
+                    },
+                    handleSnippetFeatureSelection: self.handleSnippetFeatureSelection,
+                    handleFullSectionRegeneration: self.handleFullSectionRegeneration
+                )
+                CampaignStandardSectionsView(
+                    sections: $campaign.sections,
+                    customSectionTitleDebounceTimers: $customSectionTitleDebounceTimers,
+                    customSectionContentDebounceTimers: $customSectionContentDebounceTimers,
+                    customTextViewCoordinators: $customTextViewCoordinators,
+                    showingImagePromptModalForStandardSection: $showingImagePromptModalForStandardSection,
+                    currentStandardSectionIndexForImageGen: $currentStandardSectionIndexForImageGen,
+                    imageGenPromptText: $imageGenPromptText,
+                    currentFont: currentFont,
+                    currentPrimaryColor: currentPrimaryColor,
+                    currentTextColor: currentTextColor,
+                    snippetFeatures: snippetFeatures,
+                    isLoadingFeatures: isLoadingFeatures,
+                    saveCampaignDetails: { source, includeTheme, includeCustom, includeStandard, editingSectionID, latestContent in
+                        await self.saveCampaignDetails(source: source, includeTheme: includeTheme, includeCustomSections: includeCustom, includeStandardSections: includeStandard, editingSectionID: editingSectionID, latestSectionContent: latestContent)
+                    },
+                    handleStandardSnippetFeatureSelection: self.handleStandardSnippetFeatureSelection,
+                    handleStandardSectionRegeneration: self.handleStandardSectionRegeneration
+                )
+            }
+        }
+        .padding().background(Color(.systemBackground)).cornerRadius(12)
+        .font(currentFont).foregroundColor(currentTextColor)
+    }
+
+    // Extracted view for LLM settings and related messages
+    @ViewBuilder
+    private var campaignLLMSettingsAndMessages: some View {
+        CampaignLLMSettingsView(
+            selectedLLMId: $campaign.selectedLLMId.withDefault((availableLLMsFromAPI.first ?? CampaignCreatorApp.placeholderLLMs.first)?.id ?? "default-llm-id"),
+            temperature: $campaign.temperature.withDefault(0.7),
+            availableLLMs: availableLLMsFromAPI.isEmpty ? CampaignCreatorApp.placeholderLLMs : availableLLMsFromAPI,
+            currentFont: currentFont,
+            currentTextColor: currentTextColor,
+            onLLMSettingsChange: { await self.saveCampaignDetails(source: .llmSettingsChange, includeLLMSettings: true) }
+        )
+        if !campaignCreator.isLLMServiceAvailable {
+            Text("Note: AI Text Generation features require OpenAI API key configuration in settings.")
+                .font(.caption).foregroundColor(.orange).padding(.vertical).frame(maxWidth: .infinity, alignment: .center)
+        }
+        if let llmFetchError = llmFetchError {
+            Text("Error fetching LLM list: \(llmFetchError)")
+                .font(.caption).foregroundColor(.red).padding(.vertical).frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+
     var body: some View {
         ZStack {
             if let bgImageURLString = campaign.themeBackgroundImageURL, let bgImageURL = URL(string: bgImageURLString) {
@@ -376,69 +448,12 @@ struct CampaignDetailView: View {
                     CampaignHeaderView(campaign: campaign, editableTitle: $editableTitle, isSaving: isSaving, isGeneratingText: isGeneratingText, currentPrimaryColor: currentPrimaryColor, onSetBadgeAction: { self.showingSetBadgeOptions = true })
                     CampaignConceptEditorView(isEditingConcept: $isEditingConcept, editableConcept: $editableConcept, isSaving: isSaving, isGeneratingText: isGeneratingText, currentPrimaryColor: currentPrimaryColor, currentFont: currentFont, currentTextColor: currentTextColor, onSaveChanges: { await self.saveCampaignDetails(source: .conceptEditorDoneButton) })
                     if let tocEntries = campaign.displayTOC, !tocEntries.isEmpty { tableOfContentsSection }
-                    DisclosureGroup("Campaign Sections") {
-                        VStack(alignment: .leading, spacing: 16) {
-                            CampaignCustomSectionsEditor(
-                                localCampaignCustomSections: $localCampaignCustomSections,
-                                customSectionTitleDebounceTimers: $customSectionTitleDebounceTimers,
-                                customSectionContentDebounceTimers: $customSectionContentDebounceTimers,
-                                customTextViewCoordinators: $customTextViewCoordinators,
-                                nextTemporaryClientSectionID: $nextTemporaryClientSectionID,
-                                showingImagePromptModalForSection: $showingImagePromptModalForSection,
-                                currentSectionIdForImageGen: $currentSectionIdForImageGen,
-                                imageGenPromptText: $imageGenPromptText,
-                                currentFont: currentFont,
-                                currentPrimaryColor: currentPrimaryColor,
-                                currentTextColor: currentTextColor,
-                                sectionTypes: sectionTypes,
-                                snippetFeatures: snippetFeatures,
-                                isLoadingFeatures: isLoadingFeatures,
-                                saveCampaignDetails: { source, includeTheme, includeCustom, includeStandard, editingSectionID, latestContent in
-                                    await self.saveCampaignDetails(source: source, includeTheme: includeTheme, includeCustomSections: includeCustom, includeStandardSections: includeStandard, editingSectionID: editingSectionID, latestSectionContent: latestContent)
-                                },
-                                handleSnippetFeatureSelection: self.handleSnippetFeatureSelection,
-                                handleFullSectionRegeneration: self.handleFullSectionRegeneration
-                            )
-                            CampaignStandardSectionsView(
-                                sections: $campaign.sections,
-                                customSectionTitleDebounceTimers: $customSectionTitleDebounceTimers,
-                                customSectionContentDebounceTimers: $customSectionContentDebounceTimers,
-                                customTextViewCoordinators: $customTextViewCoordinators,
-                                showingImagePromptModalForStandardSection: $showingImagePromptModalForStandardSection,
-                                currentStandardSectionIndexForImageGen: $currentStandardSectionIndexForImageGen,
-                                imageGenPromptText: $imageGenPromptText,
-                                currentFont: currentFont,
-                                currentPrimaryColor: currentPrimaryColor,
-                                currentTextColor: currentTextColor,
-                                snippetFeatures: snippetFeatures,
-                                isLoadingFeatures: isLoadingFeatures,
-                                saveCampaignDetails: { source, includeTheme, includeCustom, includeStandard, editingSectionID, latestContent in
-                                    await self.saveCampaignDetails(source: source, includeTheme: includeTheme, includeCustomSections: includeCustom, includeStandardSections: includeStandard, editingSectionID: editingSectionID, latestSectionContent: latestContent)
-                                },
-                                handleStandardSnippetFeatureSelection: self.handleStandardSnippetFeatureSelection,
-                                handleStandardSectionRegeneration: self.handleStandardSectionRegeneration
-                            )
-                        }
-                    }
-                    .padding().background(Color(.systemBackground)).cornerRadius(12)
-                    .font(currentFont).foregroundColor(currentTextColor)
+
+                    campaignContentSections // Extracted View
+
                     linkedCharactersSection
-                    CampaignLLMSettingsView(
-                        selectedLLMId: $campaign.selectedLLMId.withDefault((availableLLMsFromAPI.first ?? CampaignCreatorApp.placeholderLLMs.first)?.id ?? "default-llm-id"),
-                        temperature: $campaign.temperature.withDefault(0.7),
-                        availableLLMs: availableLLMsFromAPI.isEmpty ? CampaignCreatorApp.placeholderLLMs : availableLLMsFromAPI,
-                        currentFont: currentFont,
-                        currentTextColor: currentTextColor,
-                        onLLMSettingsChange: { await self.saveCampaignDetails(source: .llmSettingsChange, includeLLMSettings: true) }
-                    )
-                    if !campaignCreator.isLLMServiceAvailable {
-                        Text("Note: AI Text Generation features require OpenAI API key configuration in settings.")
-                            .font(.caption).foregroundColor(.orange).padding(.vertical).frame(maxWidth: .infinity, alignment: .center)
-                    }
-                    if let llmFetchError = llmFetchError {
-                        Text("Error fetching LLM list: \(llmFetchError)")
-                            .font(.caption).foregroundColor(.red).padding(.vertical).frame(maxWidth: .infinity, alignment: .center)
-                    }
+
+                    campaignLLMSettingsAndMessages // Extracted View
                 }
                 .padding().font(currentFont).foregroundColor(currentTextColor)
             }
