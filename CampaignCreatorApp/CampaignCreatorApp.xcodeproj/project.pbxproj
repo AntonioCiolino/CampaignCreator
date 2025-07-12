@@ -10,6 +10,7 @@
 		3D92BBE52B8C8A8E00B8E8E8 /* CampaignCreatorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D92BBE42B8C8A8E00B8E8E8 /* CampaignCreatorApp.swift */; };
 		3D92BBE72B8C8A8E00B8E8E8 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D92BBE62B8C8A8E00B8E8E8 /* ContentView.swift */; };
 		3D92BBE92B8C8A8F00B8E8E8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3D92BBE82B8C8A8F00B8E8E8 /* Assets.xcassets */; };
+		3D92BBED2B8C8A8F00B8E8E8 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3D92BBEA2B8C8A8F00B8E8E8 /* Info.plist */; };
 		3D92BBEC2B8C8A8F00B8E8E8 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3D92BBEB2B8C8A8F00B8E8E8 /* Preview Assets.xcassets */; };
 		3D92BBF42B8C8B0200B8E8E8 /* CampaignCreatorLib in Frameworks */ = {isa = PBXBuildFile; productRef = 3D92BBF32B8C8B0200B8E8E8 /* CampaignCreatorLib */; };
 		3D92BBFA2B8C8D4C00B8E8E8 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D92BBF92B8C8D4C00B8E8E8 /* SettingsView.swift */; };
@@ -48,6 +49,7 @@
 		3D92BBE42B8C8A8E00B8E8E8 /* CampaignCreatorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignCreatorApp.swift; sourceTree = "<group>"; };
 		3D92BBE62B8C8A8E00B8E8E8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		3D92BBE82B8C8A8F00B8E8E8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		3D92BBEA2B8C8A8F00B8E8E8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		3D92BBEB2B8C8A8F00B8E8E8 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		3D92BBF92B8C8D4C00B8E8E8 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		9414ACC32E203A08005C0B17 /* CampaignMoodboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignMoodboardView.swift; sourceTree = "<group>"; };
@@ -221,6 +223,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3D92BBED2B8C8A8F00B8E8E8 /* Info.plist in Resources */,
 				3D92BBEC2B8C8A8F00B8E8E8 /* Preview Assets.xcassets in Resources */,
 				3D92BBE92B8C8A8F00B8E8E8 /* Assets.xcassets in Resources */,
 			);
@@ -397,7 +400,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"CampaignCreatorApp/Preview Content\"";
 				DEVELOPMENT_TEAM = 7KKBC86UX7;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CampaignCreatorApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Campaign Creator";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
