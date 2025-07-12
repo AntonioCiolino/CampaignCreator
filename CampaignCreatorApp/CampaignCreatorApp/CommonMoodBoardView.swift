@@ -50,7 +50,9 @@ struct CommonMoodBoardView: View {
                                     return
                                 }
                                 selectedImageURL = url
-                                showingFullImageView = true
+                                DispatchQueue.main.async {
+                                    showingFullImageView = true
+                                }
                             },
                             onDelete: {
                                 deleteImage(urlString: urlString)
