@@ -370,7 +370,6 @@ struct CampaignDetailView: View {
                 CampaignCustomSectionsEditor(
                     localCampaignCustomSections: $localCampaignCustomSections,
                     customSectionTitleDebounceTimers: $customSectionTitleDebounceTimers,
-                    customSectionContentDebounceTimers: $customSectionContentDebounceTimers,
                     customTextViewCoordinators: $customTextViewCoordinators,
                     nextTemporaryClientSectionID: $nextTemporaryClientSectionID,
                     showingImagePromptModalForSection: $showingImagePromptModalForSection,
@@ -392,7 +391,6 @@ struct CampaignDetailView: View {
                 CampaignStandardSectionsView(
                     sections: $campaign.sections,
                     customSectionTitleDebounceTimers: $customSectionTitleDebounceTimers,
-                    customSectionContentDebounceTimers: $customSectionContentDebounceTimers,
                     customTextViewCoordinators: $customTextViewCoordinators,
                     showingImagePromptModalForStandardSection: $showingImagePromptModalForStandardSection,
                     currentStandardSectionIndexForImageGen: $currentStandardSectionIndexForImageGen,
@@ -571,9 +569,7 @@ struct CampaignDetailView: View {
         .onDisappear {
             titleDebounceTimer?.invalidate()
             customSectionTitleDebounceTimers.values.forEach { $0.invalidate() }
-            customSectionContentDebounceTimers.values.forEach { $0.invalidate() }
             customSectionTitleDebounceTimers.removeAll()
-            customSectionContentDebounceTimers.removeAll()
             if campaign.title != editableTitle || campaign.concept ?? "" != editableConcept {
                 Task { await saveCampaignDetails(source: .onDisappear) }
             }
@@ -705,7 +701,6 @@ struct ThemePropertyRow: View {
 struct CampaignStandardSectionsView: View {
     @Binding var sections: [CampaignSection]
     @Binding var customSectionTitleDebounceTimers: [Int: Timer]
-    @Binding var customSectionContentDebounceTimers: [Int: Timer]
     @Binding var customTextViewCoordinators: [Int: CustomTextView.Coordinator]
 
     @Binding var showingImagePromptModalForStandardSection: Bool
@@ -849,7 +844,6 @@ struct CampaignStandardSectionsView: View {
 struct CampaignCustomSectionsEditor: View {
     @Binding var localCampaignCustomSections: [CampaignCustomSection]
     @Binding var customSectionTitleDebounceTimers: [Int: Timer]
-    @Binding var customSectionContentDebounceTimers: [Int: Timer]
     @Binding var customTextViewCoordinators: [Int: CustomTextView.Coordinator]
     @Binding var nextTemporaryClientSectionID: Int
     @Binding var showingImagePromptModalForSection: Bool
