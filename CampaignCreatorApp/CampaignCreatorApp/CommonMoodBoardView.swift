@@ -2,6 +2,10 @@ import SwiftUI
 import CampaignCreatorLib
 import Kingfisher
 
+struct ErrorDetail: Decodable {
+    let detail: String
+}
+
 struct CommonMoodBoardView: View {
     @Binding var imageURLs: [String]
     let onSave: () -> Void
@@ -87,6 +91,7 @@ struct CommonMoodBoardView: View {
                     TextField("https://example.com/image.png", text: $newImageURLInput)
                         .keyboardType(.URL)
                         .autocapitalization(.none)
+                        .textFieldStyle(.plain)
                 }
                 Button("Add Image") {
                     Task {
@@ -133,7 +138,16 @@ struct CommonMoodBoardView: View {
                 }
                 showingAddURLSheet = false
             case .failure(let error):
-                alertItem = AlertMessageItem(message: "Failed to upload image: \(error.localizedDescription)")
+                if case let .serverError(_, message) = error, let messageData = message?.data(using: .utf8) {
+                    do {
+                        let errorDetail = try JSONDecoder().decode(ErrorDetail.self, from: messageData)
+                        alertItem = AlertMessageItem(message: "Failed to upload image: \(errorDetail.detail)")
+                    } catch {
+                        alertItem = AlertMessageItem(message: "Failed to upload image: \(error.localizedDescription)")
+                    }
+                } else {
+                    alertItem = AlertMessageItem(message: "Failed to upload image: \(error.localizedDescription)")
+                }
             }
         } catch {
             alertItem = AlertMessageItem(message: "Failed to download image: \(error.localizedDescription)")
