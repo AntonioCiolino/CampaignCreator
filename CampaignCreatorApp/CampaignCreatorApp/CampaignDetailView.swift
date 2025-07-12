@@ -631,7 +631,34 @@ struct CampaignDetailView: View {
     private func performAICampaignImageGeneration() async { /* ... existing ... */ }
     private func performAIBadgeGeneration() async { /* ... existing ... */ }
     enum SaveSource { case titleField, conceptEditorDoneButton, onDisappear, themeEditorDismissed, customSectionChange, standardSectionChange, llmSettingsChange, badgeImageUpdate }
-    private func saveCampaignDetails(source: SaveSource, includeTheme: Bool = false, includeCustomSections: Bool = false, includeStandardSections: Bool = false, includeLLMSettings: Bool = false, editingSectionID: Int? = nil, latestSectionContent: String? = nil) async { /* ... existing ... */ }
+    private func saveCampaignDetails(source: SaveSource, includeTheme: Bool = false, includeCustomSections: Bool = false, includeStandardSections: Bool = false, includeLLMSettings: Bool = false, editingSectionID: Int? = nil, latestSectionContent: String? = nil) async {
+        isSaving = true
+
+        // Create a copy to modify
+        var campaignToSave = self.campaign
+
+        // Update the copy with the latest state from the UI
+        campaignToSave.title = editableTitle
+        campaignToSave.concept = editableConcept
+        campaignToSave.customSections = localCampaignCustomSections
+
+        do {
+            // Call the CampaignCreator's update method with the modified campaign object
+            let updatedCampaign = try await campaignCreator.updateCampaign(campaignToSave)
+
+            // On success, update the view's state with the authoritative version from the server
+            self.campaign = updatedCampaign
+            self.editableTitle = updatedCampaign.title
+            self.editableConcept = updatedCampaign.concept ?? ""
+            self.localCampaignCustomSections = updatedCampaign.customSections ?? []
+
+        } catch {
+            errorMessage = "Failed to save campaign: \(error.localizedDescription)"
+            showErrorAlert = true
+        }
+
+        isSaving = false
+    }
     private var generateSheetView: some View { EmptyView() }
     private func performAIGeneration() async { /* ... existing ... */ }
     private var exportSheetView: some View { EmptyView() }
