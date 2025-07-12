@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		3D92BBE52B8C8A8E00B8E8E8 /* CampaignCreatorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D92BBE42B8C8A8E00B8E8E8 /* CampaignCreatorApp.swift */; };
 		3D92BBE72B8C8A8E00B8E8E8 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D92BBE62B8C8A8E00B8E8E8 /* ContentView.swift */; };
-		3D92BBE92B8C8A8F00B8E8E8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3D92BBE82B8C8A8F00B8E8E8 /* Assets.xcassets */; };
 		3D92BBEC2B8C8A8F00B8E8E8 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3D92BBEB2B8C8A8F00B8E8E8 /* Preview Assets.xcassets */; };
 		3D92BBF42B8C8B0200B8E8E8 /* CampaignCreatorLib in Frameworks */ = {isa = PBXBuildFile; productRef = 3D92BBF32B8C8B0200B8E8E8 /* CampaignCreatorLib */; };
 		3D92BBFA2B8C8D4C00B8E8E8 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D92BBF92B8C8D4C00B8E8E8 /* SettingsView.swift */; };
@@ -22,6 +21,8 @@
 		941C6F962E23094A00B6D6FD /* video2.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 941C6F932E23094A00B6D6FD /* video2.mp4 */; };
 		941C6F972E23094A00B6D6FD /* video3.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 941C6F942E23094A00B6D6FD /* video3.mp4 */; };
 		941C6F992E23095800B6D6FD /* video1.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 941C6F982E23095800B6D6FD /* video1.mp4 */; };
+		941C6F9B2E23136100B6D6FD /* contents.json in Resources */ = {isa = PBXBuildFile; fileRef = 941C6F9A2E23136100B6D6FD /* contents.json */; };
+		941C6F9E2E2317F700B6D6FD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 941C6F9D2E2317F700B6D6FD /* Assets.xcassets */; };
 		943031802E1C8B1000F3C129 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9430317E2E1C8B1000F3C129 /* KeychainHelper.swift */; };
 		943031812E1C8B1000F3C129 /* Binding+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9430317A2E1C8B1000F3C129 /* Binding+Helpers.swift */; };
 		943031822E1C8B1000F3C129 /* CampaignThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9430317B2E1C8B1000F3C129 /* CampaignThemeManager.swift */; };
@@ -52,7 +53,6 @@
 		3D92BBE12B8C8A8E00B8E8E8 /* CampaignCreatorApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CampaignCreatorApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3D92BBE42B8C8A8E00B8E8E8 /* CampaignCreatorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignCreatorApp.swift; sourceTree = "<group>"; };
 		3D92BBE62B8C8A8E00B8E8E8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		3D92BBE82B8C8A8F00B8E8E8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3D92BBEB2B8C8A8F00B8E8E8 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		3D92BBF92B8C8D4C00B8E8E8 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		9414ACC32E203A08005C0B17 /* CampaignMoodboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignMoodboardView.swift; sourceTree = "<group>"; };
@@ -64,6 +64,8 @@
 		941C6F932E23094A00B6D6FD /* video2.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = video2.mp4; sourceTree = "<group>"; };
 		941C6F942E23094A00B6D6FD /* video3.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = video3.mp4; sourceTree = "<group>"; };
 		941C6F982E23095800B6D6FD /* video1.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = video1.mp4; sourceTree = "<group>"; };
+		941C6F9A2E23136100B6D6FD /* contents.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = contents.json; sourceTree = "<group>"; };
+		941C6F9D2E2317F700B6D6FD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9430317A2E1C8B1000F3C129 /* Binding+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Binding+Helpers.swift"; sourceTree = "<group>"; };
 		9430317B2E1C8B1000F3C129 /* CampaignThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignThemeManager.swift; sourceTree = "<group>"; };
 		9430317C2E1C8B1000F3C129 /* CustomTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomTextView.swift; sourceTree = "<group>"; };
@@ -149,12 +151,13 @@
 				949269E42E1AC11300376F0A /* CharacterCreateView.swift */,
 				949269E52E1AC11300376F0A /* CharacterDetailView.swift */,
 				949269E62E1AC11300376F0A /* CharacterEditView.swift */,
+				941C6F9D2E2317F700B6D6FD /* Assets.xcassets */,
 				949269E72E1AC11300376F0A /* CharacterListView.swift */,
 				949269E82E1AC11300376F0A /* LoginView.swift */,
 				3D92BBE42B8C8A8E00B8E8E8 /* CampaignCreatorApp.swift */,
 				3D92BBE62B8C8A8E00B8E8E8 /* ContentView.swift */,
 				3D92BBF92B8C8D4C00B8E8E8 /* SettingsView.swift */,
-				3D92BBE82B8C8A8F00B8E8E8 /* Assets.xcassets */,
+				941C6F9A2E23136100B6D6FD /* contents.json */,
 				3D92BBEA2B8C8A8F00B8E8E8 /* Preview Content */,
 			);
 			path = CampaignCreatorApp;
@@ -244,11 +247,12 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				941C6F9E2E2317F700B6D6FD /* Assets.xcassets in Resources */,
 				941C6F992E23095800B6D6FD /* video1.mp4 in Resources */,
 				3D92BBEC2B8C8A8F00B8E8E8 /* Preview Assets.xcassets in Resources */,
+				941C6F9B2E23136100B6D6FD /* contents.json in Resources */,
 				941C6F962E23094A00B6D6FD /* video2.mp4 in Resources */,
 				941C6F972E23094A00B6D6FD /* video3.mp4 in Resources */,
-				3D92BBE92B8C8A8F00B8E8E8 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
