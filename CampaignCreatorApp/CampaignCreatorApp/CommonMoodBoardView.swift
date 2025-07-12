@@ -42,7 +42,13 @@ struct CommonMoodBoardView: View {
                         MoodboardCellView(
                             urlString: urlString,
                             onSelect: {
-                                selectedImageURL = URL(string: urlString)
+                                print("Selected image URL string: \(urlString)")
+                                guard let url = URL(string: urlString) else {
+                                    print("Failed to create URL from string: \(urlString)")
+                                    alertItem = AlertMessageItem(message: "Invalid image URL.")
+                                    return
+                                }
+                                selectedImageURL = url
                                 showingFullImageView = true
                             },
                             onDelete: {
