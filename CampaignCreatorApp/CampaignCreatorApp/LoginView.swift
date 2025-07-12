@@ -15,128 +15,174 @@ struct LoginView: View {
 
     // Video player state
     @State private var player: AVPlayer?
+    @State private var nextPlayer: AVPlayer?
+    @State private var playerOpacity: Double = 1.0
+    @State private var nextPlayerOpacity: Double = 0.0
+    @State private var playerStatus: String = "Not started"
     private let videoURLs = [
-        "https://campaigncreator.onrender.com/assets/videos/Dnd5e_realistic_high_202506282155_3836j.mp4",
-        "https://campaigncreator.onrender.com/assets/videos/The_goblin.mp4",
-        "https://campaigncreator.onrender.com/assets/videos/Dandelions_in_the_wind.mp4"
+        "video1.mp4",
+        "video2.mp4",
+        "video3.mp4"
     ]
     @State private var currentVideoIndex = 0
 
     var body: some View {
-        ZStack {
-            // Background Video Player
-            if let player = player {
-                VideoPlayer(player: player)
-                    .disabled(true) // Make it non-interactive
-                    .aspectRatio(contentMode: .fill)
-                    .opacity(0.3) // Adjust opacity to make it a background
-                    .edgesIgnoringSafeArea(.all)
-                    .clipped() // Added to ensure video player respects bounds
-                    // .onAppear { player.play() } // player.play() is now called reliably in setupVideoPlayer
-                    .onDisappear {
-                        player.pause()
-                        // Remove observer when the view disappears
-                        NotificationCenter.default.removeObserver(self, name: .AVPlayerItemDidPlayToEndTime, object: nil)
+        GeometryReader { geometry in
+            ZStack {
+                // Background Video Player
+                if let player = player {
+                    VideoPlayer(player: player)
+                        .disabled(true) // Make it non-interactive
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .aspectRatio(contentMode: .fill)
+                        .opacity(playerOpacity)
+                        .clipped()
+                }
+                if let nextPlayer = nextPlayer {
+                    VideoPlayer(player: nextPlayer)
+                        .disabled(true)
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .aspectRatio(contentMode: .fill)
+                        .opacity(nextPlayerOpacity)
+                        .clipped()
+                }
+
+                // Overlay with a semi-transparent color to make text more readable
+                Color.black.opacity(0.4).edgesIgnoringSafeArea(.all)
+
+                // Login Form
+                VStack(spacing: 20) {
+                    if geometry.size.height > geometry.size.width {
+                        Spacer()
                     }
-            }
 
-            // Overlay with a semi-transparent color to make text more readable
-            Color.black.opacity(0.4).edgesIgnoringSafeArea(.all)
-
-            // Login Form
-            VStack(spacing: 20) {
-                Spacer()
-
-                Text("Campaign Creator")
-                    .font(.system(size: 40, weight: .bold, design: .serif)) // Thematic font
-                    .foregroundColor(.white)
-                    .shadow(color: .black.opacity(0.5), radius: 2, x: 1, y: 1)
-
-                Image(systemName: "shield.lefthalf.fill") // Corrected SF Symbol
-                    .font(.system(size: 60))
-                    .foregroundColor(.white)
-                    .padding(.bottom, 20)
-                    .shadow(color: .black.opacity(0.5), radius: 2, x: 1, y: 1)
-
-                VStack(spacing: 15) {
-                    TextField("Username or Email", text: $usernameOrEmail)
-                        .keyboardType(.emailAddress)
-                        .textContentType(.username)
-                        .autocapitalization(.none)
-                        .padding()
-                        .background(Color.white.opacity(0.8))
-                        .cornerRadius(8)
-                        .shadow(radius: 3)
-
-                    SecureField("Password", text: $password)
-                        .textContentType(.password)
-                        .padding()
-                        .background(Color.white.opacity(0.8))
-                        .cornerRadius(8)
-                        .shadow(radius: 3)
-
-                    Toggle("Remember Me", isOn: $rememberMe)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 5) // Slight padding for the toggle text
-                }
-                .padding(.horizontal, 40)
-
-                if let error = loginAttemptError {
-                    Text(error)
-                        .font(.caption)
-                        .foregroundColor(.red.opacity(0.9))
-                        .padding(8)
-                        .background(Color.white.opacity(0.7))
-                        .cornerRadius(5)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 40)
-                }
-
-                if isAttemptingLogin {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        .scaleEffect(1.5)
-                        .padding(.top, 10)
-                } else {
-                    Button(action: performLogin) {
-                        Text("Login")
-                            .fontWeight(.semibold)
-                            .frame(maxWidth: .infinity)
-                            .padding()
+                    ViewThatFits {
+                        Text("Campaign Creator")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
                             .foregroundColor(.white)
-                            .background(Color.blue.opacity(0.9))
-                            .cornerRadius(8)
-                            .shadow(radius: 5)
+                            .shadow(color: .black.opacity(0.5), radius: 2, x: 1, y: 1)
+                        Text("CC")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .shadow(color: .black.opacity(0.5), radius: 2, x: 1, y: 1)
                     }
-                    .padding(.horizontal, 40)
-                    .padding(.top, 10)
-                    .disabled(usernameOrEmail.isEmpty || password.isEmpty)
-                }
 
-                Spacer()
-                Spacer()
+                    Image(systemName: "shield.lefthalf.fill") // Corrected SF Symbol
+                        .font(.system(size: 60))
+                        .foregroundColor(.white)
+                        .padding(.bottom, 20)
+                        .shadow(color: .black.opacity(0.5), radius: 2, x: 1, y: 1)
+
+                    VStack(spacing: 15) {
+                        TextField("Username or Email", text: $usernameOrEmail)
+                            .keyboardType(.emailAddress)
+                            .textContentType(.username)
+                            .autocapitalization(.none)
+                            .padding()
+                            .background(Color.white.opacity(0.8))
+                            .cornerRadius(8)
+                            .shadow(radius: 3)
+                            .font(.headline)
+
+                        SecureField("Password", text: $password)
+                            .textContentType(.password)
+                            .padding()
+                            .background(Color.white.opacity(0.8))
+                            .cornerRadius(8)
+                            .shadow(radius: 3)
+                            .font(.headline)
+
+                        Toggle("Remember Me", isOn: $rememberMe)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 5) // Slight padding for the toggle text
+                    }
+                    .padding(.horizontal, 60)
+
+                    if let error = loginAttemptError {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundColor(.red.opacity(0.9))
+                            .padding(8)
+                            .background(Color.white.opacity(0.7))
+                            .cornerRadius(5)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                    }
+
+                    if isAttemptingLogin {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(1.5)
+                            .padding(.top, 10)
+                    } else {
+                        Button(action: performLogin) {
+                            Text("Login")
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .background(Color.blue.opacity(0.9))
+                                .cornerRadius(8)
+                                .shadow(radius: 5)
+                        }
+                        .padding(.horizontal, 40)
+                        .padding(.top, 10)
+                        .disabled(usernameOrEmail.isEmpty || password.isEmpty)
+                    }
+
+                    Spacer()
+                    
+                    Spacer()
+                }
+                .padding()
+                .frame(maxWidth: 500)
+                .background(Color.black.opacity(0.2))
+                .cornerRadius(20)
             }
-            .padding()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity) // Constrain ZStack to screen bounds
-        .onAppear {
-            setupVideoPlayer()
-            loadSavedCredentials()
-        }
-        .onChange(of: campaignCreator.authError) { newError in
-            loginAttemptError = newError?.localizedDescription
-        }
-        .onChange(of: campaignCreator.isLoggingIn) { loggingInStatus in
-            isAttemptingLogin = loggingInStatus
-        }
-        .onChange(of: campaignCreator.isAuthenticated) { isAuthenticated in
-            if isAuthenticated {
-                handleLoginSuccess()
+            .frame(maxWidth: .infinity, maxHeight: .infinity) // Constrain ZStack to screen bounds
+            .onAppear {
+                setupVideoPlayer()
+                loadSavedCredentials()
+            }
+            .onChange(of: campaignCreator.authError) { newError in
+                loginAttemptError = newError?.localizedDescription
+            }
+            .onChange(of: campaignCreator.isLoggingIn) { loggingInStatus in
+                isAttemptingLogin = loggingInStatus
+            }
+            .onChange(of: campaignCreator.isAuthenticated) { isAuthenticated in
+                if isAuthenticated {
+                    handleLoginSuccess()
+                }
             }
         }
     }
 
-    private func loadSavedCredentials() {
+    func crossfade() {
+        // Start playing the next video
+        nextPlayer?.play()
+
+        // Animate the opacity of the players
+        withAnimation(.linear(duration: 1.0)) {
+            playerOpacity = 0.0
+            nextPlayerOpacity = 1.0
+        }
+
+        // After the crossfade, swap the players and set up the next video
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            self.player = self.nextPlayer
+            self.nextPlayer = nil
+            self.playerOpacity = 1.0
+            self.nextPlayerOpacity = 0.0
+            self.currentVideoIndex += 1
+            self.setupVideoPlayer()
+        }
+    }
+
+    func loadSavedCredentials() {
         if let lastUser = UserDefaults.standard.string(forKey: lastUsernameKey) {
             usernameOrEmail = lastUser
             do {
@@ -154,7 +200,7 @@ struct LoginView: View {
         }
     }
 
-    private func handleLoginSuccess() {
+    func handleLoginSuccess() {
         let userToRemember = usernameOrEmail.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !userToRemember.isEmpty else { return }
 
@@ -177,43 +223,54 @@ struct LoginView: View {
         }
     }
 
-    private func setupVideoPlayer() {
-        guard !videoURLs.isEmpty else { return }
-        let urlString = videoURLs[currentVideoIndex % videoURLs.count]
-        guard let videoURL = URL(string: urlString) else {
-            print("Error: Invalid video URL: \(urlString)")
+    func setupVideoPlayer() {
+        playerStatus = "Setting up video player..."
+        guard !videoURLs.isEmpty else {
+            playerStatus = "Error: Video URL list is empty."
             return
         }
-        let newPlayerItem = AVPlayerItem(url: videoURL)
+
+        // Set up the first player
         if player == nil {
-            player = AVPlayer(playerItem: newPlayerItem)
-        } else {
-            player?.replaceCurrentItem(with: newPlayerItem)
-        }
-
-        player?.isMuted = true
-        player?.actionAtItemEnd = .none
-
-        NotificationCenter.default.removeObserver(self, name: .AVPlayerItemDidPlayToEndTime, object: nil)
-        NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: player?.currentItem, queue: .main) { _ in
-            print("LoginView: Video item did play to end. Current index: \(self.currentVideoIndex). Setting up next video.")
-            self.currentVideoIndex += 1
-            self.setupVideoPlayer()
-        }
-
-        DispatchQueue.main.async {
-            self.player?.play()
-            if self.player?.rate == 0.0 && self.player?.error == nil {
-                 print("LoginView: player.play() called, but rate is 0 and no immediate error.")
-            } else if let error = self.player?.error {
-                print("LoginView: Player error on attempting play: \(error.localizedDescription)")
-            } else {
-                print("LoginView: player.play() called, current rate: \(self.player?.rate ?? 0).")
+            let fileName = videoURLs[currentVideoIndex % videoURLs.count]
+            let fileUrl = URL(fileURLWithPath: fileName)
+            let videoName = fileUrl.deletingPathExtension().lastPathComponent
+            let videoExtension = fileUrl.pathExtension
+            guard let videoURL = Bundle.main.url(forResource: videoName, withExtension: videoExtension) else {
+                print("Error: Video file not found: \(fileName)")
+                playerStatus = "Error: Video file not found: \(fileName)"
+                return
             }
+            let newPlayerItem = AVPlayerItem(url: videoURL)
+            player = AVPlayer(playerItem: newPlayerItem)
+            player?.isMuted = true
+            player?.actionAtItemEnd = .none
+            player?.play()
+        }
+
+        // Set up the next player
+        let nextVideoIndex = (currentVideoIndex + 1) % videoURLs.count
+        let nextFileName = videoURLs[nextVideoIndex]
+        let nextFileUrl = URL(fileURLWithPath: nextFileName)
+        let nextVideoName = nextFileUrl.deletingPathExtension().lastPathComponent
+        let nextVideoExtension = nextFileUrl.pathExtension
+        guard let nextVideoURL = Bundle.main.url(forResource: nextVideoName, withExtension: nextVideoExtension) else {
+            print("Error: Video file not found: \(nextFileName)")
+            playerStatus = "Error: Video file not found: \(nextFileName)"
+            return
+        }
+        let nextPlayerItem = AVPlayerItem(url: nextVideoURL)
+        nextPlayer = AVPlayer(playerItem: nextPlayerItem)
+        nextPlayer?.isMuted = true
+        nextPlayer?.actionAtItemEnd = .none
+
+        // Add observer for the current player to finish
+        NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: player?.currentItem, queue: .main) { _ in
+            self.crossfade()
         }
     }
 
-    private func performLogin() {
+    func performLogin() {
         loginAttemptError = nil
         // isAttemptingLogin state is now driven by observing campaignCreator.isLoggingIn
         Task {
