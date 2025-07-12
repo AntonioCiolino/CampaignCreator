@@ -5,6 +5,7 @@ import CampaignCreatorLib
 struct CampaignCreatorApp: App {
     @StateObject private var campaignCreator = CampaignCreator()
     @StateObject private var themeManager = CampaignThemeManager()
+    @StateObject private var imageUploadService = ImageUploadService(apiService: APIService())
 
     var body: some Scene {
         WindowGroup {
@@ -13,6 +14,7 @@ struct CampaignCreatorApp: App {
             ContentView()
                 .environmentObject(campaignCreator)
                 .environmentObject(themeManager)
+                .environmentObject(imageUploadService)
         }
     }
 }

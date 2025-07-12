@@ -3,6 +3,7 @@ import CampaignCreatorLib
 
 struct CharacterListView: View {
     @ObservedObject var campaignCreator: CampaignCreator
+    @EnvironmentObject var imageUploadService: ImageUploadService
     @State private var showingCreateSheet = false
 
     var body: some View {
@@ -35,7 +36,7 @@ struct CharacterListView: View {
                 } else {
                     List {
                         ForEach(campaignCreator.characters) { character in
-                            NavigationLink(destination: CharacterDetailView(character: character, campaignCreator: campaignCreator)) {
+                            NavigationLink(destination: CharacterDetailView(character: character, campaignCreator: campaignCreator).environmentObject(imageUploadService)) {
                                 VStack(alignment: .leading) {
                                     Text(character.name)
                                         .font(.headline)

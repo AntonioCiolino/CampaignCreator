@@ -7,6 +7,7 @@ struct CharacterDetailView: View {
     // and this view needs to reflect those changes immediately without a full list refresh.
     @State var character: Character
     @ObservedObject var campaignCreator: CampaignCreator
+    @EnvironmentObject var imageUploadService: ImageUploadService
 
     @State private var showingEditView = false
     @State private var showingFullCharacterImageSheet = false
@@ -117,7 +118,7 @@ struct CharacterDetailView: View {
                         // back in this detail view.
                         self.character = updatedCharacter
                         print("[CharacterDetailView] Moodboard updated character ID \(updatedCharacter.id).")
-                    })) {
+                    }).environmentObject(imageUploadService)) {
                         Image(systemName: "photo.stack") // Icon for moodboard/gallery
                     }
                 }
@@ -143,67 +144,6 @@ struct CharacterDetailView: View {
     }
 }
 
-// New View for displaying the full character image in a sheet
-struct FullCharacterImageView: View {
-    @Binding var imageURL: URL? // Use binding if URL could change or needs to be cleared
-    @Environment(\.dismiss) var dismiss
-
-    var body: some View {
-        // let _ = print("[FullCharacterImageView body] Received imageURL via binding: \(imageURL?.absoluteString ?? "nil")")
-        return NavigationView { // NavigationView for a title and dismiss button
-            VStack {
-                if let url = imageURL {
-                    // KFImage loads and caches the full-size character image.
-                    KFImage(url)
-                        .placeholder { // Shown during loading.
-                            ProgressView("Loading Image...")
-                        }
-                        .onFailure { error in // Log errors if image loading fails.
-                            print("KFImage failed to load full character image \(url.absoluteString): \(error.localizedDescription)")
-                        }
-                        .resizable()
-                        .aspectRatio(contentMode: .fit) // Ensures the entire image is visible.
-                        .padding()
-                } else {
-                    // Shown if no URL is provided to the sheet.
-                    Text("No image URL provided.")
-                    Image(systemName: "photo.fill") // Generic placeholder.
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 100, height: 100)
-                        .foregroundColor(.gray)
-                }
-                Spacer() // Pushes image to the top
-            }
-            .navigationTitle("Character Image")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        imageURL = nil // Clear the URL when dismissing
-                        dismiss()
-                    }
-                }
-                ToolbarItem(placement: .bottomBar) { // Or another suitable placement
-                    if let url = imageURL {
-                        Button(action: {
-                            UIApplication.shared.open(url)
-                        }) {
-                            Label("Open in Browser", systemImage: "safari.fill")
-                        }
-                        .disabled(imageURL == nil) // Disable if no URL
-                    } else {
-                        EmptyView() // Show nothing if no URL
-                    }
-                }
-            }
-        }
-        // Ensure the toolbar is visible, especially for .bottomBar items
-        // This might require embedding in a NavigationView if not already,
-        // or ensuring the parent context supports bottom bars.
-        // The existing NavigationView should suffice.
-    }
-}
 
 struct StatsView: View {
     let stats: CharacterStats

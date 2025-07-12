@@ -222,17 +222,20 @@ struct CommonMoodBoardView: View {
 
         var body: some View {
             ZStack(alignment: .topTrailing) {
-                KFImage(URL(string: urlString))
-                    .placeholder {
-                        ProgressView()
-                            .frame(maxWidth: .infinity, idealHeight: 120)
-                            .background(Color.gray.opacity(0.1))
-                    }
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(minWidth: 0, maxWidth: .infinity)
-                    .frame(height: 120)
-                    .clipped()
+                NavigationLink(destination: FullCharacterImageViewWrapper(initialDisplayURL: URL(string: urlString))) {
+                    KFImage(URL(string: urlString))
+                        .placeholder {
+                            ProgressView()
+                                .frame(maxWidth: .infinity, idealHeight: 120)
+                                .background(Color.gray.opacity(0.1))
+                        }
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(minWidth: 0, maxWidth: .infinity)
+                        .frame(height: 120)
+                        .clipped()
+                }
+                .buttonStyle(.plain)
 
                 if isEditing {
                     Button(action: onDelete) {
