@@ -435,6 +435,23 @@ struct CampaignDetailView: View {
         }
     }
 
+    // Extracted main content view to help with compiler performance
+    @ViewBuilder
+    private var mainContentView: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            CampaignHeaderView(campaign: campaign, editableTitle: $editableTitle, isSaving: isSaving, isGeneratingText: isGeneratingText, currentPrimaryColor: currentPrimaryColor, onSetBadgeAction: { self.showingSetBadgeOptions = true })
+            CampaignConceptEditorView(isEditingConcept: $isEditingConcept, editableConcept: $editableConcept, isSaving: isSaving, isGeneratingText: isGeneratingText, currentPrimaryColor: currentPrimaryColor, currentFont: currentFont, currentTextColor: currentTextColor, onSaveChanges: { await self.saveCampaignDetails(source: .conceptEditorDoneButton) })
+            if let tocEntries = campaign.displayTOC, !tocEntries.isEmpty { tableOfContentsSection }
+
+            campaignContentSections // Extracted View
+
+            linkedCharactersSection
+
+            campaignLLMSettingsAndMessages // Extracted View
+        }
+        .padding().font(currentFont).foregroundColor(currentTextColor)
+    }
+
     var body: some View {
         ZStack {
             if let bgImageURLString = campaign.themeBackgroundImageURL, let bgImageURL = URL(string: bgImageURLString) {
@@ -444,18 +461,7 @@ struct CampaignDetailView: View {
                 currentBackgroundColor.edgesIgnoringSafeArea(.all)
             }
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    CampaignHeaderView(campaign: campaign, editableTitle: $editableTitle, isSaving: isSaving, isGeneratingText: isGeneratingText, currentPrimaryColor: currentPrimaryColor, onSetBadgeAction: { self.showingSetBadgeOptions = true })
-                    CampaignConceptEditorView(isEditingConcept: $isEditingConcept, editableConcept: $editableConcept, isSaving: isSaving, isGeneratingText: isGeneratingText, currentPrimaryColor: currentPrimaryColor, currentFont: currentFont, currentTextColor: currentTextColor, onSaveChanges: { await self.saveCampaignDetails(source: .conceptEditorDoneButton) })
-                    if let tocEntries = campaign.displayTOC, !tocEntries.isEmpty { tableOfContentsSection }
-
-                    campaignContentSections // Extracted View
-
-                    linkedCharactersSection
-
-                    campaignLLMSettingsAndMessages // Extracted View
-                }
-                .padding().font(currentFont).foregroundColor(currentTextColor)
+                mainContentView // Using the extracted main content view
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
