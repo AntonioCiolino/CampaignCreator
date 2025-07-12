@@ -67,7 +67,7 @@ struct CampaignDetailView: View {
     
     @State private var showingImagePromptModalForSection: Bool = false
     @State private var currentSectionIdForImageGen: Int? = nil
-    // imageGenPromptText is already defined above for the campaign thematic image
+    @State private var imageGenPromptText: String = "" // Added back
     
     @State private var featureFetchError: String? = nil
     @State private var snippetProcessingError: String? = nil
@@ -637,6 +637,42 @@ struct CampaignDetailView: View {
 }
 
 // String extensions like stripSuffix and nilIfEmpty are now in StringUtils.swift
+
+struct ThemePropertyRow: View {
+    let label: String
+    let value: String?
+    var isURL: Bool = false
+
+    var body: some View {
+        if let value = value, !value.isEmpty {
+            HStack {
+                Text(label)
+                    .font(Font.caption.weight(.semibold))
+                    .foregroundColor(.secondary)
+                Spacer()
+                if isURL {
+                    if let url = URL(string: value) {
+                        Link(destination: url) {
+                            Text(value)
+                                .truncationMode(.middle)
+                                .lineLimit(1)
+                                .foregroundColor(.accentColor)
+                        }
+                    } else {
+                        Text(value)
+                            .truncationMode(.middle)
+                            .lineLimit(1)
+                            .foregroundColor(.gray)
+                    }
+                } else {
+                    Text(value)
+                        .foregroundColor(.primary)
+                }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+}
 
 struct CampaignStandardSectionsView: View {
     @Binding var sections: [CampaignSection]
