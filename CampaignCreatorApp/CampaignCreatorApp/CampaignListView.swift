@@ -9,6 +9,7 @@ struct CampaignListView: View {
     @State private var newCampaignTitle = ""
     @State private var showCreationErrorAlert = false
     @State private var creationErrorMessage = ""
+    @State private var showingSettingsSheet = false
 
     var body: some View {
         NavigationView {
@@ -88,8 +89,10 @@ struct CampaignListView: View {
             .navigationTitle("Campaigns")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    if campaignCreator.isLoadingCampaigns && !campaignCreator.campaigns.isEmpty {
-                        ProgressView() // Show a small spinner if loading in background
+                    Button(action: {
+                        showingSettingsSheet = true
+                    }) {
+                        Image(systemName: "gear")
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -99,6 +102,9 @@ struct CampaignListView: View {
                         Image(systemName: "plus")
                     }
                 }
+            }
+            .sheet(isPresented: $showingSettingsSheet) {
+                SettingsView(campaignCreator: campaignCreator)
             }
             .sheet(isPresented: $showingCreateSheet) {
                 NavigationView {

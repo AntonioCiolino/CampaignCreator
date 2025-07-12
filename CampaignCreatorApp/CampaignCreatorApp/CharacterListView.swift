@@ -6,6 +6,7 @@ struct CharacterListView: View {
     @ObservedObject var campaignCreator: CampaignCreator
     @EnvironmentObject var imageUploadService: ImageUploadService
     @State private var showingCreateSheet = false
+    @State private var showingSettingsSheet = false
 
     var body: some View {
         NavigationView {
@@ -75,8 +76,10 @@ struct CharacterListView: View {
             .navigationTitle("Characters")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    if campaignCreator.isLoadingCharacters && !campaignCreator.characters.isEmpty {
-                        ProgressView()
+                    Button(action: {
+                        showingSettingsSheet = true
+                    }) {
+                        Image(systemName: "gear")
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -86,6 +89,9 @@ struct CharacterListView: View {
                         Image(systemName: "plus")
                     }
                 }
+            }
+            .sheet(isPresented: $showingSettingsSheet) {
+                SettingsView(campaignCreator: campaignCreator)
             }
             .sheet(isPresented: $showingCreateSheet, onDismiss: {
                 // CharacterCreateView calls fetchCharacters internally upon successful save via CampaignCreator
