@@ -48,6 +48,14 @@ struct MainTabView: View {
                 }
                 .tag(1)
 
+            if UIDevice.current.userInterfaceIdiom == .phone {
+                SettingsView(campaignCreator: campaignCreator) // Pass campaignCreator for logout
+                    .tabItem {
+                        Image(systemName: "gear")
+                        Text("Settings")
+                    }
+                    .tag(2)
+            }
         }
         .accentColor(.blue)
     }

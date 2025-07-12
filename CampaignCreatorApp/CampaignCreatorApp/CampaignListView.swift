@@ -88,11 +88,13 @@ struct CampaignListView: View {
             }
             .navigationTitle("Campaigns")
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: {
-                        showingSettingsSheet = true
-                    }) {
-                        Image(systemName: "gear")
+                if UIDevice.current.userInterfaceIdiom == .pad {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button(action: {
+                            showingSettingsSheet = true
+                        }) {
+                            Image(systemName: "gear")
+                        }
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
