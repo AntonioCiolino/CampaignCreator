@@ -215,9 +215,9 @@ struct CampaignDetailView: View {
                 }
                 await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true)
             } catch {
-                let errorDescription = "Error regenerating full content for section \(section.title): \(error.localizedDescription)"
+                let errorDescription = "Error regenerating full content for section \(section.title ?? "Untitled"): \(error.localizedDescription)"
                 fullSectionRegenError = errorDescription
-                self.errorMessage = "Content Regeneration Failed (Section: \(section.title))"
+                self.errorMessage = "Content Regeneration Failed (Section: \(section.title ?? "Untitled"))"
                 self.showErrorAlert = true
             }
         }
