@@ -33,12 +33,12 @@ public struct TOCEntry: Identifiable, Codable, Sendable {
 // New struct for campaign custom sections
 public struct CampaignCustomSection: Identifiable, Codable, Sendable, Hashable { // Added Hashable
     public var id: Int // CHANGED from UUID to Int
-    public var title: String
+    public var title: String? // Made optional to match protocol and CampaignSection
     public var content: String
     public var type: String?
     // public var order: Int // Optional: if explicit ordering is needed beyond array order
 
-    public init(id: Int, title: String, content: String, type: String? = "Generic" /*, order: Int = 0*/) { // CHANGED id to Int, made it non-optional in param
+    public init(id: Int, title: String?, content: String, type: String? = "Generic" /*, order: Int = 0*/) { // CHANGED id to Int, title to String?
         self.id = id
         self.title = title
         self.content = content

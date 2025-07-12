@@ -12,18 +12,6 @@ extension Binding where Value == Double? {
     }
 }
 
-// Protocol for sections - not strictly necessary if using specific types in callbacks
-// but could be useful for more generic handlers if desired later.
-protocol CampaignSectionTypeProtocol {
-    var id: Int { get }
-    var title: String? { get set }
-    var content: String { get set }
-    // Add other common properties if needed
-}
-extension CampaignSection: CampaignSectionTypeProtocol {}
-extension CampaignCustomSection: CampaignSectionTypeProtocol {}
-
-
 struct CampaignDetailView: View {
     @State var campaign: Campaign
     @ObservedObject var campaignCreator: CampaignCreator
@@ -625,10 +613,6 @@ struct CampaignDetailView: View {
     private func performAIGeneration() async { /* ... existing ... */ }
     private var exportSheetView: some View { /* ... existing ... */ }
     private func exportCampaignContent() { /* ... existing ... */ }
-    struct CampaignSectionsListView: View { /* ... existing ... */ }
-    struct CampaignThemeDisplayView: View { /* ... existing ... */ }
-    struct CampaignTableOfContentsView: View { /* ... existing ... */ }
-    struct ThemePropertyRow: View { /* ... existing ... */ }
 }
 
 // String extensions like stripSuffix and nilIfEmpty are now in StringUtils.swift
