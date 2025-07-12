@@ -43,8 +43,9 @@ struct CommonMoodBoardView: View {
                             urlString: urlString,
                             onSelect: {
                                 print("Selected image URL string: \(urlString)")
-                                guard let url = URL(string: urlString) else {
-                                    print("Failed to create URL from string: \(urlString)")
+                                let sanitizedURLString = urlString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                                guard let url = URL(string: sanitizedURLString) else {
+                                    print("Failed to create URL from string: \(sanitizedURLString)")
                                     alertItem = AlertMessageItem(message: "Invalid image URL.")
                                     return
                                 }
