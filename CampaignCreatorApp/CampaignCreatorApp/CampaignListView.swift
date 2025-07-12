@@ -1,5 +1,6 @@
 import SwiftUI
 import CampaignCreatorLib
+import Kingfisher
 
 struct CampaignListView: View {
     // CampaignCreator is now an @MainActor class and uses @Published for campaigns
@@ -40,22 +41,38 @@ struct CampaignListView: View {
                     List {
                         ForEach(campaignCreator.campaigns) { campaign in
                             NavigationLink(destination: CampaignDetailView(campaign: campaign, campaignCreator: campaignCreator)) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(campaign.title)
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
-                                    HStack {
-                                        Text("\(campaign.wordCount) words")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                        Spacer()
-                                        Text("Sections: \(campaign.sections.count)")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                        Spacer()
-                                        Text(campaign.modifiedAt != nil ? "\(campaign.modifiedAt!, style: .date)" : "N/A")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
+                                HStack {
+                                    if let badgeURL = campaign.badgeImageURL, let url = URL(string: badgeURL) {
+                                        KFImage(url)
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fill)
+                                            .frame(width: 40, height: 40)
+                                            .clipped()
+                                            .cornerRadius(4)
+                                    } else {
+                                        Image(systemName: "photo")
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fit)
+                                            .frame(width: 40, height: 40)
+                                            .foregroundColor(.gray)
+                                    }
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(campaign.title)
+                                            .font(.headline)
+                                            .foregroundColor(.primary)
+                                        HStack {
+                                            Text("\(campaign.wordCount) words")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                            Spacer()
+                                            Text("Sections: \(campaign.sections.count)")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                            Spacer()
+                                            Text(campaign.modifiedAt != nil ? "\(campaign.modifiedAt!, style: .date)" : "N/A")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
                                     }
                                 }
                                 .padding(.vertical, 2)
