@@ -378,6 +378,7 @@ struct CampaignDetailView: View {
                     currentSectionIdForImageGen: $currentSectionIdForImageGen,
                     imageGenPromptText: $imageGenPromptText,
                     currentFont: currentFont,
+                    currentFontFamily: campaign.themeFontFamily,
                     currentPrimaryColor: currentPrimaryColor,
                     currentTextColor: currentTextColor,
                     sectionTypes: sectionTypes,
@@ -398,6 +399,7 @@ struct CampaignDetailView: View {
                     currentStandardSectionIndexForImageGen: $currentStandardSectionIndexForImageGen,
                     imageGenPromptText: $imageGenPromptText,
                     currentFont: currentFont,
+                    currentFontFamily: campaign.themeFontFamily,
                     currentPrimaryColor: currentPrimaryColor,
                     currentTextColor: currentTextColor,
                     snippetFeatures: snippetFeatures,
@@ -418,9 +420,9 @@ struct CampaignDetailView: View {
     @ViewBuilder
     private var campaignLLMSettingsAndMessages: some View {
         CampaignLLMSettingsView(
-            selectedLLMId: $campaign.selectedLLMId.withDefault((availableLLMsFromAPI.first ?? CampaignCreatorApp.placeholderLLMs.first)?.id ?? "default-llm-id"),
+            selectedLLMId: $campaign.selectedLLMId.withDefault((availableLLMsFromAPI.first ?? placeholderLLMs.first)?.id ?? "default-llm-id"),
             temperature: $campaign.temperature.withDefault(0.7),
-            availableLLMs: availableLLMsFromAPI.isEmpty ? CampaignCreatorApp.placeholderLLMs : availableLLMsFromAPI,
+            availableLLMs: availableLLMsFromAPI.isEmpty ? placeholderLLMs : availableLLMsFromAPI,
             currentFont: currentFont,
             currentTextColor: currentTextColor,
             onLLMSettingsChange: { await self.saveCampaignDetails(source: .llmSettingsChange, includeLLMSettings: true) }
@@ -624,15 +626,15 @@ struct CampaignDetailView: View {
         return tempID
     }
 
-    private var generateImageSheetView: some View { /* ... existing ... */ }
-    private var generateBadgeSheetView: some View { /* ... existing ... */ }
+    private var generateImageSheetView: some View { EmptyView() }
+    private var generateBadgeSheetView: some View { EmptyView() }
     private func performAICampaignImageGeneration() async { /* ... existing ... */ }
     private func performAIBadgeGeneration() async { /* ... existing ... */ }
     enum SaveSource { case titleField, conceptEditorDoneButton, onDisappear, themeEditorDismissed, customSectionChange, standardSectionChange, llmSettingsChange, badgeImageUpdate }
     private func saveCampaignDetails(source: SaveSource, includeTheme: Bool = false, includeCustomSections: Bool = false, includeStandardSections: Bool = false, includeLLMSettings: Bool = false, editingSectionID: Int? = nil, latestSectionContent: String? = nil) async { /* ... existing ... */ }
-    private var generateSheetView: some View { /* ... existing ... */ }
+    private var generateSheetView: some View { EmptyView() }
     private func performAIGeneration() async { /* ... existing ... */ }
-    private var exportSheetView: some View { /* ... existing ... */ }
+    private var exportSheetView: some View { EmptyView() }
     private func exportCampaignContent() { /* ... existing ... */ }
 }
 
@@ -685,6 +687,7 @@ struct CampaignStandardSectionsView: View {
     @Binding var imageGenPromptText: String
 
     let currentFont: Font
+    let currentFontFamily: String?
     let currentPrimaryColor: Color
     let currentTextColor: Color
     let snippetFeatures: [Feature]
@@ -694,9 +697,9 @@ struct CampaignStandardSectionsView: View {
     let handleStandardSnippetFeatureSelection: (Feature, Int) -> Void
     let handleStandardSectionRegeneration: (Int) -> Void
 
-    private func uiFontFrom(swiftUIFont: Font, defaultSize: CGFloat = 16) -> UIFont {
-        if let fontName = (swiftUIFont as? Font.NamedProvider)?.name {
-             return UIFont(name: fontName, size: defaultSize) ?? UIFont.systemFont(ofSize: defaultSize)
+    private func uiFontFrom(fontName: String?, defaultSize: CGFloat = 16) -> UIFont {
+        if let fontName = fontName, !fontName.isEmpty {
+            return UIFont(name: fontName, size: defaultSize) ?? UIFont.systemFont(ofSize: defaultSize)
         }
         return UIFont.systemFont(ofSize: defaultSize)
     }
@@ -742,7 +745,7 @@ struct CampaignStandardSectionsView: View {
 
             CustomTextView(
                 text: sectionBinding.content,
-                font: uiFontFrom(swiftUIFont: currentFont),
+                font: uiFontFrom(fontName: currentFontFamily),
                 textColor: UIColor(currentTextColor),
                 onCoordinatorCreated: { coordinator in
                     customTextViewCoordinators[sectionBinding.wrappedValue.id] = coordinator
@@ -832,6 +835,7 @@ struct CampaignCustomSectionsEditor: View {
     @Binding var imageGenPromptText: String
 
     let currentFont: Font
+    let currentFontFamily: String?
     let currentPrimaryColor: Color
     let currentTextColor: Color
     let sectionTypes: [String]
@@ -842,9 +846,9 @@ struct CampaignCustomSectionsEditor: View {
     let handleSnippetFeatureSelection: (Feature, CampaignCustomSection) -> Void       // Adjusted for custom section
     let handleFullSectionRegeneration: (CampaignCustomSection) -> Void         // Adjusted for custom section
 
-    private func uiFontFrom(swiftUIFont: Font, defaultSize: CGFloat = 16) -> UIFont {
-        if let fontName = (swiftUIFont as? Font.NamedProvider)?.name {
-             return UIFont(name: fontName, size: defaultSize) ?? UIFont.systemFont(ofSize: defaultSize)
+    private func uiFontFrom(fontName: String?, defaultSize: CGFloat = 16) -> UIFont {
+        if let fontName = fontName, !fontName.isEmpty {
+            return UIFont(name: fontName, size: defaultSize) ?? UIFont.systemFont(ofSize: defaultSize)
         }
         return UIFont.systemFont(ofSize: defaultSize)
     }
@@ -864,15 +868,9 @@ struct CampaignCustomSectionsEditor: View {
                 .padding(.bottom, 2)
 
             ForEach($localCampaignCustomSections) { $section in
-                DisclosureGroup(
-                    label: {
-                        Text(section.title.isEmpty ? "New Custom Section" : section.title)
-                            .font(currentFont.weight(.bold))
-                            .foregroundColor(currentTextColor)
-                    }
-                ) {
+                DisclosureGroup {
                     VStack(alignment: .leading) {
-                        TextField("Section Title", text: $section.title)
+                        TextField("Section Title", text: $section.title.withDefault("New Custom Section"))
                             .font(currentFont.weight(.semibold))
                             .textFieldStyle(PlainTextFieldStyle())
                             .padding(.bottom, 2)
@@ -898,7 +896,7 @@ struct CampaignCustomSectionsEditor: View {
 
                         CustomTextView(
                             text: $section.content,
-                            font: uiFontFrom(swiftUIFont: currentFont),
+                            font: uiFontFrom(fontName: currentFontFamily),
                             textColor: UIColor(currentTextColor),
                             onCoordinatorCreated: { coordinator in
                                 customTextViewCoordinators[section.id] = coordinator
@@ -966,6 +964,10 @@ struct CampaignCustomSectionsEditor: View {
                         .padding(.top, 4)
                     }
                     .padding(.vertical, 8)
+                } label: {
+                    Text(section.title ?? "New Custom Section")
+                        .font(currentFont.weight(.bold))
+                        .foregroundColor(currentTextColor)
                 }
                 .padding(.bottom, 4)
                 Divider()
