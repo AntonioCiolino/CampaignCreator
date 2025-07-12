@@ -1,5 +1,6 @@
 import SwiftUI
 import CampaignCreatorLib
+import Kingfisher
 
 struct CharacterListView: View {
     @ObservedObject var campaignCreator: CampaignCreator
@@ -37,13 +38,29 @@ struct CharacterListView: View {
                     List {
                         ForEach(campaignCreator.characters) { character in
                             NavigationLink(destination: CharacterDetailView(character: character, campaignCreator: campaignCreator).environmentObject(imageUploadService)) {
-                                VStack(alignment: .leading) {
-                                    Text(character.name)
-                                        .font(.headline)
-                                    Text(character.description ?? "No description")
-                                        .font(.subheadline)
-                                        .foregroundColor(.gray)
-                                        .lineLimit(2) // Limit description lines in list
+                                HStack {
+                                    if let firstImageURL = character.imageURLs?.first, let url = URL(string: firstImageURL) {
+                                        KFImage(url)
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fill)
+                                            .frame(width: 40, height: 40)
+                                            .clipped()
+                                            .cornerRadius(4)
+                                    } else {
+                                        Image(systemName: "person.fill")
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fit)
+                                            .frame(width: 40, height: 40)
+                                            .foregroundColor(.gray)
+                                    }
+                                    VStack(alignment: .leading) {
+                                        Text(character.name)
+                                            .font(.headline)
+                                        Text(character.description ?? "No description")
+                                            .font(.subheadline)
+                                            .foregroundColor(.gray)
+                                            .lineLimit(2) // Limit description lines in list
+                                    }
                                 }
                             }
                         }
