@@ -51,7 +51,6 @@ struct CampaignDetailView: View {
 
     @State private var titleDebounceTimer: Timer?
     @State private var customSectionTitleDebounceTimers: [Int: Timer] = [:]
-    @State private var customSectionContentDebounceTimers: [Int: Timer] = [:]
     
     @State private var nextTemporaryClientSectionID: Int = -1
     @State private var localCampaignCustomSections: [CampaignCustomSection]
@@ -776,19 +775,15 @@ struct CampaignStandardSectionsView: View {
                 textColor: UIColor(currentTextColor),
                 onCoordinatorCreated: { coordinator in
                     customTextViewCoordinators[sectionBinding.wrappedValue.id] = coordinator
+                },
+                onEndEditing: { finalContent in
+                    Task { await self.saveCampaignDetails(.standardSectionChange, false, false, true, sectionBinding.wrappedValue.id, finalContent) }
                 }
             )
             .frame(minHeight: 100, maxHeight: 300)
             .background(Color(.secondarySystemGroupedBackground))
             .cornerRadius(8)
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
-            .onChange(of: sectionBinding.wrappedValue.content) { newContent in
-                let sectionId = sectionBinding.wrappedValue.id
-                customSectionContentDebounceTimers[sectionId]?.invalidate()
-                customSectionContentDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in
-                    Task { await self.saveCampaignDetails(.standardSectionChange, false, false, true, sectionId, newContent) }
-                }
-            }
 
             standardSectionActionButtons(sectionBinding: sectionBinding, index: index)
         }
@@ -927,19 +922,15 @@ struct CampaignCustomSectionsEditor: View {
                             textColor: UIColor(currentTextColor),
                             onCoordinatorCreated: { coordinator in
                                 customTextViewCoordinators[section.id] = coordinator
+                            },
+                            onEndEditing: { finalContent in
+                                Task { await self.saveCampaignDetails(.customSectionChange, false, true, false, section.id, finalContent) }
                             }
                         )
                         .frame(minHeight: 100, maxHeight: 300)
                         .background(Color(.secondarySystemGroupedBackground))
                         .cornerRadius(8)
                         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
-                        .onChange(of: section.content) { newContent in
-                            let sectionId = section.id
-                            customSectionContentDebounceTimers[sectionId]?.invalidate()
-                            customSectionContentDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in
-                                Task { await self.saveCampaignDetails(.customSectionChange, false, true, false, sectionId, newContent) }
-                            }
-                        }
 
                         HStack {
                             Button(role: section.id < 0 ? .none : .destructive) {
