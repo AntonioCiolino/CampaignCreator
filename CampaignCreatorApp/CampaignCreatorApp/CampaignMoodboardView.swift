@@ -182,8 +182,9 @@ struct CampaignMoodboardView: View {
                 }
                 if !localCampaign.moodBoardImageURLs!.contains(newAzureURL) {
                     localCampaign.moodBoardImageURLs!.append(newAzureURL)
-                    self.alertItem = AlertMessageItem(message: "Image added to mood board! Remember to Save.")
-                    print("[Moodboard AddURL] Image URL appended to localCampaign.moodBoardImageURLs.")
+                    Task { await saveMoodboardChanges() }
+                    self.alertItem = AlertMessageItem(message: "Image added and saved to mood board.")
+                    print("[Moodboard AddURL] Image URL appended to localCampaign.moodBoardImageURLs and auto-saved.")
                 } else {
                     self.alertItem = AlertMessageItem(message: "This image is already on the mood board.")
                     print("[Moodboard AddURL] Image already in moodboard.")
@@ -272,8 +273,9 @@ struct CampaignMoodboardView: View {
                 }
                 if !localCampaign.moodBoardImageURLs!.contains(newAzureURL) {
                     localCampaign.moodBoardImageURLs!.append(newAzureURL)
-                    self.alertItem = AlertMessageItem(message: "AI Image generated and added to mood board! Remember to Save.")
-                    print("[Moodboard AI Gen] Image URL appended. New moodboard URLs: \(localCampaign.moodBoardImageURLs!)")
+                    Task { await saveMoodboardChanges() }
+                    self.alertItem = AlertMessageItem(message: "AI Image generated and saved to mood board.")
+                    print("[Moodboard AI Gen] Image URL appended and auto-saved. New moodboard URLs: \(localCampaign.moodBoardImageURLs!)")
                 } else {
                     self.alertItem = AlertMessageItem(message: "This AI generated image (or one with the same URL) is already on the mood board.")
                     print("[Moodboard AI Gen] URL already in moodboard.")
