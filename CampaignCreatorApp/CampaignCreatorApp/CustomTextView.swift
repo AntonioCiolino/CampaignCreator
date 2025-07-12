@@ -9,9 +9,10 @@ struct CustomTextView: UIViewRepresentable {
     private var textColor: UIColor = .label
     private var temporaryBackgroundColor: UIColor = .clear // Changed for integration
     var onCoordinatorCreated: ((Coordinator) -> Void)? // Callback to expose coordinator
+    var onEndEditing: (String) -> Void = { _ in } // Callback for when editing finishes
 
     // Initializer to allow font and color customization later if needed
-    init(text: Binding<String>, font: UIFont? = nil, textColor: UIColor? = nil, onCoordinatorCreated: ((Coordinator) -> Void)? = nil) { // selectedRange Binding REMOVED
+    init(text: Binding<String>, font: UIFont? = nil, textColor: UIColor? = nil, onCoordinatorCreated: ((Coordinator) -> Void)? = nil, onEndEditing: @escaping (String) -> Void = { _ in }) { // selectedRange Binding REMOVED
         self._text = text
         // self._selectedRange = selectedRange // REMOVED
         if let font = font {
@@ -21,6 +22,7 @@ struct CustomTextView: UIViewRepresentable {
             self.textColor = textColor
         }
         self.onCoordinatorCreated = onCoordinatorCreated
+        self.onEndEditing = onEndEditing
     }
 
     func makeUIView(context: Context) -> UITextView {
@@ -84,6 +86,10 @@ struct CustomTextView: UIViewRepresentable {
 
         func textViewDidChangeSelection(_ textView: UITextView) {
             self.internalSelectedRange = textView.selectedRange
+        }
+
+        func textViewDidEndEditing(_ textView: UITextView) {
+            parent.onEndEditing(textView.text)
         }
 
         // MARK: - Helper Methods (Callable by parent view if it has a reference to this Coordinator)

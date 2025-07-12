@@ -51,7 +51,6 @@ struct CampaignDetailView: View {
 
     @State private var titleDebounceTimer: Timer?
     @State private var customSectionTitleDebounceTimers: [Int: Timer] = [:]
-    @State private var customSectionContentDebounceTimers: [Int: Timer] = [:]
     
     @State private var nextTemporaryClientSectionID: Int = -1
     @State private var localCampaignCustomSections: [CampaignCustomSection]
@@ -67,7 +66,7 @@ struct CampaignDetailView: View {
     
     @State private var showingImagePromptModalForSection: Bool = false
     @State private var currentSectionIdForImageGen: Int? = nil
-    // imageGenPromptText is already defined above for the campaign thematic image
+    @State private var imageGenPromptText: String = "" // Added back
     
     @State private var featureFetchError: String? = nil
     @State private var snippetProcessingError: String? = nil
@@ -215,9 +214,9 @@ struct CampaignDetailView: View {
                 }
                 await self.saveCampaignDetails(source: .customSectionChange, includeCustomSections: true)
             } catch {
-                let errorDescription = "Error regenerating full content for section \(section.title): \(error.localizedDescription)"
+                let errorDescription = "Error regenerating full content for section \(section.title ?? "Untitled"): \(error.localizedDescription)"
                 fullSectionRegenError = errorDescription
-                self.errorMessage = "Content Regeneration Failed (Section: \(section.title))"
+                self.errorMessage = "Content Regeneration Failed (Section: \(section.title ?? "Untitled"))"
                 self.showErrorAlert = true
             }
         }
@@ -371,13 +370,13 @@ struct CampaignDetailView: View {
                 CampaignCustomSectionsEditor(
                     localCampaignCustomSections: $localCampaignCustomSections,
                     customSectionTitleDebounceTimers: $customSectionTitleDebounceTimers,
-                    customSectionContentDebounceTimers: $customSectionContentDebounceTimers,
                     customTextViewCoordinators: $customTextViewCoordinators,
                     nextTemporaryClientSectionID: $nextTemporaryClientSectionID,
                     showingImagePromptModalForSection: $showingImagePromptModalForSection,
                     currentSectionIdForImageGen: $currentSectionIdForImageGen,
                     imageGenPromptText: $imageGenPromptText,
                     currentFont: currentFont,
+                    currentFontFamily: campaign.themeFontFamily,
                     currentPrimaryColor: currentPrimaryColor,
                     currentTextColor: currentTextColor,
                     sectionTypes: sectionTypes,
@@ -392,12 +391,12 @@ struct CampaignDetailView: View {
                 CampaignStandardSectionsView(
                     sections: $campaign.sections,
                     customSectionTitleDebounceTimers: $customSectionTitleDebounceTimers,
-                    customSectionContentDebounceTimers: $customSectionContentDebounceTimers,
                     customTextViewCoordinators: $customTextViewCoordinators,
                     showingImagePromptModalForStandardSection: $showingImagePromptModalForStandardSection,
                     currentStandardSectionIndexForImageGen: $currentStandardSectionIndexForImageGen,
                     imageGenPromptText: $imageGenPromptText,
                     currentFont: currentFont,
+                    currentFontFamily: campaign.themeFontFamily,
                     currentPrimaryColor: currentPrimaryColor,
                     currentTextColor: currentTextColor,
                     snippetFeatures: snippetFeatures,
@@ -418,9 +417,9 @@ struct CampaignDetailView: View {
     @ViewBuilder
     private var campaignLLMSettingsAndMessages: some View {
         CampaignLLMSettingsView(
-            selectedLLMId: $campaign.selectedLLMId.withDefault((availableLLMsFromAPI.first ?? CampaignCreatorApp.placeholderLLMs.first)?.id ?? "default-llm-id"),
+            selectedLLMId: $campaign.selectedLLMId.withDefault((availableLLMsFromAPI.first ?? placeholderLLMs.first)?.id ?? "default-llm-id"),
             temperature: $campaign.temperature.withDefault(0.7),
-            availableLLMs: availableLLMsFromAPI.isEmpty ? CampaignCreatorApp.placeholderLLMs : availableLLMsFromAPI,
+            availableLLMs: availableLLMsFromAPI.isEmpty ? placeholderLLMs : availableLLMsFromAPI,
             currentFont: currentFont,
             currentTextColor: currentTextColor,
             onLLMSettingsChange: { await self.saveCampaignDetails(source: .llmSettingsChange, includeLLMSettings: true) }
@@ -435,6 +434,23 @@ struct CampaignDetailView: View {
         }
     }
 
+    // Extracted main content view to help with compiler performance
+    @ViewBuilder
+    private var mainContentView: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            CampaignHeaderView(campaign: campaign, editableTitle: $editableTitle, isSaving: isSaving, isGeneratingText: isGeneratingText, currentPrimaryColor: currentPrimaryColor, onSetBadgeAction: { self.showingSetBadgeOptions = true })
+            CampaignConceptEditorView(isEditingConcept: $isEditingConcept, editableConcept: $editableConcept, isSaving: isSaving, isGeneratingText: isGeneratingText, currentPrimaryColor: currentPrimaryColor, currentFont: currentFont, currentTextColor: currentTextColor, onSaveChanges: { await self.saveCampaignDetails(source: .conceptEditorDoneButton) })
+            if let tocEntries = campaign.displayTOC, !tocEntries.isEmpty { tableOfContentsSection }
+
+            campaignContentSections // Extracted View
+
+            linkedCharactersSection
+
+            campaignLLMSettingsAndMessages // Extracted View
+        }
+        .padding().font(currentFont).foregroundColor(currentTextColor)
+    }
+
     var body: some View {
         ZStack {
             if let bgImageURLString = campaign.themeBackgroundImageURL, let bgImageURL = URL(string: bgImageURLString) {
@@ -444,18 +460,7 @@ struct CampaignDetailView: View {
                 currentBackgroundColor.edgesIgnoringSafeArea(.all)
             }
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    CampaignHeaderView(campaign: campaign, editableTitle: $editableTitle, isSaving: isSaving, isGeneratingText: isGeneratingText, currentPrimaryColor: currentPrimaryColor, onSetBadgeAction: { self.showingSetBadgeOptions = true })
-                    CampaignConceptEditorView(isEditingConcept: $isEditingConcept, editableConcept: $editableConcept, isSaving: isSaving, isGeneratingText: isGeneratingText, currentPrimaryColor: currentPrimaryColor, currentFont: currentFont, currentTextColor: currentTextColor, onSaveChanges: { await self.saveCampaignDetails(source: .conceptEditorDoneButton) })
-                    if let tocEntries = campaign.displayTOC, !tocEntries.isEmpty { tableOfContentsSection }
-
-                    campaignContentSections // Extracted View
-
-                    linkedCharactersSection
-
-                    campaignLLMSettingsAndMessages // Extracted View
-                }
-                .padding().font(currentFont).foregroundColor(currentTextColor)
+                mainContentView // Using the extracted main content view
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -564,9 +569,7 @@ struct CampaignDetailView: View {
         .onDisappear {
             titleDebounceTimer?.invalidate()
             customSectionTitleDebounceTimers.values.forEach { $0.invalidate() }
-            customSectionContentDebounceTimers.values.forEach { $0.invalidate() }
             customSectionTitleDebounceTimers.removeAll()
-            customSectionContentDebounceTimers.removeAll()
             if campaign.title != editableTitle || campaign.concept ?? "" != editableConcept {
                 Task { await saveCampaignDetails(source: .onDisappear) }
             }
@@ -618,24 +621,86 @@ struct CampaignDetailView: View {
         return tempID
     }
 
-    private var generateImageSheetView: some View { /* ... existing ... */ }
-    private var generateBadgeSheetView: some View { /* ... existing ... */ }
+    private var generateImageSheetView: some View { EmptyView() }
+    private var generateBadgeSheetView: some View { EmptyView() }
     private func performAICampaignImageGeneration() async { /* ... existing ... */ }
     private func performAIBadgeGeneration() async { /* ... existing ... */ }
     enum SaveSource { case titleField, conceptEditorDoneButton, onDisappear, themeEditorDismissed, customSectionChange, standardSectionChange, llmSettingsChange, badgeImageUpdate }
-    private func saveCampaignDetails(source: SaveSource, includeTheme: Bool = false, includeCustomSections: Bool = false, includeStandardSections: Bool = false, includeLLMSettings: Bool = false, editingSectionID: Int? = nil, latestSectionContent: String? = nil) async { /* ... existing ... */ }
-    private var generateSheetView: some View { /* ... existing ... */ }
+    private func saveCampaignDetails(source: SaveSource, includeTheme: Bool = false, includeCustomSections: Bool = false, includeStandardSections: Bool = false, includeLLMSettings: Bool = false, editingSectionID: Int? = nil, latestSectionContent: String? = nil) async {
+        isSaving = true
+
+        // Create a copy to modify
+        var campaignToSave = self.campaign
+
+        // Update the copy with the latest state from the UI
+        campaignToSave.title = editableTitle
+        campaignToSave.concept = editableConcept
+        campaignToSave.customSections = localCampaignCustomSections
+
+        do {
+            // Call the CampaignCreator's update method with the modified campaign object
+            let updatedCampaign = try await campaignCreator.updateCampaign(campaignToSave)
+
+            // On success, update the view's state with the authoritative version from the server
+            self.campaign = updatedCampaign
+            self.editableTitle = updatedCampaign.title
+            self.editableConcept = updatedCampaign.concept ?? ""
+            self.localCampaignCustomSections = updatedCampaign.customSections ?? []
+
+        } catch {
+            errorMessage = "Failed to save campaign: \(error.localizedDescription)"
+            showErrorAlert = true
+        }
+
+        isSaving = false
+    }
+    private var generateSheetView: some View { EmptyView() }
     private func performAIGeneration() async { /* ... existing ... */ }
-    private var exportSheetView: some View { /* ... existing ... */ }
+    private var exportSheetView: some View { EmptyView() }
     private func exportCampaignContent() { /* ... existing ... */ }
 }
 
 // String extensions like stripSuffix and nilIfEmpty are now in StringUtils.swift
 
+struct ThemePropertyRow: View {
+    let label: String
+    let value: String?
+    var isURL: Bool = false
+
+    var body: some View {
+        if let value = value, !value.isEmpty {
+            HStack {
+                Text(label)
+                    .font(Font.caption.weight(.semibold))
+                    .foregroundColor(.secondary)
+                Spacer()
+                if isURL {
+                    if let url = URL(string: value) {
+                        Link(destination: url) {
+                            Text(value)
+                                .truncationMode(.middle)
+                                .lineLimit(1)
+                                .foregroundColor(.accentColor)
+                        }
+                    } else {
+                        Text(value)
+                            .truncationMode(.middle)
+                            .lineLimit(1)
+                            .foregroundColor(.gray)
+                    }
+                } else {
+                    Text(value)
+                        .foregroundColor(.primary)
+                }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+}
+
 struct CampaignStandardSectionsView: View {
     @Binding var sections: [CampaignSection]
     @Binding var customSectionTitleDebounceTimers: [Int: Timer]
-    @Binding var customSectionContentDebounceTimers: [Int: Timer]
     @Binding var customTextViewCoordinators: [Int: CustomTextView.Coordinator]
 
     @Binding var showingImagePromptModalForStandardSection: Bool
@@ -643,6 +708,7 @@ struct CampaignStandardSectionsView: View {
     @Binding var imageGenPromptText: String
 
     let currentFont: Font
+    let currentFontFamily: String?
     let currentPrimaryColor: Color
     let currentTextColor: Color
     let snippetFeatures: [Feature]
@@ -652,9 +718,9 @@ struct CampaignStandardSectionsView: View {
     let handleStandardSnippetFeatureSelection: (Feature, Int) -> Void
     let handleStandardSectionRegeneration: (Int) -> Void
 
-    private func uiFontFrom(swiftUIFont: Font, defaultSize: CGFloat = 16) -> UIFont {
-        if let fontName = (swiftUIFont as? Font.NamedProvider)?.name {
-             return UIFont(name: fontName, size: defaultSize) ?? UIFont.systemFont(ofSize: defaultSize)
+    private func uiFontFrom(fontName: String?, defaultSize: CGFloat = 16) -> UIFont {
+        if let fontName = fontName, !fontName.isEmpty {
+            return UIFont(name: fontName, size: defaultSize) ?? UIFont.systemFont(ofSize: defaultSize)
         }
         return UIFont.systemFont(ofSize: defaultSize)
     }
@@ -700,23 +766,19 @@ struct CampaignStandardSectionsView: View {
 
             CustomTextView(
                 text: sectionBinding.content,
-                font: uiFontFrom(swiftUIFont: currentFont),
+                font: uiFontFrom(fontName: currentFontFamily),
                 textColor: UIColor(currentTextColor),
                 onCoordinatorCreated: { coordinator in
                     customTextViewCoordinators[sectionBinding.wrappedValue.id] = coordinator
+                },
+                onEndEditing: { finalContent in
+                    Task { await self.saveCampaignDetails(.standardSectionChange, false, false, true, sectionBinding.wrappedValue.id, finalContent) }
                 }
             )
             .frame(minHeight: 100, maxHeight: 300)
             .background(Color(.secondarySystemGroupedBackground))
             .cornerRadius(8)
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
-            .onChange(of: sectionBinding.wrappedValue.content) { newContent in
-                let sectionId = sectionBinding.wrappedValue.id
-                customSectionContentDebounceTimers[sectionId]?.invalidate()
-                customSectionContentDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in
-                    Task { await self.saveCampaignDetails(.standardSectionChange, false, false, true, sectionId, newContent) }
-                }
-            }
 
             standardSectionActionButtons(sectionBinding: sectionBinding, index: index)
         }
@@ -782,7 +844,6 @@ struct CampaignStandardSectionsView: View {
 struct CampaignCustomSectionsEditor: View {
     @Binding var localCampaignCustomSections: [CampaignCustomSection]
     @Binding var customSectionTitleDebounceTimers: [Int: Timer]
-    @Binding var customSectionContentDebounceTimers: [Int: Timer]
     @Binding var customTextViewCoordinators: [Int: CustomTextView.Coordinator]
     @Binding var nextTemporaryClientSectionID: Int
     @Binding var showingImagePromptModalForSection: Bool
@@ -790,6 +851,7 @@ struct CampaignCustomSectionsEditor: View {
     @Binding var imageGenPromptText: String
 
     let currentFont: Font
+    let currentFontFamily: String?
     let currentPrimaryColor: Color
     let currentTextColor: Color
     let sectionTypes: [String]
@@ -800,9 +862,9 @@ struct CampaignCustomSectionsEditor: View {
     let handleSnippetFeatureSelection: (Feature, CampaignCustomSection) -> Void       // Adjusted for custom section
     let handleFullSectionRegeneration: (CampaignCustomSection) -> Void         // Adjusted for custom section
 
-    private func uiFontFrom(swiftUIFont: Font, defaultSize: CGFloat = 16) -> UIFont {
-        if let fontName = (swiftUIFont as? Font.NamedProvider)?.name {
-             return UIFont(name: fontName, size: defaultSize) ?? UIFont.systemFont(ofSize: defaultSize)
+    private func uiFontFrom(fontName: String?, defaultSize: CGFloat = 16) -> UIFont {
+        if let fontName = fontName, !fontName.isEmpty {
+            return UIFont(name: fontName, size: defaultSize) ?? UIFont.systemFont(ofSize: defaultSize)
         }
         return UIFont.systemFont(ofSize: defaultSize)
     }
@@ -822,15 +884,9 @@ struct CampaignCustomSectionsEditor: View {
                 .padding(.bottom, 2)
 
             ForEach($localCampaignCustomSections) { $section in
-                DisclosureGroup(
-                    label: {
-                        Text(section.title.isEmpty ? "New Custom Section" : section.title)
-                            .font(currentFont.weight(.bold))
-                            .foregroundColor(currentTextColor)
-                    }
-                ) {
+                DisclosureGroup {
                     VStack(alignment: .leading) {
-                        TextField("Section Title", text: $section.title)
+                        TextField("Section Title", text: $section.title.withDefault("New Custom Section"))
                             .font(currentFont.weight(.semibold))
                             .textFieldStyle(PlainTextFieldStyle())
                             .padding(.bottom, 2)
@@ -856,23 +912,19 @@ struct CampaignCustomSectionsEditor: View {
 
                         CustomTextView(
                             text: $section.content,
-                            font: uiFontFrom(swiftUIFont: currentFont),
+                            font: uiFontFrom(fontName: currentFontFamily),
                             textColor: UIColor(currentTextColor),
                             onCoordinatorCreated: { coordinator in
                                 customTextViewCoordinators[section.id] = coordinator
+                            },
+                            onEndEditing: { finalContent in
+                                Task { await self.saveCampaignDetails(.customSectionChange, false, true, false, section.id, finalContent) }
                             }
                         )
                         .frame(minHeight: 100, maxHeight: 300)
                         .background(Color(.secondarySystemGroupedBackground))
                         .cornerRadius(8)
                         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
-                        .onChange(of: section.content) { newContent in
-                            let sectionId = section.id
-                            customSectionContentDebounceTimers[sectionId]?.invalidate()
-                            customSectionContentDebounceTimers[sectionId] = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in
-                                Task { await self.saveCampaignDetails(.customSectionChange, false, true, false, sectionId, newContent) }
-                            }
-                        }
 
                         HStack {
                             Button(role: section.id < 0 ? .none : .destructive) {
@@ -914,7 +966,7 @@ struct CampaignCustomSectionsEditor: View {
 
                             Button {
                                 self.currentSectionIdForImageGen = section.id
-                                self.imageGenPromptText = section.title
+                                self.imageGenPromptText = section.title ?? ""
                                 self.showingImagePromptModalForSection = true
                             } label: {
                                 Label("Image", systemImage: "photo.badge.plus").font(.caption)
@@ -924,6 +976,10 @@ struct CampaignCustomSectionsEditor: View {
                         .padding(.top, 4)
                     }
                     .padding(.vertical, 8)
+                } label: {
+                    Text(section.title ?? "New Custom Section")
+                        .font(currentFont.weight(.bold))
+                        .foregroundColor(currentTextColor)
                 }
                 .padding(.bottom, 4)
                 Divider()

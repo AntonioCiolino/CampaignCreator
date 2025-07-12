@@ -39,12 +39,13 @@ struct CampaignLLMSettingsView: View {
                 VStack(alignment: .leading) {
                     Text("Temperature: \(String(format: "%.2f", temperature))")
                         .font(currentFont.weight(.medium))
-                    Slider(value: $temperature, in: 0.0...1.0, step: 0.05) { // Ensure range is 0.0...1.0
+                    Slider(value: $temperature, in: 0.0...1.0, step: 0.05) {
                         Text("Temperature") // Accessibility label
+                    } onEditingChanged: { editing in
+                        if !editing { // Trigger save when the user releases the slider
+                            Task { await onLLMSettingsChange() }
+                        }
                     }
-                }
-                .onChange(of: temperature) { _ in
-                    Task { await onLLMSettingsChange() }
                 }
 
                 Text("Lower temperature (e.g., 0.2) means more focused output. Higher (e.g., 0.8 for more creative output, max 1.0).")

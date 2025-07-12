@@ -7,15 +7,15 @@ import Combine // Import Combine for ObservableObject
 public struct AvailableLLM: Identifiable, Codable, Hashable {
     public var id: String // Prefixed ID, e.g., "openai/gpt-3.5-turbo"
     public var name: String // User-friendly name, e.g., "OpenAI GPT-3.5 Turbo"
-    public var model_type: String
-    public var supports_temperature: Bool
+    public var modelType: String?
+    public var supportsTemperature: Bool
     public var capabilities: [String]?
 
-    public init(id: String, name: String, model_type: String, supports_temperature: Bool, capabilities: [String]? = nil) {
+    public init(id: String, name: String, modelType: String?, supportsTemperature: Bool, capabilities: [String]? = nil) {
         self.id = id
         self.name = name
-        self.model_type = model_type
-        self.supports_temperature = supports_temperature
+        self.modelType = modelType
+        self.supportsTemperature = supportsTemperature
         self.capabilities = capabilities
     }
 }
@@ -682,8 +682,8 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
         // The web app calls /api/v1/llm/models. baseURLString already includes /api/v1
         // The response structure is { "models": [AvailableLLM] }
         // We need to decode LLMModelsResponse first, then return its models property.
-        // This endpoint is public and does not require authentication.
-        let response: LLMModelsResponse = try await performRequest(endpoint: "/llm/models", requiresAuth: false)
+        // This endpoint requires authentication, contrary to previous comments.
+        let response: LLMModelsResponse = try await performRequest(endpoint: "/llm/models", requiresAuth: true)
         return response.models
     }
 }
