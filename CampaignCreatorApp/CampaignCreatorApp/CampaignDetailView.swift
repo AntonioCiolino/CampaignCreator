@@ -954,7 +954,7 @@ struct CampaignCustomSectionsEditor: View {
 
                             Button {
                                 self.currentSectionIdForImageGen = section.id
-                                self.imageGenPromptText = section.title
+                                self.imageGenPromptText = section.title ?? ""
                                 self.showingImagePromptModalForSection = true
                             } label: {
                                 Label("Image", systemImage: "photo.badge.plus").font(.caption)
