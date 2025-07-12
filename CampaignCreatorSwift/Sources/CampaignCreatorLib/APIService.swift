@@ -1,6 +1,35 @@
 import Foundation
 import Combine // Import Combine for ObservableObject
 
+// Note: These structs are temporarily moved here to resolve build issues.
+// Ideally, they should be in their own file within the Lib, ensured to be part of the target.
+
+public struct AvailableLLM: Identifiable, Codable, Hashable {
+    public var id: String // Prefixed ID, e.g., "openai/gpt-3.5-turbo"
+    public var name: String // User-friendly name, e.g., "OpenAI GPT-3.5 Turbo"
+    public var model_type: String
+    public var supports_temperature: Bool
+    public var capabilities: [String]?
+
+    public init(id: String, name: String, model_type: String, supports_temperature: Bool, capabilities: [String]? = nil) {
+        self.id = id
+        self.name = name
+        self.model_type = model_type
+        self.supports_temperature = supports_temperature
+        self.capabilities = capabilities
+    }
+}
+
+public struct LLMModelsResponse: Codable {
+    public var models: [AvailableLLM]
+
+    public init(models: [AvailableLLM]) {
+        self.models = models
+    }
+}
+
+// Error enum for API related issues
+
 // Error enum for API related issues
 public enum APIError: Error, LocalizedError, Sendable, Equatable { // Added Equatable
     case invalidURL
@@ -646,5 +675,15 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
             method: "POST",
             body: body
         )
+    }
+
+    // MARK: - LLM Methods
+    public func fetchAvailableLLMs() async throws -> [AvailableLLM] {
+        // The web app calls /api/v1/llm/models. baseURLString already includes /api/v1
+        // The response structure is { "models": [AvailableLLM] }
+        // We need to decode LLMModelsResponse first, then return its models property.
+        // This endpoint is public and does not require authentication.
+        let response: LLMModelsResponse = try await performRequest(endpoint: "/llm/models", requiresAuth: false)
+        return response.models
     }
 }

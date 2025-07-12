@@ -207,12 +207,7 @@ struct CharacterCreateView: View {
     }
 }
 
-// Helper to convert empty strings to nil for optional fields
-extension String {
-    func nilIfEmpty() -> String? {
-        self.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : self
-    }
-}
+// String.nilIfEmpty() is now provided by StringUtils.swift
 
 // Helper to convert empty arrays to nil for optional fields
 extension Array where Element == String {

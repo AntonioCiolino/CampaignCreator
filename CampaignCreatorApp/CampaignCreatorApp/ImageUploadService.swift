@@ -101,15 +101,4 @@ class ImageUploadService: ObservableObject { // Conform to ObservableObject
 // This might already be in CampaignDetailView, but good to have it here if this service
 // is ever moved or used more independently. If it causes a redeclaration error,
 // it means it's correctly defined elsewhere and accessible.
-// To avoid potential conflicts, assuming it's accessible from another file.
-// If not, uncomment this:
-/*
-extension String {
-    func stripSuffix(_ suffix: String) -> String {
-        if self.hasSuffix(suffix) {
-            return String(self.dropLast(suffix.count))
-        }
-        return self
-    }
-}
-*/
+// The StringUtils.swift file now provides this extension for the app target.
