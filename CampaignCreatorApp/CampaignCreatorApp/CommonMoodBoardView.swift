@@ -20,6 +20,8 @@ struct CommonMoodBoardView: View {
     @State private var isGeneratingAIImage = false
     @State private var alertItem: AlertMessageItem?
     @Environment(\.editMode) private var editMode
+    @State private var showingFullImageView = false
+    @State private var selectedImageURL: URL?
 
     private let gridItemLayout = [GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2)]
 
@@ -37,14 +39,24 @@ struct CommonMoodBoardView: View {
             } else {
                 LazyVGrid(columns: gridItemLayout, spacing: 2) {
                     ForEach(imageURLs, id: \.self) { urlString in
-                        MoodboardCellView(urlString: urlString, onDelete: {
-                            deleteImage(urlString: urlString)
-                        })
+                        MoodboardCellView(
+                            urlString: urlString,
+                            onSelect: {
+                                selectedImageURL = URL(string: urlString)
+                                showingFullImageView = true
+                            },
+                            onDelete: {
+                                deleteImage(urlString: urlString)
+                            }
+                        )
                     }
                     .onMove(perform: moveImage)
                 }
                 .padding(2)
             }
+        }
+        .sheet(isPresented: $showingFullImageView) {
+            FullCharacterImageViewWrapper(initialDisplayURL: selectedImageURL)
         }
         .navigationTitle("Mood Board")
         .navigationBarTitleDisplayMode(.inline)
@@ -227,6 +239,7 @@ struct CommonMoodBoardView: View {
 
     private struct MoodboardCellView: View {
         let urlString: String
+        let onSelect: () -> Void
         let onDelete: () -> Void
         @Environment(\.editMode) private var editMode
 
@@ -236,7 +249,7 @@ struct CommonMoodBoardView: View {
 
         var body: some View {
             ZStack(alignment: .topTrailing) {
-                NavigationLink(destination: FullCharacterImageViewWrapper(initialDisplayURL: URL(string: urlString))) {
+                Button(action: onSelect) {
                     KFImage(URL(string: urlString))
                         .placeholder {
                             ProgressView()
