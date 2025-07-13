@@ -6,6 +6,7 @@ from datetime import datetime # Added datetime
 
 class ConversationMessageContext(BaseModel):
     speaker: str # e.g., "user", "assistant"
+    text: str # The text content of the message
 
 # Defines the structure for a message entry as stored in the JSON history and returned by API
 class ConversationMessageEntry(ConversationMessageContext):
