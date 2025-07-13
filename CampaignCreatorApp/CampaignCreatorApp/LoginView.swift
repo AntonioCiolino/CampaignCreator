@@ -1,24 +1,19 @@
 import SwiftUI
-import CampaignCreatorLib
-import AVKit // Import for VideoPlayer
+import AVKit
 
 struct LoginView: View {
-    @ObservedObject var campaignCreator: CampaignCreator
+    @ObservedObject var viewModel: ContentViewModel
 
     @State private var usernameOrEmail = ""
     @State private var password = ""
-    @State private var rememberMe = false // New state for Remember Me
-    @State private var loginAttemptError: String? = nil
-    @State private var isAttemptingLogin: Bool = false
+    @State private var rememberMe = false
 
-    private let lastUsernameKey = "LastUsername" // UserDefaults key for username
+    private let lastUsernameKey = "LastUsername"
 
-    // Video player state
     @State private var player: AVPlayer?
     @State private var nextPlayer: AVPlayer?
     @State private var playerOpacity: Double = 1.0
     @State private var nextPlayerOpacity: Double = 0.0
-    @State private var playerStatus: String = "Not started"
     private let videoURLs = [
         "video1.mp4",
         "video2.mp4",
@@ -29,10 +24,9 @@ struct LoginView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Background Video Player
                 if let player = player {
                     VideoPlayer(player: player)
-                        .disabled(true) // Make it non-interactive
+                        .disabled(true)
                         .frame(width: geometry.size.width, height: geometry.size.height)
                         .aspectRatio(contentMode: .fill)
                         .opacity(playerOpacity)
@@ -47,10 +41,8 @@ struct LoginView: View {
                         .clipped()
                 }
 
-                // Overlay with a semi-transparent color to make text more readable
                 Color.black.opacity(0.4).edgesIgnoringSafeArea(.all)
 
-                // Login Form
                 VStack(spacing: 20) {
                     if geometry.size.height > geometry.size.width {
                         Spacer()
@@ -69,7 +61,7 @@ struct LoginView: View {
                             .shadow(color: .black.opacity(0.5), radius: 2, x: 1, y: 1)
                     }
 
-                    Image(systemName: "shield.lefthalf.fill") // Corrected SF Symbol
+                    Image(systemName: "shield.lefthalf.fill")
                         .font(.system(size: 60))
                         .foregroundColor(.white)
                         .padding(.bottom, 20)
@@ -96,11 +88,11 @@ struct LoginView: View {
 
                         Toggle("Remember Me", isOn: $rememberMe)
                             .foregroundColor(.white)
-                            .padding(.horizontal, 5) // Slight padding for the toggle text
+                            .padding(.horizontal, 5)
                     }
                     .padding(.horizontal, 60)
 
-                    if let error = loginAttemptError {
+                    if let error = viewModel.authError {
                         Text(error)
                             .font(.caption)
                             .foregroundColor(.red.opacity(0.9))
@@ -111,7 +103,7 @@ struct LoginView: View {
                             .padding(.horizontal, 40)
                     }
 
-                    if isAttemptingLogin {
+                    if viewModel.isLoggingIn {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             .scaleEffect(1.5)
@@ -142,18 +134,12 @@ struct LoginView: View {
                 .background(Color.black.opacity(0.2))
                 .cornerRadius(20)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity) // Constrain ZStack to screen bounds
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onAppear {
                 setupVideoPlayer()
                 loadSavedCredentials()
             }
-            .onChange(of: campaignCreator.authError) { newError in
-                loginAttemptError = newError?.localizedDescription
-            }
-            .onChange(of: campaignCreator.isLoggingIn) { loggingInStatus in
-                isAttemptingLogin = loggingInStatus
-            }
-            .onChange(of: campaignCreator.isAuthenticated) { isAuthenticated in
+            .onChange(of: viewModel.isAuthenticated) { isAuthenticated in
                 if isAuthenticated {
                     handleLoginSuccess()
                 }
@@ -162,16 +148,13 @@ struct LoginView: View {
     }
 
     func crossfade() {
-        // Start playing the next video
         nextPlayer?.play()
 
-        // Animate the opacity of the players
         withAnimation(.linear(duration: 1.0)) {
             playerOpacity = 0.0
             nextPlayerOpacity = 1.0
         }
 
-        // After the crossfade, swap the players and set up the next video
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             self.player = self.nextPlayer
             self.nextPlayer = nil
@@ -188,15 +171,9 @@ struct LoginView: View {
             do {
                 password = try KeychainHelper.loadPassword(username: lastUser)
                 rememberMe = true
-                print("LoginView: Loaded saved credentials for \(lastUser)")
-            } catch KeychainHelper.KeychainError.itemNotFound {
-                print("LoginView: No saved password found for \(lastUser).")
             } catch {
-                print("LoginView: Error loading password for \(lastUser): \(error.localizedDescription)")
                 password = ""
             }
-        } else {
-            print("LoginView: No last username found in UserDefaults.")
         }
     }
 
@@ -208,37 +185,28 @@ struct LoginView: View {
             UserDefaults.standard.set(userToRemember, forKey: lastUsernameKey)
             do {
                 try KeychainHelper.savePassword(username: userToRemember, password: password)
-                print("LoginView: Saved credentials for \(userToRemember)")
             } catch {
-                print("LoginView: Failed to save password for \(userToRemember): \(error.localizedDescription)")
+                print("Failed to save password for \\(userToRemember): \\(error.localizedDescription)")
             }
         } else {
             UserDefaults.standard.removeObject(forKey: lastUsernameKey)
             do {
                 try KeychainHelper.delete(username: userToRemember)
-                print("LoginView: Cleared saved credentials for \(userToRemember)")
             } catch {
-                print("LoginView: Failed to delete password for \(userToRemember): \(error.localizedDescription)")
+                print("Failed to delete password for \\(userToRemember): \\(error.localizedDescription)")
             }
         }
     }
 
     func setupVideoPlayer() {
-        playerStatus = "Setting up video player..."
-        guard !videoURLs.isEmpty else {
-            playerStatus = "Error: Video URL list is empty."
-            return
-        }
+        guard !videoURLs.isEmpty else { return }
 
-        // Set up the first player
         if player == nil {
             let fileName = videoURLs[currentVideoIndex % videoURLs.count]
             let fileUrl = URL(fileURLWithPath: fileName)
             let videoName = fileUrl.deletingPathExtension().lastPathComponent
             let videoExtension = fileUrl.pathExtension
             guard let videoURL = Bundle.main.url(forResource: videoName, withExtension: videoExtension) else {
-                print("Error: Video file not found: \(fileName)")
-                playerStatus = "Error: Video file not found: \(fileName)"
                 return
             }
             let newPlayerItem = AVPlayerItem(url: videoURL)
@@ -248,15 +216,12 @@ struct LoginView: View {
             player?.play()
         }
 
-        // Set up the next player
         let nextVideoIndex = (currentVideoIndex + 1) % videoURLs.count
         let nextFileName = videoURLs[nextVideoIndex]
         let nextFileUrl = URL(fileURLWithPath: nextFileName)
         let nextVideoName = nextFileUrl.deletingPathExtension().lastPathComponent
         let nextVideoExtension = nextFileUrl.pathExtension
         guard let nextVideoURL = Bundle.main.url(forResource: nextVideoName, withExtension: nextVideoExtension) else {
-            print("Error: Video file not found: \(nextFileName)")
-            playerStatus = "Error: Video file not found: \(nextFileName)"
             return
         }
         let nextPlayerItem = AVPlayerItem(url: nextVideoURL)
@@ -264,23 +229,20 @@ struct LoginView: View {
         nextPlayer?.isMuted = true
         nextPlayer?.actionAtItemEnd = .none
 
-        // Add observer for the current player to finish
         NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: player?.currentItem, queue: .main) { _ in
             self.crossfade()
         }
     }
 
     func performLogin() {
-        loginAttemptError = nil
-        // isAttemptingLogin state is now driven by observing campaignCreator.isLoggingIn
         Task {
-            await campaignCreator.login(usernameOrEmail: usernameOrEmail, password: password)
+            await viewModel.login(usernameOrEmail: usernameOrEmail, password: password)
         }
     }
 }
 
 struct LoginView_Previews: PreviewProvider {
     static var previews: some View {
-        LoginView(campaignCreator: CampaignCreator())
+        LoginView(viewModel: ContentViewModel())
     }
 }

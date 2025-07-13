@@ -1,5 +1,4 @@
 import Foundation
-import CampaignCreatorLib // For APIService and potentially error types
 
 enum ImageUploadError: Error, LocalizedError {
     case networkError(Error)
@@ -29,24 +28,21 @@ enum ImageUploadError: Error, LocalizedError {
 
 struct FileUploadResponse: Decodable {
     let imageUrl: String
-    // Add other fields if needed, like filename, content_type, size,
-    // matching the backend's FileUploadResponse Pydantic model.
-    // For now, only imageUrl is strictly needed by the caller.
 }
 
-class ImageUploadService: ObservableObject { // Conform to ObservableObject
+class ImageUploadService: ObservableObject {
     private let apiService: APIService
 
-    init(apiService: APIService) {
+    init(apiService: APIService = APIService()) {
         self.apiService = apiService
     }
 
     func uploadImage(imageData: Data, filename: String, mimeType: String) async -> Result<String, ImageUploadError> {
-        guard let token = apiService.getToken() else {
+        guard let token = UserDefaultsTokenManager().getToken() else {
             return .failure(.noToken)
         }
 
-        let endpointPath = "/files/upload_image" // From file_uploads.py in backend
+        let endpointPath = "/files/upload_image"
         guard let url = URL(string: apiService.baseURLString.stripSuffix("/") + endpointPath) else {
             return .failure(.invalidURL)
         }
@@ -74,24 +70,18 @@ class ImageUploadService: ObservableObject { // Conform to ObservableObject
                 return .failure(.invalidResponse)
             }
 
-            print("[ImageUploadService] Upload response status code: \(httpResponse.statusCode)")
-
             if (200..<300).contains(httpResponse.statusCode) {
                 do {
                     let decodedResponse = try JSONDecoder().decode(FileUploadResponse.self, from: data)
-                    print("[ImageUploadService] Image uploaded successfully. URL: \(decodedResponse.imageUrl)")
                     return .success(decodedResponse.imageUrl)
                 } catch {
-                    print("[ImageUploadService] Failed to decode upload response: \(error), data: \(String(data: data, encoding: .utf8) ?? "empty")")
                     return .failure(.decodingError(error))
                 }
             } else {
                 let errorBody = String(data: data, encoding: .utf8)
-                print("[ImageUploadService] Upload error response (\(httpResponse.statusCode)): \(errorBody ?? "No error body")")
                 return .failure(.serverError(statusCode: httpResponse.statusCode, message: errorBody))
             }
         } catch {
-            print("[ImageUploadService] Image upload request failed: \(error.localizedDescription)")
             return .failure(.networkError(error))
         }
     }
