@@ -316,7 +316,7 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
         self.tokenManager = tokenManager
 
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = .formatted(.iso8601withFractionalSeconds)
         decoder.keyDecodingStrategy = .convertFromSnakeCase // ADDED
         self.jsonDecoder = decoder
 
