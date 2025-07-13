@@ -35,7 +35,7 @@ struct CampaignHeaderView: View {
                 .disabled(isSaving || isGeneratingText)
 
             // Campaign Badge Display
-            if let badgeUrlString = campaign.badgeImageURL, let badgeUrl = URL(string: badgeUrlString) {
+            if let badgeUrlString = campaign.badge_image_url, let badgeUrl = URL(string: badgeUrlString) {
                 // KFImage loads and caches the campaign badge.
                 // Displayed as a circular icon.
                 KFImage(badgeUrl)
