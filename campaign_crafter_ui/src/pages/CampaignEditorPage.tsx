@@ -1196,41 +1196,33 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
               </ReactMarkdown>
             )}
             {(!campaign.display_toc || campaign.display_toc.length === 0) && <p>No Table of Contents generated yet.</p>}
-            <Button
+            <IconButton
               onClick={handleGenerateTOC}
               disabled={isGeneratingTOC || !selectedLLMId}
-              className="action-button"
-              style={{ marginTop: (campaign.display_toc && campaign.display_toc.length > 0) ? '10px' : '0' }}
               icon={<ListAltIcon />}
               tooltip={!selectedLLMId ? "Select an LLM model from the Settings tab first" : "Generate or re-generate the Table of Contents based on the campaign concept and sections"}
-            >
-              {isGeneratingTOC ? 'Generating TOC...' : ((campaign.display_toc && campaign.display_toc.length > 0) ? 'Re-generate Table of Contents' : 'Generate Table of Contents')}
-            </Button>
+              aria-label="Generate table of contents"
+            />
             {tocError && <p className="error-message feedback-message" style={{ marginTop: '5px' }}>{tocError}</p>}
             {campaign.display_toc && campaign.display_toc.length > 0 && !isTOCEditorVisible && (
-              <Button
+              <IconButton
                 onClick={() => setIsTOCEditorVisible(true)}
-                className="action-button"
                 icon={<EditIcon />}
-                style={{ marginTop: '10px', display: 'block', marginBottom: '15px' }}
                 tooltip="Edit the Table of Contents entries"
-              >
-                Edit Table of Contents
-              </Button>
+                aria-label="Edit table of contents"
+              />
             )}
             {(campaign.display_toc && campaign.display_toc.length > 0) && (
               <div style={{ marginTop: '15px' }}>
                 {!isDetailedProgressVisible ? (
                   <>
-                    <Button
+                    <IconButton
                       onClick={handleSeedSectionsFromToc}
                       disabled={isSeedingSections || !(campaign.display_toc && campaign.display_toc.length > 0) }
-                      className="action-button"
                       icon={<AddCircleOutlineIcon />}
                       tooltip="Parse the current Table of Contents and create campaign sections based on its structure. Optionally auto-populate content."
-                    >
-                      {isSeedingSections ? (autoPopulateSections ? 'Creating & Populating Sections...' : 'Creating Sections...') : 'Approve TOC & Create Sections'}
-                    </Button>
+                      aria-label="Approve TOC & Create Sections"
+                    />
                     {!isDetailedProgressVisible && seedSectionsError && <p className="error-message feedback-message" style={{ marginTop: '5px' }}>{seedSectionsError}</p>}
                     <div style={{ marginTop: '10px', marginBottom: '10px' }}>
                       <label htmlFor="autoPopulateCheckbox" style={{ marginRight: '8px' }}>
@@ -1296,9 +1288,7 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
     {tocSaveError && <p className="error-message feedback-message">{tocSaveError}</p>}
     {tocSaveSuccess && <p className="success-message feedback-message">{tocSaveSuccess}</p>}
       <div className="action-group export-action-group editor-section">
-        <Button onClick={handleExportHomebrewery} disabled={isExporting} className="llm-button export-button" icon={<PublishIcon />} tooltip="Export the campaign content as Markdown formatted for Homebrewery">
-          {isExporting ? 'Exporting...' : 'Export to Homebrewery'}
-        </Button>
+        <IconButton onClick={handleExportHomebrewery} disabled={isExporting} icon={<PublishIcon />} tooltip="Export the campaign content as Markdown formatted for Homebrewery" aria-label="Export to Homebrewery" />
         {exportError && <p className="error-message llm-feedback">{exportError}</p>}
       </div>
     </>
@@ -1307,24 +1297,19 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
   const sectionsTabContent = (
     <>
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}> {/* Adjusted gap and mb values to match typical MUI spacing (e.g., theme.spacing(1) and theme.spacing(2)) */}
-        <Button
+        <IconButton
           onClick={() => setIsAddSectionModalOpen(true)} // Open modal
           disabled={!campaign?.concept?.trim()}
-          className="action-button"
           icon={<AddCircleOutlineIcon />}
           tooltip={!campaign?.concept?.trim() ? "Please define and save a campaign concept first." : "Add a new section to the campaign"}
-        >
-          Add New Section
-        </Button>
-        <Button
+          aria-label="Add new section"
+        />
+        <IconButton
           onClick={() => setForceCollapseAll(prev => !prev)}
           icon={forceCollapseAll ? <UnfoldMoreIcon /> : <UnfoldLessIcon />}
-          variant="primary" // Changed to primary
-          className="action-button"
           tooltip={forceCollapseAll ? "Expand all sections" : "Collapse all sections"}
-        >
-          {forceCollapseAll ? "Expand All" : "Collapse All"}
-        </Button>
+          aria-label={forceCollapseAll ? "Expand all sections" : "Collapse all sections"}
+        />
       </div>
       {/* The div className="section-display-controls editor-section" has been removed */}
       {/* Remove old collapsible form area */}
@@ -1605,14 +1590,12 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
     <div className="campaign-editor-page">
       {isPageLoading && <LoadingSpinner />}
       <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'flex-end', paddingRight: '1rem' }}>
-        <Button
+        <IconButton
           onClick={() => setIsMoodBoardPanelOpen(!isMoodBoardPanelOpen)}
           icon={<ImageIcon />}
           tooltip={isMoodBoardPanelOpen ? 'Hide Mood Board Panel' : 'Show Mood Board Panel'}
-          variant="primary" // Changed to primary
-        >
-          {isMoodBoardPanelOpen ? 'Hide Mood Board' : 'Show Mood Board'}
-        </Button>
+          aria-label={isMoodBoardPanelOpen ? 'Hide Mood Board Panel' : 'Show Mood Board Panel'}
+        />
         {isAutoSavingMoodBoard && <p className="feedback-message saving-indicator" style={{marginRight: '10px', fontSize: '0.8em'}}>Auto-saving mood board...</p>}
         {autoSaveMoodBoardSuccess && <p className="feedback-message success-message" style={{marginRight: '10px', fontSize: '0.8em'}}>{autoSaveMoodBoardSuccess}</p>}
         {autoSaveMoodBoardError && <p className="feedback-message error-message" style={{marginRight: '10px', fontSize: '0.8em'}}>{autoSaveMoodBoardError}</p>}
@@ -1625,15 +1608,13 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
           <Typography variant="body1" sx={{ mb: 1 }}>
             This campaign does not have an AI-generated concept yet.
           </Typography>
-          <Button
+          <IconButton
             onClick={handleGenerateConceptManually}
             disabled={isGeneratingConceptManually || !campaign.selected_llm_id}
-            variant="primary"
             icon={<SettingsSuggestIcon />}
             tooltip={!campaign.selected_llm_id ? "Select an LLM model from the Settings tab first" : "Generate the campaign concept using AI"}
-          >
-            {isGeneratingConceptManually ? 'Generating Concept...' : 'Generate Campaign Concept'}
-          </Button>
+            aria-label="Generate campaign concept"
+          />
           {manualConceptError && <p className="error-message feedback-message" style={{ marginTop: '10px' }}>{manualConceptError}</p>}
         </section>
       )}
@@ -1643,7 +1624,7 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
             <h2 onClick={() => setIsCampaignConceptCollapsed(!isCampaignConceptCollapsed)} style={{ cursor: 'pointer', marginBottom: '0.5rem' }}>
               {isCampaignConceptCollapsed ? '▶' : '▼'} Campaign Concept
             </h2>
-            <Button
+            <IconButton
               onClick={() => {
                 setEditableConcept(campaign.concept || '');
                 setIsConceptEditorVisible(true);
@@ -1652,11 +1633,9 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
                 setConceptSaveSuccess(null);
               }}
               icon={<EditIcon />}
-              style={{minWidth: 'auto', padding: '4px', marginLeft: '10px'}}
               tooltip="Edit Campaign Concept"
-            >
-              Edit
-            </Button>
+              aria-label="Edit campaign concept"
+            />
           </div>
           {!isCampaignConceptCollapsed && (
             <div className="concept-content">
