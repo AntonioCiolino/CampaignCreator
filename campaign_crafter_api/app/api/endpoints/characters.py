@@ -566,7 +566,7 @@ def get_character_chat_history(
             # For example, skip it, or replace it with a placeholder.
             # Here, we'll just print the error and continue, effectively skipping the corrupted message.
             continue
-
+    print(history_as_pydantic)
     return history_as_pydantic
 
 @router.post("/{character_id}/chat/test", status_code=status.HTTP_201_CREATED)
