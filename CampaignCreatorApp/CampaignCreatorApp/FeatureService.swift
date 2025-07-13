@@ -1,9 +1,10 @@
 import Foundation
+import CampaignCreatorLib
 
 class FeatureService {
-    private let apiService: APIService
+    private let apiService: CampaignCreatorLib.APIService
 
-    init(apiService: APIService = APIService()) {
+    init(apiService: CampaignCreatorLib.APIService = CampaignCreatorLib.APIService()) {
         self.apiService = apiService
     }
 
