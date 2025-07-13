@@ -108,7 +108,7 @@ const Button: React.FC<ButtonProps> = ({
       style={style}
       {...props} // Spread other props
     >
-      {typeof icon === 'string' ? <i className={icon}></i> : icon}
+      {icon && <span className="btn-icon">{icon}</span>}
       {children}
     </button>
   );
