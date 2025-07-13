@@ -129,7 +129,7 @@ class CharacterEditViewModel: ObservableObject {
             updatedCharacter.image_urls = finalImageURLs
         }
 
-        var newStats = CharacterStats(strength: nil, dexterity: nil, constitution: nil, intelligence: nil, wisdom: nil, charisma: nil)
+        var newStats = updatedCharacter.stats ?? CharacterStats(strength: nil, dexterity: nil, constitution: nil, intelligence: nil, wisdom: nil, charisma: nil)
         newStats.strength = Int(statsStrength)
         newStats.dexterity = Int(statsDexterity)
         newStats.constitution = Int(statsConstitution)
@@ -138,18 +138,20 @@ class CharacterEditViewModel: ObservableObject {
         newStats.charisma = Int(statsCharisma)
         if newStats.strength != nil || newStats.dexterity != nil || newStats.constitution != nil || newStats.intelligence != nil || newStats.wisdom != nil || newStats.charisma != nil {
             updatedCharacter.stats = newStats
-        } else { updatedCharacter.stats = nil }
+        } else {
+            updatedCharacter.stats = nil
+        }
 
         do {
-            let characterUpdateDTO = updatedCharacter.toCharacterUpdateDTO()
-            let updatedCharacter: CampaignCreatorLib.Character = try await apiService.updateCharacter(characterToEdit.id, data: characterUpdateDTO)
-            if let character = Character(from: updatedCharacter) {
-                self.characterToEdit = character
+            let characterUpdateDTO = characterToEdit.toCharacterUpdateDTO()
+            let updatedLibCharacter: CampaignCreatorLib.Character = try await apiService.updateCharacter(characterToEdit.id, data: characterUpdateDTO)
+            if let updatedAppCharacter = Character(from: updatedLibCharacter) {
+                self.characterToEdit = updatedAppCharacter
             }
             isSaving = false
             return self.characterToEdit
         } catch {
-            errorMessage = "An unexpected error occurred: \(error.localizedDescription)"
+            errorMessage = "An unexpected error occurred: \\(error.localizedDescription)"
             isSaving = false
             return nil
         }
