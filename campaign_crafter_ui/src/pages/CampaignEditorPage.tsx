@@ -548,7 +548,7 @@ const CampaignEditorPage: React.FC = () => {
         clearTimeout(newTimer);
       }
     };
-  }, [editableMoodBoardUrls, campaignId, campaign, moodBoardDebounceTimer]);
+  }, [editableMoodBoardUrls, campaignId, campaign, moodBoardDebounceTimer, setCampaign]);
 
   useEffect(() => {
     let isMounted = true;
@@ -1478,15 +1478,13 @@ const TocLinkRenderer: React.FC<TocLinkRendererProps> = ({ href, children, ...ot
                     key={char.id}
                     secondaryAction={
                       <IconButton
-                        edge="end"
                         aria-label="unlink character"
                         onClick={() => handleUnlinkCharacterFromCampaign(char.id)}
                         disabled={isLinkingCharacter}
-                        title={`Remove ${char.name} from this campaign`}
-                        color="error"
-                      >
-                        <LinkOffIcon />
-                      </IconButton>
+                        tooltip={`Remove ${char.name} from this campaign`}
+                        variant="danger"
+                        icon={<LinkOffIcon />}
+                      />
                     }
                   >
                     <ListItemAvatar>
