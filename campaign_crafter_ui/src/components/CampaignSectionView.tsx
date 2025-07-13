@@ -11,7 +11,7 @@ import CloseIcon from '@mui/icons-material/Close'; // Import CloseIcon
 // DeleteIcon import removed as it's no longer used directly in this file
 import CasinoIcon from '@mui/icons-material/Casino'; // Import CasinoIcon
 import rehypeRaw from 'rehype-raw';
-import ReactQuill, { Quill } from 'react-quill'; // Quill for Delta static methods
+import ReactQuill from 'react-quill'; // Quill for Delta static methods
 import Delta from 'quill-delta'; // Direct import for Delta type/constructor
 import LoadingSpinner from './common/LoadingSpinner'; // Adjust path if necessary
 import type { RangeStatic as QuillRange } from 'quill'; // Import QuillRange
@@ -21,7 +21,6 @@ import RandomTableRoller from './RandomTableRoller';
 import ImageGenerationModal from './modals/ImageGenerationModal/ImageGenerationModal'; // Import the new modal
 import IconButton from './common/IconButton'; // Import IconButton
 import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
-import SaveIcon from '@mui/icons-material/Save'; // Import SaveIcon
 import CancelIcon from '@mui/icons-material/Cancel'; // Import CancelIcon
 import './CampaignSectionView.css';
 import { CampaignSectionUpdatePayload, SectionRegeneratePayload } from '../types/campaignTypes'; // CORRECTED PATH, Added SectionRegeneratePayload
@@ -109,7 +108,6 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   const [editedContent, setEditedContent] = useState<string>(section.content || '');
   const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
   const [editableSectionTitle, setEditableSectionTitle] = useState<string>(section.title || '');
-  const [editedTitle, setEditedTitle] = useState<string>(section.title || '');
   const [quillInstance, setQuillInstance] = useState<any>(null); // Enabled to store Quill instance
   const [localSaveError, setLocalSaveError] = useState<string | null>(null); // General save error for the section
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
@@ -280,14 +278,7 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
     if (externalSaveError === null && localSaveError !== null) {
       setLocalSaveError(null);
     }
-  }, [section.content, externalSaveError, isEditing, editedContent]); // editedContent in deps is okay if comparison is strict
-
-  // Effect to update editedTitle if section.title prop changes from parent
-  useEffect(() => {
-    if (!isEditingTitle) { // Only update if not currently editing, to avoid overwriting user input
-      setEditedTitle(section.title || '');
-    }
-  }, [section.title, isEditingTitle]);
+  }, [section.content, externalSaveError, isEditing, editedContent, localSaveError]); // editedContent in deps is okay if comparison is strict
 
   useEffect(() => {
     if (!isEditingTitle) {
@@ -740,12 +731,6 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
   // };
 
   console.log('[CampaignSectionView] Render state - isEditing:', isEditing, 'isSnippetContextMenuOpen:', isSnippetContextMenuOpen, 'contextMenuPosition:', contextMenuPosition, 'snippetFeatures.length:', snippetFeatures.length, 'currentSelection:', currentSelection);
-
-  const handleCancelEditTitle = () => {
-    setEditedTitle(section.title || '');
-    setIsEditingTitle(false);
-    setLocalSaveError(null);
-  };
 
   
   return (
