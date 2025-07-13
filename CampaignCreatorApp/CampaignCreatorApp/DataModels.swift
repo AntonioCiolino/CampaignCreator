@@ -441,14 +441,13 @@ struct CharacterUpdate: Codable {
 struct CharacterStats: Codable {
     var strength: Int?
 
-    init?(from libStats: CampaignCreatorLib.CharacterStats?) {
-        guard let libStats = libStats else { return nil }
-        self.strength = libStats.strength
-        self.dexterity = libStats.dexterity
-        self.constitution = libStats.constitution
-        self.intelligence = libStats.intelligence
-        self.wisdom = libStats.wisdom
-        self.charisma = libStats.charisma
+    init(from libStats: CampaignCreatorLib.CharacterStats?) {
+        self.strength = libStats?.strength
+        self.dexterity = libStats?.dexterity
+        self.constitution = libStats?.constitution
+        self.intelligence = libStats?.intelligence
+        self.wisdom = libStats?.wisdom
+        self.charisma = libStats?.charisma
     }
 
     func toCharacterStatsDTO() -> CampaignCreatorLib.CharacterStats {

@@ -121,10 +121,7 @@ struct SnippetContextInputModal_Previews: PreviewProvider {
         compatible_types: [],
         feature_category: ""
     )
-    static let sampleCharacters = [
-        Character(id: 1, owner_id: 1, name: "Aella", description: "A fierce warrior", appearance_description: "Tall and imposing", image_urls: [], video_clip_urls: [], notes_for_llm: "Loves to fight", stats: CharacterStats(strength: 18, dexterity: 14, constitution: 16, intelligence: 10, wisdom: 12, charisma: 8), export_format_preference: "Complex"),
-        Character(id: 2, owner_id: 1, name: "Bram", description: "A wise wizard", appearance_description: "Short and frail", image_urls: [], video_clip_urls: [], notes_for_llm: "Loves to read", stats: CharacterStats(strength: 8, dexterity: 12, constitution: 10, intelligence: 18, wisdom: 16, charisma: 14), export_format_preference: "Complex")
-    ]
+    static let sampleCharacters: [Character] = []
 
     static var previews: some View {
         StatefulPreviewWrapper(isPresented: true, feature: sampleFeatureWithContext)
