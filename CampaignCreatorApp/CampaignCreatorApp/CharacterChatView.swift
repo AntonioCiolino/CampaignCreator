@@ -1,5 +1,7 @@
 import SwiftUI
-import CampaignCreatorLib // Assuming this library contains the updated APIService and models
+import CampaignCreatorLib
+import Kingfisher
+// Assuming this library contains the updated APIService and models
 
 struct ChatMessage: Identifiable, Equatable {
     let id: String // Changed to String, typically a UUID for local, or derived from APIChatMessage.id
@@ -229,31 +231,18 @@ struct AvatarView: View {
     let url: URL?
 
     var body: some View {
-        Group {
-            if let url = url {
-                AsyncImage(url: url) { phase in
-                    if let image = phase.image {
-                        image.resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } else if phase.error != nil {
-                        Image(systemName: "person.circle.fill") // Error placeholder
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .foregroundColor(.gray)
-                    } else {
-                        ProgressView() // Loading placeholder
-                    }
-                }
-            } else {
-                Image(systemName: "person.circle.fill") // Default placeholder
+        KFImage(url)
+            .placeholder {
+                Image(systemName: "person.circle.fill")
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .foregroundColor(.gray)
             }
-        }
-        .frame(width: 30, height: 30)
-        .clipShape(Circle())
-        .overlay(Circle().stroke(Color.gray.opacity(0.5), lineWidth: 0.5))
+            .resizable()
+            .aspectRatio(contentMode: .fill)
+            .frame(width: 30, height: 30)
+            .clipShape(Circle())
+            .overlay(Circle().stroke(Color.gray.opacity(0.5), lineWidth: 0.5))
     }
 }
 
