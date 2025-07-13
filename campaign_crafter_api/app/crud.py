@@ -461,7 +461,7 @@ def copy_system_roll_table_to_user(db: Session, system_table: orm_models.RollTab
 
 # from app.services.openai_service import OpenAILLMService
 from app.services.llm_service import LLMService # Standardized
-from app.services.llm_factory import get_llm_service, LLMServiceUnavailableError # Standardized
+from app.services.llm_factory import get_llm_service, LLMServiceUnavailableError, LLMGenerationError # Standardized
 # from app import models # This is already imported via "from app import models, orm_models"
 
 # --- Campaign CRUD functions ---
