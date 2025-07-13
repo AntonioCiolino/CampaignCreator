@@ -95,21 +95,23 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
                     <span id="character-chat-panel-title" className="character-chat-panel-title">
                         {panelTitle}
                     </span>
-                    <div>
+                    <div className="character-chat-panel-actions">
                         <button
                             onClick={onMemorySummaryOpen}
-                            className="btn btn-info btn-sm me-2"
+                            className="btn btn-icon"
                             aria-label="View memory summary"
+                            title="View Memory Summary"
                         >
-                            Summary
+                            <i className="bi bi-brain"></i>
                         </button>
                         <button
                             onClick={handleClearChat}
-                            className="btn btn-secondary btn-sm me-2"
+                            className="btn btn-icon"
                             aria-label="Clear chat history"
                             disabled={isGeneratingResponse || chatLoading}
+                            title="Clear Chat History"
                         >
-                            Clear Chat
+                            <i className="bi bi-trash"></i>
                         </button>
                         <button
                             onClick={onClose}
