@@ -61,7 +61,7 @@ class SettingsViewModel: ObservableObject {
         do {
             self.currentUser = try await apiService.performRequest(endpoint: "/users/me")
         } catch {
-            print("Failed to fetch current user: \\(error.localizedDescription)")
+            print("Failed to fetch current user: \(error.localizedDescription)")
         }
     }
 
@@ -70,9 +70,9 @@ class SettingsViewModel: ObservableObject {
             do {
                 try KeychainHelper.delete(username: username)
                 UserDefaults.standard.removeObject(forKey: lastUsernameKey)
-                alertMessage = "Saved login credentials for '\\(username)' have been forgotten."
+                alertMessage = "Saved login credentials for '\(username)' have been forgotten."
             } catch {
-                alertMessage = "Could not forget login credentials for '\\(username)': \\(error.localizedDescription)"
+                alertMessage = "Could not forget login credentials for '\(username)': \(error.localizedDescription)"
             }
         } else {
             alertMessage = "No saved login credentials to forget."
@@ -122,7 +122,7 @@ class SettingsViewModel: ObservableObject {
             keyLabel = "Stable Diffusion"
         }
 
-        alertMessage = "\\(keyLabel) API Key has been saved."
+        alertMessage = "\(keyLabel) API Key has been saved."
         showingAPIKeyAlert = true
         refreshServiceStatus()
     }
@@ -152,7 +152,7 @@ class SettingsViewModel: ObservableObject {
         if !(UserDefaults.standard.string(forKey: "STABLE_DIFFUSION_API_KEY") ?? "").isEmpty {
             services.append("Stable Diffusion")
         }
-        return services.isEmpty ? "No AI services configured with API keys." : "Available: \\(services.joined(separator: ", "))"
+        return services.isEmpty ? "No AI services configured with API keys." : "Available: \(services.joined(separator: ", "))"
     }
 
     func logout() {

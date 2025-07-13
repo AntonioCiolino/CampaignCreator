@@ -38,9 +38,6 @@ struct ChatMessage: Identifiable, Equatable {
         self.characterAvatarUrl = (self.sender == .llm) ? URL(string: character.image_urls?.first ?? "") : nil
     }
 
-    func toChatMessageData() -> CampaignCreatorLib.ChatMessageData {
-        return CampaignCreatorLib.ChatMessageData(speaker: self.sender == .user ? "user" : "assistant", text: self.text)
-    }
 }
 
 struct CharacterChatView: View {

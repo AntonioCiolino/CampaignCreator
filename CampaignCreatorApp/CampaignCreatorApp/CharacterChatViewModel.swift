@@ -67,15 +67,14 @@ class CharacterChatViewModel: ObservableObject {
         errorMessage = nil
 
         Task {
-            let tempChatMessages = self.chatMessages
-
             do {
-                let historyForContextPayload = tempChatMessages.suffix(10).map { $0.toChatMessageData() }
+                let request = CharacterAspectGenerationRequest(character_name: character.name, aspect_to_generate: "chat", existing_description: nil, existing_appearance_description: nil, notes_for_llm: nil, prompt_override: messageText, model_id_with_prefix: nil)
+                let body = try JSONEncoder().encode(request)
 
-                let aiResponse: CampaignCreatorLib.LLMTextResponseDTO = try await apiService.generateCharacterChatResponse(characterId: character.id, prompt: messageText, chatHistory: historyForContextPayload, modelIdWithPrefix: nil, temperature: nil, maxTokens: nil)
+                let aiResponse: CharacterAspectGenerationResponse = try await apiService.performRequest(endpoint: "/characters/\(character.id)/generate-aspect", method: "POST", body: body)
 
                 let aiMessage = ChatMessage(
-                    text: aiResponse.text,
+                    text: aiResponse.generated_text,
                     sender: .llm,
                     character: character
                 )
