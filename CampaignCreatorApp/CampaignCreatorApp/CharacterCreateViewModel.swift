@@ -31,13 +31,13 @@ class CharacterCreateViewModel: ObservableObject {
         var prompt = ""
         switch field {
         case .description:
-            prompt = "Generate a compelling character description for a character named '\\(characterNameForPrompt)'."
-            if !characterDescription.isEmpty { prompt += " Consider this existing partial description: \\(characterDescription)"}
-            if !characterAppearance.isEmpty { prompt += " Appearance notes: \\(characterAppearance)"}
+            prompt = "Generate a compelling character description for a character named '\(characterNameForPrompt)'."
+            if !characterDescription.isEmpty { prompt += " Consider this existing partial description: \(characterDescription)"}
+            if !characterAppearance.isEmpty { prompt += " Appearance notes: \(characterAppearance)"}
         case .appearance:
-            prompt = "Generate a vivid appearance description for a character named '\\(characterNameForPrompt)'."
-            if !characterAppearance.isEmpty { prompt += " Consider this existing partial appearance: \\(characterAppearance)"}
-            if !characterDescription.isEmpty { prompt += " General description: \\(characterDescription)"}
+            prompt = "Generate a vivid appearance description for a character named '\(characterNameForPrompt)'."
+            if !characterAppearance.isEmpty { prompt += " Consider this existing partial appearance: \(characterAppearance)"}
+            if !characterDescription.isEmpty { prompt += " General description: \(characterDescription)"}
         }
 
         do {
@@ -49,7 +49,7 @@ class CharacterCreateViewModel: ObservableObject {
             case .appearance: characterAppearance = response.text
             }
         } catch {
-            errorMessage = "An unexpected error occurred during generation: \\(error.localizedDescription)"
+            errorMessage = "An unexpected error occurred during generation: \(error.localizedDescription)"
         }
         isGenerating = false
     }
@@ -76,20 +76,8 @@ class CharacterCreateViewModel: ObservableObject {
             let body = try JSONEncoder().encode(character)
             let _: Character = try await apiService.performRequest(endpoint: "/characters/", method: "POST", body: body)
         } catch {
-            errorMessage = "An unexpected error occurred: \\(error.localizedDescription)"
+            errorMessage = "An unexpected error occurred: \(error.localizedDescription)"
         }
         isSaving = false
-    }
-}
-
-extension String {
-    func nilIfEmpty() -> String? {
-        self.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : self
-    }
-}
-
-extension Array where Element == String {
-    func nilIfEmpty() -> [String]? {
-        self.isEmpty ? nil : self
     }
 }

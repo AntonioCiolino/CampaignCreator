@@ -16,30 +16,30 @@ public enum APIError: Error, LocalizedError, Sendable, Equatable {
         case .invalidURL:
             return "The API endpoint URL was invalid."
         case .requestFailed(let error):
-            return "The network request failed: \\(error.localizedDescription)"
+            return "The network request failed: \(error.localizedDescription)"
         case .decodingFailed(let error):
             var detailedError = "Failed to decode the server response."
             if let decodingError = error as? DecodingError {
                  switch decodingError {
                  case .typeMismatch(let type, let context):
-                     detailedError += " Type mismatch for type \\(type) at \\(context.codingPath.map { $0.stringValue }.joined(separator: ".")): \\(context.debugDescription)"
+                     detailedError += " Type mismatch for type \(type) at \(context.codingPath.map { $0.stringValue }.joined(separator: ".")): \(context.debugDescription)"
                  case .valueNotFound(let type, let context):
-                     detailedError += " Value not found for type \\(type) at \\(context.codingPath.map { $0.stringValue }.joined(separator: ".")): \\(context.debugDescription)"
+                     detailedError += " Value not found for type \(type) at \(context.codingPath.map { $0.stringValue }.joined(separator: ".")): \(context.debugDescription)"
                  case .keyNotFound(let key, let context):
-                     detailedError += " Key not found: \\(key.stringValue) at \\(context.codingPath.map { $0.stringValue }.joined(separator: ".")): \\(context.debugDescription)"
+                     detailedError += " Key not found: \(key.stringValue) at \(context.codingPath.map { $0.stringValue }.joined(separator: ".")): \(context.debugDescription)"
                  case .dataCorrupted(let context):
-                     detailedError += " Data corrupted at \\(context.codingPath.map { $0.stringValue }.joined(separator: ".")): \\(context.debugDescription)"
+                     detailedError += " Data corrupted at \(context.codingPath.map { $0.stringValue }.joined(separator: ".")): \(context.debugDescription)"
                  @unknown default:
-                     detailedError += " Unknown decoding error: \\(error.localizedDescription)"
+                     detailedError += " Unknown decoding error: \(error.localizedDescription)"
                  }
             } else {
-                detailedError += " \\(error.localizedDescription)"
+                detailedError += " \(error.localizedDescription)"
             }
             return detailedError
         case .encodingFailed(let error):
-            return "Failed to encode the request data: \\(error.localizedDescription)"
+            return "Failed to encode the request data: \(error.localizedDescription)"
         case .serverError(let statusCode, _):
-            return "Server error with status code: \\(statusCode)."
+            return "Server error with status code: \(statusCode)."
         case .noData:
             return "No data received from the server."
         case .notAuthenticated:
@@ -110,7 +110,7 @@ public final class APIService: Sendable {
             guard let token = tokenManager.getToken() else {
                 throw APIError.notAuthenticated
             }
-            request.setValue("Bearer \\(token)", forHTTPHeaderField: "Authorization")
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
         do {
@@ -152,7 +152,7 @@ public final class APIService: Sendable {
 
         if requiresAuth {
             guard let token = tokenManager.getToken() else { throw APIError.notAuthenticated }
-            request.setValue("Bearer \\(token)", forHTTPHeaderField: "Authorization")
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
         do {
@@ -185,7 +185,7 @@ public final class UserDefaultsTokenManager: TokenManaging {
     public init() {}
 }
 
-extension JSONDecoder.DateDecodingStrategy {
+public extension JSONDecoder.DateDecodingStrategy {
     static let iso8601withFractionalSeconds = custom {
         let container = try $0.singleValueContainer()
         let string = try container.decode(String.self)
@@ -198,6 +198,6 @@ extension JSONDecoder.DateDecodingStrategy {
         if let date = formatter.date(from: string) {
             return date
         }
-        throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid date: \\(string)")
+        throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid date: \(string)")
     }
 }

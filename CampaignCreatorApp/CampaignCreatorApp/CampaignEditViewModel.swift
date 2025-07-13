@@ -36,7 +36,7 @@ class CampaignEditViewModel: ObservableObject {
         _textColor = Published(initialValue: campaign.theme_text_color.map { Color(hex: $0) } ?? Color(.label))
         _fontFamily = Published(initialValue: campaign.theme_font_family ?? "")
         _backgroundImageUrl = Published(initialValue: campaign.theme_background_image_url ?? "")
-        _backgroundImageOpacity = Published(initialValue: campaign.theme_background_image_opacity ?? 1.0)
+        _backgroundImageOpacity = Published(initialValue: Double(campaign.theme_background_image_opacity ?? 1.0))
     }
 
     func saveChanges() async -> Campaign? {
@@ -58,7 +58,7 @@ class CampaignEditViewModel: ObservableObject {
         campaignToUpdate.theme_text_color = textColor.toHex()
         campaignToUpdate.theme_font_family = fontFamily.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty()
         campaignToUpdate.theme_background_image_url = backgroundImageUrl.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty()
-        campaignToUpdate.theme_background_image_opacity = (campaignToUpdate.theme_background_image_url == nil) ? nil : backgroundImageOpacity
+        campaignToUpdate.theme_background_image_opacity = (campaignToUpdate.theme_background_image_url == nil) ? nil : Float(backgroundImageOpacity)
 
         do {
             let campaignUpdate = CampaignUpdate(
@@ -81,12 +81,12 @@ class CampaignEditViewModel: ObservableObject {
             )
 
             let body = try JSONEncoder().encode(campaignUpdate)
-            let updatedCampaign: Campaign = try await apiService.performRequest(endpoint: "/campaigns/\\(campaign.id)", method: "PUT", body: body)
+            let updatedCampaign: Campaign = try await apiService.performRequest(endpoint: "/campaigns/\(campaign.id)", method: "PUT", body: body)
             self.campaign = updatedCampaign
             isSaving = false
             return updatedCampaign
         } catch {
-            errorMessage = "Failed to update campaign: \\(error.localizedDescription)"
+            errorMessage = "Failed to update campaign: \(error.localizedDescription)"
             isSaving = false
             return nil
         }
