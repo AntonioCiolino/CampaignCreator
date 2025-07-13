@@ -9,6 +9,7 @@ from app import crud, models, orm_models
 from app.core.config import settings # Import settings
 from app.db import get_db
 from app.services.auth_service import get_current_active_user
+from app.services.llm_service import LLMGenerationError
 
 router = APIRouter()
 
@@ -513,7 +514,7 @@ async def generate_character_chat_response( # Renamed function
         # To save user message even if LLM fails, call update_user_character_conversation before LLM call.
         # For now, if LLM fails, the appended user message (and any AI message) won't be committed.
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
-    except crud.LLMGenerationError as e:
+    except LLMGenerationError as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
