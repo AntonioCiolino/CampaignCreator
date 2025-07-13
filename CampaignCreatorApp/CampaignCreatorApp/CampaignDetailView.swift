@@ -83,7 +83,30 @@ struct CampaignDetailView: View {
 
 struct CampaignDetailView_Previews: PreviewProvider {
     static var previews: some View {
-        let sampleCampaign = Campaign(id: 1, title: "Campaign 1", concept: "A cool campaign", initial_user_prompt: nil, homebrewery_toc: nil, display_toc: nil, homebrewery_export: nil, sections: [], owner_id: 1, badge_image_url: nil, thematic_image_url: nil, thematic_image_prompt: nil, selected_llm_id: nil, temperature: nil, theme_primary_color: nil, theme_secondary_color: nil, theme_background_color: nil, theme_text_color: nil, theme_font_family: nil, theme_background_image_url: nil, theme_background_image_opacity: nil, mood_board_image_urls: nil)
+        let sampleCampaign = Campaign(
+            id: 1,
+            title: "Campaign 1",
+            concept: "A cool campaign",
+            initial_user_prompt: "Initial prompt for preview.",
+            homebrewery_toc: [:],
+            display_toc: [:],
+            homebrewery_export: "",
+            sections: [],
+            owner_id: 1,
+            badge_image_url: "",
+            thematic_image_url: "",
+            thematic_image_prompt: "",
+            selected_llm_id: "",
+            temperature: 0.7,
+            theme_primary_color: "#FF0000",
+            theme_secondary_color: "#00FF00",
+            theme_background_color: "#0000FF",
+            theme_text_color: "#FFFFFF",
+            theme_font_family: "Arial",
+            theme_background_image_url: "",
+            theme_background_image_opacity: 1.0,
+            mood_board_image_urls: []
+        )
 
         return NavigationView {
             CampaignDetailView(campaign: sampleCampaign)
