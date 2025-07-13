@@ -65,9 +65,9 @@ struct Campaign: Codable, Identifiable {
         self.title = libCampaign.title
         self.concept = libCampaign.concept
         self.initial_user_prompt = libCampaign.initialUserPrompt
-        self.homebrewery_toc = nil // Not available in libCampaign
-        self.display_toc = nil // Not available in libCampaign
-        self.homebrewery_export = nil // Not available in libCampaign
+        self.homebrewery_toc = [:]
+        self.display_toc = [:]
+        self.homebrewery_export = ""
         self.sections = libCampaign.sections.compactMap { CampaignSection(from: $0) }
         self.owner_id = 0 // Not available in libCampaign
         self.badge_image_url = libCampaign.badgeImageURL
@@ -236,35 +236,19 @@ struct LLMConfig: Codable, Identifiable {
     let id: Int
     let owner_id: Int
     var name: String
-
-
-    init?(from libCharacter: CampaignCreatorLib.Character?) {
-        guard let libCharacter = libCharacter else { return nil }
-        self.id = libCharacter.id
-        self.owner_id = 0 // Not available in libCharacter
-        self.name = libCharacter.name
-        self.description = libCharacter.description
-        self.appearance_description = libCharacter.appearanceDescription
-        self.image_urls = libCharacter.imageURLs
-        self.video_clip_urls = nil // Not available in libCharacter
-        self.notes_for_llm = libCharacter.notesForLLM
-        self.stats = CharacterStats(from: libCharacter.stats)
-        self.export_format_preference = libCharacter.exportFormatPreference
-    }
-
-    func toCharacterUpdateDTO() -> CampaignCreatorLib.CharacterUpdateDTO {
-        return CampaignCreatorLib.CharacterUpdateDTO(
-            name: self.name,
-            description: self.description,
-            appearanceDescription: self.appearance_description,
-            imageURLs: self.image_urls,
-            notesForLLM: self.notes_for_llm,
-            stats: self.stats?.toCharacterStatsDTO(),
-            exportFormatPreference: self.export_format_preference
-        )
-    }
     var api_key: String?
     var api_url: String?
+}
+
+extension LLMConfig {
+    init?(from libConfig: CampaignCreatorLib.LLMConfig?) {
+        guard let libConfig = libConfig else { return nil }
+        self.id = libConfig.id
+        self.owner_id = 0 // Not available in libConfig
+        self.name = libConfig.name
+        self.api_key = nil // Not available in libConfig
+        self.api_url = nil // Not available in libConfig
+    }
 }
 
 struct LLMConfigCreate: Codable {
