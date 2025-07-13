@@ -545,9 +545,11 @@ def get_character_chat_history(
     )
 
     # The conversation_history is a list of dicts. We need to convert it to a list of Pydantic models.
-    history_as_pydantic = [
-        models.ConversationMessageEntry(**msg)
-        for msg in conversation_orm_object.conversation_history
-    ]
+    history_as_pydantic = []
+    for msg in conversation_orm_object.conversation_history:
+        # Manually parse the timestamp string into a datetime object
+        if isinstance(msg.get("timestamp"), str):
+            msg["timestamp"] = datetime.fromisoformat(msg["timestamp"])
+        history_as_pydantic.append(models.ConversationMessageEntry(**msg))
 
     return history_as_pydantic
