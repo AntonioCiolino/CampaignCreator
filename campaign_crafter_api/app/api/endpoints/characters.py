@@ -561,7 +561,7 @@ def get_character_chat_history(
                         pass
             history_as_pydantic.append(models.ConversationMessageEntry(**msg))
         except Exception as e:
-            print(f"Failed to load chat history. Data corrupted at index {i}. Error: {e}")
+            print(f"Failed to load chat history. Data corrupted at index {i}. Error: {e}. Message data: {msg}")
             # Optionally, decide how to handle the corrupted message.
             # For example, skip it, or replace it with a placeholder.
             # Here, we'll just print the error and continue, effectively skipping the corrupted message.
