@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import CampaignCreatorLib
 
 @MainActor
 class ContentViewModel: ObservableObject {
@@ -7,8 +8,8 @@ class ContentViewModel: ObservableObject {
     @Published var isLoggingIn: Bool = false
     @Published var authError: String?
 
-    private var apiService = APIService()
-    private var tokenManager = UserDefaultsTokenManager()
+    private var apiService = CampaignCreatorLib.APIService()
+    private var tokenManager = CampaignCreatorLib.UserDefaultsTokenManager()
 
     init() {
         self.isAuthenticated = tokenManager.hasToken()

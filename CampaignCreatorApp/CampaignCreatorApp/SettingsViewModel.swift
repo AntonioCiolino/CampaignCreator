@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import CampaignCreatorLib
 
 @MainActor
 class SettingsViewModel: ObservableObject {
@@ -41,8 +42,8 @@ class SettingsViewModel: ObservableObject {
     @Published var currentUser: User?
 
     private let lastUsernameKey = "LastUsername"
-    private var apiService = APIService()
-    private var tokenManager = UserDefaultsTokenManager()
+    private var apiService = CampaignCreatorLib.APIService()
+    private var tokenManager = CampaignCreatorLib.UserDefaultsTokenManager()
 
     init() {
         loadAPIKeys()

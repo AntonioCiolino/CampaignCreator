@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import CampaignCreatorLib
 
 @MainActor
 class CharacterDetailViewModel: ObservableObject {
@@ -7,7 +8,7 @@ class CharacterDetailViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
-    private var apiService = APIService()
+    private var apiService = CampaignCreatorLib.APIService()
 
     init(character: Character) {
         self.character = character
@@ -17,8 +18,8 @@ class CharacterDetailViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         do {
-            let refreshedCharacter: Character = try await apiService.performRequest(endpoint: "/characters/\\(character.id)")
-            self.character = refreshedCharacter
+            let refreshedLibCharacter: CampaignCreatorLib.Character = try await apiService.fetchCharacter(id: character.id)
+            self.character = Character(from: refreshedLibCharacter)
         } catch {
             self.errorMessage = error.localizedDescription
         }

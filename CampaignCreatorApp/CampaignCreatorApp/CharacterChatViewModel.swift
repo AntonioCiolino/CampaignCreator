@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import CampaignCreatorLib
 
 @MainActor
 class CharacterChatViewModel: ObservableObject {
@@ -9,7 +10,7 @@ class CharacterChatViewModel: ObservableObject {
     @Published var memorySummary: String? = "This is a placeholder for the actual memory summary."
 
     private let character: Character
-    private var apiService = APIService()
+    private var apiService = CampaignCreatorLib.APIService()
 
     init(character: Character) {
         self.character = character
@@ -69,24 +70,18 @@ class CharacterChatViewModel: ObservableObject {
             let tempChatMessages = self.chatMessages
 
             do {
-                let historyForContextPayload = tempChatMessages.suffix(10).map { uiMsg -> ConversationMessageContext in
-                    let speakerText = uiMsg.sender == .user ? "user" : "assistant"
-                    return ConversationMessageContext(speaker: speakerText, text: uiMsg.text)
-                }
+                let historyForContextPayload = tempChatMessages.suffix(10).map { $0.toChatMessageData() }
 
-                let request = CharacterAspectGenerationRequest(character_name: character.name, aspect_to_generate: "chat", existing_description: nil, existing_appearance_description: nil, notes_for_llm: nil, prompt_override: messageText, model_id_with_prefix: nil)
-                let body = try JSONEncoder().encode(request)
-
-                let aiResponse: CharacterAspectGenerationResponse = try await apiService.performRequest(endpoint: "/characters/\\(character.id)/generate-aspect", method: "POST", body: body)
+                let aiResponse: CampaignCreatorLib.LLMTextResponseDTO = try await apiService.generateCharacterChatResponse(characterId: character.id, prompt: messageText, chatHistory: historyForContextPayload, modelIdWithPrefix: nil, temperature: nil, maxTokens: nil)
 
                 let aiMessage = ChatMessage(
-                    text: aiResponse.generated_text,
+                    text: aiResponse.text,
                     sender: .llm,
                     character: character
                 )
                 self.chatMessages.append(aiMessage)
             } catch {
-                self.errorMessage = "Error: \\(error.localizedDescription)"
+                self.errorMessage = "Error: \(error.localizedDescription)"
                 self.chatMessages.removeAll { $0.id == optimisticUserMessage.id }
             }
             self.isSendingMessage = false

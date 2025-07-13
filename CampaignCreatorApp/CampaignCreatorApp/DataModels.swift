@@ -55,6 +55,56 @@ struct Campaign: Codable, Identifiable {
     let id: Int
     var title: String
     var concept: String?
+
+    init(from libCampaign: CampaignCreatorLib.Campaign) {
+        self.id = libCampaign.id
+        self.title = libCampaign.title
+        self.concept = libCampaign.concept
+        self.initial_user_prompt = libCampaign.initialUserPrompt
+        self.homebrewery_toc = nil // Not available in libCampaign
+        self.display_toc = nil // Not available in libCampaign
+        self.homebrewery_export = nil // Not available in libCampaign
+        self.sections = libCampaign.sections.map { CampaignSection(from: $0) }
+        self.owner_id = 0 // Not available in libCampaign
+        self.badge_image_url = libCampaign.badgeImageURL
+        self.thematic_image_url = libCampaign.thematicImageURL
+        self.thematic_image_prompt = libCampaign.thematicImagePrompt
+        self.selected_llm_id = libCampaign.selectedLLMId
+        self.temperature = Float(libCampaign.temperature ?? 0.7)
+        self.theme_primary_color = libCampaign.themePrimaryColor
+        self.theme_secondary_color = libCampaign.themeSecondaryColor
+        self.theme_background_color = libCampaign.themeBackgroundColor
+        self.theme_text_color = libCampaign.themeTextColor
+        self.theme_font_family = libCampaign.themeFontFamily
+        self.theme_background_image_url = libCampaign.themeBackgroundImageURL
+        self.theme_background_image_opacity = Float(libCampaign.themeBackgroundImageOpacity ?? 1.0)
+        self.mood_board_image_urls = libCampaign.moodBoardImageURLs
+    }
+
+    func toCampaignUpdateDTO() -> CampaignCreatorLib.CampaignUpdateDTO {
+        return CampaignCreatorLib.CampaignUpdateDTO(
+            title: self.title,
+            initialUserPrompt: self.initial_user_prompt,
+            concept: self.concept,
+            displayTOC: nil, // Not available in app model
+            badgeImageURL: self.badge_image_url,
+            thematicImageURL: self.thematic_image_url,
+            thematicImagePrompt: self.thematic_image_prompt,
+            selectedLLMId: self.selected_llm_id,
+            temperature: Double(self.temperature ?? 0.7),
+            moodBoardImageURLs: self.mood_board_image_urls,
+            themePrimaryColor: self.theme_primary_color,
+            themeSecondaryColor: self.theme_secondary_color,
+            themeBackgroundColor: self.theme_background_color,
+            themeTextColor: self.theme_text_color,
+            themeFontFamily: self.theme_font_family,
+            themeBackgroundImageURL: self.theme_background_image_url,
+            themeBackgroundImageOpacity: Double(self.theme_background_image_opacity ?? 1.0),
+            linkedCharacterIDs: nil, // Not available in app model
+            customSections: nil, // Not available in app model
+            sections: self.sections?.map { $0.toCampaignSectionDTO() }
+        )
+    }
     var initial_user_prompt: String?
     var homebrewery_toc: [String: String]?
     var display_toc: [String: String]?
@@ -117,6 +167,25 @@ struct CampaignSection: Codable, Identifiable {
     let id: Int
     let campaign_id: Int
     var title: String?
+
+    init(from libSection: CampaignCreatorLib.CampaignSection) {
+        self.id = libSection.id
+        self.campaign_id = 0 // Not available in libSection
+        self.title = libSection.title
+        self.content = libSection.content
+        self.order = libSection.order
+        self.type = libSection.type
+    }
+
+    func toCampaignSectionDTO() -> CampaignCreatorLib.CampaignSection {
+        return CampaignCreatorLib.CampaignSection(
+            id: self.id,
+            title: self.title,
+            content: self.content,
+            order: self.order,
+            type: self.type
+        )
+    }
     var content: String
     var order: Int
     var type: String?
@@ -157,6 +226,31 @@ struct LLMConfig: Codable, Identifiable {
     let id: Int
     let owner_id: Int
     var name: String
+
+    init(from libCharacter: CampaignCreatorLib.Character) {
+        self.id = libCharacter.id
+        self.owner_id = 0 // Not available in libCharacter
+        self.name = libCharacter.name
+        self.description = libCharacter.description
+        self.appearance_description = libCharacter.appearanceDescription
+        self.image_urls = libCharacter.imageURLs
+        self.video_clip_urls = nil // Not available in libCharacter
+        self.notes_for_llm = libCharacter.notesForLLM
+        self.stats = CharacterStats(from: libCharacter.stats)
+        self.export_format_preference = libCharacter.exportFormatPreference
+    }
+
+    func toCharacterUpdateDTO() -> CampaignCreatorLib.CharacterUpdateDTO {
+        return CampaignCreatorLib.CharacterUpdateDTO(
+            name: self.name,
+            description: self.description,
+            appearanceDescription: self.appearance_description,
+            imageURLs: self.image_urls,
+            notesForLLM: self.notes_for_llm,
+            stats: self.stats?.toCharacterStatsDTO(),
+            exportFormatPreference: self.export_format_preference
+        )
+    }
     var api_key: String?
     var api_url: String?
 }
@@ -313,6 +407,18 @@ struct Character: Codable, Identifiable {
 
 struct CharacterCreate: Codable {
     var name: String
+
+    func toCharacterCreateDTO() -> CampaignCreatorLib.CharacterCreateDTO {
+        return CampaignCreatorLib.CharacterCreateDTO(
+            name: self.name,
+            description: self.description,
+            appearanceDescription: self.appearance_description,
+            imageURLs: self.image_urls,
+            notesForLLM: self.notes_for_llm,
+            stats: self.stats?.toCharacterStatsDTO(),
+            exportFormatPreference: self.export_format_preference
+        )
+    }
     var description: String?
     var appearance_description: String?
     var image_urls: [String]?
@@ -335,6 +441,27 @@ struct CharacterUpdate: Codable {
 
 struct CharacterStats: Codable {
     var strength: Int?
+
+    init?(from libStats: CampaignCreatorLib.CharacterStats?) {
+        guard let libStats = libStats else { return nil }
+        self.strength = libStats.strength
+        self.dexterity = libStats.dexterity
+        self.constitution = libStats.constitution
+        self.intelligence = libStats.intelligence
+        self.wisdom = libStats.wisdom
+        self.charisma = libStats.charisma
+    }
+
+    func toCharacterStatsDTO() -> CampaignCreatorLib.CharacterStats {
+        return CampaignCreatorLib.CharacterStats(
+            strength: self.strength,
+            dexterity: self.dexterity,
+            constitution: self.constitution,
+            intelligence: self.intelligence,
+            wisdom: self.wisdom,
+            charisma: self.charisma
+        )
+    }
     var dexterity: Int?
     var constitution: Int?
     var intelligence: Int?

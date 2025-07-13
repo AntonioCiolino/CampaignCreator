@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import CampaignCreatorLib
 
 @MainActor
 class CharacterImageManagerViewModel: ObservableObject {
@@ -14,7 +15,7 @@ class CharacterImageManagerViewModel: ObservableObject {
     @Published var showErrorAlert = false
     @Published var errorMessage = ""
 
-    private var apiService = APIService()
+    private var apiService = CampaignCreatorLib.APIService()
 
     init(imageURLs: Binding<[String]>, characterID: Int) {
         _imageURLs = imageURLs
@@ -56,21 +57,18 @@ class CharacterImageManagerViewModel: ObservableObject {
         isGeneratingImage = true
         generationError = nil
 
-        let params = CharacterImageGenerationRequest(
-            additional_prompt_details: imagePrompt,
-            model_name: selectedModel.rawValue,
+        let params = CampaignCreatorLib.ImageGenerationParams(
+            prompt: imagePrompt,
+            model: selectedModel == .openAIDalle ? .openAIDalle : .stableDiffusion,
             size: "1024x1024",
             quality: selectedModel == .openAIDalle ? "standard" : nil,
-            steps: nil,
-            cfg_scale: nil,
-            gemini_model_name: nil
+            campaignId: nil
         )
 
         Task {
             do {
-                let body = try JSONEncoder().encode(params)
-                let response: CharacterImageGenerationResponse = try await apiService.performRequest(endpoint: "/characters/\\(characterID)/generate-image", method: "POST", body: body)
-                if let newURL = response.image_url, !newURL.isEmpty {
+                let response: CampaignCreatorLib.ImageGenerationResponse = try await apiService.generateImage(payload: params)
+                if let newURL = response.imageUrl, !newURL.isEmpty {
                     if !imageURLs.contains(newURL) {
                         imageURLs.append(newURL)
                     }
@@ -80,7 +78,7 @@ class CharacterImageManagerViewModel: ObservableObject {
                     showErrorAlert = true
                 }
             } catch {
-                generationError = "Failed to generate image: \\(error.localizedDescription)"
+                generationError = "Failed to generate image: \(error.localizedDescription)"
                 showErrorAlert = true
             }
             isGeneratingImage = false

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import CampaignCreatorLib
 
 @MainActor
 class CharacterCreateViewModel: ObservableObject {
@@ -15,7 +16,7 @@ class CharacterCreateViewModel: ObservableObject {
     @Published var isGenerating: Bool = false
     @Published var errorMessage: String?
 
-    private var apiService = APIService()
+    private var apiService = CampaignCreatorLib.APIService()
 
     enum AspectField { case description, appearance }
 
@@ -63,7 +64,7 @@ class CharacterCreateViewModel: ObservableObject {
 
         do {
             let finalExportFormatPreference = characterExportFormatPreference.trimmingCharacters(in: .whitespacesAndNewlines)
-            let character = CharacterCreate(
+            var character = CharacterCreate(
                 name: name,
                 description: characterDescription.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty(),
                 appearance_description: characterAppearance.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty(),
@@ -73,8 +74,9 @@ class CharacterCreateViewModel: ObservableObject {
                 stats: nil,
                 export_format_preference: finalExportFormatPreference.isEmpty ? "Complex" : finalExportFormatPreference
             )
-            let body = try JSONEncoder().encode(character)
-            let _: Character = try await apiService.performRequest(endpoint: "/characters/", method: "POST", body: body)
+
+            let characterCreateDTO = character.toCharacterCreateDTO()
+            let _: CampaignCreatorLib.Character = try await apiService.createCharacter(characterCreateDTO)
         } catch {
             errorMessage = "An unexpected error occurred: \(error.localizedDescription)"
         }

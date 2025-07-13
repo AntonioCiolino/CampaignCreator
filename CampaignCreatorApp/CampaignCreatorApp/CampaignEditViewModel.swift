@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import CampaignCreatorLib
 
 @MainActor
 class CampaignEditViewModel: ObservableObject {
@@ -21,7 +22,7 @@ class CampaignEditViewModel: ObservableObject {
     @Published var isSaving = false
     @Published var errorMessage: String?
 
-    private var apiService = APIService()
+    private var apiService = CampaignCreatorLib.APIService()
 
     init(campaign: Campaign) {
         self.campaign = campaign
@@ -61,30 +62,11 @@ class CampaignEditViewModel: ObservableObject {
         campaignToUpdate.theme_background_image_opacity = (campaignToUpdate.theme_background_image_url == nil) ? nil : Float(backgroundImageOpacity)
 
         do {
-            let campaignUpdate = CampaignUpdate(
-                title: campaignToUpdate.title,
-                initial_user_prompt: campaignToUpdate.initial_user_prompt,
-                concept: campaignToUpdate.concept,
-                badge_image_url: campaignToUpdate.badge_image_url,
-                thematic_image_url: campaignToUpdate.thematic_image_url,
-                thematic_image_prompt: campaignToUpdate.thematic_image_prompt,
-                selected_llm_id: campaignToUpdate.selected_llm_id,
-                temperature: campaignToUpdate.temperature,
-                theme_primary_color: campaignToUpdate.theme_primary_color,
-                theme_secondary_color: campaignToUpdate.theme_secondary_color,
-                theme_background_color: campaignToUpdate.theme_background_color,
-                theme_text_color: campaignToUpdate.theme_text_color,
-                theme_font_family: campaignToUpdate.theme_font_family,
-                theme_background_image_url: campaignToUpdate.theme_background_image_url,
-                theme_background_image_opacity: campaignToUpdate.theme_background_image_opacity,
-                mood_board_image_urls: campaignToUpdate.mood_board_image_urls
-            )
-
-            let body = try JSONEncoder().encode(campaignUpdate)
-            let updatedCampaign: Campaign = try await apiService.performRequest(endpoint: "/campaigns/\(campaign.id)", method: "PUT", body: body)
-            self.campaign = updatedCampaign
+            let campaignUpdateDTO = campaignToUpdate.toCampaignUpdateDTO()
+            let updatedCampaign: CampaignCreatorLib.Campaign = try await apiService.updateCampaign(campaign.id, data: campaignUpdateDTO)
+            self.campaign = Campaign(from: updatedCampaign)
             isSaving = false
-            return updatedCampaign
+            return self.campaign
         } catch {
             errorMessage = "Failed to update campaign: \(error.localizedDescription)"
             isSaving = false

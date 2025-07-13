@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import CampaignCreatorLib
 
 @MainActor
 class CharacterEditViewModel: ObservableObject {
@@ -44,7 +45,7 @@ class CharacterEditViewModel: ObservableObject {
     @Published var isGenerating: Bool = false
     @Published var errorMessage: String?
 
-    private var apiService = APIService()
+    private var apiService = CampaignCreatorLib.APIService()
 
     init(character: Character) {
         self.characterToEdit = character
@@ -140,22 +141,13 @@ class CharacterEditViewModel: ObservableObject {
         } else { updatedCharacter.stats = nil }
 
         do {
-            let characterUpdate = CharacterUpdate(
-                name: updatedCharacter.name,
-                description: updatedCharacter.description,
-                appearance_description: updatedCharacter.appearance_description,
-                image_urls: updatedCharacter.image_urls,
-                video_clip_urls: updatedCharacter.video_clip_urls,
-                notes_for_llm: updatedCharacter.notes_for_llm,
-                stats: updatedCharacter.stats,
-                export_format_preference: updatedCharacter.export_format_preference
-            )
-            let body = try JSONEncoder().encode(characterUpdate)
-            let savedCharacter: Character = try await apiService.performRequest(endpoint: "/characters/\\(characterToEdit.id)", method: "PUT", body: body)
+            let characterUpdateDTO = updatedCharacter.toCharacterUpdateDTO()
+            let updatedCharacter: CampaignCreatorLib.Character = try await apiService.updateCharacter(characterToEdit.id, data: characterUpdateDTO)
+            self.characterToEdit = Character(from: updatedCharacter)
             isSaving = false
-            return savedCharacter
+            return self.characterToEdit
         } catch {
-            errorMessage = "An unexpected error occurred: \\(error.localizedDescription)"
+            errorMessage = "An unexpected error occurred: \(error.localizedDescription)"
             isSaving = false
             return nil
         }

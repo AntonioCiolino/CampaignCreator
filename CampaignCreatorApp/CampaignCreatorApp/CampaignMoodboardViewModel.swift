@@ -1,12 +1,13 @@
 import Foundation
 import SwiftUI
+import CampaignCreatorLib
 
 @MainActor
 class CampaignMoodboardViewModel: ObservableObject {
     @Published var campaign: Campaign
     @Published var moodBoardImageURLs: [String]
 
-    private var apiService = APIService()
+    private var apiService = CampaignCreatorLib.APIService()
 
     init(campaign: Campaign) {
         self.campaign = campaign
@@ -45,17 +46,14 @@ class CampaignMoodboardViewModel: ObservableObject {
     }
 
     func generateAIImage(prompt: String) async throws -> String {
-        let params = CharacterImageGenerationRequest(
-            additional_prompt_details: prompt,
-            model_name: "dall-e",
+        let params = CampaignCreatorLib.ImageGenerationParams(
+            prompt: prompt,
+            model: .openAIDalle,
             size: "1024x1024",
             quality: "standard",
-            steps: nil,
-            cfg_scale: nil,
-            gemini_model_name: nil
+            campaignId: campaign.id
         )
-        let body = try JSONEncoder().encode(params)
-        let response: CharacterImageGenerationResponse = try await apiService.performRequest(endpoint: "/images/generate-for-campaign/\\(campaign.id)", method: "POST", body: body)
-        return response.image_url ?? ""
+        let response: CampaignCreatorLib.ImageGenerationResponse = try await apiService.generateImage(payload: params)
+        return response.imageUrl ?? ""
     }
 }
