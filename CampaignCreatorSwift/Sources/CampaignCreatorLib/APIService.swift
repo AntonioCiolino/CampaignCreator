@@ -440,7 +440,11 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
                     // which expects to find them via its CodingKeys.
                     decodedObject = try localCampaignDecoder.decode(T.self, from: data)
                 }
-                else {
+                else if T.self == MemorySummaryDTO.self {
+                    let localMemorySummaryDecoder = JSONDecoder()
+                    localMemorySummaryDecoder.dateDecodingStrategy = .iso8601
+                    decodedObject = try localMemorySummaryDecoder.decode(T.self, from: data)
+                } else {
                     // For other types, use the shared decoder with .convertFromSnakeCase.
                     decodedObject = try self.jsonDecoder.decode(T.self, from: data)
                 }
