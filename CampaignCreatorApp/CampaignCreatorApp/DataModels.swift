@@ -58,6 +58,7 @@ struct Campaign: Codable, Identifiable {
     var title: String
     var concept: String?
 
+
     init?(from libCampaign: CampaignCreatorLib.Campaign?) {
         guard let libCampaign = libCampaign else { return nil }
         self.id = libCampaign.id
@@ -175,6 +176,7 @@ struct CampaignSection: Codable, Identifiable {
     let campaign_id: Int
     var title: String?
 
+
     init?(from libSection: CampaignCreatorLib.CampaignSection?) {
         guard let libSection = libSection else { return nil }
         self.id = libSection.id
@@ -234,6 +236,7 @@ struct LLMConfig: Codable, Identifiable {
     let id: Int
     let owner_id: Int
     var name: String
+
 
     init?(from libCharacter: CampaignCreatorLib.Character?) {
         guard let libCharacter = libCharacter else { return nil }
