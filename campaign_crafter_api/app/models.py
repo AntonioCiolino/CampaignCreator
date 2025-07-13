@@ -428,3 +428,6 @@ class CharacterAspectGenerationResponse(BaseModel):
 # have been removed. The new models ConversationMessageContext and ConversationMessageEntry
 # are used for chat-related data structures, aligning with the JSON history storage.
 # The GET /chat endpoint will use List[ConversationMessageEntry] as its response model.
+
+class MemorySummary(BaseModel):
+    memory_summary: str
