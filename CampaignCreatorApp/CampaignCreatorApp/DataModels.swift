@@ -1,3 +1,5 @@
+import CampaignCreatorLib
+
 //
 //  DataModels.swift
 //  CampaignCreatorApp
@@ -129,6 +131,10 @@ struct Campaign: Codable, Identifiable {
 
     // Mood Board
     var mood_board_image_urls: [String]?
+
+    var wordCount: Int {
+        return sections?.reduce(0) { $0 + $1.content.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count } ?? 0
+    }
 }
 
 struct CampaignCreate: Codable {

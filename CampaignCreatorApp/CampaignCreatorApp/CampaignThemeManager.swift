@@ -13,13 +13,13 @@ class CampaignThemeManager: ObservableObject {
     @Published var backgroundImageOpacity: Double = 1.0
 
     func updateTheme(from campaign: Campaign) {
-        primaryColor = campaign.themePrimaryColor.flatMap { Color(hex: $0) } ?? .accentColor
-        secondaryColor = campaign.themeSecondaryColor.flatMap { Color(hex: $0) } ?? .secondary
-        backgroundColor = campaign.themeBackgroundColor.flatMap { Color(hex: $0) } ?? Color(.systemBackground)
-        textColor = campaign.themeTextColor.flatMap { Color(hex: $0) } ?? Color(.label)
-        fontFamily = campaign.themeFontFamily
-        backgroundImageUrl = campaign.themeBackgroundImageURL.flatMap { URL(string: $0) }
-        backgroundImageOpacity = campaign.themeBackgroundImageOpacity ?? 1.0
+        primaryColor = campaign.theme_primary_color.flatMap { Color(hex: $0) } ?? .accentColor
+        secondaryColor = campaign.theme_secondary_color.flatMap { Color(hex: $0) } ?? .secondary
+        backgroundColor = campaign.theme_background_color.flatMap { Color(hex: $0) } ?? Color(.systemBackground)
+        textColor = campaign.theme_text_color.flatMap { Color(hex: $0) } ?? Color(.label)
+        fontFamily = campaign.theme_font_family
+        backgroundImageUrl = campaign.theme_background_image_url.flatMap { URL(string: $0) }
+        backgroundImageOpacity = Double(campaign.theme_background_image_opacity ?? 1.0)
 
         print("ThemeManager updated for campaign: \(campaign.title)")
         print("  Primary: \(primaryColor), BG: \(backgroundColor), Text: \(textColor)")

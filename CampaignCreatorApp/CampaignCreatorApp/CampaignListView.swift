@@ -113,5 +113,5 @@ struct CampaignListView: View {
         Campaign(id: 1, title: "Campaign 1", concept: nil, initial_user_prompt: nil, homebrewery_toc: nil, display_toc: nil, homebrewery_export: nil, sections: [], owner_id: 1, badge_image_url: nil, thematic_image_url: nil, thematic_image_prompt: nil, selected_llm_id: nil, temperature: nil, theme_primary_color: nil, theme_secondary_color: nil, theme_background_color: nil, theme_text_color: nil, theme_font_family: nil, theme_background_image_url: nil, theme_background_image_opacity: nil, mood_board_image_urls: nil),
         Campaign(id: 2, title: "Campaign 2", concept: nil, initial_user_prompt: nil, homebrewery_toc: nil, display_toc: nil, homebrewery_export: nil, sections: [], owner_id: 1, badge_image_url: nil, thematic_image_url: nil, thematic_image_prompt: nil, selected_llm_id: nil, temperature: nil, theme_primary_color: nil, theme_secondary_color: nil, theme_background_color: nil, theme_text_color: nil, theme_font_family: nil, theme_background_image_url: nil, theme_background_image_opacity: nil, mood_board_image_urls: nil)
     ]
-    return CampaignListView()
+    CampaignListView()
 }

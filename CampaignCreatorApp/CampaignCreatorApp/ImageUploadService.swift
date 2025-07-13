@@ -1,4 +1,5 @@
 import Foundation
+import CampaignCreatorLib
 
 enum ImageUploadError: Error, LocalizedError {
     case networkError(Error)
@@ -31,14 +32,14 @@ struct FileUploadResponse: Decodable {
 }
 
 class ImageUploadService: ObservableObject {
-    private let apiService: APIService
+    private let apiService: CampaignCreatorLib.APIService
 
-    init(apiService: APIService = APIService()) {
+    init(apiService: CampaignCreatorLib.APIService = CampaignCreatorLib.APIService()) {
         self.apiService = apiService
     }
 
     func uploadImage(imageData: Data, filename: String, mimeType: String) async -> Result<String, ImageUploadError> {
-        guard let token = UserDefaultsTokenManager().getToken() else {
+        guard let token = CampaignCreatorLib.UserDefaultsTokenManager().getToken() else {
             return .failure(.noToken)
         }
 
