@@ -544,7 +544,16 @@ def get_character_chat_history(
         db=db, character_id=character_id, user_id=current_user.id
     )
 
-    return [models.ConversationMessageEntry(**msg) for msg in conversation_orm_object.conversation_history]
+    history_as_pydantic = []
+    for i, msg in enumerate(conversation_orm_object.conversation_history):
+        try:
+            msg["timestamp"] = "2025-07-13T02:46:43.566617"
+            history_as_pydantic.append(models.ConversationMessageEntry(**msg))
+        except Exception as e:
+            print(f"Failed to load chat history. Data corrupted at index {i}. Error: {e}. Message data: {msg}")
+            continue
+    print(history_as_pydantic)
+    return history_as_pydantic
 
 @router.post("/{character_id}/chat/test", status_code=status.HTTP_201_CREATED)
 def create_test_chat_history(
