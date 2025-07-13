@@ -158,7 +158,7 @@ struct CharacterEditView: View {
     }
 }
 
-struct StatEditableRow: View.swift
+struct StatEditableRow: View {
     let label: String
     @Binding var valueString: String
     var body: some View {
@@ -174,35 +174,9 @@ struct StatEditableRow: View.swift
 
 struct CharacterEditView_Previews: PreviewProvider {
     static var previews: some View {
-        // Use a static property wrapper for the binding
         @State var isPresented: Bool = true
-
-        // Create a mock library character stats first
-        let libStats = CampaignCreatorLib.CharacterStats(
-            strength: 10,
-            dexterity: 15,
-            constitution: 12,
-            intelligence: 11,
-            wisdom: 13,
-            charisma: 14
-        )
-
-        // Create a mock library character
-        let libCharacter = CampaignCreatorLib.Character(
-            id: 1,
-            name: "Aella Swiftarrow (Edit)",
-            description: "A nimble scout...",
-            appearanceDescription: "Slender build...",
-            imageURLs: ["http://example.com/img1.png"],
-            notesForLLM: "Loves nature.",
-            stats: libStats,
-            exportFormatPreference: "Markdown",
-            ownerID: 1,
-            campaignIDs: []
-        )
-
-        // Use the failable initializer to create the app-level character
-        let sampleCharacter = Character(from: libCharacter)!
+        let libCharacter = CampaignCreatorLib.Character(id: 1, name: "Aella Swiftarrow (Edit)")
+        let sampleCharacter = Character(from: libCharacter)
 
         return CharacterEditView(
             character: sampleCharacter,

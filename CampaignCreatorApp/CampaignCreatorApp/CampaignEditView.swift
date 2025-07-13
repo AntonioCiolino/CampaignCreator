@@ -9,7 +9,7 @@ struct CampaignEditView: View {
     init(campaign: Campaign, isPresented: Binding<Bool>, onCampaignUpdated: ((Campaign) -> Void)? = nil) {
         _viewModel = StateObject(wrappedValue: CampaignEditViewModel(campaign: campaign))
         _isPresented = isPresented
-        self.onCampaignUpdated = onCampaignUpdated
+        self.onCampaignUpdated = onCharacterUpdated
     }
 
     var body: some View {
@@ -103,31 +103,8 @@ struct CampaignEditView: View {
 
 struct CampaignEditView_Previews: PreviewProvider {
     static var previews: some View {
-        let libCampaign = CampaignCreatorLib.Campaign(
-            id: 1,
-            title: "Preview Campaign",
-            initialUserPrompt: "Initial prompt for preview.",
-            concept: "A campaign for previewing.",
-            badgeImageURL: nil,
-            thematicImageURL: nil,
-            thematicImagePrompt: nil,
-            selectedLLMId: nil,
-            temperature: 0.7,
-            moodBoardImageURLs: [],
-            themePrimaryColor: "#FF0000",
-            themeSecondaryColor: "#00FF00",
-            themeBackgroundColor: "#0000FF",
-            themeTextColor: "#FFFFFF",
-            themeFontFamily: "Arial",
-            themeBackgroundImageURL: nil,
-            themeBackgroundImageOpacity: 1.0,
-            linkedCharacterIDs: [],
-            customSections: []
-        )
-
-        // Now, create the app-level Campaign object using the failable initializer.
-        // We'll force unwrap here for the preview, assuming it will always succeed with our mock data.
-        let previewCampaign = Campaign(from: libCampaign)!
+        let libCampaign = CampaignCreatorLib.Campaign(id: 1)
+        let previewCampaign = Campaign(from: libCampaign)
 
         return CampaignEditView(
             campaign: previewCampaign,

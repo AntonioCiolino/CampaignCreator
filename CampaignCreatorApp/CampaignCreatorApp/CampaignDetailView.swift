@@ -84,30 +84,8 @@ struct CampaignDetailView: View {
 
 struct CampaignDetailView_Previews: PreviewProvider {
     static var previews: some View {
-        let libCampaign = CampaignCreatorLib.Campaign(
-            id: 1,
-            title: "Campaign 1",
-            initialUserPrompt: "Initial prompt for preview.",
-            concept: "A cool campaign",
-            badgeImageURL: nil,
-            thematicImageURL: nil,
-            thematicImagePrompt: nil,
-            selectedLLMId: nil,
-            temperature: 0.7,
-            moodBoardImageURLs: [],
-            themePrimaryColor: "#FF0000",
-            themeSecondaryColor: "#00FF00",
-            themeBackgroundColor: "#0000FF",
-            themeTextColor: "#FFFFFF",
-            themeFontFamily: "Arial",
-            themeBackgroundImageURL: nil,
-            themeBackgroundImageOpacity: 1.0,
-            linkedCharacterIDs: [],
-            customSections: []
-        )
-
-        // Use the failable initializer to create the app-level campaign
-        let sampleCampaign = Campaign(from: libCampaign)!
+        let libCampaign = CampaignCreatorLib.Campaign(id: 1)
+        let sampleCampaign = Campaign(from: libCampaign)
 
         return NavigationView {
             CampaignDetailView(campaign: sampleCampaign)

@@ -139,32 +139,8 @@ struct StatRow: View {
 
 struct CharacterDetailView_Previews: PreviewProvider {
     static var previews: some View {
-        // Create a mock library character stats first
-        let libStats = CampaignCreatorLib.CharacterStats(
-            strength: 11,
-            dexterity: 19,
-            constitution: 12,
-            intelligence: 10,
-            wisdom: 14,
-            charisma: 13
-        )
-
-        // Create a mock library character
-        let libCharacter = CampaignCreatorLib.Character(
-            id: 1,
-            name: "Aella Swiftarrow (Detail)",
-            description: "A nimble scout with keen eyes and a steady hand, always ready for adventure.",
-            appearanceDescription: "Slender build, often seen in practical leather armor and a deep green cloak that helps her blend into forests. Has a braid of raven hair and striking blue eyes.",
-            imageURLs: [],
-            notesForLLM: "Loves nature, wary of large cities, skilled archer.",
-            stats: libStats,
-            exportFormatPreference: "Markdown",
-            ownerID: 1,
-            campaignIDs: []
-        )
-
-        // Use the failable initializer to create the app-level character
-        let sampleCharacter = Character(from: libCharacter)!
+        let libCharacter = CampaignCreatorLib.Character(id: 1, name: "Aella Swiftarrow (Detail)")
+        let sampleCharacter = Character(from: libCharacter)
 
         return NavigationView {
             CharacterDetailView(character: sampleCharacter)

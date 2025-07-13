@@ -129,31 +129,60 @@ class CharacterEditViewModel: ObservableObject {
             updatedCharacter.image_urls = finalImageURLs
         }
 
-        var newStats = updatedCharacter.stats ?? CharacterStats(strength: nil, dexterity: nil, constitution: nil, intelligence: nil, wisdom: nil, charisma: nil)
-        newStats.strength = Int(statsStrength)
-        newStats.dexterity = Int(statsDexterity)
-        newStats.constitution = Int(statsConstitution)
-        newStats.intelligence = Int(statsIntelligence)
-        newStats.wisdom = Int(statsWisdom)
-        newStats.charisma = Int(statsCharisma)
-        if newStats.strength != nil || newStats.dexterity != nil || newStats.constitution != nil || newStats.intelligence != nil || newStats.wisdom != nil || newStats.charisma != nil {
-            updatedCharacter.stats = newStats
+        var stats: CharacterStats?
+        if !statsStrength.isEmpty || !statsDexterity.isEmpty || !statsConstitution.isEmpty || !statsIntelligence.isEmpty || !statsWisdom.isEmpty || !statsCharisma.isEmpty {
+            stats = CharacterStats(
+                strength: Int(statsStrength),
+                dexterity: Int(statsDexterity),
+                constitution: Int(statsConstitution),
+                intelligence: Int(statsIntelligence),
+                wisdom: Int(statsWisdom),
+                charisma: Int(statsCharisma)
+            )
         } else {
-            updatedCharacter.stats = nil
+            stats = nil
         }
+        updatedCharacter.stats = stats
 
         do {
-            let characterUpdateDTO = characterToEdit.toCharacterUpdateDTO()
+            let characterUpdateDTO = toCharacterUpdateDTO(from: updatedCharacter)
             let updatedLibCharacter: CampaignCreatorLib.Character = try await apiService.updateCharacter(characterToEdit.id, data: characterUpdateDTO)
             if let updatedAppCharacter = Character(from: updatedLibCharacter) {
                 self.characterToEdit = updatedAppCharacter
+                isSaving = false
+                return self.characterToEdit
+            } else {
+                errorMessage = "Failed to convert updated character."
+                isSaving = false
+                return nil
             }
-            isSaving = false
-            return self.characterToEdit
         } catch {
             errorMessage = "An unexpected error occurred: \\(error.localizedDescription)"
             isSaving = false
             return nil
         }
+    }
+
+    private func toCharacterUpdateDTO(from character: Character) -> CampaignCreatorLib.CharacterUpdateDTO {
+        let statsDTO = character.stats.map { stats in
+            CampaignCreatorLib.CharacterStats(
+                strength: stats.strength,
+                dexterity: stats.dexterity,
+                constitution: stats.constitution,
+                intelligence: stats.intelligence,
+                wisdom: stats.wisdom,
+                charisma: stats.charisma
+            )
+        }
+
+        return CampaignCreatorLib.CharacterUpdateDTO(
+            name: character.name,
+            description: character.description,
+            appearanceDescription: character.appearance_description,
+            imageURLs: character.image_urls,
+            notesForLLM: character.notes_for_llm,
+            stats: statsDTO,
+            exportFormatPreference: character.export_format_preference
+        )
     }
 }

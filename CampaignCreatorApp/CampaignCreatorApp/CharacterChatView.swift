@@ -174,22 +174,8 @@ struct MessageBubble: View {
 
 struct CharacterChatView_Previews: PreviewProvider {
     static var previews: some View {
-        // Create a mock library character first
-        let libCharacter = CampaignCreatorLib.Character(
-            id: 1,
-            name: "Aella Chat Preview",
-            description: "A nimble scout.",
-            appearanceDescription: "Slender build.",
-            imageURLs: [],
-            notesForLLM: "Loves nature.",
-            stats: nil,
-            exportFormatPreference: nil,
-            ownerID: 1,
-            campaignIDs: []
-        )
-
-        // Use the failable initializer to create the app-level character
-        let sampleCharacter = Character(from: libCharacter)!
+        let libCharacter = CampaignCreatorLib.Character(id: 1, name: "Aella Chat Preview")
+        let sampleCharacter = Character(from: libCharacter)
 
         return NavigationView {
             CharacterChatView(character: sampleCharacter)
