@@ -1,5 +1,6 @@
 import SwiftUI
 import Kingfisher
+import CampaignCreatorLib
 
 struct CampaignDetailView: View {
     @StateObject private var viewModel: CampaignDetailViewModel

@@ -1,5 +1,6 @@
 import SwiftUI
 import Kingfisher
+import CampaignCreatorLib
 
 struct ChatMessage: Identifiable, Equatable {
     let id: String

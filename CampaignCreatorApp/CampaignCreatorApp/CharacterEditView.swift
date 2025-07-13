@@ -1,4 +1,5 @@
 import SwiftUI
+import CampaignCreatorLib
 
 struct CharacterEditView: View {
     @StateObject private var viewModel: CharacterEditViewModel
