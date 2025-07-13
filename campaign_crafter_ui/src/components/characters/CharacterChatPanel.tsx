@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import LoadingSpinner from '../common/LoadingSpinner';
+import IconButton from '../common/IconButton';
 import { ChatMessage } from '../../types/characterTypes'; // Corrected path
 import './CharacterChatPanel.css';
 
@@ -96,30 +97,24 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
                         {panelTitle}
                     </span>
                     <div className="character-chat-panel-actions">
-                        <button
+                        <IconButton
                             onClick={onMemorySummaryOpen}
-                            className="btn btn-icon"
                             aria-label="View memory summary"
                             title="View Memory Summary"
-                        >
-                            <i className="bi bi-brain"></i>
-                        </button>
-                        <button
+                            icon={<i className="bi bi-brain"></i>}
+                        />
+                        <IconButton
                             onClick={handleClearChat}
-                            className="btn btn-icon"
                             aria-label="Clear chat history"
                             disabled={isGeneratingResponse || chatLoading}
                             title="Clear Chat History"
-                        >
-                            <i className="bi bi-trash"></i>
-                        </button>
-                        <button
+                            icon={<i className="bi bi-trash"></i>}
+                        />
+                        <IconButton
                             onClick={onClose}
-                            className="character-chat-panel-close-button"
                             aria-label="Close chat panel"
-                        >
-                            &times;
-                        </button>
+                            icon={<>&times;</>}
+                        />
                     </div>
                 </div>
 

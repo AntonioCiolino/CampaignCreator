@@ -1,0 +1,190 @@
+/* src/components/common/Button.css */
+:root {
+  /* Re-define or ensure these are available from App.css if this file is loaded independently in tests */
+  /* For components, it's better to rely on App.css for these root variables */
+}
+
+.btn {
+  display: inline-flex; /* Use inline-flex for better alignment of children (e.g., icons + text) */
+  align-items: center;
+  justify-content: center;
+  font-weight: 500; /* Slightly bolder than default 400 for better emphasis */
+  text-align: center;
+  vertical-align: middle;
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid transparent;
+  padding: var(--btn-padding-y, 0.5rem) var(--btn-padding-x, 1rem); /* Default to md size */
+  font-size: var(--btn-font-size, 1rem); /* Default to md size */
+  line-height: var(--line-height-base, 1.6);
+  border-radius: var(--border-radius, 0.3rem);
+  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
+    border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  text-decoration: none; /* For anchor tags styled as buttons */
+  white-space: nowrap; /* Prevent wrapping */
+}
+
+/* Variant Styles */
+.btn-primary {
+  color: var(--campaign-text-color-on-primary, var(--campaign-text-color-on-primary-default));
+  background-color: var(--campaign-primary-color, var(--campaign-primary-color-default));
+  border-color: var(--campaign-primary-color, var(--campaign-primary-color-default));
+}
+.btn-primary:hover {
+  /* Assuming a simple opacity change or the theme will define a hover state.
+     For now, let's make it slightly darker if possible or rely on theme to provide this.
+     A common approach is to use filter: brightness(90%); or a pre-defined dark variable.
+     Let's use brightness for now as a placeholder if a dark var is not defined. */
+  background-color: var(--campaign-primary-color-dark, var(--campaign-primary-color, var(--campaign-primary-color-default)));
+  border-color: var(--campaign-primary-color-dark, var(--campaign-primary-color, var(--campaign-primary-color-default)));
+  filter: brightness(90%); /* Add this for a generic hover effect if dark var isn't specific enough */
+}
+.btn-primary:focus, .btn-primary.focus { /* Added .focus for programmatic focus */
+  box-shadow: 0 0 0 0.2rem var(--campaign-primary-color-focus, rgba(0, 123, 255, 0.5)); /* Use campaign primary color for focus shadow, with fallback */
+}
+
+.btn-secondary {
+  color: var(--campaign-text-color-on-secondary, var(--campaign-text-color-on-secondary-default));
+  background-color: var(--campaign-secondary-color, var(--campaign-secondary-color-default));
+  border-color: var(--campaign-secondary-color, var(--campaign-secondary-color-default));
+}
+.btn-secondary:hover {
+  background-color: var(--campaign-secondary-color-dark, var(--campaign-secondary-color, var(--campaign-secondary-color-default)));
+  border-color: var(--campaign-secondary-color-dark, var(--campaign-secondary-color, var(--campaign-secondary-color-default)));
+  filter: brightness(90%); /* Add this for a generic hover effect */
+}
+.btn-secondary:focus, .btn-secondary.focus {
+  box-shadow: 0 0 0 0.2rem var(--campaign-secondary-color-focus, rgba(108, 117, 125, 0.5)); /* Use campaign secondary color for focus shadow, with fallback */
+}
+
+.btn-success {
+  color: #fff;
+  background-color: var(--success-color, #28a745);
+  border-color: var(--success-color, #28a745);
+}
+.btn-success:hover {
+  background-color: #1e7e34; /* Darker green */
+  border-color: #1c7430;
+}
+
+.btn-danger {
+  color: #fff;
+  background-color: var(--danger-color, #dc3545);
+  border-color: var(--danger-color, #dc3545);
+}
+.btn-danger:hover {
+  background-color: #bd2130; /* Darker red */
+  border-color: #b21f2d;
+}
+
+.btn-warning {
+  color: var(--text-color, #212529); /* Dark text on yellow for better contrast */
+  background-color: var(--warning-color, #ffc107);
+  border-color: var(--warning-color, #ffc107);
+}
+.btn-warning:hover {
+  background-color: #d39e00; /* Darker yellow */
+  border-color: #c69500;
+}
+
+.btn-info {
+  color: #fff;
+  background-color: var(--info-color, #17a2b8);
+  border-color: var(--info-color, #17a2b8);
+}
+.btn-info:hover {
+  background-color: #117a8b; /* Darker teal */
+  border-color: #10707f;
+}
+
+.btn-link {
+  font-weight: 400;
+  color: var(--campaign-primary-color, var(--campaign-primary-color-default));
+  text-decoration: underline;
+  background-color: transparent;
+  border-color: transparent;
+}
+.btn-link:hover {
+  color: var(--campaign-primary-color-dark, var(--campaign-primary-color, var(--campaign-primary-color-default)));
+  filter: brightness(90%); /* Consistent hover effect */
+  text-decoration: underline;
+}
+.btn-link:disabled, .btn-link.disabled {
+  color: var(--text-color-muted, #6c757d);
+  pointer-events: none;
+}
+
+
+/* Outline Variants (Example for Primary) */
+.btn-outline-primary {
+  color: var(--campaign-primary-color, var(--campaign-primary-color-default));
+  background-color: transparent;
+  border-color: var(--campaign-primary-color, var(--campaign-primary-color-default));
+}
+.btn-outline-primary:hover {
+  color: var(--campaign-text-color-on-primary, var(--campaign-text-color-on-primary-default));
+  background-color: var(--campaign-primary-color, var(--campaign-primary-color-default));
+  border-color: var(--campaign-primary-color, var(--campaign-primary-color-default));
+}
+/* Add other outline variants as needed (e.g., .btn-outline-secondary) */
+
+
+/* Sizes */
+.btn-lg {
+  --btn-padding-y: 0.75rem;
+  --btn-padding-x: 1.5rem;
+  --btn-font-size: 1.25rem;
+  /* border-radius: var(--border-radius-lg); /* If you have larger border radius for large buttons */
+}
+
+.btn-sm {
+  --btn-padding-y: 0.25rem;
+  --btn-padding-x: 0.5rem;
+  --btn-font-size: 0.875rem;
+  /* border-radius: var(--border-radius-sm); /* If you have smaller border radius for sm buttons */
+}
+
+/* Block button */
+.btn-block {
+  display: block;
+  width: 100%;
+}
+
+/* Disabled State */
+.btn:disabled, .btn.disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  /* Specific background/border for disabled state if not covered by variant:disabled */
+  /* background-color: var(--secondary-color, #6c757d); */
+  /* border-color: var(--secondary-color, #6c757d); */
+}
+/* Ensure hover/focus effects are removed for disabled state */
+.btn:disabled:hover, .btn.disabled:hover {
+    /* Reset to disabled style */
+    /* Example: for btn-primary */
+    /* background-color: var(--primary-color, #007bff);
+       border-color: var(--primary-color, #007bff); */
+}
+
+/* Icon support */
+.btn-icon {
+  display: inline-flex; /* Helps with vertical alignment particularly for SVG icons */
+  align-items: center;
+  /* margin-right is handled dynamically in the component for spacing */
+}
+
+/* Ensure .btn itself handles alignment well with its children (icon and text) */
+/* .btn already has display: inline-flex; align-items: center; justify-content: center; */
+/* so specific .btn-icon styling is minimal and mostly for the dynamic margin. */
+
+/* Responsive adjustments for small buttons on mobile */
+@media (max-width: 768px) {
+  .btn-sm {
+    --btn-padding-y: 0.4rem; /* Increased padding for better touch target */
+    --btn-padding-x: 0.8rem; /* Increased padding for better touch target */
+    /* --btn-font-size: 0.875rem; /* Font size can remain the same or be slightly adjusted if needed */
+                                 /* Re-declaring it here would override the existing .btn-sm if needed, */
+                                 /* but if it's the same, it's not strictly necessary to repeat. */
+                                 /* For clarity, we can state it if it's a conscious decision for it to remain. */
+  }
+}
