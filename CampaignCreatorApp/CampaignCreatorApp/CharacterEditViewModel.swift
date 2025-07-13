@@ -142,8 +142,10 @@ class CharacterEditViewModel: ObservableObject {
 
         do {
             let characterUpdateDTO = updatedCharacter.toCharacterUpdateDTO()
-            let updatedCharacter: Character = try await apiService.updateCharacter(characterToEdit.id, data: characterUpdateDTO) as! Character
-            self.characterToEdit = updatedCharacter
+            let updatedCharacter: CampaignCreatorLib.Character = try await apiService.updateCharacter(characterToEdit.id, data: characterUpdateDTO)
+            if let character = Character(from: updatedCharacter) {
+                self.characterToEdit = character
+            }
             isSaving = false
             return self.characterToEdit
         } catch {

@@ -14,8 +14,8 @@ class CampaignListViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         do {
-            let fetchedCampaigns: [Campaign] = try await apiService.fetchCampaigns() as! [Campaign]
-            self.campaigns = fetchedCampaigns
+            let fetchedLibCampaigns: [CampaignCreatorLib.Campaign] = try await apiService.fetchCampaigns()
+            self.campaigns = fetchedLibCampaigns.compactMap { Campaign(from: $0) }
         } catch {
             self.errorMessage = error.localizedDescription
         }

@@ -76,7 +76,7 @@ class CharacterCreateViewModel: ObservableObject {
             )
 
             let characterCreateDTO = character.toCharacterCreateDTO()
-            let _: Character = try await apiService.createCharacter(characterCreateDTO) as! Character
+            let _: CampaignCreatorLib.Character = try await apiService.createCharacter(characterCreateDTO)
         } catch {
             errorMessage = "An unexpected error occurred: \(error.localizedDescription)"
         }
