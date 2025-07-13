@@ -101,7 +101,7 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
                             onClick={onMemorySummaryOpen}
                             aria-label="View memory summary"
                             tooltip="View Memory Summary"
-                            icon={<i className="bi bi-brain"></i>}
+                            icon={<i className="bi bi-clipboard-data"></i>}
                             size="medium"
                         />
                         <IconButton
