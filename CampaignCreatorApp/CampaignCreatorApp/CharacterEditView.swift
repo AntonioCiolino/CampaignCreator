@@ -190,14 +190,14 @@ struct CharacterEditView_Previews: PreviewProvider {
         // Create a mock library character
         let libCharacter = CampaignCreatorLib.Character(
             id: 1,
+            ownerID: 1,
             name: "Aella Swiftarrow (Edit)",
             description: "A nimble scout...",
             appearanceDescription: "Slender build...",
-            imageURLs: ["http://example.com/img1.png"],
             notesForLLM: "Loves nature.",
             stats: libStats,
             exportFormatPreference: "Markdown",
-            ownerID: 1,
+            imageURLs: ["http://example.com/img1.png"],
             campaignIDs: []
         )
 

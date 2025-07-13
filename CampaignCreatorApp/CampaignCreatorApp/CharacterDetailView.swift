@@ -152,14 +152,14 @@ struct CharacterDetailView_Previews: PreviewProvider {
         // Create a mock library character
         let libCharacter = CampaignCreatorLib.Character(
             id: 1,
+            ownerID: 1,
             name: "Aella Swiftarrow (Detail)",
             description: "A nimble scout with keen eyes and a steady hand, always ready for adventure.",
             appearanceDescription: "Slender build, often seen in practical leather armor and a deep green cloak that helps her blend into forests. Has a braid of raven hair and striking blue eyes.",
-            imageURLs: [],
             notesForLLM: "Loves nature, wary of large cities, skilled archer.",
             stats: libStats,
             exportFormatPreference: "Markdown",
-            ownerID: 1,
+            imageURLs: [],
             campaignIDs: []
         )
 

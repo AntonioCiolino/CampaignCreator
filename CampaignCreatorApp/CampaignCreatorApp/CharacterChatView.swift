@@ -177,14 +177,14 @@ struct CharacterChatView_Previews: PreviewProvider {
         // Create a mock library character first
         let libCharacter = CampaignCreatorLib.Character(
             id: 1,
+            ownerID: 1,
             name: "Aella Chat Preview",
             description: "A nimble scout.",
             appearanceDescription: "Slender build.",
-            imageURLs: [],
             notesForLLM: "Loves nature.",
             stats: nil,
             exportFormatPreference: nil,
-            ownerID: 1,
+            imageURLs: [],
             campaignIDs: []
         )
 
