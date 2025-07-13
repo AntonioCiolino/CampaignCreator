@@ -696,6 +696,11 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
         let response: MemorySummaryDTO = try await performRequest(endpoint: endpointString, method: "GET")
         return response.memorySummary
     }
+
+    public func clearChatHistory(characterId: Int) async throws {
+        let endpointString = "/characters/\(characterId)/chat"
+        try await performVoidRequest(endpoint: endpointString, method: "DELETE")
+    }
 }
 
 public struct MemorySummaryDTO: Codable {

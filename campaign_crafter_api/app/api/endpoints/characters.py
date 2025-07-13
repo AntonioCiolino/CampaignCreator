@@ -561,3 +561,48 @@ def get_character_chat_history(
                 print(f"Failed to process message at index {i}. Error: {e}. Message data: {msg}")
                 continue
     return history_as_pydantic
+
+@router.delete("/{character_id}/chat", status_code=status.HTTP_204_NO_CONTENT)
+def clear_character_chat_history(
+    character_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+):
+    """
+    Deletes the entire conversation history for a given character and the current user.
+    This also implicitly clears the memory summary.
+    """
+    db_character = crud.get_character(db=db, character_id=character_id)
+    if db_character is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
+    if db_character.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to clear this chat history")
+
+    crud.delete_user_character_conversation(
+        db=db,
+        character_id=character_id,
+        user_id=current_user.id
+    )
+    # No body is returned for a 204 response
+    return None
+
+@router.get("/{character_id}/memory-summary", response_model=models.MemorySummary)
+def get_character_memory_summary(
+    character_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+):
+    """
+    Retrieves the memory summary for a given character and the current user.
+    """
+    db_character = crud.get_character(db=db, character_id=character_id)
+    if db_character is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
+    if db_character.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access this memory summary")
+
+    conversation_orm_object = crud.get_or_create_user_character_conversation(
+        db=db, character_id=character_id, user_id=current_user.id
+    )
+
+    return models.MemorySummary(memory_summary=conversation_orm_object.memory_summary or "")

@@ -137,10 +137,19 @@ struct CharacterChatView: View {
     }
 
     private func clearChatMessages() {
-        chatMessages.removeAll()
-        // Here you might want to add a call to an API to inform the backend
-        // that the user has cleared the chat, if that's a desired feature.
-        // For now, it just clears the UI.
+        Task {
+            do {
+                try await campaignCreator.clearChatHistory(characterId: character.id)
+                await MainActor.run {
+                    chatMessages.removeAll()
+                    // Optionally, show a success message to the user
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Failed to clear chat history: \(error.localizedDescription)"
+                }
+            }
+        }
     }
 
     private func fetchMemorySummary() {

@@ -1061,3 +1061,20 @@ async def update_conversation_summary(
         print(f"ERROR:CRUD:update_conversation_summary: Failed for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}. Error: {e}")
         # Optionally re-raise or handle. For now, just logging as per plan.
         # However, create_chat_message in the endpoint commits, so this runs in its own transaction context effectively if called after.
+
+def delete_user_character_conversation(db: Session, character_id: int, user_id: int) -> None:
+    """
+    Deletes the conversation record for a given character and user.
+    """
+    conversation_record = db.query(orm_models.ChatMessage).filter(
+        orm_models.ChatMessage.character_id == character_id,
+        orm_models.ChatMessage.user_id == user_id
+    ).first()
+
+    if conversation_record:
+        db.delete(conversation_record)
+        db.commit()
+        print(f"CRUD: Deleted conversation record for char_id={character_id}, user_id={user_id}")
+    else:
+        # If no record exists, it's not an error, just nothing to delete.
+        print(f"CRUD: No conversation record found to delete for char_id={character_id}, user_id={user_id}")
