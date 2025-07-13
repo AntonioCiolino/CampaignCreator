@@ -101,7 +101,7 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
                             onClick={onMemorySummaryOpen}
                             className="btn-icon"
                             aria-label="View memory summary"
-                            title="View Memory Summary"
+                            tooltip="View Memory Summary"
                             icon={<i className="bi bi-brain"></i>}
                         />
                         <Button
@@ -109,7 +109,7 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
                             className="btn-icon"
                             aria-label="Clear chat history"
                             disabled={isGeneratingResponse || chatLoading}
-                            title="Clear Chat History"
+                            tooltip="Clear Chat History"
                             icon={<i className="bi bi-trash"></i>}
                         />
                         <button
