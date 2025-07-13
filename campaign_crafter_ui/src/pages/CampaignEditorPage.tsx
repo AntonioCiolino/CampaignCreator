@@ -41,7 +41,8 @@ import CampaignLLMSettings from '../components/campaign_editor/CampaignLLMSettin
 import CampaignSectionEditor from '../components/campaign_editor/CampaignSectionEditor';
 import { LLMModel as LLM } from '../services/llmService';
 import Tabs, { TabItem } from '../components/common/Tabs';
-import { Typography, TextField, List, ListItem, ListItemAvatar, Avatar, ListItemText, IconButton, Box, FormControl, InputLabel, Select, MenuItem, Paper, Divider } from '@mui/material';
+import { Typography, TextField, List, ListItem, ListItemAvatar, Avatar, ListItemText, Box, FormControl, InputLabel, Select, MenuItem, Paper, Divider } from '@mui/material';
+import IconButton from '../components/common/IconButton';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 import DetailedProgressDisplay from '../components/common/DetailedProgressDisplay';
 import TOCEditor from '../components/campaign_editor/TOCEditor';
@@ -414,7 +415,7 @@ const CampaignEditorPage: React.FC = () => {
       }
     }
     return true;
-  }, [campaign, campaignId, selectedLLMId, temperature]); // Removed state setters from deps
+  }, [campaign, campaignId, selectedLLMId, temperature, setCampaign]); // Removed state setters from deps
 
   const processedToc = useMemo(() => {
     if (!campaign || !campaign.display_toc || campaign.display_toc.length === 0) {
