@@ -315,14 +315,16 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
     public init(tokenManager: TokenManaging = UserDefaultsTokenManager()) {
         self.tokenManager = tokenManager
 
-        jsonDecoder = JSONDecoder()
-        jsonDecoder.dateDecodingStrategy = .iso8601
-        jsonDecoder.keyDecodingStrategy = .convertFromSnakeCase // ADDED
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .formatted(JSONDecoder.iso8601withFractionalSeconds)
+        decoder.keyDecodingStrategy = .convertFromSnakeCase // ADDED
+        self.jsonDecoder = decoder
 
-        jsonEncoder = JSONEncoder()
-        jsonEncoder.dateEncodingStrategy = .iso8601
-        jsonEncoder.keyEncodingStrategy = .convertToSnakeCase // ADDED
-        jsonEncoder.outputFormatting = .prettyPrinted
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.keyEncodingStrategy = .convertToSnakeCase // ADDED
+        encoder.outputFormatting = .prettyPrinted
+        self.jsonEncoder = encoder
     }
 
     // Public getter for the token
@@ -644,7 +646,8 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
             }
         }
         // performRequest handles adding the base URL
-        return try await performRequest(endpoint: endpointString, method: "GET")
+        let data: Data = try await performRequest(endpoint: endpointString, method: "GET")
+        return try self.jsonDecoder.decode([APIChatMessage].self, from: data)
     }
 
     // New method for POST /characters/{character_id}/generate-response

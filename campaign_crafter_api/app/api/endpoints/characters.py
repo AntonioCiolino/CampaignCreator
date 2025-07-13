@@ -523,3 +523,41 @@ async def generate_character_chat_response( # Renamed function
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred while generating the character response.")
 
 # This replaces all previous versions of the generate-response endpoint.
+
+@router.get("/{character_id}/chat", response_model=List[models.ConversationMessageEntry])
+def get_character_chat_history(
+    character_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+):
+    """
+    Retrieves the full conversation history for a given character and the current user.
+    """
+    db_character = crud.get_character(db=db, character_id=character_id)
+    if db_character is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
+    if db_character.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access this chat history")
+
+    conversation_orm_object = crud.get_or_create_user_character_conversation(
+        db=db, character_id=character_id, user_id=current_user.id
+    )
+
+    history_as_pydantic = []
+    if conversation_orm_object.conversation_history:
+        for i, msg in enumerate(conversation_orm_object.conversation_history):
+            if not msg:
+                print(f"Skipping corrupted (null) message at index {i}")
+                continue
+            try:
+                if isinstance(msg.get("timestamp"), datetime):
+                    msg["timestamp"] = msg["timestamp"].isoformat()
+                elif not isinstance(msg.get("timestamp"), str):
+                    print(f"Skipping message at index {i} due to invalid timestamp type: {type(msg.get('timestamp'))}. Message: {msg}")
+                    continue
+
+                history_as_pydantic.append(models.ConversationMessageEntry(**msg))
+            except Exception as e:
+                print(f"Failed to process message at index {i}. Error: {e}. Message data: {msg}")
+                continue
+    return history_as_pydantic

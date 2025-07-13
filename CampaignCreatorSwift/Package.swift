@@ -45,7 +45,8 @@ let package = Package(
                 "Models/ImageGenerationModels.swift", // ADDED
                 "Models/SectionRegeneratePayload.swift", // ADDED
                 "Models/ChatMessageData.swift",
-                "Models/APIChatMessageModels.swift" // Added new chat message models
+                "Models/APIChatMessageModels.swift", // Added new chat message models
+                "JSONDecoder+Extensions.swift"
             ]
         ),
         .testTarget(

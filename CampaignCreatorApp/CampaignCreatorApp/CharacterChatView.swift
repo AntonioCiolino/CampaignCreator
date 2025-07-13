@@ -14,9 +14,9 @@ struct ChatMessage: Identifiable, Equatable {
         case llm = "LLM"
     }
 
-    // Initializer from the new APIChatMessage (which is {speaker, text, timestamp, id: String})
+    // Initializer from the new APIChatMessage (which is {speaker, text, timestamp})
     init(from apiMessage: CampaignCreatorLib.APIChatMessage, character: Character, currentUser: User?) {
-        self.id = apiMessage.id // APIChatMessage.id is now a String (derived from its content)
+        self.id = apiMessage.id // The computed 'id' from APIChatMessage is used here
         self.text = apiMessage.text
         self.timestamp = apiMessage.timestamp
 
