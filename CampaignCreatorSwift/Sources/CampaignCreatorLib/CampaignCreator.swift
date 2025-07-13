@@ -499,6 +499,13 @@ public class CampaignCreator: ObservableObjectProtocol {
         )
     }
     
+    public func getMemorySummary(characterId: Int) async throws -> String {
+        guard isAuthenticated else {
+            throw APIError.notAuthenticated
+        }
+        return try await apiService.getMemorySummary(characterId: characterId)
+    }
+
     // MARK: - Utility Functions
     public func showStatus() {
         print("\n=== Campaign Crafter Status ===")

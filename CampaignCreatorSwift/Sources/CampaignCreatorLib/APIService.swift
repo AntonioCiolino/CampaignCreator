@@ -689,4 +689,19 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
         let response: LLMModelsResponse = try await performRequest(endpoint: "/llm/models", requiresAuth: true)
         return response.models
     }
+
+    // MARK: - Memory Summary Methods
+    public func getMemorySummary(characterId: Int) async throws -> String {
+        let endpointString = "/characters/\(characterId)/memory-summary"
+        let response: MemorySummaryDTO = try await performRequest(endpoint: endpointString, method: "GET")
+        return response.memorySummary
+    }
+}
+
+public struct MemorySummaryDTO: Codable {
+    public let memorySummary: String
+
+    enum CodingKeys: String, CodingKey {
+        case memorySummary = "memory_summary"
+    }
 }
