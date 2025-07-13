@@ -15,6 +15,7 @@ import AlertMessage from '../components/common/AlertMessage';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import CharacterImagePromptModal, { CharacterImageGenSettings } from '../components/modals/CharacterImagePromptModal';
 import CharacterChatPanel from '../components/characters/CharacterChatPanel';
+import MemorySummaryModal from '../components/modals/MemorySummaryModal';
 import {
   DndContext,
   closestCenter,

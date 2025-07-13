@@ -1,6 +1,6 @@
 import React from 'react';
-import Modal from 'react-bootstrap/Modal';
-import Button from 'react-bootstrap/Button';
+import Modal from '../common/Modal';
+import Button from '../common/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
 
 interface MemorySummaryModalProps {
@@ -13,22 +13,18 @@ interface MemorySummaryModalProps {
 
 const MemorySummaryModal: React.FC<MemorySummaryModalProps> = ({ show, onHide, summary, loading, error }) => {
     return (
-        <Modal show={show} onHide={onHide} centered size="lg">
-            <Modal.Header closeButton>
-                <Modal.Title>Memory Summary</Modal.Title>
-            </Modal.Header>
-            <Modal.Body>
-                {loading && <LoadingSpinner />}
-                {error && <div className="alert alert-danger">{error}</div>}
-                {!loading && !error && (
-                    <p className="pre-wrap">{summary || 'No summary available.'}</p>
-                )}
-            </Modal.Body>
-            <Modal.Footer>
-                <Button variant="secondary" onClick={onHide}>
-                    Close
-                </Button>
-            </Modal.Footer>
+        <Modal
+            isOpen={show}
+            onClose={onHide}
+            title="Memory Summary"
+            size="lg"
+            footerContent={<Button onClick={onHide}>Close</Button>}
+        >
+            {loading && <LoadingSpinner />}
+            {error && <div className="alert alert-danger">{error}</div>}
+            {!loading && !error && (
+                <p className="pre-wrap">{summary || 'No summary available.'}</p>
+            )}
         </Modal>
     );
 };
