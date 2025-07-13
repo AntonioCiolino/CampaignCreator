@@ -54,9 +54,16 @@ struct CharacterChatView: View {
     @State private var chatMessages: [ChatMessage] = []
     @State private var isSendingMessage: Bool = false
     @State private var errorMessage: String? = nil
+    @State private var memorySummary: String? = "This is a placeholder for the actual memory summary."
 
     var body: some View {
         VStack {
+            // Memory Summary View
+            if let summary = memorySummary, !summary.isEmpty {
+                MemorySummaryView(memorySummary: summary)
+                    .padding(.horizontal)
+            }
+
             // Chat messages display area
             ScrollViewReader { scrollViewProxy in
                 ScrollView {
@@ -115,8 +122,50 @@ struct CharacterChatView: View {
         }
         .navigationTitle("\(character.name) - Chat")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: {
+                    // Action to clear chat
+                    clearChatMessages()
+                }) {
+                    Image(systemName: "trash")
+                }
+            }
+        }
         .onAppear {
             fetchChatHistory()
+            fetchMemorySummary()
+        }
+    }
+
+    private func clearChatMessages() {
+        Task {
+            do {
+                try await campaignCreator.clearChatHistory(characterId: character.id)
+                await MainActor.run {
+                    chatMessages.removeAll()
+                    // Optionally, show a success message to the user
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Failed to clear chat history: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
+    private func fetchMemorySummary() {
+        Task {
+            do {
+                // Assuming an API service call that fetches the memory summary for a character.
+                // This is a placeholder for the actual implementation.
+                let summary = try await campaignCreator.apiService.getMemorySummary(characterId: character.id)
+                self.memorySummary = summary
+            } catch {
+                // Handle error, maybe show a default message or hide the view
+                self.errorMessage = "Failed to load memory summary: \(error.localizedDescription)"
+                self.memorySummary = "Could not load memory summary."
+            }
         }
     }
 
