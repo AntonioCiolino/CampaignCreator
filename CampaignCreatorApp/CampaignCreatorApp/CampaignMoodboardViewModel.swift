@@ -37,10 +37,10 @@ class CampaignMoodboardViewModel: ObservableObject {
                     theme_background_image_opacity: updatedCampaign.theme_background_image_opacity,
                     mood_board_image_urls: updatedCampaign.mood_board_image_urls
                 )
-                let body = try JSONEncoder().encode(campaignUpdate)
-                let _: Campaign = try await apiService.performRequest(endpoint: "/campaigns/\\(campaign.id)", method: "PUT", body: body)
+                let campaignUpdateDTO = updatedCampaign.toCampaignUpdateDTO()
+                let _: CampaignCreatorLib.Campaign = try await apiService.updateCampaign(updatedCampaign.id, data: campaignUpdateDTO)
             } catch {
-                print("Failed to save campaign moodboard: \\(error)")
+                print("Failed to save campaign moodboard: \(error)")
             }
         }
     }

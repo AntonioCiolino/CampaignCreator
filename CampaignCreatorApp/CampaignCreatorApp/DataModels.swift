@@ -56,7 +56,8 @@ struct Campaign: Codable, Identifiable {
     var title: String
     var concept: String?
 
-    init(from libCampaign: CampaignCreatorLib.Campaign) {
+    init?(from libCampaign: CampaignCreatorLib.Campaign?) {
+        guard let libCampaign = libCampaign else { return nil }
         self.id = libCampaign.id
         self.title = libCampaign.title
         self.concept = libCampaign.concept
@@ -64,7 +65,7 @@ struct Campaign: Codable, Identifiable {
         self.homebrewery_toc = nil // Not available in libCampaign
         self.display_toc = nil // Not available in libCampaign
         self.homebrewery_export = nil // Not available in libCampaign
-        self.sections = libCampaign.sections.map { CampaignSection(from: $0) }
+        self.sections = libCampaign.sections.compactMap { CampaignSection(from: $0) }
         self.owner_id = 0 // Not available in libCampaign
         self.badge_image_url = libCampaign.badgeImageURL
         self.thematic_image_url = libCampaign.thematicImageURL
@@ -168,7 +169,8 @@ struct CampaignSection: Codable, Identifiable {
     let campaign_id: Int
     var title: String?
 
-    init(from libSection: CampaignCreatorLib.CampaignSection) {
+    init?(from libSection: CampaignCreatorLib.CampaignSection?) {
+        guard let libSection = libSection else { return nil }
         self.id = libSection.id
         self.campaign_id = 0 // Not available in libSection
         self.title = libSection.title
@@ -227,7 +229,8 @@ struct LLMConfig: Codable, Identifiable {
     let owner_id: Int
     var name: String
 
-    init(from libCharacter: CampaignCreatorLib.Character) {
+    init?(from libCharacter: CampaignCreatorLib.Character?) {
+        guard let libCharacter = libCharacter else { return nil }
         self.id = libCharacter.id
         self.owner_id = 0 // Not available in libCharacter
         self.name = libCharacter.name

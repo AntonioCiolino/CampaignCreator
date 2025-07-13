@@ -341,7 +341,7 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
         return tokenManager.getToken() != nil
     }
 
-    private func performRequest<T: Decodable>(
+    public func performRequest<T: Decodable>(
         endpoint: String,
         method: String = "GET",
         body: Data? = nil,
@@ -495,7 +495,7 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
         catch { print("❌ Request failed: \(error)"); throw APIError.requestFailed(error) }
     }
 
-    private func performVoidRequest(
+    public func performVoidRequest(
         endpoint: String,
         method: String = "DELETE",
         body: Data? = nil,
