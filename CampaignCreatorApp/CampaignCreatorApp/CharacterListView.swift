@@ -111,11 +111,17 @@ struct CharacterListView: View {
     }
 }
 
-#Preview {
-    let viewModel = CharacterListViewModel()
-    viewModel.characters = [
-        Character(id: 1, owner_id: 1, name: "Preview Elara", description: "Preview Elf Ranger. A long description to test line limits and see how it wraps or truncates based on the view settings for this particular character entry in the list view.", image_urls: [], video_clip_urls: [], notes_for_llm: nil, stats: nil, export_format_preference: nil),
-        Character(id: 2, owner_id: 1, name: "Preview Grom", description: "Preview Orc Warrior", image_urls: [], video_clip_urls: [], notes_for_llm: nil, stats: nil, export_format_preference: nil)
-    ]
-    return CharacterListView()
+#if DEBUG
+struct CharacterListView_Previews: PreviewProvider {
+    static var previews: some View {
+        let viewModel = CharacterListViewModel()
+        viewModel.characters = [
+            Character(id: 1, owner_id: 1, name: "Preview Elara", description: "Preview Elf Ranger. A long description to test line limits and see how it wraps or truncates based on the view settings for this particular character entry in the list view.", image_urls: [], video_clip_urls: [], notes_for_llm: nil, stats: nil, export_format_preference: nil),
+            Character(id: 2, owner_id: 1, name: "Preview Grom", description: "Preview Orc Warrior", image_urls: [], video_clip_urls: [], notes_for_llm: nil, stats: nil, export_format_preference: nil)
+        ]
+
+        return CharacterListView()
+            .environmentObject(ImageUploadService(apiService: CampaignCreatorLib.APIService()))
+    }
 }
+#endif
