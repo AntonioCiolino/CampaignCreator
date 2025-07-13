@@ -415,6 +415,20 @@ struct Character: Codable, Identifiable {
     var notes_for_llm: String?
     var stats: CharacterStats?
     var export_format_preference: String?
+
+    init?(from libCharacter: CampaignCreatorLib.Character?) {
+        guard let libCharacter = libCharacter else { return nil }
+        self.id = libCharacter.id
+        self.owner_id = 0 // Not available in libCharacter
+        self.name = libCharacter.name
+        self.description = libCharacter.description
+        self.appearance_description = libCharacter.appearanceDescription
+        self.image_urls = libCharacter.imageURLs
+        self.video_clip_urls = nil // Not available in libCharacter
+        self.notes_for_llm = libCharacter.notesForLLM
+        self.stats = CharacterStats(from: libCharacter.stats)
+        self.export_format_preference = libCharacter.exportFormatPreference
+    }
 }
 
 struct CharacterCreate: Codable {
