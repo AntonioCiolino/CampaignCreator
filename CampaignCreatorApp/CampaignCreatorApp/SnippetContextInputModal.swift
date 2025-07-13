@@ -108,18 +108,14 @@ struct SnippetContextInputModal_Previews: PreviewProvider {
         name: "Describe Mood",
         template: "Describe the mood of the selected text: {selected_text}. Consider the current weather: {weather} and time of day: {time_of_day}.",
         user_id: 1,
-        required_context: ["selected_text", "weather", "time_of_day", "campaign_characters"],
-        compatible_types: nil,
-        feature_category: nil
+        required_context: ["selected_text", "weather", "time_of_day", "campaign_characters"]
     )
     static let sampleFeatureNoExtraContext = Feature(
         id: 2,
         name: "Summarize",
         template: "Summarize: {selected_text}",
         user_id: 1,
-        required_context: ["selected_text"],
-        compatible_types: nil,
-        feature_category: nil
+        required_context: ["selected_text"]
     )
     static let sampleCharacters = [
         Character(id: 1, owner_id: 1, name: "Aella", description: "A fierce warrior", appearance_description: "Tall and imposing", image_urls: [], video_clip_urls: [], notes_for_llm: "Loves to fight", stats: CharacterStats(strength: 18, dexterity: 14, constitution: 16, intelligence: 10, wisdom: 12, charisma: 8), export_format_preference: "Complex"),
