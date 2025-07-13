@@ -563,14 +563,14 @@ def get_character_chat_history(
     return history_as_pydantic
 
 @router.delete("/{character_id}/chat", status_code=status.HTTP_204_NO_CONTENT)
-def clear_character_chat_history(
+async def clear_character_chat_history(
     character_id: int,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
     """
-    Deletes the entire conversation history for a given character and the current user.
-    This also implicitly clears the memory summary.
+    Summarizes the current chat history and appends it to the memory summary,
+    then deletes the conversation history.
     """
     db_character = crud.get_character(db=db, character_id=character_id)
     if db_character is None:
@@ -578,7 +578,8 @@ def clear_character_chat_history(
     if db_character.owner_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to clear this chat history")
 
-    crud.delete_user_character_conversation(
+    # This is now an async operation
+    await crud.summarize_and_clear_conversation(
         db=db,
         character_id=character_id,
         user_id=current_user.id

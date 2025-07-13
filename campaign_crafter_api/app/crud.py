@@ -985,14 +985,16 @@ def update_user_character_conversation(
 async def update_conversation_summary(
     db: Session,
     conversation_orm: orm_models.ChatMessage,
-    llm_service: AbstractLLMService, # Type hint for AbstractLLMService
-    current_user_model: models.User, # Pydantic User model for LLM service call
+    llm_service: AbstractLLMService,
+    current_user_model: models.User,
     character_name: str,
-    character_notes: Optional[str]
+    character_notes: Optional[str],
+    append_to_existing_summary: bool = False
 ) -> None:
     """
-    Generates a summary of the conversation history (excluding very recent messages)
-    and updates the memory_summary field on the conversation ORM object.
+    Generates a summary of the conversation history.
+    If append_to_existing_summary is True, it appends the new summary to the existing one.
+    Otherwise, it replaces the existing summary.
     """
     # from sqlalchemy.orm.attributes import flag_modified # Moved to top-level import
 
@@ -1044,15 +1046,17 @@ async def update_conversation_summary(
         )
 
         if generated_summary and generated_summary.strip():
-            # Strategy: Replace old summary with new one.
-            # Alternatively, append: new_summary = (conversation_orm.memory_summary + "\n\n---\n\n" if conversation_orm.memory_summary else "") + generated_summary.strip()
-            conversation_orm.memory_summary = generated_summary.strip()
+            new_summary_text = generated_summary.strip()
+            if append_to_existing_summary and conversation_orm.memory_summary:
+                conversation_orm.memory_summary += f"\n\n---\n\n{new_summary_text}"
+            else:
+                conversation_orm.memory_summary = new_summary_text
+
             flag_modified(conversation_orm, "memory_summary")
-            # The updated_at for the conversation_orm will also be set due to onupdate
             db.add(conversation_orm)
             db.commit()
             db.refresh(conversation_orm)
-            print(f"CRUD: Memory summary updated for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}.") # Removed summary content from log
+            print(f"CRUD: Memory summary updated for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}.")
         else:
             print(f"CRUD: LLM returned empty summary for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}.")
 
@@ -1062,19 +1066,55 @@ async def update_conversation_summary(
         # Optionally re-raise or handle. For now, just logging as per plan.
         # However, create_chat_message in the endpoint commits, so this runs in its own transaction context effectively if called after.
 
-def delete_user_character_conversation(db: Session, character_id: int, user_id: int) -> None:
+async def summarize_and_clear_conversation(db: Session, character_id: int, user_id: int) -> None:
     """
-    Deletes the conversation record for a given character and user.
+    Summarizes the current conversation, appends it to the memory summary,
+    and then clears the conversation history.
     """
-    conversation_record = db.query(orm_models.ChatMessage).filter(
-        orm_models.ChatMessage.character_id == character_id,
-        orm_models.ChatMessage.user_id == user_id
-    ).first()
+    conversation_orm = get_or_create_user_character_conversation(db, character_id, user_id)
+    if not conversation_orm.conversation_history:
+        print(f"CRUD: No conversation history to summarize or clear for char_id={character_id}, user_id={user_id}.")
+        return
 
-    if conversation_record:
-        db.delete(conversation_record)
-        db.commit()
-        print(f"CRUD: Deleted conversation record for char_id={character_id}, user_id={user_id}")
-    else:
-        # If no record exists, it's not an error, just nothing to delete.
-        print(f"CRUD: No conversation record found to delete for char_id={character_id}, user_id={user_id}")
+    character_orm = get_character(db, character_id)
+    if not character_orm:
+        # This case should be handled by endpoint logic, but as a safeguard:
+        print(f"CRUD: Character not found for summarization, char_id={character_id}.")
+        return
+
+    # To call update_conversation_summary, we need an LLM service instance
+    # and the current user model.
+    current_user_orm = get_user(db, user_id)
+    if not current_user_orm:
+        print(f"CRUD: User not found for summarization, user_id={user_id}.")
+        return
+
+    current_user_pydantic = models.User.from_orm(current_user_orm)
+
+    try:
+        # Get a default LLM service for summarization
+        llm_service = get_llm_service(db=db, current_user_orm=current_user_orm)
+
+        # This function now needs to be aware of appending to summary
+        await update_conversation_summary(
+            db=db,
+            conversation_orm=conversation_orm,
+            llm_service=llm_service,
+            current_user_model=current_user_pydantic,
+            character_name=character_orm.name,
+            character_notes=character_orm.notes_for_llm,
+            append_to_existing_summary=True # New parameter
+        )
+    except Exception as e:
+        print(f"ERROR:CRUD:summarize_and_clear_conversation: Failed during summarization step for char_id={character_id}, user_id={user_id}. Error: {e}")
+        # Decide on error handling: proceed to clear, or stop?
+        # For now, let's stop to avoid data loss if summarization is critical.
+        # In a real-world scenario, might want to just log and continue.
+        raise HTTPException(status_code=500, detail="Failed to summarize conversation before clearing.")
+
+    # After successful summarization and appending, clear the history.
+    conversation_orm.conversation_history = []
+    flag_modified(conversation_orm, "conversation_history")
+    db.add(conversation_orm)
+    db.commit()
+    print(f"CRUD: Summarized and cleared conversation history for char_id={character_id}, user_id={user_id}.")
