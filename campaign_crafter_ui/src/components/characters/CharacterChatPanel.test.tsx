@@ -10,6 +10,8 @@ jest.mock('../common/LoadingSpinner', () => () => <div data-testid="loading-spin
 const mockOnClose = jest.fn();
 const mockSetLlmUserPrompt = jest.fn();
 const mockHandleGenerateCharacterResponse = jest.fn();
+const mockHandleClearChat = jest.fn();
+const mockOnMemorySummaryOpen = jest.fn();
 
 const defaultProps: CharacterChatPanelProps = {
     characterName: 'Gandalf',
@@ -25,6 +27,8 @@ const defaultProps: CharacterChatPanelProps = {
     characterImage: 'char.png', // Add new required/optional props
     currentUserAvatar: 'user.png',
     chatLoading: false,
+    handleClearChat: mockHandleClearChat,
+    onMemorySummaryOpen: mockOnMemorySummaryOpen,
 };
 
 describe('CharacterChatPanel', () => {

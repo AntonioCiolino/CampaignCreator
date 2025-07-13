@@ -1,0 +1,57 @@
+/* IconButton.css */
+.icon-button {
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+    border-radius: 50%; /* Make it circular */
+}
+
+/* Default Variant */
+.icon-button-default {
+    color: var(--text-color-muted, #6c757d);
+}
+.icon-button-default:hover {
+    background-color: var(--background-color-hover, #f0f0f0);
+    color: var(--text-color, #333);
+}
+
+/* Danger Variant */
+.icon-button-danger {
+    color: var(--color-danger, #dc3545);
+}
+.icon-button-danger:hover {
+    background-color: var(--color-danger-hover-bg, #f8d7da);
+    color: var(--color-danger-hover, #721c24);
+}
+
+
+/* Sizes */
+.icon-button-small {
+    width: 24px;
+    height: 24px;
+    font-size: 0.8rem;
+}
+
+.icon-button-medium {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+}
+
+.icon-button-large {
+    width: 48px;
+    height: 48px;
+    font-size: 1.5rem;
+}
+
+
+.icon-button:disabled {
+    color: var(--text-color-disabled, #adb5bd);
+    background-color: transparent;
+    cursor: not-allowed;
+    opacity: 0.65;
+}

@@ -54,7 +54,6 @@ struct CharacterChatView: View {
                 MemorySummaryView(memorySummary: summary)
                     .padding(.horizontal)
             }
-
             ScrollViewReader { scrollViewProxy in
                 ScrollView {
                     LazyVStack(spacing: 12) {
@@ -115,6 +114,7 @@ struct CharacterChatView: View {
                 }
             }
         }
+
     }
 }
 

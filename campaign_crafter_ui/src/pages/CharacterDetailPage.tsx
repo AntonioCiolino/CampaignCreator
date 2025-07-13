@@ -15,6 +15,7 @@ import AlertMessage from '../components/common/AlertMessage';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import CharacterImagePromptModal, { CharacterImageGenSettings } from '../components/modals/CharacterImagePromptModal';
 import CharacterChatPanel from '../components/characters/CharacterChatPanel';
+import MemorySummaryModal from '../components/modals/MemorySummaryModal';
 import {
   DndContext,
   closestCenter,
@@ -132,6 +133,10 @@ const CharacterDetailPage: React.FC = () => {
     const [chatHistory, setChatHistory] = useState<Array<ChatMessage>>([]); // Use new ChatMessage type
     const [chatLoading, setChatLoading] = useState<boolean>(false);
     const [chatError, setChatError] = useState<string | null>(null);
+    const [showMemorySummaryModal, setShowMemorySummaryModal] = useState(false);
+    const [memorySummary, setMemorySummary] = useState<string | null>(null);
+    const [memorySummaryLoading, setMemorySummaryLoading] = useState(false);
+    const [memorySummaryError, setMemorySummaryError] = useState<string | null>(null);
 
     // State for LLM Notes visibility
     const [showLlmNotes, setShowLlmNotes] = useState<boolean>(false); // Default to collapsed
@@ -187,6 +192,22 @@ const CharacterDetailPage: React.FC = () => {
                 setCharacter(prev => prev ? { ...prev, image_urls: character.image_urls } : null);
                 setTimeout(() => setError(null), 5000);
             }
+        }
+    };
+
+    const handleOpenMemorySummary = async () => {
+        if (!character) return;
+        setShowMemorySummaryModal(true);
+        setMemorySummaryLoading(true);
+        setMemorySummaryError(null);
+        try {
+            const summary = await characterService.getMemorySummary(character.id);
+            setMemorySummary(summary.memory_summary);
+        } catch (err: any) {
+            console.error("Failed to fetch memory summary:", err);
+            setMemorySummaryError(err.response?.data?.detail || "Failed to load memory summary.");
+        } finally {
+            setMemorySummaryLoading(false);
         }
     };
 
@@ -498,6 +519,21 @@ const CharacterDetailPage: React.FC = () => {
             // llmUserPrompt is not cleared, so user can retry.
         } finally {
             setIsGeneratingResponse(false);
+        }
+    };
+
+    const handleClearChat = async () => {
+        if (!character) return;
+        if (window.confirm(`Are you sure you want to clear the chat history with ${character.name}? This will also summarize the conversation and add it to the character's memory.`)) {
+            try {
+                await characterService.clearChatHistory(character.id);
+                setChatHistory([]);
+                setSuccessMessage("Chat history cleared and summarized successfully.");
+                setTimeout(() => setSuccessMessage(null), 5000);
+            } catch (err: any) {
+                console.error("Failed to clear chat history:", err);
+                setError(err.response?.data?.detail || "Failed to clear chat history.");
+            }
         }
     };
 
@@ -891,9 +927,19 @@ const CharacterDetailPage: React.FC = () => {
                     isGeneratingResponse={isGeneratingResponse}
                     llmError={llmError || chatError} // Combine errors for display in panel
                     chatHistory={chatHistory}
-                    chatLoading={chatLoading} // Pass chat loading state
+                    chatLoading={chatLoading}
+                    handleClearChat={handleClearChat}
+                    onMemorySummaryOpen={handleOpenMemorySummary}
                 />
             )}
+
+            <MemorySummaryModal
+                show={showMemorySummaryModal}
+                onHide={() => setShowMemorySummaryModal(false)}
+                summary={memorySummary}
+                loading={memorySummaryLoading}
+                error={memorySummaryError}
+            />
         </div>
     );
 };

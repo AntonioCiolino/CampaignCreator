@@ -104,6 +104,18 @@ export const generateCharacterResponse = async (
     return response.data;
 };
 
+/**
+ * Clears the chat history for a character.
+ */
+export const clearChatHistory = async (characterId: number): Promise<void> => {
+    await apiClient.delete(`${CHARACTER_API_URL}/${characterId}/chat`);
+};
+
+export const getMemorySummary = async (characterId: number): Promise<{ memory_summary: string }> => {
+    const response = await apiClient.get<{ memory_summary: string }>(`${CHARACTER_API_URL}/${characterId}/memory-summary`);
+    return response.data;
+};
+
 // --- Chat Message Service Functions ---
 
 // The saveChatMessage function is now obsolete as the backend's
