@@ -184,7 +184,7 @@ struct CampaignSection: Codable, Identifiable {
         self.title = libSection.title
         self.content = libSection.content
         self.order = libSection.order
-        self.type = libSection.type
+        self.type = libSection.type ?? ""
     }
 
     func toCampaignSectionDTO() -> CampaignCreatorLib.CampaignSection {
