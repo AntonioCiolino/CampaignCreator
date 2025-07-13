@@ -83,31 +83,36 @@ struct CampaignDetailView: View {
 
 struct CampaignDetailView_Previews: PreviewProvider {
     static var previews: some View {
-        let sampleCampaign = Campaign(
+        // Create a mock library campaign first
+        let libCampaign = CampaignCreatorLib.Campaign(
             id: 1,
             title: "Campaign 1",
             concept: "A cool campaign",
-            initial_user_prompt: "Initial prompt for preview.",
-            homebrewery_toc: [:],
-            display_toc: [:],
-            homebrewery_export: "",
+            initialUserPrompt: "Initial prompt for preview.",
+            homebreweryTOC: nil,
+            displayTOC: nil,
+            homebreweryExport: nil,
             sections: [],
-            owner_id: 1,
-            badge_image_url: "",
-            thematic_image_url: "",
-            thematic_image_prompt: "",
-            selected_llm_id: "",
+            ownerID: 1,
+            badgeImageURL: nil,
+            thematicImageURL: nil,
+            thematicImagePrompt: nil,
+            selectedLLMId: nil,
             temperature: 0.7,
-            theme_primary_color: "#FF0000",
-            theme_secondary_color: "#00FF00",
-            theme_background_color: "#0000FF",
-            theme_text_color: "#FFFFFF",
-            theme_font_family: "Arial",
-            theme_background_image_url: "",
-            theme_background_image_opacity: 1.0,
-            mood_board_image_urls: [],
-            wordCount: 0
+            themePrimaryColor: "#FF0000",
+            themeSecondaryColor: "#00FF00",
+            themeBackgroundColor: "#0000FF",
+            themeTextColor: "#FFFFFF",
+            themeFontFamily: "Arial",
+            themeBackgroundImageURL: nil,
+            themeBackgroundImageOpacity: 1.0,
+            moodBoardImageURLs: [],
+            linkedCharacterIDs: [],
+            customSections: []
         )
+
+        // Use the failable initializer to create the app-level campaign
+        let sampleCampaign = Campaign(from: libCampaign)!
 
         return NavigationView {
             CampaignDetailView(campaign: sampleCampaign)

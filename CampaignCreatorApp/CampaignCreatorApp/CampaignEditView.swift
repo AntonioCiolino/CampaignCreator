@@ -102,30 +102,38 @@ struct CampaignEditView: View {
 
 struct CampaignEditView_Previews: PreviewProvider {
     static var previews: some View {
-        let previewCampaign = Campaign(
+        // Since the initializer for Campaign is now failable and relies on a library object,
+        // we need to construct a valid library campaign object first.
+        let libCampaign = CampaignCreatorLib.Campaign(
             id: 1,
             title: "Preview Campaign",
             concept: "A campaign for previewing.",
-            initial_user_prompt: "Initial prompt for preview.",
-            homebrewery_toc: [:],
-            display_toc: [:],
-            homebrewery_export: "",
+            initialUserPrompt: "Initial prompt for preview.",
+            homebreweryTOC: nil,
+            displayTOC: nil,
+            homebreweryExport: nil,
             sections: [],
-            owner_id: 1,
-            badge_image_url: "",
-            thematic_image_url: "",
-            thematic_image_prompt: "",
-            selected_llm_id: "",
+            ownerID: 1,
+            badgeImageURL: nil,
+            thematicImageURL: nil,
+            thematicImagePrompt: nil,
+            selectedLLMId: nil,
             temperature: 0.7,
-            theme_primary_color: "#FF0000",
-            theme_secondary_color: "#00FF00",
-            theme_background_color: "#0000FF",
-            theme_text_color: "#FFFFFF",
-            theme_font_family: "Arial",
-            theme_background_image_url: "",
-            theme_background_image_opacity: 1.0,
-            mood_board_image_urls: []
+            themePrimaryColor: "#FF0000",
+            themeSecondaryColor: "#00FF00",
+            themeBackgroundColor: "#0000FF",
+            themeTextColor: "#FFFFFF",
+            themeFontFamily: "Arial",
+            themeBackgroundImageURL: nil,
+            themeBackgroundImageOpacity: 1.0,
+            moodBoardImageURLs: [],
+            linkedCharacterIDs: [],
+            customSections: []
         )
+
+        // Now, create the app-level Campaign object using the failable initializer.
+        // We'll force unwrap here for the preview, assuming it will always succeed with our mock data.
+        let previewCampaign = Campaign(from: libCampaign)!
 
         return CampaignEditView(
             campaign: previewCampaign,
