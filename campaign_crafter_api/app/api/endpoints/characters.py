@@ -553,11 +553,12 @@ def get_character_chat_history(
                 # Pydantic v2 can handle ISO strings for datetime fields automatically.
                 # The issue might be that the string is not a valid ISO 8601 format.
                 # Let's try to parse it with a specific format that matches `isoformat()`.
-                try:
-                    msg["timestamp"] = datetime.strptime(msg["timestamp"], "%Y-%m-%dT%H:%M:%S.%f")
-                except ValueError:
-                    # If the above fails, it might be because the microseconds are not present.
-                    msg["timestamp"] = datetime.strptime(msg["timestamp"], "%Y-%m-%dT%H:%M:%S")
+                for fmt in ("%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S"):
+                    try:
+                        msg["timestamp"] = datetime.strptime(msg["timestamp"], fmt)
+                        break
+                    except ValueError:
+                        pass
             history_as_pydantic.append(models.ConversationMessageEntry(**msg))
         except Exception as e:
             print(f"Failed to load chat history. Data corrupted at index {i}. Error: {e}")
