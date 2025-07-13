@@ -705,8 +705,4 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
 
 public struct MemorySummaryDTO: Codable {
     public let memorySummary: String
-
-    enum CodingKeys: String, CodingKey {
-        case memorySummary = "memory_summary"
-    }
 }
