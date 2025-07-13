@@ -568,3 +568,41 @@ def get_character_chat_history(
             continue
 
     return history_as_pydantic
+
+@router.post("/{character_id}/chat/test", status_code=status.HTTP_201_CREATED)
+def create_test_chat_history(
+    character_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)]
+):
+    """
+    Creates a test chat history for a given character and the current user.
+    """
+    db_character = crud.get_character(db=db, character_id=character_id)
+    if db_character is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
+    if db_character.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to create test data for this character")
+
+    conversation_orm_object = crud.get_or_create_user_character_conversation(
+        db=db, character_id=character_id, user_id=current_user.id
+    )
+
+    test_history = [
+        {
+            "speaker": "user",
+            "text": "This is a test message.",
+            "timestamp": datetime.utcnow().isoformat()
+        },
+        {
+            "speaker": "assistant",
+            "text": "This is a test response.",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    ]
+
+    conversation_orm_object.conversation_history = test_history
+    flag_modified(conversation_orm_object, "conversation_history")
+    db.commit()
+
+    return {"detail": "Test chat history created successfully."}
