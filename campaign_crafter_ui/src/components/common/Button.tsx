@@ -1,13 +1,13 @@
 import React, { MouseEventHandler, ReactNode } from 'react';
 import './Button.css'; // Import the CSS file
 
-export type ButtonVariant = 
-  | 'primary' 
-  | 'secondary' 
-  | 'success' 
-  | 'danger' 
-  | 'warning' 
-  | 'info' 
+export type ButtonVariant =
+  | 'primary'
+  | 'secondary'
+  | 'success'
+  | 'danger'
+  | 'warning'
+  | 'info'
   | 'link'
   | 'outline-primary'
   | 'outline-secondary'; // Add more outline variants as needed

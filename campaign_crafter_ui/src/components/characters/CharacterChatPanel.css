@@ -347,3 +347,15 @@
 .chat-message-row.error-message-row .chat-message-bubble.error-bubble p {
     margin:0;
 }
+
+.character-chat-panel-actions {
+    display: flex;
+    align-items: center;
+}
+
+.character-chat-panel-actions .btn-icon {
+    font-size: 1.25rem;
+    padding: 0.5rem;
+    margin-left: 0.5rem;
+    line-height: 1;
+}

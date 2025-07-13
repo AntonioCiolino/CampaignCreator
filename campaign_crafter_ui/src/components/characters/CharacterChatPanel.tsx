@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import LoadingSpinner from '../common/LoadingSpinner';
+import IconButton from '../common/IconButton';
 import { ChatMessage } from '../../types/characterTypes'; // Corrected path
 import './CharacterChatPanel.css';
 
@@ -18,9 +19,11 @@ export interface CharacterChatPanelProps {
     llmError: string | null; // Combined error from parent
     chatHistory: Array<ChatMessage>;
     chatLoading: boolean; // For loading history
+    handleClearChat: () => Promise<void>;
+    onMemorySummaryOpen: () => void;
 }
 
-const DEFAULT_AVATAR = '/logo_placeholder.svg'; // A default placeholder
+const DEFAULT_AVATAR = '/logo_placeholder.svg';
 
 const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
     characterName,
@@ -35,6 +38,8 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
     llmError,
     chatHistory,
     chatLoading,
+    handleClearChat,
+    onMemorySummaryOpen,
 }) => {
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null); // Ref for textarea
@@ -91,13 +96,26 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
                     <span id="character-chat-panel-title" className="character-chat-panel-title">
                         {panelTitle}
                     </span>
-                    <button
-                        onClick={onClose}
-                        className="character-chat-panel-close-button"
-                        aria-label="Close chat panel"
-                    >
-                        &times;
-                    </button>
+                    <div className="character-chat-panel-actions">
+                        <IconButton
+                            onClick={onMemorySummaryOpen}
+                            aria-label="View memory summary"
+                            title="View Memory Summary"
+                            icon={<i className="bi bi-brain"></i>}
+                        />
+                        <IconButton
+                            onClick={handleClearChat}
+                            aria-label="Clear chat history"
+                            disabled={isGeneratingResponse || chatLoading}
+                            title="Clear Chat History"
+                            icon={<i className="bi bi-trash"></i>}
+                        />
+                        <IconButton
+                            onClick={onClose}
+                            aria-label="Close chat panel"
+                            icon={<>&times;</>}
+                        />
+                    </div>
                 </div>
 
                 <div className="character-chat-panel-messages-area" ref={messagesContainerRef}>

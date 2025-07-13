@@ -162,7 +162,7 @@
 .btn:disabled:hover, .btn.disabled:hover {
     /* Reset to disabled style */
     /* Example: for btn-primary */
-    /* background-color: var(--primary-color, #007bff); 
+    /* background-color: var(--primary-color, #007bff);
        border-color: var(--primary-color, #007bff); */
 }
 
