@@ -103,8 +103,6 @@ struct CampaignEditView: View {
 
 struct CampaignEditView_Previews: PreviewProvider {
     static var previews: some View {
-        // Since the initializer for Campaign is now failable and relies on a library object,
-        // we need to construct a valid library campaign object first.
         let libCampaign = CampaignCreatorLib.Campaign(
             id: 1,
             title: "Preview Campaign",

@@ -84,7 +84,6 @@ struct CampaignDetailView: View {
 
 struct CampaignDetailView_Previews: PreviewProvider {
     static var previews: some View {
-        // Create a mock library campaign first
         let libCampaign = CampaignCreatorLib.Campaign(
             id: 1,
             title: "Campaign 1",

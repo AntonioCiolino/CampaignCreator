@@ -158,7 +158,7 @@ struct CharacterEditView: View {
     }
 }
 
-struct StatEditableRow: View {
+struct StatEditableRow: View.swift
     let label: String
     @Binding var valueString: String
     var body: some View {
