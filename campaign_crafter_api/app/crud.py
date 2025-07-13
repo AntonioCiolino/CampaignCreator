@@ -9,7 +9,7 @@ from app import models, orm_models # Standardized
 from app.core.config import settings # Import settings
 from app.core.security import encrypt_key # Added for API key encryption
 from app.services.image_generation_service import ImageGenerationService
-from app.services.llm_service import AbstractLLMService # Added this import
+from app.services.llm_service import AbstractLLMService, LLMGenerationError # Added this import
 from sqlalchemy.orm.attributes import flag_modified # Moved import to top
 # import asyncio # No longer needed here
 from urllib.parse import urlparse
@@ -461,7 +461,7 @@ def copy_system_roll_table_to_user(db: Session, system_table: orm_models.RollTab
 
 # from app.services.openai_service import OpenAILLMService
 from app.services.llm_service import LLMService # Standardized
-from app.services.llm_factory import get_llm_service, LLMServiceUnavailableError, LLMGenerationError # Standardized
+from app.services.llm_factory import get_llm_service, LLMServiceUnavailableError
 # from app import models # This is already imported via "from app import models, orm_models"
 
 # --- Campaign CRUD functions ---
