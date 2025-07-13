@@ -547,7 +547,9 @@ def get_character_chat_history(
     history_as_pydantic = []
     for i, msg in enumerate(conversation_orm_object.conversation_history):
         try:
-            msg["timestamp"] = "2025-07-13T02:46:43.566617"
+            # Convert datetime object to ISO 8601 string
+            if isinstance(msg.get("timestamp"), datetime):
+                msg["timestamp"] = msg["timestamp"].isoformat()
             history_as_pydantic.append(models.ConversationMessageEntry(**msg))
         except Exception as e:
             print(f"Failed to load chat history. Data corrupted at index {i}. Error: {e}. Message data: {msg}")
