@@ -182,8 +182,8 @@ struct CharacterChatView_Previews: PreviewProvider {
             description: "A nimble scout.",
             appearanceDescription: "Slender build.",
             notesForLLM: "Loves nature.",
-            stats: nil,
-            exportFormatPreference: nil,
+            stats: CampaignCreatorLib.CharacterStats(strength: 10, dexterity: 10, constitution: 10, intelligence: 10, wisdom: 10, charisma: 10),
+            exportFormatPreference: "Markdown",
             imageURLs: [],
             campaignIDs: []
         )

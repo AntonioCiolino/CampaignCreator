@@ -159,7 +159,7 @@ struct CharacterDetailView_Previews: PreviewProvider {
             notesForLLM: "Loves nature, wary of large cities, skilled archer.",
             stats: libStats,
             exportFormatPreference: "Markdown",
-            imageURLs: [],
+            imageURLs: [""],
             campaignIDs: []
         )
 
