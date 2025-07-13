@@ -53,15 +53,10 @@ struct CharacterChatView: View {
     @State private var isSendingMessage: Bool = false
     @State private var errorMessage: String? = nil
     @State private var memorySummary: String? = "This is a placeholder for the actual memory summary."
+    @State private var showingMemorySummary = false
 
     var body: some View {
         VStack {
-            // Memory Summary View
-            if let summary = memorySummary, !summary.isEmpty {
-                MemorySummaryView(memorySummary: summary)
-                    .padding(.horizontal)
-            }
-
             // Chat messages display area
             ScrollViewReader { scrollViewProxy in
                 ScrollView {
@@ -122,13 +117,25 @@ struct CharacterChatView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: {
-                    // Action to clear chat
-                    clearChatMessages()
-                }) {
-                    Image(systemName: "trash")
+                HStack {
+                    Button(action: {
+                        showingMemorySummary.toggle()
+                    }) {
+                        Image(systemName: "brain.head.profile")
+                    }
+                    .disabled(memorySummary == nil || memorySummary!.isEmpty)
+
+                    Button(action: {
+                        // Action to clear chat
+                        clearChatMessages()
+                    }) {
+                        Image(systemName: "trash")
+                    }
                 }
             }
+        }
+        .sheet(isPresented: $showingMemorySummary) {
+            MemorySummaryView(memorySummary: memorySummary ?? "No summary available.")
         }
         .onAppear {
             fetchChatHistory()

@@ -2,38 +2,19 @@ import SwiftUI
 
 struct MemorySummaryView: View {
     let memorySummary: String
-    @State private var isExpanded: Bool = false
+    @Environment(\.presentationMode) var presentationMode
 
     var body: some View {
-        VStack(alignment: .leading) {
-            HStack {
-                Text("Memory Summary")
-                    .font(.headline)
-                Spacer()
-                Button(action: {
-                    withAnimation {
-                        isExpanded.toggle()
-                    }
-                }) {
-                    Image(systemName: isExpanded ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
-                        .font(.title2)
-                }
+        NavigationView {
+            ScrollView {
+                Text(memorySummary)
+                    .padding()
             }
-            .padding(.bottom, 4)
-
-            if isExpanded {
-                ScrollView {
-                    Text(memorySummary)
-                        .padding()
-                        .background(Color.gray.opacity(0.1))
-                        .cornerRadius(8)
-                        .frame(maxHeight: 200)
-                }
-                .transition(.asymmetric(insertion: .scale, removal: .opacity))
-            }
+            .navigationTitle("Memory Summary")
+            .navigationBarItems(trailing: Button("Done") {
+                presentationMode.wrappedValue.dismiss()
+            })
         }
-        .padding()
-        .background(RoundedRectangle(cornerRadius: 10).fill(Color.white).shadow(radius: 2))
     }
 }
 
