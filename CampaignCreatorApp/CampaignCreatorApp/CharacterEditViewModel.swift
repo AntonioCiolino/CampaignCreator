@@ -147,15 +147,10 @@ class CharacterEditViewModel: ObservableObject {
         do {
             let characterUpdateDTO = toCharacterUpdateDTO(from: updatedCharacter)
             let updatedLibCharacter: CampaignCreatorLib.Character = try await apiService.updateCharacter(characterToEdit.id, data: characterUpdateDTO)
-            if let updatedAppCharacter = Character(from: updatedLibCharacter) {
-                self.characterToEdit = updatedAppCharacter
-                isSaving = false
-                return self.characterToEdit
-            } else {
-                errorMessage = "Failed to convert updated character."
-                isSaving = false
-                return nil
-            }
+            let updatedAppCharacter = Character(from: updatedLibCharacter)
+            self.characterToEdit = updatedAppCharacter
+            isSaving = false
+            return self.characterToEdit
         } catch {
             errorMessage = "An unexpected error occurred: \\(error.localizedDescription)"
             isSaving = false

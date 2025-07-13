@@ -87,6 +87,31 @@ struct Campaign: Codable, Identifiable {
         self.theme_background_image_opacity = Float(libCampaign.themeBackgroundImageOpacity ?? 1.0)
         self.mood_board_image_urls = libCampaign.moodBoardImageURLs
     }
+
+    func toCampaignUpdateDTO() -> CampaignCreatorLib.CampaignUpdateDTO {
+        return CampaignCreatorLib.CampaignUpdateDTO(
+            title: self.title,
+            initialUserPrompt: self.initial_user_prompt,
+            concept: self.concept,
+            displayTOC: nil, // Not available in app model
+            badgeImageURL: self.badge_image_url,
+            thematicImageURL: self.thematic_image_url,
+            thematicImagePrompt: self.thematic_image_prompt,
+            selectedLLMId: self.selected_llm_id,
+            temperature: Double(self.temperature ?? 0.7),
+            moodBoardImageURLs: self.mood_board_image_urls,
+            themePrimaryColor: self.theme_primary_color,
+            themeSecondaryColor: self.theme_secondary_color,
+            themeBackgroundColor: self.theme_background_color,
+            themeTextColor: self.theme_text_color,
+            themeFontFamily: self.theme_font_family,
+            themeBackgroundImageURL: self.theme_background_image_url,
+            themeBackgroundImageOpacity: Double(self.theme_background_image_opacity ?? 1.0),
+            linkedCharacterIDs: nil, // Not available in app model
+            customSections: nil, // Not available in app model
+            sections: self.sections?.map { $0.toCampaignSectionDTO() }
+        )
+    }
 }
 
 struct CampaignCreate: Codable {
@@ -324,10 +349,12 @@ struct Character: Codable, Identifiable {
     var description: String?
     var appearance_description: String?
     var image_urls: [String]?
+    var video_clip_urls: [String]?
     var notes_for_llm: String?
     var stats: CharacterStats?
     var export_format_preference: String?
-    let owner_id: Int
+    var owner_id: Int
+    var campaign_ids: [Int]?
 
     init(from libCharacter: CampaignCreatorLib.Character) {
         self.id = libCharacter.id
@@ -335,10 +362,12 @@ struct Character: Codable, Identifiable {
         self.description = libCharacter.description
         self.appearance_description = libCharacter.appearanceDescription
         self.image_urls = libCharacter.imageURLs
+        self.video_clip_urls = libCharacter.video_clip_urls
         self.notes_for_llm = libCharacter.notesForLLM
         self.stats = CharacterStats(from: libCharacter.stats)
         self.export_format_preference = libCharacter.exportFormatPreference
-        self.owner_id = 0 // This will need to be set from user context
+        self.owner_id = libCharacter.ownerID ?? 0
+        self.campaign_ids = libCharacter.campaignIDs
     }
 }
 

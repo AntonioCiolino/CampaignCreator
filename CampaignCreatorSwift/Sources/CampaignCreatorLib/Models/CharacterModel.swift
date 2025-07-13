@@ -33,29 +33,33 @@ public struct CharacterStats: Codable, Sendable {
 // Corresponds to TypeScript 'Character'
 public struct Character: Identifiable, Codable, Sendable {
     public var id: Int
+    public var ownerID: Int?
     public var name: String
     public var description: String?
     public var appearanceDescription: String?
     public var imageURLs: [String]?
+    public var video_clip_urls: [String]?
     public var notesForLLM: String?
     public var stats: CharacterStats?
     public var exportFormatPreference: String?
     public var createdAt: Date?
     public var modifiedAt: Date?
+    public var campaignIDs: [Int]?
 
     enum CodingKeys: String, CodingKey {
         case id
+        case ownerID = "owner_id"
         case name
         case description
         case appearanceDescription = "appearance_description"
         case imageURLs = "image_urls"
+        case video_clip_urls = "video_clip_urls"
         case notesForLLM = "notes_for_llm"
         case stats
         case exportFormatPreference = "export_format_preference"
         case createdAt = "created_at"
         case modifiedAt = "modified_at"
-        // owner_id is in the JSON but not in the Swift struct, so it's not included here.
-        // If it were needed in the struct, it would be: case ownerId = "owner_id"
+        case campaignIDs = "campaign_ids"
     }
 
     // Custom init(from: Decoder) is removed.
@@ -64,25 +68,31 @@ public struct Character: Identifiable, Codable, Sendable {
 
     // Memberwise initializer - keep for non-Codable instantiation if needed, or for tests/previews
     public init(id: Int,
+                ownerID: Int? = nil,
                 name: String,
                 description: String? = nil,
                 appearanceDescription: String? = nil,
                 imageURLs: [String]? = nil,
+                video_clip_urls: [String]? = nil,
                 notesForLLM: String? = nil,
                 stats: CharacterStats? = nil,
                 exportFormatPreference: String? = nil,
                 createdAt: Date? = nil,
-                modifiedAt: Date? = nil) {
+                modifiedAt: Date? = nil,
+                campaignIDs: [Int]? = nil) {
         self.id = id
+        self.ownerID = ownerID
         self.name = name
         self.description = description
         self.appearanceDescription = appearanceDescription
         self.imageURLs = imageURLs
+        self.video_clip_urls = video_clip_urls
         self.notesForLLM = notesForLLM
         self.stats = stats
         self.exportFormatPreference = exportFormatPreference
         self.createdAt = createdAt
         self.modifiedAt = modifiedAt
+        self.campaignIDs = campaignIDs
     }
 
     // Convenience to update modification time
