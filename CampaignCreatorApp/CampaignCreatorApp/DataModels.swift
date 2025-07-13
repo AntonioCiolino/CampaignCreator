@@ -240,17 +240,6 @@ struct LLMConfig: Codable, Identifiable {
     var api_url: String?
 }
 
-extension LLMConfig {
-    init?(from libConfig: CampaignCreatorLib.LLMConfig?) {
-        guard let libConfig = libConfig else { return nil }
-        self.id = libConfig.id
-        self.owner_id = 0 // Not available in libConfig
-        self.name = libConfig.name
-        self.api_key = nil // Not available in libConfig
-        self.api_url = nil // Not available in libConfig
-    }
-}
-
 struct LLMConfigCreate: Codable {
     var name: String
     var api_key: String?
@@ -408,7 +397,7 @@ struct Character: Codable, Identifiable {
         self.description = libCharacter.description
         self.appearance_description = libCharacter.appearanceDescription
         self.image_urls = libCharacter.imageURLs
-        self.video_clip_urls = nil // Not available in libCharacter
+        self.video_clip_urls = []
         self.notes_for_llm = libCharacter.notesForLLM
         self.stats = CharacterStats(from: libCharacter.stats)
         self.export_format_preference = libCharacter.exportFormatPreference
