@@ -544,12 +544,20 @@ def get_character_chat_history(
     )
 
     history_as_pydantic = []
-    for i, msg in enumerate(conversation_orm_object.conversation_history):
-        try:
-            if isinstance(msg.get("timestamp"), datetime):
-                msg["timestamp"] = msg["timestamp"].isoformat()
-            history_as_pydantic.append(models.ConversationMessageEntry(**msg))
-        except Exception as e:
-            print(f"Failed to load chat history. Data corrupted at index {i}. Error: {e}. Message data: {msg}")
-            continue
+    if conversation_orm_object.conversation_history:
+        for i, msg in enumerate(conversation_orm_object.conversation_history):
+            if not msg:
+                print(f"Skipping corrupted (null) message at index {i}")
+                continue
+            try:
+                if isinstance(msg.get("timestamp"), datetime):
+                    msg["timestamp"] = msg["timestamp"].isoformat()
+                elif not isinstance(msg.get("timestamp"), str):
+                    print(f"Skipping message at index {i} due to invalid timestamp type: {type(msg.get('timestamp'))}. Message: {msg}")
+                    continue
+
+                history_as_pydantic.append(models.ConversationMessageEntry(**msg))
+            except Exception as e:
+                print(f"Failed to process message at index {i}. Error: {e}. Message data: {msg}")
+                continue
     return history_as_pydantic
