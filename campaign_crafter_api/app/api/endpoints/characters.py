@@ -554,7 +554,7 @@ def get_character_chat_history(
         except Exception as e:
             print(f"Failed to load chat history. Data corrupted at index {i}. Error: {e}. Message data: {msg}")
             continue
-    print(history_as_pydantic)
+    print(f"Returning chat history: {history_as_pydantic}")
     return history_as_pydantic
 
 @router.post("/{character_id}/chat/test", status_code=status.HTTP_201_CREATED)
