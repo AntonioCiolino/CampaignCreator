@@ -105,7 +105,8 @@ struct CampaignDetailView_Previews: PreviewProvider {
             theme_font_family: "Arial",
             theme_background_image_url: "",
             theme_background_image_opacity: 1.0,
-            mood_board_image_urls: []
+            mood_board_image_urls: [],
+            wordCount: 0
         )
 
         return NavigationView {
