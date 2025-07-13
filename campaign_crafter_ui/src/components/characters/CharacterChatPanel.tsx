@@ -100,20 +100,25 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
                         <IconButton
                             onClick={onMemorySummaryOpen}
                             aria-label="View memory summary"
-                            title="View Memory Summary"
+                            tooltip="View Memory Summary"
                             icon={<i className="bi bi-brain"></i>}
+                            size="medium"
                         />
                         <IconButton
                             onClick={handleClearChat}
                             aria-label="Clear chat history"
                             disabled={isGeneratingResponse || chatLoading}
-                            title="Clear Chat History"
+                            tooltip="Clear Chat History"
                             icon={<i className="bi bi-trash"></i>}
+                            variant="danger"
+                            size="medium"
                         />
                         <IconButton
                             onClick={onClose}
                             aria-label="Close chat panel"
-                            icon={<>&times;</>}
+                            tooltip="Close"
+                            icon={<i className="bi bi-x-lg"></i>}
+                            size="medium"
                         />
                     </div>
                 </div>

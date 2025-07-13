@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'; // Added useRef
 import ReactDOM from 'react-dom'; // Added ReactDOM for createPortal
 import { CampaignSection } from '../types/campaignTypes'; // Corrected import path
 import ReactMarkdown from 'react-markdown';
-import { Typography, Tooltip, TextField } from '@mui/material'; // Import IconButton, Tooltip, TextField
+import { Typography, TextField } from '@mui/material'; // Import IconButton, Tooltip, TextField
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'; // Import ExpandMoreIcon
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'; // Import ExpandLessIcon
 // SaveIcon import removed
@@ -19,7 +19,7 @@ import 'react-quill/dist/quill.snow.css'; // Import Quill's snow theme CSS
 import Button from './common/Button'; // Added Button import
 import RandomTableRoller from './RandomTableRoller';
 import ImageGenerationModal from './modals/ImageGenerationModal/ImageGenerationModal'; // Import the new modal
-import { IconButton } from '@mui/material'; // Import IconButton
+import IconButton from './common/IconButton'; // Import IconButton
 import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
 import SaveIcon from '@mui/icons-material/Save'; // Import SaveIcon
 import CancelIcon from '@mui/icons-material/Cancel'; // Import CancelIcon
@@ -763,10 +763,8 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
             }}
             size="small"
             aria-label={isCollapsed ? "expand section" : "collapse section"}
-            sx={{ mr: 1 }} // Add some margin to the right of the icon
-          >
-            {isCollapsed ? <ExpandMoreIcon /> : <ExpandLessIcon />}
-          </IconButton>
+            icon={isCollapsed ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+          />
           {!isEditingTitle ? (
             <h3
               className="section-title"
@@ -800,12 +798,8 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
                 sx={{ flexGrow: 1 }}
                 // Remove onBlur for now to rely on explicit save/cancel
               />
-              <IconButton onClick={(e) => {e.stopPropagation(); handleSaveTitle();}} size="small" aria-label="save title">
-                <CheckIcon fontSize="small" />
-              </IconButton>
-              <IconButton onClick={(e) => {e.stopPropagation(); handleCancelTitleEdit();}} size="small" aria-label="cancel title edit">
-                <CloseIcon fontSize="small" />
-              </IconButton>
+              <IconButton onClick={(e) => {e.stopPropagation(); handleSaveTitle();}} size="small" aria-label="save title" icon={<CheckIcon fontSize="small" />} />
+              <IconButton onClick={(e) => {e.stopPropagation(); handleCancelTitleEdit();}} size="small" aria-label="cancel title edit" icon={<CloseIcon fontSize="small" />} />
             </div>
           )}
           {/* Display Section Type if not editing title area */}
@@ -815,19 +809,16 @@ const CampaignSectionView: React.FC<CampaignSectionViewProps> = ({
             </span>
           )}
           {!isEditing && (
-            <Tooltip title="Edit Section Content">
-              <IconButton
-                onClick={(event) => {
-                  event.stopPropagation();
-                  handleEdit();
-                }}
-                size="small"
-                aria-label="edit section content"
-                sx={{ ml: 1 }}
-              >
-                <EditIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
+            <IconButton
+              onClick={(event) => {
+                event.stopPropagation();
+                handleEdit();
+              }}
+              size="small"
+              aria-label="edit section content"
+              tooltip="Edit Section Content"
+              icon={<EditIcon fontSize="small" />}
+            />
           )}
           {/* Delete icon is managed by CampaignSectionEditor */}
         </div>
