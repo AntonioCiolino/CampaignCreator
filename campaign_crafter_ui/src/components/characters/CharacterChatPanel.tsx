@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import LoadingSpinner from '../common/LoadingSpinner';
+import Button from '../common/Button';
 import { ChatMessage } from '../../types/characterTypes'; // Corrected path
 import './CharacterChatPanel.css';
 
