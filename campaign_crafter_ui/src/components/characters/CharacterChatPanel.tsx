@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import LoadingSpinner from '../common/LoadingSpinner';
-import Button from '../common/Button';
 import { ChatMessage } from '../../types/characterTypes'; // Corrected path
 import './CharacterChatPanel.css';
 
@@ -97,21 +96,23 @@ const CharacterChatPanel: React.FC<CharacterChatPanelProps> = ({
                         {panelTitle}
                     </span>
                     <div className="character-chat-panel-actions">
-                        <Button
+                        <button
                             onClick={onMemorySummaryOpen}
-                            className="btn-icon"
+                            className="btn btn-icon"
                             aria-label="View memory summary"
-                            tooltip="View Memory Summary"
-                            icon={<i className="bi bi-brain"></i>}
-                        />
-                        <Button
+                            title="View Memory Summary"
+                        >
+                            <i className="bi bi-brain"></i>
+                        </button>
+                        <button
                             onClick={handleClearChat}
-                            className="btn-icon"
+                            className="btn btn-icon"
                             aria-label="Clear chat history"
                             disabled={isGeneratingResponse || chatLoading}
-                            tooltip="Clear Chat History"
-                            icon={<i className="bi bi-trash"></i>}
-                        />
+                            title="Clear Chat History"
+                        >
+                            <i className="bi bi-trash"></i>
+                        </button>
                         <button
                             onClick={onClose}
                             className="character-chat-panel-close-button"
