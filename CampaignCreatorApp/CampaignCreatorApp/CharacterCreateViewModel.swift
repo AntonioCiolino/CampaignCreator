@@ -64,7 +64,7 @@ class CharacterCreateViewModel: ObservableObject {
 
         do {
             let finalExportFormatPreference = characterExportFormatPreference.trimmingCharacters(in: .whitespacesAndNewlines)
-            var character = CharacterCreate(
+            let character = CharacterCreate(
                 name: name,
                 description: characterDescription.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty(),
                 appearance_description: characterAppearance.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty(),
@@ -76,7 +76,7 @@ class CharacterCreateViewModel: ObservableObject {
             )
 
             let characterCreateDTO = character.toCharacterCreateDTO()
-            let _: CampaignCreatorLib.Character = try await apiService.createCharacter(characterCreateDTO)
+            let _: Character = try await apiService.createCharacter(characterCreateDTO) as! Character
         } catch {
             errorMessage = "An unexpected error occurred: \(error.localizedDescription)"
         }

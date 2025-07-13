@@ -538,22 +538,26 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
     }
 
     // MARK: - Campaign Methods
-    public func fetchCampaigns() async throws -> [Campaign] {
-        try await performRequest(endpoint: "/campaigns/")
+    public func fetchCampaigns() async throws -> [Decodable] {
+        let campaigns: [Campaign] = try await performRequest(endpoint: "/campaigns/")
+        return campaigns.map { $0 as Decodable }
     }
 
-    public func fetchCampaign(id: Int) async throws -> Campaign {
-        try await performRequest(endpoint: "/campaigns/\(id)")
+    public func fetchCampaign(id: Int) async throws -> Decodable {
+        let campaign: Campaign = try await performRequest(endpoint: "/campaigns/\(id)")
+        return campaign as Decodable
     }
 
-    public func createCampaign(_ campaignData: CampaignCreateDTO) async throws -> Campaign {
+    public func createCampaign(_ campaignData: CampaignCreateDTO) async throws -> Decodable {
         let body = try jsonEncoder.encode(campaignData)
-        return try await performRequest(endpoint: "/campaigns", method: "POST", body: body)
+        let campaign: Campaign = try await performRequest(endpoint: "/campaigns", method: "POST", body: body)
+        return campaign as Decodable
     }
 
-    public func updateCampaign(_ campaignId: Int, data: CampaignUpdateDTO) async throws -> Campaign { // Changed campaignId from UUID to Int
+    public func updateCampaign(_ campaignId: Int, data: CampaignUpdateDTO) async throws -> Decodable { // Changed campaignId from UUID to Int
         let body = try jsonEncoder.encode(data)
-        return try await performRequest(endpoint: "/campaigns/\(campaignId)", method: "PUT", body: body) // REMOVED TRAILING SLASH
+        let campaign: Campaign = try await performRequest(endpoint: "/campaigns/\(campaignId)", method: "PUT", body: body) // REMOVED TRAILING SLASH
+        return campaign as Decodable
     }
 
     public func deleteCampaign(id: Int) async throws { // Changed id from UUID to Int
@@ -561,22 +565,26 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
     }
 
     // MARK: - Character Methods
-    public func fetchCharacters() async throws -> [Character] {
-        try await performRequest(endpoint: "/characters/") // ADDED TRAILING SLASH
+    public func fetchCharacters() async throws -> [Decodable] {
+        let characters: [Character] = try await performRequest(endpoint: "/characters/") // ADDED TRAILING SLASH
+        return characters.map { $0 as Decodable }
     }
 
-    public func fetchCharacter(id: Int) async throws -> Character {
-        try await performRequest(endpoint: "/characters/\(id)")
+    public func fetchCharacter(id: Int) async throws -> Decodable {
+        let character: Character = try await performRequest(endpoint: "/characters/\(id)")
+        return character as Decodable
     }
 
-    public func createCharacter(_ characterData: CharacterCreateDTO) async throws -> Character {
+    public func createCharacter(_ characterData: CharacterCreateDTO) async throws -> Decodable {
         let body = try jsonEncoder.encode(characterData)
-        return try await performRequest(endpoint: "/characters/", method: "POST", body: body)
+        let character: Character = try await performRequest(endpoint: "/characters/", method: "POST", body: body)
+        return character as Decodable
     }
 
-    public func updateCharacter(_ characterId: Int, data: CharacterUpdateDTO) async throws -> Character { // Changed characterId from UUID to Int
+    public func updateCharacter(_ characterId: Int, data: CharacterUpdateDTO) async throws -> Decodable { // Changed characterId from UUID to Int
         let body = try jsonEncoder.encode(data)
-        return try await performRequest(endpoint: "/characters/\(characterId)", method: "PUT", body: body) // Changed characterId.uuidString to characterId
+        let character: Character = try await performRequest(endpoint: "/characters/\(characterId)", method: "PUT", body: body) // Changed characterId.uuidString to characterId
+        return character as Decodable
     }
 
     public func deleteCharacter(id: Int) async throws { // Changed id from UUID to Int

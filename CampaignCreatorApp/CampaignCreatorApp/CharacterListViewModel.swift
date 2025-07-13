@@ -14,8 +14,8 @@ class CharacterListViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         do {
-            let fetchedLibCharacters: [CampaignCreatorLib.Character] = try await apiService.fetchCharacters()
-            self.characters = fetchedLibCharacters.compactMap { Character(from: $0) }
+            let fetchedCharacters: [Character] = try await apiService.fetchCharacters() as! [Character]
+            self.characters = fetchedCharacters
         } catch {
             self.errorMessage = error.localizedDescription
         }
