@@ -1,19 +1,17 @@
 import SwiftUI
-import CampaignCreatorLib // For Feature struct
 
 struct SnippetContextInputModal: View {
     @Binding var isPresented: Bool
     let feature: Feature
-    let campaignCharacters: [Character] // Using Character model from CampaignCreatorLib
+    let campaignCharacters: [Character]
     let selectedText: String
-    let onSubmit: (([String: String]) -> Void) // Returns dictionary of contextKey: value
+    let onSubmit: (([String: String]) -> Void)
 
     @State private var contextData: [String: String] = [:]
-    @State private var formIsValid: Bool = false // To enable/disable submit button
+    @State private var formIsValid: Bool = false
 
-    // Determine required context fields excluding 'selected_text' and 'campaign_characters'
     private var requiredInputFields: [String] {
-        feature.requiredContext?.filter { $0 != "selected_text" && $0 != "campaign_characters" } ?? []
+        feature.required_context?.filter { $0 != "selected_text" && $0 != "campaign_characters" } ?? []
     }
 
     var body: some View {
@@ -25,15 +23,12 @@ struct SnippetContextInputModal: View {
                         .foregroundColor(.secondary)
                         .padding(.bottom)
 
-                    if feature.requiredContext?.contains("campaign_characters") == true {
+                    if feature.required_context?.contains("campaign_characters") == true {
                         if campaignCharacters.isEmpty {
                             Text("This feature can use campaign characters, but no characters are currently in this campaign.")
                                 .font(.caption)
                                 .foregroundColor(.orange)
                         } else {
-                            // Non-interactive display or simple selection if needed later.
-                            // For now, just acknowledging it's a context.
-                            // If actual selection is needed, this would be a Picker or MultiSelector.
                             Text("Context: Uses existing campaign characters (\(campaignCharacters.map { $0.name }.joined(separator: ", ")))")
                                 .font(.caption)
                         }
@@ -45,7 +40,7 @@ struct SnippetContextInputModal: View {
                     } else {
                         ForEach(requiredInputFields, id: \.self) { key in
                             VStack(alignment: .leading) {
-                                Text(key.replacingOccurrences(of: "_", with: " ").capitalized + ":") // User-friendly label
+                                Text(key.replacingOccurrences(of: "_", with: " ").capitalized + ":")
                                 TextField("Enter \(key.replacingOccurrences(of: "_", with: " "))", text: bindingFor(key: key))
                                     .textFieldStyle(RoundedBorderTextFieldStyle())
                             }
@@ -58,7 +53,7 @@ struct SnippetContextInputModal: View {
                         onSubmit(contextData)
                         isPresented = false
                     }
-                    .disabled(!formIsValid && !requiredInputFields.isEmpty) // Disable if form isn't valid and there are fields
+                    .disabled(!formIsValid && !requiredInputFields.isEmpty)
 
                     Button("Cancel") {
                         isPresented = false
@@ -90,18 +85,17 @@ struct SnippetContextInputModal: View {
     private func initializeContextDataAndValidation() {
         var initialData: [String: String] = [:]
         for key in requiredInputFields {
-            initialData[key] = "" // Initialize with empty strings
+            initialData[key] = ""
         }
         self.contextData = initialData
-        validateForm() // Perform initial validation
+        validateForm()
     }
 
     private func validateForm() {
         if requiredInputFields.isEmpty {
-            formIsValid = true // No fields to validate
+            formIsValid = true
             return
         }
-        // Check if all required fields (that need input) have non-empty values
         formIsValid = requiredInputFields.allSatisfy { key in
             !(contextData[key]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
         }
@@ -113,28 +107,27 @@ struct SnippetContextInputModal_Previews: PreviewProvider {
         id: 1,
         name: "Describe Mood",
         template: "Describe the mood of the selected text: {selected_text}. Consider the current weather: {weather} and time of day: {time_of_day}.",
-        requiredContext: ["selected_text", "weather", "time_of_day", "campaign_characters"]
+        user_id: 1,
+        required_context: ["selected_text", "weather", "time_of_day", "campaign_characters"],
+        compatible_types: [],
+        feature_category: ""
     )
     static let sampleFeatureNoExtraContext = Feature(
         id: 2,
         name: "Summarize",
         template: "Summarize: {selected_text}",
-        requiredContext: ["selected_text"]
+        user_id: 1,
+        required_context: ["selected_text"],
+        compatible_types: [],
+        feature_category: ""
     )
-    static let sampleCharacters = [
-        Character(id: 1, name: "Aella", modifiedAt: Date()),
-        Character(id: 2, name: "Bram", modifiedAt: Date())
-    ]
+    static let sampleCharacters: [Character] = []
 
     static var previews: some View {
-        // Preview 1: Feature requiring extra context
         StatefulPreviewWrapper(isPresented: true, feature: sampleFeatureWithContext)
-
-        // Preview 2: Feature requiring no extra context (beyond selected_text)
         StatefulPreviewWrapper(isPresented: true, feature: sampleFeatureNoExtraContext)
     }
 
-    // Helper for @State in previews
     struct StatefulPreviewWrapper: View {
         @State var isPresented: Bool
         let feature: Feature

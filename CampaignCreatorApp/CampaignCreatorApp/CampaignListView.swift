@@ -1,48 +1,43 @@
 import SwiftUI
-import CampaignCreatorLib
 import Kingfisher
 
 struct CampaignListView: View {
-    // CampaignCreator is now an @MainActor class and uses @Published for campaigns
-    @ObservedObject var campaignCreator: CampaignCreator
+    @StateObject private var viewModel = CampaignListViewModel()
     @State private var showingCreateSheet = false
-    @State private var newCampaignTitle = ""
-    @State private var showCreationErrorAlert = false
-    @State private var creationErrorMessage = ""
 
     var body: some View {
         NavigationView {
-            Group { // Use Group to conditionally show content
-                if campaignCreator.isLoadingCampaigns && campaignCreator.campaigns.isEmpty {
+            Group {
+                if viewModel.isLoading && viewModel.campaigns.isEmpty {
                     ProgressView("Loading Campaigns...")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let error = campaignCreator.campaignError {
+                } else if let error = viewModel.errorMessage {
                     VStack {
                         Text("Error Loading Campaigns")
                             .font(.headline)
-                        Text(error.localizedDescription)
+                        Text(error)
                             .font(.caption)
                             .multilineTextAlignment(.center)
                         Button("Retry") {
                             Task {
-                                await campaignCreator.fetchCampaigns()
+                                await viewModel.fetchCampaigns()
                             }
                         }
                         .padding(.top)
                     }
                     .padding()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if campaignCreator.campaigns.isEmpty {
+                } else if viewModel.campaigns.isEmpty {
                     Text("No campaigns yet. Tap '+' to create one.")
                         .foregroundColor(.secondary)
                         .font(.title2)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List {
-                        ForEach(campaignCreator.campaigns) { campaign in
-                            NavigationLink(destination: CampaignDetailView(campaign: campaign, campaignCreator: campaignCreator)) {
+                        ForEach(viewModel.campaigns) { campaign in
+                            NavigationLink(destination: CampaignDetailView(campaign: campaign)) {
                                 HStack {
-                                    if let badgeURL = campaign.badgeImageURL, let url = URL(string: badgeURL) {
+                                    if let badgeURL = campaign.badge_image_url, let url = URL(string: badgeURL) {
                                         KFImage(url)
                                             .resizable()
                                             .aspectRatio(contentMode: .fill)
@@ -60,19 +55,6 @@ struct CampaignListView: View {
                                         Text(campaign.title)
                                             .font(.headline)
                                             .foregroundColor(.primary)
-                                        HStack {
-                                            Text("\(campaign.wordCount) words")
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                            Spacer()
-                                            Text("Sections: \(campaign.sections.count)")
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                            Spacer()
-                                            Text(campaign.modifiedAt != nil ? "\(campaign.modifiedAt!, style: .date)" : "N/A")
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        }
                                     }
                                 }
                                 .padding(.vertical, 2)
@@ -80,16 +62,16 @@ struct CampaignListView: View {
                         }
                         .onDelete(perform: deleteCampaigns)
                     }
-                    .refreshable { // <<<< ADDED
-                        await campaignCreator.fetchCampaigns()
+                    .refreshable {
+                        await viewModel.fetchCampaigns()
                     }
                 }
             }
             .navigationTitle("Campaigns")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    if campaignCreator.isLoadingCampaigns && !campaignCreator.campaigns.isEmpty {
-                        ProgressView() // Show a small spinner if loading in background
+                    if viewModel.isLoading && !viewModel.campaigns.isEmpty {
+                        ProgressView()
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -100,121 +82,93 @@ struct CampaignListView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingCreateSheet) {
-                NavigationView {
-                    Form {
-                        Section("Campaign Details") {
-                            TextField("Campaign Title", text: $newCampaignTitle)
-                        }
-                    }
-                    .navigationTitle("New Campaign")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarLeading) {
-                            Button("Cancel") {
-                                showingCreateSheet = false
-                                newCampaignTitle = ""
-                            }
-                        }
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Button("Create") {
-                                Task {
-                                    await createCampaign()
-                                }
-                            }
-                            .disabled(newCampaignTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        }
-                    }
+            .sheet(isPresented: $showingCreateSheet, onDismiss: {
+                Task {
+                    await viewModel.fetchCampaigns()
                 }
-                .presentationDetents([.medium])
-            }
-            .alert("Error Creating Campaign", isPresented: $showCreationErrorAlert) {
-                Button("OK") { }
-            } message: {
-                Text(creationErrorMessage)
+            }) {
+                CampaignCreateView(isPresented: $showingCreateSheet)
             }
             .onAppear {
-                // Keep the existing onAppear logic for scenarios like app returning from background
-                // or if the view appears when session is already valid.
-                print("CampaignListView: .onAppear. SessionValid: \(campaignCreator.isUserSessionValid), Auth: \(campaignCreator.isAuthenticated), Loading: \(campaignCreator.isLoadingCampaigns), InitialFetchAttempted: \(campaignCreator.initialCampaignFetchAttempted), Err: \(campaignCreator.campaignError != nil ? (campaignCreator.campaignError?.localizedDescription ?? "Unknown Error") : "None")")
-                // Simplified onAppear: if session is valid and we haven't tried loading, load.
-                // The onChange modifier will handle the case where session becomes valid after appearing.
-                if campaignCreator.isUserSessionValid && !campaignCreator.isLoadingCampaigns && !campaignCreator.initialCampaignFetchAttempted {
-                     print("CampaignListView: .onAppear - Conditions met (SESSION VALID, not loading, not attempted), will fetch campaigns.")
-                     Task {
-                         await campaignCreator.fetchCampaigns()
-                     }
-                } else if campaignCreator.isUserSessionValid && campaignCreator.campaignError != nil && !campaignCreator.isLoadingCampaigns {
-                     print("CampaignListView: .onAppear - Conditions met (SESSION VALID, error present, not loading), will attempt retry fetch campaigns.")
-                     Task {
-                         await campaignCreator.fetchCampaigns() // Retry on error
-                     }
-                } else {
-                     print("CampaignListView: .onAppear - Conditions not met for immediate fetch. isUserSessionValid: \(campaignCreator.isUserSessionValid), isLoading: \(campaignCreator.isLoadingCampaigns), initialAttempted: \(campaignCreator.initialCampaignFetchAttempted)")
+                Task {
+                    await viewModel.fetchCampaigns()
                 }
             }
-            .onChange(of: campaignCreator.isUserSessionValid) { newSessionValidState in
-                print("CampaignListView: .onChange(of: isUserSessionValid) triggered. New state: \(newSessionValidState)")
-                if newSessionValidState && !campaignCreator.isLoadingCampaigns {
-                    if !campaignCreator.initialCampaignFetchAttempted || campaignCreator.campaignError != nil {
-                        print("CampaignListView: .onChange - Conditions met (SESSION NOW VALID, initial fetch needed or error retry), will fetch campaigns.")
-                        Task {
-                            await campaignCreator.fetchCampaigns()
-                        }
-                    } else {
-                         print("CampaignListView: .onChange - Session valid, initial fetch already attempted and no error, skipping fetch. Campaigns count: \(campaignCreator.campaigns.count)")
-                    }
-                } else if !newSessionValidState {
-                    print("CampaignListView: .onChange - Session became invalid. Campaigns will be cleared by logout logic if applicable.")
-                    // If session becomes invalid, campaigns list is typically cleared by logout() in CampaignCreator
-                } else {
-                    print("CampaignListView: .onChange - Session valid but currently loading campaigns. Skipping fetch.")
-                }
-            }
-        }
-    }
-
-    private func createCampaign() async {
-        let title = newCampaignTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !title.isEmpty else { return }
-
-        do {
-            _ = try await campaignCreator.createCampaign(title: title)
-            // CampaignCreator.fetchCampaigns() is called internally by createCampaign,
-            // so the @Published campaigns array will update.
-            showingCreateSheet = false
-            newCampaignTitle = ""
-        } catch let error as APIError {
-            creationErrorMessage = error.localizedDescription
-            showCreationErrorAlert = true
-            print("❌ Error creating campaign: \(error.localizedDescription)")
-        } catch {
-            creationErrorMessage = "An unexpected error occurred: \(error.localizedDescription)"
-            showCreationErrorAlert = true
-            print("❌ Unexpected error creating campaign: \(error.localizedDescription)")
         }
     }
 
     private func deleteCampaigns(offsets: IndexSet) {
-        let campaignsToDelete = offsets.map { campaignCreator.campaigns[$0] }
+        let campaignsToDelete = offsets.map { viewModel.campaigns[$0] }
         Task {
             for campaign in campaignsToDelete {
-                do {
-                    try await campaignCreator.deleteCampaign(campaign)
-                } catch {
-                    // Handle error, e.g., show an alert to the user
-                    print("Error deleting campaign \(campaign.title): \(error.localizedDescription)")
-                    // Optionally, present an alert for the failed deletion
-                }
+                await viewModel.deleteCampaign(campaign)
             }
-            // campaignCreator.fetchCampaigns() is called internally by deleteCampaign
         }
     }
 }
 
-#Preview {
-    let previewCreator = CampaignCreator()
-    // Optionally populate with some mock data for preview if API is not live
-    // For async, previewing loading/error states might require more setup
-    return CampaignListView(campaignCreator: previewCreator)
+#if DEBUG
+extension Campaign {
+    static func mock(
+        id: Int,
+        title: String,
+        concept: String? = "A mock concept",
+        initial_user_prompt: String? = "A mock prompt",
+        homebrewery_toc: [String: String]? = nil,
+        display_toc: [String: String]? = nil,
+        homebrewery_export: String? = nil,
+        sections: [CampaignSection]? = [],
+        owner_id: Int = 1,
+        badge_image_url: String? = "https://picsum.photos/seed/campaign/100/100",
+        thematic_image_url: String? = "https://picsum.photos/seed/campaign/800/600",
+        thematic_image_prompt: String? = "A mock thematic prompt",
+        selected_llm_id: String? = "mock_llm",
+        temperature: Float? = 0.7,
+        theme_primary_color: String? = "#3498db",
+        theme_secondary_color: String? = "#2ecc71",
+        theme_background_color: String? = "#ecf0f1",
+        theme_text_color: String? = "#2c3e50",
+        theme_font_family: String? = "Helvetica",
+        theme_background_image_url: String? = nil,
+        theme_background_image_opacity: Float? = 1.0,
+        mood_board_image_urls: [String]? = []
+    ) -> Campaign {
+        return Campaign(
+            id: id,
+            title: title,
+            concept: concept,
+            initial_user_prompt: initial_user_prompt,
+            homebrewery_toc: homebrewery_toc,
+            display_toc: display_toc,
+            homebrewery_export: homebrewery_export,
+            sections: sections,
+            owner_id: owner_id,
+            badge_image_url: badge_image_url,
+            thematic_image_url: thematic_image_url,
+            thematic_image_prompt: thematic_image_prompt,
+            selected_llm_id: selected_llm_id,
+            temperature: temperature,
+            theme_primary_color: theme_primary_color,
+            theme_secondary_color: theme_secondary_color,
+            theme_background_color: theme_background_color,
+            theme_text_color: theme_text_color,
+            theme_font_family: theme_font_family,
+            theme_background_image_url: theme_background_image_url,
+            theme_background_image_opacity: theme_background_image_opacity,
+            mood_board_image_urls: mood_board_image_urls
+        )
+    }
 }
+
+
+#Preview {
+    let viewModel = CampaignListViewModel()
+    viewModel.campaigns = [
+        Campaign.mock(id: 1, title: "Voyage of the Starseeker"),
+        Campaign.mock(id: 2, title: "The Sunken City of Aeridor"),
+        Campaign.mock(id: 3, title: "Chronicles of the Iron Empire")
+    ]
+
+    return CampaignListView()
+}
+#endif

@@ -1,5 +1,4 @@
 import SwiftUI
-import CampaignCreatorLib
 import Kingfisher
 
 struct ErrorDetail: Decodable {
@@ -7,27 +6,20 @@ struct ErrorDetail: Decodable {
 }
 
 struct CommonMoodBoardView: View {
-    @Binding var imageURLs: [String]
-    let onSave: () -> Void
-    let onGenerateAIImage: ((String) async throws -> String)?
-    let imageUploadService: ImageUploadService
-
-    @State private var showingAddImageOptions = false
-    @State private var showingAddURLSheet = false
-    @State private var showingGenerateMoodboardImageSheet = false
-    @State private var newImageURLInput: String = ""
-    @State private var aiImagePromptInput: String = ""
-    @State private var isGeneratingAIImage = false
-    @State private var alertItem: AlertMessageItem?
+    @StateObject private var viewModel: CommonMoodBoardViewModel
     @Environment(\.editMode) private var editMode
     @State private var showingFullImageView = false
     @State private var selectedImageURL: URL?
 
     private let gridItemLayout = [GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2)]
 
+    init(imageURLs: Binding<[String]>, onSave: @escaping () -> Void, onGenerateAIImage: ((String) async throws -> String)?, imageUploadService: ImageUploadService) {
+        _viewModel = StateObject(wrappedValue: CommonMoodBoardViewModel(imageURLs: imageURLs, onSave: onSave, onGenerateAIImage: onGenerateAIImage, imageUploadService: imageUploadService))
+    }
+
     var body: some View {
         ScrollView {
-            if imageURLs.isEmpty {
+            if viewModel.imageURLs.isEmpty {
                 VStack {
                     Spacer()
                     Text("No images available.")
@@ -38,7 +30,7 @@ struct CommonMoodBoardView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 LazyVGrid(columns: gridItemLayout, spacing: 2) {
-                    ForEach(imageURLs, id: \.self) { urlString in
+                    ForEach(viewModel.imageURLs, id: \.self) { urlString in
                         MoodboardCellView(
                             urlString: urlString,
                             onSelect: {
@@ -46,11 +38,11 @@ struct CommonMoodBoardView: View {
                                 showingFullImageView = true
                             },
                             onDelete: {
-                                deleteImage(urlString: urlString)
+                                viewModel.deleteImage(urlString: urlString)
                             }
                         )
                     }
-                    .onMove(perform: moveImage)
+                    .onMove(perform: viewModel.moveImage)
                 }
                 .padding(2)
             }
@@ -66,32 +58,32 @@ struct CommonMoodBoardView: View {
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
-                    showingAddImageOptions = true
+                    viewModel.showingAddImageOptions = true
                 } label: {
                     Image(systemName: "plus")
                 }
             }
         }
-        .confirmationDialog("Add Image", isPresented: $showingAddImageOptions, titleVisibility: .visible) {
+        .confirmationDialog("Add Image", isPresented: $viewModel.showingAddImageOptions, titleVisibility: .visible) {
             Button("Add from URL") {
-                newImageURLInput = ""
-                showingAddURLSheet = true
+                viewModel.newImageURLInput = ""
+                viewModel.showingAddURLSheet = true
             }
-            if onGenerateAIImage != nil {
+            if viewModel.onGenerateAIImage != nil {
                 Button("Generate with AI") {
-                    aiImagePromptInput = ""
-                    showingGenerateMoodboardImageSheet = true
+                    viewModel.aiImagePromptInput = ""
+                    viewModel.showingGenerateMoodboardImageSheet = true
                 }
             }
             Button("Cancel", role: .cancel) { }
         }
-        .sheet(isPresented: $showingAddURLSheet) {
+        .sheet(isPresented: $viewModel.showingAddURLSheet) {
             addImageView
         }
-        .sheet(isPresented: $showingGenerateMoodboardImageSheet) {
+        .sheet(isPresented: $viewModel.showingGenerateMoodboardImageSheet) {
             generateMoodboardImageSheetView
         }
-        .alert(item: $alertItem) { item in
+        .alert(item: $viewModel.alertItem) { item in
             Alert(title: Text("Mood Board"), message: Text(item.message), dismissButton: .default(Text("OK")))
         }
     }
@@ -100,69 +92,27 @@ struct CommonMoodBoardView: View {
         NavigationView {
             Form {
                 Section(header: Text("Image URL")) {
-                    TextField("https://example.com/image.png", text: $newImageURLInput)
+                    TextField("https://example.com/image.png", text: $viewModel.newImageURLInput)
                         .keyboardType(.URL)
                         .autocapitalization(.none)
                         .textFieldStyle(.plain)
                 }
                 Button("Add Image") {
                     Task {
-                        await addImageFromURL()
+                        await viewModel.addImageFromURL()
                     }
                 }
-                .disabled(newImageURLInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(viewModel.newImageURLInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .navigationTitle("Add Image from URL")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
-                        showingAddURLSheet = false
+                        viewModel.showingAddURLSheet = false
                     }
                 }
             }
-        }
-    }
-
-    private func addImageFromURL() async {
-        let urlString = newImageURLInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = URL(string: urlString) else {
-            alertItem = AlertMessageItem(message: "Invalid URL provided.")
-            return
-        }
-
-        do {
-            let (data, response) = try await URLSession.shared.data(from: url)
-            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                alertItem = AlertMessageItem(message: "Failed to download image.")
-                return
-            }
-
-            let filename = url.lastPathComponent
-            let mimeType = response.mimeType ?? "application/octet-stream"
-            let uploadResult = await imageUploadService.uploadImage(imageData: data, filename: filename, mimeType: mimeType)
-
-            switch uploadResult {
-            case .success(let newAzureURL):
-                if !imageURLs.contains(newAzureURL) {
-                    imageURLs.append(newAzureURL)
-                    onSave()
-                }
-                showingAddURLSheet = false
-            case .failure(let error):
-                if case let .serverError(_, message) = error, let messageData = message?.data(using: .utf8) {
-                    do {
-                        let errorDetail = try JSONDecoder().decode(ErrorDetail.self, from: messageData)
-                        alertItem = AlertMessageItem(message: "Failed to upload image: \(errorDetail.detail)")
-                    } catch {
-                        alertItem = AlertMessageItem(message: "Failed to upload image: \(error.localizedDescription)")
-                    }
-                } else {
-                    alertItem = AlertMessageItem(message: "Failed to upload image: \(error.localizedDescription)")
-                }
-            }
-        } catch {
-            alertItem = AlertMessageItem(message: "Failed to download image: \(error.localizedDescription)")
         }
     }
 
@@ -170,16 +120,16 @@ struct CommonMoodBoardView: View {
         NavigationView {
             Form {
                 Section(header: Text("AI Image Prompt")) {
-                    TextEditor(text: $aiImagePromptInput)
+                    TextEditor(text: $viewModel.aiImagePromptInput)
                         .frame(height: 100)
                 }
                 Button(action: {
                     Task {
-                        await generateAndAddAIImage()
+                        await viewModel.generateAndAddAIImage()
                     }
                 }) {
                     HStack {
-                        if isGeneratingAIImage {
+                        if viewModel.isGeneratingAIImage {
                             ProgressView().padding(.trailing, 4)
                             Text("Generating...")
                         } else {
@@ -188,53 +138,18 @@ struct CommonMoodBoardView: View {
                         }
                     }
                 }
-                .disabled(aiImagePromptInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGeneratingAIImage)
+                .disabled(viewModel.aiImagePromptInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isGeneratingAIImage)
             }
             .navigationTitle("Generate Image")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
-                        showingGenerateMoodboardImageSheet = false
+                        viewModel.showingGenerateMoodboardImageSheet = false
                     }
                 }
             }
         }
-    }
-
-    private func generateAndAddAIImage() async {
-        guard let onGenerateAIImage = onGenerateAIImage else {
-            return
-        }
-
-        let prompt = aiImagePromptInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !prompt.isEmpty else {
-            alertItem = AlertMessageItem(message: "AI image prompt cannot be empty.")
-            return
-        }
-
-        isGeneratingAIImage = true
-        do {
-            let newAzureURL = try await onGenerateAIImage(prompt)
-            if !imageURLs.contains(newAzureURL) {
-                imageURLs.append(newAzureURL)
-                onSave()
-            }
-            showingGenerateMoodboardImageSheet = false
-        } catch {
-            alertItem = AlertMessageItem(message: "Failed to generate AI image: \(error.localizedDescription)")
-        }
-        isGeneratingAIImage = false
-    }
-
-    private func deleteImage(urlString: String) {
-        imageURLs.removeAll { $0 == urlString }
-        onSave()
-    }
-
-    private func moveImage(from source: IndexSet, to destination: Int) {
-        imageURLs.move(fromOffsets: source, toOffset: destination)
-        onSave()
     }
 
     private struct MoodboardCellView: View {

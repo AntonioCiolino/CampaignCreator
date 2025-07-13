@@ -1,50 +1,26 @@
 import SwiftUI
-import CampaignCreatorLib
 
 struct CampaignMoodboardView: View {
-    @State var campaign: Campaign
-    @ObservedObject var campaignCreator: CampaignCreator
+    @StateObject private var viewModel: CampaignMoodboardViewModel
     @EnvironmentObject var imageUploadService: ImageUploadService
 
-    @State private var moodBoardImageURLs: [String]
-
-    init(campaign: Campaign, campaignCreator: CampaignCreator) {
-        self._campaign = State(initialValue: campaign)
-        self.campaignCreator = campaignCreator
-        self._moodBoardImageURLs = State(initialValue: campaign.moodBoardImageURLs ?? [])
+    init(campaign: Campaign) {
+        _viewModel = StateObject(wrappedValue: CampaignMoodboardViewModel(campaign: campaign))
     }
 
     var body: some View {
         CommonMoodBoardView(
-            imageURLs: $moodBoardImageURLs,
+            imageURLs: $viewModel.moodBoardImageURLs,
             onSave: {
-                saveMoodboardChanges()
+                viewModel.saveMoodboardChanges()
             },
             onGenerateAIImage: { prompt in
-                let response = try await campaignCreator.generateImage(
-                    prompt: prompt,
-                    modelName: ImageModelName.defaultOpenAI.rawValue,
-                    associatedCampaignId: String(campaign.id)
-                )
-                return response.imageUrl ?? ""
+                return try await viewModel.generateAIImage(prompt: prompt)
             },
             imageUploadService: imageUploadService
         )
-        .onChange(of: moodBoardImageURLs) { _ in
-            saveMoodboardChanges()
-        }
-    }
-
-    private func saveMoodboardChanges() {
-        var updatedCampaign = campaign
-        updatedCampaign.moodBoardImageURLs = moodBoardImageURLs
-        Task {
-            do {
-                try await campaignCreator.updateCampaign(updatedCampaign)
-            } catch {
-                // Handle error
-                print("Failed to save campaign moodboard: \(error)")
-            }
+        .onChange(of: viewModel.moodBoardImageURLs) { _ in
+            viewModel.saveMoodboardChanges()
         }
     }
 }
