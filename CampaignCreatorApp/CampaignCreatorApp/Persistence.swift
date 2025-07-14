@@ -11,8 +11,8 @@ class PersistenceController {
         let schema = Schema([
             CampaignModel.self,
             CharacterModel.self,
-            CharacterStats.self,
         ])
+        ValueTransformer.setValueTransformer(CharacterStatsTransformer(), forName: NSValueTransformerName("CharacterStatsTransformer"))
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
 
         do {

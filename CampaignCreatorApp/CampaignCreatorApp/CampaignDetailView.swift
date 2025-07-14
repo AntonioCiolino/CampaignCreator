@@ -8,7 +8,16 @@ struct CampaignDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                // your UI...
+                CampaignHeaderView(campaign: campaign, editableTitle: .constant(campaign.title), isSaving: false, isGeneratingText: false, currentPrimaryColor: .blue, onSetBadgeAction: {})
+
+                if let concept = campaign.concept, !concept.isEmpty {
+                    SectionBox(title: "Concept") {
+                        Text(concept)
+                    }
+                }
+
+                // Add more sections as needed
+
             }
             .padding()
         }
