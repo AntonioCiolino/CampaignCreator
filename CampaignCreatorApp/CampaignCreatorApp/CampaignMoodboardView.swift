@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct CampaignMoodboardView: View {
-    @Bindable var campaign: Campaign
+    @Bindable var campaign: CampaignModel
     @EnvironmentObject var imageUploadService: ImageUploadService
 
     var body: some View {

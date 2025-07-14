@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct CharacterMoodboardView: View {
-    @Bindable var character: Character
+    @Bindable var character: CharacterModel
     @EnvironmentObject var imageUploadService: ImageUploadService
 
     var body: some View {
