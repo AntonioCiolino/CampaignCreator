@@ -1,6 +1,6 @@
 import SwiftUI
 import Kingfisher
-import CampaignCreatorLib
+import SwiftData
 
 struct CharacterDetailView: View {
     @StateObject private var viewModel: CharacterDetailViewModel
@@ -10,8 +10,8 @@ struct CharacterDetailView: View {
     @State private var showingFullCharacterImageSheet = false
     @State private var selectedImageURLForSheet: URL? = nil
 
-    init(character: Character) {
-        _viewModel = StateObject(wrappedValue: CharacterDetailViewModel(character: character))
+    init(character: Character, modelContext: ModelContext) {
+        _viewModel = StateObject(wrappedValue: CharacterDetailViewModel(character: character, modelContext: modelContext))
     }
 
     var body: some View {
@@ -49,7 +49,7 @@ struct CharacterDetailView: View {
                 }
                 .padding(.bottom, 5)
 
-                if let description = viewModel.character.description, !description.isEmpty {
+                if let description = viewModel.character.character_description, !description.isEmpty {
                     SectionBox(title: "Description") { Text(description) }
                 }
 
@@ -76,7 +76,7 @@ struct CharacterDetailView: View {
         .navigationTitle(viewModel.character.name)
         .navigationBarTitleDisplayMode(.inline)
         .refreshable {
-            await viewModel.refreshCharacter()
+            // await viewModel.refreshCharacter()
         }
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
@@ -96,9 +96,9 @@ struct CharacterDetailView: View {
             }
         }
         .sheet(isPresented: $showingEditView, onDismiss: {
-            Task {
-                await viewModel.refreshCharacter()
-            }
+//            Task {
+//                await viewModel.refreshCharacter()
+//            }
         }) {
             CharacterEditView(character: viewModel.character, isPresented: $showingEditView, onCharacterUpdated: { updatedCharacter in
                 viewModel.character = updatedCharacter
