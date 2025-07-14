@@ -1,17 +1,12 @@
 import Foundation
 
-public struct Token: Codable {
-    public let accessToken: String
-    public let tokenType: String
+public struct Token: Codable, Sendable {
+    public let access_token: String
+    public let token_type: String
 
-    enum CodingKeys: String, CodingKey {
-        case accessToken = "access_token"
-        case tokenType = "token_type"
-    }
-
-    public init(accessToken: String, tokenType: String) {
-        self.accessToken = accessToken
-        self.tokenType = tokenType
+    public init(access_token: String, token_type: String) {
+        self.access_token = access_token
+        self.token_type = token_type
     }
 }
 
