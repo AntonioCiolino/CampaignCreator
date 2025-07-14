@@ -85,7 +85,7 @@ struct CharacterCreateView: View {
 
     private func saveCharacter() {
         print("Attempting to save character with name: \(name) and owner_id: \(ownerId)")
-        let newCharacter = Character(
+        let newCharacter = CharacterModel(
             name: name,
             character_description: character_description,
             appearance_description: appearance_description,

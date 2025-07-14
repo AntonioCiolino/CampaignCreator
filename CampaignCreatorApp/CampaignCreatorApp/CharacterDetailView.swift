@@ -3,7 +3,7 @@ import Kingfisher
 import SwiftData
 
 struct CharacterDetailView: View {
-    let character: Character
+    let character: CharacterModel
 
     var body: some View {
         ScrollView {

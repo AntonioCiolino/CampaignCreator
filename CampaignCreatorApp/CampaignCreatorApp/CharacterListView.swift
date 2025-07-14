@@ -5,7 +5,7 @@ import SwiftData
 struct CharacterListView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var contentViewModel: ContentViewModel
-    @Query(sort: \Character.name) private var characters: [Character]
+    @Query(sort: \CharacterModel.name) private var characters: [CharacterModel]
     @State private var showingCreateSheet = false
 
     var body: some View {

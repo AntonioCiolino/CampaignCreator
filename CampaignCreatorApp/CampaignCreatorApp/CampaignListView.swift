@@ -5,7 +5,7 @@ import SwiftData
 struct CampaignListView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var contentViewModel: ContentViewModel
-    @Query(sort: \Campaign.title) private var campaigns: [Campaign]
+    @Query(sort: \CampaignModel.title) private var campaigns: [CampaignModel]
     @State private var showingCreateSheet = false
 
     var body: some View {
@@ -72,13 +72,6 @@ struct CampaignListView: View {
                 let campaignToDelete = campaigns[index]
                 print("Attempting to delete campaign: \(campaignToDelete.title)")
                 modelContext.delete(campaignToDelete)
-            }
-
-            do {
-                try modelContext.save()
-                print("Successfully saved model context from deleteCampaigns.")
-            } catch {
-                print("Error saving model context from deleteCampaigns: \(error.localizedDescription)")
             }
         }
     }

@@ -3,7 +3,7 @@ import SwiftData
 import CampaignCreatorLib
 
 @Model
-final class Campaign: Identifiable {
+final class CampaignModel: Identifiable {
     var id: UUID = UUID()
     var title: String
     var concept: String?
@@ -70,7 +70,7 @@ final class Campaign: Identifiable {
 }
 
 @Model
-final class Character: Identifiable {
+final class CharacterModel: Identifiable {
     var id: UUID = UUID()
     var name: String
     var character_description: String?
@@ -78,6 +78,7 @@ final class Character: Identifiable {
     var image_urls: [String]?
     var video_clip_urls: [String]?
     var notes_for_llm: String?
+    @Attribute(.transformable(by: "CharacterStatsTransformer"))
     var stats: CharacterStats
     var export_format_preference: String?
     var owner_id: Int

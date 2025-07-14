@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct CharacterEditView: View {
-    @Bindable var character: Character
+    @Bindable var character: CharacterModel
     @Binding var isPresented: Bool
 
     @State private var isDescriptionExpanded: Bool = true
