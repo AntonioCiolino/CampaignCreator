@@ -46,6 +46,7 @@ let package = Package(
                 "Models/SectionRegeneratePayload.swift", // ADDED
                 "Models/ChatMessageData.swift",
                 "Models/APIChatMessageModels.swift", // Added new chat message models
+                "Models/Token.swift",
                 "JSONDecoder+Extensions.swift"
             ]
         ),
