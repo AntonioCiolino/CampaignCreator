@@ -16,7 +16,7 @@ extension SnippetContextInputModal {
     }
 
     struct CharacterContextView: View {
-        let campaignCharacters: [Character]
+        let campaignCharacters: [CharacterModel]
 
         var body: some View {
             if campaignCharacters.isEmpty {

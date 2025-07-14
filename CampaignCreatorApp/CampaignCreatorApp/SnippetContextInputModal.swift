@@ -3,7 +3,7 @@ import SwiftUI
 struct SnippetContextInputModal: View {
     @Binding var isPresented: Bool
     let feature: Feature
-    let campaignCharacters: [Character]
+    let campaignCharacters: [CharacterModel]
     let selectedText: String
     let onSubmit: (([String: String]) -> Void)
 
@@ -97,7 +97,7 @@ struct SnippetContextInputModal_Previews: PreviewProvider {
         compatible_types: [],
         feature_category: ""
     )
-    static let sampleCharacters: [Character] = []
+    static let sampleCharacters: [CharacterModel] = []
 
     static var previews: some View {
         StatefulPreviewWrapper(isPresented: true, feature: sampleFeatureWithContext)
