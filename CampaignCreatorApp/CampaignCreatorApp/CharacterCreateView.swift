@@ -13,12 +13,12 @@ struct CharacterCreateView: View {
     @State private var newImageURL = ""
     @State private var notes_for_llm = ""
     @State private var export_format_preference = "Complex"
-    @State private var strength: Int?
-    @State private var dexterity: Int?
-    @State private var constitution: Int?
-    @State private var intelligence: Int?
-    @State private var wisdom: Int?
-    @State private var charisma: Int?
+    @State private var strength: Int? = 10
+    @State private var dexterity: Int? = 10
+    @State private var constitution: Int? = 10
+    @State private var intelligence: Int? = 10
+    @State private var wisdom: Int? = 10
+    @State private var charisma: Int? = 10
 
     var body: some View {
         NavigationView {

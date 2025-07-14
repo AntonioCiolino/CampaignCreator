@@ -14,17 +14,12 @@ class PersistenceController {
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
 
-        container = try! ModelContainer(for: schema, configurations: [modelConfiguration])
+        do {
+            container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+        } catch {
+            fatalError("Could not create ModelContainer: \(error)")
+        }
 
         ValueTransformer.setValueTransformer(CharacterStatsTransformer(), forName: NSValueTransformerName("CharacterStatsTransformer"))
-    }
-
-    func save() {
-        do {
-            try container.mainContext.save()
-        } catch {
-            let nsError = error as NSError
-            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
-        }
     }
 }
