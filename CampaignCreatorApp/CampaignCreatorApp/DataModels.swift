@@ -1,4 +1,16 @@
+//
+//  DataModels.swift
+//  CampaignCreatorApp
+//
+//  Created by Jules on 6/20/24.
+//
+//  NOTE: The @Model macro requires that all stored properties be declared as 'var' instead of 'let'.
+//  This is because the macro synthesizes the storage for the properties and needs to be able to modify them.
+//  Do not change the 'var' declarations to 'let' in the Campaign and Character models.
+//
+
 import Foundation
+import SwiftData
 import CampaignCreatorLib
 
 // MARK: - User Models
@@ -45,11 +57,9 @@ struct UserAPIKeyUpdate: Codable {
 
 // MARK: - Campaign Models
 
-import SwiftData
-
 @Model
 final class Campaign: Codable, Identifiable {
-    let id: Int
+    var id: Int
     var title: String
     var concept: String?
     var initial_user_prompt: String?
@@ -91,6 +101,55 @@ final class Campaign: Codable, Identifiable {
         self.mood_board_image_urls = libCampaign.moodBoardImageURLs
     }
 
+    required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        concept = try container.decodeIfPresent(String.self, forKey: .concept)
+        initial_user_prompt = try container.decodeIfPresent(String.self, forKey: .initial_user_prompt)
+        sections = try container.decodeIfPresent([CampaignSection].self, forKey: .sections)
+        owner_id = try container.decode(Int.self, forKey: .owner_id)
+        badge_image_url = try container.decodeIfPresent(String.self, forKey: .badge_image_url)
+        thematic_image_url = try container.decodeIfPresent(String.self, forKey: .thematic_image_url)
+        thematic_image_prompt = try container.decodeIfPresent(String.self, forKey: .thematic_image_prompt)
+        selected_llm_id = try container.decodeIfPresent(String.self, forKey: .selected_llm_id)
+        temperature = try container.decodeIfPresent(Float.self, forKey: .temperature)
+        theme_primary_color = try container.decodeIfPresent(String.self, forKey: .theme_primary_color)
+        theme_secondary_color = try container.decodeIfPresent(String.self, forKey: .theme_secondary_color)
+        theme_background_color = try container.decodeIfPresent(String.self, forKey: .theme_background_color)
+        theme_text_color = try container.decodeIfPresent(String.self, forKey: .theme_text_color)
+        theme_font_family = try container.decodeIfPresent(String.self, forKey: .theme_font_family)
+        theme_background_image_url = try container.decodeIfPresent(String.self, forKey: .theme_background_image_url)
+        theme_background_image_opacity = try container.decodeIfPresent(Float.self, forKey: .theme_background_image_opacity)
+        mood_board_image_urls = try container.decodeIfPresent([String].self, forKey: .mood_board_image_urls)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encodeIfPresent(concept, forKey: .concept)
+        try container.encodeIfPresent(initial_user_prompt, forKey: .initial_user_prompt)
+        try container.encodeIfPresent(sections, forKey: .sections)
+        try container.encode(owner_id, forKey: .owner_id)
+        try container.encodeIfPresent(badge_image_url, forKey: .badge_image_url)
+        try container.encodeIfPresent(thematic_image_url, forKey: .thematic_image_url)
+        try container.encodeIfPresent(thematic_image_prompt, forKey: .thematic_image_prompt)
+        try container.encodeIfPresent(selected_llm_id, forKey: .selected_llm_id)
+        try container.encodeIfPresent(temperature, forKey: .temperature)
+        try container.encodeIfPresent(theme_primary_color, forKey: .theme_primary_color)
+        try container.encodeIfPresent(theme_secondary_color, forKey: .theme_secondary_color)
+        try container.encodeIfPresent(theme_background_color, forKey: .theme_background_color)
+        try container.encodeIfPresent(theme_text_color, forKey: .theme_text_color)
+        try container.encodeIfPresent(theme_font_family, forKey: .theme_font_family)
+        try container.encodeIfPresent(theme_background_image_url, forKey: .theme_background_image_url)
+        try container.encodeIfPresent(theme_background_image_opacity, forKey: .theme_background_image_opacity)
+        try container.encodeIfPresent(mood_board_image_urls, forKey: .mood_board_image_urls)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, concept, initial_user_prompt, sections, owner_id, badge_image_url, thematic_image_url, thematic_image_prompt, selected_llm_id, temperature, theme_primary_color, theme_secondary_color, theme_background_color, theme_text_color, theme_font_family, theme_background_image_url, theme_background_image_opacity, mood_board_image_urls
+    }
 }
 
 extension Campaign {
@@ -363,13 +422,11 @@ struct TableNameListResponse: Codable {
 
 // MARK: - Character Models
 
-import SwiftData
-
 @Model
 final class Character: Codable, Identifiable {
-    let id: Int
+    var id: Int
     var name: String
-    var description: String?
+    var character_description: String?
     var appearance_description: String?
     var image_urls: [String]?
     var video_clip_urls: [String]?
@@ -382,7 +439,7 @@ final class Character: Codable, Identifiable {
     init(from libCharacter: CampaignCreatorLib.Character) {
         self.id = libCharacter.id
         self.name = libCharacter.name
-        self.description = libCharacter.description
+        self.character_description = libCharacter.description
         self.appearance_description = libCharacter.appearanceDescription
         self.image_urls = libCharacter.imageURLs
         self.video_clip_urls = libCharacter.video_clip_urls
@@ -393,6 +450,39 @@ final class Character: Codable, Identifiable {
         self.campaign_ids = libCharacter.campaignIDs
     }
 
+    required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        character_description = try container.decodeIfPresent(String.self, forKey: .character_description)
+        appearance_description = try container.decodeIfPresent(String.self, forKey: .appearance_description)
+        image_urls = try container.decodeIfPresent([String].self, forKey: .image_urls)
+        video_clip_urls = try container.decodeIfPresent([String].self, forKey: .video_clip_urls)
+        notes_for_llm = try container.decodeIfPresent(String.self, forKey: .notes_for_llm)
+        stats = try container.decodeIfPresent(CharacterStats.self, forKey: .stats)
+        export_format_preference = try container.decodeIfPresent(String.self, forKey: .export_format_preference)
+        owner_id = try container.decode(Int.self, forKey: .owner_id)
+        campaign_ids = try container.decodeIfPresent([Int].self, forKey: .campaign_ids)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encodeIfPresent(character_description, forKey: .character_description)
+        try container.encodeIfPresent(appearance_description, forKey: .appearance_description)
+        try container.encodeIfPresent(image_urls, forKey: .image_urls)
+        try container.encodeIfPresent(video_clip_urls, forKey: .video_clip_urls)
+        try container.encodeIfPresent(notes_for_llm, forKey: .notes_for_llm)
+        try container.encodeIfPresent(stats, forKey: .stats)
+        try container.encodeIfPresent(export_format_preference, forKey: .export_format_preference)
+        try container.encode(owner_id, forKey: .owner_id)
+        try container.encodeIfPresent(campaign_ids, forKey: .campaign_ids)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, character_description, appearance_description, image_urls, video_clip_urls, notes_for_llm, stats, export_format_preference, owner_id, campaign_ids
+    }
 }
 
 struct CharacterCreate: Codable {
