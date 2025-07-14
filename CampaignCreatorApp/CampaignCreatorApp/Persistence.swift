@@ -12,10 +12,11 @@ class PersistenceController {
             CampaignModel.self,
             CharacterModel.self,
         ])
-        ValueTransformer.setValueTransformer(CharacterStatsTransformer(), forName: NSValueTransformerName("CharacterStatsTransformer"))
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
 
         container = try! ModelContainer(for: schema, configurations: [modelConfiguration])
+
+        ValueTransformer.setValueTransformer(CharacterStatsTransformer(), forName: NSValueTransformerName("CharacterStatsTransformer"))
     }
 
     func save() {
