@@ -38,7 +38,7 @@ public struct Character: Identifiable, Codable, Sendable {
     public var description: String?
     public var appearanceDescription: String?
     public var imageURLs: [String]?
-    public var video_clip_urls: [String]?
+    public var videoClipUrls: [String]?
     public var notesForLLM: String?
     public var stats: CharacterStats?
     public var exportFormatPreference: String?
@@ -53,7 +53,7 @@ public struct Character: Identifiable, Codable, Sendable {
         case description
         case appearanceDescription = "appearance_description"
         case imageURLs = "image_urls"
-        case video_clip_urls = "video_clip_urls"
+        case videoClipUrls = "video_clip_urls"
         case notesForLLM = "notes_for_llm"
         case stats
         case exportFormatPreference = "export_format_preference"
@@ -73,7 +73,7 @@ public struct Character: Identifiable, Codable, Sendable {
                 description: String? = nil,
                 appearanceDescription: String? = nil,
                 imageURLs: [String]? = nil,
-                video_clip_urls: [String]? = nil,
+                videoClipUrls: [String]? = nil,
                 notesForLLM: String? = nil,
                 stats: CharacterStats? = nil,
                 exportFormatPreference: String? = nil,
@@ -86,7 +86,7 @@ public struct Character: Identifiable, Codable, Sendable {
         self.description = description
         self.appearanceDescription = appearanceDescription
         self.imageURLs = imageURLs
-        self.video_clip_urls = video_clip_urls
+        self.videoClipUrls = videoClipUrls
         self.notesForLLM = notesForLLM
         self.stats = stats
         self.exportFormatPreference = exportFormatPreference

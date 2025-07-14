@@ -10,6 +10,13 @@ public struct User: Identifiable, Codable, Equatable, Sendable {
     public var appearance: String?
     public var avatarUrl: String? // Changed from avatar_url
 
+    enum CodingKeys: String, CodingKey {
+        case id, email, username, description, appearance
+        case isActive = "is_active"
+        case isSuperuser = "is_superuser"
+        case avatarUrl = "avatar_url"
+    }
+
     // Add other fields your /users/me endpoint returns, e.g.:
     // public var fullName: String?
     // public var createdAt: Date?
