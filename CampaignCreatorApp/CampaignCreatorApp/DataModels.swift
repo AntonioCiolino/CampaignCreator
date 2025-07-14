@@ -158,6 +158,16 @@ struct CampaignSection: Codable, Identifiable {
     var content: String
     var order: Int
     var type: String?
+
+    func toCampaignSectionDTO() -> CampaignCreatorLib.CampaignSection {
+        return CampaignCreatorLib.CampaignSection(
+            id: self.id,
+            title: self.title,
+            content: self.content,
+            order: self.order,
+            type: self.type
+        )
+    }
 }
 
 extension CampaignSection {
@@ -373,6 +383,10 @@ struct Character: Codable, Identifiable {
         self.owner_id = libCharacter.ownerID ?? 0
         self.campaign_ids = libCharacter.campaignIDs
     }
+
+    var wordCount: Int {
+        return sections?.reduce(0) { $0 + $1.content.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count } ?? 0
+    }
 }
 
 struct CharacterCreate: Codable {
@@ -416,6 +430,17 @@ struct CharacterStats: Codable {
     var intelligence: Int?
     var wisdom: Int?
     var charisma: Int?
+
+    func toCharacterStatsDTO() -> CampaignCreatorLib.CharacterStats {
+        return CampaignCreatorLib.CharacterStats(
+            strength: self.strength,
+            dexterity: self.dexterity,
+            constitution: self.constitution,
+            intelligence: self.intelligence,
+            wisdom: self.wisdom,
+            charisma: self.charisma
+        )
+    }
 }
 
 extension CharacterStats {

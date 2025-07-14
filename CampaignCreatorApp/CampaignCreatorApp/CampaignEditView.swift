@@ -9,7 +9,7 @@ struct CampaignEditView: View {
     init(campaign: Campaign, isPresented: Binding<Bool>, onCampaignUpdated: ((Campaign) -> Void)? = nil) {
         _viewModel = StateObject(wrappedValue: CampaignEditViewModel(campaign: campaign))
         _isPresented = isPresented
-        self.onCampaignUpdated = onCharacterUpdated
+        self.onCampaignUpdated = onCampaignUpdated
     }
 
     var body: some View {
