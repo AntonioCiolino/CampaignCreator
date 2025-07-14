@@ -123,4 +123,15 @@ struct CharacterStats: Codable {
     var intelligence: Int?
     var wisdom: Int?
     var charisma: Int?
+
+    func toCharacterStatsDTO() -> CampaignCreatorLib.CharacterStats {
+        return CampaignCreatorLib.CharacterStats(
+            strength: self.strength,
+            dexterity: self.dexterity,
+            constitution: self.constitution,
+            intelligence: self.intelligence,
+            wisdom: self.wisdom,
+            charisma: self.charisma
+        )
+    }
 }

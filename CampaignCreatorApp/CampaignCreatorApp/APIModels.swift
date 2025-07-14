@@ -15,7 +15,6 @@ struct User: Codable {
     let geminiApiKeyProvided: Bool?
     let otherLlmApiKeyProvided: Bool?
     let avatarUrl: String?
-    var campaigns: [Campaign]?
     var llmConfigs: [LLMConfig]?
 }
 
