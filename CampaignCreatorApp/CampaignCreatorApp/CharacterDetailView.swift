@@ -5,13 +5,14 @@ import SwiftData
 struct CharacterDetailView: View {
     @StateObject private var viewModel: CharacterDetailViewModel
     @EnvironmentObject var imageUploadService: ImageUploadService
+    @Environment(\.modelContext) private var modelContext
 
     @State private var showingEditView = false
     @State private var showingFullCharacterImageSheet = false
     @State private var selectedImageURLForSheet: URL? = nil
 
-    init(character: Character, modelContext: ModelContext) {
-        _viewModel = StateObject(wrappedValue: CharacterDetailViewModel(character: character, modelContext: modelContext))
+    init(character: Character) {
+        _viewModel = StateObject(wrappedValue: CharacterDetailViewModel(character: character))
     }
 
     var body: some View {

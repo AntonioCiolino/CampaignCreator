@@ -1,13 +1,15 @@
 import SwiftUI
 import Kingfisher
-import CampaignCreatorLib
+import SwiftData
 
 struct CampaignDetailView: View {
     @StateObject private var viewModel: CampaignDetailViewModel
+    @Environment(\.modelContext) private var modelContext
+
     @State private var showingCreateSheet = false
 
     init(campaign: Campaign) {
-        _viewModel = StateObject(wrappedValue: CampaignDetailViewModel(campaign: campaign))
+        _viewModel = StateObject(wrappedValue: CampaignDetailViewModel(campaign: campaign, modelContext: modelContext))
     }
 
     var body: some View {
@@ -61,7 +63,7 @@ struct CampaignDetailView: View {
         .navigationTitle(viewModel.campaign.title)
         .navigationBarTitleDisplayMode(.inline)
         .refreshable {
-            await viewModel.refreshCampaign()
+            // await viewModel.refreshCampaign()
         }
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
@@ -71,9 +73,9 @@ struct CampaignDetailView: View {
             }
         }
         .sheet(isPresented: $showingCreateSheet, onDismiss: {
-            Task {
-                await viewModel.refreshCampaign()
-            }
+//            Task {
+//                await viewModel.refreshCampaign()
+//            }
         }) {
             CampaignEditView(campaign: viewModel.campaign, isPresented: $showingCreateSheet, onCampaignUpdated: { updatedCampaign in
                 viewModel.campaign = updatedCampaign
