@@ -483,6 +483,46 @@ final class Character: Codable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id, name, character_description, appearance_description, image_urls, video_clip_urls, notes_for_llm, stats, export_format_preference, owner_id, campaign_ids
     }
+
+    convenience init(
+        id: Int,
+        name: String,
+        character_description: String? = nil,
+        appearance_description: String? = nil,
+        image_urls: [String]? = nil,
+        video_clip_urls: [String]? = nil,
+        notes_for_llm: String? = nil,
+        stats: CharacterStats? = nil,
+        export_format_preference: String? = nil,
+        owner_id: Int,
+        campaign_ids: [Int]? = nil
+    ) {
+        self.init(from: CampaignCreatorLib.Character(id: id, name: name, description: character_description, appearanceDescription: appearance_description, imageURLs: image_urls, video_clip_urls: video_clip_urls, notesForLLM: notes_for_llm, stats: stats?.toLib(), exportFormatPreference: export_format_preference, ownerID: owner_id, campaignIDs: campaign_ids))
+    }
+
+    convenience init(
+        id: Int,
+        name: String,
+        owner_id: Int
+    ) {
+        self.init(from: CampaignCreatorLib.Character(id: id, name: name, description: nil, appearanceDescription: nil, imageURLs: nil, video_clip_urls: nil, notesForLLM: nil, stats: nil, exportFormatPreference: nil, ownerID: owner_id, campaignIDs: nil))
+    }
+
+    convenience init(
+        id: Int,
+        name: String,
+        character_description: String?,
+        appearance_description: String?,
+        image_urls: [String]?,
+        video_clip_urls: [String]?,
+        notes_for_llm: String?,
+        stats: CharacterStats?,
+        export_format_preference: String?,
+        owner_id: Int,
+        campaign_ids: [Int]?
+    ) {
+        self.init(id: id, name: name, character_description: character_description, appearance_description: appearance_description, image_urls: image_urls, video_clip_urls: video_clip_urls, notes_for_llm: notes_for_llm, stats: stats, export_format_preference: export_format_preference, owner_id: owner_id, campaign_ids: campaign_ids)
+    }
 }
 
 struct CharacterCreate: Codable {
@@ -528,6 +568,17 @@ struct CharacterStats: Codable {
     var charisma: Int?
 
     func toCharacterStatsDTO() -> CampaignCreatorLib.CharacterStats {
+        return CampaignCreatorLib.CharacterStats(
+            strength: self.strength,
+            dexterity: self.dexterity,
+            constitution: self.constitution,
+            intelligence: self.intelligence,
+            wisdom: self.wisdom,
+            charisma: self.charisma
+        )
+    }
+
+    func toLib() -> CampaignCreatorLib.CharacterStats {
         return CampaignCreatorLib.CharacterStats(
             strength: self.strength,
             dexterity: self.dexterity,
