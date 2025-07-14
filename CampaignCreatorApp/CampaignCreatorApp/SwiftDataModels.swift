@@ -62,6 +62,10 @@ final class Campaign: Identifiable {
         self.theme_background_image_opacity = theme_background_image_opacity
         self.mood_board_image_urls = mood_board_image_urls
     }
+
+    var wordCount: Int {
+        return sections?.reduce(0) { $0 + $1.content.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count } ?? 0
+    }
 }
 
 @Model
