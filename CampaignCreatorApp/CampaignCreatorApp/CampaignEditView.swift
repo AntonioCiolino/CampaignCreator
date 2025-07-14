@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct CampaignEditView: View {
-    @Bindable var campaign: Campaign
+    @Bindable var campaign: CampaignModel
     @Binding var isPresented: Bool
 
     var body: some View {

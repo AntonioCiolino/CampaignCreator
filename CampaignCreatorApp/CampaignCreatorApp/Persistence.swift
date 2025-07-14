@@ -1,3 +1,4 @@
+import Foundation
 import SwiftData
 
 @MainActor
@@ -8,11 +9,15 @@ class PersistenceController {
 
     init(inMemory: Bool = false) {
         let schema = Schema([
-            Campaign.self,
-            Character.self,
+            CampaignModel.self,
+            CharacterModel.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
 
-        container = try! ModelContainer(for: schema, configurations: [modelConfiguration])
+        do {
+            container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+        } catch {
+            fatalError("Could not create ModelContainer: \(error)")
+        }
     }
 }

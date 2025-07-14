@@ -4,7 +4,8 @@ import SwiftData
 
 struct CampaignListView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Campaign.title) private var campaigns: [Campaign]
+    @EnvironmentObject var contentViewModel: ContentViewModel
+    @Query(sort: \CampaignModel.title) private var campaigns: [CampaignModel]
     @State private var showingCreateSheet = false
 
     var body: some View {
@@ -58,7 +59,9 @@ struct CampaignListView: View {
                 }
             }
             .sheet(isPresented: $showingCreateSheet) {
-                CampaignCreateView(isPresented: $showingCreateSheet)
+                if let user = contentViewModel.currentUser {
+                    CampaignCreateView(isPresented: $showingCreateSheet, ownerId: user.id)
+                }
             }
         }
     }
@@ -66,7 +69,16 @@ struct CampaignListView: View {
     private func deleteCampaigns(offsets: IndexSet) {
         withAnimation {
             for index in offsets {
-                modelContext.delete(campaigns[index])
+                let campaignToDelete = campaigns[index]
+                print("Attempting to delete campaign: \(campaignToDelete.title)")
+                modelContext.delete(campaignToDelete)
+            }
+
+            do {
+                try modelContext.save()
+                print("Successfully saved model context from deleteCampaigns.")
+            } catch {
+                print("Error saving model context from deleteCampaigns: \(error.localizedDescription)")
             }
         }
     }

@@ -5,7 +5,7 @@ import Kingfisher
 
 struct CampaignHeaderView: View {
     // Properties passed from parent
-    let campaign: Campaign
+    let campaign: CampaignModel
     @Binding var editableTitle: String
     let isSaving: Bool
     let isGeneratingText: Bool

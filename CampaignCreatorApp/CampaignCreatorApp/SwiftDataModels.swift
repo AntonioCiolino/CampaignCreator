@@ -3,7 +3,7 @@ import SwiftData
 import CampaignCreatorLib
 
 @Model
-final class Campaign: Identifiable {
+final class CampaignModel: Identifiable {
     var id: UUID = UUID()
     var title: String
     var concept: String?
@@ -70,7 +70,7 @@ final class Campaign: Identifiable {
 }
 
 @Model
-final class Character: Identifiable {
+final class CharacterModel: Identifiable {
     var id: UUID = UUID()
     var name: String
     var character_description: String?
@@ -78,7 +78,12 @@ final class Character: Identifiable {
     var image_urls: [String]?
     var video_clip_urls: [String]?
     var notes_for_llm: String?
-    var stats: CharacterStats
+    var strength: Int? = 10
+    var dexterity: Int? = 10
+    var constitution: Int? = 10
+    var intelligence: Int? = 10
+    var wisdom: Int? = 10
+    var charisma: Int? = 10
     var export_format_preference: String?
     var owner_id: Int
     var campaign_ids: [Int]?
@@ -90,7 +95,12 @@ final class Character: Identifiable {
         image_urls: [String]? = nil,
         video_clip_urls: [String]? = nil,
         notes_for_llm: String? = nil,
-        stats: CharacterStats = CharacterStats(),
+        strength: Int? = 10,
+        dexterity: Int? = 10,
+        constitution: Int? = 10,
+        intelligence: Int? = 10,
+        wisdom: Int? = 10,
+        charisma: Int? = 10,
         export_format_preference: String? = nil,
         owner_id: Int,
         campaign_ids: [Int]? = nil
@@ -101,7 +111,12 @@ final class Character: Identifiable {
         self.image_urls = image_urls
         self.video_clip_urls = video_clip_urls
         self.notes_for_llm = notes_for_llm
-        self.stats = stats
+        self.strength = strength
+        self.dexterity = dexterity
+        self.constitution = constitution
+        self.intelligence = intelligence
+        self.wisdom = wisdom
+        self.charisma = charisma
         self.export_format_preference = export_format_preference
         self.owner_id = owner_id
         self.campaign_ids = campaign_ids
@@ -115,24 +130,4 @@ struct CampaignSection: Codable, Identifiable {
     var content: String
     var order: Int
     var type: String?
-}
-
-struct CharacterStats: Codable {
-    var strength: Int?
-    var dexterity: Int?
-    var constitution: Int?
-    var intelligence: Int?
-    var wisdom: Int?
-    var charisma: Int?
-
-    func toCharacterStatsDTO() -> CampaignCreatorLib.CharacterStats {
-        return CampaignCreatorLib.CharacterStats(
-            strength: self.strength,
-            dexterity: self.dexterity,
-            constitution: self.constitution,
-            intelligence: self.intelligence,
-            wisdom: self.wisdom,
-            charisma: self.charisma
-        )
-    }
 }

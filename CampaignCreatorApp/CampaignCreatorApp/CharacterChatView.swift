@@ -15,7 +15,7 @@ struct ChatMessage: Identifiable, Equatable {
         case llm = "LLM"
     }
 
-    init(from apiMessage: ConversationMessageEntry, character: Character) {
+    init(from apiMessage: ConversationMessageEntry, character: CharacterModel) {
         self.id = UUID().uuidString
         self.text = apiMessage.text
         self.timestamp = apiMessage.timestamp
@@ -30,7 +30,7 @@ struct ChatMessage: Identifiable, Equatable {
         self.characterAvatarUrl = (self.sender == .llm) ? URL(string: character.image_urls?.first ?? "") : nil
     }
 
-    init(text: String, sender: Sender, character: Character) {
+    init(text: String, sender: Sender, character: CharacterModel) {
         self.id = UUID().uuidString
         self.text = text
         self.sender = sender
@@ -45,7 +45,7 @@ struct CharacterChatView: View {
     @StateObject private var viewModel: CharacterChatViewModel
     @State private var userInput: String = ""
 
-    init(character: Character) {
+    init(character: CharacterModel) {
         _viewModel = StateObject(wrappedValue: CharacterChatViewModel(character: character))
     }
 

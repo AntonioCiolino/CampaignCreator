@@ -4,7 +4,8 @@ import SwiftData
 
 struct CharacterListView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Character.name) private var characters: [Character]
+    @EnvironmentObject var contentViewModel: ContentViewModel
+    @Query(sort: \CharacterModel.name) private var characters: [CharacterModel]
     @State private var showingCreateSheet = false
 
     var body: some View {
@@ -60,7 +61,9 @@ struct CharacterListView: View {
                 }
             }
             .sheet(isPresented: $showingCreateSheet) {
-                CharacterCreateView(isPresented: $showingCreateSheet)
+                if let user = contentViewModel.currentUser {
+                    CharacterCreateView(isPresented: $showingCreateSheet, ownerId: user.id)
+                }
             }
         }
     }
@@ -68,7 +71,16 @@ struct CharacterListView: View {
     private func deleteCharacters(offsets: IndexSet) {
         withAnimation {
             for index in offsets {
-                modelContext.delete(characters[index])
+                let characterToDelete = characters[index]
+                print("Attempting to delete character: \(characterToDelete.name)")
+                modelContext.delete(characterToDelete)
+            }
+
+            do {
+                try modelContext.save()
+                print("Successfully saved model context from deleteCharacters.")
+            } catch {
+                print("Error saving model context from deleteCharacters: \(error.localizedDescription)")
             }
         }
     }

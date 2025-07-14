@@ -3,7 +3,7 @@ import SwiftUI
 struct SnippetContextInputModal: View {
     @Binding var isPresented: Bool
     let feature: Feature
-    let campaignCharacters: [Character]
+    let campaignCharacters: [CharacterModel]
     let selectedText: String
     let onSubmit: (([String: String]) -> Void)
 
@@ -17,43 +17,19 @@ struct SnippetContextInputModal: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Provide Additional Context for '\(feature.name)'").font(.headline)) {
-                    Text("Selected Text: \"\(selectedText.prefix(100))\(selectedText.count > 100 ? "..." : "")\"")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .padding(.bottom)
+                HeaderView(featureName: feature.name, selectedText: selectedText)
 
-                    if feature.required_context?.contains("campaign_characters") == true {
-                        if campaignCharacters.isEmpty {
-                            Text("This feature can use campaign characters, but no characters are currently in this campaign.")
-                                .font(.caption)
-                                .foregroundColor(.orange)
-                        } else {
-                            Text("Context: Uses existing campaign characters (\(campaignCharacters.map { $0.name }.joined(separator: ", ")))")
-                                .font(.caption)
-                        }
-                    }
-
-                    if requiredInputFields.isEmpty {
-                        Text("No additional context required for this feature beyond the selected text and any automatic context (like characters).")
-                            .font(.callout)
-                    } else {
-                        ForEach(requiredInputFields, id: \.self) { key in
-                            VStack(alignment: .leading) {
-                                Text(key.replacingOccurrences(of: "_", with: " ").capitalized + ":")
-                                TextField("Enter \(key.replacingOccurrences(of: "_", with: " "))", text: bindingFor(key: key))
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                            }
-                        }
-                    }
+                if feature.required_context?.contains("campaign_characters") == true {
+                    CharacterContextView(campaignCharacters: campaignCharacters)
                 }
 
+                InputFieldsView(requiredInputFields: requiredInputFields, contextData: $contextData)
+
                 Section {
-                    Button("Submit Context & Generate") {
+                    SubmitButtonView(formIsValid: formIsValid, requiredInputFields: requiredInputFields) {
                         onSubmit(contextData)
                         isPresented = false
                     }
-                    .disabled(!formIsValid && !requiredInputFields.isEmpty)
 
                     Button("Cancel") {
                         isPresented = false
@@ -121,7 +97,7 @@ struct SnippetContextInputModal_Previews: PreviewProvider {
         compatible_types: [],
         feature_category: ""
     )
-    static let sampleCharacters: [Character] = []
+    static let sampleCharacters: [CharacterModel] = []
 
     static var previews: some View {
         StatefulPreviewWrapper(isPresented: true, feature: sampleFeatureWithContext)

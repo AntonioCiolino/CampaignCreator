@@ -4,6 +4,7 @@ import SwiftData
 struct CharacterCreateView: View {
     @Environment(\.modelContext) private var modelContext
     @Binding var isPresented: Bool
+    var ownerId: Int
 
     @State private var name = ""
     @State private var character_description = ""
@@ -12,6 +13,12 @@ struct CharacterCreateView: View {
     @State private var newImageURL = ""
     @State private var notes_for_llm = ""
     @State private var export_format_preference = "Complex"
+    @State private var strength: Int? = 10
+    @State private var dexterity: Int? = 10
+    @State private var constitution: Int? = 10
+    @State private var intelligence: Int? = 10
+    @State private var wisdom: Int? = 10
+    @State private var charisma: Int? = 10
 
     var body: some View {
         NavigationView {
@@ -28,6 +35,15 @@ struct CharacterCreateView: View {
                         TextEditor(text: $appearance_description).frame(height: 100)
                             .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.gray.opacity(0.5), lineWidth: 1))
                     }
+                }
+
+                Section(header: Text("Statistics")) {
+                    StatEditableRow(label: "Strength", value: $strength)
+                    StatEditableRow(label: "Dexterity", value: $dexterity)
+                    StatEditableRow(label: "Constitution", value: $constitution)
+                    StatEditableRow(label: "Intelligence", value: $intelligence)
+                    StatEditableRow(label: "Wisdom", value: $wisdom)
+                    StatEditableRow(label: "Charisma", value: $charisma)
                 }
 
                 Section(header: Text("Image URLs")) {
@@ -83,15 +99,29 @@ struct CharacterCreateView: View {
     }
 
     private func saveCharacter() {
-        let newCharacter = Character(
+        print("Attempting to save character with name: \(name) and owner_id: \(ownerId)")
+        let newCharacter = CharacterModel(
             name: name,
             character_description: character_description,
             appearance_description: appearance_description,
             image_urls: image_urls,
             notes_for_llm: notes_for_llm,
+            strength: strength,
+            dexterity: dexterity,
+            constitution: constitution,
+            intelligence: intelligence,
+            wisdom: wisdom,
+            charisma: charisma,
             export_format_preference: export_format_preference,
-            owner_id: 0
+            owner_id: ownerId
         )
         modelContext.insert(newCharacter)
+
+        do {
+            try modelContext.save()
+            print("Successfully saved model context from saveCharacter.")
+        } catch {
+            print("Error saving model context from saveCharacter: \(error.localizedDescription)")
+        }
     }
 }

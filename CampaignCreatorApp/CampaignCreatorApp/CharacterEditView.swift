@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct CharacterEditView: View {
-    @Bindable var character: Character
+    @Bindable var character: CharacterModel
     @Binding var isPresented: Bool
 
     @State private var isDescriptionExpanded: Bool = true
@@ -17,12 +17,12 @@ struct CharacterEditView: View {
                 }
 
                 Section(header: Text("Statistics")) {
-                    StatEditableRow(label: "Strength", value: $character.stats.strength)
-                    StatEditableRow(label: "Dexterity", value: $character.stats.dexterity)
-                    StatEditableRow(label: "Constitution", value: $character.stats.constitution)
-                    StatEditableRow(label: "Intelligence", value: $character.stats.intelligence)
-                    StatEditableRow(label: "Wisdom", value: $character.stats.wisdom)
-                    StatEditableRow(label: "Charisma", value: $character.stats.charisma)
+                    StatEditableRow(label: "Strength", value: $character.strength)
+                    StatEditableRow(label: "Dexterity", value: $character.dexterity)
+                    StatEditableRow(label: "Constitution", value: $character.constitution)
+                    StatEditableRow(label: "Intelligence", value: $character.intelligence)
+                    StatEditableRow(label: "Wisdom", value: $character.wisdom)
+                    StatEditableRow(label: "Charisma", value: $character.charisma)
                 }
 
                 Section(header: Text("Narrative Details")) {
