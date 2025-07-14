@@ -13,10 +13,6 @@ class PersistenceController {
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
 
-        do {
-            container = try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
+        container = try! ModelContainer(for: schema, configurations: [modelConfiguration])
     }
 }

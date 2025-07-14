@@ -45,7 +45,10 @@ struct UserAPIKeyUpdate: Codable {
 
 // MARK: - Campaign Models
 
-struct Campaign: Codable, Identifiable {
+import SwiftData
+
+@Model
+final class Campaign: Codable, Identifiable {
     let id: Int
     var title: String
     var concept: String?
@@ -360,7 +363,10 @@ struct TableNameListResponse: Codable {
 
 // MARK: - Character Models
 
-struct Character: Codable, Identifiable {
+import SwiftData
+
+@Model
+final class Character: Codable, Identifiable {
     let id: Int
     var name: String
     var description: String?
