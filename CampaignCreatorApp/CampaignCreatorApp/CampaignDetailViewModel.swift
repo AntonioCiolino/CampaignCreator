@@ -9,7 +9,7 @@ class CampaignDetailViewModel: ObservableObject {
 
     nonisolated func fetchAvailableLLMs() async throws -> [AvailableLLM] {
         let llms = try await apiService.fetchAvailableLLMs()
-        return llms.map { AvailableLLM(id: $0.id, name: $0.name) }
+        return llms.map { AvailableLLM(id: $0.id, name: $0.name, modelType: $0.modelType, supportsTemperature: $0.supportsTemperature) }
     }
 
     func refreshCampaign(campaign: CampaignModel) async {
