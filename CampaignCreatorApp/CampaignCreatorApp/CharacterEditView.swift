@@ -1,71 +1,56 @@
 import SwiftUI
-import CampaignCreatorLib
+import SwiftData
 
 struct CharacterEditView: View {
-    @StateObject private var viewModel: CharacterEditViewModel
+    @Bindable var character: Character
     @Binding var isPresented: Bool
-    var onCharacterUpdated: ((Character) -> Void)?
 
-    @Environment(\.dismiss) var dismiss
-
-    init(character: Character, isPresented: Binding<Bool>, onCharacterUpdated: ((Character) -> Void)? = nil) {
-        _viewModel = StateObject(wrappedValue: CharacterEditViewModel(character: character))
-        _isPresented = isPresented
-        self.onCharacterUpdated = onCharacterUpdated
-    }
+    @State private var isDescriptionExpanded: Bool = true
+    @State private var isAppearanceExpanded: Bool = true
+    @State private var showingImageManager = false
 
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("Basic Information")) {
-                    TextField("Name*", text: $viewModel.name)
+                    TextField("Name*", text: $character.name)
                 }
 
                 Section(header: Text("Statistics (Optional)")) {
-                    StatEditableRow(label: "Strength", valueString: $viewModel.statsStrength)
-                    StatEditableRow(label: "Dexterity", valueString: $viewModel.statsDexterity)
-                    StatEditableRow(label: "Constitution", valueString: $viewModel.statsConstitution)
-                    StatEditableRow(label: "Intelligence", valueString: $viewModel.statsIntelligence)
-                    StatEditableRow(label: "Wisdom", valueString: $viewModel.statsWisdom)
-                    StatEditableRow(label: "Charisma", valueString: $viewModel.statsCharisma)
+                    StatEditableRow(label: "Strength", value: $character.stats.strength)
+                    StatEditableRow(label: "Dexterity", value: $character.stats.dexterity)
+                    StatEditableRow(label: "Constitution", value: $character.stats.constitution)
+                    StatEditableRow(label: "Intelligence", value: $character.stats.intelligence)
+                    StatEditableRow(label: "Wisdom", value: $character.stats.wisdom)
+                    StatEditableRow(label: "Charisma", value: $character.stats.charisma)
                 }
 
                 Section(header: Text("Narrative Details")) {
-                    DisclosureGroup("Description", isExpanded: $viewModel.isDescriptionExpanded) {
+                    DisclosureGroup("Description", isExpanded: $isDescriptionExpanded) {
                         VStack(alignment: .leading) {
-                            TextEditor(text: $viewModel.descriptionText)
+                            TextEditor(text: .init(get: { character.character_description ?? "" }, set: { character.character_description = $0 }))
                                 .frame(height: 100)
                                 .overlay(formElementOverlay())
-                            Button(action: { Task { await viewModel.generateAspect(forField: .description) } }) {
-                                Label("Generate Description", systemImage: "sparkles")
-                            }
-                            .buttonStyle(.borderless)
-                            .disabled(viewModel.isGenerating)
                         }
                     }
 
-                    DisclosureGroup("Appearance", isExpanded: $viewModel.isAppearanceExpanded) {
+                    DisclosureGroup("Appearance", isExpanded: $isAppearanceExpanded) {
                         VStack(alignment: .leading) {
-                            TextEditor(text: $viewModel.appearanceDescriptionText)
+                            TextEditor(text: .init(get: { character.appearance_description ?? "" }, set: { character.appearance_description = $0 }))
                                 .frame(height: 100)
                                 .overlay(formElementOverlay())
-                            Button(action: { Task { await viewModel.generateAspect(forField: .appearance) } }) {
-                                Label("Generate Appearance", systemImage: "sparkles")
-                            }
-                            .buttonStyle(.borderless)
-                            .disabled(viewModel.isGenerating)
                         }
                     }
                 }
 
                 Section(header: Text("Character Images")) {
-                    if viewModel.imageURLsText.isEmpty {
+                    if (character.image_urls ?? []).isEmpty {
                         Text("No images. Manage images to add or generate new ones.")
                             .foregroundColor(.secondary)
                             .padding(.vertical)
                     } else {
                         TabView {
-                            ForEach(viewModel.imageURLsText, id: \.self) { urlString in
+                            ForEach(character.image_urls ?? [], id: \.self) { urlString in
                                 if let url = URL(string: urlString) {
                                     AsyncImage(url: url) { phase in
                                         switch phase {
@@ -97,7 +82,7 @@ struct CharacterEditView: View {
                     }
 
                     Button(action: {
-                        viewModel.showingImageManager = true
+                        showingImageManager = true
                     }) {
                         Label("Manage Images", systemImage: "photo.on.rectangle.angled")
                     }
@@ -106,55 +91,30 @@ struct CharacterEditView: View {
                 Section(header: Text("Additional Information")) {
                     VStack(alignment: .leading) {
                         Text("Notes for LLM (Optional)").font(.caption).foregroundColor(.gray)
-                        TextEditor(text: $viewModel.notesForLLMText).frame(height: 80)
+                        TextEditor(text: .init(get: { character.notes_for_llm ?? "" }, set: { character.notes_for_llm = $0 })).frame(height: 80)
                             .overlay(formElementOverlay())
                     }
-                    Picker("Export Format Preference", selection: $viewModel.selectedExportFormat) {
-                        ForEach(CharacterEditViewModel.ExportFormat.allCases) { format in
-                            Text(format.displayName).tag(format)
-                        }
+                    Picker("Export Format Preference", selection: .init(get: { character.export_format_preference ?? "Complex" }, set: { character.export_format_preference = $0 })) {
+                        Text("Complex").tag("Complex")
+                        Text("Simple").tag("Simple")
                     }
-                }
-
-                if let error = viewModel.errorMessage {
-                    Text("Error: \\(error)").foregroundColor(.red).font(.caption)
                 }
             }
             .navigationTitle("Edit Character")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { dismiss() }.disabled(viewModel.isSaving || viewModel.isGenerating)
+                    Button("Cancel") { isPresented = false }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    if viewModel.isSaving || viewModel.isGenerating {
-                        ProgressView()
-                    } else {
-                        Button("Save") {
-                            Task {
-                                let updatedCharacter = await viewModel.saveCharacterChanges()
-                                if let updatedCharacter = updatedCharacter {
-                                    onCharacterUpdated?(updatedCharacter)
-                                    dismiss()
-                                }
-                            }
-                        }
-                        .disabled(viewModel.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isSaving || viewModel.isGenerating)
+                    Button("Save") {
+                        isPresented = false
                     }
+                    .disabled(character.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
-            .alert(isPresented: .constant(viewModel.errorMessage != nil)) {
-                Alert(
-                    title: Text("Error Updating Character"),
-                    message: Text(viewModel.errorMessage ?? ""),
-                    dismissButton: .default(Text("OK")) {
-                        viewModel.errorMessage = nil
-                    }
-                )
-            }
-            .disabled(viewModel.isSaving || viewModel.isGenerating)
-            .sheet(isPresented: $viewModel.showingImageManager) {
-                CharacterImageManagerView(imageURLs: $viewModel.imageURLsText, characterID: viewModel.characterToEdit.id)
+            .sheet(isPresented: $showingImageManager) {
+                CharacterImageManagerView(imageURLs: .init(get: { character.image_urls ?? [] }, set: { character.image_urls = $0 }), characterID: character.id)
             }
         }
     }
@@ -166,7 +126,10 @@ struct CharacterEditView: View {
 
 struct StatEditableRow: View {
     let label: String
-    @Binding var valueString: String
+    @Binding var value: Int?
+
+    @State private var valueString: String = ""
+
     var body: some View {
         HStack {
             Text(label)
@@ -174,19 +137,12 @@ struct StatEditableRow: View {
             TextField("0", text: $valueString)
                 .keyboardType(.numberPad).frame(width: 50)
                 .multilineTextAlignment(.trailing).textFieldStyle(RoundedBorderTextFieldStyle())
+                .onAppear {
+                    valueString = value.map(String.init) ?? ""
+                }
+                .onChange(of: valueString) {
+                    value = Int(valueString)
+                }
         }
     }
 }
-
-//struct CharacterEditView_Previews: PreviewProvider {
-//    static var previews: some View {
-//        @State var isPresented: Bool = true
-//        let libCharacter = CampaignCreatorLib.Character(id: 1, name: "Aella Swiftarrow (Edit)")
-//        let sampleCharacter = Character(from: libCharacter)
-//
-//        return CharacterEditView(
-//            character: sampleCharacter,
-//            isPresented: $isPresented
-//        )
-//    }
-//}

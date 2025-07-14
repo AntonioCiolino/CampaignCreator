@@ -1,122 +1,101 @@
 import SwiftUI
+import SwiftData
 
 struct CharacterCreateView: View {
-    @StateObject private var viewModel = CharacterCreateViewModel()
+    @Environment(\.modelContext) private var modelContext
     @Binding var isPresented: Bool
 
-    @Environment(\.dismiss) var dismiss
+    @State private var name = ""
+    @State private var character_description = ""
+    @State private var appearance_description = ""
+    @State private var image_urls: [String] = []
+    @State private var newImageURL = ""
+    @State private var notes_for_llm = ""
+    @State private var export_format_preference = "Complex"
 
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("Character Details")) {
-                    TextField("Name*", text: $viewModel.characterName)
-                        .disabled(viewModel.isSaving || viewModel.isGenerating)
-                    generateableTextField(title: "Description", text: $viewModel.characterDescription, fieldType: .description, isGenerating: $viewModel.isGenerating)
-                    generateableTextField(title: "Appearance", text: $viewModel.characterAppearance, fieldType: .appearance, isGenerating: $viewModel.isGenerating)
+                    TextField("Name*", text: $name)
+                    VStack(alignment: .leading) {
+                        Text("Description").font(.caption)
+                        TextEditor(text: $character_description).frame(height: 100)
+                            .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.gray.opacity(0.5), lineWidth: 1))
+                    }
+                    VStack(alignment: .leading) {
+                        Text("Appearance").font(.caption)
+                        TextEditor(text: $appearance_description).frame(height: 100)
+                            .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.gray.opacity(0.5), lineWidth: 1))
+                    }
                 }
 
                 Section(header: Text("Image URLs")) {
-                    ForEach(viewModel.characterImageURLsText.indices, id: \.self) { index in
+                    ForEach(image_urls.indices, id: \.self) { index in
                         HStack {
-                            TextField("Image URL", text: $viewModel.characterImageURLsText[index])
-                            Button(action: { viewModel.characterImageURLsText.remove(at: index) }) {
+                            TextField("Image URL", text: $image_urls[index])
+                            Button(action: { image_urls.remove(at: index) }) {
                                 Image(systemName: "trash").foregroundColor(.red)
                             }
                         }
                     }
                     HStack {
-                        TextField("Add new image URL", text: $viewModel.newImageURL)
+                        TextField("Add new image URL", text: $newImageURL)
                         Button(action: {
-                            if !viewModel.newImageURL.isEmpty, let _ = URL(string: viewModel.newImageURL) {
-                                viewModel.characterImageURLsText.append(viewModel.newImageURL)
-                                viewModel.newImageURL = ""
+                            if !newImageURL.isEmpty, let _ = URL(string: newImageURL) {
+                                image_urls.append(newImageURL)
+                                newImageURL = ""
                             }
                         }) {
                             Image(systemName: "plus.circle.fill")
                         }
-                        .disabled(viewModel.newImageURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .disabled(newImageURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
 
                 Section(header: Text("Additional Information")) {
                     VStack(alignment: .leading) {
                         Text("Notes for LLM (Optional)").font(.caption).foregroundColor(.gray)
-                        TextEditor(text: $viewModel.characterNotesForLLM)
+                        TextEditor(text: $notes_for_llm)
                             .frame(height: 80)
                             .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.gray.opacity(0.5), lineWidth: 1))
-                            .disabled(viewModel.isSaving || viewModel.isGenerating)
                     }
-                    TextField("Export Format Preference", text: $viewModel.characterExportFormatPreference)
-                        .disabled(viewModel.isSaving || viewModel.isGenerating)
-                }
-
-                if let error = viewModel.errorMessage {
-                    Section {
-                        Text("Error: \\(error)").foregroundColor(.red).font(.caption)
-                    }
+                    TextField("Export Format Preference", text: $export_format_preference)
                 }
             }
             .navigationTitle("New Character")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        dismiss()
-                    }
-                    .disabled(viewModel.isSaving || viewModel.isGenerating)
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    if viewModel.isSaving || viewModel.isGenerating {
-                        ProgressView()
-                    } else {
-                        Button("Save") {
-                            Task {
-                                await viewModel.saveCharacter()
-                                if viewModel.errorMessage == nil {
-                                    dismiss()
-                                }
-                            }
-                        }
-                        .disabled(viewModel.characterName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isSaving)
+                        isPresented = false
                     }
                 }
-            }
-            .alert(isPresented: .constant(viewModel.errorMessage != nil)) {
-                Alert(
-                    title: Text("Error"),
-                    message: Text(viewModel.errorMessage ?? "An unknown error occurred."),
-                    dismissButton: .default(Text("OK")) {
-                        viewModel.errorMessage = nil
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        saveCharacter()
+                        isPresented = false
                     }
-                )
+                    .disabled(name.isEmpty)
+                }
             }
         }
     }
 
-    @ViewBuilder
-    private func generateableTextField(title: String, text: Binding<String>, fieldType: CharacterCreateViewModel.AspectField, isGenerating: Binding<Bool>) -> some View {
-        VStack(alignment: .leading) {
-            HStack {
-                Text(title).font(.caption).foregroundColor(.gray)
-                Spacer()
-                Button(action: { Task { await viewModel.generateAspect(forField: fieldType) } }) {
-                    Label("Generate", systemImage: "sparkles")
-                }
-                .buttonStyle(.borderless)
-                .disabled(viewModel.isGenerating || viewModel.characterName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-            TextEditor(text: text)
-                .frame(height: 100)
-                .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.gray.opacity(0.5), lineWidth: 1))
-                .disabled(viewModel.isGenerating)
-        }
-    }
-}
-
-struct CharacterCreateView_Previews: PreviewProvider {
-    static var previews: some View {
-        @State var isPresented: Bool = true
-        CharacterCreateView(isPresented: $isPresented)
+    private func saveCharacter() {
+        let newCharacter = Character(
+            id: Int.random(in: 1...1000),
+            name: name,
+            character_description: character_description,
+            appearance_description: appearance_description,
+            image_urls: image_urls,
+            video_clip_urls: [],
+            notes_for_llm: notes_for_llm,
+            stats: nil,
+            export_format_preference: export_format_preference,
+            owner_id: 0,
+            campaign_ids: []
+        )
+        modelContext.insert(newCharacter)
     }
 }

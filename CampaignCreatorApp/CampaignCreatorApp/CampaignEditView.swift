@@ -1,68 +1,67 @@
 import SwiftUI
-import CampaignCreatorLib
+import SwiftData
 
 struct CampaignEditView: View {
-    @StateObject private var viewModel: CampaignEditViewModel
+    @Bindable var campaign: Campaign
     @Binding var isPresented: Bool
-    var onCampaignUpdated: ((Campaign) -> Void)?
-
-    init(campaign: Campaign, isPresented: Binding<Bool>, onCampaignUpdated: ((Campaign) -> Void)? = nil) {
-        _viewModel = StateObject(wrappedValue: CampaignEditViewModel(campaign: campaign))
-        _isPresented = isPresented
-        self.onCampaignUpdated = onCampaignUpdated
-    }
 
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("Campaign Details")) {
-                    TextField("Title", text: $viewModel.title)
+                    TextField("Title", text: $campaign.title)
                     VStack(alignment: .leading) {
                         Text("Initial User Prompt").font(.caption)
-                        TextEditor(text: $viewModel.initialUserPrompt).frame(height: 100)
+                        TextEditor(text: .init(get: { campaign.initial_user_prompt ?? "" }, set: { campaign.initial_user_prompt = $0 })).frame(height: 100)
                             .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.gray.opacity(0.5), lineWidth: 1))
                     }
                     VStack(alignment: .leading) {
                         Text("Concept").font(.caption)
-                        TextEditor(text: $viewModel.concept).frame(height: 150)
+                        TextEditor(text: .init(get: { campaign.concept ?? "" }, set: { campaign.concept = $0 })).frame(height: 150)
                             .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.gray.opacity(0.5), lineWidth: 1))
                     }
                 }
 
                 Section(header: Text("Theme Colors")) {
-                    ColorPicker("Primary Color", selection: $viewModel.primaryColor, supportsOpacity: false)
-                    ColorPicker("Secondary Color", selection: $viewModel.secondaryColor, supportsOpacity: false)
-                    ColorPicker("Background Color", selection: $viewModel.backgroundColor, supportsOpacity: false)
-                    ColorPicker("Text Color", selection: $viewModel.textColor, supportsOpacity: false)
+                    ColorPicker("Primary Color", selection: .init(get: { Color(hex: campaign.theme_primary_color ?? "") ?? .blue }, set: { campaign.theme_primary_color = $0.toHex() }), supportsOpacity: false)
+                    ColorPicker("Secondary Color", selection: .init(get: { Color(hex: campaign.theme_secondary_color ?? "") ?? .green }, set: { campaign.theme_secondary_color = $0.toHex() }), supportsOpacity: false)
+                    ColorPicker("Background Color", selection: .init(get: { Color(hex: campaign.theme_background_color ?? "") ?? .white }, set: { campaign.theme_background_color = $0.toHex() }), supportsOpacity: false)
+                    ColorPicker("Text Color", selection: .init(get: { Color(hex: campaign.theme_text_color ?? "") ?? .black }, set: { campaign.theme_text_color = $0.toHex() }), supportsOpacity: false)
                 }
 
                 Section(header: Text("Font")) {
-                    TextField("Font Family (e.g., Arial)", text: $viewModel.fontFamily)
+                    TextField("Font Family (e.g., Arial)", text: .init(get: { campaign.theme_font_family ?? "" }, set: { campaign.theme_font_family = $0 }))
                 }
 
                 Section(header: Text("Background Image")) {
-                    TextField("Image URL", text: $viewModel.backgroundImageUrl)
+                    TextField("Image URL", text: .init(get: { campaign.theme_background_image_url ?? "" }, set: { campaign.theme_background_image_url = $0 }))
                         .keyboardType(.URL)
                         .autocapitalization(.none)
 
-                    if !viewModel.backgroundImageUrl.isEmpty {
+                    if !(campaign.theme_background_image_url?.isEmpty ?? true) {
                         Button("Remove Background Image") {
-                            viewModel.backgroundImageUrl = ""
+                            campaign.theme_background_image_url = ""
                         }
                         .foregroundColor(.red)
                     }
 
                     HStack {
                         Text("Opacity")
-                        Slider(value: $viewModel.backgroundImageOpacity, in: 0...1, step: 0.05)
-                        Text(String(format: "%.2f", viewModel.backgroundImageOpacity))
+                        Slider(value: .init(get: { campaign.theme_background_image_opacity ?? 1.0 }, set: { campaign.theme_background_image_opacity = $0 }), in: 0...1, step: 0.05)
+                        Text(String(format: "%.2f", campaign.theme_background_image_opacity ?? 1.0))
                     }
-                    .disabled(viewModel.backgroundImageUrl.isEmpty)
+                    .disabled(campaign.theme_background_image_url?.isEmpty ?? true)
                 }
 
                 Section {
                     Button("Reset Theme to Defaults") {
-                        viewModel.resetThemeToDefaults()
+                        campaign.theme_primary_color = nil
+                        campaign.theme_secondary_color = nil
+                        campaign.theme_background_color = nil
+                        campaign.theme_text_color = nil
+                        campaign.theme_font_family = nil
+                        campaign.theme_background_image_url = nil
+                        campaign.theme_background_image_opacity = nil
                     }
                     .foregroundColor(.orange)
                 }
@@ -74,41 +73,14 @@ struct CampaignEditView: View {
                     Button("Cancel") {
                         isPresented = false
                     }
-                    .disabled(viewModel.isSaving)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    if viewModel.isSaving {
-                        ProgressView()
-                    } else {
-                        Button("Done") {
-                            Task {
-                                if let updatedCampaign = await viewModel.saveChanges() {
-                                    onCampaignUpdated?(updatedCampaign)
-                                    isPresented = false
-                                }
-                            }
-                        }
-                        .disabled(viewModel.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button("Done") {
+                        isPresented = false
                     }
+                    .disabled(campaign.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
-            }
-            .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
-                Button("OK") { viewModel.errorMessage = nil }
-            } message: {
-                Text(viewModel.errorMessage ?? "An unknown error occurred.")
             }
         }
     }
 }
-
-//struct CampaignEditView_Previews: PreviewProvider {
-//    static var previews: some View {
-//        let libCampaign = CampaignCreatorLib.Campaign(id: 1)
-//        let previewCampaign = Campaign(from: libCampaign)
-//
-//        return CampaignEditView(
-//            campaign: previewCampaign,
-//            isPresented: .constant(true)
-//        )
-//    }
-//}

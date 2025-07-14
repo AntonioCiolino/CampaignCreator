@@ -3,12 +3,7 @@ import Kingfisher
 import SwiftData
 
 struct CharacterDetailView: View {
-    @StateObject private var viewModel: CharacterDetailViewModel
-    @Environment(\.modelContext) private var modelContext
-
-    init(character: Character) {
-        _viewModel = StateObject(wrappedValue: CharacterDetailViewModel(character: character))
-    }
+    let character: Character
 
     var body: some View {
         ScrollView {
@@ -16,11 +11,8 @@ struct CharacterDetailView: View {
                 // your UI...
             }
             .padding()
-            .onAppear {
-                viewModel.setModelContext(modelContext)
-            }
         }
-        .navigationTitle(viewModel.character.name)
+        .navigationTitle(character.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {

@@ -1,40 +1,23 @@
 import SwiftUI
 import Kingfisher
+import SwiftData
 
 struct CampaignListView: View {
-    @StateObject private var viewModel = CampaignListViewModel()
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Campaign.title) private var campaigns: [Campaign]
     @State private var showingCreateSheet = false
 
     var body: some View {
         NavigationView {
             Group {
-                if viewModel.isLoading && viewModel.campaigns.isEmpty {
-                    ProgressView("Loading Campaigns...")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let error = viewModel.errorMessage {
-                    VStack {
-                        Text("Error Loading Campaigns")
-                            .font(.headline)
-                        Text(error)
-                            .font(.caption)
-                            .multilineTextAlignment(.center)
-                        Button("Retry") {
-                            Task {
-                                await viewModel.fetchCampaigns()
-                            }
-                        }
-                        .padding(.top)
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if viewModel.campaigns.isEmpty {
+                if campaigns.isEmpty {
                     Text("No campaigns yet. Tap '+' to create one.")
                         .foregroundColor(.secondary)
                         .font(.title2)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List {
-                        ForEach(viewModel.campaigns) { campaign in
+                        ForEach(campaigns) { campaign in
                             NavigationLink(destination: CampaignDetailView(campaign: campaign)) {
                                 HStack {
                                     if let badgeURL = campaign.badge_image_url, let url = URL(string: badgeURL) {
@@ -62,18 +45,10 @@ struct CampaignListView: View {
                         }
                         .onDelete(perform: deleteCampaigns)
                     }
-                    .refreshable {
-                        await viewModel.fetchCampaigns()
-                    }
                 }
             }
             .navigationTitle("Campaigns")
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    if viewModel.isLoading && !viewModel.campaigns.isEmpty {
-                        ProgressView()
-                    }
-                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         showingCreateSheet = true
@@ -82,26 +57,16 @@ struct CampaignListView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingCreateSheet, onDismiss: {
-                Task {
-                    await viewModel.fetchCampaigns()
-                }
-            }) {
+            .sheet(isPresented: $showingCreateSheet) {
                 CampaignCreateView(isPresented: $showingCreateSheet)
-            }
-            .onAppear {
-                Task {
-                    await viewModel.fetchCampaigns()
-                }
             }
         }
     }
 
     private func deleteCampaigns(offsets: IndexSet) {
-        let campaignsToDelete = offsets.map { viewModel.campaigns[$0] }
-        Task {
-            for campaign in campaignsToDelete {
-                await viewModel.deleteCampaign(campaign)
+        withAnimation {
+            for index in offsets {
+                modelContext.delete(campaigns[index])
             }
         }
     }
