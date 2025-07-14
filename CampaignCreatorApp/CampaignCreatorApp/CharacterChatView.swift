@@ -15,7 +15,7 @@ struct ChatMessage: Identifiable, Equatable {
         case llm = "LLM"
     }
 
-    init(from apiMessage: ConversationMessageEntry, character: Character) {
+    init(from apiMessage: ConversationMessageEntry, character: CampaignCreatorLib.Character) {
         self.id = UUID().uuidString
         self.text = apiMessage.text
         self.timestamp = apiMessage.timestamp
@@ -27,16 +27,16 @@ struct ChatMessage: Identifiable, Equatable {
         }
 
         self.userAvatarUrl = nil
-        self.characterAvatarUrl = (self.sender == .llm) ? URL(string: character.image_urls?.first ?? "") : nil
+        self.characterAvatarUrl = (self.sender == .llm) ? URL(string: character.imageURLs?.first ?? "") : nil
     }
 
-    init(text: String, sender: Sender, character: Character) {
+    init(text: String, sender: Sender, character: CampaignCreatorLib.Character) {
         self.id = UUID().uuidString
         self.text = text
         self.sender = sender
         self.timestamp = Date()
         self.userAvatarUrl = nil
-        self.characterAvatarUrl = (self.sender == .llm) ? URL(string: character.image_urls?.first ?? "") : nil
+        self.characterAvatarUrl = (self.sender == .llm) ? URL(string: character.imageURLs?.first ?? "") : nil
     }
 
 }
@@ -45,7 +45,7 @@ struct CharacterChatView: View {
     @StateObject private var viewModel: CharacterChatViewModel
     @State private var userInput: String = ""
 
-    init(character: Character) {
+    init(character: CampaignCreatorLib.Character) {
         _viewModel = StateObject(wrappedValue: CharacterChatViewModel(character: character))
     }
 

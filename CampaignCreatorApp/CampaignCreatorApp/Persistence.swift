@@ -10,7 +10,6 @@ class PersistenceController {
     init(inMemory: Bool = false) {
         let schema = Schema([
             Campaign.self,
-            Character.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
 

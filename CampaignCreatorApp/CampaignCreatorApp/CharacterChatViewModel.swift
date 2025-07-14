@@ -9,10 +9,10 @@ class CharacterChatViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var memorySummary: String? = "This is a placeholder for the actual memory summary."
 
-    private let character: Character
+    private let character: CampaignCreatorLib.Character
     private var apiService = CampaignCreatorLib.APIService()
 
-    init(character: Character) {
+    init(character: CampaignCreatorLib.Character) {
         self.character = character
         fetchChatHistory()
         fetchMemorySummary()
