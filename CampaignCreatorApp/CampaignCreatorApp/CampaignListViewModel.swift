@@ -1,37 +1,35 @@
 import Foundation
 import SwiftUI
 import SwiftData
-import CampaignCreatorLib
 
 @MainActor
 class CampaignListViewModel: ObservableObject {
     @Published var campaigns: [Campaign] = []
-    @Published var isLoading = false
-    @Published var errorMessage: String?
+    private var modelContext: ModelContext?
 
-    private var apiService = CampaignCreatorLib.APIService()
-
-    func fetchCampaigns() async {
-        isLoading = true
-        errorMessage = nil
-        do {
-            let fetchedLibCampaigns: [CampaignCreatorLib.Campaign] = try await apiService.fetchCampaigns()
-            self.campaigns = fetchedLibCampaigns.compactMap { Campaign(from: $0) }
-        } catch {
-            self.errorMessage = error.localizedDescription
-        }
-        isLoading = false
+    func setModelContext(_ context: ModelContext) {
+        self.modelContext = context
+        fetchCampaigns()
     }
 
-    func deleteCampaign(_ campaign: Campaign) async {
-        isLoading = true
-        errorMessage = nil
+    func fetchCampaigns() {
+        guard let context = modelContext else { return }
         do {
-            try await apiService.deleteCampaign(id: campaign.id)
-            await fetchCampaigns()
+            let descriptor = FetchDescriptor<Campaign>(sortBy: [SortDescriptor(\.title)])
+            self.campaigns = try context.fetch(descriptor)
         } catch {
-            self.errorMessage = error.localizedDescription
+            // Handle error
         }
-        isLoading = false
+    }
+
+    func deleteCampaign(_ campaign: Campaign) {
+        guard let context = modelContext else { return }
+        context.delete(campaign)
+        do {
+            try context.save()
+            fetchCampaigns()
+        } catch {
+            // Handle error
+        }
     }
 }

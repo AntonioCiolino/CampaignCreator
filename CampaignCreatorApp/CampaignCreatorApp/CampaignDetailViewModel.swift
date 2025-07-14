@@ -5,13 +5,19 @@ import SwiftData
 @MainActor
 class CampaignDetailViewModel: ObservableObject {
     @Published var campaign: Campaign
-    @Published var isLoading = false
-    @Published var errorMessage: String?
+    private var modelContext: ModelContext?
 
-    private var modelContext: ModelContext
-
-    init(campaign: Campaign, modelContext: ModelContext) {
+    init(campaign: Campaign) {
         self.campaign = campaign
-        self.modelContext = modelContext
+    }
+
+    func setModelContext(_ context: ModelContext) {
+        self.modelContext = context
+    }
+
+    // Use this context in your async logic, e.g.
+    func refreshCampaign() async {
+        guard let context = modelContext else { return }
+        // Fetch or update with context.fetch(...) etc.
     }
 }

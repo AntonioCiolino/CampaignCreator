@@ -1,29 +1,23 @@
 import Foundation
 import SwiftUI
-import CampaignCreatorLib
+import SwiftData
 
 @MainActor
 class CharacterDetailViewModel: ObservableObject {
     @Published var character: Character
-    @Published var isLoading = false
-    @Published var errorMessage: String?
-
-    private var apiService = CampaignCreatorLib.APIService()
+    private var modelContext: ModelContext?
 
     init(character: Character) {
         self.character = character
     }
 
+    func setModelContext(_ context: ModelContext) {
+        self.modelContext = context
+    }
+
+    // Use this context in your async logic, e.g.
     func refreshCharacter() async {
-        isLoading = true
-        errorMessage = nil
-        do {
-            let refreshedLibCharacter: CampaignCreatorLib.Character = try await apiService.fetchCharacter(id: character.id)
-            let refreshedCharacter = Character(from: refreshedLibCharacter)
-            self.character = refreshedCharacter
-        } catch {
-            self.errorMessage = error.localizedDescription
-        }
-        isLoading = false
+        guard let context = modelContext else { return }
+        // Fetch or update with context.fetch(...) etc.
     }
 }
