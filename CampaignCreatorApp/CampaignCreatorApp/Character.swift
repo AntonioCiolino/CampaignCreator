@@ -11,6 +11,7 @@ final class Character {
     var notes_for_llm: String?
     var export_format_preference: String?
     var owner_id: Int
+    @Attribute(.transformable(by: "CharacterStatsTransformer"))
     var stats: CharacterStats
 
     init(
@@ -34,13 +35,4 @@ final class Character {
         self.owner_id = owner_id
         self.stats = stats
     }
-}
-
-struct CharacterStats: Codable {
-    var strength: Int?
-    var dexterity: Int?
-    var constitution: Int?
-    var intelligence: Int?
-    var wisdom: Int?
-    var charisma: Int?
 }
