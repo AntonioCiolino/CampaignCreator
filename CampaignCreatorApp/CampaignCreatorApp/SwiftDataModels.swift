@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import CampaignCreatorLib
 
 @Model
 final class Campaign: Identifiable {

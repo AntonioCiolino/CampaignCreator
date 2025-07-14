@@ -17,12 +17,12 @@ struct CharacterEditView: View {
                 }
 
                 Section(header: Text("Statistics (Optional)")) {
-                    StatEditableRow(label: "Strength", value: $character.stats.strength)
-                    StatEditableRow(label: "Dexterity", value: $character.stats.dexterity)
-                    StatEditableRow(label: "Constitution", value: $character.stats.constitution)
-                    StatEditableRow(label: "Intelligence", value: $character.stats.intelligence)
-                    StatEditableRow(label: "Wisdom", value: $character.stats.wisdom)
-                    StatEditableRow(label: "Charisma", value: $character.stats.charisma)
+                    StatEditableRow(label: "Strength", value: $character.stats?.strength)
+                    StatEditableRow(label: "Dexterity", value: $character.stats?.dexterity)
+                    StatEditableRow(label: "Constitution", value: $character.stats?.constitution)
+                    StatEditableRow(label: "Intelligence", value: $character.stats?.intelligence)
+                    StatEditableRow(label: "Wisdom", value: $character.stats?.wisdom)
+                    StatEditableRow(label: "Charisma", value: $character.stats?.charisma)
                 }
 
                 Section(header: Text("Narrative Details")) {
@@ -114,7 +114,7 @@ struct CharacterEditView: View {
                 }
             }
             .sheet(isPresented: $showingImageManager) {
-                CharacterImageManagerView(imageURLs: .init(get: { character.image_urls ?? [] }, set: { character.image_urls = $0 }), characterID: character.id)
+                CharacterImageManagerView(imageURLs: .init(get: { character.image_urls ?? [] }, set: { character.image_urls = $0 }), characterID: 0)
             }
         }
     }

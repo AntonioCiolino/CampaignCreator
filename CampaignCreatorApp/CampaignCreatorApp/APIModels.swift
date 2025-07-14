@@ -1,4 +1,5 @@
 import Foundation
+import CampaignCreatorLib
 
 // MARK: - User Models
 
