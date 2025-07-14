@@ -6,8 +6,6 @@ struct CharacterDetailView: View {
     let character: CharacterModel
 
     @State private var showingEditSheet = false
-
-    @State private var showingEditSheet = false
     @State private var showingImageManager = false
 
     var body: some View {
