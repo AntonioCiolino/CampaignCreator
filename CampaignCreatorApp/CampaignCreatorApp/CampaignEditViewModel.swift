@@ -64,8 +64,7 @@ class CampaignEditViewModel: ObservableObject {
         do {
             let campaignUpdateDTO = campaignToUpdate.toCampaignUpdateDTO()
             let updatedCampaign: CampaignCreatorLib.Campaign = try await apiService.updateCampaign(campaign.id, data: campaignUpdateDTO)
-            let updatedCampaign = Campaign(from: updatedCampaignData)
-            self.campaign = updatedCampaign
+            self.campaign = Campaign(from: updatedCampaign)
             isSaving = false
             return self.campaign
         } catch {
