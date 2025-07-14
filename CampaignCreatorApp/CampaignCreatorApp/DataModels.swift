@@ -88,6 +88,9 @@ struct Campaign: Codable, Identifiable {
         self.mood_board_image_urls = libCampaign.moodBoardImageURLs
     }
 
+}
+
+extension Campaign {
     var wordCount: Int {
         return sections?.reduce(0) { $0 + $1.content.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count } ?? 0
     }
