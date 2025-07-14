@@ -15,7 +15,7 @@ class CampaignMoodboardViewModel: ObservableObject {
     }
 
     func saveMoodboardChanges() {
-        var updatedCampaign = campaign
+        let updatedCampaign = campaign
         updatedCampaign.mood_board_image_urls = moodBoardImageURLs
         Task {
             do {

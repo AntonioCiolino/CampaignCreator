@@ -21,7 +21,7 @@ class CharacterMoodboardViewModel: ObservableObject {
             do {
                 let characterUpdate = CharacterUpdate(
                     name: updatedCharacter.name,
-                    description: updatedCharacter.description,
+                    description: updatedCharacter.character_description,
                     appearance_description: updatedCharacter.appearance_description,
                     image_urls: updatedCharacter.image_urls,
                     video_clip_urls: updatedCharacter.video_clip_urls,

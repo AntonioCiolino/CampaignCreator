@@ -50,7 +50,7 @@ class CharacterEditViewModel: ObservableObject {
     init(character: Character) {
         self.characterToEdit = character
         self.name = character.name
-        self.descriptionText = character.description ?? ""
+        self.descriptionText = character.character_description ?? ""
         self.appearanceDescriptionText = character.appearance_description ?? ""
         self.notesForLLMText = character.notes_for_llm ?? ""
         if let currentPreference = character.export_format_preference, !currentPreference.isEmpty {
@@ -112,7 +112,7 @@ class CharacterEditViewModel: ObservableObject {
         isSaving = true; errorMessage = nil
         var updatedCharacter = characterToEdit
         updatedCharacter.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        updatedCharacter.description = descriptionText.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty()
+        updatedCharacter.character_description = descriptionText.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty()
         updatedCharacter.appearance_description = appearanceDescriptionText.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty()
         updatedCharacter.notes_for_llm = notesForLLMText.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty()
 
@@ -172,7 +172,7 @@ class CharacterEditViewModel: ObservableObject {
 
         return CampaignCreatorLib.CharacterUpdateDTO(
             name: character.name,
-            description: character.description,
+            description: character.character_description,
             appearanceDescription: character.appearance_description,
             imageURLs: character.image_urls,
             notesForLLM: character.notes_for_llm,
