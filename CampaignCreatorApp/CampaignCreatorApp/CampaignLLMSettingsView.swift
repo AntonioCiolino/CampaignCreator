@@ -29,7 +29,7 @@ struct CampaignLLMSettingsView: View {
                 }
                 .pickerStyle(MenuPickerStyle())
                 .font(currentFont)
-                .onChange(of: selectedLLMId) { _ in
+                .onChange(of: selectedLLMId) {
                     Task { await onLLMSettingsChange() }
                 }
                 Text("Note: This list is a placeholder. Ideally, available LLMs should be fetched from the server.")

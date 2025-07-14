@@ -77,7 +77,7 @@ class CharacterEditViewModel: ObservableObject {
         }
         isGenerating = true
         errorMessage = nil
-        let characterNameForPrompt = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        _ = name.trimmingCharacters(in: .whitespacesAndNewlines)
         var prompt = ""
         switch field {
         case .description:

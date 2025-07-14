@@ -95,8 +95,8 @@ struct SettingsView: View {
                             Text(engine.displayName).tag(engine)
                         }
                     }
-                    .onChange(of: viewModel.selectedSdEngine) { newEngine in
-                        viewModel.saveSdEnginePreference(engine: newEngine)
+                    .onChange(of: viewModel.selectedSdEngine) {
+                        viewModel.saveSdEnginePreference(engine: viewModel.selectedSdEngine)
                     }
                     Text("Select your preferred engine for Stable Diffusion image generation. \"System Default\" will use the server's configured default.")
                         .font(.caption)

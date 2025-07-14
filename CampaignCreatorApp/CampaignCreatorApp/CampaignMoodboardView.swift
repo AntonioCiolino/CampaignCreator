@@ -19,7 +19,7 @@ struct CampaignMoodboardView: View {
             },
             imageUploadService: imageUploadService
         )
-        .onChange(of: viewModel.moodBoardImageURLs) { _ in
+        .onChange(of: viewModel.moodBoardImageURLs) {
             viewModel.saveMoodboardChanges()
         }
     }

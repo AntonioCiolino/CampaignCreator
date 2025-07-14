@@ -143,9 +143,15 @@ struct CharacterEditView: View {
                     }
                 }
             }
-            .alert("Error Updating Character", isPresented: .constant(viewModel.errorMessage != nil)) {
-                Button("OK") { viewModel.errorMessage = nil }
-            } message: { Text(viewModel.errorMessage ?? "") }
+            .alert(isPresented: .constant(viewModel.errorMessage != nil)) {
+                Alert(
+                    title: Text("Error Updating Character"),
+                    message: Text(viewModel.errorMessage ?? ""),
+                    dismissButton: .default(Text("OK")) {
+                        viewModel.errorMessage = nil
+                    }
+                )
+            }
             .disabled(viewModel.isSaving || viewModel.isGenerating)
             .sheet(isPresented: $viewModel.showingImageManager) {
                 CharacterImageManagerView(imageURLs: $viewModel.imageURLsText, characterID: viewModel.characterToEdit.id)

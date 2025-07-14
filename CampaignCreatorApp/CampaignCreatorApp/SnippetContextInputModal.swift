@@ -69,7 +69,7 @@ struct SnippetContextInputModal: View {
                 }
             }
             .onAppear(perform: initializeContextDataAndValidation)
-            .onChange(of: contextData) { _ in
+            .onChange(of: contextData) {
                 validateForm()
             }
         }
