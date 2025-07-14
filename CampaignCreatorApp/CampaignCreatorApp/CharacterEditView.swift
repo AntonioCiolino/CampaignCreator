@@ -16,13 +16,13 @@ struct CharacterEditView: View {
                     TextField("Name*", text: $character.name)
                 }
 
-                Section(header: Text("Statistics (Optional)")) {
-                    StatEditableRow(label: "Strength", value: $character.stats?.strength)
-                    StatEditableRow(label: "Dexterity", value: $character.stats?.dexterity)
-                    StatEditableRow(label: "Constitution", value: $character.stats?.constitution)
-                    StatEditableRow(label: "Intelligence", value: $character.stats?.intelligence)
-                    StatEditableRow(label: "Wisdom", value: $character.stats?.wisdom)
-                    StatEditableRow(label: "Charisma", value: $character.stats?.charisma)
+                Section(header: Text("Statistics")) {
+                    StatEditableRow(label: "Strength", value: $character.stats.strength)
+                    StatEditableRow(label: "Dexterity", value: $character.stats.dexterity)
+                    StatEditableRow(label: "Constitution", value: $character.stats.constitution)
+                    StatEditableRow(label: "Intelligence", value: $character.stats.intelligence)
+                    StatEditableRow(label: "Wisdom", value: $character.stats.wisdom)
+                    StatEditableRow(label: "Charisma", value: $character.stats.charisma)
                 }
 
                 Section(header: Text("Narrative Details")) {

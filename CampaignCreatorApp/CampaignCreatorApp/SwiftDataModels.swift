@@ -78,7 +78,7 @@ final class Character: Identifiable {
     var image_urls: [String]?
     var video_clip_urls: [String]?
     var notes_for_llm: String?
-    var stats: CharacterStats?
+    var stats: CharacterStats
     var export_format_preference: String?
     var owner_id: Int
     var campaign_ids: [Int]?
@@ -90,7 +90,7 @@ final class Character: Identifiable {
         image_urls: [String]? = nil,
         video_clip_urls: [String]? = nil,
         notes_for_llm: String? = nil,
-        stats: CharacterStats? = nil,
+        stats: CharacterStats = CharacterStats(),
         export_format_preference: String? = nil,
         owner_id: Int,
         campaign_ids: [Int]? = nil
