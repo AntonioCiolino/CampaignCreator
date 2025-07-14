@@ -380,6 +380,18 @@ struct CharacterCreate: Codable {
     var notes_for_llm: String?
     var stats: CharacterStats?
     var export_format_preference: String?
+
+    func toCharacterCreateDTO() -> CampaignCreatorLib.CharacterCreateDTO {
+        return CampaignCreatorLib.CharacterCreateDTO(
+            name: self.name,
+            description: self.description,
+            appearanceDescription: self.appearance_description,
+            imageURLs: self.image_urls,
+            notesForLLM: self.notes_for_llm,
+            stats: self.stats?.toCharacterStatsDTO(),
+            exportFormatPreference: self.export_format_preference
+        )
+    }
 }
 
 struct CharacterUpdate: Codable {

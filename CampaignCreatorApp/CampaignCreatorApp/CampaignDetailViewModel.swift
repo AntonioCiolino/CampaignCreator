@@ -19,9 +19,8 @@ class CampaignDetailViewModel: ObservableObject {
         errorMessage = nil
         do {
             let refreshedLibCampaign: CampaignCreatorLib.Campaign = try await apiService.fetchCampaign(id: campaign.id)
-            if let refreshedCampaign = Campaign(from: refreshedLibCampaign) {
-                self.campaign = refreshedCampaign
-            }
+            let refreshedCampaign = Campaign(from: refreshedLibCampaign)
+            self.campaign = refreshedCampaign
         } catch {
             self.errorMessage = error.localizedDescription
         }

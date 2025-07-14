@@ -19,11 +19,8 @@ class CharacterDetailViewModel: ObservableObject {
         errorMessage = nil
         do {
             let refreshedLibCharacter: CampaignCreatorLib.Character = try await apiService.fetchCharacter(id: character.id)
-            if let refreshedCharacter = Character(from: refreshedLibCharacter) {
-                self.character = refreshedCharacter
-            } else {
-                self.errorMessage = "Failed to decode character."
-            }
+            let refreshedCharacter = Character(from: refreshedLibCharacter)
+            self.character = refreshedCharacter
         } catch {
             self.errorMessage = error.localizedDescription
         }
