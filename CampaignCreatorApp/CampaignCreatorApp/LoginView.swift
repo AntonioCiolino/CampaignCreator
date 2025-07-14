@@ -139,8 +139,8 @@ struct LoginView: View {
                 setupVideoPlayer()
                 loadSavedCredentials()
             }
-            .onChange(of: viewModel.isAuthenticated) { isAuthenticated in
-                if isAuthenticated {
+            .onChange(of: viewModel.isAuthenticated) {
+                if viewModel.isAuthenticated {
                     handleLoginSuccess()
                 }
             }

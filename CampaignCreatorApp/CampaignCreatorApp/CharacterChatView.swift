@@ -1,5 +1,6 @@
 import SwiftUI
 import Kingfisher
+import CampaignCreatorLib
 
 struct ChatMessage: Identifiable, Equatable {
     let id: String
@@ -65,7 +66,7 @@ struct CharacterChatView: View {
                     .padding(.horizontal)
                     .padding(.top, 8)
                 }
-                .onChange(of: viewModel.chatMessages) { _ in
+                .onChange(of: viewModel.chatMessages) {
                     if let lastMessage = viewModel.chatMessages.last {
                         withAnimation {
                             scrollViewProxy.scrollTo(lastMessage.id, anchor: .bottom)
@@ -171,23 +172,13 @@ struct MessageBubble: View {
 }
 
 
-struct CharacterChatView_Previews: PreviewProvider {
-    static var previews: some View {
-        let sampleCharacter = Character(
-            id: 1,
-            owner_id: 1,
-            name: "Aella Chat Preview",
-            description: "A nimble scout.",
-            appearance_description: "Slender build.",
-            image_urls: [],
-            video_clip_urls: [],
-            notes_for_llm: "Loves nature.",
-            stats: nil,
-            export_format_preference: nil
-        )
-
-        return NavigationView {
-            CharacterChatView(character: sampleCharacter)
-        }
-    }
-}
+//struct CharacterChatView_Previews: PreviewProvider {
+//    static var previews: some View {
+//        let libCharacter = CampaignCreatorLib.Character(id: 1, name: "Aella Chat Preview")
+//        let sampleCharacter = Character(from: libCharacter)
+//
+//        return NavigationView {
+//            CharacterChatView(character: sampleCharacter)
+//        }
+//    }
+//}

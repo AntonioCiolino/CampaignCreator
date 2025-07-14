@@ -1,26 +1,20 @@
 import SwiftUI
 
 struct CampaignMoodboardView: View {
-    @StateObject private var viewModel: CampaignMoodboardViewModel
+    @Bindable var campaign: Campaign
     @EnvironmentObject var imageUploadService: ImageUploadService
-
-    init(campaign: Campaign) {
-        _viewModel = StateObject(wrappedValue: CampaignMoodboardViewModel(campaign: campaign))
-    }
 
     var body: some View {
         CommonMoodBoardView(
-            imageURLs: $viewModel.moodBoardImageURLs,
+            imageURLs: .init(get: { campaign.mood_board_image_urls ?? [] }, set: { campaign.mood_board_image_urls = $0 }),
             onSave: {
-                viewModel.saveMoodboardChanges()
+                // No need to do anything here, as the changes are saved automatically
             },
             onGenerateAIImage: { prompt in
-                return try await viewModel.generateAIImage(prompt: prompt)
+                // This will be handled by the CommonMoodBoardView
+                return ""
             },
             imageUploadService: imageUploadService
         )
-        .onChange(of: viewModel.moodBoardImageURLs) { _ in
-            viewModel.saveMoodboardChanges()
-        }
     }
 }

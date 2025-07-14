@@ -51,8 +51,8 @@ class CommonMoodBoardViewModel: ObservableObject {
             case .failure(let error):
                 if case let .serverError(_, message) = error, let messageData = message?.data(using: .utf8) {
                     do {
-                        let errorDetail = try JSONDecoder().decode(ErrorDetail.self, from: messageData)
-                        alertItem = AlertMessageItem(message: "Failed to upload image: \\(errorDetail.detail)")
+                        _ = try JSONDecoder().decode(ErrorDetail.self, from: messageData)
+                        alertItem = AlertMessageItem(message: "Failed to upload image: \\(error.localizedDescription)")
                     } catch {
                         alertItem = AlertMessageItem(message: "Failed to upload image: \\(error.localizedDescription)")
                     }
