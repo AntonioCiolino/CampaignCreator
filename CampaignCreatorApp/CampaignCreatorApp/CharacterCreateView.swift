@@ -106,16 +106,14 @@ struct CharacterCreateView: View {
             appearance_description: appearance_description,
             image_urls: image_urls,
             notes_for_llm: notes_for_llm,
+            strength: strength,
+            dexterity: dexterity,
+            constitution: constitution,
+            intelligence: intelligence,
+            wisdom: wisdom,
+            charisma: charisma,
             export_format_preference: export_format_preference,
-            owner_id: ownerId,
-            stats: CharacterStats(
-                strength: strength,
-                dexterity: dexterity,
-                constitution: constitution,
-                intelligence: intelligence,
-                wisdom: wisdom,
-                charisma: charisma
-            )
+            owner_id: ownerId
         )
         modelContext.insert(newCharacter)
 

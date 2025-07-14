@@ -78,8 +78,12 @@ final class CharacterModel: Identifiable {
     var image_urls: [String]?
     var video_clip_urls: [String]?
     var notes_for_llm: String?
-    @Attribute(.transformable(by: "CharacterStatsTransformer"))
-    var stats: CharacterStats
+    var strength: Int? = 10
+    var dexterity: Int? = 10
+    var constitution: Int? = 10
+    var intelligence: Int? = 10
+    var wisdom: Int? = 10
+    var charisma: Int? = 10
     var export_format_preference: String?
     var owner_id: Int
     var campaign_ids: [Int]?
@@ -91,7 +95,12 @@ final class CharacterModel: Identifiable {
         image_urls: [String]? = nil,
         video_clip_urls: [String]? = nil,
         notes_for_llm: String? = nil,
-        stats: CharacterStats = CharacterStats(),
+        strength: Int? = 10,
+        dexterity: Int? = 10,
+        constitution: Int? = 10,
+        intelligence: Int? = 10,
+        wisdom: Int? = 10,
+        charisma: Int? = 10,
         export_format_preference: String? = nil,
         owner_id: Int,
         campaign_ids: [Int]? = nil
@@ -102,7 +111,12 @@ final class CharacterModel: Identifiable {
         self.image_urls = image_urls
         self.video_clip_urls = video_clip_urls
         self.notes_for_llm = notes_for_llm
-        self.stats = stats
+        self.strength = strength
+        self.dexterity = dexterity
+        self.constitution = constitution
+        self.intelligence = intelligence
+        self.wisdom = wisdom
+        self.charisma = charisma
         self.export_format_preference = export_format_preference
         self.owner_id = owner_id
         self.campaign_ids = campaign_ids
@@ -116,58 +130,4 @@ struct CampaignSection: Codable, Identifiable {
     var content: String
     var order: Int
     var type: String?
-}
-
-struct CharacterStats: Codable {
-    var strength: Int? = 10
-    var dexterity: Int? = 10
-    var constitution: Int? = 10
-    var intelligence: Int? = 10
-    var wisdom: Int? = 10
-    var charisma: Int? = 10
-
-    func toCharacterStatsDTO() -> CampaignCreatorLib.CharacterStats {
-        return CampaignCreatorLib.CharacterStats(
-            strength: self.strength,
-            dexterity: self.dexterity,
-            constitution: self.constitution,
-            intelligence: self.intelligence,
-            wisdom: self.wisdom,
-            charisma: self.charisma
-        )
-    }
-}
-
-class CharacterStatsTransformer: ValueTransformer {
-    override class func transformedValueClass() -> AnyClass {
-        return NSData.self
-    }
-
-    override class func allowsReverseTransformation() -> Bool {
-        return true
-    }
-
-    override func transformedValue(_ value: Any?) -> Any? {
-        guard let stats = value as? CharacterStats else { return nil }
-
-        do {
-            let data = try JSONEncoder().encode(stats)
-            return data
-        } catch {
-            print("Failed to encode CharacterStats: \(error)")
-            return nil
-        }
-    }
-
-    override func reverseTransformedValue(_ value: Any?) -> Any? {
-        guard let data = value as? Data else { return nil }
-
-        do {
-            let stats = try JSONDecoder().decode(CharacterStats.self, from: data)
-            return stats
-        } catch {
-            print("Failed to decode CharacterStats: \(error)")
-            return nil
-        }
-    }
 }

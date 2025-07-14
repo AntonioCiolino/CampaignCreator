@@ -11,6 +11,7 @@ class PersistenceController {
         let schema = Schema([
             CampaignModel.self,
             CharacterModel.self,
+            CharacterStats.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
 
@@ -19,7 +20,5 @@ class PersistenceController {
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
-
-        ValueTransformer.setValueTransformer(CharacterStatsTransformer(), forName: NSValueTransformerName("CharacterStatsTransformer"))
     }
 }
