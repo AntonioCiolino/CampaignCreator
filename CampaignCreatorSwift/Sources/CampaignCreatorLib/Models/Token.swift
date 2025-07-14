@@ -1,12 +1,12 @@
 import Foundation
 
 public struct Token: Codable, Sendable {
-    public let access_token: String
-    public let token_type: String
+    public let accessToken: String
+    public let tokenType: String
 
     public init(access_token: String, token_type: String) {
-        self.access_token = access_token
-        self.token_type = token_type
+        self.accessToken = access_token
+        self.tokenType = token_type
     }
 }
 
