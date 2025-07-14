@@ -12,7 +12,7 @@ class CampaignThemeManager: ObservableObject {
     @Published var backgroundImageUrl: URL? = nil
     @Published var backgroundImageOpacity: Double = 1.0
 
-    func updateTheme(from campaign: Campaign) {
+    func updateTheme(from campaign: CampaignModel) {
         primaryColor = campaign.theme_primary_color.flatMap { Color(hex: $0) } ?? .accentColor
         secondaryColor = campaign.theme_secondary_color.flatMap { Color(hex: $0) } ?? .secondary
         backgroundColor = campaign.theme_background_color.flatMap { Color(hex: $0) } ?? Color(.systemBackground)
