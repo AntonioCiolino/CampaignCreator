@@ -5,6 +5,8 @@ import SwiftData
 struct CharacterDetailView: View {
     let character: CharacterModel
 
+    @State private var showingEditSheet = false
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -41,9 +43,12 @@ struct CharacterDetailView: View {
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
                 Button("Edit") {
-                    // ...
+                    showingEditSheet = true
                 }
             }
+        }
+        .sheet(isPresented: $showingEditSheet) {
+            CharacterEditView(character: character, isPresented: $showingEditSheet)
         }
     }
 }
