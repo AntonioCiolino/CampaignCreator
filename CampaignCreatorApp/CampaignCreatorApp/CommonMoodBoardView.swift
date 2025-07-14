@@ -10,11 +10,17 @@ struct CommonMoodBoardView: View {
     @Environment(\.editMode) private var editMode
     @State private var showingFullImageView = false
     @State private var selectedImageURL: URL?
+    @State private var showingSelectBadgeSheet = false
 
     private let gridItemLayout = [GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2)]
 
-    init(imageURLs: Binding<[String]>, onSave: @escaping () -> Void, onGenerateAIImage: ((String) async throws -> String)?, imageUploadService: ImageUploadService) {
-        _viewModel = StateObject(wrappedValue: CommonMoodBoardViewModel(imageURLs: imageURLs, onSave: onSave, onGenerateAIImage: onGenerateAIImage, imageUploadService: imageUploadService))
+    let isForBadgeSelection: Bool
+    let thematicImageURL: String?
+
+    init(imageURLs: Binding<[String]>, onSave: @escaping () -> Void, onGenerateAIImage: ((String) async throws -> String)?, imageUploadService: ImageUploadService, onSetBadge: ((String) -> Void)? = nil, isForBadgeSelection: Bool = false, thematicImageURL: String? = nil) {
+        _viewModel = StateObject(wrappedValue: CommonMoodBoardViewModel(imageURLs: imageURLs, onSave: onSave, onGenerateAIImage: onGenerateAIImage, imageUploadService: imageUploadService, onSetBadge: onSetBadge))
+        self.isForBadgeSelection = isForBadgeSelection
+        self.thematicImageURL = thematicImageURL
     }
 
     var body: some View {
@@ -50,17 +56,24 @@ struct CommonMoodBoardView: View {
         .sheet(isPresented: $showingFullImageView) {
             FullCharacterImageViewWrapper(initialDisplayURL: selectedImageURL)
         }
-        .navigationTitle("Mood Board")
-        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 EditButton()
             }
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    viewModel.showingAddImageOptions = true
-                } label: {
-                    Image(systemName: "plus")
+                HStack {
+                    if isForBadgeSelection {
+                        Button {
+                            showingSelectBadgeSheet = true
+                        } label: {
+                            Image(systemName: "shield.lefthalf.filled")
+                        }
+                    }
+                    Button {
+                        viewModel.showingAddImageOptions = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
                 }
             }
         }
@@ -82,6 +95,17 @@ struct CommonMoodBoardView: View {
         }
         .sheet(isPresented: $viewModel.showingGenerateMoodboardImageSheet) {
             generateMoodboardImageSheetView
+        }
+        .sheet(isPresented: $showingSelectBadgeSheet) {
+            SelectBadgeFromMoodboardView(
+                moodBoardImageURLs: viewModel.imageURLs,
+                thematicImageURL: nil, // This needs to be passed in
+                onImageSelected: { selectedURL in
+                    viewModel.setBadge(urlString: selectedURL)
+                    showingSelectBadgeSheet = false
+                },
+                onGenerateAIImage: viewModel.onGenerateAIImage
+            )
         }
         .alert(item: $viewModel.alertItem) { item in
             Alert(title: Text("Mood Board"), message: Text(item.message), dismissButton: .default(Text("OK")))

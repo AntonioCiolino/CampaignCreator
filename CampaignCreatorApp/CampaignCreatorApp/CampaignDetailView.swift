@@ -6,23 +6,29 @@ struct CampaignDetailView: View {
     let campaign: CampaignModel
 
     @State private var showingEditSheet = false
-    @State private var isEditingConcept = false
-    @State private var editableConcept = ""
     @State private var selectedLLMId = ""
     @State private var temperature = 0.7
     @StateObject private var themeManager = CampaignThemeManager()
+    @StateObject private var viewModel = CampaignDetailViewModel()
     @State private var showingSetBadgeSheet = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+            }
+        }
+        .refreshable {
+            await viewModel.refreshCampaign(campaign: campaign)
+        }
                 CampaignHeaderView(campaign: campaign, editableTitle: .constant(campaign.title), isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor, onSetBadgeAction: {
                     showingSetBadgeSheet = true
                 })
 
-                CampaignConceptEditorView(isEditingConcept: $isEditingConcept, editableConcept: $editableConcept, isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onSaveChanges: {
-                    campaign.concept = editableConcept
-                })
+                SectionBox(title: "Campaign Concept") {
+                    TextEditor(text: .init(get: { campaign.concept ?? "" }, set: { campaign.concept = $0 }))
+                        .frame(height: 150)
+                        .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.gray.opacity(0.5), lineWidth: 1))
+                }
 
                 SectionBox(title: "Table of Contents") {
                     // TOC items
@@ -36,8 +42,9 @@ struct CampaignDetailView: View {
                     // Character linking
                 }
 
-                CampaignLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: [], currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onLLMSettingsChange: {
-                    // on LLM settings change
+                CampaignLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: viewModel.availableLLMs, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onLLMSettingsChange: {
+                    campaign.llm_id = selectedLLMId
+                    campaign.temperature = temperature
                 })
 
                 CampaignMoodboardView(campaign: campaign)
@@ -68,7 +75,9 @@ struct CampaignDetailView: View {
         }
         .onAppear {
             themeManager.updateTheme(from: campaign)
-            editableConcept = campaign.concept ?? ""
+            viewModel.fetchAvailableLLMs()
+            selectedLLMId = campaign.llm_id ?? ""
+            temperature = campaign.temperature ?? 0.7
         }
     }
 }

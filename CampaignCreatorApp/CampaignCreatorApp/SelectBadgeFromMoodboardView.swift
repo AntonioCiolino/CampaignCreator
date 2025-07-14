@@ -5,7 +5,9 @@ struct SelectBadgeFromMoodboardView: View {
     let moodBoardImageURLs: [String]
     let thematicImageURL: String? // Optionally include the main thematic image as a choice
     var onImageSelected: (String) -> Void // Callback with the selected URL
+    let onGenerateAIImage: ((String) async throws -> String)?
     @Environment(\.dismiss) var dismiss
+    @State private var showingGenerateImageSheet = false
 
     private var allSelectableImageURLs: [String] {
         var urls = moodBoardImageURLs
@@ -63,6 +65,19 @@ struct SelectBadgeFromMoodboardView: View {
                         dismiss()
                     }
                 }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingGenerateImageSheet = true
+                    } label: {
+                        Image(systemName: "sparkles")
+                    }
+                }
+            }
+            .sheet(isPresented: $showingGenerateImageSheet) {
+                GenerateImageView(onGenerateAIImage: onGenerateAIImage) { newImageURL in
+                    onImageSelected(newImageURL)
+                    dismiss()
+                }
             }
         }
     }
@@ -80,6 +95,10 @@ struct SelectBadgeFromMoodboardView_Previews: PreviewProvider {
             thematicImageURL: "https://picsum.photos/seed/thematic/400/300",
             onImageSelected: { selectedURL in
                 print("Selected URL: \(selectedURL)")
+            },
+            onGenerateAIImage: { prompt in
+                print("Generating image with prompt: \(prompt)")
+                return "https://picsum.photos/seed/\(UUID().uuidString)/400/300"
             }
         )
     }

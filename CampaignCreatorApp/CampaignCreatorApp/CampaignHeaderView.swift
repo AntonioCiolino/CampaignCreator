@@ -60,14 +60,6 @@ struct CampaignHeaderView: View {
                     .frame(width: 50, height: 50)
                     .padding(.top, 5)
             }
-            Button(action: {
-                onSetBadgeAction() // This action is passed from CampaignDetailView
-            }) {
-                Text("Set Campaign Badge")
-            }
-            .buttonStyle(.bordered)
-            .font(.caption)
-            .padding(.top, 2)
 
         }
         .padding().background(Color(.systemGroupedBackground)).cornerRadius(12)
