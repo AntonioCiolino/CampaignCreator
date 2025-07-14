@@ -270,7 +270,6 @@ struct CharacterCreate: Codable {
             appearanceDescription: self.appearance_description,
             imageURLs: self.image_urls,
             notesForLLM: self.notes_for_llm,
-            stats: self.stats?.toCharacterStatsDTO(),
             exportFormatPreference: self.export_format_preference
         )
     }
@@ -283,7 +282,6 @@ struct CharacterUpdate: Codable {
     var image_urls: [String]?
     var video_clip_urls: [String]?
     var notes_for_llm: String?
-    var stats: CharacterStats?
     var export_format_preference: String?
 }
 

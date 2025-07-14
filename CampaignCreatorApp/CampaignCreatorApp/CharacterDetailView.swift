@@ -7,10 +7,15 @@ struct CharacterDetailView: View {
 
     @State private var showingEditSheet = false
 
+    @State private var showingEditSheet = false
+    @State private var showingImageManager = false
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                CharacterHeaderView(character: character, editableName: .constant(character.name), isSaving: false, isGeneratingText: false, currentPrimaryColor: .blue, onSetBadgeAction: {})
+                CharacterHeaderView(character: character, editableName: .constant(character.name), isSaving: false, isGeneratingText: false, currentPrimaryColor: .blue, onSetBadgeAction: {
+                    showingImageManager = true
+                })
 
                 if let description = character.character_description, !description.isEmpty {
                     SectionBox(title: "Description") {
@@ -33,7 +38,13 @@ struct CharacterDetailView: View {
                     StatRow(label: "Charisma", value: character.charisma)
                 }
 
-                // Add more sections as needed
+                if let notes = character.notes_for_llm, !notes.isEmpty {
+                    SectionBox(title: "Notes for LLM") {
+                        Text(notes)
+                    }
+                }
+
+                CharacterMoodboardView(character: character)
 
             }
             .padding()
@@ -49,6 +60,9 @@ struct CharacterDetailView: View {
         }
         .sheet(isPresented: $showingEditSheet) {
             CharacterEditView(character: character, isPresented: $showingEditSheet)
+        }
+        .sheet(isPresented: $showingImageManager) {
+            CharacterImageManagerView(imageURLs: .init(get: { character.image_urls ?? [] }, set: { character.image_urls = $0 }), characterID: 0)
         }
     }
 }

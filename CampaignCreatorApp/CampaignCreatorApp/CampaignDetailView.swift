@@ -7,18 +7,31 @@ struct CampaignDetailView: View {
 
     @State private var showingEditSheet = false
 
+    @State private var showingEditSheet = false
+    @State private var isEditingConcept = false
+    @State private var editableConcept = ""
+    @State private var selectedLLMId = ""
+    @State private var temperature = 0.7
+    @StateObject private var themeManager = CampaignThemeManager()
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                CampaignHeaderView(campaign: campaign, editableTitle: .constant(campaign.title), isSaving: false, isGeneratingText: false, currentPrimaryColor: .blue, onSetBadgeAction: {})
+                CampaignHeaderView(campaign: campaign, editableTitle: .constant(campaign.title), isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor, onSetBadgeAction: {})
 
-                if let concept = campaign.concept, !concept.isEmpty {
-                    SectionBox(title: "Concept") {
-                        Text(concept)
-                    }
+                CampaignConceptEditorView(isEditingConcept: $isEditingConcept, editableConcept: $editableConcept, isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onSaveChanges: {
+                    // on save changes
+                })
+
+                SectionBox(title: "Table of Contents") {
+                    // TOC items
                 }
 
-                // Add more sections as needed
+                CampaignLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: [], currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onLLMSettingsChange: {
+                    // on LLM settings change
+                })
+
+                CampaignMoodboardView(campaign: campaign)
 
             }
             .padding()
@@ -34,6 +47,10 @@ struct CampaignDetailView: View {
         }
         .sheet(isPresented: $showingEditSheet) {
             CampaignEditView(campaign: campaign, isPresented: $showingEditSheet)
+        }
+        .onAppear {
+            themeManager.updateTheme(from: campaign)
+            editableConcept = campaign.concept ?? ""
         }
     }
 }
