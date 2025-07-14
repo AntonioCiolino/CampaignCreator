@@ -4,11 +4,9 @@ import SwiftData
 
 struct CampaignDetailView: View {
     @StateObject private var viewModel: CampaignDetailViewModel
-    @Environment(\.modelContext) private var modelContext
-
-    @State private var showingCreateSheet = false
 
     init(campaign: Campaign) {
+        let modelContext = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
         _viewModel = StateObject(wrappedValue: CampaignDetailViewModel(campaign: campaign, modelContext: modelContext))
     }
 
@@ -68,18 +66,18 @@ struct CampaignDetailView: View {
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
                 Button("Edit") {
-                    showingCreateSheet = true
+                    // showingCreateSheet = true
                 }
             }
         }
-        .sheet(isPresented: $showingCreateSheet, onDismiss: {
+        .sheet(isPresented: .constant(false), onDismiss: {
 //            Task {
 //                await viewModel.refreshCampaign()
 //            }
         }) {
-            CampaignEditView(campaign: viewModel.campaign, isPresented: $showingCreateSheet, onCampaignUpdated: { updatedCampaign in
-                viewModel.campaign = updatedCampaign
-            })
+            // CampaignEditView(campaign: viewModel.campaign, isPresented: .constant(false), onCampaignUpdated: { updatedCampaign in
+            //     viewModel.campaign = updatedCampaign
+            // })
         }
     }
 }
