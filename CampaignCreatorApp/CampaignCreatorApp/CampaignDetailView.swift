@@ -75,7 +75,13 @@ struct CampaignDetailView: View {
         }
         .onAppear {
             themeManager.updateTheme(from: campaign)
-            viewModel.fetchAvailableLLMs()
+            Task {
+                do {
+                    viewModel.availableLLMs = try await viewModel.fetchAvailableLLMs()
+                } catch {
+                    print("Error fetching available LLMs: \(error.localizedDescription)")
+                }
+            }
             selectedLLMId = campaign.llm_id ?? ""
             temperature = campaign.temperature ?? 0.7
         }

@@ -7,13 +7,9 @@ class CampaignDetailViewModel: ObservableObject {
     @Published var availableLLMs: [AvailableLLM] = []
     private var apiService = CampaignCreatorLib.APIService()
 
-    func fetchAvailableLLMs() async {
-        do {
-            let llms = try await apiService.getAvailableLLMs()
-            self.availableLLMs = llms.map { AvailableLLM(id: $0.id, name: $0.name) }
-        } catch {
-            print("Error fetching available LLMs: \(error.localizedDescription)")
-        }
+    nonisolated func fetchAvailableLLMs() async throws -> [AvailableLLM] {
+        let llms = try await apiService.fetchAvailableLLMs()
+        return llms.map { AvailableLLM(id: $0.id, name: $0.name) }
     }
 
     func refreshCampaign(campaign: CampaignModel) async {
