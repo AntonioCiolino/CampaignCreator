@@ -24,7 +24,7 @@ class ContentViewModel: ObservableObject {
             let bodyData = requestBody.data(using: .utf8)
             let headers = ["Content-Type": "application/x-www-form-urlencoded"]
             let response: CampaignCreatorLib.Token = try await apiService.performRequest(endpoint: "/auth/token", method: "POST", body: bodyData, headers: headers, requiresAuth: false)
-            tokenManager.setToken(response.access_token)
+            tokenManager.setToken(response.accessToken)
             self.isAuthenticated = true
         } catch {
             self.authError = error.localizedDescription
