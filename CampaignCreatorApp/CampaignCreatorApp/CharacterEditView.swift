@@ -172,15 +172,15 @@ struct StatEditableRow: View {
     }
 }
 
-struct CharacterEditView_Previews: PreviewProvider {
-    static var previews: some View {
-        @State var isPresented: Bool = true
-        let libCharacter = CampaignCreatorLib.Character(id: 1, name: "Aella Swiftarrow (Edit)")
-        let sampleCharacter = Character(from: libCharacter)
-
-        return CharacterEditView(
-            character: sampleCharacter,
-            isPresented: $isPresented
-        )
-    }
-}
+//struct CharacterEditView_Previews: PreviewProvider {
+//    static var previews: some View {
+//        @State var isPresented: Bool = true
+//        let libCharacter = CampaignCreatorLib.Character(id: 1, name: "Aella Swiftarrow (Edit)")
+//        let sampleCharacter = Character(from: libCharacter)
+//
+//        return CharacterEditView(
+//            character: sampleCharacter,
+//            isPresented: $isPresented
+//        )
+//    }
+//}

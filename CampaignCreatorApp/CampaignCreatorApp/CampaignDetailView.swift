@@ -82,13 +82,13 @@ struct CampaignDetailView: View {
     }
 }
 
-struct CampaignDetailView_Previews: PreviewProvider {
-    static var previews: some View {
-        let libCampaign = CampaignCreatorLib.Campaign(id: 1)
-        let sampleCampaign = Campaign(from: libCampaign)
-
-        return NavigationView {
-            CampaignDetailView(campaign: sampleCampaign)
-        }
-    }
-}
+//struct CampaignDetailView_Previews: PreviewProvider {
+//    static var previews: some View {
+//        let libCampaign = CampaignCreatorLib.Campaign(id: 1)
+//        let sampleCampaign = Campaign(from: libCampaign)
+//
+//        return NavigationView {
+//            CampaignDetailView(campaign: sampleCampaign)
+//        }
+//    }
+//}

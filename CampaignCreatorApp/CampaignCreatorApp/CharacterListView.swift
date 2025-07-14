@@ -1,5 +1,6 @@
 import SwiftUI
 import Kingfisher
+import CampaignCreatorLib
 
 struct CharacterListView: View {
     @StateObject private var viewModel = CharacterListViewModel()

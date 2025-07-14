@@ -172,13 +172,13 @@ struct MessageBubble: View {
 }
 
 
-struct CharacterChatView_Previews: PreviewProvider {
-    static var previews: some View {
-        let libCharacter = CampaignCreatorLib.Character(id: 1, name: "Aella Chat Preview")
-        let sampleCharacter = Character(from: libCharacter)
-
-        return NavigationView {
-            CharacterChatView(character: sampleCharacter)
-        }
-    }
-}
+//struct CharacterChatView_Previews: PreviewProvider {
+//    static var previews: some View {
+//        let libCharacter = CampaignCreatorLib.Character(id: 1, name: "Aella Chat Preview")
+//        let sampleCharacter = Character(from: libCharacter)
+//
+//        return NavigationView {
+//            CharacterChatView(character: sampleCharacter)
+//        }
+//    }
+//}

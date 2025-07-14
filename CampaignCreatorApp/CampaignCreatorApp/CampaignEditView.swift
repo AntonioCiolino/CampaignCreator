@@ -101,14 +101,14 @@ struct CampaignEditView: View {
     }
 }
 
-struct CampaignEditView_Previews: PreviewProvider {
-    static var previews: some View {
-        let libCampaign = CampaignCreatorLib.Campaign(id: 1)
-        let previewCampaign = Campaign(from: libCampaign)
-
-        return CampaignEditView(
-            campaign: previewCampaign,
-            isPresented: .constant(true)
-        )
-    }
-}
+//struct CampaignEditView_Previews: PreviewProvider {
+//    static var previews: some View {
+//        let libCampaign = CampaignCreatorLib.Campaign(id: 1)
+//        let previewCampaign = Campaign(from: libCampaign)
+//
+//        return CampaignEditView(
+//            campaign: previewCampaign,
+//            isPresented: .constant(true)
+//        )
+//    }
+//}

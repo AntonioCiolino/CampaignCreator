@@ -137,14 +137,14 @@ struct StatRow: View {
     }
 }
 
-struct CharacterDetailView_Previews: PreviewProvider {
-    static var previews: some View {
-        let libCharacter = CampaignCreatorLib.Character(id: 1, name: "Aella Swiftarrow (Detail)")
-        let sampleCharacter = Character(from: libCharacter)
-
-        return NavigationView {
-            CharacterDetailView(character: sampleCharacter)
-                .environmentObject(ImageUploadService()) // Add a mock service if needed
-        }
-    }
-}
+//struct CharacterDetailView_Previews: PreviewProvider {
+//    static var previews: some View {
+//        let libCharacter = CampaignCreatorLib.Character(id: 1, name: "Aella Swiftarrow (Detail)")
+//        let sampleCharacter = Character(from: libCharacter)
+//
+//        return NavigationView {
+//            CharacterDetailView(character: sampleCharacter)
+//                .environmentObject(ImageUploadService()) // Add a mock service if needed
+//        }
+//    }
+//}
