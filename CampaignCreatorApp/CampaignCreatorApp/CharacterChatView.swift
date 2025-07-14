@@ -66,7 +66,7 @@ struct CharacterChatView: View {
                     .padding(.horizontal)
                     .padding(.top, 8)
                 }
-                .onChange(of: viewModel.chatMessages) { _ in
+                .onChange(of: viewModel.chatMessages) {
                     if let lastMessage = viewModel.chatMessages.last {
                         withAnimation {
                             scrollViewProxy.scrollTo(lastMessage.id, anchor: .bottom)
