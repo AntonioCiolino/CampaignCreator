@@ -84,17 +84,13 @@ struct CharacterCreateView: View {
 
     private func saveCharacter() {
         let newCharacter = Character(
-            id: Int.random(in: 1...1000),
             name: name,
             character_description: character_description,
             appearance_description: appearance_description,
             image_urls: image_urls,
-            video_clip_urls: [],
             notes_for_llm: notes_for_llm,
-            stats: nil,
             export_format_preference: export_format_preference,
-            owner_id: 0,
-            campaign_ids: []
+            owner_id: 0
         )
         modelContext.insert(newCharacter)
     }

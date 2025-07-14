@@ -59,7 +59,7 @@ struct UserAPIKeyUpdate: Codable {
 
 @Model
 final class Campaign: Identifiable {
-    var id: Int
+    var id: UUID = UUID()
     var title: String
     var concept: String?
     var initial_user_prompt: String?
@@ -79,26 +79,44 @@ final class Campaign: Identifiable {
     var theme_background_image_opacity: Float?
     var mood_board_image_urls: [String]?
 
-    init(from libCampaign: CampaignCreatorLib.Campaign) {
-        self.id = libCampaign.id
-        self.title = libCampaign.title
-        self.concept = libCampaign.concept
-        self.initial_user_prompt = libCampaign.initialUserPrompt
-        self.sections = libCampaign.sections.map { CampaignSection(from: $0) }
-        self.owner_id = 0 // This will need to be set from user context
-        self.badge_image_url = libCampaign.badgeImageURL
-        self.thematic_image_url = libCampaign.thematicImageURL
-        self.thematic_image_prompt = libCampaign.thematicImagePrompt
-        self.selected_llm_id = libCampaign.selectedLLMId
-        self.temperature = Float(libCampaign.temperature ?? 0.7)
-        self.theme_primary_color = libCampaign.themePrimaryColor
-        self.theme_secondary_color = libCampaign.themeSecondaryColor
-        self.theme_background_color = libCampaign.themeBackgroundColor
-        self.theme_text_color = libCampaign.themeTextColor
-        self.theme_font_family = libCampaign.themeFontFamily
-        self.theme_background_image_url = libCampaign.themeBackgroundImageURL
-        self.theme_background_image_opacity = Float(libCampaign.themeBackgroundImageOpacity ?? 1.0)
-        self.mood_board_image_urls = libCampaign.moodBoardImageURLs
+    init(
+        title: String,
+        concept: String? = nil,
+        initial_user_prompt: String? = nil,
+        sections: [CampaignSection]? = nil,
+        owner_id: Int,
+        badge_image_url: String? = nil,
+        thematic_image_url: String? = nil,
+        thematic_image_prompt: String? = nil,
+        selected_llm_id: String? = nil,
+        temperature: Float? = nil,
+        theme_primary_color: String? = nil,
+        theme_secondary_color: String? = nil,
+        theme_background_color: String? = nil,
+        theme_text_color: String? = nil,
+        theme_font_family: String? = nil,
+        theme_background_image_url: String? = nil,
+        theme_background_image_opacity: Float? = nil,
+        mood_board_image_urls: [String]? = nil
+    ) {
+        self.title = title
+        self.concept = concept
+        self.initial_user_prompt = initial_user_prompt
+        self.sections = sections
+        self.owner_id = owner_id
+        self.badge_image_url = badge_image_url
+        self.thematic_image_url = thematic_image_url
+        self.thematic_image_prompt = thematic_image_prompt
+        self.selected_llm_id = selected_llm_id
+        self.temperature = temperature
+        self.theme_primary_color = theme_primary_color
+        self.theme_secondary_color = theme_secondary_color
+        self.theme_background_color = theme_background_color
+        self.theme_text_color = theme_text_color
+        self.theme_font_family = theme_font_family
+        self.theme_background_image_url = theme_background_image_url
+        self.theme_background_image_opacity = theme_background_image_opacity
+        self.mood_board_image_urls = mood_board_image_urls
     }
 }
 
@@ -374,7 +392,7 @@ struct TableNameListResponse: Codable {
 
 @Model
 final class Character: Identifiable {
-    var id: Int
+    var id: UUID = UUID()
     var name: String
     var character_description: String?
     var appearance_description: String?
@@ -386,22 +404,7 @@ final class Character: Identifiable {
     var owner_id: Int
     var campaign_ids: [Int]?
 
-    init(from libCharacter: CampaignCreatorLib.Character) {
-        self.id = libCharacter.id
-        self.name = libCharacter.name
-        self.character_description = libCharacter.description
-        self.appearance_description = libCharacter.appearanceDescription
-        self.image_urls = libCharacter.imageURLs
-        self.video_clip_urls = libCharacter.video_clip_urls
-        self.notes_for_llm = libCharacter.notesForLLM
-        self.stats = CharacterStats(from: libCharacter.stats)
-        self.export_format_preference = libCharacter.exportFormatPreference
-        self.owner_id = libCharacter.ownerID ?? 0
-        self.campaign_ids = libCharacter.campaignIDs
-    }
-
-    convenience init(
-        id: Int,
+    init(
         name: String,
         character_description: String? = nil,
         appearance_description: String? = nil,
@@ -413,31 +416,16 @@ final class Character: Identifiable {
         owner_id: Int,
         campaign_ids: [Int]? = nil
     ) {
-        self.init(from: CampaignCreatorLib.Character(id: id, name: name, description: character_description, appearanceDescription: appearance_description, imageURLs: image_urls, video_clip_urls: video_clip_urls, notesForLLM: notes_for_llm, stats: stats?.toLib(), exportFormatPreference: export_format_preference, ownerID: owner_id, campaignIDs: campaign_ids))
-    }
-
-    convenience init(
-        id: Int,
-        name: String,
-        owner_id: Int
-    ) {
-        self.init(from: CampaignCreatorLib.Character(id: id, name: name, description: nil, appearanceDescription: nil, imageURLs: nil, video_clip_urls: nil, notesForLLM: nil, stats: nil, exportFormatPreference: nil, ownerID: owner_id, campaignIDs: nil))
-    }
-
-    convenience init(
-        id: Int,
-        name: String,
-        character_description: String?,
-        appearance_description: String?,
-        image_urls: [String]?,
-        video_clip_urls: [String]?,
-        notes_for_llm: String?,
-        stats: CharacterStats?,
-        export_format_preference: String?,
-        owner_id: Int,
-        campaign_ids: [Int]?
-    ) {
-        self.init(id: id, name: name, character_description: character_description, appearance_description: appearance_description, image_urls: image_urls, video_clip_urls: video_clip_urls, notes_for_llm: notes_for_llm, stats: stats, export_format_preference: export_format_preference, owner_id: owner_id, campaign_ids: campaign_ids)
+        self.name = name
+        self.character_description = character_description
+        self.appearance_description = appearance_description
+        self.image_urls = image_urls
+        self.video_clip_urls = video_clip_urls
+        self.notes_for_llm = notes_for_llm
+        self.stats = stats
+        self.export_format_preference = export_format_preference
+        self.owner_id = owner_id
+        self.campaign_ids = campaign_ids
     }
 }
 
@@ -484,17 +472,6 @@ struct CharacterStats: Codable {
     var charisma: Int?
 
     func toCharacterStatsDTO() -> CampaignCreatorLib.CharacterStats {
-        return CampaignCreatorLib.CharacterStats(
-            strength: self.strength,
-            dexterity: self.dexterity,
-            constitution: self.constitution,
-            intelligence: self.intelligence,
-            wisdom: self.wisdom,
-            charisma: self.charisma
-        )
-    }
-
-    func toLib() -> CampaignCreatorLib.CharacterStats {
         return CampaignCreatorLib.CharacterStats(
             strength: self.strength,
             dexterity: self.dexterity,
