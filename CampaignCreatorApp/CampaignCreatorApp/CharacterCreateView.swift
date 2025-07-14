@@ -84,6 +84,7 @@ struct CharacterCreateView: View {
     }
 
     private func saveCharacter() {
+        print("Attempting to save character with name: \(name) and owner_id: \(ownerId)")
         let newCharacter = Character(
             name: name,
             character_description: character_description,
@@ -94,5 +95,12 @@ struct CharacterCreateView: View {
             owner_id: ownerId
         )
         modelContext.insert(newCharacter)
+
+        do {
+            try modelContext.save()
+            print("Successfully saved model context from saveCharacter.")
+        } catch {
+            print("Error saving model context from saveCharacter: \(error.localizedDescription)")
+        }
     }
 }

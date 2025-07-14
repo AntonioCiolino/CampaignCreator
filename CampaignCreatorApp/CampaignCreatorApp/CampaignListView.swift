@@ -69,11 +69,17 @@ struct CampaignListView: View {
     private func deleteCampaigns(offsets: IndexSet) {
         withAnimation {
             for index in offsets {
-                print("Deleting campaign at index \(index)...")
-                modelContext.delete(campaigns[index])
+                let campaignToDelete = campaigns[index]
+                print("Attempting to delete campaign: \(campaignToDelete.title)")
+                modelContext.delete(campaignToDelete)
             }
-            PersistenceController.shared.save()
-            print("Campaigns deleted and context saved.")
+
+            do {
+                try modelContext.save()
+                print("Successfully saved model context from deleteCampaigns.")
+            } catch {
+                print("Error saving model context from deleteCampaigns: \(error.localizedDescription)")
+            }
         }
     }
 }

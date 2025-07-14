@@ -36,10 +36,15 @@ struct CampaignCreateView: View {
     }
 
     private func saveCampaign() {
-        print("Saving campaign...")
+        print("Attempting to save campaign with title: \(title) and owner_id: \(ownerId)")
         let newCampaign = Campaign(title: title, concept: concept, owner_id: ownerId)
         modelContext.insert(newCampaign)
-        PersistenceController.shared.save()
-        print("Campaign saved successfully.")
+
+        do {
+            try modelContext.save()
+            print("Successfully saved model context from saveCampaign.")
+        } catch {
+            print("Error saving model context from saveCampaign: \(error.localizedDescription)")
+        }
     }
 }

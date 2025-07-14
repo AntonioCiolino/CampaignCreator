@@ -71,7 +71,16 @@ struct CharacterListView: View {
     private func deleteCharacters(offsets: IndexSet) {
         withAnimation {
             for index in offsets {
-                modelContext.delete(characters[index])
+                let characterToDelete = characters[index]
+                print("Attempting to delete character: \(characterToDelete.name)")
+                modelContext.delete(characterToDelete)
+            }
+
+            do {
+                try modelContext.save()
+                print("Successfully saved model context from deleteCharacters.")
+            } catch {
+                print("Error saving model context from deleteCharacters: \(error.localizedDescription)")
             }
         }
     }

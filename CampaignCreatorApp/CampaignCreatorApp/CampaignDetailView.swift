@@ -3,7 +3,8 @@ import Kingfisher
 import SwiftData
 
 struct CampaignDetailView: View {
-    let campaign: Campaign
+    @Bindable var campaign: Campaign
+    @State private var showingEditSheet = false
 
     var body: some View {
         ScrollView {
@@ -17,9 +18,12 @@ struct CampaignDetailView: View {
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
                 Button("Edit") {
-                    // ...
+                    showingEditSheet = true
                 }
             }
+        }
+        .sheet(isPresented: $showingEditSheet) {
+            CampaignEditView(campaign: campaign, isPresented: $showingEditSheet)
         }
     }
 }
