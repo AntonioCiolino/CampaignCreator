@@ -3,8 +3,9 @@ import Kingfisher
 import SwiftData
 
 struct CharacterListView: View {
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var contentViewModel: ContentViewModel
-    @State private var characters: [CampaignCreatorLib.Character] = []
+    @Query(sort: \Character.name) private var characters: [Character]
     @State private var showingCreateSheet = false
 
     var body: some View {
@@ -20,7 +21,7 @@ struct CharacterListView: View {
                         ForEach(characters) { character in
                             NavigationLink(destination: CharacterDetailView(character: character)) {
                                 HStack {
-                                    if let firstImageURL = character.imageURLs?.first, let url = URL(string: firstImageURL) {
+                                    if let firstImageURL = character.image_urls?.first, let url = URL(string: firstImageURL) {
                                         KFImage(url)
                                             .resizable()
                                             .aspectRatio(contentMode: .fill)
@@ -37,7 +38,7 @@ struct CharacterListView: View {
                                     VStack(alignment: .leading) {
                                         Text(character.name)
                                             .font(.headline)
-                                        Text(character.description ?? "No description")
+                                        Text(character.character_description ?? "No description")
                                             .font(.subheadline)
                                             .foregroundColor(.gray)
                                             .lineLimit(2) // Limit description lines in list
@@ -65,19 +66,6 @@ struct CharacterListView: View {
                 }
             }
         }
-        .onAppear {
-            fetchCharacters()
-        }
-    }
-
-    private func fetchCharacters() {
-        Task {
-            do {
-                characters = try await CampaignCreator.shared.fetchCharacters()
-            } catch {
-                print("Error fetching characters: \(error.localizedDescription)")
-            }
-        }
     }
 
     private func deleteCharacters(offsets: IndexSet) {
@@ -85,14 +73,7 @@ struct CharacterListView: View {
             for index in offsets {
                 let characterToDelete = characters[index]
                 print("Attempting to delete character: \(characterToDelete.name)")
-                Task {
-                    do {
-                        try await CampaignCreator.shared.deleteCharacter(characterToDelete)
-                        fetchCharacters()
-                    } catch {
-                        print("Error deleting character: \(error.localizedDescription)")
-                    }
-                }
+                modelContext.delete(characterToDelete)
             }
         }
     }

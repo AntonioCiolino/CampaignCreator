@@ -1,7 +1,8 @@
 import SwiftUI
-import CampaignCreatorLib
+import SwiftData
 
 struct CharacterCreateView: View {
+    @Environment(\.modelContext) private var modelContext
     @Binding var isPresented: Bool
     var ownerId: Int
 
