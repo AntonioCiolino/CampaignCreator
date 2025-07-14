@@ -75,6 +75,13 @@ struct CharacterListView: View {
                 print("Attempting to delete character: \(characterToDelete.name)")
                 modelContext.delete(characterToDelete)
             }
+
+            do {
+                try modelContext.save()
+                print("Successfully saved model context from deleteCharacters.")
+            } catch {
+                print("Error saving model context from deleteCharacters: \(error.localizedDescription)")
+            }
         }
     }
 }

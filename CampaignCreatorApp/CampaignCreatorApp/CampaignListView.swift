@@ -73,6 +73,13 @@ struct CampaignListView: View {
                 print("Attempting to delete campaign: \(campaignToDelete.title)")
                 modelContext.delete(campaignToDelete)
             }
+
+            do {
+                try modelContext.save()
+                print("Successfully saved model context from deleteCampaigns.")
+            } catch {
+                print("Error saving model context from deleteCampaigns: \(error.localizedDescription)")
+            }
         }
     }
 }
