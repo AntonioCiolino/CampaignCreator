@@ -35,7 +35,10 @@ struct CampaignCreateView: View {
     }
 
     private func saveCampaign() {
+        print("Saving campaign...")
         let newCampaign = Campaign(title: title, concept: concept, owner_id: 0)
         modelContext.insert(newCampaign)
+        PersistenceController.shared.save()
+        print("Campaign saved successfully.")
     }
 }

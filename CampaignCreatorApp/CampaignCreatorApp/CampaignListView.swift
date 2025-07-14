@@ -66,8 +66,11 @@ struct CampaignListView: View {
     private func deleteCampaigns(offsets: IndexSet) {
         withAnimation {
             for index in offsets {
+                print("Deleting campaign at index \(index)...")
                 modelContext.delete(campaigns[index])
             }
+            PersistenceController.shared.save()
+            print("Campaigns deleted and context saved.")
         }
     }
 }

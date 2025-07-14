@@ -15,4 +15,13 @@ class PersistenceController {
 
         container = try! ModelContainer(for: schema, configurations: [modelConfiguration])
     }
+
+    func save() {
+        do {
+            try container.mainContext.save()
+        } catch {
+            let nsError = error as NSError
+            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+        }
+    }
 }
