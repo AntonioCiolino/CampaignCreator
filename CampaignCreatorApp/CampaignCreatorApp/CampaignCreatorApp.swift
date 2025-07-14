@@ -8,7 +8,7 @@ struct CampaignCreatorApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environment(\.managedObjectContext, persistenceController.container.viewContext)
+                .modelContainer(persistenceController.container)
         }
     }
 }
