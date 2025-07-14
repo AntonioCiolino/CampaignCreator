@@ -39,7 +39,7 @@ struct CampaignDetailView: View {
 
                 CampaignLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: viewModel.availableLLMs, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onLLMSettingsChange: {
                     campaign.selected_llm_id = selectedLLMId
-                    campaign.temperature = temperature
+                    campaign.temperature = Float(temperature)
                 })
 
                 CampaignMoodboardView(campaign: campaign)
@@ -104,15 +104,9 @@ struct CampaignDetailView: View {
         }
         .onAppear {
             themeManager.updateTheme(from: campaign)
-            Task {
-                do {
-                    viewModel.availableLLMs = try await viewModel.fetchAvailableLLMs()
-                } catch {
-                    print("Error fetching available LLMs: \(error.localizedDescription)")
-                }
-            }
+            viewModel.fetchAvailableLLMs()
             selectedLLMId = campaign.selected_llm_id ?? ""
-            temperature = campaign.temperature ?? 0.7
+            temperature = Double(campaign.temperature ?? 0.7)
         }
     }
 }
