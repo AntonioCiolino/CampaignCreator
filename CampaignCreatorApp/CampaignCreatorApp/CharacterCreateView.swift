@@ -4,6 +4,7 @@ import SwiftData
 struct CharacterCreateView: View {
     @Environment(\.modelContext) private var modelContext
     @Binding var isPresented: Bool
+    var ownerId: Int
 
     @State private var name = ""
     @State private var character_description = ""
@@ -90,7 +91,7 @@ struct CharacterCreateView: View {
             image_urls: image_urls,
             notes_for_llm: notes_for_llm,
             export_format_preference: export_format_preference,
-            owner_id: 0
+            owner_id: ownerId
         )
         modelContext.insert(newCharacter)
     }

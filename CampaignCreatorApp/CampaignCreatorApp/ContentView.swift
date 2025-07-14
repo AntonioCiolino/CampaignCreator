@@ -7,6 +7,7 @@ struct ContentView: View {
         Group {
             if viewModel.isAuthenticated {
                 MainTabView()
+                    .environmentObject(viewModel)
             } else {
                 Color.clear
                     .fullScreenCover(isPresented: .constant(!viewModel.isAuthenticated)) {
@@ -18,6 +19,7 @@ struct ContentView: View {
 }
 
 struct MainTabView: View {
+    @EnvironmentObject var contentViewModel: ContentViewModel
     @StateObject private var viewModel = MainTabViewModel()
 
     var body: some View {
@@ -44,6 +46,7 @@ struct MainTabView: View {
                 .tag(2)
         }
         .accentColor(.blue)
+        .environmentObject(contentViewModel)
     }
 }
 

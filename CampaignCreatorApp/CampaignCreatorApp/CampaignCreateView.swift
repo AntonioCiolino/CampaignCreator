@@ -4,6 +4,7 @@ import SwiftData
 struct CampaignCreateView: View {
     @Environment(\.modelContext) private var modelContext
     @Binding var isPresented: Bool
+    var ownerId: Int
 
     @State private var title = ""
     @State private var concept = ""
@@ -36,7 +37,7 @@ struct CampaignCreateView: View {
 
     private func saveCampaign() {
         print("Saving campaign...")
-        let newCampaign = Campaign(title: title, concept: concept, owner_id: 0)
+        let newCampaign = Campaign(title: title, concept: concept, owner_id: ownerId)
         modelContext.insert(newCampaign)
         PersistenceController.shared.save()
         print("Campaign saved successfully.")

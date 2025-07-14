@@ -4,6 +4,7 @@ import SwiftData
 
 struct CharacterListView: View {
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject var contentViewModel: ContentViewModel
     @Query(sort: \Character.name) private var characters: [Character]
     @State private var showingCreateSheet = false
 
@@ -60,7 +61,9 @@ struct CharacterListView: View {
                 }
             }
             .sheet(isPresented: $showingCreateSheet) {
-                CharacterCreateView(isPresented: $showingCreateSheet)
+                if let user = contentViewModel.currentUser {
+                    CharacterCreateView(isPresented: $showingCreateSheet, ownerId: user.id)
+                }
             }
         }
     }

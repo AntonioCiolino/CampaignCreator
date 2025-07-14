@@ -4,6 +4,7 @@ import SwiftData
 
 struct CampaignListView: View {
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject var contentViewModel: ContentViewModel
     @Query(sort: \Campaign.title) private var campaigns: [Campaign]
     @State private var showingCreateSheet = false
 
@@ -58,7 +59,9 @@ struct CampaignListView: View {
                 }
             }
             .sheet(isPresented: $showingCreateSheet) {
-                CampaignCreateView(isPresented: $showingCreateSheet)
+                if let user = contentViewModel.currentUser {
+                    CampaignCreateView(isPresented: $showingCreateSheet, ownerId: user.id)
+                }
             }
         }
     }
