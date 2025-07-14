@@ -387,9 +387,6 @@ struct Character: Codable, Identifiable {
         self.campaign_ids = libCharacter.campaignIDs
     }
 
-    var wordCount: Int {
-        return sections?.reduce(0) { $0 + $1.content.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count } ?? 0
-    }
 }
 
 struct CharacterCreate: Codable {
