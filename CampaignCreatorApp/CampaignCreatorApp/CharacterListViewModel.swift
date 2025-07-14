@@ -1,6 +1,6 @@
 import Foundation
 import SwiftUI
-import CampaignCreatorLib
+import SwiftData
 
 @MainActor
 class CharacterListViewModel: ObservableObject {
