@@ -13,6 +13,12 @@ struct CharacterCreateView: View {
     @State private var newImageURL = ""
     @State private var notes_for_llm = ""
     @State private var export_format_preference = "Complex"
+    @State private var strength: Int?
+    @State private var dexterity: Int?
+    @State private var constitution: Int?
+    @State private var intelligence: Int?
+    @State private var wisdom: Int?
+    @State private var charisma: Int?
 
     var body: some View {
         NavigationView {
@@ -29,6 +35,15 @@ struct CharacterCreateView: View {
                         TextEditor(text: $appearance_description).frame(height: 100)
                             .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.gray.opacity(0.5), lineWidth: 1))
                     }
+                }
+
+                Section(header: Text("Statistics")) {
+                    StatEditableRow(label: "Strength", value: $strength)
+                    StatEditableRow(label: "Dexterity", value: $dexterity)
+                    StatEditableRow(label: "Constitution", value: $constitution)
+                    StatEditableRow(label: "Intelligence", value: $intelligence)
+                    StatEditableRow(label: "Wisdom", value: $wisdom)
+                    StatEditableRow(label: "Charisma", value: $charisma)
                 }
 
                 Section(header: Text("Image URLs")) {
@@ -92,7 +107,15 @@ struct CharacterCreateView: View {
             image_urls: image_urls,
             notes_for_llm: notes_for_llm,
             export_format_preference: export_format_preference,
-            owner_id: ownerId
+            owner_id: ownerId,
+            stats: CharacterStats(
+                strength: strength,
+                dexterity: dexterity,
+                constitution: constitution,
+                intelligence: intelligence,
+                wisdom: wisdom,
+                charisma: charisma
+            )
         )
         modelContext.insert(newCharacter)
 
