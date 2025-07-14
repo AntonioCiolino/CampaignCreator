@@ -6,8 +6,6 @@ struct CampaignDetailView: View {
     let campaign: CampaignModel
 
     @State private var showingEditSheet = false
-
-    @State private var showingEditSheet = false
     @State private var isEditingConcept = false
     @State private var editableConcept = ""
     @State private var selectedLLMId = ""
@@ -61,16 +59,10 @@ struct CampaignDetailView: View {
         }
         .sheet(isPresented: $showingSetBadgeSheet) {
             SelectBadgeFromMoodboardView(
-                isPresented: $showingSetBadgeSheet,
-                imageURLs: campaign.mood_board_image_urls ?? [],
-                onSelect: { selectedURL in
+                moodBoardImageURLs: campaign.mood_board_image_urls ?? [],
+                thematicImageURL: campaign.thematic_image_url,
+                onImageSelected: { selectedURL in
                     campaign.badge_image_url = selectedURL
-                },
-                onGenerateAIImage: {
-                    // on generate AI image
-                },
-                onRemoveBadge: {
-                    campaign.badge_image_url = nil
                 }
             )
         }
