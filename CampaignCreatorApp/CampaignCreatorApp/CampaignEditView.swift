@@ -76,7 +76,7 @@ struct CampaignEditView: View {
                 }
             }
             .sheet(isPresented: $showingImageManager) {
-                CampaignImageManagerView(imageURLs: .init(get: { campaign.mood_board_image_urls ?? [] }, set: { campaign.mood_board_image_urls = $0 }), campaignID: campaign.id)
+                CampaignImageManagerView(imageURLs: .init(get: { campaign.mood_board_image_urls ?? [] }, set: { campaign.mood_board_image_urls = $0 }), campaignID: campaign.id.hashValue)
             }
             .navigationTitle("Edit Campaign")
             .navigationBarTitleDisplayMode(.inline)
