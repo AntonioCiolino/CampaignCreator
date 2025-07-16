@@ -57,6 +57,9 @@ struct CommonMoodBoardView: View {
             FullCharacterImageViewWrapper(initialDisplayURL: selectedImageURL)
         }
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                EditButton()
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 HStack {
                     if isForBadgeSelection {
