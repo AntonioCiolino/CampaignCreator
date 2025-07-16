@@ -6,8 +6,6 @@ struct CharacterDetailView: View {
     let character: CharacterModel
 
     @State private var showingEditSheet = false
-    @State private var selectedLLMId = ""
-    @State private var temperature = 0.7
     @StateObject private var campaignViewModel = CampaignDetailViewModel()
     @StateObject private var characterViewModel = CharacterDetailViewModel()
 
@@ -43,13 +41,6 @@ struct CharacterDetailView: View {
                     }
                 }
 
-                CampaignLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: campaignViewModel.availableLLMs, currentFont: .body, currentTextColor: .primary, onLLMSettingsChange: {
-                    character.temperature = Float(temperature)
-                }, onRefresh: {
-                    Task {
-                        await campaignViewModel.fetchAvailableLLMs()
-                    }
-                })
 
                 CharacterMoodboardView(character: character, onSetBadge: { selectedURL in
                     character.image_urls = [selectedURL]
@@ -77,7 +68,6 @@ struct CharacterDetailView: View {
             Task {
                 await campaignViewModel.fetchAvailableLLMs()
             }
-            temperature = Double(character.temperature ?? 0.7)
         }
     }
 }
