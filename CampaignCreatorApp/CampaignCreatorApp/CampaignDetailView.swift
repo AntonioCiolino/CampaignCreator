@@ -81,7 +81,6 @@ struct CampaignDetailView: View {
                 CampaignMoodboardView(campaign: campaign)
 
             }
-            .padding()
         }
         .navigationTitle(campaign.title)
         .navigationBarTitleDisplayMode(.inline)
@@ -110,7 +109,9 @@ struct CampaignDetailView: View {
         }
         .onAppear {
             themeManager.updateTheme(from: campaign)
-            viewModel.fetchAvailableLLMs()
+            Task {
+                await viewModel.fetchAvailableLLMs()
+            }
             selectedLLMId = campaign.selected_llm_id ?? ""
             temperature = Double(campaign.temperature ?? 0.7)
         }

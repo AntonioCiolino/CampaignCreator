@@ -37,7 +37,6 @@
 		943031BF2E1DCB0600F3C129 /* CampaignEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 943031BC2E1DCB0600F3C129 /* CampaignEditView.swift */; };
 		943A92012E1EC4C40081BA3A /* CampaignLLMSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 943A92002E1EC4C40081BA3A /* CampaignLLMSettingsView.swift */; };
 		943A92022E1EC4C40081BA3A /* CampaignHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 943A91FF2E1EC4C40081BA3A /* CampaignHeaderView.swift */; };
-		943A92032E1EC4C40081BA3A /* CampaignConceptEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 943A91FE2E1EC4C40081BA3A /* CampaignConceptEditorView.swift */; };
 		944C2C422E21C32F009FDCCB /* SelectBadgeFromMoodboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 944C2C412E21C32F009FDCCB /* SelectBadgeFromMoodboardView.swift */; };
 		944C2C432E21C32F009FDCCB /* AlertMessageItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 944C2C3F2E21C32F009FDCCB /* AlertMessageItem.swift */; };
 		944C2C442E21C32F009FDCCB /* ImageUploadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 944C2C402E21C32F009FDCCB /* ImageUploadService.swift */; };
@@ -97,7 +96,6 @@
 		943031BA2E1DCAFF00F3C129 /* CampaignDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignDetailView.swift; sourceTree = "<group>"; };
 		943031BC2E1DCB0600F3C129 /* CampaignEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignEditView.swift; sourceTree = "<group>"; };
 		943031BD2E1DCB0600F3C129 /* CharacterChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterChatView.swift; sourceTree = "<group>"; };
-		943A91FE2E1EC4C40081BA3A /* CampaignConceptEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignConceptEditorView.swift; sourceTree = "<group>"; };
 		943A91FF2E1EC4C40081BA3A /* CampaignHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignHeaderView.swift; sourceTree = "<group>"; };
 		943A92002E1EC4C40081BA3A /* CampaignLLMSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignLLMSettingsView.swift; sourceTree = "<group>"; };
 		944C2C3F2E21C32F009FDCCB /* AlertMessageItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlertMessageItem.swift; sourceTree = "<group>"; };
@@ -189,7 +187,6 @@
 				9414ACC32E203A08005C0B17 /* CampaignMoodboardView.swift */,
 				9414ACC42E203A08005C0B17 /* CharacterImageManagerView.swift */,
 				9414ACC52E203A08005C0B17 /* CharacterMoodboardView.swift */,
-				943A91FE2E1EC4C40081BA3A /* CampaignConceptEditorView.swift */,
 				943A91FF2E1EC4C40081BA3A /* CampaignHeaderView.swift */,
 				943A92002E1EC4C40081BA3A /* CampaignLLMSettingsView.swift */,
 				943031BC2E1DCB0600F3C129 /* CampaignEditView.swift */,
@@ -367,7 +364,6 @@
 				943031832E1C8B1000F3C129 /* CustomTextView.swift in Sources */,
 				943A92012E1EC4C40081BA3A /* CampaignLLMSettingsView.swift in Sources */,
 				943A92022E1EC4C40081BA3A /* CampaignHeaderView.swift in Sources */,
-				943A92032E1EC4C40081BA3A /* CampaignConceptEditorView.swift in Sources */,
 				943031842E1C8B1000F3C129 /* FeatureService.swift in Sources */,
 				943031852E1C8B1000F3C129 /* SnippetContextInputModal.swift in Sources */,
 				94A2B8C8A8E00B8E8E8E8E8 /* CampaignDetailViewModel.swift in Sources */,
