@@ -53,6 +53,9 @@ struct CampaignDetailView: View {
         .refreshable {
             await viewModel.refreshCampaign(campaign: campaign)
         }
+        .refreshable {
+            await viewModel.refreshCampaign(campaign: campaign)
+        }
         .navigationTitle(campaign.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
