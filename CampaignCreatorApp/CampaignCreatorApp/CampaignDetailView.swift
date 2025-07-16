@@ -40,6 +40,8 @@ struct CampaignDetailView: View {
                 CampaignLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: viewModel.availableLLMs, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onLLMSettingsChange: {
                     campaign.selected_llm_id = selectedLLMId
                     campaign.temperature = Float(temperature)
+                }, onRefresh: {
+                    viewModel.fetchAvailableLLMs()
                 })
 
                 CampaignMoodboardView(campaign: campaign)
@@ -99,6 +101,10 @@ struct CampaignDetailView: View {
                 thematicImageURL: campaign.thematic_image_url,
                 onImageSelected: { selectedURL in
                     campaign.badge_image_url = selectedURL
+                },
+                onGenerateAIImage: { prompt in
+                    // This will be handled by the CommonMoodBoardView
+                    return ""
                 }
             )
         }

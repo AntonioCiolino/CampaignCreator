@@ -18,6 +18,7 @@ struct CampaignLLMSettingsView: View {
     let currentTextColor: Color
 
     let onLLMSettingsChange: () async -> Void
+    let onRefresh: () -> Void
 
     var body: some View {
         DisclosureGroup("LLM Settings") {
@@ -32,9 +33,9 @@ struct CampaignLLMSettingsView: View {
                 .onChange(of: selectedLLMId) {
                     Task { await onLLMSettingsChange() }
                 }
-                Text("Note: This list is a placeholder. Ideally, available LLMs should be fetched from the server.")
-                    .font(.caption2)
-                    .foregroundColor(.orange)
+                Button("Refresh LLM List") {
+                    onRefresh()
+                }
 
                 VStack(alignment: .leading) {
                     Text("Temperature: \(String(format: "%.2f", temperature))")
