@@ -3,11 +3,11 @@ import CampaignCreatorLib
 
 struct CampaignImageManagerView: View {
     @Binding var imageURLs: [String]
-    let campaignID: Int
+    let campaignID: UUID
 
     @StateObject private var viewModel: CampaignImageManagerViewModel
 
-    init(imageURLs: Binding<[String]>, campaignID: Int) {
+    init(imageURLs: Binding<[String]>, campaignID: UUID) {
         _imageURLs = imageURLs
         self.campaignID = campaignID
         _viewModel = StateObject(wrappedValue: CampaignImageManagerViewModel(imageURLs: imageURLs, campaignID: campaignID))

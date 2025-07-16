@@ -5,7 +5,7 @@ import CampaignCreatorLib
 @MainActor
 class CampaignImageManagerViewModel: ObservableObject {
     @Binding var imageURLs: [String]
-    let campaignID: Int
+    let campaignID: UUID
 
     @Published var newImageURL: String = ""
     @Published var imagePrompt: String = ""
@@ -17,7 +17,7 @@ class CampaignImageManagerViewModel: ObservableObject {
 
     private var apiService = CampaignCreatorLib.APIService()
 
-    init(imageURLs: Binding<[String]>, campaignID: Int) {
+    init(imageURLs: Binding<[String]>, campaignID: UUID) {
         _imageURLs = imageURLs
         self.campaignID = campaignID
     }
@@ -62,7 +62,7 @@ class CampaignImageManagerViewModel: ObservableObject {
             model: selectedModel == .openAIDalle ? .openAIDalle : .stableDiffusion,
             size: "1024x1024",
             quality: selectedModel == .openAIDalle ? "standard" : nil,
-            campaignId: campaignID
+            campaignId: campaignID.uuidString
         )
 
         Task {
