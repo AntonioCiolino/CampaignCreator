@@ -36,6 +36,7 @@ struct CampaignLLMSettingsView: View {
                 Button("Refresh LLM List") {
                     onRefresh()
                 }
+                .buttonStyle(.borderedProminent)
 
                 VStack(alignment: .leading) {
                     Text("Temperature: \(String(format: "%.2f", temperature))")

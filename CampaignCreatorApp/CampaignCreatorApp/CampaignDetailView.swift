@@ -53,9 +53,6 @@ struct CampaignDetailView: View {
         .refreshable {
             await viewModel.refreshCampaign(campaign: campaign)
         }
-        .refreshable {
-            await viewModel.refreshCampaign(campaign: campaign)
-        }
         .navigationTitle(campaign.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -83,9 +80,7 @@ struct CampaignDetailView: View {
         }
         .onAppear {
             themeManager.updateTheme(from: campaign)
-            Task {
-                await viewModel.fetchAvailableLLMs()
-            }
+            viewModel.fetchAvailableLLMs()
             selectedLLMId = campaign.selected_llm_id ?? ""
             temperature = Double(campaign.temperature ?? 0.7)
         }
