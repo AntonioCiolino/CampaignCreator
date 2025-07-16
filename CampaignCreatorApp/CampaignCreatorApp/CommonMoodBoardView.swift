@@ -177,6 +177,7 @@ struct CommonMoodBoardView: View {
         let urlString: String
         let onSelect: () -> Void
         let onDelete: () -> Void
+        @EnvironmentObject var imageUploadService: ImageUploadService
         @Environment(\.editMode) private var editMode
 
         private var isEditing: Bool {
@@ -186,17 +187,26 @@ struct CommonMoodBoardView: View {
         var body: some View {
             ZStack(alignment: .topTrailing) {
                 Button(action: onSelect) {
-                    KFImage(URL(string: urlString))
-                        .placeholder {
-                            ProgressView()
-                                .frame(maxWidth: .infinity, idealHeight: 120)
-                                .background(Color.gray.opacity(0.1))
-                        }
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(minWidth: 0, maxWidth: .infinity)
-                        .frame(height: 120)
-                        .clipped()
+                    if let localURL = imageUploadService.getLocalImageURL(for: urlString) {
+                        Image(uiImage: UIImage(contentsOfFile: localURL.path)!)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(minWidth: 0, maxWidth: .infinity)
+                            .frame(height: 120)
+                            .clipped()
+                    } else {
+                        KFImage(URL(string: urlString))
+                            .placeholder {
+                                ProgressView()
+                                    .frame(maxWidth: .infinity, idealHeight: 120)
+                                    .background(Color.gray.opacity(0.1))
+                            }
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(minWidth: 0, maxWidth: .infinity)
+                            .frame(height: 120)
+                            .clipped()
+                    }
                 }
                 .buttonStyle(.plain)
 

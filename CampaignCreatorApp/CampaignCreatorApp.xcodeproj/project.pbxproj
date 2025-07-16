@@ -67,6 +67,7 @@
 		94A2B8C8A8E00B8E8E8E8E8 /* CampaignDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A2B8C8A8E00B8E8E8E8E9 /* CampaignDetailViewModel.swift */; };
 		94A2B8C8A8E00B8E8E8E8F0 /* GenerateImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A2B8C8A8E00B8E8E8E8F2 /* GenerateImageView.swift */; };
 		94A2B8C8A8E00B8E8E8E8F1 /* CharacterDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A2B8C8A8E00B8E8E8E8F3 /* CharacterDetailViewModel.swift */; };
+		94A2B8C8A8E00B8E8E8E8F4 /* ThemedMoodboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A2B8C8A8E00B8E8E8E8F5 /* ThemedMoodboardView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -129,6 +130,7 @@
 		94A2B8C8A8E00B8E8E8E8E9 /* CampaignDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignDetailViewModel.swift; sourceTree = "<group>"; };
 		94A2B8C8A8E00B8E8E8E8F2 /* GenerateImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerateImageView.swift; sourceTree = "<group>"; };
 		94A2B8C8A8E00B8E8E8E8F3 /* CharacterDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterDetailViewModel.swift; sourceTree = "<group>"; };
+		94A2B8C8A8E00B8E8E8E8F5 /* ThemedMoodboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemedMoodboardView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -219,6 +221,7 @@
 				94A2B8C8A8E00B8E8E8E8E9 /* CampaignDetailViewModel.swift */,
 				94A2B8C8A8E00B8E8E8E8F2 /* GenerateImageView.swift */,
 				94A2B8C8A8E00B8E8E8E8F3 /* CharacterDetailViewModel.swift */,
+				94A2B8C8A8E00B8E8E8E8F5 /* ThemedMoodboardView.swift */,
 			);
 			path = CampaignCreatorApp;
 			sourceTree = "<group>";
@@ -375,6 +378,7 @@
 				94A2B8C8A8E00B8E8E8E8E8 /* CampaignDetailViewModel.swift in Sources */,
 				94A2B8C8A8E00B8E8E8E8F0 /* GenerateImageView.swift in Sources */,
 				94A2B8C8A8E00B8E8E8E8F1 /* CharacterDetailViewModel.swift in Sources */,
+				94A2B8C8A8E00B8E8E8E8F4 /* ThemedMoodboardView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

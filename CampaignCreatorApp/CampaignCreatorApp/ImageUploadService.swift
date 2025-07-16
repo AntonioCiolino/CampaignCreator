@@ -38,6 +38,30 @@ class ImageUploadService: ObservableObject {
         self.apiService = apiService
     }
 
+    private func getDocumentsDirectory() -> URL {
+        let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+        return paths[0]
+    }
+
+    private func saveImageLocally(data: Data, filename: String) -> URL? {
+        let url = getDocumentsDirectory().appendingPathComponent(filename)
+        do {
+            try data.write(to: url)
+            return url
+        } catch {
+            print("Error saving image locally: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    func getLocalImageURL(for remoteURL: String) -> URL? {
+        guard let filename = URL(string: remoteURL)?.lastPathComponent else {
+            return nil
+        }
+        let localURL = getDocumentsDirectory().appendingPathComponent(filename)
+        return FileManager.default.fileExists(atPath: localURL.path) ? localURL : nil
+    }
+
     func uploadImage(imageData: Data, filename: String, mimeType: String) async -> Result<String, ImageUploadError> {
         guard let token = CampaignCreatorLib.UserDefaultsTokenManager().getToken() else {
             return .failure(.noToken)
@@ -74,6 +98,9 @@ class ImageUploadService: ObservableObject {
             if (200..<300).contains(httpResponse.statusCode) {
                 do {
                     let decodedResponse = try JSONDecoder().decode(FileUploadResponse.self, from: data)
+                    if let localURL = self.saveImageLocally(data: imageData, filename: URL(string: decodedResponse.imageUrl)!.lastPathComponent) {
+                        print("Image saved locally at \(localURL)")
+                    }
                     return .success(decodedResponse.imageUrl)
                 } catch {
                     return .failure(.decodingError(error))
