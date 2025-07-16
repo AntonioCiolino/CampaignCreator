@@ -44,7 +44,6 @@ struct CharacterDetailView: View {
                 }
 
                 CampaignLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: campaignViewModel.availableLLMs, currentFont: .body, currentTextColor: .primary, onLLMSettingsChange: {
-                    character.selected_llm_id = selectedLLMId
                     character.temperature = Float(temperature)
                 }, onRefresh: {
                     Task {
@@ -78,7 +77,6 @@ struct CharacterDetailView: View {
             Task {
                 await campaignViewModel.fetchAvailableLLMs()
             }
-            selectedLLMId = character.selected_llm_id ?? ""
             temperature = Double(character.temperature ?? 0.7)
         }
     }

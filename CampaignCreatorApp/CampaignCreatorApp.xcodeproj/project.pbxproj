@@ -65,6 +65,8 @@
 		949269EE2E1AC11300376F0A /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949269E82E1AC11300376F0A /* LoginView.swift */; };
 		949269EF2E1AC11300376F0A /* CharacterEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949269E62E1AC11300376F0A /* CharacterEditView.swift */; };
 		94A2B8C8A8E00B8E8E8E8E8 /* CampaignDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A2B8C8A8E00B8E8E8E8E9 /* CampaignDetailViewModel.swift */; };
+		94A2B8C8A8E00B8E8E8E8F0 /* GenerateImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A2B8C8A8E00B8E8E8E8F2 /* GenerateImageView.swift */; };
+		94A2B8C8A8E00B8E8E8E8F1 /* CharacterDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A2B8C8A8E00B8E8E8E8F3 /* CharacterDetailViewModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -125,6 +127,8 @@
 		949269E72E1AC11300376F0A /* CharacterListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterListView.swift; sourceTree = "<group>"; };
 		949269E82E1AC11300376F0A /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		94A2B8C8A8E00B8E8E8E8E9 /* CampaignDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignDetailViewModel.swift; sourceTree = "<group>"; };
+		94A2B8C8A8E00B8E8E8E8F2 /* GenerateImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerateImageView.swift; sourceTree = "<group>"; };
+		94A2B8C8A8E00B8E8E8E8F3 /* CharacterDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterDetailViewModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -213,6 +217,8 @@
 				941C6F9A2E23136100B6D6FD /* contents.json */,
 				3D92BBEA2B8C8A8F00B8E8E8 /* Preview Content */,
 				94A2B8C8A8E00B8E8E8E8E9 /* CampaignDetailViewModel.swift */,
+				94A2B8C8A8E00B8E8E8E8F2 /* GenerateImageView.swift */,
+				94A2B8C8A8E00B8E8E8E8F3 /* CharacterDetailViewModel.swift */,
 			);
 			path = CampaignCreatorApp;
 			sourceTree = "<group>";
@@ -367,6 +373,8 @@
 				943031842E1C8B1000F3C129 /* FeatureService.swift in Sources */,
 				943031852E1C8B1000F3C129 /* SnippetContextInputModal.swift in Sources */,
 				94A2B8C8A8E00B8E8E8E8E8 /* CampaignDetailViewModel.swift in Sources */,
+				94A2B8C8A8E00B8E8E8E8F0 /* GenerateImageView.swift in Sources */,
+				94A2B8C8A8E00B8E8E8E8F1 /* CharacterDetailViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
