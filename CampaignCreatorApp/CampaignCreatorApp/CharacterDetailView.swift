@@ -6,14 +6,15 @@ struct CharacterDetailView: View {
     let character: CharacterModel
 
     @State private var showingEditSheet = false
-    @State private var showingImageManager = false
+    @State private var selectedLLMId = ""
+    @State private var temperature = 0.7
+    @StateObject private var campaignViewModel = CampaignDetailViewModel()
+    @StateObject private var characterViewModel = CharacterDetailViewModel()
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                CharacterHeaderView(character: character, editableName: .constant(character.name), isSaving: false, isGeneratingText: false, currentPrimaryColor: .blue, onSetBadgeAction: {
-                    showingImageManager = true
-                })
+                CharacterHeaderView(character: character, editableName: .constant(character.name), isSaving: false, isGeneratingText: false, currentPrimaryColor: .blue, onSetBadgeAction: {})
 
                 if let description = character.character_description, !description.isEmpty {
                     SectionBox(title: "Description") {
@@ -42,7 +43,18 @@ struct CharacterDetailView: View {
                     }
                 }
 
-                CharacterMoodboardView(character: character)
+                CampaignLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: campaignViewModel.availableLLMs, currentFont: .body, currentTextColor: .primary, onLLMSettingsChange: {
+                    character.selected_llm_id = selectedLLMId
+                    character.temperature = Float(temperature)
+                }, onRefresh: {
+                    Task {
+                        await campaignViewModel.fetchAvailableLLMs()
+                    }
+                })
+
+                CharacterMoodboardView(character: character, onSetBadge: { selectedURL in
+                    character.image_urls = [selectedURL]
+                })
 
             }
             .padding()
@@ -59,8 +71,15 @@ struct CharacterDetailView: View {
         .sheet(isPresented: $showingEditSheet) {
             CharacterEditView(character: character, isPresented: $showingEditSheet)
         }
-        .sheet(isPresented: $showingImageManager) {
-            CharacterImageManagerView(imageURLs: .init(get: { character.image_urls ?? [] }, set: { character.image_urls = $0 }), characterID: 0)
+        .refreshable {
+            await characterViewModel.refreshCharacter(character: character)
+        }
+        .onAppear {
+            Task {
+                await campaignViewModel.fetchAvailableLLMs()
+            }
+            selectedLLMId = character.selected_llm_id ?? ""
+            temperature = Double(character.temperature ?? 0.7)
         }
     }
 }

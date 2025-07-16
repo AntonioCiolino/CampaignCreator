@@ -5,8 +5,6 @@ struct CharacterEditView: View {
     @Bindable var character: CharacterModel
     @Binding var isPresented: Bool
 
-    @State private var isDescriptionExpanded: Bool = true
-    @State private var isAppearanceExpanded: Bool = true
     @State private var showingImageManager = false
 
     var body: some View {
@@ -26,20 +24,18 @@ struct CharacterEditView: View {
                 }
 
                 Section(header: Text("Narrative Details")) {
-                    DisclosureGroup("Description", isExpanded: $isDescriptionExpanded) {
-                        VStack(alignment: .leading) {
-                            TextEditor(text: .init(get: { character.character_description ?? "" }, set: { character.character_description = $0 }))
-                                .frame(height: 100)
-                                .overlay(formElementOverlay())
-                        }
+                    VStack(alignment: .leading) {
+                        Text("Description").font(.caption)
+                        TextEditor(text: .init(get: { character.character_description ?? "" }, set: { character.character_description = $0 }))
+                            .frame(height: 100)
+                            .overlay(formElementOverlay())
                     }
 
-                    DisclosureGroup("Appearance", isExpanded: $isAppearanceExpanded) {
-                        VStack(alignment: .leading) {
-                            TextEditor(text: .init(get: { character.appearance_description ?? "" }, set: { character.appearance_description = $0 }))
-                                .frame(height: 100)
-                                .overlay(formElementOverlay())
-                        }
+                    VStack(alignment: .leading) {
+                        Text("Appearance").font(.caption)
+                        TextEditor(text: .init(get: { character.appearance_description ?? "" }, set: { character.appearance_description = $0 }))
+                            .frame(height: 100)
+                            .overlay(formElementOverlay())
                     }
                 }
 

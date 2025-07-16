@@ -41,7 +41,9 @@ struct CampaignDetailView: View {
                     campaign.selected_llm_id = selectedLLMId
                     campaign.temperature = Float(temperature)
                 }, onRefresh: {
-                    viewModel.fetchAvailableLLMs()
+                    Task {
+                        await viewModel.fetchAvailableLLMs()
+                    }
                 })
 
                 CampaignMoodboardView(campaign: campaign)
@@ -50,37 +52,6 @@ struct CampaignDetailView: View {
         }
         .refreshable {
             await viewModel.refreshCampaign(campaign: campaign)
-        }
-                CampaignHeaderView(campaign: campaign, editableTitle: .constant(campaign.title), isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor, onSetBadgeAction: {
-                    showingSetBadgeSheet = true
-                })
-
-                SectionBox(title: "Campaign Concept") {
-                    TextEditor(text: .init(get: { campaign.concept ?? "" }, set: { campaign.concept = $0 }))
-                        .frame(height: 150)
-                        .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.gray.opacity(0.5), lineWidth: 1))
-                }
-
-                SectionBox(title: "Table of Contents") {
-                    // TOC items
-                }
-
-                SectionBox(title: "Campaign Sections") {
-                    // Campaign sections
-                }
-
-                SectionBox(title: "Character Linking") {
-                    // Character linking
-                }
-
-                CampaignLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: viewModel.availableLLMs, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onLLMSettingsChange: {
-                    campaign.llm_id = selectedLLMId
-                    campaign.temperature = temperature
-                })
-
-                CampaignMoodboardView(campaign: campaign)
-
-            }
         }
         .navigationTitle(campaign.title)
         .navigationBarTitleDisplayMode(.inline)
