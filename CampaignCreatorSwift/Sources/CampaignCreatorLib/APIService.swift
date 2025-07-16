@@ -4,7 +4,7 @@ import Combine // Import Combine for ObservableObject
 // Note: These structs are temporarily moved here to resolve build issues.
 // Ideally, they should be in their own file within the Lib, ensured to be part of the target.
 
-public struct AvailableLLM: Identifiable, Codable, Hashable {
+public struct AvailableLLM: Identifiable, Codable, Hashable, Sendable {
     public var id: String // Prefixed ID, e.g., "openai/gpt-3.5-turbo"
     public var name: String // User-friendly name, e.g., "OpenAI GPT-3.5 Turbo"
     public var modelType: String?
