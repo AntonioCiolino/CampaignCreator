@@ -10,14 +10,11 @@ struct CampaignDetailView: View {
     @State private var temperature = 0.7
     @StateObject private var themeManager = CampaignThemeManager()
     @StateObject private var viewModel = CampaignDetailViewModel()
-    @State private var showingSetBadgeSheet = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                CampaignHeaderView(campaign: campaign, editableTitle: .constant(campaign.title), isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor, onSetBadgeAction: {
-                    showingSetBadgeSheet = true
-                })
+                CampaignHeaderView(campaign: campaign, editableTitle: .constant(campaign.title), isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor, onSetBadgeAction: {})
 
                 SectionBox(title: "Campaign Concept") {
                     TextEditor(text: .init(get: { campaign.concept ?? "" }, set: { campaign.concept = $0 }))
@@ -64,19 +61,6 @@ struct CampaignDetailView: View {
         }
         .sheet(isPresented: $showingEditSheet) {
             CampaignEditView(campaign: campaign, isPresented: $showingEditSheet)
-        }
-        .sheet(isPresented: $showingSetBadgeSheet) {
-            SelectBadgeFromMoodboardView(
-                moodBoardImageURLs: campaign.mood_board_image_urls ?? [],
-                thematicImageURL: campaign.thematic_image_url,
-                onImageSelected: { selectedURL in
-                    campaign.badge_image_url = selectedURL
-                },
-                onGenerateAIImage: { prompt in
-                    // This will be handled by the CommonMoodBoardView
-                    return ""
-                }
-            )
         }
         .onAppear {
             themeManager.updateTheme(from: campaign)
