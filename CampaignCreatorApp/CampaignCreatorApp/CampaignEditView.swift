@@ -4,6 +4,7 @@ import SwiftData
 struct CampaignEditView: View {
     @Bindable var campaign: CampaignModel
     @Binding var isPresented: Bool
+    @State private var showingImageManager = false
 
     var body: some View {
         NavigationView {
@@ -53,6 +54,14 @@ struct CampaignEditView: View {
                     .disabled(campaign.theme_background_image_url?.isEmpty ?? true)
                 }
 
+                Section(header: Text("Campaign Images")) {
+                    Button(action: {
+                        showingImageManager = true
+                    }) {
+                        Label("Manage Images", systemImage: "photo.on.rectangle.angled")
+                    }
+                }
+
                 Section {
                     Button("Reset Theme to Defaults") {
                         campaign.theme_primary_color = nil
@@ -65,6 +74,9 @@ struct CampaignEditView: View {
                     }
                     .foregroundColor(.orange)
                 }
+            }
+            .sheet(isPresented: $showingImageManager) {
+                CampaignImageManagerView(imageURLs: .init(get: { campaign.mood_board_image_urls ?? [] }, set: { campaign.mood_board_image_urls = $0 }), campaignID: campaign.id)
             }
             .navigationTitle("Edit Campaign")
             .navigationBarTitleDisplayMode(.inline)
