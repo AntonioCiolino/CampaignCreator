@@ -46,6 +46,9 @@ struct CampaignListView: View {
                         }
                         .onDelete(perform: deleteCampaigns)
                     }
+                    .refreshable {
+                        await refreshCampaigns()
+                    }
                 }
             }
             .navigationTitle("Campaigns")
@@ -81,6 +84,11 @@ struct CampaignListView: View {
                 print("Error saving model context from deleteCampaigns: \(error.localizedDescription)")
             }
         }
+    }
+
+    private func refreshCampaigns() async {
+        // Placeholder for refresh logic
+        print("Refreshing campaigns...")
     }
 }
 

@@ -29,6 +29,7 @@ enum ImageUploadError: Error, LocalizedError {
 
 struct FileUploadResponse: Decodable {
     let imageUrl: String
+    let localUrl: String?
 }
 
 class ImageUploadService: ObservableObject {
@@ -38,7 +39,24 @@ class ImageUploadService: ObservableObject {
         self.apiService = apiService
     }
 
-    func uploadImage(imageData: Data, filename: String, mimeType: String) async -> Result<String, ImageUploadError> {
+    private func saveImageLocally(imageData: Data, filename: String) -> URL? {
+        let fileManager = FileManager.default
+        let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first
+        guard let localUrl = documentsDirectory?.appendingPathComponent(filename) else {
+            return nil
+        }
+        do {
+            try imageData.write(to: localUrl)
+            return localUrl
+        } catch {
+            print("Error saving image locally: \(error)")
+            return nil
+        }
+    }
+
+    func uploadImage(imageData: Data, filename: String, mimeType: String) async -> Result<FileUploadResponse, ImageUploadError> {
+        let localUrl = saveImageLocally(imageData: imageData, filename: filename)
+
         guard let token = CampaignCreatorLib.UserDefaultsTokenManager().getToken() else {
             return .failure(.noToken)
         }
@@ -73,8 +91,9 @@ class ImageUploadService: ObservableObject {
 
             if (200..<300).contains(httpResponse.statusCode) {
                 do {
-                    let decodedResponse = try JSONDecoder().decode(FileUploadResponse.self, from: data)
-                    return .success(decodedResponse.imageUrl)
+                    var decodedResponse = try JSONDecoder().decode(FileUploadResponse.self, from: data)
+                    let finalResponse = FileUploadResponse(imageUrl: decodedResponse.imageUrl, localUrl: localUrl?.absoluteString)
+                    return .success(finalResponse)
                 } catch {
                     return .failure(.decodingError(error))
                 }

@@ -11,14 +11,13 @@ struct CampaignDetailView: View {
     @State private var selectedLLMId = ""
     @State private var temperature = 0.7
     @StateObject private var themeManager = CampaignThemeManager()
+    @StateObject private var llmService = LLMService()
     @State private var showingSetBadgeSheet = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                CampaignHeaderView(campaign: campaign, editableTitle: .constant(campaign.title), isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor, onSetBadgeAction: {
-                    showingSetBadgeSheet = true
-                })
+                CampaignHeaderView(campaign: campaign, editableTitle: .constant(campaign.title), isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor)
 
                 CampaignConceptEditorView(isEditingConcept: $isEditingConcept, editableConcept: $editableConcept, isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onSaveChanges: {
                     campaign.concept = editableConcept
@@ -36,11 +35,14 @@ struct CampaignDetailView: View {
                     // Character linking
                 }
 
-                CampaignLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: [], currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onLLMSettingsChange: {
-                    // on LLM settings change
+                CampaignLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: llmService.availableLLMs, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onLLMSettingsChange: {
+                    campaign.selected_llm_id = selectedLLMId
+                    campaign.temperature = temperature
                 })
 
-                CampaignMoodboardView(campaign: campaign)
+                CampaignMoodboardView(campaign: campaign, onSetBadgeAction: {
+                    showingSetBadgeSheet = true
+                })
 
             }
             .padding()
@@ -69,6 +71,11 @@ struct CampaignDetailView: View {
         .onAppear {
             themeManager.updateTheme(from: campaign)
             editableConcept = campaign.concept ?? ""
+            selectedLLMId = campaign.selected_llm_id ?? ""
+            temperature = campaign.temperature ?? 0.7
+            Task {
+                await llmService.fetchAvailableLLMs()
+            }
         }
     }
 }

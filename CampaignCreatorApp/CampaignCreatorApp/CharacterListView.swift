@@ -48,6 +48,9 @@ struct CharacterListView: View {
                         }
                         .onDelete(perform: deleteCharacters)
                     }
+                    .refreshable {
+                        await refreshCharacters()
+                    }
                 }
             }
             .navigationTitle("Characters")
@@ -83,6 +86,11 @@ struct CharacterListView: View {
                 print("Error saving model context from deleteCharacters: \(error.localizedDescription)")
             }
         }
+    }
+
+    private func refreshCharacters() async {
+        // Placeholder for refresh logic
+        print("Refreshing characters...")
     }
 }
 

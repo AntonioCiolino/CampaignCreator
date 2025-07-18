@@ -2,10 +2,13 @@ import SwiftUI
 import Kingfisher
 
 struct SelectBadgeFromMoodboardView: View {
-    let moodBoardImageURLs: [String]
+    @State var moodBoardImageURLs: [String]
     let thematicImageURL: String? // Optionally include the main thematic image as a choice
     var onImageSelected: (String) -> Void // Callback with the selected URL
     @Environment(\.dismiss) var dismiss
+    @State private var showingGenerateImageSheet = false
+    @State private var aiImagePrompt = ""
+    @State private var isGeneratingImage = false
 
     private var allSelectableImageURLs: [String] {
         var urls = moodBoardImageURLs
@@ -63,8 +66,64 @@ struct SelectBadgeFromMoodboardView: View {
                         dismiss()
                     }
                 }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        showingGenerateImageSheet = true
+                    }) {
+                        Image(systemName: "sparkles")
+                    }
+                }
+            }
+            .sheet(isPresented: $showingGenerateImageSheet) {
+                generateImageView
             }
         }
+    }
+
+    private var generateImageView: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("AI Image Prompt")) {
+                    TextEditor(text: $aiImagePrompt)
+                        .frame(height: 100)
+                }
+                Button(action: {
+                    Task {
+                        await generateImage()
+                    }
+                }) {
+                    HStack {
+                        if isGeneratingImage {
+                            ProgressView().padding(.trailing, 4)
+                            Text("Generating...")
+                        } else {
+                            Image(systemName: "sparkles")
+                            Text("Generate Image")
+                        }
+                    }
+                }
+                .disabled(aiImagePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGeneratingImage)
+            }
+            .navigationTitle("Generate Image")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        showingGenerateImageSheet = false
+                    }
+                }
+            }
+        }
+    }
+
+    private func generateImage() async {
+        isGeneratingImage = true
+        // Replace with actual API call
+        try? await Task.sleep(nanoseconds: 2_000_000_000)
+        let generatedImageURL = "https://picsum.photos/seed/\(UUID().uuidString)/400/400"
+        moodBoardImageURLs.append(generatedImageURL)
+        isGeneratingImage = false
+        showingGenerateImageSheet = false
     }
 }
 

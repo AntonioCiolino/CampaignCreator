@@ -7,13 +7,14 @@ struct CharacterDetailView: View {
 
     @State private var showingEditSheet = false
     @State private var showingImageManager = false
+    @State private var selectedLLMId = ""
+    @State private var temperature = 0.7
+    @StateObject private var llmService = LLMService()
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                CharacterHeaderView(character: character, editableName: .constant(character.name), isSaving: false, isGeneratingText: false, currentPrimaryColor: .blue, onSetBadgeAction: {
-                    showingImageManager = true
-                })
+                CharacterHeaderView(character: character, editableName: .constant(character.name), isSaving: false, isGeneratingText: false, currentPrimaryColor: .blue)
 
                 if let description = character.character_description, !description.isEmpty {
                     SectionBox(title: "Description") {
@@ -42,7 +43,14 @@ struct CharacterDetailView: View {
                     }
                 }
 
-                CharacterMoodboardView(character: character)
+                CharacterLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: llmService.availableLLMs, onLLMSettingsChange: {
+                    character.selected_llm_id = selectedLLMId
+                    character.temperature = temperature
+                })
+
+                CharacterMoodboardView(character: character, onSetBadgeAction: {
+                    showingImageManager = true
+                })
 
             }
             .padding()
@@ -61,6 +69,13 @@ struct CharacterDetailView: View {
         }
         .sheet(isPresented: $showingImageManager) {
             CharacterImageManagerView(imageURLs: .init(get: { character.image_urls ?? [] }, set: { character.image_urls = $0 }), characterID: 0)
+        }
+        .onAppear {
+            selectedLLMId = character.selected_llm_id ?? ""
+            temperature = character.temperature ?? 0.7
+            Task {
+                await llmService.fetchAvailableLLMs()
+            }
         }
     }
 }

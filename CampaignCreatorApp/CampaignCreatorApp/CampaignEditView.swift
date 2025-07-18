@@ -4,6 +4,7 @@ import SwiftData
 struct CampaignEditView: View {
     @Bindable var campaign: CampaignModel
     @Binding var isPresented: Bool
+    @State private var showingImageManager = false
 
     var body: some View {
         NavigationView {
@@ -65,6 +66,17 @@ struct CampaignEditView: View {
                     }
                     .foregroundColor(.orange)
                 }
+
+                Section(header: Text("Campaign Images")) {
+                    Button(action: {
+                        showingImageManager = true
+                    }) {
+                        Label("Manage Images", systemImage: "photo.on.rectangle.angled")
+                    }
+                }
+            }
+            .sheet(isPresented: $showingImageManager) {
+                CampaignImageManagerView(imageURLs: .init(get: { campaign.mood_board_image_urls ?? [] }, set: { campaign.mood_board_image_urls = $0 }), campaignID: campaign.id)
             }
             .navigationTitle("Edit Campaign")
             .navigationBarTitleDisplayMode(.inline)

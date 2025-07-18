@@ -7,7 +7,6 @@ struct CharacterHeaderView: View {
     let isSaving: Bool
     let isGeneratingText: Bool
     let currentPrimaryColor: Color
-    let onSetBadgeAction: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -39,15 +38,6 @@ struct CharacterHeaderView: View {
                     .frame(width: 50, height: 50)
                     .padding(.top, 5)
             }
-            Button(action: {
-                onSetBadgeAction()
-            }) {
-                Text("Set Character Image")
-            }
-            .buttonStyle(.bordered)
-            .font(.caption)
-            .padding(.top, 2)
-
         }
         .padding().background(Color(.systemGroupedBackground)).cornerRadius(12)
     }

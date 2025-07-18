@@ -11,8 +11,6 @@ struct CampaignHeaderView: View {
     let isGeneratingText: Bool
     let currentPrimaryColor: Color
 
-    // Callback for the placeholder button
-    let onSetBadgeAction: () -> Void
     // Note: The .onChange for editableTitle and debouncing logic
     // will remain in CampaignDetailView as it owns the editableTitle @State
     // and the titleDebounceTimer.
@@ -60,15 +58,6 @@ struct CampaignHeaderView: View {
                     .frame(width: 50, height: 50)
                     .padding(.top, 5)
             }
-            Button(action: {
-                onSetBadgeAction() // This action is passed from CampaignDetailView
-            }) {
-                Text("Set Campaign Badge")
-            }
-            .buttonStyle(.bordered)
-            .font(.caption)
-            .padding(.top, 2)
-
         }
         .padding().background(Color(.systemGroupedBackground)).cornerRadius(12)
     }
