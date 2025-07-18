@@ -165,17 +165,34 @@ struct CommonMoodBoardView: View {
         var body: some View {
             ZStack(alignment: .topTrailing) {
                 Button(action: onSelect) {
-                    KFImage(URL(string: urlString))
-                        .placeholder {
-                            ProgressView()
-                                .frame(maxWidth: .infinity, idealHeight: 120)
-                                .background(Color.gray.opacity(0.1))
+                    if let url = URL(string: urlString), url.isFileURL {
+                        if let imageData = try? Data(contentsOf: url), let uiImage = UIImage(data: imageData) {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(minWidth: 0, maxWidth: .infinity)
+                                .frame(height: 120)
+                                .clipped()
+                        } else {
+                            Image(systemName: "photo")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 40, height: 40)
+                                .foregroundColor(.gray)
                         }
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(minWidth: 0, maxWidth: .infinity)
-                        .frame(height: 120)
-                        .clipped()
+                    } else {
+                        KFImage(URL(string: urlString))
+                            .placeholder {
+                                ProgressView()
+                                    .frame(maxWidth: .infinity, idealHeight: 120)
+                                    .background(Color.gray.opacity(0.1))
+                            }
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(minWidth: 0, maxWidth: .infinity)
+                            .frame(height: 120)
+                            .clipped()
+                    }
                 }
                 .buttonStyle(.plain)
 

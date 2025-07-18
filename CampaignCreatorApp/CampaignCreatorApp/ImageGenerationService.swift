@@ -1,7 +1,7 @@
 import Foundation
 import CampaignCreatorLib
 
-enum LLMServiceError: Error, LocalizedError {
+enum ImageGenerationError: Error, LocalizedError {
     case networkError(Error)
     case serverError(statusCode: Int, message: String?)
     case invalidResponse
@@ -25,33 +25,32 @@ enum LLMServiceError: Error, LocalizedError {
 }
 
 @MainActor
-class LLMService: ObservableObject {
-    @Published var availableLLMs: [AvailableLLM] = []
-
+class ImageGenerationService: ObservableObject {
     private let apiService: CampaignCreatorLib.APIService
 
     init(apiService: CampaignCreatorLib.APIService = CampaignCreatorLib.APIService()) {
         self.apiService = apiService
     }
 
-    func fetchAvailableLLMs() async throws {
+    func generateImage(prompt: String, model: String = "dall-e-3") async throws -> String {
         guard let token = UserDefaultsTokenManager().getToken() else {
-            throw LLMServiceError.noToken
+            throw ImageGenerationError.noToken
         }
 
-        let endpoint = "/llms/available"
+        let endpoint = "/images/generate"
+        let payload = ["prompt": prompt, "model": model]
 
         do {
-            let response: LLMModelsResponse = try await apiService.get(endpoint: endpoint, token: token)
-            self.availableLLMs = response.models
+            let response: FileUploadResponse = try await apiService.post(endpoint: endpoint, data: payload, token: token)
+            return response.imageUrl
         } catch let error as APIServiceError {
             switch error {
             case .networkError(let underlyingError):
-                throw LLMServiceError.networkError(underlyingError)
+                throw ImageGenerationError.networkError(underlyingError)
             case .decodingError(let underlyingError):
-                throw LLMServiceError.decodingError(underlyingError)
+                throw ImageGenerationError.decodingError(underlyingError)
             case .serverError(let statusCode, let message):
-                throw LLMServiceError.serverError(statusCode: statusCode, message: message)
+                throw ImageGenerationError.serverError(statusCode: statusCode, message: message)
             }
         }
     }

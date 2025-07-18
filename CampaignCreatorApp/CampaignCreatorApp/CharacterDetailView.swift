@@ -10,6 +10,8 @@ struct CharacterDetailView: View {
     @State private var selectedLLMId = ""
     @State private var temperature = 0.7
     @StateObject private var llmService = LLMService()
+    @State private var showingErrorAlert = false
+    @State private var errorMessage = ""
 
     var body: some View {
         ScrollView {
@@ -74,8 +76,18 @@ struct CharacterDetailView: View {
             selectedLLMId = character.selected_llm_id ?? ""
             temperature = character.temperature ?? 0.7
             Task {
-                await llmService.fetchAvailableLLMs()
+                do {
+                    try await llmService.fetchAvailableLLMs()
+                } catch {
+                    errorMessage = error.localizedDescription
+                    showingErrorAlert = true
+                }
             }
+        }
+        .alert("Error", isPresented: $showingErrorAlert) {
+            Button("OK") { }
+        } message: {
+            Text(errorMessage)
         }
     }
 }

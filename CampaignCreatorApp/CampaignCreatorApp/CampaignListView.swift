@@ -7,6 +7,10 @@ struct CampaignListView: View {
     @EnvironmentObject var contentViewModel: ContentViewModel
     @Query(sort: \CampaignModel.title) private var campaigns: [CampaignModel]
     @State private var showingCreateSheet = false
+    @State private var showingErrorAlert = false
+    @State private var errorMessage = ""
+
+    private let apiService = CampaignCreatorLib.APIService()
 
     var body: some View {
         NavigationView {
@@ -66,6 +70,11 @@ struct CampaignListView: View {
                     CampaignCreateView(isPresented: $showingCreateSheet, ownerId: user.id)
                 }
             }
+            .alert("Error", isPresented: $showingErrorAlert) {
+                Button("OK") { }
+            } message: {
+                Text(errorMessage)
+            }
         }
     }
 
@@ -87,8 +96,30 @@ struct CampaignListView: View {
     }
 
     private func refreshCampaigns() async {
-        // Placeholder for refresh logic
-        print("Refreshing campaigns...")
+        guard let token = UserDefaultsTokenManager().getToken() else {
+            errorMessage = "Authentication token not found."
+            showingErrorAlert = true
+            return
+        }
+
+        do {
+            let fetchedCampaigns: [CampaignModel] = try await apiService.get(endpoint: "/campaigns", token: token)
+
+            // Clear out existing campaigns to avoid duplicates
+            for campaign in campaigns {
+                modelContext.delete(campaign)
+            }
+
+            // Insert new campaigns
+            for campaign in fetchedCampaigns {
+                modelContext.insert(campaign)
+            }
+
+            try modelContext.save()
+        } catch {
+            errorMessage = "Failed to refresh campaigns: \(error.localizedDescription)"
+            showingErrorAlert = true
+        }
     }
 }
 

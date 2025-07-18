@@ -17,20 +17,38 @@ struct CharacterHeaderView: View {
                 .disabled(isSaving || isGeneratingText)
 
             if let badgeUrlString = character.image_urls?.first, let badgeUrl = URL(string: badgeUrlString) {
-                KFImage(badgeUrl)
-                    .placeholder {
-                        ProgressView().frame(width: 50, height: 50).padding(.top, 5)
+                if badgeUrl.isFileURL {
+                    if let imageData = try? Data(contentsOf: badgeUrl), let uiImage = UIImage(data: imageData) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: 50, maxHeight: 50)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(currentPrimaryColor, lineWidth: 2))
+                            .padding(.top, 5)
+                    } else {
+                        Image(systemName: "person.fill")
+                            .font(.largeTitle)
+                            .foregroundColor(.secondary)
+                            .frame(width: 50, height: 50)
+                            .padding(.top, 5)
                     }
-                    .onFailure { error in
-                        print("KFImage failed to load character badge \(badgeUrlString): \(error.localizedDescription)")
-                    }
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(maxWidth: 50, maxHeight: 50)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(currentPrimaryColor, lineWidth: 2))
-                    .padding(.top, 5)
-                    .id(character.image_urls?.first)
+                } else {
+                    KFImage(badgeUrl)
+                        .placeholder {
+                            ProgressView().frame(width: 50, height: 50).padding(.top, 5)
+                        }
+                        .onFailure { error in
+                            print("KFImage failed to load character badge \(badgeUrlString): \(error.localizedDescription)")
+                        }
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: 50, maxHeight: 50)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(currentPrimaryColor, lineWidth: 2))
+                        .padding(.top, 5)
+                        .id(character.image_urls?.first)
+                }
             } else {
                 Image(systemName: "person.fill")
                     .font(.largeTitle)

@@ -13,6 +13,8 @@ struct CampaignDetailView: View {
     @StateObject private var themeManager = CampaignThemeManager()
     @StateObject private var llmService = LLMService()
     @State private var showingSetBadgeSheet = false
+    @State private var showingErrorAlert = false
+    @State private var errorMessage = ""
 
     var body: some View {
         ScrollView {
@@ -74,8 +76,18 @@ struct CampaignDetailView: View {
             selectedLLMId = campaign.selected_llm_id ?? ""
             temperature = campaign.temperature ?? 0.7
             Task {
-                await llmService.fetchAvailableLLMs()
+                do {
+                    try await llmService.fetchAvailableLLMs()
+                } catch {
+                    errorMessage = error.localizedDescription
+                    showingErrorAlert = true
+                }
             }
+        }
+        .alert("Error", isPresented: $showingErrorAlert) {
+            Button("OK") { }
+        } message: {
+            Text(errorMessage)
         }
     }
 }

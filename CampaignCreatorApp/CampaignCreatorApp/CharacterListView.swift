@@ -7,6 +7,10 @@ struct CharacterListView: View {
     @EnvironmentObject var contentViewModel: ContentViewModel
     @Query(sort: \CharacterModel.name) private var characters: [CharacterModel]
     @State private var showingCreateSheet = false
+    @State private var showingErrorAlert = false
+    @State private var errorMessage = ""
+
+    private let apiService = CampaignCreatorLib.APIService()
 
     var body: some View {
         NavigationView {
@@ -68,6 +72,11 @@ struct CharacterListView: View {
                     CharacterCreateView(isPresented: $showingCreateSheet, ownerId: user.id)
                 }
             }
+            .alert("Error", isPresented: $showingErrorAlert) {
+                Button("OK") { }
+            } message: {
+                Text(errorMessage)
+            }
         }
     }
 
@@ -89,8 +98,30 @@ struct CharacterListView: View {
     }
 
     private func refreshCharacters() async {
-        // Placeholder for refresh logic
-        print("Refreshing characters...")
+        guard let token = UserDefaultsTokenManager().getToken() else {
+            errorMessage = "Authentication token not found."
+            showingErrorAlert = true
+            return
+        }
+
+        do {
+            let fetchedCharacters: [CharacterModel] = try await apiService.get(endpoint: "/characters", token: token)
+
+            // Clear out existing characters to avoid duplicates
+            for character in characters {
+                modelContext.delete(character)
+            }
+
+            // Insert new characters
+            for character in fetchedCharacters {
+                modelContext.insert(character)
+            }
+
+            try modelContext.save()
+        } catch {
+            errorMessage = "Failed to refresh characters: \(error.localizedDescription)"
+            showingErrorAlert = true
+        }
     }
 }
 

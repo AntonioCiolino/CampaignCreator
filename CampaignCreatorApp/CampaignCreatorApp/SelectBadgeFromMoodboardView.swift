@@ -9,6 +9,9 @@ struct SelectBadgeFromMoodboardView: View {
     @State private var showingGenerateImageSheet = false
     @State private var aiImagePrompt = ""
     @State private var isGeneratingImage = false
+    @StateObject private var imageGenerationService = ImageGenerationService()
+    @State private var showingErrorAlert = false
+    @State private var errorMessage = ""
 
     private var allSelectableImageURLs: [String] {
         var urls = moodBoardImageURLs
@@ -77,6 +80,11 @@ struct SelectBadgeFromMoodboardView: View {
             .sheet(isPresented: $showingGenerateImageSheet) {
                 generateImageView
             }
+            .alert("Image Generation Error", isPresented: $showingErrorAlert) {
+                Button("OK") { }
+            } message: {
+                Text(errorMessage)
+            }
         }
     }
 
@@ -118,12 +126,16 @@ struct SelectBadgeFromMoodboardView: View {
 
     private func generateImage() async {
         isGeneratingImage = true
-        // Replace with actual API call
-        try? await Task.sleep(nanoseconds: 2_000_000_000)
-        let generatedImageURL = "https://picsum.photos/seed/\(UUID().uuidString)/400/400"
-        moodBoardImageURLs.append(generatedImageURL)
-        isGeneratingImage = false
-        showingGenerateImageSheet = false
+        do {
+            let generatedImageURL = try await imageGenerationService.generateImage(prompt: aiImagePrompt)
+            moodBoardImageURLs.append(generatedImageURL)
+            isGeneratingImage = false
+            showingGenerateImageSheet = false
+        } catch {
+            errorMessage = error.localizedDescription
+            isGeneratingImage = false
+            showingErrorAlert = true
+        }
     }
 }
 
