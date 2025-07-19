@@ -25,15 +25,29 @@ struct MainTabView: View {
     @StateObject private var viewModel = MainTabViewModel()
 
     var body: some View {
-        CustomTabView(selection: $viewModel.selectedTab) {
-            if viewModel.selectedTab == 0 {
-                CampaignListView()
-            } else if viewModel.selectedTab == 1 {
-                CharacterListView()
-            } else {
-                SettingsView()
-            }
+        TabView(selection: $viewModel.selectedTab) {
+            CampaignListView()
+                .tabItem {
+                    Image(systemName: "doc.text.fill")
+                    Text("Campaigns")
+                }
+                .tag(0)
+
+            CharacterListView()
+                .tabItem {
+                    Image(systemName: "person.3.fill")
+                    Text("Characters")
+                }
+                .tag(1)
+
+            SettingsView()
+                .tabItem {
+                    Image(systemName: "gear")
+                    Text("Settings")
+                }
+                .tag(2)
         }
+        .accentColor(.blue)
         .environmentObject(contentViewModel)
     }
 }
