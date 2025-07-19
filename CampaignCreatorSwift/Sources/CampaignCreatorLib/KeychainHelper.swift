@@ -1,26 +1,18 @@
-//
-//  KeychainHelper.swift
-//  CampaignCreatorSwift
-//
-//  Created by Antonio Ciolino on 7/7/25.
-//
-
-
 import Foundation
 import Security
 
-public struct KeychainHelper {
+struct KeychainHelper {
 
-    public static let service = "com.example.CampaignCreatorApp.Login" // Unique service name for your app
+    static let service = "com.example.CampaignCreatorApp.Login" // Unique service name for your app
 
-    public enum KeychainError: Error, LocalizedError {
+    enum KeychainError: Error, LocalizedError {
         case saveError(OSStatus)
         case loadError(OSStatus)
         case deleteError(OSStatus)
         case dataConversionError
         case itemNotFound
 
-        public var errorDescription: String? { // Made public
+        var errorDescription: String? {
             switch self {
             case .saveError(let status): return "Could not save item to Keychain: \(status)"
             case .loadError(let status): return "Could not load item from Keychain: \(status)"
@@ -31,8 +23,7 @@ public struct KeychainHelper {
         }
     }
 
-    // This internal save can remain internal if only used by public savePassword
-    internal static func save(username: String, passwordData: Data) throws {
+    static func save(username: String, passwordData: Data) throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -50,8 +41,7 @@ public struct KeychainHelper {
         print("Keychain: Successfully saved password for username '\(username)'")
     }
 
-    // This internal load can remain internal if only used by public loadPassword
-    internal static func load(username: String) throws -> Data {
+    static func load(username: String) throws -> Data {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -76,7 +66,7 @@ public struct KeychainHelper {
         return retrievedData
     }
 
-    public static func delete(username: String) throws { // Already public
+    static func delete(username: String) throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -92,18 +82,34 @@ public struct KeychainHelper {
     }
 
     // Convenience methods for String passwords
-    public static func savePassword(username: String, password string: String) throws { // Already public
+    static func savePassword(username: String, password string: String) throws {
         guard let passwordData = string.data(using: .utf8) else {
             throw KeychainError.dataConversionError
         }
-        try save(username: username, passwordData: passwordData) // Calls internal save
+        try save(username: username, passwordData: passwordData)
     }
 
-    public static func loadPassword(username: String) throws -> String { // Already public
-        let passwordData = try load(username: username) // Calls internal load
+    static func loadPassword(username: String) throws -> String {
+        let passwordData = try load(username: username)
         guard let passwordString = String(data: passwordData, encoding: .utf8) else {
             throw KeychainError.dataConversionError
         }
         return passwordString
+    }
+
+    static func saveRefreshToken(_ token: String) throws {
+        try save(username: "refreshToken", passwordData: token.data(using: .utf8)!)
+    }
+
+    static func loadRefreshToken() throws -> String {
+        let tokenData = try load(username: "refreshToken")
+        guard let token = String(data: tokenData, encoding: .utf8) else {
+            throw KeychainError.dataConversionError
+        }
+        return token
+    }
+
+    static func deleteRefreshToken() throws {
+        try delete(username: "refreshToken")
     }
 }
