@@ -17,12 +17,11 @@ class CommonMoodBoardViewModel: ObservableObject {
     @Published var isGeneratingAIImage = false
     @Published var alertItem: AlertMessageItem?
 
-    @EnvironmentObject var imageUploadService: ImageUploadService
-
-    init(imageURLs: Binding<[String]>, onSave: @escaping () -> Void, onGenerateAIImage: ((String) async throws -> String)?, onSetBadge: ((String) -> Void)?) {
+    init(imageURLs: Binding<[String]>, onSave: @escaping () -> Void, onGenerateAIImage: ((String) async throws -> String)?, imageUploadService: ImageUploadService, onSetBadge: ((String) -> Void)?) {
         _imageURLs = imageURLs
         self.onSave = onSave
         self.onGenerateAIImage = onGenerateAIImage
+        self.imageUploadService = imageUploadService
         self.onSetBadge = onSetBadge
     }
 
