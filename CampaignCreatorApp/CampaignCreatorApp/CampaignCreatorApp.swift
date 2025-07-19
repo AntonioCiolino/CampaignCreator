@@ -7,10 +7,6 @@ struct CampaignCreatorApp: App {
     @StateObject private var themeManager = CampaignThemeManager()
     @StateObject private var imageUploadService = ImageUploadService(apiService: CampaignCreatorLib.APIService())
 
-    init() {
-        StringArrayTransformer.register()
-    }
-
     var body: some Scene {
         WindowGroup {
             ContentView()
