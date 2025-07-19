@@ -22,7 +22,8 @@ final class CampaignModel: Identifiable {
     var theme_font_family: String?
     var theme_background_image_url: String?
     var theme_background_image_opacity: Double?
-    var mood_board_image_urls: [String]?
+    @Attribute(.transformable) var mood_board_image_urls: [String]?
+    @Attribute(.transformable) var linked_character_ids: [Int]?
 
     init(
         id: Int,
@@ -43,7 +44,8 @@ final class CampaignModel: Identifiable {
         theme_font_family: String? = nil,
         theme_background_image_url: String? = nil,
         theme_background_image_opacity: Double? = nil,
-        mood_board_image_urls: [String]? = nil
+        mood_board_image_urls: [String]? = nil,
+        linked_character_ids: [Int]? = nil
     ) {
         self.id = id
         self.title = title
@@ -64,6 +66,7 @@ final class CampaignModel: Identifiable {
         self.theme_background_image_url = theme_background_image_url
         self.theme_background_image_opacity = theme_background_image_opacity
         self.mood_board_image_urls = mood_board_image_urls
+        self.linked_character_ids = linked_character_ids
     }
 
     static func from(campaign: CampaignCreatorLib.Campaign) -> CampaignModel {
@@ -85,7 +88,8 @@ final class CampaignModel: Identifiable {
             theme_font_family: campaign.themeFontFamily,
             theme_background_image_url: campaign.themeBackgroundImageURL,
             theme_background_image_opacity: campaign.themeBackgroundImageOpacity,
-            mood_board_image_urls: campaign.moodBoardImageURLs
+            mood_board_image_urls: campaign.moodBoardImageURLs,
+            linked_character_ids: campaign.linkedCharacterIDs
         )
     }
 
