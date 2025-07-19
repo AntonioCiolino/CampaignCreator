@@ -19,6 +19,7 @@ struct CharacterChatView: View {
     }
 
     @State private var showingMemoryView = false
+    @State private var memory: MemoryModel?
 
     var body: some View {
         VStack {
@@ -93,9 +94,28 @@ struct CharacterChatView: View {
             }
         }
         .sheet(isPresented: $showingMemoryView) {
-            MemoryView(viewModel: MemoryViewModel(character: character, modelContext: modelContext))
+            if let memory = memory {
+                MemoryView(viewModel: MemoryViewModel(memory: memory, modelContext: modelContext))
+            }
         }
+        .onAppear {
+            fetchMemory()
+        }
+    }
 
+    private func fetchMemory() {
+        let characterId = character.id
+        let descriptor = FetchDescriptor<UserModel>()
+        if let user = try? modelContext.fetch(descriptor).first {
+            let userId = user.id
+            let predicate = #Predicate<MemoryModel> { memory in
+                memory.character?.id == characterId && memory.user?.id == userId
+            }
+            let memoryDescriptor = FetchDescriptor(predicate: predicate)
+            if let memory = try? modelContext.fetch(memoryDescriptor).first {
+                self.memory = memory
+            }
+        }
     }
 }
 
