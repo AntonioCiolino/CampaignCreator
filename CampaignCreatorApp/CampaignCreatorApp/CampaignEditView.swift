@@ -24,10 +24,10 @@ struct CampaignEditView: View {
                 }
 
                 Section(header: Text("Theme Colors")) {
-                    ColorPicker("Primary Color", selection: .init(get: { Color(hex: campaign.theme_primary_color ?? "") ?? .blue }, set: { campaign.theme_primary_color = $0.toHex() }), supportsOpacity: false)
-                    ColorPicker("Secondary Color", selection: .init(get: { Color(hex: campaign.theme_secondary_color ?? "") ?? .green }, set: { campaign.theme_secondary_color = $0.toHex() }), supportsOpacity: false)
-                    ColorPicker("Background Color", selection: .init(get: { Color(hex: campaign.theme_background_color ?? "") ?? .white }, set: { campaign.theme_background_color = $0.toHex() }), supportsOpacity: false)
-                    ColorPicker("Text Color", selection: .init(get: { Color(hex: campaign.theme_text_color ?? "") ?? .black }, set: { campaign.theme_text_color = $0.toHex() }), supportsOpacity: false)
+                    ColorPicker("Primary Color", selection: .init(get: { Color(hex: campaign.theme_primary_color ?? "") }, set: { campaign.theme_primary_color = $0.toHex() }), supportsOpacity: false)
+                    ColorPicker("Secondary Color", selection: .init(get: { Color(hex: campaign.theme_secondary_color ?? "") }, set: { campaign.theme_secondary_color = $0.toHex() }), supportsOpacity: false)
+                    ColorPicker("Background Color", selection: .init(get: { Color(hex: campaign.theme_background_color ?? "") }, set: { campaign.theme_background_color = $0.toHex() }), supportsOpacity: false)
+                    ColorPicker("Text Color", selection: .init(get: { Color(hex: campaign.theme_text_color ?? "") }, set: { campaign.theme_text_color = $0.toHex() }), supportsOpacity: false)
                 }
 
                 Section(header: Text("Font")) {
