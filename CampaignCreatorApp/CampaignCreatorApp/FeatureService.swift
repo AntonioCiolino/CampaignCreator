@@ -1,14 +1,15 @@
 import Foundation
 import CampaignCreatorLib
+import SwiftData
 
 class FeatureService {
     private let apiService: CampaignCreatorLib.APIService
+    private let modelContext: ModelContext
 
-    init(apiService: CampaignCreatorLib.APIService = CampaignCreatorLib.APIService()) {
+    init(apiService: CampaignCreatorLib.APIService = CampaignCreatorLib.APIService(), modelContext: ModelContext) {
         self.apiService = apiService
+        self.modelContext = modelContext
     }
-
-    @Environment(\.modelContext) private var modelContext
 
     func fetchFeatures() async throws -> [Feature] {
         let descriptor = FetchDescriptor<FeatureModel>()
