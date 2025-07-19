@@ -15,7 +15,7 @@ struct ChatMessage: Identifiable, Equatable {
         case llm = "LLM"
     }
 
-    init(from apiMessage: ConversationMessageEntry, character: CharacterModel) {
+    init(from apiMessage: ConversationMessageEntry, character: CharacterModel, user: User?) {
         self.id = UUID().uuidString
         self.text = apiMessage.text
         self.timestamp = apiMessage.timestamp
@@ -26,16 +26,16 @@ struct ChatMessage: Identifiable, Equatable {
             self.sender = .llm
         }
 
-        self.userAvatarUrl = nil
+        self.userAvatarUrl = (self.sender == .user) ? URL(string: user?.avatarUrl ?? "") : nil
         self.characterAvatarUrl = (self.sender == .llm) ? URL(string: character.image_urls?.first ?? "") : nil
     }
 
-    init(text: String, sender: Sender, character: CharacterModel) {
+    init(text: String, sender: Sender, character: CharacterModel, user: User?) {
         self.id = UUID().uuidString
         self.text = text
         self.sender = sender
         self.timestamp = Date()
-        self.userAvatarUrl = nil
+        self.userAvatarUrl = (self.sender == .user) ? URL(string: user?.avatarUrl ?? "") : nil
         self.characterAvatarUrl = (self.sender == .llm) ? URL(string: character.image_urls?.first ?? "") : nil
     }
 
@@ -87,6 +87,10 @@ struct CharacterChatView: View {
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(1...5)
                     .disabled(viewModel.isSendingMessage)
+                    .onSubmit {
+                        viewModel.sendMessage(userInput: userInput)
+                        userInput = ""
+                    }
 
                 Button(action: {
                     viewModel.sendMessage(userInput: userInput)
@@ -107,7 +111,13 @@ struct CharacterChatView: View {
         .navigationTitle("Chat")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
+                Button(action: {
+                    viewModel.summarizeMemory()
+                }) {
+                    Image(systemName: "brain")
+                }
+
                 Button(action: {
                     viewModel.clearChatMessages()
                 }) {

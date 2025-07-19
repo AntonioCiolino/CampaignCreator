@@ -30,13 +30,37 @@ struct CharacterDetailView: View {
                     }
                 }
 
-                SectionBox(title: "Statistics") {
-                    StatRow(label: "Strength", value: character.strength)
-                    StatRow(label: "Dexterity", value: character.dexterity)
-                    StatRow(label: "Constitution", value: character.constitution)
-                    StatRow(label: "Intelligence", value: character.intelligence)
-                    StatRow(label: "Wisdom", value: character.wisdom)
-                    StatRow(label: "Charisma", value: character.charisma)
+                Section(header: Text("Statistics")) {
+                    HStack {
+                        Text("Strength")
+                        Spacer()
+                        Text("\(character.strength ?? 0)")
+                    }
+                    HStack {
+                        Text("Dexterity")
+                        Spacer()
+                        Text("\(character.dexterity ?? 0)")
+                    }
+                    HStack {
+                        Text("Constitution")
+                        Spacer()
+                        Text("\(character.constitution ?? 0)")
+                    }
+                    HStack {
+                        Text("Intelligence")
+                        Spacer()
+                        Text("\(character.intelligence ?? 0)")
+                    }
+                    HStack {
+                        Text("Wisdom")
+                        Spacer()
+                        Text("\(character.wisdom ?? 0)")
+                    }
+                    HStack {
+                        Text("Charisma")
+                        Spacer()
+                        Text("\(character.charisma ?? 0)")
+                    }
                 }
 
                 if let notes = character.notes_for_llm, !notes.isEmpty {
@@ -64,6 +88,10 @@ struct CharacterDetailView: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
+                NavigationLink(destination: CharacterChatView(character: character)) {
+                    Image(systemName: "message")
+                }
+
                 Button("Edit") {
                     showingEditSheet = true
                 }
