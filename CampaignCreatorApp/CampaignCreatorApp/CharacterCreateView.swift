@@ -88,19 +88,19 @@ struct CharacterCreateView: View {
             }
             .navigationTitle("New Character")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        isPresented = false
-                    }
+        }
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") {
+                    isPresented = false
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        saveCharacter()
-                        isPresented = false
-                    }
-                    .disabled(name.isEmpty)
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") {
+                    saveCharacter()
+                    isPresented = false
                 }
+                .disabled(name.isEmpty)
             }
         }
     }
