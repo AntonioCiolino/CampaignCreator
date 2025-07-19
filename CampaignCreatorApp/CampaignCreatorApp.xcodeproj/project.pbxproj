@@ -71,9 +71,11 @@
 		94F8C4EF2E2A7FA3006B4D4E /* ImageManagerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F8C4EE2E2A7FA3006B4D4E /* ImageManagerViewModel.swift */; };
 		94F8C4F32E2A7FA6006B4D4E /* LLMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F8C4F22E2A7FA6006B4D4E /* LLMService.swift */; };
 		94F8C4F52E2A7FA7006B4D4E /* ImageGenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F8C4F42E2A7FA7006B4D4E /* ImageGenerationService.swift */; };
+		94F8C4F52E2A7FA7006B4D4E /* ImageGenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F8C4F42E2A7FA7006B4D4E /* ImageGenerationService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		94F8C4F42E2A7FA7006B4D4E /* ImageGenerationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGenerationService.swift; sourceTree = "<group>"; };
 		94F8C4F02E2A7FA4006B4D4E /* ImageModelName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageModelName.swift; sourceTree = "<group>"; };
 		3D92BBE12B8C8A8E00B8E8E8 /* CampaignCreatorApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CampaignCreatorApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3D92BBE42B8C8A8E00B8E8E8 /* CampaignCreatorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignCreatorApp.swift; sourceTree = "<group>"; };
@@ -176,6 +178,7 @@
 				94F8C4F42E2A7FA7006B4D4E /* ImageGenerationService.swift */,
 				94F8C4F22E2A7FA6006B4D4E /* LLMService.swift */,
 				94F8C4F02E2A7FA4006B4D4E /* ImageModelName.swift */,
+				94F8C4F42E2A7FA7006B4D4E /* ImageGenerationService.swift */,
 				94F8C4EE2E2A7FA3006B4D4E /* ImageManagerViewModel.swift */,
 				94F8C4EC2E2A7FA2006B4D4E /* CharacterLLMSettingsView.swift */,
 				94F8C4EA2E2A7FA1006B4D4E /* CampaignImageManagerViewModel.swift */,
@@ -340,6 +343,7 @@
 			files = (
 				94F8C4F32E2A7FA6006B4D4E /* LLMService.swift in Sources */,
 				94F8C4F12E2A7FA4006B4D4E /* ImageModelName.swift in Sources */,
+				94F8C4F52E2A7FA7006B4D4E /* ImageGenerationService.swift in Sources */,
 				94F8C4EF2E2A7FA3006B4D4E /* ImageManagerViewModel.swift in Sources */,
 				94F8C4ED2E2A7FA2006B4D4E /* CharacterLLMSettingsView.swift in Sources */,
 				94F8C4EB2E2A7FA1006B4D4E /* CampaignImageManagerViewModel.swift in Sources */,
