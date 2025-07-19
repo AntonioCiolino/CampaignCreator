@@ -9,11 +9,14 @@ class ImageGenerationService: ObservableObject {
         self.apiService = apiService
     }
 
-    func generateImage(prompt: String, model: String = "dall-e-3") async throws -> String {
-        let payload = ImageGenerationParams(prompt: prompt, model: model)
+    func generateImage(prompt: String, model: ImageModelName = .dalle3) async throws -> String {
+        let payload = ImageGenerationParams(prompt: prompt, model: model.rawValue)
         do {
             let response: ImageGenerationResponse = try await apiService.generateImage(payload: payload)
-            return response.imageUrl
+            guard let imageUrl = response.imageUrl else {
+                throw APIError.noData
+            }
+            return imageUrl
         } catch {
             throw error
         }
