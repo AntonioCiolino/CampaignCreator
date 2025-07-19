@@ -72,7 +72,7 @@ struct CampaignImageManagerView: View {
     private var addImageURLManuallySection: some View {
         Section(header: Text("Add Image URL Manually")) {
             HStack {
-                TextField("Enter new image URL", text: $viewModel.newImageURL)
+                TextField("", text: $viewModel.newImageURL, prompt: Text("Enter new image URL").foregroundColor(.gray))
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .autocapitalization(.none)
                     .keyboardType(.URL)
