@@ -10,11 +10,9 @@ struct CharacterHeaderView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TextField("Character Name", text: $editableName)
+            Text(character.name)
                 .font(.largeTitle)
-                .textFieldStyle(PlainTextFieldStyle())
                 .padding(.bottom, 4)
-                .disabled(isSaving || isGeneratingText)
 
             if let badgeUrlString = character.image_urls?.first, let badgeUrl = URL(string: badgeUrlString) {
                 if badgeUrl.isFileURL {

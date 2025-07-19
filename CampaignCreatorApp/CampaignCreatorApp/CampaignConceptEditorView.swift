@@ -23,13 +23,27 @@ struct CampaignConceptEditorView: View {
                         .cornerRadius(8)
                         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.systemGray4), lineWidth: 1))
                         .disabled(isSaving || isGeneratingText)
+                    Button("Done") {
+                        Task {
+                            await onSaveChanges()
+                            isEditingConcept = false
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(currentPrimaryColor)
+                    .disabled(isSaving || isGeneratingText)
                 } else {
                     Text(editableConcept.isEmpty ? "Tap Edit to add campaign concept..." : editableConcept)
                         .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 100)
                         .padding().background(Color(.systemGroupedBackground))
                         .cornerRadius(8)
                         .foregroundColor(editableConcept.isEmpty ? .secondary : currentTextColor)
-                        .onTapGesture { if !isSaving && !isGeneratingText { isEditingConcept = true } }
+                    Button("Edit") {
+                        isEditingConcept = true
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(currentPrimaryColor)
+                    .disabled(isSaving || isGeneratingText)
                 }
             }
         }

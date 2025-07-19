@@ -338,7 +338,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				94F8C4F52E2A7FA7006B4D4E /* ImageGenerationService.swift in Sources */,
 				94F8C4F32E2A7FA6006B4D4E /* LLMService.swift in Sources */,
 				94F8C4F12E2A7FA4006B4D4E /* ImageModelName.swift in Sources */,
 				94F8C4EF2E2A7FA3006B4D4E /* ImageManagerViewModel.swift in Sources */,

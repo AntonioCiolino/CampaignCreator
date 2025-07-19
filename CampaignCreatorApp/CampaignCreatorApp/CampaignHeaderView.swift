@@ -26,11 +26,9 @@ struct CampaignHeaderView: View {
                 Spacer()
             }
 
-            TextField("Campaign Title", text: $editableTitle)
+            Text(campaign.title)
                 .font(.largeTitle)
-                .textFieldStyle(PlainTextFieldStyle())
                 .padding(.bottom, 4)
-                .disabled(isSaving || isGeneratingText)
 
             // Campaign Badge Display
             if let badgeUrlString = campaign.badge_image_url, let badgeUrl = URL(string: badgeUrlString) {
