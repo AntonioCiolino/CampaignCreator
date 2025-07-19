@@ -72,7 +72,8 @@ struct CharacterImageManagerView: View {
     private var addImageURLManuallySection: some View {
         Section(header: Text("Add Image URL Manually")) {
             HStack {
-                TextField("", text: $viewModel.newImageURL, prompt: Text("Enter new image URL").foregroundColor(.gray))
+                TextField("Enter new image URL", text: $viewModel.newImageURL)
+                    .foregroundColor(.gray)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .autocapitalization(.none)
                     .keyboardType(.URL)

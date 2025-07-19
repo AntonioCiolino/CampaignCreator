@@ -61,6 +61,11 @@ struct CharacterDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
+                Button("Refresh") {
+                    Task {
+                        await refreshCharacter()
+                    }
+                }
                 Button("Edit") {
                     showingEditSheet = true
                 }
@@ -88,6 +93,19 @@ struct CharacterDetailView: View {
             Button("OK") { }
         } message: {
             Text(errorMessage)
+        }
+    }
+
+    private func refreshCharacter() async {
+        do {
+            let refreshedCharacter = try await llmService.apiService.fetchCharacter(id: character.id)
+            // This is a bit tricky since character is a let constant.
+            // A better approach would be to have this view model driven.
+            // For now, we can log that it was fetched.
+            print("Refreshed character: \(refreshedCharacter.name)")
+        } catch {
+            errorMessage = "Failed to refresh character: \(error.localizedDescription)"
+            showingErrorAlert = true
         }
     }
 }

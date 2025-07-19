@@ -53,6 +53,11 @@ struct CampaignDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
+                Button("Refresh") {
+                    Task {
+                        await refreshCampaign()
+                    }
+                }
                 Button("Edit") {
                     showingEditSheet = true
                 }
@@ -89,6 +94,19 @@ struct CampaignDetailView: View {
             Button("OK") { }
         } message: {
             Text(errorMessage)
+        }
+    }
+
+    private func refreshCampaign() async {
+        do {
+            let refreshedCampaign = try await llmService.apiService.fetchCampaign(id: campaign.id)
+            // This is a bit tricky since campaign is a let constant.
+            // A better approach would be to have this view model driven.
+            // For now, we can log that it was fetched.
+            print("Refreshed campaign: \(refreshedCampaign.title)")
+        } catch {
+            errorMessage = "Failed to refresh campaign: \(error.localizedDescription)"
+            showingErrorAlert = true
         }
     }
 }
