@@ -44,10 +44,10 @@ struct ChatMessage: Identifiable, Equatable {
 struct CharacterChatView: View {
     @StateObject private var viewModel: CharacterChatViewModel
     @State private var userInput: String = ""
+    @State private var didAppear = false
 
     init(character: CharacterModel) {
         _viewModel = StateObject(wrappedValue: CharacterChatViewModel(character: character))
-        viewModel.fetchData()
     }
 
     var body: some View {
@@ -109,6 +109,12 @@ struct CharacterChatView: View {
                 .padding(.leading, 4)
             }
             .padding()
+        }
+        .onAppear {
+            if !didAppear {
+                viewModel.fetchData()
+                didAppear = true
+            }
         }
         .navigationTitle("Chat")
         .navigationBarTitleDisplayMode(.inline)
