@@ -9,7 +9,7 @@ public protocol TokenManaging: Sendable {
     func hasToken() -> Bool
 }
 
-public final class TokenManager: TokenManaging {
+public final class TokenManager: TokenManaging, Sendable {
     private let accessTokenKey = "AuthAccessToken"
 
     public func getAccessToken() -> String? {
