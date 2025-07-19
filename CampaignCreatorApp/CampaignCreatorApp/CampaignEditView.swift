@@ -23,6 +23,8 @@ struct CampaignEditView: View {
                             .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.gray.opacity(0.5), lineWidth: 1))
                     }
                 }
+                .padding()
+            }
 
                 Section(header: Text("Theme Colors")) {
                     ColorPicker("Primary Color", selection: .init(get: { Color(hex: campaign.theme_primary_color ?? "") }, set: { campaign.theme_primary_color = $0.toHex() }), supportsOpacity: false)

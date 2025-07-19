@@ -20,6 +20,8 @@ struct CharacterDetailView: View {
             VStack(alignment: .leading, spacing: 16) {
                 CharacterHeaderView(character: character, editableName: .constant(character.name), isSaving: false, isGeneratingText: false, currentPrimaryColor: .blue)
 
+                CharacterStatsView(character: character)
+
                 if let description = character.character_description, !description.isEmpty {
                     SectionBox(title: "Description") {
                         Text(description)
@@ -29,39 +31,6 @@ struct CharacterDetailView: View {
                 if let appearance = character.appearance_description, !appearance.isEmpty {
                     SectionBox(title: "Appearance") {
                         Text(appearance)
-                    }
-                }
-
-                Section(header: Text("Statistics")) {
-                    HStack {
-                        Text("Strength")
-                        Spacer()
-                        Text("\(character.strength ?? 0)")
-                    }
-                    HStack {
-                        Text("Dexterity")
-                        Spacer()
-                        Text("\(character.dexterity ?? 0)")
-                    }
-                    HStack {
-                        Text("Constitution")
-                        Spacer()
-                        Text("\(character.constitution ?? 0)")
-                    }
-                    HStack {
-                        Text("Intelligence")
-                        Spacer()
-                        Text("\(character.intelligence ?? 0)")
-                    }
-                    HStack {
-                        Text("Wisdom")
-                        Spacer()
-                        Text("\(character.wisdom ?? 0)")
-                    }
-                    HStack {
-                        Text("Charisma")
-                        Spacer()
-                        Text("\(character.charisma ?? 0)")
                     }
                 }
 
