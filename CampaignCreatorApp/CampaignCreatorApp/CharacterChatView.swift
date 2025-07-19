@@ -1,73 +1,40 @@
 import SwiftUI
 import Kingfisher
+import SwiftData
 import CampaignCreatorLib
-
-struct ChatMessage: Identifiable, Equatable {
-    let id: String
-    let text: String
-    let sender: Sender
-    let timestamp: Date
-    let userAvatarUrl: URL?
-    let characterAvatarUrl: URL?
-
-    enum Sender: String {
-        case user = "User"
-        case llm = "LLM"
-    }
-
-    init(from apiMessage: ConversationMessageEntry, character: CharacterModel, user: User?) {
-        self.id = UUID().uuidString
-        self.text = apiMessage.text
-        self.timestamp = apiMessage.timestamp
-
-        if apiMessage.speaker.lowercased() == "user" {
-            self.sender = .user
-        } else {
-            self.sender = .llm
-        }
-
-        self.userAvatarUrl = (self.sender == .user) ? URL(string: user?.avatarUrl ?? "") : nil
-        self.characterAvatarUrl = (self.sender == .llm) ? URL(string: character.image_urls?.first ?? "") : nil
-    }
-
-    init(text: String, sender: Sender, character: CharacterModel, user: User?) {
-        self.id = UUID().uuidString
-        self.text = text
-        self.sender = sender
-        self.timestamp = Date()
-        self.userAvatarUrl = (self.sender == .user) ? URL(string: user?.avatarUrl ?? "") : nil
-        self.characterAvatarUrl = (self.sender == .llm) ? URL(string: character.image_urls?.first ?? "") : nil
-    }
-
-}
 
 struct CharacterChatView: View {
     @StateObject private var viewModel: CharacterChatViewModel
     @State private var userInput: String = ""
+    @Bindable var character: CharacterModel
+    @Environment(\.modelContext) private var modelContext
+
+    private var sortedMessages: [ChatMessageModel] {
+        (character.messages ?? []).sorted { $0.timestamp < $1.timestamp }
+    }
 
     init(character: CharacterModel) {
-        _viewModel = StateObject(wrappedValue: CharacterChatViewModel(character: character))
+        self.character = character
+        _viewModel = StateObject(wrappedValue: CharacterChatViewModel(character: character, modelContext: PersistenceController.shared.container.mainContext))
     }
+
+    @State private var showingMemoryView = false
 
     var body: some View {
         VStack {
             ScrollViewReader { scrollViewProxy in
                 ScrollView {
-                    if let summary = viewModel.memorySummary, !summary.isEmpty {
-                        MemorySummaryView(memorySummary: summary)
-                            .padding(.horizontal)
-                    }
                     LazyVStack(spacing: 12) {
-                        ForEach(viewModel.chatMessages) { message in
-                            ChatMessageRow(message: message)
+                        ForEach(sortedMessages) { message in
+                            ChatMessageRow(message: message, character: character)
                                 .id(message.id)
                         }
                     }
                     .padding(.horizontal)
                     .padding(.top, 8)
                 }
-                .onChange(of: viewModel.chatMessages) {
-                    if let lastMessage = viewModel.chatMessages.last {
+                .onChange(of: sortedMessages) {
+                    if let lastMessage = sortedMessages.last {
                         withAnimation {
                             scrollViewProxy.scrollTo(lastMessage.id, anchor: .bottom)
                         }
@@ -113,13 +80,7 @@ struct CharacterChatView: View {
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
                 Button(action: {
-                    viewModel.forceSummarizeMemory()
-                }) {
-                    Image(systemName: "arrow.clockwise.circle")
-                }
-
-                Button(action: {
-                    viewModel.summarizeMemory()
+                    showingMemoryView = true
                 }) {
                     Image(systemName: "brain")
                 }
@@ -131,23 +92,28 @@ struct CharacterChatView: View {
                 }
             }
         }
+        .sheet(isPresented: $showingMemoryView) {
+            MemoryView(viewModel: MemoryViewModel(character: character, modelContext: modelContext))
+        }
 
     }
 }
 
 struct ChatMessageRow: View {
-    let message: ChatMessage
+    let message: ChatMessageModel
+    let character: CharacterModel
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
-            if message.sender == .llm {
-                AvatarView(url: message.characterAvatarUrl)
+            if message.sender == "llm" {
+                AvatarView(url: URL(string: character.image_urls?.first ?? ""))
                 MessageBubble(text: message.text, isUser: false)
                 Spacer()
             } else {
                 Spacer()
                 MessageBubble(text: message.text, isUser: true)
-                AvatarView(url: message.userAvatarUrl)
+                // We'll need to fetch the user's avatar URL from somewhere
+                AvatarView(url: nil)
             }
         }
         .padding(.horizontal, 8)

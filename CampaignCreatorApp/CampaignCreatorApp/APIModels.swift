@@ -151,7 +151,8 @@ struct ConversationMessageContext: Codable {
     let text: String
 }
 
-struct ConversationMessageEntry: Codable {
+struct ConversationMessageEntry: Codable, Identifiable {
+    let id: String
     let speaker: String
     let text: String
     let timestamp: Date

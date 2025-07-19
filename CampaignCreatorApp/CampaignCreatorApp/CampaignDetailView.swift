@@ -16,8 +16,10 @@ struct CampaignDetailView: View {
     @State private var showingErrorAlert = false
     @State private var errorMessage = ""
 
+    @Environment(\.modelContext) private var modelContext
+
     var body: some View {
-        ScrollView {
+        Form {
             ZStack {
                 // Background color from theme
                 themeManager.backgroundColor.edgesIgnoringSafeArea(.all)
@@ -62,6 +64,12 @@ struct CampaignDetailView: View {
                 .padding()
             }
         }
+        .onDisappear(perform: {
+            if campaign.hasChanges {
+                campaign.needsSync = true
+                try? modelContext.save()
+            }
+        })
         .navigationTitle(campaign.title)
         .navigationBarTitleDisplayMode(.inline)
         .background(themeManager.backgroundColor)
@@ -119,10 +127,22 @@ struct CampaignDetailView: View {
     private func refreshCampaign() async {
         do {
             let refreshedCampaign = try await llmService.apiService.fetchCampaign(id: campaign.id)
-            // This is a bit tricky since campaign is a let constant.
-            // A better approach would be to have this view model driven.
-            // For now, we can log that it was fetched.
-            print("Refreshed campaign: \(refreshedCampaign.title)")
+            campaign.title = refreshedCampaign.title
+            campaign.concept = refreshedCampaign.concept
+            campaign.initial_user_prompt = refreshedCampaign.initialUserPrompt
+            campaign.badge_image_url = refreshedCampaign.badgeImageURL
+            campaign.thematic_image_url = refreshedCampaign.thematicImageURL
+            campaign.thematic_image_prompt = refreshedCampaign.thematicImagePrompt
+            campaign.selected_llm_id = refreshedCampaign.selectedLLMId
+            campaign.temperature = refreshedCampaign.temperature
+            campaign.theme_primary_color = refreshedCampaign.themePrimaryColor
+            campaign.theme_secondary_color = refreshedCampaign.themeSecondaryColor
+            campaign.theme_background_color = refreshedCampaign.themeBackgroundColor
+            campaign.theme_text_color = refreshedCampaign.themeTextColor
+            campaign.theme_font_family = refreshedCampaign.themeFontFamily
+            campaign.theme_background_image_url = refreshedCampaign.themeBackgroundImageURL
+            campaign.theme_background_image_opacity = refreshedCampaign.themeBackgroundImageOpacity
+            campaign.mood_board_image_urls = refreshedCampaign.moodBoardImageURLs
         } catch {
             errorMessage = "Failed to refresh campaign: \(error.localizedDescription)"
             showingErrorAlert = true

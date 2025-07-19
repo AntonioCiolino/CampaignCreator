@@ -1,16 +1,21 @@
 import SwiftUI
+import SwiftData
 
 struct CampaignMoodboardView: View {
     @Bindable var campaign: CampaignModel
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var imageUploadService: ImageUploadService
     var onSetBadgeAction: () -> Void
 
     var body: some View {
         VStack {
             CommonMoodBoardView(
-                imageURLs: .init(get: { campaign.mood_board_image_urls ?? [] }, set: { campaign.mood_board_image_urls = $0 }),
+                imageURLs: Binding(
+                    get: { campaign.mood_board_image_urls ?? [] },
+                    set: { campaign.mood_board_image_urls = $0 }
+                ),
                 onSave: {
-                    // No need to do anything here, as the changes are saved automatically
+                    try? modelContext.save()
                 },
                 onGenerateAIImage: nil,
                 imageUploadService: imageUploadService,

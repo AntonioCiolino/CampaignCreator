@@ -13,8 +13,10 @@ struct CharacterDetailView: View {
     @State private var showingErrorAlert = false
     @State private var errorMessage = ""
 
+    @Environment(\.modelContext) private var modelContext
+
     var body: some View {
-        ScrollView {
+        Form {
             VStack(alignment: .leading, spacing: 16) {
                 CharacterHeaderView(character: character, editableName: .constant(character.name), isSaving: false, isGeneratingText: false, currentPrimaryColor: .blue)
 
@@ -81,6 +83,12 @@ struct CharacterDetailView: View {
             }
             .padding()
         }
+        .onDisappear(perform: {
+            if character.hasChanges {
+                character.needsSync = true
+                try? modelContext.save()
+            }
+        })
         .navigationTitle(character.name)
         .navigationBarTitleDisplayMode(.inline)
         .refreshable {
@@ -88,6 +96,10 @@ struct CharacterDetailView: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
+                NavigationLink(destination: MemoriesListView(character: character)) {
+                    Image(systemName: "brain")
+                }
+
                 NavigationLink(destination: CharacterChatView(character: character)) {
                     Image(systemName: "message")
                 }
@@ -125,10 +137,20 @@ struct CharacterDetailView: View {
     private func refreshCharacter() async {
         do {
             let refreshedCharacter = try await llmService.apiService.fetchCharacter(id: character.id)
-            // This is a bit tricky since character is a let constant.
-            // A better approach would be to have this view model driven.
-            // For now, we can log that it was fetched.
-            print("Refreshed character: \(refreshedCharacter.name)")
+            character.name = refreshedCharacter.name
+            character.character_description = refreshedCharacter.description
+            character.appearance_description = refreshedCharacter.appearanceDescription
+            character.image_urls = refreshedCharacter.imageURLs
+            character.notes_for_llm = refreshedCharacter.notesForLLM
+            character.strength = refreshedCharacter.stats?.strength
+            character.dexterity = refreshedCharacter.stats?.dexterity
+            character.constitution = refreshedCharacter.stats?.constitution
+            character.intelligence = refreshedCharacter.stats?.intelligence
+            character.wisdom = refreshedCharacter.stats?.wisdom
+            character.charisma = refreshedCharacter.stats?.charisma
+            character.export_format_preference = refreshedCharacter.exportFormatPreference
+            character.selected_llm_id = refreshedCharacter.selectedLLMId
+            character.temperature = refreshedCharacter.temperature
         } catch {
             errorMessage = "Failed to refresh character: \(error.localizedDescription)"
             showingErrorAlert = true

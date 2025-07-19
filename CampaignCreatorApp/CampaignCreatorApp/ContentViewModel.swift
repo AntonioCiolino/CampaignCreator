@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import SwiftData
 import CampaignCreatorLib
 
 @MainActor
@@ -7,12 +8,18 @@ class ContentViewModel: ObservableObject {
     @Published var isAuthenticated: Bool = false
     @Published var isLoggingIn: Bool = false
     @Published var authError: String?
-    @Published var currentUser: User?
+
+    @Query private var users: [UserModel]
+    var currentUser: UserModel? {
+        users.first
+    }
 
     private var apiService = CampaignCreatorLib.APIService()
     private var tokenManager = CampaignCreatorLib.UserDefaultsTokenManager()
+    private var modelContext: ModelContext
 
-    init() {
+    init(modelContext: ModelContext) {
+        self.modelContext = modelContext
         self.isAuthenticated = tokenManager.hasToken()
         if isAuthenticated {
             Task {
@@ -43,7 +50,16 @@ class ContentViewModel: ObservableObject {
 
     func fetchCurrentUser() async {
         do {
-            self.currentUser = try await apiService.performRequest(endpoint: "/users/me")
+            let user: User = try await apiService.performRequest(endpoint: "/users/me")
+            let userModel = UserModel.from(user: user)
+
+            // Clear out existing user to avoid duplicates
+            for user in users {
+                modelContext.delete(user)
+            }
+
+            modelContext.insert(userModel)
+            try modelContext.save()
         } catch {
             print("Failed to fetch current user: \(error.localizedDescription)")
             // Handle error, e.g., by logging out the user
@@ -54,6 +70,9 @@ class ContentViewModel: ObservableObject {
     func logout() {
         tokenManager.clearToken()
         self.isAuthenticated = false
-        self.currentUser = nil
+        for user in users {
+            modelContext.delete(user)
+        }
+        try? modelContext.save()
     }
 }

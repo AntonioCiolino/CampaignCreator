@@ -1,18 +1,21 @@
 import SwiftUI
-import CampaignCreatorLib
 
 @main
 struct CampaignCreatorApp: App {
-    @StateObject private var campaignCreator = CampaignCreator()
-    @StateObject private var themeManager = CampaignThemeManager()
-    @StateObject private var imageUploadService = ImageUploadService(apiService: CampaignCreatorLib.APIService())
+    @StateObject private var contentViewModel: ContentViewModel
+    @StateObject private var networkMonitor = NetworkMonitor()
+
+    init() {
+        let modelContainer = PersistenceController.shared.container
+        _contentViewModel = StateObject(wrappedValue: ContentViewModel(modelContext: modelContainer.mainContext))
+    }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(campaignCreator)
-                .environmentObject(themeManager)
-                .environmentObject(imageUploadService)
+                .environmentObject(contentViewModel)
+                .environmentObject(networkMonitor)
+                .modelContainer(PersistenceController.shared.container)
         }
     }
 }

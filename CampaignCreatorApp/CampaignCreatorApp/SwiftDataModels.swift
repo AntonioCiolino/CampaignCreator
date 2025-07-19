@@ -24,6 +24,7 @@ final class CampaignModel: Identifiable {
     var theme_background_image_opacity: Double?
     var mood_board_image_urls_string: String?
     var linked_character_ids_string: String?
+    var needsSync: Bool = false
 
     var mood_board_image_urls: [String]? {
         get {
@@ -137,6 +138,10 @@ final class CharacterModel: Identifiable {
     var campaign_ids: [Int]?
     var selected_llm_id: String?
     var temperature: Double?
+    @Relationship(inverse: \ChatMessageModel.character) var messages: [ChatMessageModel]? = []
+    @Relationship(inverse: \MemoryModel.character) var memories: [MemoryModel]? = []
+    var needsSync: Bool = false
+
 
     init(
         id: Int,
@@ -200,6 +205,20 @@ final class CharacterModel: Identifiable {
     }
 }
 
+@Model
+final class MemoryModel: Identifiable {
+    @Attribute(.unique) var id: String = UUID().uuidString
+    var summary: String
+    var timestamp: Date
+    var character: CharacterModel?
+    var user: UserModel?
+
+    init(summary: String, timestamp: Date) {
+        self.summary = summary
+        self.timestamp = timestamp
+    }
+}
+
 struct CampaignSection: Codable, Identifiable {
     let id: Int
     let campaign_id: Int
@@ -207,4 +226,51 @@ struct CampaignSection: Codable, Identifiable {
     var content: String
     var order: Int
     var type: String?
+}
+
+@Model
+final class ChatMessageModel: Identifiable {
+    @Attribute(.unique) var id: String = UUID().uuidString
+    var text: String
+    var sender: String // "user" or "llm"
+    var timestamp: Date
+    var character: CharacterModel?
+    var user: UserModel?
+
+    init(
+        text: String,
+        sender: String,
+        timestamp: Date
+    ) {
+        self.text = text
+        self.sender = sender
+        self.timestamp = timestamp
+    }
+}
+
+@Model
+final class UserModel: Identifiable {
+    @Attribute(.unique) var id: Int
+    var username: String
+    var email: String?
+    var fullName: String?
+    var avatarUrl: String?
+
+    init(id: Int, username: String, email: String?, fullName: String?, avatarUrl: String?) {
+        self.id = id
+        self.username = username
+        self.email = email
+        self.fullName = fullName
+        self.avatarUrl = avatarUrl
+    }
+
+    static func from(user: User) -> UserModel {
+        return UserModel(
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            fullName: user.fullName,
+            avatarUrl: user.avatarUrl
+        )
+    }
 }

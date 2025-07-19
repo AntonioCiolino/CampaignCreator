@@ -1,16 +1,21 @@
 import SwiftUI
+import SwiftData
 
 struct CharacterMoodboardView: View {
     @Bindable var character: CharacterModel
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var imageUploadService: ImageUploadService
     var onSetBadgeAction: () -> Void
 
     var body: some View {
         VStack {
             CommonMoodBoardView(
-                imageURLs: .init(get: { character.image_urls ?? [] }, set: { character.image_urls = $0 }),
+                imageURLs: Binding(
+                    get: { character.image_urls ?? [] },
+                    set: { character.image_urls = $0 }
+                ),
                 onSave: {
-                    // No need to do anything here, as the changes are saved automatically
+                    try? modelContext.save()
                 },
                 onGenerateAIImage: { prompt in
                     // This will be handled by the CommonMoodBoardView
