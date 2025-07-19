@@ -13,8 +13,13 @@ struct CommonMoodBoardView: View {
 
     private let gridItemLayout = [GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2)]
 
-    init(imageURLs: Binding<[String]>, onSave: @escaping () -> Void, onGenerateAIImage: ((String) async throws -> String)?, imageUploadService: ImageUploadService, onSetBadge: ((String) -> Void)? = nil) {
-        _viewModel = StateObject(wrappedValue: CommonMoodBoardViewModel(imageURLs: imageURLs, onSave: onSave, onGenerateAIImage: onGenerateAIImage, imageUploadService: imageUploadService, onSetBadge: onSetBadge))
+    @EnvironmentObject var imageUploadService: ImageUploadService
+
+    @EnvironmentObject var imageUploadService: ImageUploadService
+
+    init(imageURLs: Binding<[String]>, onSave: @escaping () -> Void, onGenerateAIImage: ((String) async throws -> String)?, onSetBadge: ((String) -> Void)? = nil) {
+        let viewModel = CommonMoodBoardViewModel(imageURLs: imageURLs, onSave: onSave, onGenerateAIImage: onGenerateAIImage, onSetBadge: onSetBadge)
+        _viewModel = StateObject(wrappedValue: viewModel)
     }
 
     var body: some View {

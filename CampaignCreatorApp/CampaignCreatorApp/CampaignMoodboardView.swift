@@ -18,7 +18,6 @@ struct CampaignMoodboardView: View {
                     try? modelContext.save()
                 },
                 onGenerateAIImage: nil,
-                imageUploadService: imageUploadService,
                 onSetBadge: { urlString in
                     campaign.badge_image_url = urlString
                 }
