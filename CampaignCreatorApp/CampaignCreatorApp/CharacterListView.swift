@@ -156,7 +156,7 @@ struct CharacterListView: View {
                     export_format_preference: character.export_format_preference
                 )
                 let body = try JSONEncoder().encode(characterUpdate)
-                let _: CharacterModel = try await apiService.performRequest(endpoint: "/characters/\(character.id)", method: "PUT", body: body)
+                let _: CampaignCreatorLib.Character = try await apiService.performRequest(endpoint: "/characters/\(character.id)", method: "PUT", body: body)
                 character.needsSync = false
                 try modelContext.save()
             } catch {

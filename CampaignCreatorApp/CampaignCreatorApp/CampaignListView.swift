@@ -166,7 +166,7 @@ struct CampaignListView: View {
                     mood_board_image_urls: campaign.mood_board_image_urls
                 )
                 let body = try JSONEncoder().encode(campaignUpdate)
-                let _: CampaignModel = try await apiService.performRequest(endpoint: "/campaigns/\(campaign.id)", method: "PUT", body: body)
+                let _: CampaignCreatorLib.Campaign = try await apiService.performRequest(endpoint: "/campaigns/\(campaign.id)", method: "PUT", body: body)
                 campaign.needsSync = false
                 try modelContext.save()
             } catch {
