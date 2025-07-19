@@ -96,4 +96,20 @@ struct KeychainHelper {
         }
         return passwordString
     }
+
+    static func saveRefreshToken(_ token: String) throws {
+        try save(username: "refreshToken", passwordData: token.data(using: .utf8)!)
+    }
+
+    static func loadRefreshToken() throws -> String {
+        let tokenData = try load(username: "refreshToken")
+        guard let token = String(data: tokenData, encoding: .utf8) else {
+            throw KeychainError.dataConversionError
+        }
+        return token
+    }
+
+    static func deleteRefreshToken() throws {
+        try delete(username: "refreshToken")
+    }
 }

@@ -22,9 +22,10 @@ struct CharacterCreateView: View {
 
     var body: some View {
         NavigationView {
-            Form {
-                Section(header: Text("Character Details")) {
-                    TextField("Name*", text: $name)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Section(header: Text("Character Details")) {
+                        TextField("Name*", text: $name)
                     VStack(alignment: .leading) {
                         Text("Description").font(.caption)
                         TextEditor(text: $character_description).frame(height: 100)
