@@ -27,7 +27,7 @@ class LLMService: ObservableObject {
                 self.availableLLMs = response.models
                 for llm in response.models {
                     let llmModel = LLMModel(id: llm.id, name: llm.name, model_type: llm.modelType ?? "", supports_temperature: llm.supportsTemperature, capabilities: llm.capabilities ?? [])
-                    modelContext.insert(llMModel)
+                    modelContext.insert(llmModel)
                 }
                 try modelContext.save()
             } catch {

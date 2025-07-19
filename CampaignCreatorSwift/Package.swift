@@ -47,7 +47,8 @@ let package = Package(
                 "Models/ChatMessageData.swift",
                 "Models/APIChatMessageModels.swift", // Added new chat message models
                 "Models/Token.swift",
-                "JSONDecoder+Extensions.swift"
+                "JSONDecoder+Extensions.swift",
+                "KeychainHelper.swift"
             ]
         ),
         .testTarget(

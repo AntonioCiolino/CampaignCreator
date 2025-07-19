@@ -16,27 +16,30 @@ struct CampaignCreateView: View {
     }
 
     var body: some View {
-        print("CampaignCreateView body")
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                Section(header: Text("Campaign Details")) {
-                    TextField("Title", text: $title)
-                TextField("Concept", text: $concept)
-            }
-        }
-        .navigationTitle("New Campaign")
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") {
-                    isPresented = false
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Section(header: Text("Campaign Details")) {
+                        TextField("Title", text: $title)
+                        TextField("Concept", text: $concept)
+                    }
                 }
+                .padding()
             }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Save") {
-                    saveCampaign()
-                    isPresented = false
+            .navigationTitle("New Campaign")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
                 }
-                .disabled(title.isEmpty)
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        saveCampaign()
+                        isPresented = false
+                    }
+                    .disabled(title.isEmpty)
+                }
             }
         }
     }
