@@ -91,7 +91,7 @@ class ImageUploadService: ObservableObject {
 
             if (200..<300).contains(httpResponse.statusCode) {
                 do {
-                    var decodedResponse = try JSONDecoder().decode(FileUploadResponse.self, from: data)
+                    let decodedResponse = try JSONDecoder().decode(FileUploadResponse.self, from: data)
                     let finalResponse = FileUploadResponse(imageUrl: decodedResponse.imageUrl, localUrl: localUrl?.absoluteString)
                     return .success(finalResponse)
                 } catch {

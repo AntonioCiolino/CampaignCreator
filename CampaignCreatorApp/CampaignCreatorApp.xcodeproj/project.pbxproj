@@ -65,18 +65,16 @@
 		949269ED2E1AC11300376F0A /* CharacterDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949269E52E1AC11300376F0A /* CharacterDetailView.swift */; };
 		949269EE2E1AC11300376F0A /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949269E82E1AC11300376F0A /* LoginView.swift */; };
 		949269EF2E1AC11300376F0A /* CharacterEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949269E62E1AC11300376F0A /* CharacterEditView.swift */; };
+		94D17C582E2B7CB300F6B268 /* ImageGenerationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94D17C572E2B7CB300F6B268 /* ImageGenerationView.swift */; };
 		94F8C4E92E2A7F9F006B4D4E /* CampaignImageManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F8C4E82E2A7F9F006B4D4E /* CampaignImageManagerView.swift */; };
 		94F8C4EB2E2A7FA1006B4D4E /* CampaignImageManagerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F8C4EA2E2A7FA1006B4D4E /* CampaignImageManagerViewModel.swift */; };
 		94F8C4ED2E2A7FA2006B4D4E /* CharacterLLMSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F8C4EC2E2A7FA2006B4D4E /* CharacterLLMSettingsView.swift */; };
 		94F8C4EF2E2A7FA3006B4D4E /* ImageManagerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F8C4EE2E2A7FA3006B4D4E /* ImageManagerViewModel.swift */; };
 		94F8C4F32E2A7FA6006B4D4E /* LLMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F8C4F22E2A7FA6006B4D4E /* LLMService.swift */; };
 		94F8C4F52E2A7FA7006B4D4E /* ImageGenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F8C4F42E2A7FA7006B4D4E /* ImageGenerationService.swift */; };
-		94F8C4F52E2A7FA7006B4D4E /* ImageGenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F8C4F42E2A7FA7006B4D4E /* ImageGenerationService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		94F8C4F42E2A7FA7006B4D4E /* ImageGenerationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGenerationService.swift; sourceTree = "<group>"; };
-		94F8C4F02E2A7FA4006B4D4E /* ImageModelName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageModelName.swift; sourceTree = "<group>"; };
 		3D92BBE12B8C8A8E00B8E8E8 /* CampaignCreatorApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CampaignCreatorApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3D92BBE42B8C8A8E00B8E8E8 /* CampaignCreatorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignCreatorApp.swift; sourceTree = "<group>"; };
 		3D92BBE62B8C8A8E00B8E8E8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -134,11 +132,11 @@
 		949269E62E1AC11300376F0A /* CharacterEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterEditView.swift; sourceTree = "<group>"; };
 		949269E72E1AC11300376F0A /* CharacterListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterListView.swift; sourceTree = "<group>"; };
 		949269E82E1AC11300376F0A /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		94D17C572E2B7CB300F6B268 /* ImageGenerationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGenerationView.swift; sourceTree = "<group>"; };
 		94F8C4E82E2A7F9F006B4D4E /* CampaignImageManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignImageManagerView.swift; sourceTree = "<group>"; };
 		94F8C4EA2E2A7FA1006B4D4E /* CampaignImageManagerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignImageManagerViewModel.swift; sourceTree = "<group>"; };
 		94F8C4EC2E2A7FA2006B4D4E /* CharacterLLMSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterLLMSettingsView.swift; sourceTree = "<group>"; };
 		94F8C4EE2E2A7FA3006B4D4E /* ImageManagerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageManagerViewModel.swift; sourceTree = "<group>"; };
-		94F8C4F02E2A7FA4006B4D4E /* ImageModelName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageModelName.swift; sourceTree = "<group>"; };
 		94F8C4F22E2A7FA6006B4D4E /* LLMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMService.swift; sourceTree = "<group>"; };
 		94F8C4F42E2A7FA7006B4D4E /* ImageGenerationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGenerationService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -175,9 +173,8 @@
 		3D92BBE32B8C8A8E00B8E8E8 /* CampaignCreatorApp */ = {
 			isa = PBXGroup;
 			children = (
-				94F8C4F42E2A7FA7006B4D4E /* ImageGenerationService.swift */,
+				94D17C572E2B7CB300F6B268 /* ImageGenerationView.swift */,
 				94F8C4F22E2A7FA6006B4D4E /* LLMService.swift */,
-				94F8C4F02E2A7FA4006B4D4E /* ImageModelName.swift */,
 				94F8C4F42E2A7FA7006B4D4E /* ImageGenerationService.swift */,
 				94F8C4EE2E2A7FA3006B4D4E /* ImageManagerViewModel.swift */,
 				94F8C4EC2E2A7FA2006B4D4E /* CharacterLLMSettingsView.swift */,
@@ -342,7 +339,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				94F8C4F32E2A7FA6006B4D4E /* LLMService.swift in Sources */,
-				94F8C4F12E2A7FA4006B4D4E /* ImageModelName.swift in Sources */,
 				94F8C4F52E2A7FA7006B4D4E /* ImageGenerationService.swift in Sources */,
 				94F8C4EF2E2A7FA3006B4D4E /* ImageManagerViewModel.swift in Sources */,
 				94F8C4ED2E2A7FA2006B4D4E /* CharacterLLMSettingsView.swift in Sources */,
@@ -366,6 +362,7 @@
 				9452740B2E256D2C0042F819 /* Persistence.swift in Sources */,
 				9452740C2E256D2C0042F819 /* APIModels.swift in Sources */,
 				9452740D2E256D2C0042F819 /* CampaignCreateView.swift in Sources */,
+				94D17C582E2B7CB300F6B268 /* ImageGenerationView.swift in Sources */,
 				9452740E2E256D2C0042F819 /* SwiftDataModels.swift in Sources */,
 				9452744D2E25B8830042F819 /* CharacterHeaderView.swift in Sources */,
 				9452744E2E25B8830042F819 /* SnippetContextInputModal+Subviews.swift in Sources */,

@@ -9,7 +9,7 @@ class ImageGenerationService: ObservableObject {
         self.apiService = apiService
     }
 
-    func generateImage(prompt: String, model: CampaignCreatorLib.ImageModelName = .dalle3) async throws -> String {
+    func generateImage(prompt: String, model: CampaignCreatorLib.ImageModelName = .openAIDalle) async throws -> String {
         let payload = CampaignCreatorLib.ImageGenerationParams(prompt: prompt, model: model.rawValue)
         do {
             let response: CampaignCreatorLib.ImageGenerationResponse = try await apiService.generateImage(payload: payload)
