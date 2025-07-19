@@ -57,6 +57,8 @@
 		9452740E2E256D2C0042F819 /* SwiftDataModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9452740A2E256D2C0042F819 /* SwiftDataModels.swift */; };
 		9452744D2E25B8830042F819 /* CharacterHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9452744B2E25B8830042F819 /* CharacterHeaderView.swift */; };
 		9452744E2E25B8830042F819 /* SnippetContextInputModal+Subviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9452744C2E25B8830042F819 /* SnippetContextInputModal+Subviews.swift */; };
+		945ABCD22E2B941E00C4269C /* CollapsibleSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 945ABCD02E2B941E00C4269C /* CollapsibleSectionView.swift */; };
+		945ABCD32E2B941E00C4269C /* View+NavigationBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 945ABCD12E2B941E00C4269C /* View+NavigationBar.swift */; };
 		9481FD642E1C3D180084268D /* SectionBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9481FD622E1C3D180084268D /* SectionBox.swift */; };
 		9481FD662E1C3D210084268D /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9481FD652E1C3D210084268D /* Color+Hex.swift */; };
 		949269E92E1AC11300376F0A /* CharacterCreateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949269E42E1AC11300376F0A /* CharacterCreateView.swift */; };
@@ -124,6 +126,8 @@
 		9452740A2E256D2C0042F819 /* SwiftDataModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftDataModels.swift; sourceTree = "<group>"; };
 		9452744B2E25B8830042F819 /* CharacterHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterHeaderView.swift; sourceTree = "<group>"; };
 		9452744C2E25B8830042F819 /* SnippetContextInputModal+Subviews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SnippetContextInputModal+Subviews.swift"; sourceTree = "<group>"; };
+		945ABCD02E2B941E00C4269C /* CollapsibleSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollapsibleSectionView.swift; sourceTree = "<group>"; };
+		945ABCD12E2B941E00C4269C /* View+NavigationBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+NavigationBar.swift"; sourceTree = "<group>"; };
 		9481FD622E1C3D180084268D /* SectionBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionBox.swift; sourceTree = "<group>"; };
 		9481FD652E1C3D210084268D /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
 		949269E32E1AC11300376F0A /* CampaignListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignListView.swift; sourceTree = "<group>"; };
@@ -173,6 +177,8 @@
 		3D92BBE32B8C8A8E00B8E8E8 /* CampaignCreatorApp */ = {
 			isa = PBXGroup;
 			children = (
+				945ABCD02E2B941E00C4269C /* CollapsibleSectionView.swift */,
+				945ABCD12E2B941E00C4269C /* View+NavigationBar.swift */,
 				94D17C572E2B7CB300F6B268 /* ImageGenerationView.swift */,
 				94F8C4F22E2A7FA6006B4D4E /* LLMService.swift */,
 				94F8C4F42E2A7FA7006B4D4E /* ImageGenerationService.swift */,
@@ -369,6 +375,8 @@
 				943031BB2E1DCAFF00F3C129 /* CampaignDetailView.swift in Sources */,
 				949269ED2E1AC11300376F0A /* CharacterDetailView.swift in Sources */,
 				949269EE2E1AC11300376F0A /* LoginView.swift in Sources */,
+				945ABCD22E2B941E00C4269C /* CollapsibleSectionView.swift in Sources */,
+				945ABCD32E2B941E00C4269C /* View+NavigationBar.swift in Sources */,
 				949269EF2E1AC11300376F0A /* CharacterEditView.swift in Sources */,
 				9452737C2E2461C40042F819 /* Collection+Helpers.swift in Sources */,
 				9452737D2E2461C40042F819 /* CharacterMoodboardViewModel.swift in Sources */,
