@@ -11,11 +11,27 @@ class CharacterChatViewModel: ObservableObject {
 
     private let character: CharacterModel
     private var apiService = CampaignCreatorLib.APIService()
+    private var user: User?
 
     init(character: CharacterModel) {
         self.character = character
-        fetchChatHistory()
-        fetchMemorySummary()
+        fetchData()
+    }
+
+    private func fetchData() {
+        Task {
+            await fetchUser()
+            fetchChatHistory()
+            fetchMemorySummary()
+        }
+    }
+
+    private func fetchUser() async {
+        do {
+            self.user = try await apiService.performRequest(endpoint: "/users/me")
+        } catch {
+            errorMessage = "Failed to load user data."
+        }
     }
 
     func clearChatMessages() {
@@ -45,7 +61,7 @@ class CharacterChatViewModel: ObservableObject {
         Task {
             do {
                 let apiMessages: [ConversationMessageEntry] = try await apiService.performRequest(endpoint: "/characters/\(character.id)/chat")
-                self.chatMessages = apiMessages.map { ChatMessage(from: $0, character: character) }
+                self.chatMessages = apiMessages.map { ChatMessage(from: $0, character: character, user: self.user) }
             } catch {
                 self.errorMessage = "Failed to load chat history. Please check your connection and try again."
             }
@@ -59,7 +75,8 @@ class CharacterChatViewModel: ObservableObject {
         let optimisticUserMessage = ChatMessage(
             text: messageText,
             sender: .user,
-            character: character
+            character: character,
+            user: self.user
         )
         chatMessages.append(optimisticUserMessage)
 
