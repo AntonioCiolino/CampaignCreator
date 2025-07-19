@@ -56,15 +56,6 @@ struct CommonMoodBoardView: View {
         }
         .navigationTitle("Mood Board")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    viewModel.showingAddImageOptions = true
-                } label: {
-                    Image(systemName: "plus")
-                }
-            }
-        }
         .confirmationDialog("Add Image", isPresented: $viewModel.showingAddImageOptions, titleVisibility: .visible) {
             Button("Add from URL") {
                 viewModel.newImageURLInput = ""
