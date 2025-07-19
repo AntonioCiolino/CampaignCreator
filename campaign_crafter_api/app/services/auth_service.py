@@ -36,7 +36,7 @@ async def get_current_user(
     if db_user_orm is None:
         raise credentials_exception
 
-    user_pydantic = models.User.from_orm(db_user_orm)
+    user_pydantic = models.User.model_validate(db_user_orm)
     return user_pydantic
 
 async def get_current_active_user(
@@ -79,4 +79,4 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[mod
     # If authentication is successful, return the Pydantic model of the user
     # This ensures that the response (if this function's output is directly used in an API)
     # conforms to the User Pydantic model.
-    return models.User.from_orm(db_user)
+    return models.User.model_validate(db_user)
