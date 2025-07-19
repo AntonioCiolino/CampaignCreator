@@ -1,4 +1,5 @@
 import SwiftUI
+import CampaignCreatorLib
 
 @MainActor
 class ImageManagerViewModel: ObservableObject {

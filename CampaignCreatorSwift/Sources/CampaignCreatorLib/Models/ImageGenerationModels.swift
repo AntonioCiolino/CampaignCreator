@@ -4,6 +4,8 @@ public enum ImageModelName: String, Codable, Sendable, CaseIterable { // Added C
     case openAIDalle = "dall-e" // Single case for DALL-E, rawValue matches backend
     case stableDiffusion = "stable-diffusion" // Example, actual value might differ
     case gemini // Assuming "gemini" is the raw value for Gemini models
+    case dalle3 = "dall-e-3"
+    case dalle2 = "dall-e-2"
 
     // Convenience for a default or common model
     public static var defaultOpenAI: ImageModelName { .openAIDalle }
@@ -11,7 +13,7 @@ public enum ImageModelName: String, Codable, Sendable, CaseIterable { // Added C
 
 public struct ImageGenerationParams: Codable, Sendable {
     public let prompt: String
-    public let model: ImageModelName // e.g., "dall-e", "stable-diffusion"
+    public let model: String // e.g., "dall-e", "stable-diffusion"
     public let size: String?
     public let quality: String? // DALL-E specific
     public let steps: Int?      // Stable Diffusion specific
@@ -26,7 +28,7 @@ public struct ImageGenerationParams: Codable, Sendable {
         case campaignId = "campaign_id"
     }
 
-    public init(prompt: String, model: ImageModelName, size: String? = nil, quality: String? = nil, steps: Int? = nil, cfgScale: Double? = nil, geminiModelName: String? = nil, campaignId: Int? = nil) {
+    public init(prompt: String, model: String, size: String? = nil, quality: String? = nil, steps: Int? = nil, cfgScale: Double? = nil, geminiModelName: String? = nil, campaignId: Int? = nil) {
         self.prompt = prompt
         self.model = model
         self.size = size
@@ -41,7 +43,7 @@ public struct ImageGenerationParams: Codable, Sendable {
 public struct ImageGenerationResponse: Codable, Sendable {
     public let imageUrl: String? // Changed to optional
     public let promptUsed: String // Reverted to non-optional
-    public let modelUsed: ImageModelName // Reverted to non-optional
+    public let modelUsed: String // Reverted to non-optional
     public let sizeUsed: String
     public let qualityUsed: String?
     public let stepsUsed: Int?
@@ -60,7 +62,7 @@ public struct ImageGenerationResponse: Codable, Sendable {
     }
 
     // Update init to reflect non-optional promptUsed and modelUsed
-    public init(imageUrl: String?, promptUsed: String, modelUsed: ImageModelName, sizeUsed: String, qualityUsed: String? = nil, stepsUsed: Int? = nil, cfgScaleUsed: Double? = nil, geminiModelNameUsed: String? = nil) {
+    public init(imageUrl: String?, promptUsed: String, modelUsed: String, sizeUsed: String, qualityUsed: String? = nil, stepsUsed: Int? = nil, cfgScaleUsed: Double? = nil, geminiModelNameUsed: String? = nil) {
         self.imageUrl = imageUrl
         self.promptUsed = promptUsed
         self.modelUsed = modelUsed

@@ -10,9 +10,9 @@ class ImageGenerationService: ObservableObject {
     }
 
     func generateImage(prompt: String, model: CampaignCreatorLib.ImageModelName = .dalle3) async throws -> String {
-        let payload = ImageGenerationParams(prompt: prompt, model: model.rawValue)
+        let payload = CampaignCreatorLib.ImageGenerationParams(prompt: prompt, model: model.rawValue)
         do {
-            let response: ImageGenerationResponse = try await apiService.generateImage(payload: payload)
+            let response: CampaignCreatorLib.ImageGenerationResponse = try await apiService.generateImage(payload: payload)
             guard let imageUrl = response.imageUrl else {
                 throw APIError.noData
             }

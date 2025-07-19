@@ -17,7 +17,7 @@ struct CampaignImageManagerView: View {
                         .disabled(viewModel.isGeneratingImage)
 
                     Picker("Select Model", selection: $viewModel.selectedModel) {
-                        ForEach(ImageModelName.allCases, id: \.self) { model in
+                        ForEach(CampaignCreatorLib.ImageModelName.allCases, id: \.self) { model in
                             Text(model.rawValue.capitalized).tag(model)
                         }
                     }
