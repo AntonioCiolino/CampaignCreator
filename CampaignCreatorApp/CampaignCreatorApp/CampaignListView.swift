@@ -132,7 +132,7 @@ struct CampaignListView: View {
                     existingCampaign.theme_background_image_url = campaign.themeBackgroundImageURL
                     existingCampaign.theme_background_image_opacity = campaign.themeBackgroundImageOpacity
                     existingCampaign.mood_board_image_urls = campaign.moodBoardImageURLs
-                    existingCampaign.sections = campaign.sections?.map { CampaignSection(id: $0.id, campaign_id: $0.campaign_id, title: $0.title, content: $0.content, order: $0.order, type: $0.type) }
+                    existingCampaign.sections = campaign.sections.map { CampaignSection(id: $0.id, campaign_id: $0.campaign_id, title: $0.title, content: $0.content, order: $0.order, type: $0.type) }
                 } else {
                     let campaignModel = CampaignModel.from(campaign: campaign)
                     modelContext.insert(campaignModel)

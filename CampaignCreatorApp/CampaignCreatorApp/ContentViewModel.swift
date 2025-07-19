@@ -2,7 +2,6 @@ import Foundation
 import SwiftUI
 import SwiftData
 import CampaignCreatorLib
-import CampaignCreatorLib
 
 @MainActor
 class ContentViewModel: ObservableObject {

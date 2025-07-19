@@ -8,8 +8,8 @@ struct CampaignMoodboardView: View {
     var body: some View {
         VStack {
             CommonMoodBoardView(
-                name: campaign.title,
                 imageURLs: .init(get: { campaign.mood_board_image_urls ?? [] }, set: { campaign.mood_board_image_urls = $0 }),
+                name: campaign.title,
                 onSave: {
                     // No need to do anything here, as the changes are saved automatically
                 },
