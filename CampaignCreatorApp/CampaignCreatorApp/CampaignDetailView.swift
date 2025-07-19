@@ -111,6 +111,9 @@ struct CampaignDetailView: View {
         } message: {
             Text(errorMessage)
         }
+        .onDisappear {
+            themeManager.resetTheme()
+        }
     }
 
     private func refreshCampaign() async {

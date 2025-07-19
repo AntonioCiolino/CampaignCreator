@@ -36,7 +36,7 @@ struct CampaignLLMSettingsView: View {
                 if let selectedLLM = availableLLMs.first(where: { $0.id == selectedLLMId }), let description = selectedLLM.description {
                     Text(description)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(currentTextColor.opacity(0.8))
                         .padding(.top, 4)
                 }
 
@@ -50,11 +50,12 @@ struct CampaignLLMSettingsView: View {
                             Task { await onLLMSettingsChange() }
                         }
                     }
+                    .accentColor(currentTextColor)
                 }
 
                 Text("Lower temperature (e.g., 0.2) means more focused output. Higher (e.g., 0.8 for more creative output, max 1.0).")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(currentTextColor.opacity(0.8))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 4)
@@ -62,5 +63,7 @@ struct CampaignLLMSettingsView: View {
         .foregroundColor(currentTextColor)
         .font(currentFont)
         .padding()
+        .background(Color.secondary.opacity(0.1))
+        .cornerRadius(8)
     }
 }
