@@ -50,7 +50,7 @@ struct CharacterLinkingView: View {
             get: {
                 self.campaign.linked_character_ids.contains(character.id)
             },
-            set: { isLinked in
+            set: { isLinked, _ in
                 if isLinked {
                     if !self.campaign.linked_character_ids.contains(character.id) {
                         self.campaign.linked_character_ids.append(character.id)
