@@ -3,7 +3,7 @@ import Kingfisher
 import SwiftData
 
 struct CampaignDetailView: View {
-    let campaign: CampaignModel
+    @Bindable var campaign: CampaignModel
 
     @State private var showingEditSheet = false
     @State private var isEditingConcept = false
@@ -15,7 +15,6 @@ struct CampaignDetailView: View {
     @State private var showingSetBadgeSheet = false
     @State private var showingErrorAlert = false
     @State private var errorMessage = ""
-    @State private var characters: [CharacterModel] = []
 
     var body: some View {
         ScrollView {
@@ -50,7 +49,7 @@ struct CampaignDetailView: View {
                     }
 
                     CollapsibleSectionView(title: "Character Linking") {
-                        CharacterLinkingView(campaign: campaign, characters: $characters)
+                        CharacterLinkingView(campaign: campaign)
                     }
 
                     CampaignLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: llmService.availableLLMs, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onLLMSettingsChange: {
