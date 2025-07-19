@@ -161,6 +161,16 @@ struct LLMTextGenerationResponse: Codable {
     let text: String
 }
 
+struct LLMTextGenerationParams: Codable {
+    let prompt: String
+    let chat_history: [ChatHistoryItem]?
+}
+
+struct ChatHistoryItem: Codable {
+    let speaker: String
+    let text: String
+}
+
 // MARK: - Feature Models
 
 struct Feature: Codable, Identifiable {
