@@ -12,7 +12,10 @@ struct CharacterMoodboardView: View {
                 onSave: {
                     // No need to do anything here, as the changes are saved automatically
                 },
-                onGenerateAIImage: nil,
+                onGenerateAIImage: { prompt in
+                    // This will be handled by the CommonMoodBoardView
+                    return ""
+                },
                 imageUploadService: imageUploadService
             )
             Button(action: {
