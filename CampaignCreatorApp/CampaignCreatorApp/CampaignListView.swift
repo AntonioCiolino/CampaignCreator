@@ -69,6 +69,8 @@ struct CampaignListView: View {
             .sheet(isPresented: $showingCreateSheet) {
                 if let user = contentViewModel.currentUser {
                     CampaignCreateView(isPresented: $showingCreateSheet, ownerId: user.id)
+                        .environmentObject(contentViewModel)
+                        .environment(\.modelContext, modelContext)
                 }
             }
             .alert("Error", isPresented: $showingErrorAlert) {

@@ -9,29 +9,34 @@ struct CampaignCreateView: View {
     @State private var title = ""
     @State private var concept = ""
 
+    init(isPresented: Binding<Bool>, ownerId: Int) {
+        _isPresented = isPresented
+        self.ownerId = ownerId
+        print("CampaignCreateView init")
+    }
+
     var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    Section(header: Text("Campaign Details")) {
-                        TextField("Title", text: $title)
-                    TextField("Concept", text: $concept)
+        print("CampaignCreateView body")
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                Section(header: Text("Campaign Details")) {
+                    TextField("Title", text: $title)
+                TextField("Concept", text: $concept)
+            }
+        }
+        .navigationTitle("New Campaign")
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") {
+                    isPresented = false
                 }
             }
-            .navigationTitle("New Campaign")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        isPresented = false
-                    }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") {
+                    saveCampaign()
+                    isPresented = false
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        saveCampaign()
-                        isPresented = false
-                    }
-                    .disabled(title.isEmpty)
-                }
+                .disabled(title.isEmpty)
             }
         }
     }

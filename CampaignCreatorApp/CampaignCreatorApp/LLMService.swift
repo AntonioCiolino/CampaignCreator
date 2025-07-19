@@ -1,4 +1,6 @@
 import Foundation
+import SwiftUI
+import SwiftData
 import CampaignCreatorLib
 
 @MainActor
@@ -18,14 +20,14 @@ class LLMService: ObservableObject {
         let localLLMs = try? modelContext.fetch(descriptor)
 
         if let localLLMs = localLLMs, !localLLMs.isEmpty {
-            self.availableLLMs = localLLMs.map { AvailableLLM(id: $0.id, name: $0.name, description: $0.model_type, supports_temperature: $0.supports_temperature, capabilities: $0.capabilities) }
+            self.availableLLMs = localLLMs.map { AvailableLLM(id: $0.id, name: $0.name, modelType: $0.model_type, supportsTemperature: $0.supports_temperature, capabilities: $0.capabilities, description: $0.model_type) }
         } else {
             do {
                 let response: LLMModelsResponse = try await apiService.performRequest(endpoint: "/llm/models")
                 self.availableLLMs = response.models
                 for llm in response.models {
-                    let llmModel = LLMModel(id: llm.id, name: llm.name, model_type: llm.model_type, supports_temperature: llm.supports_temperature, capabilities: llm.capabilities)
-                    modelContext.insert(llmModel)
+                    let llmModel = LLMModel(id: llm.id, name: llm.name, model_type: llm.modelType ?? "", supports_temperature: llm.supportsTemperature, capabilities: llm.capabilities ?? [])
+                    modelContext.insert(llMModel)
                 }
                 try modelContext.save()
             } catch {
