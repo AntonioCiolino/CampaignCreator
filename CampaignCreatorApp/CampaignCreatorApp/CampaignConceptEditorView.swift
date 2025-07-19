@@ -16,18 +16,6 @@ struct CampaignConceptEditorView: View {
     var body: some View {
         SectionBox(title: "Campaign Concept") {
             VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Spacer() // Pushes button to the right
-                    Button(isEditingConcept ? "Done" : "Edit") {
-                        isEditingConcept.toggle()
-                        if !isEditingConcept { // Save when "Done" is tapped
-                            Task { await onSaveChanges() }
-                        }
-                    }
-                    .buttonStyle(.bordered).disabled(isSaving || isGeneratingText)
-                    .tint(currentPrimaryColor)
-                }
-
                 if isEditingConcept {
                     TextEditor(text: $editableConcept)
                         .frame(minHeight: 200, maxHeight: 400).padding(8)

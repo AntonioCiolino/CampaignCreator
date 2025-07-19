@@ -53,9 +53,6 @@ struct CommonMoodBoardView: View {
         .navigationTitle("Mood Board")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                EditButton()
-            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
                     viewModel.showingAddImageOptions = true

@@ -138,7 +138,6 @@ struct SelectBadgeFromMoodboardView: View {
             let generatedImageURL = try await imageGenerationService.generateImage(prompt: aiImagePrompt)
             moodBoardImageURLs.append(generatedImageURL)
             isGeneratingImage = false
-            showingGenerateImageSheet = false
         } catch {
             errorMessage = error.localizedDescription
             isGeneratingImage = false
