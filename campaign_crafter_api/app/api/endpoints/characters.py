@@ -587,6 +587,46 @@ async def clear_character_chat_history(
     # No body is returned for a 204 response
     return None
 
+@router.post("/{character_id}/force-memory-summary", status_code=status.HTTP_204_NO_CONTENT)
+async def force_character_memory_summary(
+    character_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[models.User, Depends(get_current_active_user)],
+):
+    """
+    Manually triggers the memory summarization process for a character.
+    """
+    db_character = crud.get_character(db=db, character_id=character_id)
+    if db_character is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found")
+    if db_character.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to force memory summary for this character")
+
+    conversation_orm = crud.get_or_create_user_character_conversation(db, character_id, current_user.id)
+    if not conversation_orm.conversation_history:
+        # No history, nothing to summarize. Return early.
+        return
+
+    current_user_orm = crud.get_user(db, current_user.id)
+    if not current_user_orm:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not retrieve user data for LLM service.")
+
+    try:
+        llm_service = crud.get_llm_service(db=db, current_user_orm=current_user_orm)
+        await crud.update_conversation_summary(
+            db=db,
+            conversation_orm=conversation_orm,
+            llm_service=llm_service,
+            current_user_model=current_user,
+            character_name=db_character.name,
+            character_notes=db_character.notes_for_llm,
+            append_to_existing_summary=True
+        )
+    except Exception as e:
+        print(f"ERROR:API:force_character_memory_summary: Failed for char_id={character_id}, user_id={current_user.id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to force memory summarization.")
+
+
 @router.get("/{character_id}/memory-summary", response_model=models.MemorySummary)
 def get_character_memory_summary(
     character_id: int,

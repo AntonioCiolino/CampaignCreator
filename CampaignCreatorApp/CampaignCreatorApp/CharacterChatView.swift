@@ -51,12 +51,12 @@ struct CharacterChatView: View {
 
     var body: some View {
         VStack {
-            if let summary = viewModel.memorySummary, !summary.isEmpty {
-                MemorySummaryView(memorySummary: summary)
-                    .padding(.horizontal)
-            }
             ScrollViewReader { scrollViewProxy in
                 ScrollView {
+                    if let summary = viewModel.memorySummary, !summary.isEmpty {
+                        MemorySummaryView(memorySummary: summary)
+                            .padding(.horizontal)
+                    }
                     LazyVStack(spacing: 12) {
                         ForEach(viewModel.chatMessages) { message in
                             ChatMessageRow(message: message)

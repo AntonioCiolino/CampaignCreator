@@ -7,7 +7,7 @@ class CharacterChatViewModel: ObservableObject {
     @Published var chatMessages: [ChatMessage] = []
     @Published var isSendingMessage: Bool = false
     @Published var errorMessage: String?
-    @Published var memorySummary: String?
+    @Published var memorySummary: String? = "No memory summary available."
 
     private let character: CharacterModel
     private var apiService = CampaignCreatorLib.APIService()
@@ -64,10 +64,9 @@ class CharacterChatViewModel: ObservableObject {
         Task {
             do {
                 let summary: MemorySummary = try await apiService.performRequest(endpoint: "/characters/\(character.id)/memory-summary")
-                self.memorySummary = summary.memory_summary ?? "No memory summary available."
+                self.memorySummary = summary.memory_summary
             } catch {
                 self.errorMessage = "Failed to load memory summary. Please check your connection and try again."
-                self.memorySummary = "Could not load memory summary."
             }
         }
     }
