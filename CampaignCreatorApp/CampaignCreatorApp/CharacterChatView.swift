@@ -113,6 +113,12 @@ struct CharacterChatView: View {
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
                 Button(action: {
+                    viewModel.forceSummarizeMemory()
+                }) {
+                    Image(systemName: "arrow.clockwise.circle")
+                }
+
+                Button(action: {
                     viewModel.summarizeMemory()
                 }) {
                     Image(systemName: "brain")
