@@ -51,4 +51,5 @@ struct MainTabView: View {
 
 #Preview {
     ContentView()
+        .environmentObject(ContentViewModel(modelContext: PersistenceController.shared.container.mainContext))
 }
