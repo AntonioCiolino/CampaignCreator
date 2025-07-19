@@ -330,7 +330,7 @@ struct CharacterAspectGenerationResponse: Codable {
 struct Token: Codable {
     let access_token: String
     let token_type: String
-    let refresh_token: String?
+    let refresh_token: String
 }
 
 struct TokenData: Codable {

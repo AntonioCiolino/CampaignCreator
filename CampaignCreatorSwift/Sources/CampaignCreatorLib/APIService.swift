@@ -255,6 +255,15 @@ public struct LoginRequestDTO: Codable, Sendable {
     }
 }
 
+public struct LoginResponseDTO: Codable, Sendable {
+    // Properties now camelCase to work with global .convertFromSnakeCase strategy
+    let accessToken: String
+    let tokenType: String
+
+    // No explicit CodingKeys needed if backend sends "access_token" and "token_type"
+    // and jsonDecoder.keyDecodingStrategy = .convertFromSnakeCase is set.
+    // No custom init needed; memberwise initializer will be synthesized.
+}
 
 
 // Simple protocol for token management
@@ -423,10 +432,7 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
 
             do {
                 let decodedObject: T
-                if T.self == Token.self {
-                    decodedObject = try self.jsonDecoder.decode(T.self, from: data)
-                }
-                else if T.self == Character.self || T.self == [Character].self {
+                if T.self == Character.self || T.self == [Character].self {
                     // Using LOCAL JSONDecoder for Character type WITHOUT .convertFromSnakeCase strategy.
                     let localCharacterDecoder = JSONDecoder()
                     localCharacterDecoder.dateDecodingStrategy = .iso8601
@@ -592,7 +598,7 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
     }
 
     // MARK: - Auth Methods
-    public func login(credentials: LoginRequestDTO) async throws -> Token {
+    public func login(credentials: LoginRequestDTO) async throws -> LoginResponseDTO {
         var components = URLComponents()
         components.queryItems = [
             URLQueryItem(name: "username", value: credentials.username),
