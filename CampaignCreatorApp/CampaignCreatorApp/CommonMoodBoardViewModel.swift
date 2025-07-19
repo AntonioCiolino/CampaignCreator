@@ -7,6 +7,7 @@ class CommonMoodBoardViewModel: ObservableObject {
     let onSave: () -> Void
     let onGenerateAIImage: ((String) async throws -> String)?
     let imageUploadService: ImageUploadService
+    let onSetBadge: ((String) -> Void)?
 
     @Published var showingAddImageOptions = false
     @Published var showingAddURLSheet = false
@@ -16,11 +17,12 @@ class CommonMoodBoardViewModel: ObservableObject {
     @Published var isGeneratingAIImage = false
     @Published var alertItem: AlertMessageItem?
 
-    init(imageURLs: Binding<[String]>, onSave: @escaping () -> Void, onGenerateAIImage: ((String) async throws -> String)?, imageUploadService: ImageUploadService) {
+    init(imageURLs: Binding<[String]>, onSave: @escaping () -> Void, onGenerateAIImage: ((String) async throws -> String)?, imageUploadService: ImageUploadService, onSetBadge: ((String) -> Void)?) {
         _imageURLs = imageURLs
         self.onSave = onSave
         self.onGenerateAIImage = onGenerateAIImage
         self.imageUploadService = imageUploadService
+        self.onSetBadge = onSetBadge
     }
 
     func addImageFromURL() async {

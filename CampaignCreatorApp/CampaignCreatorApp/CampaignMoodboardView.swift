@@ -12,19 +12,12 @@ struct CampaignMoodboardView: View {
                 onSave: {
                     // No need to do anything here, as the changes are saved automatically
                 },
-                onGenerateAIImage: { prompt in
-                    // This will be handled by the CommonMoodBoardView
-                    return ""
-                },
-                imageUploadService: imageUploadService
+                onGenerateAIImage: nil,
+                imageUploadService: imageUploadService,
+                onSetBadge: { urlString in
+                    campaign.badge_image_url = urlString
+                }
             )
-            Button(action: {
-                onSetBadgeAction()
-            }) {
-                Text("Set Campaign Badge from Moodboard")
-            }
-            .buttonStyle(.bordered)
-            .padding(.top, 10)
         }
     }
 }
