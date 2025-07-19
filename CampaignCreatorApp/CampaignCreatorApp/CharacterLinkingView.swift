@@ -51,11 +51,14 @@ struct CharacterLinkingView: View {
 
     private func updateLinkedCharacters(for character: CharacterModel, isLinked: Bool) {
         if isLinked {
-            if !campaign.linked_character_ids.contains(character.id) {
-                campaign.linked_character_ids.append(character.id)
+            if (campaign.linked_character_ids ?? []).contains(character.id) == false {
+                if campaign.linked_character_ids == nil {
+                    campaign.linked_character_ids = []
+                }
+                campaign.linked_character_ids?.append(character.id)
             }
         } else {
-            campaign.linked_character_ids.removeAll { $0 == character.id }
+            campaign.linked_character_ids?.removeAll { $0 == character.id }
         }
     }
 }
