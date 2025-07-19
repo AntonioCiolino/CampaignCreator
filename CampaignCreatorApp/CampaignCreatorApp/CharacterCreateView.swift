@@ -1,4 +1,4 @@
-import SwiftUI 
+import SwiftUI
 import SwiftData
 
 struct CharacterCreateView: View {
@@ -23,11 +23,9 @@ struct CharacterCreateView: View {
     init(isPresented: Binding<Bool>, ownerId: Int) {
         _isPresented = isPresented
         self.ownerId = ownerId
-        print("CharacterCreateView init")
     }
     
     var body: some View {
-        print("CharacterCreateView body")
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 Section(header: Text("Character Details")) {
@@ -88,19 +86,19 @@ struct CharacterCreateView: View {
             }
             .navigationTitle("New Character")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        isPresented = false
-                    }
+        }
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") {
+                    isPresented = false
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        saveCharacter()
-                        isPresented = false
-                    }
-                    .disabled(name.isEmpty)
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") {
+                    saveCharacter()
+                    isPresented = false
                 }
+                .disabled(name.isEmpty)
             }
         }
     }
