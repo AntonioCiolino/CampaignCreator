@@ -16,8 +16,11 @@ class MemoryViewModel: ObservableObject {
         self.modelContext = modelContext
     }
 
-    func forceSummarizeMemory() {
-        guard let characterId = memory.character?.id else { return }
+    func forceSummarizeMemory(completion: @escaping () -> Void) {
+        guard let characterId = memory.character?.id else {
+            completion()
+            return
+        }
         Task {
             do {
                 try await apiService.performVoidRequest(endpoint: "/characters/\(characterId)/force-memory-summary", method: "POST")
@@ -28,6 +31,7 @@ class MemoryViewModel: ObservableObject {
             } catch {
                 errorMessage = "Failed to force memory summarization: \(error.localizedDescription)"
             }
+            completion()
         }
     }
 

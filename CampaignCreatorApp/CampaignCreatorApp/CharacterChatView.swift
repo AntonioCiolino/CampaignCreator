@@ -20,6 +20,7 @@ struct CharacterChatView: View {
 
     @State private var showingMemoryView = false
     @State private var memory: MemoryModel?
+    @State private var user: UserModel?
 
     var body: some View {
         VStack {
@@ -27,7 +28,7 @@ struct CharacterChatView: View {
                 ScrollView {
                     LazyVStack(spacing: 12) {
                         ForEach(sortedMessages) { message in
-                            ChatMessageRow(message: message, character: character)
+                            ChatMessageRow(message: message, character: character, user: user)
                                 .id(message.id)
                         }
                     }
@@ -100,6 +101,14 @@ struct CharacterChatView: View {
         }
         .onAppear {
             fetchMemory()
+            fetchUser()
+        }
+    }
+
+    private func fetchUser() {
+        let descriptor = FetchDescriptor<UserModel>()
+        if let user = try? modelContext.fetch(descriptor).first {
+            self.user = user
         }
     }
 
@@ -122,6 +131,7 @@ struct CharacterChatView: View {
 struct ChatMessageRow: View {
     let message: ChatMessageModel
     let character: CharacterModel
+    let user: UserModel?
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -132,8 +142,7 @@ struct ChatMessageRow: View {
             } else {
                 Spacer()
                 MessageBubble(text: message.text, isUser: true)
-                // We'll need to fetch the user's avatar URL from somewhere
-                AvatarView(url: nil)
+                AvatarView(url: URL(string: user?.avatarUrl ?? ""))
             }
         }
         .padding(.horizontal, 8)
