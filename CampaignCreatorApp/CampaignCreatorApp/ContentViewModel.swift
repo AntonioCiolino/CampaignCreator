@@ -15,7 +15,7 @@ class ContentViewModel: ObservableObject {
     }
 
     private var apiService = CampaignCreatorLib.APIService()
-    private var tokenManager = CampaignCreatorLib.UserDefaultsTokenManager()
+    private var tokenManager = CampaignCreatorLib.TokenManager()
     private var modelContext: ModelContext
 
     init(modelContext: ModelContext) {
@@ -35,7 +35,10 @@ class ContentViewModel: ObservableObject {
         do {
             let credentials = LoginRequestDTO(username: usernameOrEmail, password: password)
             let response = try await apiService.login(credentials: credentials)
-            tokenManager.setToken(response.accessToken)
+            tokenManager.setAccessToken(response.accessToken)
+            if let refreshToken = response.refreshToken {
+                tokenManager.setRefreshToken(refreshToken, for: usernameOrEmail)
+            }
             await fetchCurrentUser()
             self.isAuthenticated = true
         } catch {
@@ -66,8 +69,9 @@ class ContentViewModel: ObservableObject {
     }
 
     func logout() {
-        tokenManager.clearToken()
-        try? KeychainHelper.deleteRefreshToken()
+        if let username = currentUser?.username {
+            tokenManager.clearTokens(for: username)
+        }
         self.isAuthenticated = false
         for user in users {
             modelContext.delete(user)
