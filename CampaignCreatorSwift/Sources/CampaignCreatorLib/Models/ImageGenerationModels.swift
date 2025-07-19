@@ -13,7 +13,7 @@ public enum ImageModelName: String, Codable, Sendable, CaseIterable { // Added C
 
 public struct ImageGenerationParams: Codable, Sendable {
     public let prompt: String
-    public let model: String // e.g., "dall-e", "stable-diffusion"
+    public let model: String
     public let size: String?
     public let quality: String? // DALL-E specific
     public let steps: Int?      // Stable Diffusion specific

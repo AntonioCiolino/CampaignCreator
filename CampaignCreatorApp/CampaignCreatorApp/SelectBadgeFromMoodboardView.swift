@@ -1,5 +1,6 @@
 import SwiftUI
 import Kingfisher
+import CampaignCreatorLib
 
 struct SelectBadgeFromMoodboardView: View {
     @State var moodBoardImageURLs: [String]
@@ -158,7 +159,8 @@ struct SelectBadgeFromMoodboardView_Previews: PreviewProvider {
             thematicImageURL: "https://picsum.photos/seed/thematic/400/300",
             onImageSelected: { selectedURL in
                 print("Selected URL: \(selectedURL)")
-            }
+            },
+            apiService: CampaignCreatorLib.APIService()
         )
     }
 }

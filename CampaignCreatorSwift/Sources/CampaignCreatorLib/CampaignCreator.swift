@@ -263,7 +263,7 @@ public class CampaignCreator: ObservableObjectProtocol {
 
         let params = ImageGenerationParams(
             prompt: prompt,
-            model: model, // Defaulting to dall-e, could be configurable
+            model: model.rawValue, // Defaulting to dall-e, could be configurable
             size: size,
             quality: quality,
             campaignId: campaignId // Pass Int directly
@@ -298,7 +298,7 @@ public class CampaignCreator: ObservableObjectProtocol {
 
         let params = ImageGenerationParams(
             prompt: prompt,
-            model: imageModel,
+            model: imageModel.rawValue,
             size: size,
             quality: quality,
             // steps: nil, // Only for SD
