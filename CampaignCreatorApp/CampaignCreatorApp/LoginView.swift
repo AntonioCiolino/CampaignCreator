@@ -1,5 +1,6 @@
 import SwiftUI
 import AVKit
+import CampaignCreatorLib
 
 struct LoginView: View {
     @ObservedObject var viewModel: ContentViewModel

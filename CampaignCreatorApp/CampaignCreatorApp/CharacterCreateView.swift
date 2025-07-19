@@ -1,4 +1,4 @@
-import SwiftUI
+import SwiftUI 
 import SwiftData
 
 struct CharacterCreateView: View {
@@ -103,6 +103,7 @@ struct CharacterCreateView: View {
                 }
             }
         }
+    }
         
         private func saveCharacter() {
             print("Attempting to save character with name: \(name) and owner_id: \(ownerId)")
@@ -132,4 +133,4 @@ struct CharacterCreateView: View {
             }
         }
     }
-}
+

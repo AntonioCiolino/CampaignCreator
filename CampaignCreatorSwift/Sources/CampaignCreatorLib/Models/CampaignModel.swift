@@ -50,14 +50,15 @@ public struct CampaignCustomSection: Identifiable, Codable, Sendable, Hashable {
 // Corresponds to TypeScript 'CampaignSection'
 public struct CampaignSection: Identifiable, Codable, Sendable {
     public var id: Int // Changed from UUID to Int
+    public var campaign_id: Int
     public var title: String?
     public var content: String
     public var order: Int
-    // public var campaign_id: UUID // Link back to the Campaign, if sections are stored separately
     public var type: String? // e.g., "Narrative", "Location", "NPC"
 
-    public init(id: Int, title: String? = nil, content: String, order: Int, type: String? = nil) { // Changed id from UUID to Int, removed default
+    public init(id: Int, campaign_id: Int, title: String? = nil, content: String, order: Int, type: String? = nil) { // Changed id from UUID to Int, removed default
         self.id = id
+        self.campaign_id = campaign_id
         self.title = title
         self.content = content
         self.order = order
