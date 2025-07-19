@@ -110,7 +110,7 @@ final class CampaignModel: Identifiable {
         )
         model.mood_board_image_urls = campaign.moodBoardImageURLs
         model.linked_character_ids = campaign.linkedCharacterIDs
-        model.sections = campaign.sections.map { CampaignSection(id: $0.id, campaign_id: $0.campaign_id, title: $0.title, content: $0.content, order: $0.order, type: $0.type) }
+        model.sections = campaign.sections.map { CampaignSection(id: $0.id, title: $0.title, content: $0.content, order: $0.order, type: $0.type) }
         return model
     }
 
@@ -222,7 +222,6 @@ final class MemoryModel: Identifiable {
 
 struct CampaignSection: Codable, Identifiable {
     let id: Int
-    let campaign_id: Int
     var title: String?
     var content: String
     var order: Int
