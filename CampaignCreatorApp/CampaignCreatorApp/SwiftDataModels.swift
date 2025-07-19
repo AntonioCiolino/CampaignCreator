@@ -22,8 +22,26 @@ final class CampaignModel: Identifiable {
     var theme_font_family: String?
     var theme_background_image_url: String?
     var theme_background_image_opacity: Double?
-    @Attribute(.transformable) var mood_board_image_urls: [String]?
-    @Attribute(.transformable) var linked_character_ids: [Int]?
+    var mood_board_image_urls_string: String?
+    var linked_character_ids_string: String?
+
+    var mood_board_image_urls: [String]? {
+        get {
+            mood_board_image_urls_string?.components(separatedBy: ",")
+        }
+        set {
+            mood_board_image_urls_string = newValue?.joined(separator: ",")
+        }
+    }
+
+    var linked_character_ids: [Int]? {
+        get {
+            linked_character_ids_string?.components(separatedBy: ",").compactMap { Int($0) }
+        }
+        set {
+            linked_character_ids_string = newValue?.map { String($0) }.joined(separator: ",")
+        }
+    }
 
     init(
         id: Int,
