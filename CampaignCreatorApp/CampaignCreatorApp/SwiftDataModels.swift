@@ -105,10 +105,11 @@ final class CampaignModel: Identifiable {
             theme_text_color: campaign.themeTextColor,
             theme_font_family: campaign.themeFontFamily,
             theme_background_image_url: campaign.themeBackgroundImageURL,
-            theme_background_image_opacity: campaign.themeBackgroundImageOpacity,
-            mood_board_image_urls: campaign.moodBoardImageURLs,
-            linked_character_ids: campaign.linkedCharacterIDs
+            theme_background_image_opacity: campaign.themeBackgroundImageOpacity
         )
+        model.mood_board_image_urls = campaign.moodBoardImageURLs
+        model.linked_character_ids = campaign.linkedCharacterIDs
+        return model
     }
 
     var wordCount: Int {
