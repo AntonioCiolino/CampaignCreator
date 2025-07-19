@@ -1,83 +1,99 @@
 import Foundation
 import SwiftUI
+import SwiftData
 import CampaignCreatorLib
 
 @MainActor
 class CharacterChatViewModel: ObservableObject {
-    @Published var chatMessages: [ChatMessage] = []
     @Published var isSendingMessage: Bool = false
     @Published var errorMessage: String?
-    @Published var memorySummary: String? = "No memory summary available."
 
-    private let character: CharacterModel
+    private var character: CharacterModel
     private var apiService = CampaignCreatorLib.APIService()
-    private var user: User?
+    private var user: UserModel?
+    private var memory: MemoryModel?
+    private var modelContext: ModelContext
 
-    init(character: CharacterModel) {
+    init(character: CharacterModel, modelContext: ModelContext) {
         self.character = character
-        fetchData()
+        self.modelContext = modelContext
+        fetchCurrentUser()
     }
 
-    private func fetchData() {
-        Task {
-            await fetchUser()
-            fetchChatHistory()
-            fetchMemorySummary()
+    private func fetchCurrentUser() {
+        let descriptor = FetchDescriptor<UserModel>()
+        if let user = try? modelContext.fetch(descriptor).first {
+            self.user = user
+            fetchOrCreateMemory()
         }
     }
 
-    private func fetchUser() async {
-        do {
-            self.user = try await apiService.performRequest(endpoint: "/users/me")
-        } catch {
-            errorMessage = "Failed to load user data."
+    private func fetchOrCreateMemory() {
+        guard let user = user else { return }
+        let characterId = character.id
+        let userId = user.id
+
+        let predicate = #Predicate<MemoryModel> { memory in
+            memory.character?.id == characterId && memory.user?.id == userId
         }
+        let descriptor = FetchDescriptor(predicate: predicate)
+
+        if let memory = try? modelContext.fetch(descriptor).first {
+            self.memory = memory
+        } else {
+            let newMemory = MemoryModel(summary: "", timestamp: Date())
+            newMemory.character = character
+            newMemory.user = user
+            modelContext.insert(newMemory)
+            self.memory = newMemory
+        }
+        fetchChatHistory()
     }
 
-    func clearChatMessages() {
+    private func fetchChatHistory() {
         Task {
             do {
-                try await apiService.performVoidRequest(endpoint: "/characters/\(character.id)/chat", method: "DELETE")
-                chatMessages.removeAll()
+                let apiMessages: [ConversationMessageEntry] = try await apiService.performRequest(endpoint: "/characters/\(character.id)/chat")
+
+                let existingMessageIds = Set((character.messages ?? []).map { $0.id })
+
+                for apiMessage in apiMessages {
+                    if !existingMessageIds.contains(apiMessage.id) {
+                        let newMessage = ChatMessageModel(
+                            text: apiMessage.text,
+                            sender: apiMessage.speaker.lowercased() == "user" ? "user" : "llm",
+                            timestamp: apiMessage.timestamp
+                        )
+                        newMessage.character = character
+                        modelContext.insert(newMessage)
+                    }
+                }
+                try? modelContext.save()
+
             } catch {
-                errorMessage = "Failed to clear chat history: \(error.localizedDescription)"
+                self.errorMessage = "Failed to load chat history. Please check your connection and try again."
             }
         }
     }
 
+    func clearChatMessages() {
+        character.messages?.removeAll()
+        try? modelContext.save()
+    }
+
     func summarizeMemory() {
-        fetchMemorySummary()
+        // Now handled by observing the character model
     }
 
     func forceSummarizeMemory() {
         Task {
             do {
-                try await apiService.performVoidRequest(endpoint: "/characters/\(character.id)/force-memory-summary", method: "POST")
-                fetchMemorySummary() // Re-fetch the summary to update the UI
+                let summary: MemorySummary = try await apiService.performRequest(endpoint: "/characters/\(character.id)/force-memory-summary", method: "POST")
+                memory?.summary = summary.memory_summary ?? ""
+                memory?.timestamp = Date()
+                try? modelContext.save()
             } catch {
                 errorMessage = "Failed to force memory summarization: \(error.localizedDescription)"
-            }
-        }
-    }
-
-    func fetchMemorySummary() {
-        Task {
-            do {
-                let summary: MemorySummary = try await apiService.performRequest(endpoint: "/characters/\(character.id)/memory-summary")
-                self.memorySummary = summary.memory_summary
-            } catch {
-                self.errorMessage = "Failed to load memory summary. Please check your connection and try again."
-            }
-        }
-    }
-
-    func fetchChatHistory() {
-        Task {
-            do {
-                let apiMessages: [ConversationMessageEntry] = try await apiService.performRequest(endpoint: "/characters/\(character.id)/chat")
-                self.chatMessages = apiMessages.map { ChatMessage(from: $0, character: character, user: self.user) }
-            } catch {
-                self.errorMessage = "Failed to load chat history. Please check your connection and try again."
             }
         }
     }
@@ -86,22 +102,17 @@ class CharacterChatViewModel: ObservableObject {
         let messageText = userInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !messageText.isEmpty else { return }
 
-        let optimisticUserMessage = ChatMessage(
-            text: messageText,
-            sender: .user,
-            character: character,
-            user: self.user
-        )
-        chatMessages.append(optimisticUserMessage)
+        let userMessage = ChatMessageModel(text: messageText, sender: "user", timestamp: Date())
+        userMessage.character = character
+        modelContext.insert(userMessage)
 
         isSendingMessage = true
         errorMessage = nil
 
         Task {
             do {
-                let history = chatMessages.suffix(10).map { msg -> ChatHistoryItem in
-                    let speaker = msg.sender == .user ? "user" : "assistant"
-                    return ChatHistoryItem(speaker: speaker, text: msg.text)
+                let history = (character.messages ?? []).suffix(10).map { msg -> ChatHistoryItem in
+                    return ChatHistoryItem(speaker: msg.sender, text: msg.text)
                 }
 
                 let request = LLMTextGenerationParams(prompt: messageText, chat_history: history)
@@ -109,16 +120,15 @@ class CharacterChatViewModel: ObservableObject {
 
                 let aiResponse: LLMTextGenerationResponse = try await apiService.performRequest(endpoint: "/characters/\(character.id)/generate-response", method: "POST", body: body)
 
-                let aiMessage = ChatMessage(
-                    text: aiResponse.text,
-                    sender: .llm,
-                    character: character,
-                    user: self.user
-                )
-                self.chatMessages.append(aiMessage)
+                let aiMessage = ChatMessageModel(text: aiResponse.text, sender: "llm", timestamp: Date())
+                aiMessage.character = character
+                modelContext.insert(aiMessage)
+
+                try? modelContext.save()
+
             } catch {
                 self.errorMessage = "Failed to send message. Please check your connection and try again."
-                self.chatMessages.removeAll { $0.id == optimisticUserMessage.id }
+                modelContext.delete(userMessage)
             }
             self.isSendingMessage = false
         }

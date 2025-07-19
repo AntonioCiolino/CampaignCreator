@@ -151,7 +151,8 @@ struct ConversationMessageContext: Codable {
     let text: String
 }
 
-struct ConversationMessageEntry: Codable {
+struct ConversationMessageEntry: Codable, Identifiable {
+    let id: String
     let speaker: String
     let text: String
     let timestamp: Date
@@ -329,6 +330,7 @@ struct CharacterAspectGenerationResponse: Codable {
 struct Token: Codable {
     let access_token: String
     let token_type: String
+    let refresh_token: String
 }
 
 struct TokenData: Codable {

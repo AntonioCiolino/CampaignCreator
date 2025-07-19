@@ -202,5 +202,5 @@ struct SettingsView: View {
 
 #Preview {
     SettingsView()
-        .environmentObject(ContentViewModel())
+        .environmentObject(ContentViewModel(modelContext: PersistenceController.shared.container.mainContext))
 }

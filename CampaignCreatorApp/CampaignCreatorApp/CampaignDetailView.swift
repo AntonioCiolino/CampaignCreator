@@ -15,6 +15,9 @@ struct CampaignDetailView: View {
     @State private var showingSetBadgeSheet = false
     @State private var showingErrorAlert = false
     @State private var errorMessage = ""
+    @State private var selectedSection: CampaignSection?
+
+    @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         ScrollView {
@@ -39,13 +42,11 @@ struct CampaignDetailView: View {
                     })
 
                     CollapsibleSectionView(title: "Table of Contents") {
-                        Text("Not yet implemented.")
-                            .foregroundColor(themeManager.textColor)
+                        TOCView(sections: campaign.sections ?? [], selectedSection: $selectedSection)
                     }
 
-                    CollapsibleSectionView(title: "Campaign Sections") {
-                        Text("Not yet implemented.")
-                            .foregroundColor(themeManager.textColor)
+                    if let selectedSection = selectedSection {
+                        CampaignSectionView(section: selectedSection)
                     }
 
 
@@ -62,6 +63,12 @@ struct CampaignDetailView: View {
                 .padding()
             }
         }
+        .onDisappear(perform: {
+            if campaign.hasChanges {
+                campaign.needsSync = true
+                try? modelContext.save()
+            }
+        })
         .navigationTitle(campaign.title)
         .navigationBarTitleDisplayMode(.inline)
         .background(themeManager.backgroundColor)
@@ -97,6 +104,9 @@ struct CampaignDetailView: View {
             editableConcept = campaign.concept ?? ""
             selectedLLMId = campaign.selected_llm_id ?? ""
             temperature = campaign.temperature ?? 0.7
+            if let firstSection = campaign.sections?.first {
+                self.selectedSection = firstSection
+            }
             Task {
                 do {
                     try await llmService.fetchAvailableLLMs()
@@ -119,10 +129,22 @@ struct CampaignDetailView: View {
     private func refreshCampaign() async {
         do {
             let refreshedCampaign = try await llmService.apiService.fetchCampaign(id: campaign.id)
-            // This is a bit tricky since campaign is a let constant.
-            // A better approach would be to have this view model driven.
-            // For now, we can log that it was fetched.
-            print("Refreshed campaign: \(refreshedCampaign.title)")
+            campaign.title = refreshedCampaign.title
+            campaign.concept = refreshedCampaign.concept
+            campaign.initial_user_prompt = refreshedCampaign.initialUserPrompt
+            campaign.badge_image_url = refreshedCampaign.badgeImageURL
+            campaign.thematic_image_url = refreshedCampaign.thematicImageURL
+            campaign.thematic_image_prompt = refreshedCampaign.thematicImagePrompt
+            campaign.selected_llm_id = refreshedCampaign.selectedLLMId
+            campaign.temperature = refreshedCampaign.temperature
+            campaign.theme_primary_color = refreshedCampaign.themePrimaryColor
+            campaign.theme_secondary_color = refreshedCampaign.themeSecondaryColor
+            campaign.theme_background_color = refreshedCampaign.themeBackgroundColor
+            campaign.theme_text_color = refreshedCampaign.themeTextColor
+            campaign.theme_font_family = refreshedCampaign.themeFontFamily
+            campaign.theme_background_image_url = refreshedCampaign.themeBackgroundImageURL
+            campaign.theme_background_image_opacity = refreshedCampaign.themeBackgroundImageOpacity
+            campaign.mood_board_image_urls = refreshedCampaign.moodBoardImageURLs
         } catch {
             errorMessage = "Failed to refresh campaign: \(error.localizedDescription)"
             showingErrorAlert = true

@@ -8,9 +8,10 @@ struct CampaignEditView: View {
 
     var body: some View {
         NavigationView {
-            Form {
-                Section(header: Text("Campaign Details")) {
-                    TextField("Title", text: $campaign.title)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Section(header: Text("Campaign Details")) {
+                        TextField("Title", text: $campaign.title)
                     VStack(alignment: .leading) {
                         Text("Initial User Prompt").font(.caption)
                         TextEditor(text: .init(get: { campaign.initial_user_prompt ?? "" }, set: { campaign.initial_user_prompt = $0 })).frame(height: 100)
@@ -22,6 +23,8 @@ struct CampaignEditView: View {
                             .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.gray.opacity(0.5), lineWidth: 1))
                     }
                 }
+                .padding()
+            }
 
                 Section(header: Text("Theme Colors")) {
                     ColorPicker("Primary Color", selection: .init(get: { Color(hex: campaign.theme_primary_color ?? "") }, set: { campaign.theme_primary_color = $0.toHex() }), supportsOpacity: false)

@@ -74,6 +74,10 @@
 		94F8C4EF2E2A7FA3006B4D4E /* ImageManagerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F8C4EE2E2A7FA3006B4D4E /* ImageManagerViewModel.swift */; };
 		94F8C4F32E2A7FA6006B4D4E /* LLMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F8C4F22E2A7FA6006B4D4E /* LLMService.swift */; };
 		94F8C4F52E2A7FA7006B4D4E /* ImageGenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F8C4F42E2A7FA7006B4D4E /* ImageGenerationService.swift */; };
+		94A5C1B52E2E3F9A00A61E63 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A5C1B12E2E3F9A00A61E63 /* NetworkMonitor.swift */; };
+		94A5C1B62E2E3F9A00A61E63 /* MemoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A5C1B22E2E3F9A00A61E63 /* MemoryView.swift */; };
+		94A5C1B72E2E3F9A00A61E63 /* MemoryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A5C1B32E2E3F9A00A61E63 /* MemoryViewModel.swift */; };
+		94A5C1B82E2E3F9A00A61E63 /* MemoriesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A5C1B42E2E3F9A00A61E63 /* MemoriesListView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -143,6 +147,10 @@
 		94F8C4EE2E2A7FA3006B4D4E /* ImageManagerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageManagerViewModel.swift; sourceTree = "<group>"; };
 		94F8C4F22E2A7FA6006B4D4E /* LLMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMService.swift; sourceTree = "<group>"; };
 		94F8C4F42E2A7FA7006B4D4E /* ImageGenerationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGenerationService.swift; sourceTree = "<group>"; };
+		94A5C1B12E2E3F9A00A61E63 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
+		94A5C1B22E2E3F9A00A61E63 /* MemoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryView.swift; sourceTree = "<group>"; };
+		94A5C1B32E2E3F9A00A61E63 /* MemoryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryViewModel.swift; sourceTree = "<group>"; };
+		94A5C1B42E2E3F9A00A61E63 /* MemoriesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoriesListView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -240,6 +248,10 @@
 				3D92BBF92B8C8D4C00B8E8E8 /* SettingsView.swift */,
 				941C6F9A2E23136100B6D6FD /* contents.json */,
 				3D92BBEA2B8C8A8F00B8E8E8 /* Preview Content */,
+				94A5C1B12E2E3F9A00A61E63 /* NetworkMonitor.swift */,
+				94A5C1B22E2E3F9A00A61E63 /* MemoryView.swift */,
+				94A5C1B32E2E3F9A00A61E63 /* MemoryViewModel.swift */,
+				94A5C1B42E2E3F9A00A61E63 /* MemoriesListView.swift */,
 			);
 			path = CampaignCreatorApp;
 			sourceTree = "<group>";
@@ -403,6 +415,10 @@
 				943A92032E1EC4C40081BA3A /* CampaignConceptEditorView.swift in Sources */,
 				943031842E1C8B1000F3C129 /* FeatureService.swift in Sources */,
 				943031852E1C8B1000F3C129 /* SnippetContextInputModal.swift in Sources */,
+				94A5C1B52E2E3F9A00A61E63 /* NetworkMonitor.swift in Sources */,
+				94A5C1B62E2E3F9A00A61E63 /* MemoryView.swift in Sources */,
+				94A5C1B72E2E3F9A00A61E63 /* MemoryViewModel.swift in Sources */,
+				94A5C1B82E2E3F9A00A61E63 /* MemoriesListView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

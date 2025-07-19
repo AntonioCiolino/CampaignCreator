@@ -1,73 +1,42 @@
 import SwiftUI
 import Kingfisher
+import SwiftData
 import CampaignCreatorLib
-
-struct ChatMessage: Identifiable, Equatable {
-    let id: String
-    let text: String
-    let sender: Sender
-    let timestamp: Date
-    let userAvatarUrl: URL?
-    let characterAvatarUrl: URL?
-
-    enum Sender: String {
-        case user = "User"
-        case llm = "LLM"
-    }
-
-    init(from apiMessage: ConversationMessageEntry, character: CharacterModel, user: User?) {
-        self.id = UUID().uuidString
-        self.text = apiMessage.text
-        self.timestamp = apiMessage.timestamp
-
-        if apiMessage.speaker.lowercased() == "user" {
-            self.sender = .user
-        } else {
-            self.sender = .llm
-        }
-
-        self.userAvatarUrl = (self.sender == .user) ? URL(string: user?.avatarUrl ?? "") : nil
-        self.characterAvatarUrl = (self.sender == .llm) ? URL(string: character.image_urls?.first ?? "") : nil
-    }
-
-    init(text: String, sender: Sender, character: CharacterModel, user: User?) {
-        self.id = UUID().uuidString
-        self.text = text
-        self.sender = sender
-        self.timestamp = Date()
-        self.userAvatarUrl = (self.sender == .user) ? URL(string: user?.avatarUrl ?? "") : nil
-        self.characterAvatarUrl = (self.sender == .llm) ? URL(string: character.image_urls?.first ?? "") : nil
-    }
-
-}
 
 struct CharacterChatView: View {
     @StateObject private var viewModel: CharacterChatViewModel
     @State private var userInput: String = ""
+    @Bindable var character: CharacterModel
+    @Environment(\.modelContext) private var modelContext
+
+    private var sortedMessages: [ChatMessageModel] {
+        (character.messages ?? []).sorted { $0.timestamp < $1.timestamp }
+    }
 
     init(character: CharacterModel) {
-        _viewModel = StateObject(wrappedValue: CharacterChatViewModel(character: character))
+        self.character = character
+        _viewModel = StateObject(wrappedValue: CharacterChatViewModel(character: character, modelContext: PersistenceController.shared.container.mainContext))
     }
+
+    @State private var showingMemoryView = false
+    @State private var memory: MemoryModel?
+    @State private var user: UserModel?
 
     var body: some View {
         VStack {
             ScrollViewReader { scrollViewProxy in
                 ScrollView {
-                    if let summary = viewModel.memorySummary, !summary.isEmpty {
-                        MemorySummaryView(memorySummary: summary)
-                            .padding(.horizontal)
-                    }
                     LazyVStack(spacing: 12) {
-                        ForEach(viewModel.chatMessages) { message in
-                            ChatMessageRow(message: message)
+                        ForEach(sortedMessages) { message in
+                            ChatMessageRow(message: message, character: character, user: user)
                                 .id(message.id)
                         }
                     }
                     .padding(.horizontal)
                     .padding(.top, 8)
                 }
-                .onChange(of: viewModel.chatMessages) {
-                    if let lastMessage = viewModel.chatMessages.last {
+                .onChange(of: sortedMessages) {
+                    if let lastMessage = sortedMessages.last {
                         withAnimation {
                             scrollViewProxy.scrollTo(lastMessage.id, anchor: .bottom)
                         }
@@ -113,13 +82,7 @@ struct CharacterChatView: View {
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
                 Button(action: {
-                    viewModel.forceSummarizeMemory()
-                }) {
-                    Image(systemName: "arrow.clockwise.circle")
-                }
-
-                Button(action: {
-                    viewModel.summarizeMemory()
+                    showingMemoryView = true
                 }) {
                     Image(systemName: "brain")
                 }
@@ -131,23 +94,55 @@ struct CharacterChatView: View {
                 }
             }
         }
+        .sheet(isPresented: $showingMemoryView) {
+            if let memory = memory {
+                MemoryView(viewModel: MemoryViewModel(memory: memory, modelContext: modelContext))
+            }
+        }
+        .onAppear {
+            fetchMemory()
+            fetchUser()
+        }
+    }
 
+    private func fetchUser() {
+        let descriptor = FetchDescriptor<UserModel>()
+        if let user = try? modelContext.fetch(descriptor).first {
+            self.user = user
+        }
+    }
+
+    private func fetchMemory() {
+        let characterId = character.id
+        let descriptor = FetchDescriptor<UserModel>()
+        if let user = try? modelContext.fetch(descriptor).first {
+            let userId = user.id
+            let predicate = #Predicate<MemoryModel> { memory in
+                memory.character?.id == characterId && memory.user?.id == userId
+            }
+            let memoryDescriptor = FetchDescriptor(predicate: predicate)
+            if let memory = try? modelContext.fetch(memoryDescriptor).first {
+                self.memory = memory
+            }
+        }
     }
 }
 
 struct ChatMessageRow: View {
-    let message: ChatMessage
+    let message: ChatMessageModel
+    let character: CharacterModel
+    let user: UserModel?
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
-            if message.sender == .llm {
-                AvatarView(url: message.characterAvatarUrl)
+            if message.sender == "llm" {
+                AvatarView(url: URL(string: character.image_urls?.first ?? ""))
                 MessageBubble(text: message.text, isUser: false)
                 Spacer()
             } else {
                 Spacer()
                 MessageBubble(text: message.text, isUser: true)
-                AvatarView(url: message.userAvatarUrl)
+                AvatarView(url: URL(string: user?.avatarUrl ?? ""))
             }
         }
         .padding(.horizontal, 8)

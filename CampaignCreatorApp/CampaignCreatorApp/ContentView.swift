@@ -1,15 +1,12 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var viewModel = ContentViewModel()
-    let persistenceController = PersistenceController.shared
+    @EnvironmentObject var viewModel: ContentViewModel
 
     var body: some View {
         Group {
             if viewModel.isAuthenticated {
                 MainTabView()
-                    .environmentObject(viewModel)
-                    .modelContainer(persistenceController.container)
             } else {
                 Color.clear
                     .fullScreenCover(isPresented: .constant(!viewModel.isAuthenticated)) {
@@ -54,4 +51,5 @@ struct MainTabView: View {
 
 #Preview {
     ContentView()
+        .environmentObject(ContentViewModel(modelContext: PersistenceController.shared.container.mainContext))
 }

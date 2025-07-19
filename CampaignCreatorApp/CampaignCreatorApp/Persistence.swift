@@ -11,6 +11,11 @@ class PersistenceController {
         let schema = Schema([
             CampaignModel.self,
             CharacterModel.self,
+            ChatMessageModel.self,
+            UserModel.self,
+            MemoryModel.self,
+            LLMModel.self,
+            FeatureModel.self
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
 

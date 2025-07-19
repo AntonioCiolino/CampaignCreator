@@ -9,6 +9,7 @@ struct CharacterMoodboardView: View {
         VStack {
             CommonMoodBoardView(
                 imageURLs: .init(get: { character.image_urls ?? [] }, set: { character.image_urls = $0 }),
+                name: character.name,
                 onSave: {
                     // No need to do anything here, as the changes are saved automatically
                 },

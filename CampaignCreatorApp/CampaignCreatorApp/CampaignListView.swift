@@ -96,7 +96,13 @@ struct CampaignListView: View {
         }
     }
 
+    @EnvironmentObject var networkMonitor: NetworkMonitor
+
     private func refreshCampaigns() async {
+        if networkMonitor.isConnected {
+            await syncDirtyCampaigns()
+        }
+
         do {
             let fetchedCampaigns = try await apiService.fetchCampaigns()
 
@@ -124,6 +130,7 @@ struct CampaignListView: View {
                     existingCampaign.theme_background_image_url = campaign.themeBackgroundImageURL
                     existingCampaign.theme_background_image_opacity = campaign.themeBackgroundImageOpacity
                     existingCampaign.mood_board_image_urls = campaign.moodBoardImageURLs
+                    existingCampaign.sections = campaign.sections?.map { CampaignSection(id: $0.id, campaign_id: $0.campaign_id, title: $0.title, content: $0.content, order: $0.order, type: $0.type) }
                 } else {
                     let campaignModel = CampaignModel.from(campaign: campaign)
                     modelContext.insert(campaignModel)
@@ -134,6 +141,38 @@ struct CampaignListView: View {
         } catch {
             errorMessage = "Failed to refresh campaigns: \(error.localizedDescription)"
             showingErrorAlert = true
+        }
+    }
+
+    private func syncDirtyCampaigns() async {
+        let dirtyCampaigns = campaigns.filter { $0.needsSync }
+        for campaign in dirtyCampaigns {
+            do {
+                let campaignUpdate = CampaignUpdate(
+                    title: campaign.title,
+                    initial_user_prompt: campaign.initial_user_prompt,
+                    concept: campaign.concept,
+                    badge_image_url: campaign.badge_image_url,
+                    thematic_image_url: campaign.thematic_image_url,
+                    thematic_image_prompt: campaign.thematic_image_prompt,
+                    selected_llm_id: campaign.selected_llm_id,
+                    temperature: Float(campaign.temperature ?? 0.7),
+                    theme_primary_color: campaign.theme_primary_color,
+                    theme_secondary_color: campaign.theme_secondary_color,
+                    theme_background_color: campaign.theme_background_color,
+                    theme_text_color: campaign.theme_text_color,
+                    theme_font_family: campaign.theme_font_family,
+                    theme_background_image_url: campaign.theme_background_image_url,
+                    theme_background_image_opacity: Float(campaign.theme_background_image_opacity ?? 1.0),
+                    mood_board_image_urls: campaign.mood_board_image_urls
+                )
+                let body = try JSONEncoder().encode(campaignUpdate)
+                let _: CampaignCreatorLib.Campaign = try await apiService.performRequest(endpoint: "/campaigns/\(campaign.id)", method: "PUT", body: body)
+                campaign.needsSync = false
+                try modelContext.save()
+            } catch {
+                print("Failed to sync campaign \(campaign.id): \(error.localizedDescription)")
+            }
         }
     }
 }

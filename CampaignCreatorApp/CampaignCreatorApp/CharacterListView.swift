@@ -98,7 +98,13 @@ struct CharacterListView: View {
         }
     }
 
+    @EnvironmentObject var networkMonitor: NetworkMonitor
+
     private func refreshCharacters() async {
+        if networkMonitor.isConnected {
+            await syncDirtyCharacters()
+        }
+
         do {
             let fetchedCharacters = try await apiService.fetchCharacters()
 
@@ -134,6 +140,28 @@ struct CharacterListView: View {
         } catch {
             errorMessage = "Failed to refresh characters: \(error.localizedDescription)"
             showingErrorAlert = true
+        }
+    }
+
+    private func syncDirtyCharacters() async {
+        let dirtyCharacters = characters.filter { $0.needsSync }
+        for character in dirtyCharacters {
+            do {
+                let characterUpdate = CharacterUpdate(
+                    name: character.name,
+                    description: character.character_description,
+                    appearance_description: character.appearance_description,
+                    image_urls: character.image_urls,
+                    notes_for_llm: character.notes_for_llm,
+                    export_format_preference: character.export_format_preference
+                )
+                let body = try JSONEncoder().encode(characterUpdate)
+                let _: CampaignCreatorLib.Character = try await apiService.performRequest(endpoint: "/characters/\(character.id)", method: "PUT", body: body)
+                character.needsSync = false
+                try modelContext.save()
+            } catch {
+                print("Failed to sync character \(character.id): \(error.localizedDescription)")
+            }
         }
     }
 }
