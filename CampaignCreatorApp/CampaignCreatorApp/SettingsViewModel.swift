@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import CampaignCreatorLib
+import CampaignCreatorLib
 
 @MainActor
 class SettingsViewModel: ObservableObject {
