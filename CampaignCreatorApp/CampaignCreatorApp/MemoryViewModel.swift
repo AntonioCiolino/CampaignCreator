@@ -20,7 +20,8 @@ class MemoryViewModel: ObservableObject {
         guard let characterId = memory.character?.id else { return }
         Task {
             do {
-                let summary: MemorySummary = try await apiService.performRequest(endpoint: "/characters/\(characterId)/force-memory-summary", method: "POST")
+                try await apiService.performVoidRequest(endpoint: "/characters/\(characterId)/force-memory-summary", method: "POST")
+                let summary: MemorySummary = try await apiService.performRequest(endpoint: "/characters/\(characterId)/memory-summary")
                 memory.summary = summary.memory_summary ?? ""
                 memory.timestamp = Date()
                 try? modelContext.save()
