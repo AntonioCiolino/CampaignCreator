@@ -26,7 +26,7 @@ struct CampaignDetailView: View {
                 if let bgURL = themeManager.backgroundImageUrl {
                     KFImage(bgURL)
                         .resizable()
-                        .aspectRatio(contentMode: .fill)
+                        .aspectRatio(contentMode: .fit)
                         .edgesIgnoringSafeArea(.all)
                         .opacity(themeManager.backgroundImageOpacity)
                 }
@@ -48,9 +48,6 @@ struct CampaignDetailView: View {
                             .foregroundColor(themeManager.textColor)
                     }
 
-                    CollapsibleSectionView(title: "Character Linking") {
-                        CharacterLinkingView(campaign: campaign)
-                    }
 
                     CampaignLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: llmService.availableLLMs, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onLLMSettingsChange: {
                         campaign.selected_llm_id = selectedLLMId
