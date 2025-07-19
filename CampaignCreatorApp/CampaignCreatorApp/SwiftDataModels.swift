@@ -88,7 +88,7 @@ final class CampaignModel: Identifiable {
     }
 
     static func from(campaign: CampaignCreatorLib.Campaign) -> CampaignModel {
-        return CampaignModel(
+        let model = CampaignModel(
             id: campaign.id,
             title: campaign.title,
             concept: campaign.concept,
