@@ -19,7 +19,7 @@ struct CampaignDetailView: View {
     @Environment(\.modelContext) private var modelContext
 
     var body: some View {
-        Form {
+        ScrollView {
             ZStack {
                 // Background color from theme
                 themeManager.backgroundColor.edgesIgnoringSafeArea(.all)

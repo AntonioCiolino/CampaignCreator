@@ -8,9 +8,10 @@ struct CampaignEditView: View {
 
     var body: some View {
         NavigationView {
-            Form {
-                Section(header: Text("Campaign Details")) {
-                    TextField("Title", text: $campaign.title)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Section(header: Text("Campaign Details")) {
+                        TextField("Title", text: $campaign.title)
                     VStack(alignment: .leading) {
                         Text("Initial User Prompt").font(.caption)
                         TextEditor(text: .init(get: { campaign.initial_user_prompt ?? "" }, set: { campaign.initial_user_prompt = $0 })).frame(height: 100)
