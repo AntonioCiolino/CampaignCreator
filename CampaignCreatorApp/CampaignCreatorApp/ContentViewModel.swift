@@ -33,12 +33,9 @@ class ContentViewModel: ObservableObject {
         authError = nil
 
         do {
-            let requestBody = "username=\(usernameOrEmail)&password=\(password)"
-            let bodyData = requestBody.data(using: .utf8)
-            let headers = ["Content-Type": "application/x-www-form-urlencoded"]
-            let response: Token = try await apiService.performRequest(endpoint: "/auth/token", method: "POST", body: bodyData, headers: headers, requiresAuth: false)
-            tokenManager.setToken(response.access_token)
-            try KeychainHelper.saveRefreshToken(response.refresh_token)
+            let credentials = LoginRequestDTO(username: usernameOrEmail, password: password)
+            let response = try await apiService.login(credentials: credentials)
+            tokenManager.setToken(response.accessToken)
             await fetchCurrentUser()
             self.isAuthenticated = true
         } catch {
