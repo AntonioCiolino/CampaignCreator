@@ -1,18 +1,18 @@
 import Foundation
 import Security
 
-struct KeychainHelper {
+public struct KeychainHelper {
 
-    static let service = "com.example.CampaignCreatorApp.Login" // Unique service name for your app
+    public static let service = "com.example.CampaignCreatorApp.Login" // Unique service name for your app
 
-    enum KeychainError: Error, LocalizedError {
+    public enum KeychainError: Error, LocalizedError {
         case saveError(OSStatus)
         case loadError(OSStatus)
         case deleteError(OSStatus)
         case dataConversionError
         case itemNotFound
 
-        var errorDescription: String? {
+        public var errorDescription: String? {
             switch self {
             case .saveError(let status): return "Could not save item to Keychain: \(status)"
             case .loadError(let status): return "Could not load item from Keychain: \(status)"
@@ -23,7 +23,7 @@ struct KeychainHelper {
         }
     }
 
-    static func save(username: String, passwordData: Data) throws {
+    public static func save(username: String, passwordData: Data) throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -41,7 +41,7 @@ struct KeychainHelper {
         print("Keychain: Successfully saved password for username '\(username)'")
     }
 
-    static func load(username: String) throws -> Data {
+    public static func load(username: String) throws -> Data {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -66,7 +66,7 @@ struct KeychainHelper {
         return retrievedData
     }
 
-    static func delete(username: String) throws {
+    public static func delete(username: String) throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -82,14 +82,14 @@ struct KeychainHelper {
     }
 
     // Convenience methods for String passwords
-    static func savePassword(username: String, password string: String) throws {
+    public static func savePassword(username: String, password string: String) throws {
         guard let passwordData = string.data(using: .utf8) else {
             throw KeychainError.dataConversionError
         }
         try save(username: username, passwordData: passwordData)
     }
 
-    static func loadPassword(username: String) throws -> String {
+    public static func loadPassword(username: String) throws -> String {
         let passwordData = try load(username: username)
         guard let passwordString = String(data: passwordData, encoding: .utf8) else {
             throw KeychainError.dataConversionError
@@ -97,11 +97,11 @@ struct KeychainHelper {
         return passwordString
     }
 
-    static func saveRefreshToken(_ token: String) throws {
+    public static func saveRefreshToken(_ token: String) throws {
         try save(username: "refreshToken", passwordData: token.data(using: .utf8)!)
     }
 
-    static func loadRefreshToken() throws -> String {
+    public static func loadRefreshToken() throws -> String {
         let tokenData = try load(username: "refreshToken")
         guard let token = String(data: tokenData, encoding: .utf8) else {
             throw KeychainError.dataConversionError
@@ -109,7 +109,7 @@ struct KeychainHelper {
         return token
     }
 
-    static func deleteRefreshToken() throws {
+    public static func deleteRefreshToken() throws {
         try delete(username: "refreshToken")
     }
 }
