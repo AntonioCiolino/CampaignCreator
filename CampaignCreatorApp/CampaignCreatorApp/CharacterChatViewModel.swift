@@ -46,14 +46,7 @@ class CharacterChatViewModel: ObservableObject {
     }
 
     func summarizeMemory() {
-        Task {
-            do {
-                let summary: MemorySummary = try await apiService.performRequest(endpoint: "/characters/\(character.id)/memory-summary", method: "POST")
-                self.memorySummary = summary.memory_summary
-            } catch {
-                self.errorMessage = "Failed to summarize memory. Please check your connection and try again."
-            }
-        }
+        fetchMemorySummary()
     }
 
     func fetchMemorySummary() {
@@ -109,7 +102,8 @@ class CharacterChatViewModel: ObservableObject {
                 let aiMessage = ChatMessage(
                     text: aiResponse.text,
                     sender: .llm,
-                    character: character
+                    character: character,
+                    user: self.user
                 )
                 self.chatMessages.append(aiMessage)
             } catch {
