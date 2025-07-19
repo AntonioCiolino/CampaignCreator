@@ -52,7 +52,9 @@ struct CharacterLinkingView: View {
             },
             set: { isLinked in
                 if isLinked {
-                    self.campaign.linked_character_ids.append(character.id)
+                    if !self.campaign.linked_character_ids.contains(character.id) {
+                        self.campaign.linked_character_ids.append(character.id)
+                    }
                 } else {
                     self.campaign.linked_character_ids.removeAll { $0 == character.id }
                 }
