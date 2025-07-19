@@ -47,6 +47,7 @@ struct CharacterChatView: View {
 
     init(character: CharacterModel) {
         _viewModel = StateObject(wrappedValue: CharacterChatViewModel(character: character))
+        viewModel.fetchData()
     }
 
     var body: some View {
@@ -108,9 +109,6 @@ struct CharacterChatView: View {
                 .padding(.leading, 4)
             }
             .padding()
-        }
-        .onAppear {
-            viewModel.fetchData()
         }
         .navigationTitle("Chat")
         .navigationBarTitleDisplayMode(.inline)
