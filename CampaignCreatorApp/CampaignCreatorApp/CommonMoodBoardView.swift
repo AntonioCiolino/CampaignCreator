@@ -13,10 +13,7 @@ struct CommonMoodBoardView: View {
 
     private let gridItemLayout = [GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2)]
 
-    let name: String
-
-    init(imageURLs: Binding<[String]>, name: String, onSave: @escaping () -> Void, onGenerateAIImage: ((String) async throws -> String)?, imageUploadService: ImageUploadService, onSetBadge: ((String) -> Void)? = nil) {
-        self.name = name
+    init(imageURLs: Binding<[String]>, onSave: @escaping () -> Void, onGenerateAIImage: ((String) async throws -> String)?, imageUploadService: ImageUploadService, onSetBadge: ((String) -> Void)? = nil) {
         _viewModel = StateObject(wrappedValue: CommonMoodBoardViewModel(imageURLs: imageURLs, onSave: onSave, onGenerateAIImage: onGenerateAIImage, imageUploadService: imageUploadService, onSetBadge: onSetBadge))
     }
 
@@ -25,7 +22,7 @@ struct CommonMoodBoardView: View {
             if viewModel.imageURLs.isEmpty {
                 VStack {
                     Spacer()
-                    Text("No images in \\(name)'s mood board yet.")
+                    Text("No images available.")
                         .font(.headline)
                         .foregroundColor(.secondary)
                     Spacer()

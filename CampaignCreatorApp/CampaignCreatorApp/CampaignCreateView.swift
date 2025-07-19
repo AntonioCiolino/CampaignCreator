@@ -11,10 +11,9 @@ struct CampaignCreateView: View {
 
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    Section(header: Text("Campaign Details")) {
-                        TextField("Title", text: $title)
+            Form {
+                Section(header: Text("Campaign Details")) {
+                    TextField("Title", text: $title)
                     TextField("Concept", text: $concept)
                 }
             }

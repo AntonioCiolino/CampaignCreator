@@ -15,7 +15,6 @@ struct CampaignDetailView: View {
     @State private var showingSetBadgeSheet = false
     @State private var showingErrorAlert = false
     @State private var errorMessage = ""
-    @State private var selectedSection: CampaignSection?
 
     @Environment(\.modelContext) private var modelContext
 
@@ -42,11 +41,13 @@ struct CampaignDetailView: View {
                     })
 
                     CollapsibleSectionView(title: "Table of Contents") {
-                        TOCView(sections: campaign.sections ?? [], selectedSection: $selectedSection)
+                        Text("Not yet implemented.")
+                            .foregroundColor(themeManager.textColor)
                     }
 
-                    if let selectedSection = selectedSection {
-                        CampaignSectionView(section: selectedSection)
+                    CollapsibleSectionView(title: "Campaign Sections") {
+                        Text("Not yet implemented.")
+                            .foregroundColor(themeManager.textColor)
                     }
 
 
@@ -104,9 +105,6 @@ struct CampaignDetailView: View {
             editableConcept = campaign.concept ?? ""
             selectedLLMId = campaign.selected_llm_id ?? ""
             temperature = campaign.temperature ?? 0.7
-            if let firstSection = campaign.sections?.first {
-                self.selectedSection = firstSection
-            }
             Task {
                 do {
                     try await llmService.fetchAvailableLLMs()

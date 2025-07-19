@@ -348,8 +348,7 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
         method: String = "GET",
         body: Data? = nil,
         headers: [String: String] = [:],
-        requiresAuth: Bool = true,
-        isRetry: Bool = false
+        requiresAuth: Bool = true
     ) async throws -> T {
         guard let url = URL(string: baseURLString + endpoint) else { throw APIError.invalidURL }
         var request = URLRequest(url: url)
@@ -400,18 +399,7 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
             print("✅ \(httpResponse.statusCode) from \(url)")
             if let str = String(data: data, encoding: .utf8) { print("   Response Data: \(str.prefix(500))") }
 
-            if httpResponse.statusCode == 401 {
-                if isRetry { throw APIError.notAuthenticated }
-
-                guard let refreshToken = try? KeychainHelper.loadRefreshToken() else { throw APIError.notAuthenticated }
-
-                let refreshResponse: Token = try await performRequest(endpoint: "/auth/refresh", method: "POST", body: "refresh_token=\(refreshToken)".data(using: .utf8), headers: ["Content-Type": "application/x-www-form-urlencoded"], requiresAuth: false)
-
-                tokenManager.setToken(refreshResponse.accessToken)
-
-                return try await performRequest(endpoint: endpoint, method: method, body: body, headers: headers, requiresAuth: requiresAuth, isRetry: true)
-            }
-
+            if httpResponse.statusCode == 401 { throw APIError.notAuthenticated }
             guard (200...299).contains(httpResponse.statusCode) else { throw APIError.serverError(statusCode: httpResponse.statusCode, data: data) }
 
             if T.self == Data.self { return data as! T }

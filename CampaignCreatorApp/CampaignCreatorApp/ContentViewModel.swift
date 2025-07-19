@@ -36,9 +36,8 @@ class ContentViewModel: ObservableObject {
             let requestBody = "username=\(usernameOrEmail)&password=\(password)"
             let bodyData = requestBody.data(using: .utf8)
             let headers = ["Content-Type": "application/x-www-form-urlencoded"]
-            let response: Token = try await apiService.performRequest(endpoint: "/auth/token", method: "POST", body: bodyData, headers: headers, requiresAuth: false)
-            tokenManager.setToken(response.access_token)
-            try KeychainHelper.saveRefreshToken(response.refresh_token)
+            let response: CampaignCreatorLib.Token = try await apiService.performRequest(endpoint: "/auth/token", method: "POST", body: bodyData, headers: headers, requiresAuth: false)
+            tokenManager.setToken(response.accessToken)
             await fetchCurrentUser()
             self.isAuthenticated = true
         } catch {
@@ -70,7 +69,6 @@ class ContentViewModel: ObservableObject {
 
     func logout() {
         tokenManager.clearToken()
-        try? KeychainHelper.deleteRefreshToken()
         self.isAuthenticated = false
         for user in users {
             modelContext.delete(user)
