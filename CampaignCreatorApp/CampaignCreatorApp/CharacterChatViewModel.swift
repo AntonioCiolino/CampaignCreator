@@ -7,7 +7,7 @@ class CharacterChatViewModel: ObservableObject {
     @Published var chatMessages: [ChatMessage] = []
     @Published var isSendingMessage: Bool = false
     @Published var errorMessage: String?
-    @Published var memorySummary: String? = "This is a placeholder for the actual memory summary."
+    @Published var memorySummary: String?
 
     private let character: CharacterModel
     private var apiService = CampaignCreatorLib.APIService()
@@ -18,11 +18,11 @@ class CharacterChatViewModel: ObservableObject {
         fetchData()
     }
 
-    private func fetchData() {
+    func fetchData() {
         Task {
             await fetchUser()
             fetchChatHistory()
-            fetchMemorySummary()
+            await fetchMemorySummary()
         }
     }
 
@@ -46,18 +46,18 @@ class CharacterChatViewModel: ObservableObject {
     }
 
     func summarizeMemory() {
-        fetchMemorySummary()
+        Task {
+            await fetchMemorySummary()
+        }
     }
 
-    func fetchMemorySummary() {
-        Task {
-            do {
-                let summary: MemorySummary = try await apiService.performRequest(endpoint: "/characters/\(character.id)/memory-summary")
-                self.memorySummary = summary.memory_summary ?? "No memory summary available."
-            } catch {
-                self.errorMessage = "Failed to load memory summary. Please check your connection and try again."
-                self.memorySummary = "Could not load memory summary."
-            }
+    func fetchMemorySummary() async {
+        do {
+            let summary: MemorySummary = try await apiService.performRequest(endpoint: "/characters/\(character.id)/memory-summary")
+            self.memorySummary = summary.memory_summary ?? "No memory summary available."
+        } catch {
+            self.errorMessage = "Failed to load memory summary. Please check your connection and try again."
+            self.memorySummary = "Could not load memory summary."
         }
     }
 
