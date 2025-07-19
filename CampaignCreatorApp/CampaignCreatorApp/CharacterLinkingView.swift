@@ -46,11 +46,9 @@ struct CharacterLinkingView: View {
     }
 
     private func binding(for character: CharacterModel) -> Binding<Bool> {
-        Binding<Bool>(
-            get: {
-                self.campaign.linked_character_ids.contains(character.id)
-            },
-            set: { isLinked, _ in
+        return Binding<Bool>(
+            get: { self.campaign.linked_character_ids.contains(character.id) },
+            set: { isLinked in
                 if isLinked {
                     if !self.campaign.linked_character_ids.contains(character.id) {
                         self.campaign.linked_character_ids.append(character.id)
