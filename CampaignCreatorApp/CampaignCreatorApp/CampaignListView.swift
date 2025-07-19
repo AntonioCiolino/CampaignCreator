@@ -1,6 +1,7 @@
 import SwiftUI
 import Kingfisher
 import SwiftData
+import CampaignCreatorLib
 
 struct CampaignListView: View {
     @Environment(\.modelContext) private var modelContext
@@ -96,14 +97,8 @@ struct CampaignListView: View {
     }
 
     private func refreshCampaigns() async {
-        guard let token = UserDefaultsTokenManager().getToken() else {
-            errorMessage = "Authentication token not found."
-            showingErrorAlert = true
-            return
-        }
-
         do {
-            let fetchedCampaigns: [CampaignModel] = try await apiService.get(endpoint: "/campaigns", token: token)
+            let fetchedCampaigns = try await apiService.fetchCampaigns()
 
             // Clear out existing campaigns to avoid duplicates
             for campaign in campaigns {

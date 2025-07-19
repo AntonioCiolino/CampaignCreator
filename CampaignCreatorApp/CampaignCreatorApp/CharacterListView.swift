@@ -1,6 +1,7 @@
 import SwiftUI
 import Kingfisher
 import SwiftData
+import CampaignCreatorLib
 
 struct CharacterListView: View {
     @Environment(\.modelContext) private var modelContext
@@ -98,14 +99,8 @@ struct CharacterListView: View {
     }
 
     private func refreshCharacters() async {
-        guard let token = UserDefaultsTokenManager().getToken() else {
-            errorMessage = "Authentication token not found."
-            showingErrorAlert = true
-            return
-        }
-
         do {
-            let fetchedCharacters: [CharacterModel] = try await apiService.get(endpoint: "/characters", token: token)
+            let fetchedCharacters = try await apiService.fetchCharacters()
 
             // Clear out existing characters to avoid duplicates
             for character in characters {
