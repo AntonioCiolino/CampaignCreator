@@ -71,6 +71,8 @@ struct CharacterListView: View {
             .sheet(isPresented: $showingCreateSheet) {
                 if let user = contentViewModel.currentUser {
                     CharacterCreateView(isPresented: $showingCreateSheet, ownerId: user.id)
+                        .environmentObject(contentViewModel)
+                        .environment(\.modelContext, modelContext)
                 }
             }
             .alert("Error", isPresented: $showingErrorAlert) {
