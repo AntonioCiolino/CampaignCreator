@@ -111,7 +111,13 @@ struct CharacterChatView: View {
         .navigationTitle("Chat")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
+                Button(action: {
+                    viewModel.summarizeMemory()
+                }) {
+                    Image(systemName: "brain")
+                }
+
                 Button(action: {
                     viewModel.clearChatMessages()
                 }) {
