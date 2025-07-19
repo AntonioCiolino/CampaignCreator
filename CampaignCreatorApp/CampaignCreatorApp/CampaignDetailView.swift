@@ -67,7 +67,8 @@ struct CampaignDetailView: View {
                 thematicImageURL: campaign.thematic_image_url,
                 onImageSelected: { selectedURL in
                     campaign.badge_image_url = selectedURL
-                }
+                },
+                apiService: llmService.apiService
             )
         }
         .onAppear {

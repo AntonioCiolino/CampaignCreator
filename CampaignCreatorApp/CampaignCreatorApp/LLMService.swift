@@ -5,7 +5,7 @@ import CampaignCreatorLib
 class LLMService: ObservableObject {
     @Published var availableLLMs: [AvailableLLM] = []
 
-    private let apiService: CampaignCreatorLib.APIService
+    let apiService: CampaignCreatorLib.APIService
 
     init(apiService: CampaignCreatorLib.APIService = CampaignCreatorLib.APIService()) {
         self.apiService = apiService

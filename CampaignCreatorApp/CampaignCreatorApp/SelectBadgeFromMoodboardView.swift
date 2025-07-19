@@ -9,9 +9,16 @@ struct SelectBadgeFromMoodboardView: View {
     @State private var showingGenerateImageSheet = false
     @State private var aiImagePrompt = ""
     @State private var isGeneratingImage = false
-    @StateObject private var imageGenerationService = ImageGenerationService()
+    @StateObject private var imageGenerationService: ImageGenerationService
     @State private var showingErrorAlert = false
     @State private var errorMessage = ""
+
+    init(moodBoardImageURLs: [String], thematicImageURL: String?, onImageSelected: @escaping (String) -> Void, apiService: CampaignCreatorLib.APIService) {
+        _moodBoardImageURLs = State(initialValue: moodBoardImageURLs)
+        self.thematicImageURL = thematicImageURL
+        self.onImageSelected = onImageSelected
+        _imageGenerationService = StateObject(wrappedValue: ImageGenerationService(apiService: apiService))
+    }
 
     private var allSelectableImageURLs: [String] {
         var urls = moodBoardImageURLs
