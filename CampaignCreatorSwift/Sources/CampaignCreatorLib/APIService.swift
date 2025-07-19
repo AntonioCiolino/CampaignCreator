@@ -288,24 +288,6 @@ public final class UserDefaultsTokenManager: TokenManaging {
 }
 
 
-public struct ImageGenerationParams: Codable {
-    public let prompt: String
-    public let model: String
-
-    public init(prompt: String, model: String) {
-        self.prompt = prompt
-        self.model = model
-    }
-}
-
-public struct ImageGenerationResponse: Codable {
-    public let imageUrl: String
-
-    public init(imageUrl: String) {
-        self.imageUrl = imageUrl
-    }
-}
-
 // Payload for LLM Generation Request
 struct LLMGenerationRequestPayload: Encodable {
     let prompt: String
