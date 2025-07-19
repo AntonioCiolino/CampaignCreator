@@ -354,5 +354,5 @@ struct SectionRegenerateInput: Codable {
 }
 
 struct MemorySummary: Codable {
-    let memory_summary: String
+    let memory_summary: String?
 }

@@ -53,7 +53,7 @@ class CharacterChatViewModel: ObservableObject {
         Task {
             do {
                 let summary: MemorySummary = try await apiService.performRequest(endpoint: "/characters/\(character.id)/memory-summary")
-                self.memorySummary = summary.memory_summary
+                self.memorySummary = summary.memory_summary ?? "No memory summary available."
             } catch {
                 self.errorMessage = "Failed to load memory summary. Please check your connection and try again."
                 self.memorySummary = "Could not load memory summary."
