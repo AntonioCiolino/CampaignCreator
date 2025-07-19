@@ -5,7 +5,7 @@ import CampaignCreatorLib
 class ImageGenerationService: ObservableObject {
     private let apiService: CampaignCreatorLib.APIService
 
-    init(apiService: CampaignCreatorLib.APIService = CampaignCreatorLib.APIService()) {
+    init(apiService: CampaignCreatorLib.APIService) {
         self.apiService = apiService
     }
 

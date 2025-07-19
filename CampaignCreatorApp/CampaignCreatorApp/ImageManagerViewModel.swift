@@ -14,10 +14,12 @@ class ImageManagerViewModel: ObservableObject {
     @Published var generationStatus: String = ""
 
     private var debounceTimer: Timer?
-    private let imageGenerationService = ImageGenerationService()
+    private let imageGenerationService: ImageGenerationService
+    private let apiService = CampaignCreatorLib.APIService()
 
     init(imageURLs: Binding<[String]>) {
         self._imageURLs = imageURLs
+        self.imageGenerationService = ImageGenerationService(apiService: self.apiService)
     }
 
     func addURL() {
@@ -44,7 +46,7 @@ class ImageManagerViewModel: ObservableObject {
 
         Task {
             do {
-                let generatedImageURL = try await imageGenerationService.generateImage(prompt: imagePrompt, model: selectedModel.rawValue)
+                let generatedImageURL = try await imageGenerationService.generateImage(prompt: imagePrompt, model: selectedModel)
                 if !self.imageURLs.contains(generatedImageURL) {
                     self.imageURLs.append(generatedImageURL)
                 }
