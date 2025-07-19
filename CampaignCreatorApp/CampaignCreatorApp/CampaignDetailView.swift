@@ -23,7 +23,7 @@ struct CampaignDetailView: View {
                 themeManager.backgroundColor.edgesIgnoringSafeArea(.all)
 
                 // Background image from theme
-                if let bgURL = themeManager.backgroundImageURL {
+                if let bgURL = themeManager.backgroundImageUrl {
                     KFImage(bgURL)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -70,7 +70,7 @@ struct CampaignDetailView: View {
         .background(themeManager.backgroundColor)
         .navigationBarColor(backgroundColor: themeManager.primaryColor,
                               tintColor: themeManager.textColor,
-                              titleColor: theme anager.textColor)
+                              titleColor: themeManager.textColor)
         .refreshable {
             await refreshCampaign()
         }
