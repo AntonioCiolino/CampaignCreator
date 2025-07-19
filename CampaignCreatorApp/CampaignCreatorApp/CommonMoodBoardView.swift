@@ -13,8 +13,8 @@ struct CommonMoodBoardView: View {
 
     private let gridItemLayout = [GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2), GridItem(.flexible(), spacing: 2)]
 
-    init(imageURLs: Binding<[String]>, onSave: @escaping () -> Void, onGenerateAIImage: ((String) async throws -> String)?, imageUploadService: ImageUploadService) {
-        _viewModel = StateObject(wrappedValue: CommonMoodBoardViewModel(imageURLs: imageURLs, onSave: onSave, onGenerateAIImage: onGenerateAIImage, imageUploadService: imageUploadService))
+    init(imageURLs: Binding<[String]>, onSave: @escaping () -> Void, onGenerateAIImage: ((String) async throws -> String)?, imageUploadService: ImageUploadService, onSetBadge: ((String) -> Void)? = nil) {
+        _viewModel = StateObject(wrappedValue: CommonMoodBoardViewModel(imageURLs: imageURLs, onSave: onSave, onGenerateAIImage: onGenerateAIImage, imageUploadService: imageUploadService, onSetBadge: onSetBadge))
     }
 
     var body: some View {
@@ -40,6 +40,9 @@ struct CommonMoodBoardView: View {
                             },
                             onDelete: {
                                 viewModel.deleteImage(urlString: urlString)
+                            },
+                            onSetBadge: {
+                                viewModel.onSetBadge?(urlString)
                             }
                         )
                     }
@@ -53,15 +56,6 @@ struct CommonMoodBoardView: View {
         }
         .navigationTitle("Mood Board")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    viewModel.showingAddImageOptions = true
-                } label: {
-                    Image(systemName: "plus")
-                }
-            }
-        }
         .confirmationDialog("Add Image", isPresented: $viewModel.showingAddImageOptions, titleVisibility: .visible) {
             Button("Add from URL") {
                 viewModel.newImageURLInput = ""
@@ -121,6 +115,7 @@ struct CommonMoodBoardView: View {
         let urlString: String
         let onSelect: () -> Void
         let onDelete: () -> Void
+        let onSetBadge: () -> Void
         @Environment(\.editMode) private var editMode
 
         private var isEditing: Bool {
@@ -129,37 +124,22 @@ struct CommonMoodBoardView: View {
 
         var body: some View {
             ZStack(alignment: .topTrailing) {
-                Button(action: onSelect) {
-                    if let url = URL(string: urlString), url.isFileURL {
-                        if let imageData = try? Data(contentsOf: url), let uiImage = UIImage(data: imageData) {
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(minWidth: 0, maxWidth: .infinity)
-                                .frame(height: 120)
-                                .clipped()
-                        } else {
-                            Image(systemName: "photo")
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 40, height: 40)
-                                .foregroundColor(.gray)
+                KFImage(URL(string: urlString))
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(minWidth: 0, maxWidth: .infinity)
+                    .frame(height: 120)
+                    .clipped()
+                    .contextMenu {
+                        Button(action: onSelect) {
+                            Text("View Image")
+                            Image(systemName: "eye")
                         }
-                    } else {
-                        KFImage(URL(string: urlString))
-                            .placeholder {
-                                ProgressView()
-                                    .frame(maxWidth: .infinity, idealHeight: 120)
-                                    .background(Color.gray.opacity(0.1))
-                            }
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(minWidth: 0, maxWidth: .infinity)
-                            .frame(height: 120)
-                            .clipped()
+                        Button(action: onSetBadge) {
+                            Text("Set as Badge")
+                            Image(systemName: "star")
+                        }
                     }
-                }
-                .buttonStyle(.plain)
 
                 if isEditing {
                     Button(action: onDelete) {

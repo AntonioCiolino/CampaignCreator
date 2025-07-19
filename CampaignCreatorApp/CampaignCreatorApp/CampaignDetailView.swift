@@ -3,7 +3,7 @@ import Kingfisher
 import SwiftData
 
 struct CampaignDetailView: View {
-    let campaign: CampaignModel
+    @Bindable var campaign: CampaignModel
 
     @State private var showingEditSheet = false
     @State private var isEditingConcept = false
@@ -18,39 +18,56 @@ struct CampaignDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                CampaignHeaderView(campaign: campaign, editableTitle: .constant(campaign.title), isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor)
+            ZStack {
+                // Background color from theme
+                themeManager.backgroundColor.edgesIgnoringSafeArea(.all)
 
-                CampaignConceptEditorView(isEditingConcept: $isEditingConcept, editableConcept: $editableConcept, isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onSaveChanges: {
-                    campaign.concept = editableConcept
-                })
-
-                SectionBox(title: "Table of Contents") {
-                    // TOC items
+                // Background image from theme
+                if let bgURL = themeManager.backgroundImageUrl {
+                    KFImage(bgURL)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .edgesIgnoringSafeArea(.all)
+                        .opacity(themeManager.backgroundImageOpacity)
                 }
 
-                SectionBox(title: "Campaign Sections") {
-                    // Campaign sections
+                VStack(alignment: .leading, spacing: 16) {
+                    CampaignHeaderView(campaign: campaign, editableTitle: .constant(campaign.title), isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor)
+
+                    CampaignConceptEditorView(isEditingConcept: $isEditingConcept, editableConcept: $editableConcept, isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onSaveChanges: {
+                        campaign.concept = editableConcept
+                    })
+
+                    CollapsibleSectionView(title: "Table of Contents") {
+                        Text("Not yet implemented.")
+                            .foregroundColor(themeManager.textColor)
+                    }
+
+                    CollapsibleSectionView(title: "Campaign Sections") {
+                        Text("Not yet implemented.")
+                            .foregroundColor(themeManager.textColor)
+                    }
+
+
+                    CampaignLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: llmService.availableLLMs, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onLLMSettingsChange: {
+                        campaign.selected_llm_id = selectedLLMId
+                        campaign.temperature = temperature
+                    })
+
+                    CampaignMoodboardView(campaign: campaign, onSetBadgeAction: {
+                        showingSetBadgeSheet = true
+                    })
+
                 }
-
-                SectionBox(title: "Character Linking") {
-                    // Character linking
-                }
-
-                CampaignLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: llmService.availableLLMs, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onLLMSettingsChange: {
-                    campaign.selected_llm_id = selectedLLMId
-                    campaign.temperature = temperature
-                })
-
-                CampaignMoodboardView(campaign: campaign, onSetBadgeAction: {
-                    showingSetBadgeSheet = true
-                })
-
+                .padding()
             }
-            .padding()
         }
         .navigationTitle(campaign.title)
         .navigationBarTitleDisplayMode(.inline)
+        .background(themeManager.backgroundColor)
+        .navigationBarColor(backgroundColor: themeManager.primaryColor,
+                              tintColor: themeManager.textColor,
+                              titleColor: themeManager.textColor)
         .refreshable {
             await refreshCampaign()
         }
@@ -59,6 +76,7 @@ struct CampaignDetailView: View {
                 Button("Edit") {
                     showingEditSheet = true
                 }
+                .foregroundColor(themeManager.textColor)
             }
         }
         .sheet(isPresented: $showingEditSheet) {
@@ -92,6 +110,9 @@ struct CampaignDetailView: View {
             Button("OK") { }
         } message: {
             Text(errorMessage)
+        }
+        .onDisappear {
+            themeManager.resetTheme()
         }
     }
 

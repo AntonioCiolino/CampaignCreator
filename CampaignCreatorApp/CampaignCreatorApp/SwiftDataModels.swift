@@ -22,7 +22,26 @@ final class CampaignModel: Identifiable {
     var theme_font_family: String?
     var theme_background_image_url: String?
     var theme_background_image_opacity: Double?
-    var mood_board_image_urls: [String]?
+    var mood_board_image_urls_string: String?
+    var linked_character_ids_string: String?
+
+    var mood_board_image_urls: [String]? {
+        get {
+            mood_board_image_urls_string?.components(separatedBy: ",")
+        }
+        set {
+            mood_board_image_urls_string = newValue?.joined(separator: ",")
+        }
+    }
+
+    var linked_character_ids: [Int]? {
+        get {
+            linked_character_ids_string?.components(separatedBy: ",").compactMap { Int($0) }
+        }
+        set {
+            linked_character_ids_string = newValue?.map { String($0) }.joined(separator: ",")
+        }
+    }
 
     init(
         id: Int,
@@ -43,7 +62,8 @@ final class CampaignModel: Identifiable {
         theme_font_family: String? = nil,
         theme_background_image_url: String? = nil,
         theme_background_image_opacity: Double? = nil,
-        mood_board_image_urls: [String]? = nil
+        mood_board_image_urls: [String]? = nil,
+        linked_character_ids: [Int]? = nil
     ) {
         self.id = id
         self.title = title
@@ -64,10 +84,11 @@ final class CampaignModel: Identifiable {
         self.theme_background_image_url = theme_background_image_url
         self.theme_background_image_opacity = theme_background_image_opacity
         self.mood_board_image_urls = mood_board_image_urls
+        self.linked_character_ids = linked_character_ids
     }
 
     static func from(campaign: CampaignCreatorLib.Campaign) -> CampaignModel {
-        return CampaignModel(
+        let model = CampaignModel(
             id: campaign.id,
             title: campaign.title,
             concept: campaign.concept,
@@ -84,9 +105,11 @@ final class CampaignModel: Identifiable {
             theme_text_color: campaign.themeTextColor,
             theme_font_family: campaign.themeFontFamily,
             theme_background_image_url: campaign.themeBackgroundImageURL,
-            theme_background_image_opacity: campaign.themeBackgroundImageOpacity,
-            mood_board_image_urls: campaign.moodBoardImageURLs
+            theme_background_image_opacity: campaign.themeBackgroundImageOpacity
         )
+        model.mood_board_image_urls = campaign.moodBoardImageURLs
+        model.linked_character_ids = campaign.linkedCharacterIDs
+        return model
     }
 
     var wordCount: Int {
