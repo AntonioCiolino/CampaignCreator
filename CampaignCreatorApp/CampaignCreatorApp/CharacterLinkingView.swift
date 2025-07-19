@@ -14,8 +14,12 @@ struct CharacterLinkingView: View {
     var body: some View {
         VStack(alignment: .leading) {
             ForEach(characters) { character in
-                Toggle(isOn: binding(for: character)) {
-                    Text(character.name)
+                Toggle(
+                    character.name,
+                    isOn: .constant(campaign.linked_character_ids.contains(character.id))
+                )
+                .onChange(of: campaign.linked_character_ids.contains(character.id)) { isLinked in
+                    updateLinkedCharacters(for: character, isLinked: isLinked)
                 }
                 .toggleStyle(.switch)
             }
@@ -45,18 +49,13 @@ struct CharacterLinkingView: View {
         }
     }
 
-    private func binding(for character: CharacterModel) -> Binding<Bool> {
-        return Binding<Bool>(
-            get: { self.campaign.linked_character_ids.contains(character.id) },
-            set: { isLinked in
-                if isLinked {
-                    if !self.campaign.linked_character_ids.contains(character.id) {
-                        self.campaign.linked_character_ids.append(character.id)
-                    }
-                } else {
-                    self.campaign.linked_character_ids.removeAll { $0 == character.id }
-                }
+    private func updateLinkedCharacters(for character: CharacterModel, isLinked: Bool) {
+        if isLinked {
+            if !campaign.linked_character_ids.contains(character.id) {
+                campaign.linked_character_ids.append(character.id)
             }
-        )
+        } else {
+            campaign.linked_character_ids.removeAll { $0 == character.id }
+        }
     }
 }
