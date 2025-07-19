@@ -86,62 +86,15 @@ struct SelectBadgeFromMoodboardView: View {
                 }
             }
             .sheet(isPresented: $showingGenerateImageSheet) {
-                generateImageView
+            ImageGenerationView(isPresented: $showingGenerateImageSheet) { generatedImageURL in
+                moodBoardImageURLs.append(generatedImageURL)
+            }
             }
             .alert("Image Generation Error", isPresented: $showingErrorAlert) {
                 Button("OK") { }
             } message: {
                 Text(errorMessage)
             }
-        }
-    }
-
-    private var generateImageView: some View {
-        NavigationView {
-            Form {
-                Section(header: Text("AI Image Prompt")) {
-                    TextEditor(text: $aiImagePrompt)
-                        .frame(height: 100)
-                }
-                Button(action: {
-                    Task {
-                        await generateImage()
-                    }
-                }) {
-                    HStack {
-                        if isGeneratingImage {
-                            ProgressView().padding(.trailing, 4)
-                            Text("Generating...")
-                        } else {
-                            Image(systemName: "sparkles")
-                            Text("Generate Image")
-                        }
-                    }
-                }
-                .disabled(aiImagePrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isGeneratingImage)
-            }
-            .navigationTitle("Generate Image")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        showingGenerateImageSheet = false
-                    }
-                }
-            }
-        }
-    }
-
-    private func generateImage() async {
-        isGeneratingImage = true
-        do {
-            let generatedImageURL = try await imageGenerationService.generateImage(prompt: aiImagePrompt)
-            moodBoardImageURLs.append(generatedImageURL)
-            isGeneratingImage = false
-        } catch {
-            errorMessage = error.localizedDescription
-            isGeneratingImage = false
-            showingErrorAlert = true
         }
     }
 }

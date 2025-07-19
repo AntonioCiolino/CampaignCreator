@@ -79,7 +79,10 @@ struct CommonMoodBoardView: View {
             addImageView
         }
         .sheet(isPresented: $viewModel.showingGenerateMoodboardImageSheet) {
-            generateMoodboardImageSheetView
+            ImageGenerationView(isPresented: $viewModel.showingGenerateMoodboardImageSheet) { generatedImageURL in
+                viewModel.imageURLs.append(generatedImageURL)
+                viewModel.onSave()
+            }
         }
         .alert(item: $viewModel.alertItem) { item in
             Alert(title: Text("Mood Board"), message: Text(item.message), dismissButton: .default(Text("OK")))
@@ -108,42 +111,6 @@ struct CommonMoodBoardView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
                         viewModel.showingAddURLSheet = false
-                    }
-                }
-            }
-        }
-    }
-
-    private var generateMoodboardImageSheetView: some View {
-        NavigationView {
-            Form {
-                Section(header: Text("AI Image Prompt")) {
-                    TextEditor(text: $viewModel.aiImagePromptInput)
-                        .frame(height: 100)
-                }
-                Button(action: {
-                    Task {
-                        await viewModel.generateAndAddAIImage()
-                    }
-                }) {
-                    HStack {
-                        if viewModel.isGeneratingAIImage {
-                            ProgressView().padding(.trailing, 4)
-                            Text("Generating...")
-                        } else {
-                            Image(systemName: "sparkles")
-                            Text("Generate Image")
-                        }
-                    }
-                }
-                .disabled(viewModel.aiImagePromptInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isGeneratingAIImage)
-            }
-            .navigationTitle("Generate Image")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        viewModel.showingGenerateMoodboardImageSheet = false
                     }
                 }
             }

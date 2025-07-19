@@ -4,8 +4,6 @@ public enum ImageModelName: String, Codable, Sendable, CaseIterable { // Added C
     case openAIDalle = "dall-e" // Single case for DALL-E, rawValue matches backend
     case stableDiffusion = "stable-diffusion" // Example, actual value might differ
     case gemini // Assuming "gemini" is the raw value for Gemini models
-    case dalle3 = "dall-e-3"
-    case dalle2 = "dall-e-2"
 
     // Convenience for a default or common model
     public static var defaultOpenAI: ImageModelName { .openAIDalle }
@@ -13,7 +11,7 @@ public enum ImageModelName: String, Codable, Sendable, CaseIterable { // Added C
 
 public struct ImageGenerationParams: Codable, Sendable {
     public let prompt: String
-    public let model: String
+    public let model: String // e.g., "dall-e", "stable-diffusion"
     public let size: String?
     public let quality: String? // DALL-E specific
     public let steps: Int?      // Stable Diffusion specific
