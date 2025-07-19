@@ -259,7 +259,7 @@ public struct LoginResponseDTO: Codable, Sendable {
     // Properties now camelCase to work with global .convertFromSnakeCase strategy
     public let accessToken: String
     public let tokenType: String
-    public let refreshToken: String
+    public let refreshToken: String?
 
     // No explicit CodingKeys needed if backend sends "access_token" and "token_type"
     // and jsonDecoder.keyDecodingStrategy = .convertFromSnakeCase is set.
@@ -313,14 +313,14 @@ struct LLMGenerationRequestPayload: Encodable {
 
 public final class APIService: ObservableObject, Sendable { // Added ObservableObject conformance
     public let baseURLString = "https://campaigncreator-api.onrender.com/api/v1" // Made public
-    private let tokenManager: TokenManaging
+    private let tokenManager: TokenManager
     // @Published properties are not strictly necessary for this service if its state doesn't change
     // or if UI doesn't need to react to its internal state changes directly.
     // However, if token changes should refresh UI, tokenManager could be @Published or methods could publish.
     private let jsonDecoder: JSONDecoder
     private let jsonEncoder: JSONEncoder
 
-    public init(tokenManager: TokenManaging = UserDefaultsTokenManager()) {
+    public init(tokenManager: TokenManager = TokenManager()) {
         self.tokenManager = tokenManager
 
         let decoder = JSONDecoder()
@@ -337,16 +337,16 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
 
     // Public getter for the token
     public func getToken() -> String? {
-        return tokenManager.getToken()
+        return tokenManager.getAccessToken()
     }
 
     @MainActor
     public func updateAuthToken(_ token: String?) {
-        tokenManager.setToken(token)
+        tokenManager.setAccessToken(token)
     }
 
     public func hasToken() -> Bool {
-        return tokenManager.getToken() != nil
+        return tokenManager.hasToken()
     }
 
     public func performRequest<T: Decodable>(
@@ -376,8 +376,8 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
         }
 
         if requiresAuth {
-            print("APIService [Auth]: Attempting to get token for endpoint '\(endpoint)'. Token currently in manager: \(tokenManager.getToken() ?? "NIL - Not Found")")
-            guard let token = tokenManager.getToken() else {
+            print("APIService [Auth]: Attempting to get token for endpoint '\(endpoint)'. Token currently in manager: \(tokenManager.getAccessToken() ?? "NIL - Not Found")")
+            guard let token = tokenManager.getAccessToken() else {
                 print("APIService [Auth]: No token retrieved by tokenManager for authenticated request to '\(endpoint)'. Throwing APIError.notAuthenticated.")
                 throw APIError.notAuthenticated
             }
@@ -409,7 +409,11 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
             if httpResponse.statusCode == 401 {
                 if isRetry { throw APIError.notAuthenticated }
 
-                guard let refreshToken = try? KeychainHelper.loadRefreshToken() else { throw APIError.notAuthenticated }
+                guard let accessToken = tokenManager.getAccessToken(),
+                      let username = decode(jwtToken: accessToken)["sub"] as? String,
+                      let refreshToken = tokenManager.getRefreshToken(for: username) else {
+                    throw APIError.notAuthenticated
+                }
 
                 let refreshTokenRequest = RefreshTokenRequestDTO(refreshToken: refreshToken)
                 let body = try jsonEncoder.encode(refreshTokenRequest)
@@ -421,8 +425,10 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
                     requiresAuth: false
                 )
 
-                tokenManager.setToken(refreshResponse.accessToken)
-                try KeychainHelper.saveRefreshToken(refreshResponse.refreshToken)
+                tokenManager.setAccessToken(refreshResponse.accessToken)
+                if let newRefreshToken = refreshResponse.refreshToken {
+                    tokenManager.setRefreshToken(newRefreshToken, for: username)
+                }
 
 
                 return try await performRequest(endpoint: endpoint, method: method, body: body, headers: headers, requiresAuth: requiresAuth, isRetry: true)
@@ -623,7 +629,11 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
         let bodyData = components.query?.data(using: .utf8)
         let headers = ["Content-Type": "application/x-www-form-urlencoded"]
         let response: LoginResponseDTO = try await performRequest(endpoint: "/auth/token", method: "POST", body: bodyData, headers: headers, requiresAuth: false)
-        try KeychainHelper.saveRefreshToken(response.refreshToken)
+
+        tokenManager.setAccessToken(response.accessToken)
+        if let refreshToken = response.refreshToken {
+            tokenManager.setRefreshToken(refreshToken, for: credentials.username)
+        }
         return response
     }
 
@@ -732,6 +742,35 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
     public func clearChatHistory(characterId: Int) async throws {
         let endpointString = "/characters/\(characterId)/chat"
         try await performVoidRequest(endpoint: endpointString, method: "DELETE")
+    }
+
+    private func decode(jwtToken jwt: String) -> [String: Any] {
+        let segments = jwt.components(separatedBy: ".")
+        guard segments.count > 1 else { return [:] }
+        return decodeJWTPart(segments[1]) ?? [:]
+    }
+
+    private func base64UrlDecode(_ value: String) -> Data? {
+        var base64 = value
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        let length = Double(base64.lengthOfBytes(using: .utf8))
+        let requiredLength = 4 * ceil(length / 4.0)
+        let padding = requiredLength - length
+        if padding > 0 {
+            let paddingString = String(repeating: "=", count: Int(padding))
+            base64 = base64 + paddingString
+        }
+        return Data(base64Encoded: base64)
+    }
+
+    private func decodeJWTPart(_ value: String) -> [String: Any]? {
+        guard let bodyData = base64UrlDecode(value),
+              let json = try? JSONSerialization.jsonObject(with: bodyData, options: []),
+              let payload = json as? [String: Any] else {
+            return nil
+        }
+        return payload
     }
 }
 
