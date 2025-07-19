@@ -7,7 +7,7 @@ class CharacterChatViewModel: ObservableObject {
     @Published var chatMessages: [ChatMessage] = []
     @Published var isSendingMessage: Bool = false
     @Published var errorMessage: String?
-    @Published var memorySummary: String? = "This is a placeholder for the actual memory summary."
+    @Published var memorySummary: String? = "No memory summary available."
 
     private let character: CharacterModel
     private var apiService = CampaignCreatorLib.APIService()
@@ -49,14 +49,24 @@ class CharacterChatViewModel: ObservableObject {
         fetchMemorySummary()
     }
 
+    func forceSummarizeMemory() {
+        Task {
+            do {
+                try await apiService.performVoidRequest(endpoint: "/characters/\(character.id)/force-memory-summary", method: "POST")
+                fetchMemorySummary() // Re-fetch the summary to update the UI
+            } catch {
+                errorMessage = "Failed to force memory summarization: \(error.localizedDescription)"
+            }
+        }
+    }
+
     func fetchMemorySummary() {
         Task {
             do {
                 let summary: MemorySummary = try await apiService.performRequest(endpoint: "/characters/\(character.id)/memory-summary")
-                self.memorySummary = summary.memory_summary ?? "No memory summary available."
+                self.memorySummary = summary.memory_summary
             } catch {
                 self.errorMessage = "Failed to load memory summary. Please check your connection and try again."
-                self.memorySummary = "Could not load memory summary."
             }
         }
     }
