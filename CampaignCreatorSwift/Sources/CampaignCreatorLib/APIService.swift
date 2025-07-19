@@ -257,12 +257,18 @@ public struct LoginRequestDTO: Codable, Sendable {
 
 public struct LoginResponseDTO: Codable, Sendable {
     // Properties now camelCase to work with global .convertFromSnakeCase strategy
-    let accessToken: String
-    let tokenType: String
+    public let accessToken: String
+    public let tokenType: String
+    public let refreshToken: String
 
     // No explicit CodingKeys needed if backend sends "access_token" and "token_type"
     // and jsonDecoder.keyDecodingStrategy = .convertFromSnakeCase is set.
     // No custom init needed; memberwise initializer will be synthesized.
+}
+
+
+public struct RefreshTokenRequestDTO: Codable, Sendable {
+    let refreshToken: String
 }
 
 
@@ -405,9 +411,19 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
 
                 guard let refreshToken = try? KeychainHelper.loadRefreshToken() else { throw APIError.notAuthenticated }
 
-                let refreshResponse: Token = try await performRequest(endpoint: "/auth/refresh", method: "POST", body: "refresh_token=\(refreshToken)".data(using: .utf8), headers: ["Content-Type": "application/x-www-form-urlencoded"], requiresAuth: false)
+                let refreshTokenRequest = RefreshTokenRequestDTO(refreshToken: refreshToken)
+                let body = try jsonEncoder.encode(refreshTokenRequest)
+
+                let refreshResponse: LoginResponseDTO = try await performRequest(
+                    endpoint: "/auth/refresh",
+                    method: "POST",
+                    body: body,
+                    requiresAuth: false
+                )
 
                 tokenManager.setToken(refreshResponse.accessToken)
+                try KeychainHelper.saveRefreshToken(refreshResponse.refreshToken)
+
 
                 return try await performRequest(endpoint: endpoint, method: method, body: body, headers: headers, requiresAuth: requiresAuth, isRetry: true)
             }
@@ -606,7 +622,9 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
         ]
         let bodyData = components.query?.data(using: .utf8)
         let headers = ["Content-Type": "application/x-www-form-urlencoded"]
-        return try await performRequest(endpoint: "/auth/token", method: "POST", body: bodyData, headers: headers, requiresAuth: false)
+        let response: LoginResponseDTO = try await performRequest(endpoint: "/auth/token", method: "POST", body: bodyData, headers: headers, requiresAuth: false)
+        try KeychainHelper.saveRefreshToken(response.refreshToken)
+        return response
     }
 
     // MARK: - User Methods
