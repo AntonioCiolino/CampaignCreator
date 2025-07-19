@@ -10,13 +10,15 @@ public struct AvailableLLM: Identifiable, Codable, Hashable {
     public var modelType: String?
     public var supportsTemperature: Bool
     public var capabilities: [String]?
+    public var description: String?
 
-    public init(id: String, name: String, modelType: String?, supportsTemperature: Bool, capabilities: [String]? = nil) {
+    public init(id: String, name: String, modelType: String?, supportsTemperature: Bool, capabilities: [String]? = nil, description: String? = nil) {
         self.id = id
         self.name = name
         self.modelType = modelType
         self.supportsTemperature = supportsTemperature
         self.capabilities = capabilities
+        self.description = description
     }
 }
 
@@ -285,6 +287,24 @@ public final class UserDefaultsTokenManager: TokenManaging {
     public init() {}
 }
 
+
+public struct ImageGenerationParams: Codable {
+    public let prompt: String
+    public let model: String
+
+    public init(prompt: String, model: String) {
+        self.prompt = prompt
+        self.model = model
+    }
+}
+
+public struct ImageGenerationResponse: Codable {
+    public let imageUrl: String
+
+    public init(imageUrl: String) {
+        self.imageUrl = imageUrl
+    }
+}
 
 // Payload for LLM Generation Request
 struct LLMGenerationRequestPayload: Encodable {

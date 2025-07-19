@@ -25,17 +25,21 @@ struct CampaignImageManagerView: View {
 
                     Button(action: viewModel.generateImage) {
                         HStack {
-                            if viewModel.isGeneratingImage {
-                                ProgressView()
-                                    .padding(.trailing, 4)
-                                Text("Generating...")
-                            } else {
-                                Image(systemName: "sparkles")
-                                Text("Generate Image")
-                            }
+                            Image(systemName: "sparkles")
+                            Text("Generate Image")
                         }
                     }
                     .disabled(viewModel.isGeneratingImage || viewModel.imagePrompt.isEmpty)
+
+                    if viewModel.isGeneratingImage {
+                        HStack {
+                            ProgressView()
+                                .padding(.trailing, 4)
+                            Text(viewModel.generationStatus)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
                 }
                 .alert("Image Generation Error", isPresented: $viewModel.showErrorAlert) {
                     Button("OK") { viewModel.showErrorAlert = false }

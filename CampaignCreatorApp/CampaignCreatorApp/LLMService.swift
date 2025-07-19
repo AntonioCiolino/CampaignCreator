@@ -1,29 +1,6 @@
 import Foundation
 import CampaignCreatorLib
 
-enum LLMServiceError: Error, LocalizedError {
-    case networkError(Error)
-    case serverError(statusCode: Int, message: String?)
-    case invalidResponse
-    case decodingError(Error)
-    case noToken
-
-    var errorDescription: String? {
-        switch self {
-        case .networkError(let error):
-            return "Network error: \(error.localizedDescription)"
-        case .serverError(let statusCode, let message):
-            return "Server error (\(statusCode)): \(message ?? "Unknown server error")"
-        case .invalidResponse:
-            return "Invalid response from server."
-        case .decodingError(let error):
-            return "Failed to decode server response: \(error.localizedDescription)"
-        case .noToken:
-            return "Authentication token not found."
-        }
-    }
-}
-
 @MainActor
 class LLMService: ObservableObject {
     @Published var availableLLMs: [AvailableLLM] = []
@@ -35,24 +12,11 @@ class LLMService: ObservableObject {
     }
 
     func fetchAvailableLLMs() async throws {
-        guard let token = UserDefaultsTokenManager().getToken() else {
-            throw LLMServiceError.noToken
-        }
-
-        let endpoint = "/llms/available"
-
         do {
-            let response: LLMModelsResponse = try await apiService.get(endpoint: endpoint, token: token)
+            let response: LLMModelsResponse = try await apiService.performRequest(endpoint: "/llm/models")
             self.availableLLMs = response.models
-        } catch let error as APIServiceError {
-            switch error {
-            case .networkError(let underlyingError):
-                throw LLMServiceError.networkError(underlyingError)
-            case .decodingError(let underlyingError):
-                throw LLMServiceError.decodingError(underlyingError)
-            case .serverError(let statusCode, let message):
-                throw LLMServiceError.serverError(statusCode: statusCode, message: message)
-            }
+        } catch {
+            throw error
         }
     }
 }

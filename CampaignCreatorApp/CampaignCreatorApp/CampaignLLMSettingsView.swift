@@ -32,9 +32,13 @@ struct CampaignLLMSettingsView: View {
                 .onChange(of: selectedLLMId) {
                     Task { await onLLMSettingsChange() }
                 }
-                Text("Note: This list is a placeholder. Ideally, available LLMs should be fetched from the server.")
-                    .font(.caption2)
-                    .foregroundColor(.orange)
+
+                if let selectedLLM = availableLLMs.first(where: { $0.id == selectedLLMId }), let description = selectedLLM.description {
+                    Text(description)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 4)
+                }
 
                 VStack(alignment: .leading) {
                     Text("Temperature: \(String(format: "%.2f", temperature))")
