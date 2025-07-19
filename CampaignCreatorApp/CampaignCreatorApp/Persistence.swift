@@ -13,7 +13,9 @@ class PersistenceController {
             CharacterModel.self,
             ChatMessageModel.self,
             UserModel.self,
-            MemoryModel.self
+            MemoryModel.self,
+            LLMModel.self,
+            FeatureModel.self
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
 
