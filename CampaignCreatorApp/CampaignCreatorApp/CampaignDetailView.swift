@@ -51,13 +51,11 @@ struct CampaignDetailView: View {
         }
         .navigationTitle(campaign.title)
         .navigationBarTitleDisplayMode(.inline)
+        .refreshable {
+            await refreshCampaign()
+        }
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
-                Button("Refresh") {
-                    Task {
-                        await refreshCampaign()
-                    }
-                }
                 Button("Edit") {
                     showingEditSheet = true
                 }

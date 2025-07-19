@@ -59,13 +59,11 @@ struct CharacterDetailView: View {
         }
         .navigationTitle(character.name)
         .navigationBarTitleDisplayMode(.inline)
+        .refreshable {
+            await refreshCharacter()
+        }
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
-                Button("Refresh") {
-                    Task {
-                        await refreshCharacter()
-                    }
-                }
                 Button("Edit") {
                     showingEditSheet = true
                 }

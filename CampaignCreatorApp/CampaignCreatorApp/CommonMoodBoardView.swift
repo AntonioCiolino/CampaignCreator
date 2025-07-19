@@ -93,7 +93,7 @@ struct CommonMoodBoardView: View {
         NavigationView {
             Form {
                 Section(header: Text("Image URL")) {
-                    TextField("https://example.com/image.png", text: $viewModel.newImageURLInput)
+                    TextField("", text: $viewModel.newImageURLInput, prompt: Text("https://example.com/image.png").foregroundColor(.gray))
                         .keyboardType(.URL)
                         .autocapitalization(.none)
                         .textFieldStyle(.plain)
