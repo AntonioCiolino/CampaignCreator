@@ -107,7 +107,8 @@ struct CampaignListView: View {
 
             // Insert new campaigns
             for campaign in fetchedCampaigns {
-                modelContext.insert(campaign)
+                let campaignModel = CampaignModel.from(campaign: campaign)
+                modelContext.insert(campaignModel)
             }
 
             try modelContext.save()

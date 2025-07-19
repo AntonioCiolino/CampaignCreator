@@ -4,7 +4,7 @@ import CampaignCreatorLib
 
 @Model
 final class CampaignModel: Identifiable {
-    var id: UUID = UUID()
+    var id: Int = 0
     var title: String
     var concept: String?
     var initial_user_prompt: String?
@@ -14,17 +14,18 @@ final class CampaignModel: Identifiable {
     var thematic_image_url: String?
     var thematic_image_prompt: String?
     var selected_llm_id: String?
-    var temperature: Float?
+    var temperature: Double?
     var theme_primary_color: String?
     var theme_secondary_color: String?
     var theme_background_color: String?
     var theme_text_color: String?
     var theme_font_family: String?
     var theme_background_image_url: String?
-    var theme_background_image_opacity: Float?
+    var theme_background_image_opacity: Double?
     var mood_board_image_urls: [String]?
 
     init(
+        id: Int,
         title: String,
         concept: String? = nil,
         initial_user_prompt: String? = nil,
@@ -34,16 +35,17 @@ final class CampaignModel: Identifiable {
         thematic_image_url: String? = nil,
         thematic_image_prompt: String? = nil,
         selected_llm_id: String? = nil,
-        temperature: Float? = nil,
+        temperature: Double? = nil,
         theme_primary_color: String? = nil,
         theme_secondary_color: String? = nil,
         theme_background_color: String? = nil,
         theme_text_color: String? = nil,
         theme_font_family: String? = nil,
         theme_background_image_url: String? = nil,
-        theme_background_image_opacity: Float? = nil,
+        theme_background_image_opacity: Double? = nil,
         mood_board_image_urls: [String]? = nil
     ) {
+        self.id = id
         self.title = title
         self.concept = concept
         self.initial_user_prompt = initial_user_prompt
@@ -64,6 +66,29 @@ final class CampaignModel: Identifiable {
         self.mood_board_image_urls = mood_board_image_urls
     }
 
+    static func from(campaign: CampaignCreatorLib.Campaign) -> CampaignModel {
+        return CampaignModel(
+            id: campaign.id,
+            title: campaign.title,
+            concept: campaign.concept,
+            initial_user_prompt: campaign.initialUserPrompt,
+            owner_id: 0, // TODO: Get owner_id from somewhere
+            badge_image_url: campaign.badgeImageURL,
+            thematic_image_url: campaign.thematicImageURL,
+            thematic_image_prompt: campaign.thematicImagePrompt,
+            selected_llm_id: campaign.selectedLLMId,
+            temperature: campaign.temperature,
+            theme_primary_color: campaign.themePrimaryColor,
+            theme_secondary_color: campaign.themeSecondaryColor,
+            theme_background_color: campaign.themeBackgroundColor,
+            theme_text_color: campaign.themeTextColor,
+            theme_font_family: campaign.themeFontFamily,
+            theme_background_image_url: campaign.themeBackgroundImageURL,
+            theme_background_image_opacity: campaign.themeBackgroundImageOpacity,
+            mood_board_image_urls: campaign.moodBoardImageURLs
+        )
+    }
+
     var wordCount: Int {
         return sections?.reduce(0) { $0 + $1.content.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count } ?? 0
     }
@@ -71,7 +96,7 @@ final class CampaignModel: Identifiable {
 
 @Model
 final class CharacterModel: Identifiable {
-    var id: UUID = UUID()
+    var id: Int = 0
     var name: String
     var character_description: String?
     var appearance_description: String?
@@ -87,8 +112,11 @@ final class CharacterModel: Identifiable {
     var export_format_preference: String?
     var owner_id: Int
     var campaign_ids: [Int]?
+    var selected_llm_id: String?
+    var temperature: Double?
 
     init(
+        id: Int,
         name: String,
         character_description: String? = nil,
         appearance_description: String? = nil,
@@ -103,8 +131,11 @@ final class CharacterModel: Identifiable {
         charisma: Int? = 10,
         export_format_preference: String? = nil,
         owner_id: Int,
-        campaign_ids: [Int]? = nil
+        campaign_ids: [Int]? = nil,
+        selected_llm_id: String? = nil,
+        temperature: Double? = nil
     ) {
+        self.id = id
         self.name = name
         self.character_description = character_description
         self.appearance_description = appearance_description
@@ -120,6 +151,29 @@ final class CharacterModel: Identifiable {
         self.export_format_preference = export_format_preference
         self.owner_id = owner_id
         self.campaign_ids = campaign_ids
+        self.selected_llm_id = selected_llm_id
+        self.temperature = temperature
+    }
+
+    static func from(character: CampaignCreatorLib.Character) -> CharacterModel {
+        return CharacterModel(
+            id: character.id,
+            name: character.name,
+            character_description: character.description,
+            appearance_description: character.appearanceDescription,
+            image_urls: character.imageURLs,
+            notes_for_llm: character.notesForLLM,
+            strength: character.stats?.strength,
+            dexterity: character.stats?.dexterity,
+            constitution: character.stats?.constitution,
+            intelligence: character.stats?.intelligence,
+            wisdom: character.stats?.wisdom,
+            charisma: character.stats?.charisma,
+            export_format_preference: character.exportFormatPreference,
+            owner_id: 0, // TODO: Get owner_id from somewhere
+            selected_llm_id: character.selectedLLMId,
+            temperature: character.temperature
+        )
     }
 }
 

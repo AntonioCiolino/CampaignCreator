@@ -10,7 +10,7 @@ class ImageManagerViewModel: ObservableObject {
     @Published var showErrorAlert: Bool = false
     @Published var errorMessage: String = ""
     @Published var generationError: String?
-    @Published var selectedModel: ImageModelName = .dalle3
+    @Published var selectedModel: CampaignCreatorLib.ImageModelName = .dalle3
     @Published var generationStatus: String = ""
 
     private var debounceTimer: Timer?

@@ -109,7 +109,8 @@ struct CharacterListView: View {
 
             // Insert new characters
             for character in fetchedCharacters {
-                modelContext.insert(character)
+                let characterModel = CharacterModel.from(character: character)
+                modelContext.insert(characterModel)
             }
 
             try modelContext.save()
