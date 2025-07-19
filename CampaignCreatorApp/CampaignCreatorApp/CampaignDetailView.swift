@@ -11,14 +11,15 @@ struct CampaignDetailView: View {
     @State private var selectedLLMId = ""
     @State private var temperature = 0.7
     @StateObject private var themeManager = CampaignThemeManager()
+    @StateObject private var llmService = LLMService()
     @State private var showingSetBadgeSheet = false
+    @State private var showingErrorAlert = false
+    @State private var errorMessage = ""
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                CampaignHeaderView(campaign: campaign, editableTitle: .constant(campaign.title), isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor, onSetBadgeAction: {
-                    showingSetBadgeSheet = true
-                })
+                CampaignHeaderView(campaign: campaign, editableTitle: .constant(campaign.title), isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor)
 
                 CampaignConceptEditorView(isEditingConcept: $isEditingConcept, editableConcept: $editableConcept, isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onSaveChanges: {
                     campaign.concept = editableConcept
@@ -36,17 +37,23 @@ struct CampaignDetailView: View {
                     // Character linking
                 }
 
-                CampaignLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: [], currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onLLMSettingsChange: {
-                    // on LLM settings change
+                CampaignLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: llmService.availableLLMs, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onLLMSettingsChange: {
+                    campaign.selected_llm_id = selectedLLMId
+                    campaign.temperature = temperature
                 })
 
-                CampaignMoodboardView(campaign: campaign)
+                CampaignMoodboardView(campaign: campaign, onSetBadgeAction: {
+                    showingSetBadgeSheet = true
+                })
 
             }
             .padding()
         }
         .navigationTitle(campaign.title)
         .navigationBarTitleDisplayMode(.inline)
+        .refreshable {
+            await refreshCampaign()
+        }
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
                 Button("Edit") {
@@ -63,12 +70,41 @@ struct CampaignDetailView: View {
                 thematicImageURL: campaign.thematic_image_url,
                 onImageSelected: { selectedURL in
                     campaign.badge_image_url = selectedURL
-                }
+                },
+                apiService: llmService.apiService
             )
         }
         .onAppear {
             themeManager.updateTheme(from: campaign)
             editableConcept = campaign.concept ?? ""
+            selectedLLMId = campaign.selected_llm_id ?? ""
+            temperature = campaign.temperature ?? 0.7
+            Task {
+                do {
+                    try await llmService.fetchAvailableLLMs()
+                } catch {
+                    errorMessage = error.localizedDescription
+                    showingErrorAlert = true
+                }
+            }
+        }
+        .alert("Error", isPresented: $showingErrorAlert) {
+            Button("OK") { }
+        } message: {
+            Text(errorMessage)
+        }
+    }
+
+    private func refreshCampaign() async {
+        do {
+            let refreshedCampaign = try await llmService.apiService.fetchCampaign(id: campaign.id)
+            // This is a bit tricky since campaign is a let constant.
+            // A better approach would be to have this view model driven.
+            // For now, we can log that it was fetched.
+            print("Refreshed campaign: \(refreshedCampaign.title)")
+        } catch {
+            errorMessage = "Failed to refresh campaign: \(error.localizedDescription)"
+            showingErrorAlert = true
         }
     }
 }

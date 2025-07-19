@@ -1,12 +1,17 @@
 import SwiftUI
 import Kingfisher
 import SwiftData
+import CampaignCreatorLib
 
 struct CampaignListView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var contentViewModel: ContentViewModel
     @Query(sort: \CampaignModel.title) private var campaigns: [CampaignModel]
     @State private var showingCreateSheet = false
+    @State private var showingErrorAlert = false
+    @State private var errorMessage = ""
+
+    private let apiService = CampaignCreatorLib.APIService()
 
     var body: some View {
         NavigationView {
@@ -46,6 +51,9 @@ struct CampaignListView: View {
                         }
                         .onDelete(perform: deleteCampaigns)
                     }
+                    .refreshable {
+                        await refreshCampaigns()
+                    }
                 }
             }
             .navigationTitle("Campaigns")
@@ -62,6 +70,11 @@ struct CampaignListView: View {
                 if let user = contentViewModel.currentUser {
                     CampaignCreateView(isPresented: $showingCreateSheet, ownerId: user.id)
                 }
+            }
+            .alert("Error", isPresented: $showingErrorAlert) {
+                Button("OK") { }
+            } message: {
+                Text(errorMessage)
             }
         }
     }
@@ -80,6 +93,47 @@ struct CampaignListView: View {
             } catch {
                 print("Error saving model context from deleteCampaigns: \(error.localizedDescription)")
             }
+        }
+    }
+
+    private func refreshCampaigns() async {
+        do {
+            let fetchedCampaigns = try await apiService.fetchCampaigns()
+
+            // Clear out existing campaigns to avoid duplicates
+            for campaign in campaigns {
+                modelContext.delete(campaign)
+            }
+
+            // Insert or update campaigns
+            for campaign in fetchedCampaigns {
+                if let existingCampaign = campaigns.first(where: { $0.id == campaign.id }) {
+                    existingCampaign.title = campaign.title
+                    existingCampaign.concept = campaign.concept
+                    existingCampaign.initial_user_prompt = campaign.initialUserPrompt
+                    existingCampaign.badge_image_url = campaign.badgeImageURL
+                    existingCampaign.thematic_image_url = campaign.thematicImageURL
+                    existingCampaign.thematic_image_prompt = campaign.thematicImagePrompt
+                    existingCampaign.selected_llm_id = campaign.selectedLLMId
+                    existingCampaign.temperature = campaign.temperature
+                    existingCampaign.theme_primary_color = campaign.themePrimaryColor
+                    existingCampaign.theme_secondary_color = campaign.themeSecondaryColor
+                    existingCampaign.theme_background_color = campaign.themeBackgroundColor
+                    existingCampaign.theme_text_color = campaign.themeTextColor
+                    existingCampaign.theme_font_family = campaign.themeFontFamily
+                    existingCampaign.theme_background_image_url = campaign.themeBackgroundImageURL
+                    existingCampaign.theme_background_image_opacity = campaign.themeBackgroundImageOpacity
+                    existingCampaign.mood_board_image_urls = campaign.moodBoardImageURLs
+                } else {
+                    let campaignModel = CampaignModel.from(campaign: campaign)
+                    modelContext.insert(campaignModel)
+                }
+            }
+
+            try modelContext.save()
+        } catch {
+            errorMessage = "Failed to refresh campaigns: \(error.localizedDescription)"
+            showingErrorAlert = true
         }
     }
 }

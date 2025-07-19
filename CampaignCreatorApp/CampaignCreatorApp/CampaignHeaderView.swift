@@ -11,8 +11,6 @@ struct CampaignHeaderView: View {
     let isGeneratingText: Bool
     let currentPrimaryColor: Color
 
-    // Callback for the placeholder button
-    let onSetBadgeAction: () -> Void
     // Note: The .onChange for editableTitle and debouncing logic
     // will remain in CampaignDetailView as it owns the editableTitle @State
     // and the titleDebounceTimer.
@@ -28,30 +26,44 @@ struct CampaignHeaderView: View {
                 Spacer()
             }
 
-            TextField("Campaign Title", text: $editableTitle)
+            Text(campaign.title)
                 .font(.largeTitle)
-                .textFieldStyle(PlainTextFieldStyle())
                 .padding(.bottom, 4)
-                .disabled(isSaving || isGeneratingText)
 
             // Campaign Badge Display
             if let badgeUrlString = campaign.badge_image_url, let badgeUrl = URL(string: badgeUrlString) {
-                // KFImage loads and caches the campaign badge.
-                // Displayed as a circular icon.
-                KFImage(badgeUrl)
-                    .placeholder { // Shown during loading.
-                        ProgressView().frame(width: 50, height: 50).padding(.top, 5)
+                if badgeUrl.isFileURL {
+                    if let imageData = try? Data(contentsOf: badgeUrl), let uiImage = UIImage(data: imageData) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: 50, maxHeight: 50)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(currentPrimaryColor, lineWidth: 2))
+                            .padding(.top, 5)
+                    } else {
+                        Image(systemName: "shield.lefthalf.filled.slash")
+                            .font(.largeTitle)
+                            .foregroundColor(.secondary)
+                            .frame(width: 50, height: 50)
+                            .padding(.top, 5)
                     }
-                    .onFailure { error in // Log errors if image loading fails.
-                        print("KFImage failed to load campaign badge \(badgeUrlString): \(error.localizedDescription)")
-                    }
-                    .resizable()
-                    .aspectRatio(contentMode: .fit) // Ensures the entire image fits within the frame.
-                    .frame(maxWidth: 50, maxHeight: 50) // Sized for a small icon badge.
-                    .clipShape(Circle()) // Makes the badge circular.
-                    .overlay(Circle().stroke(currentPrimaryColor, lineWidth: 2)) // Adds a themed border.
-                    .padding(.top, 5)
-                    .id(campaign.badge_image_url) // Ensures view redraws if the URL string changes.
+                } else {
+                    KFImage(badgeUrl)
+                        .placeholder { // Shown during loading.
+                            ProgressView().frame(width: 50, height: 50).padding(.top, 5)
+                        }
+                        .onFailure { error in // Log errors if image loading fails.
+                            print("KFImage failed to load campaign badge \(badgeUrlString): \(error.localizedDescription)")
+                        }
+                        .resizable()
+                        .aspectRatio(contentMode: .fit) // Ensures the entire image fits within the frame.
+                        .frame(maxWidth: 50, maxHeight: 50) // Sized for a small icon badge.
+                        .clipShape(Circle()) // Makes the badge circular.
+                        .overlay(Circle().stroke(currentPrimaryColor, lineWidth: 2)) // Adds a themed border.
+                        .padding(.top, 5)
+                        .id(campaign.badge_image_url) // Ensures view redraws if the URL string changes.
+                }
             } else {
                 // Default placeholder if no badgeImageURL is set.
                 Image(systemName: "shield.lefthalf.filled.slash")
@@ -60,15 +72,6 @@ struct CampaignHeaderView: View {
                     .frame(width: 50, height: 50)
                     .padding(.top, 5)
             }
-            Button(action: {
-                onSetBadgeAction() // This action is passed from CampaignDetailView
-            }) {
-                Text("Set Campaign Badge")
-            }
-            .buttonStyle(.bordered)
-            .font(.caption)
-            .padding(.top, 2)
-
         }
         .padding().background(Color(.systemGroupedBackground)).cornerRadius(12)
     }

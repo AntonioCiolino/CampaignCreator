@@ -45,6 +45,8 @@ public struct Character: Identifiable, Codable, Sendable {
     public var createdAt: Date?
     public var modifiedAt: Date?
     public var campaignIDs: [Int]?
+    public var selectedLLMId: String?
+    public var temperature: Double?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -60,6 +62,8 @@ public struct Character: Identifiable, Codable, Sendable {
         case createdAt = "created_at"
         case modifiedAt = "modified_at"
         case campaignIDs = "campaign_ids"
+        case selectedLLMId = "selected_llm_id"
+        case temperature
     }
 
     // Custom init(from: Decoder) is removed.
@@ -79,7 +83,9 @@ public struct Character: Identifiable, Codable, Sendable {
                 exportFormatPreference: String? = nil,
                 createdAt: Date? = nil,
                 modifiedAt: Date? = nil,
-                campaignIDs: [Int]? = nil) {
+                campaignIDs: [Int]? = nil,
+                selectedLLMId: String? = nil,
+                temperature: Double? = nil) {
         self.id = id
         self.ownerID = ownerID
         self.name = name
@@ -93,6 +99,8 @@ public struct Character: Identifiable, Codable, Sendable {
         self.createdAt = createdAt
         self.modifiedAt = modifiedAt
         self.campaignIDs = campaignIDs
+        self.selectedLLMId = selectedLLMId
+        self.temperature = temperature
     }
 
     // Convenience to update modification time

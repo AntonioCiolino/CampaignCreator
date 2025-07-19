@@ -1,21 +1,11 @@
 import SwiftUI
-import CampaignCreatorLib // For potential shared models
+import CampaignCreatorLib
 
-// If CampaignDetailView.AvailableLLM is not accessible directly,
-// it might need to be redefined here or moved to a shared location.
-// For this example, we assume it might be passed or made accessible.
-// A cleaner approach would be to move AvailableLLM to a more global scope.
+struct CharacterLLMSettingsView: View {
+    @Binding var selectedLLMId: String
+    @Binding var temperature: Double
 
-struct CampaignLLMSettingsView: View {
-    @Binding var selectedLLMId: String // Assumes parent uses .withDefault for non-optional
-    @Binding var temperature: Double   // Assumes parent uses .withDefault for non-optional
-
-    // Using the specific nested type from CampaignDetailView.
-    // This could be improved by moving AvailableLLM to a shared scope.
-    let availableLLMs: [AvailableLLM] // Corrected: Use the global AvailableLLM type
-
-    let currentFont: Font
-    let currentTextColor: Color
+    let availableLLMs: [AvailableLLM]
 
     let onLLMSettingsChange: () async -> Void
 
@@ -28,7 +18,6 @@ struct CampaignLLMSettingsView: View {
                     }
                 }
                 .pickerStyle(MenuPickerStyle())
-                .font(currentFont)
                 .onChange(of: selectedLLMId) {
                     Task { await onLLMSettingsChange() }
                 }
@@ -42,7 +31,7 @@ struct CampaignLLMSettingsView: View {
 
                 VStack(alignment: .leading) {
                     Text("Temperature: \(String(format: "%.2f", temperature))")
-                        .font(currentFont.weight(.medium))
+                        .fontWeight(.medium)
                     Slider(value: $temperature, in: 0.0...1.0, step: 0.05) {
                         Text("Temperature") // Accessibility label
                     } onEditingChanged: { editing in
@@ -59,8 +48,6 @@ struct CampaignLLMSettingsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 4)
         }
-        .foregroundColor(currentTextColor)
-        .font(currentFont)
         .padding()
     }
 }

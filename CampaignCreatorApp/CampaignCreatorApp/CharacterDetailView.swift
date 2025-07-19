@@ -7,13 +7,16 @@ struct CharacterDetailView: View {
 
     @State private var showingEditSheet = false
     @State private var showingImageManager = false
+    @State private var selectedLLMId = ""
+    @State private var temperature = 0.7
+    @StateObject private var llmService = LLMService()
+    @State private var showingErrorAlert = false
+    @State private var errorMessage = ""
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                CharacterHeaderView(character: character, editableName: .constant(character.name), isSaving: false, isGeneratingText: false, currentPrimaryColor: .blue, onSetBadgeAction: {
-                    showingImageManager = true
-                })
+                CharacterHeaderView(character: character, editableName: .constant(character.name), isSaving: false, isGeneratingText: false, currentPrimaryColor: .blue)
 
                 if let description = character.character_description, !description.isEmpty {
                     SectionBox(title: "Description") {
@@ -42,13 +45,23 @@ struct CharacterDetailView: View {
                     }
                 }
 
-                CharacterMoodboardView(character: character)
+                CharacterLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: llmService.availableLLMs, onLLMSettingsChange: {
+                    character.selected_llm_id = selectedLLMId
+                    character.temperature = temperature
+                })
+
+                CharacterMoodboardView(character: character, onSetBadgeAction: {
+                    showingImageManager = true
+                })
 
             }
             .padding()
         }
         .navigationTitle(character.name)
         .navigationBarTitleDisplayMode(.inline)
+        .refreshable {
+            await refreshCharacter()
+        }
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
                 Button("Edit") {
@@ -61,6 +74,36 @@ struct CharacterDetailView: View {
         }
         .sheet(isPresented: $showingImageManager) {
             CharacterImageManagerView(imageURLs: .init(get: { character.image_urls ?? [] }, set: { character.image_urls = $0 }), characterID: 0)
+        }
+        .onAppear {
+            selectedLLMId = character.selected_llm_id ?? ""
+            temperature = character.temperature ?? 0.7
+            Task {
+                do {
+                    try await llmService.fetchAvailableLLMs()
+                } catch {
+                    errorMessage = error.localizedDescription
+                    showingErrorAlert = true
+                }
+            }
+        }
+        .alert("Error", isPresented: $showingErrorAlert) {
+            Button("OK") { }
+        } message: {
+            Text(errorMessage)
+        }
+    }
+
+    private func refreshCharacter() async {
+        do {
+            let refreshedCharacter = try await llmService.apiService.fetchCharacter(id: character.id)
+            // This is a bit tricky since character is a let constant.
+            // A better approach would be to have this view model driven.
+            // For now, we can log that it was fetched.
+            print("Refreshed character: \(refreshedCharacter.name)")
+        } catch {
+            errorMessage = "Failed to refresh character: \(error.localizedDescription)"
+            showingErrorAlert = true
         }
     }
 }

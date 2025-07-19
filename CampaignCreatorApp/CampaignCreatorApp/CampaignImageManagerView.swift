@@ -1,13 +1,13 @@
 import SwiftUI
 import CampaignCreatorLib
 
-struct CharacterImageManagerView: View {
-    @StateObject private var viewModel: CharacterImageManagerViewModel
+struct CampaignImageManagerView: View {
+    @StateObject private var viewModel: CampaignImageManagerViewModel
 
     @Environment(\.dismiss) var dismiss
 
-    init(imageURLs: Binding<[String]>, characterID: Int) {
-        _viewModel = StateObject(wrappedValue: CharacterImageManagerViewModel(imageURLs: imageURLs, characterID: characterID))
+    init(imageURLs: Binding<[String]>, campaignID: Int) {
+        _viewModel = StateObject(wrappedValue: CampaignImageManagerViewModel(imageURLs: imageURLs, campaignID: campaignID))
     }
 
     var body: some View {
@@ -129,27 +129,5 @@ struct CharacterImageManagerView: View {
             }
         }
         .listStyle(InsetGroupedListStyle())
-    }
-}
-
-struct CharacterImageManagerView_Previews: PreviewProvider {
-    struct PreviewWrapper: View {
-        @State var urls: [String] = [
-            "https://picsum.photos/seed/img1/50/50",
-            "https://picsum.photos/seed/img2/50/50",
-            "http://example.com/another-image.png"
-        ]
-        @State var emptyUrls: [String] = []
-
-        var body: some View {
-            VStack {
-                CharacterImageManagerView(imageURLs: $urls, characterID: 1)
-                CharacterImageManagerView(imageURLs: $emptyUrls, characterID: 2)
-            }
-        }
-    }
-
-    static var previews: some View {
-        PreviewWrapper()
     }
 }

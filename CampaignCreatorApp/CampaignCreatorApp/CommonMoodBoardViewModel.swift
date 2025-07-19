@@ -42,9 +42,9 @@ class CommonMoodBoardViewModel: ObservableObject {
             let uploadResult = await imageUploadService.uploadImage(imageData: data, filename: filename, mimeType: mimeType)
 
             switch uploadResult {
-            case .success(let newAzureURL):
-                if !imageURLs.contains(newAzureURL) {
-                    imageURLs.append(newAzureURL)
+            case .success(let response):
+                if !imageURLs.contains(response.imageUrl) {
+                    imageURLs.append(response.imageUrl)
                     onSave()
                 }
                 showingAddURLSheet = false

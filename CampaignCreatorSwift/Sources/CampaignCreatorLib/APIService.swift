@@ -4,23 +4,25 @@ import Combine // Import Combine for ObservableObject
 // Note: These structs are temporarily moved here to resolve build issues.
 // Ideally, they should be in their own file within the Lib, ensured to be part of the target.
 
-public struct AvailableLLM: Identifiable, Codable, Hashable {
+public struct AvailableLLM: Identifiable, Sendable, Codable, Hashable {
     public var id: String // Prefixed ID, e.g., "openai/gpt-3.5-turbo"
     public var name: String // User-friendly name, e.g., "OpenAI GPT-3.5 Turbo"
     public var modelType: String?
     public var supportsTemperature: Bool
     public var capabilities: [String]?
+    public var description: String?
 
-    public init(id: String, name: String, modelType: String?, supportsTemperature: Bool, capabilities: [String]? = nil) {
+    public init(id: String, name: String, modelType: String?, supportsTemperature: Bool, capabilities: [String]? = nil, description: String? = nil) {
         self.id = id
         self.name = name
         self.modelType = modelType
         self.supportsTemperature = supportsTemperature
         self.capabilities = capabilities
+        self.description = description
     }
 }
 
-public struct LLMModelsResponse: Codable {
+public struct LLMModelsResponse: Sendable, Codable {
     public var models: [AvailableLLM]
 
     public init(models: [AvailableLLM]) {

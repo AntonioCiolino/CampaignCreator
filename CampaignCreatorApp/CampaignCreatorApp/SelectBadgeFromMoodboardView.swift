@@ -1,11 +1,25 @@
 import SwiftUI
 import Kingfisher
+import CampaignCreatorLib
 
 struct SelectBadgeFromMoodboardView: View {
-    let moodBoardImageURLs: [String]
+    @State var moodBoardImageURLs: [String]
     let thematicImageURL: String? // Optionally include the main thematic image as a choice
     var onImageSelected: (String) -> Void // Callback with the selected URL
     @Environment(\.dismiss) var dismiss
+    @State private var showingGenerateImageSheet = false
+    @State private var aiImagePrompt = ""
+    @State private var isGeneratingImage = false
+    @StateObject private var imageGenerationService: ImageGenerationService
+    @State private var showingErrorAlert = false
+    @State private var errorMessage = ""
+
+    init(moodBoardImageURLs: [String], thematicImageURL: String?, onImageSelected: @escaping (String) -> Void, apiService: CampaignCreatorLib.APIService) {
+        _moodBoardImageURLs = State(initialValue: moodBoardImageURLs)
+        self.thematicImageURL = thematicImageURL
+        self.onImageSelected = onImageSelected
+        _imageGenerationService = StateObject(wrappedValue: ImageGenerationService(apiService: apiService))
+    }
 
     private var allSelectableImageURLs: [String] {
         var urls = moodBoardImageURLs
@@ -63,6 +77,23 @@ struct SelectBadgeFromMoodboardView: View {
                         dismiss()
                     }
                 }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        showingGenerateImageSheet = true
+                    }) {
+                        Image(systemName: "sparkles")
+                    }
+                }
+            }
+            .sheet(isPresented: $showingGenerateImageSheet) {
+            ImageGenerationView(isPresented: $showingGenerateImageSheet) { generatedImageURL in
+                moodBoardImageURLs.append(generatedImageURL)
+            }
+            }
+            .alert("Image Generation Error", isPresented: $showingErrorAlert) {
+                Button("OK") { }
+            } message: {
+                Text(errorMessage)
             }
         }
     }
@@ -80,7 +111,8 @@ struct SelectBadgeFromMoodboardView_Previews: PreviewProvider {
             thematicImageURL: "https://picsum.photos/seed/thematic/400/300",
             onImageSelected: { selectedURL in
                 print("Selected URL: \(selectedURL)")
-            }
+            },
+            apiService: CampaignCreatorLib.APIService()
         )
     }
 }

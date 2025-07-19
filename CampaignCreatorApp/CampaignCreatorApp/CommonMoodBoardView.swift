@@ -34,6 +34,7 @@ struct CommonMoodBoardView: View {
                         MoodboardCellView(
                             urlString: urlString,
                             onSelect: {
+                                print("Selected image URL: \(urlString)")
                                 selectedImageURL = URL(string: urlString)
                                 showingFullImageView = true
                             },
@@ -53,9 +54,6 @@ struct CommonMoodBoardView: View {
         .navigationTitle("Mood Board")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                EditButton()
-            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
                     viewModel.showingAddImageOptions = true
@@ -81,7 +79,10 @@ struct CommonMoodBoardView: View {
             addImageView
         }
         .sheet(isPresented: $viewModel.showingGenerateMoodboardImageSheet) {
-            generateMoodboardImageSheetView
+            ImageGenerationView(isPresented: $viewModel.showingGenerateMoodboardImageSheet) { generatedImageURL in
+                viewModel.imageURLs.append(generatedImageURL)
+                viewModel.onSave()
+            }
         }
         .alert(item: $viewModel.alertItem) { item in
             Alert(title: Text("Mood Board"), message: Text(item.message), dismissButton: .default(Text("OK")))
@@ -92,7 +93,7 @@ struct CommonMoodBoardView: View {
         NavigationView {
             Form {
                 Section(header: Text("Image URL")) {
-                    TextField("https://example.com/image.png", text: $viewModel.newImageURLInput)
+                    TextField("", text: $viewModel.newImageURLInput, prompt: Text("https://example.com/image.png").foregroundColor(.gray))
                         .keyboardType(.URL)
                         .autocapitalization(.none)
                         .textFieldStyle(.plain)
@@ -116,42 +117,6 @@ struct CommonMoodBoardView: View {
         }
     }
 
-    private var generateMoodboardImageSheetView: some View {
-        NavigationView {
-            Form {
-                Section(header: Text("AI Image Prompt")) {
-                    TextEditor(text: $viewModel.aiImagePromptInput)
-                        .frame(height: 100)
-                }
-                Button(action: {
-                    Task {
-                        await viewModel.generateAndAddAIImage()
-                    }
-                }) {
-                    HStack {
-                        if viewModel.isGeneratingAIImage {
-                            ProgressView().padding(.trailing, 4)
-                            Text("Generating...")
-                        } else {
-                            Image(systemName: "sparkles")
-                            Text("Generate Image")
-                        }
-                    }
-                }
-                .disabled(viewModel.aiImagePromptInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isGeneratingAIImage)
-            }
-            .navigationTitle("Generate Image")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        viewModel.showingGenerateMoodboardImageSheet = false
-                    }
-                }
-            }
-        }
-    }
-
     private struct MoodboardCellView: View {
         let urlString: String
         let onSelect: () -> Void
@@ -165,17 +130,34 @@ struct CommonMoodBoardView: View {
         var body: some View {
             ZStack(alignment: .topTrailing) {
                 Button(action: onSelect) {
-                    KFImage(URL(string: urlString))
-                        .placeholder {
-                            ProgressView()
-                                .frame(maxWidth: .infinity, idealHeight: 120)
-                                .background(Color.gray.opacity(0.1))
+                    if let url = URL(string: urlString), url.isFileURL {
+                        if let imageData = try? Data(contentsOf: url), let uiImage = UIImage(data: imageData) {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(minWidth: 0, maxWidth: .infinity)
+                                .frame(height: 120)
+                                .clipped()
+                        } else {
+                            Image(systemName: "photo")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 40, height: 40)
+                                .foregroundColor(.gray)
                         }
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(minWidth: 0, maxWidth: .infinity)
-                        .frame(height: 120)
-                        .clipped()
+                    } else {
+                        KFImage(URL(string: urlString))
+                            .placeholder {
+                                ProgressView()
+                                    .frame(maxWidth: .infinity, idealHeight: 120)
+                                    .background(Color.gray.opacity(0.1))
+                            }
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(minWidth: 0, maxWidth: .infinity)
+                            .frame(height: 120)
+                            .clipped()
+                    }
                 }
                 .buttonStyle(.plain)
 
