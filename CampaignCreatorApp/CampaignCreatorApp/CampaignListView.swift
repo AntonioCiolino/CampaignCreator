@@ -105,10 +105,29 @@ struct CampaignListView: View {
                 modelContext.delete(campaign)
             }
 
-            // Insert new campaigns
+            // Insert or update campaigns
             for campaign in fetchedCampaigns {
-                let campaignModel = CampaignModel.from(campaign: campaign)
-                modelContext.insert(campaignModel)
+                if let existingCampaign = campaigns.first(where: { $0.id == campaign.id }) {
+                    existingCampaign.title = campaign.title
+                    existingCampaign.concept = campaign.concept
+                    existingCampaign.initial_user_prompt = campaign.initialUserPrompt
+                    existingCampaign.badge_image_url = campaign.badgeImageURL
+                    existingCampaign.thematic_image_url = campaign.thematicImageURL
+                    existingCampaign.thematic_image_prompt = campaign.thematicImagePrompt
+                    existingCampaign.selected_llm_id = campaign.selectedLLMId
+                    existingCampaign.temperature = campaign.temperature
+                    existingCampaign.theme_primary_color = campaign.themePrimaryColor
+                    existingCampaign.theme_secondary_color = campaign.themeSecondaryColor
+                    existingCampaign.theme_background_color = campaign.themeBackgroundColor
+                    existingCampaign.theme_text_color = campaign.themeTextColor
+                    existingCampaign.theme_font_family = campaign.themeFontFamily
+                    existingCampaign.theme_background_image_url = campaign.themeBackgroundImageURL
+                    existingCampaign.theme_background_image_opacity = campaign.themeBackgroundImageOpacity
+                    existingCampaign.mood_board_image_urls = campaign.moodBoardImageURLs
+                } else {
+                    let campaignModel = CampaignModel.from(campaign: campaign)
+                    modelContext.insert(campaignModel)
+                }
             }
 
             try modelContext.save()

@@ -34,6 +34,7 @@ struct CommonMoodBoardView: View {
                         MoodboardCellView(
                             urlString: urlString,
                             onSelect: {
+                                print("Selected image URL: \(urlString)")
                                 selectedImageURL = URL(string: urlString)
                                 showingFullImageView = true
                             },

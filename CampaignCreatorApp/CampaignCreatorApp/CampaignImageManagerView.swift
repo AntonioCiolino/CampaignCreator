@@ -20,11 +20,6 @@ struct CampaignImageManagerView: View {
             .navigationTitle("Manage Images")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
                 ToolbarItem(placement: .navigationBarLeading) {
                     if !viewModel.imageURLs.isEmpty { EditButton() }
                 }

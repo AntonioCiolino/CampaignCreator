@@ -107,10 +107,27 @@ struct CharacterListView: View {
                 modelContext.delete(character)
             }
 
-            // Insert new characters
+            // Insert or update characters
             for character in fetchedCharacters {
-                let characterModel = CharacterModel.from(character: character)
-                modelContext.insert(characterModel)
+                if let existingCharacter = characters.first(where: { $0.id == character.id }) {
+                    existingCharacter.name = character.name
+                    existingCharacter.character_description = character.description
+                    existingCharacter.appearance_description = character.appearanceDescription
+                    existingCharacter.image_urls = character.imageURLs
+                    existingCharacter.notes_for_llm = character.notesForLLM
+                    existingCharacter.strength = character.stats?.strength
+                    existingCharacter.dexterity = character.stats?.dexterity
+                    existingCharacter.constitution = character.stats?.constitution
+                    existingCharacter.intelligence = character.stats?.intelligence
+                    existingCharacter.wisdom = character.stats?.wisdom
+                    existingCharacter.charisma = character.stats?.charisma
+                    existingCharacter.export_format_preference = character.exportFormatPreference
+                    existingCharacter.selected_llm_id = character.selectedLLMId
+                    existingCharacter.temperature = character.temperature
+                } else {
+                    let characterModel = CharacterModel.from(character: character)
+                    modelContext.insert(characterModel)
+                }
             }
 
             try modelContext.save()
