@@ -12,6 +12,7 @@ struct CharacterDetailView: View {
     @StateObject private var llmService = LLMService()
     @State private var showingErrorAlert = false
     @State private var errorMessage = ""
+    @State private var isChatActive = false
 
     var body: some View {
         ScrollView {
@@ -88,8 +89,12 @@ struct CharacterDetailView: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
-                NavigationLink(destination: CharacterChatView(character: character)) {
+                Button(action: { isChatActive = true }) {
                     Image(systemName: "message")
+                }
+
+                NavigationLink(destination: CharacterChatView(character: character), isActive: $isChatActive) {
+                    EmptyView()
                 }
 
                 Button("Edit") {
