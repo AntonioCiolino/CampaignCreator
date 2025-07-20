@@ -100,6 +100,8 @@ struct CharacterChatView: View {
             }
         }
         .onAppear {
+            fetchMemory()
+            fetchUser()
         }
     }
 
