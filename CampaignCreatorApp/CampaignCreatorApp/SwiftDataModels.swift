@@ -25,6 +25,7 @@ final class CampaignModel: Identifiable {
     var mood_board_image_urls_string: String?
     var linked_character_ids_string: String?
     var needsSync: Bool = false
+    var display_toc: [TOCEntry]?
 
     var mood_board_image_urls: [String]? {
         get {
@@ -64,7 +65,8 @@ final class CampaignModel: Identifiable {
         theme_background_image_url: String? = nil,
         theme_background_image_opacity: Double? = nil,
         mood_board_image_urls: [String]? = nil,
-        linked_character_ids: [Int]? = nil
+        linked_character_ids: [Int]? = nil,
+        display_toc: [TOCEntry]? = nil
     ) {
         self.id = id
         self.title = title
@@ -86,6 +88,7 @@ final class CampaignModel: Identifiable {
         self.theme_background_image_opacity = theme_background_image_opacity
         self.mood_board_image_urls = mood_board_image_urls
         self.linked_character_ids = linked_character_ids
+        self.display_toc = display_toc
     }
 
     static func from(campaign: CampaignCreatorLib.Campaign) -> CampaignModel {
@@ -106,7 +109,8 @@ final class CampaignModel: Identifiable {
             theme_text_color: campaign.themeTextColor,
             theme_font_family: campaign.themeFontFamily,
             theme_background_image_url: campaign.themeBackgroundImageURL,
-            theme_background_image_opacity: campaign.themeBackgroundImageOpacity
+            theme_background_image_opacity: campaign.themeBackgroundImageOpacity,
+            display_toc: campaign.displayTOC?.map { TOCEntry(from: $0) }
         )
         model.mood_board_image_urls = campaign.moodBoardImageURLs
         model.linked_character_ids = campaign.linkedCharacterIDs
@@ -274,4 +278,29 @@ final class UserModel: Identifiable {
             avatarUrl: user.avatarUrl
         )
     }
+}
+
+struct TOCEntry: Codable, Identifiable {
+    var id = UUID()
+    let title: String?
+    let type: String?
+
+    enum CodingKeys: String, CodingKey {
+        case title
+        case type
+    }
+
+    init(from apiTocEntry: CampaignCreatorLib.TOCEntry) {
+        self.title = apiTocEntry.title
+        self.type = apiTocEntry.type
+    }
+}
+
+struct SeedSectionsEvent: Codable {
+    let event_type: String
+    let message: String?
+    let progress_percent: Double?
+    let current_section_title: String?
+    let total_sections_processed: Int?
+    let section_data: CampaignSection?
 }

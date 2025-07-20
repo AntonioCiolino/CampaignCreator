@@ -42,11 +42,20 @@ struct CampaignDetailView: View {
                     })
 
                     CollapsibleSectionView(title: "Table of Contents") {
-                        TOCView(sections: campaign.sections ?? [], selectedSection: $selectedSection)
+                        TOCView(campaign: campaign, selectedSection: $selectedSection, llmService: llmService)
                     }
 
                     if let selectedSection = selectedSection {
-                        CampaignSectionView(section: selectedSection)
+                        CampaignSectionView(viewModel: CampaignSectionViewModel(section: selectedSection, llmService: llmService, onDelete: {
+                            if let index = campaign.sections?.firstIndex(where: { $0.id == selectedSection.id }) {
+                                campaign.sections?.remove(at: index)
+                                self.selectedSection = nil
+                            }
+                        }))
+                    }
+
+                    Button("Add Section") {
+                        addSection()
                     }
 
 
@@ -123,6 +132,23 @@ struct CampaignDetailView: View {
         }
         .onDisappear {
             themeManager.resetTheme()
+        }
+    }
+
+    private func addSection() {
+        Task {
+            do {
+                let newSection = try await llmService.apiService.addCampaignSection(
+                    campaignId: campaign.id,
+                    payload: CampaignSectionCreatePayload(title: "New Section", bypass_llm: true)
+                )
+                DispatchQueue.main.async {
+                    campaign.sections?.append(newSection)
+                }
+            } catch {
+                errorMessage = "Failed to add section: \(error.localizedDescription)"
+                showingErrorAlert = true
+            }
         }
     }
 
