@@ -5,7 +5,6 @@ struct RichTextEditorView: UIViewRepresentable {
     @Binding var text: NSAttributedString
     var onSnippetEdit: ((String) -> Void)?
     var onSelectionChange: ((NSRange) -> Void)?
-
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
         textView.delegate = context.coordinator
@@ -37,10 +36,24 @@ struct RichTextEditorView: UIViewRepresentable {
     class Coordinator: NSObject, UITextViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIContextMenuInteractionDelegate {
         var parent: RichTextEditorView
         weak var textView: UITextView?
-        private let featureService = FeatureService()
+        private var features: [Feature] = []
 
         init(_ parent: RichTextEditorView) {
             self.parent = parent
+            super.init()
+            fetchFeatures()
+        }
+
+        private func fetchFeatures() {
+            Task {
+                do {
+                    let featureService = FeatureService(modelContext: try! ModelContainer(for: CampaignModel.self, CharacterModel.self, MemoryModel.self, ChatMessageModel.self, UserModel.self).mainContext)
+                    self.features = try await featureService.fetchFeatures().filter { $0.feature_category == "Snippet" }
+                } catch {
+                    // Handle error
+                    print("Failed to fetch features: \(error)")
+                }
+            }
         }
 
         func textViewDidChange(_ textView: UITextView) {
@@ -128,9 +141,7 @@ struct RichTextEditorView: UIViewRepresentable {
             guard let textView = textView, textView.selectedRange.length > 0 else { return nil }
 
             return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { suggestedActions in
-                let features = self.featureService.features.filter { $0.feature_category == "Snippet" }
-
-                let actions = features.map { feature in
+                let actions = self.features.map { feature in
                     UIAction(title: feature.name, image: UIImage(systemName: "wand.and.stars")) { action in
                         self.parent.onSnippetEdit?(feature.name)
                     }

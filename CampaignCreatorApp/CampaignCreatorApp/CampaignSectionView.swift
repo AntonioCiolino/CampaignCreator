@@ -1,8 +1,10 @@
 import SwiftUI
+import SwiftData
 
 struct CampaignSectionView: View {
     @StateObject var viewModel: CampaignSectionViewModel
     @State private var attributedString: NSAttributedString = NSAttributedString(string: "")
+    @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -15,7 +17,9 @@ struct CampaignSectionView: View {
 
             if viewModel.isEditing {
                 RichTextEditorView(text: $attributedString, onSnippetEdit: { editType in
-                    viewModel.snippetEdit(editType: editType)
+                    if let feature = viewModel.features.first(where: { $0.name == editType }) {
+                        viewModel.snippetEdit(editType: editType, featureId: feature.id)
+                    }
                 }, onSelectionChange: { range in
                     viewModel.selectedText = (attributedString.string as NSString).substring(with: range)
                 })

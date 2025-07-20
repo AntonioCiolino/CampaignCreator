@@ -1,23 +1,39 @@
 import Foundation
 import SwiftUI
 import CampaignCreatorLib
+import SwiftData
 
 class CampaignSectionViewModel: ObservableObject {
     @Published var section: CampaignSection
     @Published var isEditing = false
     @Published var editedContent: String
     @Published var selectedText: String?
+    @Published var features: [Feature] = []
 
     private var llmService: LLMService
+    private let featureService: FeatureService
 
     // Add a closure to inform the parent view of deletion
     var onDelete: (() -> Void)?
 
-    init(section: CampaignSection, llmService: LLMService, onDelete: (() -> Void)? = nil) {
+    init(section: CampaignSection, llmService: LLMService, featureService: FeatureService, onDelete: (() -> Void)? = nil) {
         self.section = section
         self.editedContent = section.content
         self.llmService = llmService
+        self.featureService = featureService
         self.onDelete = onDelete
+        fetchFeatures()
+    }
+
+    private func fetchFeatures() {
+        Task {
+            do {
+                self.features = try await self.featureService.fetchFeatures().filter { $0.feature_category == "Snippet" }
+            } catch {
+                // Handle error
+                print("Failed to fetch features: \(error)")
+            }
+        }
     }
 
     func save() {
@@ -80,7 +96,7 @@ class CampaignSectionViewModel: ObservableObject {
         }
     }
 
-    func snippetEdit(editType: String) {
+    func snippetEdit(editType: String, featureId: Int) {
         guard let selectedText = selectedText else { return }
 
         Task {
@@ -90,7 +106,7 @@ class CampaignSectionViewModel: ObservableObject {
                     sectionId: section.id,
                     payload: SectionRegeneratePayload(
                         new_prompt: selectedText,
-                        feature_id: 1 // Placeholder for summarize feature
+                        feature_id: featureId
                     )
                 )
                 DispatchQueue.main.async {
