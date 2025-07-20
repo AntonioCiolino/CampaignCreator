@@ -4,14 +4,20 @@ This server acts as a facade for the main Campaign Crafter API, providing a brid
 
 ## Setup
 
-1.  **Start the main Campaign Crafter API.** The MCP server depends on the main API, which must be running on `http://localhost:8000`.
+1.  **Create and activate a virtual environment:**
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate  # On Windows use `venv\\Scripts\\activate`
+    ```
 
-2.  **Install the MCP server dependencies:**
+2.  **Start the main Campaign Crafter API.** The MCP server depends on the main API, which must be running on `http://localhost:8000`.
+
+3.  **Install the MCP server dependencies:**
     ```bash
     pip install -r requirements.txt
     ```
 
-3.  **Run the MCP server:**
+4.  **Run the MCP server:**
     ```bash
     python main.py
     ```
@@ -65,3 +71,29 @@ All endpoints are prefixed with `/mcp`.
 
 *   **Unlink Character from Campaign:** `DELETE /characters/<character_id>/campaigns/<campaign_id>`
     *   **Example:** `curl -X DELETE http://localhost:5001/mcp/characters/1/campaigns/1`
+
+### Campaign Sections
+
+*   **Create Campaign Section:** `POST /campaigns/<campaign_id>/sections`
+    *   **Body:** JSON object with `title` (string), `content` (string), and `prompt` (string).
+    *   **Example:** `curl -X POST -H "Content-Type: application/json" -d '{"title": "New Section", "content": "...", "prompt": "Write about a thing"}' http://localhost:5001/mcp/campaigns/1/sections`
+
+*   **List Campaign Sections:** `GET /campaigns/<campaign_id>/sections`
+    *   **Example:** `curl http://localhost:5001/mcp/campaigns/1/sections`
+
+*   **Update Campaign Section:** `PUT /campaigns/<campaign_id>/sections/<section_id>`
+    *   **Body:** JSON object with `title` and/or `content`.
+    *   **Example:** `curl -X PUT -H "Content-Type: application/json" -d '{"title": "Updated Section"}' http://localhost:5001/mcp/campaigns/1/sections/1`
+
+*   **Delete Campaign Section:** `DELETE /campaigns/<campaign_id>/sections/<section_id>`
+    *   **Example:** `curl -X DELETE http://localhost:5001/mcp/campaigns/1/sections/1`
+
+### Table of Contents (TOC) and Title Generation
+
+*   **Generate TOC:** `POST /campaigns/<campaign_id>/toc`
+    *   **Body:** Empty JSON object `{}`.
+    *   **Example:** `curl -X POST http://localhost:5001/mcp/campaigns/1/toc`
+
+*   **Generate Titles:** `POST /campaigns/<campaign_id>/titles`
+    *   **Body:** Empty JSON object `{}`.
+    *   **Example:** `curl -X POST http://localhost:5001/mcp/campaigns/1/titles`

@@ -80,5 +80,31 @@ def link_character_to_campaign(character_id, campaign_id):
 def unlink_character_from_campaign(character_id, campaign_id):
     return forward_request('DELETE', f'/characters/{character_id}/campaigns/{campaign_id}')
 
+# --- Campaign Section Endpoints ---
+@app.route('/mcp/campaigns/<int:campaign_id>/sections', methods=['POST'])
+def create_campaign_section(campaign_id):
+    return forward_request('POST', f'/campaigns/{campaign_id}/sections')
+
+@app.route('/mcp/campaigns/<int:campaign_id>/sections', methods=['GET'])
+def list_campaign_sections(campaign_id):
+    return forward_request('GET', f'/campaigns/{campaign_id}/sections')
+
+@app.route('/mcp/campaigns/<int:campaign_id>/sections/<int:section_id>', methods=['PUT'])
+def update_campaign_section(campaign_id, section_id):
+    return forward_request('PUT', f'/campaigns/{campaign_id}/sections/{section_id}')
+
+@app.route('/mcp/campaigns/<int:campaign_id>/sections/<int:section_id>', methods=['DELETE'])
+def delete_campaign_section(campaign_id, section_id):
+    return forward_request('DELETE', f'/campaigns/{campaign_id}/sections/{section_id}')
+
+# --- TOC and Title Generation Endpoints ---
+@app.route('/mcp/campaigns/<int:campaign_id>/toc', methods=['POST'])
+def generate_toc(campaign_id):
+    return forward_request('POST', f'/campaigns/{campaign_id}/toc')
+
+@app.route('/mcp/campaigns/<int:campaign_id>/titles', methods=['POST'])
+def generate_titles(campaign_id):
+    return forward_request('POST', f'/campaigns/{campaign_id}/titles')
+
 if __name__ == '__main__':
     app.run(port=5001, debug=True)

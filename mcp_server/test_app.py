@@ -65,5 +65,32 @@ def main():
     response = requests.get(f"{MCP_SERVER_URL}/characters/{character_id}")
     print_response(response)
 
+    # --- Create a new campaign section ---
+    print(f"Creating a new section for campaign {campaign_id}...")
+    section_data = {
+        "title": "Test Section",
+        "content": "This is a test section.",
+        "prompt": "Write a short intro about a mysterious forest."
+    }
+    response = requests.post(f"{MCP_SERVER_URL}/campaigns/{campaign_id}/sections", json=section_data)
+    print_response(response)
+    section = response.json()
+    section_id = section.get("id")
+
+    if not section_id:
+        print("Failed to create section. Aborting further tests.")
+        return
+
+    # --- Generate TOC for the campaign ---
+    print(f"Generating TOC for campaign {campaign_id}...")
+    response = requests.post(f"{MCP_SERVER_URL}/campaigns/{campaign_id}/toc", json={})
+    print_response(response)
+
+    # --- Generate titles for the campaign ---
+    print(f"Generating titles for campaign {campaign_id}...")
+    response = requests.post(f"{MCP_SERVER_URL}/campaigns/{campaign_id}/titles", json={})
+    print_response(response)
+
+
 if __name__ == "__main__":
     main()
