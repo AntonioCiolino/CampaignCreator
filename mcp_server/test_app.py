@@ -105,7 +105,8 @@ def main():
     section_data = {
         "title": "The Sunless Forest",
         "prompt": "Write a detailed description of a forest that has never seen the sun. Describe the flora and fauna that might live there.",
-        "model_id_with_prefix": "openai/gpt-3.5-turbo"
+        "model_id_with_prefix": "openai/gpt-3.5-turbo",
+        "type": "generic"
     }
     response = requests.post(f"{MCP_SERVER_URL}/campaigns/{campaign_id}/sections", json=section_data, headers=headers)
     print_response(response)
