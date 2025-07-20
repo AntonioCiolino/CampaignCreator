@@ -53,7 +53,7 @@ class CharacterChatViewModel: ObservableObject {
     private func fetchChatHistory() {
         Task {
             do {
-                let apiMessages: [ConversationMessageEntry] = try await apiService.performRequest(endpoint: "/characters/\(character.id)/chat")
+                let apiMessages: [APIChatMessage] = try await apiService.performRequest(endpoint: "/characters/\(character.id)/chat")
 
                 let existingMessageIds = Set((character.messages ?? []).map { $0.id })
 
