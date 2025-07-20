@@ -57,7 +57,7 @@ class ImageUploadService: ObservableObject {
     func uploadImage(imageData: Data, filename: String, mimeType: String) async -> Result<FileUploadResponse, ImageUploadError> {
         let localUrl = saveImageLocally(imageData: imageData, filename: filename)
 
-        guard let token = CampaignCreatorLib.UserDefaultsTokenManager().getToken() else {
+        guard let token = CampaignCreatorLib.TokenManager().getAccessToken() else {
             return .failure(.noToken)
         }
 
