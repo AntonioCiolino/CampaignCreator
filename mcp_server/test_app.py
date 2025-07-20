@@ -52,7 +52,7 @@ def main():
     # --- Create a new campaign ---
     print("Creating a new campaign...")
     campaign_data = {
-        "name": "My Test Campaign",
+        "title": "My Test Campaign",
         "description": "A campaign created for testing the MCP server.",
         "initial_user_prompt": "A dark fantasy world where the sun has been extinguished.",
         "skip_concept_generation": False,
