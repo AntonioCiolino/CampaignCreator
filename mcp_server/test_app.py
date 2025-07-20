@@ -2,6 +2,12 @@ import requests
 import json
 
 MCP_SERVER_URL = "http://localhost:5001/mcp"
+CAMPAIGN_CRAFTER_API_URL = "http://localhost:8000/api/v1"
+
+# --- IMPORTANT ---
+# Replace with your test user's credentials
+TEST_USERNAME = "testuser"
+TEST_PASSWORD = "testpassword"
 
 def print_response(response):
     """Helper function to print response details."""
@@ -14,12 +20,30 @@ def print_response(response):
         print(response.text)
     print("-" * 20)
 
+def get_auth_token():
+    """Gets an authentication token from the main API."""
+    print("Getting auth token...")
+    auth_data = {
+        "username": TEST_USERNAME,
+        "password": TEST_PASSWORD
+    }
+    response = requests.post(f"{CAMPAIGN_CRAFTER_API_URL}/auth/token", data=auth_data)
+    if response.status_code != 200:
+        print("Failed to get auth token. Aborting test.")
+        print_response(response)
+        return None
+
+    token_data = response.json()
+    return token_data.get("access_token")
+
+
 def main():
     """Main function to run the test application."""
-    # --- Create a new user (for authentication) ---
-    # In a real scenario, you would log in to get a token.
-    # For this test, we assume the main API does not require authentication
-    # or that the appropriate headers are passed through.
+    token = get_auth_token()
+    if not token:
+        return
+
+    headers = {"Authorization": f"Bearer {token}"}
 
     # --- Create a new campaign ---
     print("Creating a new campaign...")
@@ -27,7 +51,7 @@ def main():
         "name": "My Test Campaign",
         "description": "A campaign created for testing the MCP server."
     }
-    response = requests.post(f"{MCP_SERVER_URL}/campaigns", json=campaign_data)
+    response = requests.post(f"{MCP_SERVER_URL}/campaigns", json=campaign_data, headers=headers)
     print_response(response)
     campaign = response.json()
     campaign_id = campaign.get("id")
@@ -42,7 +66,7 @@ def main():
         "name": "Test Character",
         "description": "A character for our test campaign."
     }
-    response = requests.post(f"{MCP_SERVER_URL}/characters", json=character_data)
+    response = requests.post(f"{MCP_SERVER_URL}/characters", json=character_data, headers=headers)
     print_response(response)
     character = response.json()
     character_id = character.get("id")
@@ -53,16 +77,16 @@ def main():
 
     # --- Link character to campaign ---
     print(f"Linking character {character_id} to campaign {campaign_id}...")
-    response = requests.post(f"{MCP_SERVER_URL}/characters/{character_id}/campaigns/{campaign_id}")
+    response = requests.post(f"{MCP_SERVER_URL}/characters/{character_id}/campaigns/{campaign_id}", headers=headers)
     print_response(response)
 
     # --- Verify by getting the campaign and character ---
     print(f"Getting campaign {campaign_id}...")
-    response = requests.get(f"{MCP_SERVER_URL}/campaigns/{campaign_id}")
+    response = requests.get(f"{MCP_SERVER_URL}/campaigns/{campaign_id}", headers=headers)
     print_response(response)
 
     print(f"Getting character {character_id}...")
-    response = requests.get(f"{MCP_SERVER_URL}/characters/{character_id}")
+    response = requests.get(f"{MCP_SERVER_URL}/characters/{character_id}", headers=headers)
     print_response(response)
 
     # --- Create a new campaign section ---
@@ -72,7 +96,7 @@ def main():
         "content": "This is a test section.",
         "prompt": "Write a short intro about a mysterious forest."
     }
-    response = requests.post(f"{MCP_SERVER_URL}/campaigns/{campaign_id}/sections", json=section_data)
+    response = requests.post(f"{MCP_SERVER_URL}/campaigns/{campaign_id}/sections", json=section_data, headers=headers)
     print_response(response)
     section = response.json()
     section_id = section.get("id")
@@ -83,12 +107,12 @@ def main():
 
     # --- Generate TOC for the campaign ---
     print(f"Generating TOC for campaign {campaign_id}...")
-    response = requests.post(f"{MCP_SERVER_URL}/campaigns/{campaign_id}/toc", json={})
+    response = requests.post(f"{MCP_SERVER_URL}/campaigns/{campaign_id}/toc", json={}, headers=headers)
     print_response(response)
 
     # --- Generate titles for the campaign ---
     print(f"Generating titles for campaign {campaign_id}...")
-    response = requests.post(f"{MCP_SERVER_URL}/campaigns/{campaign_id}/titles", json={})
+    response = requests.post(f"{MCP_SERVER_URL}/campaigns/{campaign_id}/titles", json={}, headers=headers)
     print_response(response)
 
 
