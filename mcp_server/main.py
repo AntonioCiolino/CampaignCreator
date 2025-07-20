@@ -1,5 +1,9 @@
 from flask import Flask, request, jsonify
 import requests
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -107,4 +111,5 @@ def generate_titles(campaign_id):
     return forward_request('POST', f'/campaigns/{campaign_id}/titles')
 
 if __name__ == '__main__':
-    app.run(port=5001, debug=True)
+    port = int(os.environ.get("PORT", 5001))
+    app.run(port=port, debug=True)

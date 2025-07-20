@@ -22,7 +22,7 @@ This server acts as a facade for the main Campaign Crafter API, providing a brid
     python main.py
     ```
 
-The MCP server will be available at `http://localhost:5001`.
+The MCP server will be available at the port specified in your `.env` file (default is `http://localhost:5001`).
 
 ## API Documentation
 
