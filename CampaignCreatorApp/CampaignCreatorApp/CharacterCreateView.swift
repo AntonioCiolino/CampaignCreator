@@ -23,11 +23,9 @@ struct CharacterCreateView: View {
     init(isPresented: Binding<Bool>, ownerId: Int) {
         _isPresented = isPresented
         self.ownerId = ownerId
-        print("CharacterCreateView init")
     }
     
     var body: some View {
-        print("CharacterCreateView body")
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 Section(header: Text("Character Details")) {
@@ -106,7 +104,6 @@ struct CharacterCreateView: View {
     }
         
         private func saveCharacter() {
-            print("Attempting to save character with name: \(name) and owner_id: \(ownerId)")
             let newCharacter = CharacterModel(
                 id: 0,
                 name: name,
@@ -127,9 +124,8 @@ struct CharacterCreateView: View {
             
             do {
                 try modelContext.save()
-                print("Successfully saved model context from saveCharacter.")
             } catch {
-                print("Error saving model context from saveCharacter: \(error.localizedDescription)")
+                // Handle the error appropriately
             }
         }
     }
