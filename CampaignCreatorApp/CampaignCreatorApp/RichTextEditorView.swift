@@ -1,7 +1,10 @@
 import SwiftUI
+import CampaignCreatorLib
 
 struct RichTextEditorView: UIViewRepresentable {
     @Binding var text: NSAttributedString
+    var onSnippetEdit: ((String) -> Void)?
+    var onSelectionChange: ((NSRange) -> Void)?
 
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
@@ -17,6 +20,9 @@ struct RichTextEditorView: UIViewRepresentable {
         toolbar.items = [boldButton, italicButton, underlineButton, imageButton]
         textView.inputAccessoryView = toolbar
 
+        let menuInteraction = UIContextMenuInteraction(delegate: context.coordinator)
+        textView.addInteraction(menuInteraction)
+
         return textView
     }
 
@@ -28,9 +34,10 @@ struct RichTextEditorView: UIViewRepresentable {
         Coordinator(self)
     }
 
-    class Coordinator: NSObject, UITextViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+    class Coordinator: NSObject, UITextViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIContextMenuInteractionDelegate {
         var parent: RichTextEditorView
         weak var textView: UITextView?
+        private let featureService = FeatureService()
 
         init(_ parent: RichTextEditorView) {
             self.parent = parent
@@ -38,6 +45,10 @@ struct RichTextEditorView: UIViewRepresentable {
 
         func textViewDidChange(_ textView: UITextView) {
             parent.text = textView.attributedText
+        }
+
+        func textViewDidChangeSelection(_ textView: UITextView) {
+            parent.onSelectionChange?(textView.selectedRange)
         }
 
         @objc func toggleBold() {
@@ -111,6 +122,22 @@ struct RichTextEditorView: UIViewRepresentable {
             }
 
             parent.text = attributedString
+        }
+
+        func contextMenuInteraction(_ interaction: UIContextMenuInteraction, configurationForMenuAtLocation location: CGPoint) -> UIContextMenuConfiguration? {
+            guard let textView = textView, textView.selectedRange.length > 0 else { return nil }
+
+            return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { suggestedActions in
+                let features = self.featureService.features.filter { $0.feature_category == "Snippet" }
+
+                let actions = features.map { feature in
+                    UIAction(title: feature.name, image: UIImage(systemName: "wand.and.stars")) { action in
+                        self.parent.onSnippetEdit?(feature.name)
+                    }
+                }
+
+                return UIMenu(title: "AI Edits", children: actions)
+            }
         }
     }
 }

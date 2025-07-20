@@ -6,6 +6,7 @@ class CampaignSectionViewModel: ObservableObject {
     @Published var section: CampaignSection
     @Published var isEditing = false
     @Published var editedContent: String
+    @Published var selectedText: String?
 
     private var llmService: LLMService
 
@@ -75,6 +76,31 @@ class CampaignSectionViewModel: ObservableObject {
             } catch {
                 // Handle error
                 print("Failed to delete section: \(error)")
+            }
+        }
+    }
+
+    func snippetEdit(editType: String) {
+        guard let selectedText = selectedText else { return }
+
+        Task {
+            do {
+                let updatedSection = try await llmService.apiService.regenerateCampaignSection(
+                    campaignId: section.campaign_id,
+                    sectionId: section.id,
+                    payload: SectionRegeneratePayload(
+                        new_prompt: selectedText,
+                        feature_id: 1 // Placeholder for summarize feature
+                    )
+                )
+                DispatchQueue.main.async {
+                    if let range = self.editedContent.range(of: selectedText) {
+                        self.editedContent.replaceSubrange(range, with: updatedSection.content)
+                    }
+                }
+            } catch {
+                // Handle error
+                print("Failed to perform snippet edit: \(error)")
             }
         }
     }

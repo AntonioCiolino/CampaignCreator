@@ -14,13 +14,17 @@ struct CampaignSectionView: View {
             }
 
             if viewModel.isEditing {
-                RichTextEditorView(text: $attributedString)
-                    .onAppear {
-                        attributedString = NSAttributedString(string: viewModel.editedContent)
-                    }
-                    .onChange(of: attributedString) { _, newValue in
-                        viewModel.editedContent = newValue.string
-                    }
+                RichTextEditorView(text: $attributedString, onSnippetEdit: { editType in
+                    viewModel.snippetEdit(editType: editType)
+                }, onSelectionChange: { range in
+                    viewModel.selectedText = (attributedString.string as NSString).substring(with: range)
+                })
+                .onAppear {
+                    attributedString = NSAttributedString(string: viewModel.editedContent)
+                }
+                .onChange(of: attributedString) { _, newValue in
+                    viewModel.editedContent = newValue.string
+                }
 
                 HStack {
                     Button("Save") {
