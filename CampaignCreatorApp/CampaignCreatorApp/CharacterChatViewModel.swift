@@ -51,6 +51,7 @@ class CharacterChatViewModel: ObservableObject {
     }
 
     private func fetchChatHistory() {
+        character.messages?.removeAll()
         Task {
             do {
                 let apiMessages: [APIChatMessage] = try await apiService.performRequest(endpoint: "/characters/\(character.id)/chat")
