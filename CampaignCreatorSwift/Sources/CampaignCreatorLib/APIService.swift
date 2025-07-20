@@ -272,26 +272,6 @@ public struct RefreshTokenRequestDTO: Codable, Sendable {
 }
 
 
-// Simple protocol for token management
-public protocol TokenManaging: Sendable {
-    func getToken() -> String?
-    func setToken(_ token: String?)
-    func clearToken()
-    func hasToken() -> Bool
-}
-
-public final class UserDefaultsTokenManager: TokenManaging {
-    private let tokenKey = "AuthToken"
-    public func getToken() -> String? { UserDefaults.standard.string(forKey: tokenKey) }
-    public func setToken(_ token: String?) {
-        if let token = token { UserDefaults.standard.set(token, forKey: tokenKey) }
-        else { UserDefaults.standard.removeObject(forKey: tokenKey) }
-    }
-    public func clearToken() { UserDefaults.standard.removeObject(forKey: tokenKey) }
-    public func hasToken() -> Bool { getToken() != nil }
-
-    public init() {}
-}
 
 
 // Payload for LLM Generation Request
@@ -313,14 +293,14 @@ struct LLMGenerationRequestPayload: Encodable {
 
 public final class APIService: ObservableObject, Sendable { // Added ObservableObject conformance
     public let baseURLString = "https://campaigncreator-api.onrender.com/api/v1" // Made public
-    private let tokenManager: TokenManager
+    private let tokenManager: TokenManaging
     // @Published properties are not strictly necessary for this service if its state doesn't change
     // or if UI doesn't need to react to its internal state changes directly.
     // However, if token changes should refresh UI, tokenManager could be @Published or methods could publish.
     private let jsonDecoder: JSONDecoder
     private let jsonEncoder: JSONEncoder
 
-    public init(tokenManager: TokenManager = TokenManager()) {
+    public init(tokenManager: TokenManaging = TokenManager()) {
         self.tokenManager = tokenManager
 
         let decoder = JSONDecoder()
@@ -546,7 +526,7 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
         if method != "GET" && method != "HEAD" { request.setValue("application/json", forHTTPHeaderField: "Content-Type") }
 
         if requiresAuth {
-            guard let token = tokenManager.getToken() else { throw APIError.notAuthenticated }
+            guard let token = tokenManager.getAccessToken() else { throw APIError.notAuthenticated }
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 

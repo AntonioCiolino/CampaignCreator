@@ -44,7 +44,7 @@ class SettingsViewModel: ObservableObject {
 
     private let lastUsernameKey = "LastUsername"
     private var apiService = CampaignCreatorLib.APIService()
-    private var tokenManager = CampaignCreatorLib.UserDefaultsTokenManager()
+    private var tokenManager = CampaignCreatorLib.TokenManager()
 
     init() {
         loadAPIKeys()
@@ -157,6 +157,8 @@ class SettingsViewModel: ObservableObject {
     }
 
     func logout() {
-        tokenManager.clearToken()
+        if let username = UserDefaults.standard.string(forKey: lastUsernameKey) {
+            tokenManager.clearTokens(for: username)
+        }
     }
 }

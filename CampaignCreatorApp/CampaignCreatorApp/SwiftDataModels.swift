@@ -207,7 +207,7 @@ final class CharacterModel: Identifiable {
 }
 
 @Model
-final class MemoryModel: Identifiable {
+class MemoryModel: Identifiable {
     @Attribute(.unique) var id: String = UUID().uuidString
     var summary: String
     var timestamp: Date

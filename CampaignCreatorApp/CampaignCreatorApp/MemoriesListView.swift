@@ -11,7 +11,6 @@ struct MemoriesListView: View {
                 NavigationLink(destination: MemoryView(viewModel: MemoryViewModel(memory: memory, modelContext: modelContext))) {
                     VStack(alignment: .leading) {
                         Text(memory.summary)
-                            .lineLimit(2)
                         Text("Last updated: \(memory.timestamp, style: .date)")
                             .font(.caption)
                             .foregroundColor(.secondary)

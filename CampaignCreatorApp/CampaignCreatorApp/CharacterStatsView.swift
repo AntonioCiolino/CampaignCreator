@@ -27,7 +27,7 @@ struct StatView: View {
             Text(name)
                 .font(.caption)
                 .foregroundColor(.secondary)
-            Text("\\(value ?? 0)")
+            Text("\(value ?? 0)")
                 .font(.headline)
         }
         .frame(maxWidth: .infinity)
