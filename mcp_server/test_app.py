@@ -49,7 +49,9 @@ def main():
     print("Creating a new campaign...")
     campaign_data = {
         "name": "My Test Campaign",
-        "description": "A campaign created for testing the MCP server."
+        "description": "A campaign created for testing the MCP server.",
+        "initial_user_prompt": "A dark fantasy world where the sun has been extinguished.",
+        "skip_concept_generation": False,
     }
     response = requests.post(f"{MCP_SERVER_URL}/campaigns", json=campaign_data, headers=headers)
     print_response(response)
@@ -63,8 +65,13 @@ def main():
     # --- Create a new character ---
     print("Creating a new character...")
     character_data = {
-        "name": "Test Character",
-        "description": "A character for our test campaign."
+        "name": "Kaelen",
+        "description": "A rogue with a mysterious past.",
+        "appearance_description": "Tall and slender, with dark hair and a scar over his left eye.",
+        "personality_description": "Witty and charming, but with a hint of sadness.",
+        "background": "Grew up on the streets, fending for himself.",
+        "notes_for_llm": "Kaelen is secretly a member of a royal family, but he doesn't know it yet.",
+        "campaign_id": campaign_id
     }
     response = requests.post(f"{MCP_SERVER_URL}/characters", json=character_data, headers=headers)
     print_response(response)
@@ -92,9 +99,9 @@ def main():
     # --- Create a new campaign section ---
     print(f"Creating a new section for campaign {campaign_id}...")
     section_data = {
-        "title": "Test Section",
-        "content": "This is a test section.",
-        "prompt": "Write a short intro about a mysterious forest."
+        "title": "The Sunless Forest",
+        "prompt": "Write a detailed description of a forest that has never seen the sun. Describe the flora and fauna that might live there.",
+        "model_id_with_prefix": "openai/gpt-3.5-turbo"
     }
     response = requests.post(f"{MCP_SERVER_URL}/campaigns/{campaign_id}/sections", json=section_data, headers=headers)
     print_response(response)
@@ -107,12 +114,18 @@ def main():
 
     # --- Generate TOC for the campaign ---
     print(f"Generating TOC for campaign {campaign_id}...")
-    response = requests.post(f"{MCP_SERVER_URL}/campaigns/{campaign_id}/toc", json={}, headers=headers)
+    toc_data = {
+        "model_id_with_prefix": "openai/gpt-3.5-turbo"
+    }
+    response = requests.post(f"{MCP_SERVER_URL}/campaigns/{campaign_id}/toc", json=toc_data, headers=headers)
     print_response(response)
 
     # --- Generate titles for the campaign ---
     print(f"Generating titles for campaign {campaign_id}...")
-    response = requests.post(f"{MCP_SERVER_URL}/campaigns/{campaign_id}/titles", json={}, headers=headers)
+    titles_data = {
+        "model_id_with_prefix": "openai/gpt-3.5-turbo"
+    }
+    response = requests.post(f"{MCP_SERVER_URL}/campaigns/{campaign_id}/titles", json=titles_data, headers=headers)
     print_response(response)
 
 
