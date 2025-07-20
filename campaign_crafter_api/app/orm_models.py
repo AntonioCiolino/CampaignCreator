@@ -229,6 +229,7 @@ class ChatMessage(Base):
     # conversation_history will store a list of message objects, e.g., [{"speaker": "user", "text": "...", "timestamp": "..."}, ...]
     conversation_history = Column(JSON, nullable=False, default=[]) # Stores the entire conversation as a JSON list/array
     memory_summary = Column(Text, nullable=True) # Stores the LLM-generated summary of older parts of the conversation
+    last_summarized_timestamp = Column(DateTime(timezone=True), nullable=True)
 
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()) # Tracks last update to this conversation log
 

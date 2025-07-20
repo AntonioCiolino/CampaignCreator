@@ -51,6 +51,7 @@ def create_user_in_db(db: SQLAlchemySession, user_data: dict) -> ORMUser:
     return db_user
 
 # --- Token Utilities ---
+from typing import Optional
 async def get_user_token_headers(client: AsyncClient, db: SQLAlchemySession, username: str, password: str, email: Optional[str] = None, full_name: Optional[str] = None, is_superuser: bool = False, disabled: bool = False) -> dict[str, str]:
     # Ensure user exists
     user = db.query(ORMUser).filter(ORMUser.username == username).first()

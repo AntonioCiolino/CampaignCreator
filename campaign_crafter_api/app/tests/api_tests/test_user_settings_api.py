@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from typing import Dict
 
-from campaign_crafter_api.app.main import app # Main FastAPI app
+from app.main import app # Main FastAPI app
 from campaign_crafter_api.app.core.config import settings
 from campaign_crafter_api.app.models import User as PydanticUser # Pydantic model for response
 from campaign_crafter_api.app.orm_models import User as ORMUser

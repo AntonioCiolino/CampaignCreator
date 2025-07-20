@@ -1052,7 +1052,14 @@ async def update_conversation_summary(
             else:
                 conversation_orm.memory_summary = new_summary_text
 
+            conversation_orm.last_summarized_timestamp = datetime.now(timezone.utc)
             flag_modified(conversation_orm, "memory_summary")
+            flag_modified(conversation_orm, "last_summarized_timestamp")
+
+            if clear_history_after_summary:
+                conversation_orm.conversation_history = []
+                flag_modified(conversation_orm, "conversation_history")
+
             db.add(conversation_orm)
             db.commit()
             db.refresh(conversation_orm)

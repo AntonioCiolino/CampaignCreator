@@ -432,3 +432,15 @@ class CharacterAspectGenerationResponse(BaseModel):
 
 class MemorySummary(BaseModel):
     memory_summary: str
+
+
+class ChatMessage(BaseModel):
+    id: int
+    character_id: int
+    user_id: int
+    conversation_history: List[Dict[str, str]]
+    memory_summary: Optional[str] = None
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
