@@ -1,6 +1,6 @@
 # MCP Server for Campaign Crafter
 
-This server acts as a facade for the main Campaign Crafter API, providing a bridge for MCP (Mission Control Protocol) clients.
+This server acts as a facade for the main Campaign Crafter API, providing a bridge for MCP (Model Context Protocol) clients.
 
 ## Setup
 
