@@ -24,6 +24,8 @@ This server acts as a facade for the main Campaign Crafter API, providing a brid
 
 The MCP server will be available at the port specified in your `.env` file (default is `http://localhost:5001`).
 
+The `test_app.py` script uses credentials from the `.env` file to authenticate with the main API. Make sure to update the `TEST_USERNAME` and `TEST_PASSWORD` variables in your `.env` file with the credentials of a valid test user.
+
 ## API Documentation
 
 All endpoints are prefixed with `/mcp`.

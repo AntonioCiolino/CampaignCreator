@@ -1,13 +1,17 @@
 import requests
 import json
+import os
+from dotenv import load_dotenv
 
-MCP_SERVER_URL = "http://localhost:5001/mcp"
+load_dotenv()
+
+MCP_SERVER_URL = f"http://localhost:{os.environ.get('PORT', 5001)}/mcp"
 CAMPAIGN_CRAFTER_API_URL = "http://localhost:8000/api/v1"
 
 # --- IMPORTANT ---
-# Replace with your test user's credentials
-TEST_USERNAME = "testuser"
-TEST_PASSWORD = "testpassword"
+# The test credentials are now loaded from the .env file.
+TEST_USERNAME = os.environ.get("TEST_USERNAME", "testuser")
+TEST_PASSWORD = os.environ.get("TEST_PASSWORD", "testpassword")
 
 def print_response(response):
     """Helper function to print response details."""
