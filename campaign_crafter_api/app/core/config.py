@@ -60,7 +60,7 @@ class Settings(BaseSettings):
     # JWT Settings
     SECRET_KEY: str = "your-secret-key"  # TODO: Load from environment variable for production
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     REFRESH_TOKEN_EXPIRE_MINUTES: int = 1440
 
     # Chat Summarization Settings
