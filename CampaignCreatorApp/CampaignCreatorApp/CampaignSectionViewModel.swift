@@ -37,10 +37,11 @@ class CampaignSectionViewModel: ObservableObject {
     }
 
     func save() {
+        guard let campaignId = section.campaign_id else { return }
         Task {
             do {
                 let updatedSectionData = try await llmService.apiService.updateCampaignSection(
-                    campaignId: section.campaign_id,
+                    campaignId: campaignId,
                     sectionId: section.id,
                     data: CampaignSectionUpdatePayload(content: editedContent)
                 )
@@ -64,10 +65,11 @@ class CampaignSectionViewModel: ObservableObject {
     }
 
     func regenerate() {
+        guard let campaignId = section.campaign_id else { return }
         Task {
             do {
                 let updatedSectionData = try await llmService.apiService.regenerateCampaignSection(
-                    campaignId: section.campaign_id,
+                    campaignId: campaignId,
                     sectionId: section.id,
                     payload: SectionRegeneratePayload(newPrompt: "Regenerate this section.")
                 )
@@ -86,10 +88,11 @@ class CampaignSectionViewModel: ObservableObject {
     }
 
     func delete() {
+        guard let campaignId = section.campaign_id else { return }
         Task {
             do {
                 try await llmService.apiService.deleteCampaignSection(
-                    campaignId: section.campaign_id,
+                    campaignId: campaignId,
                     sectionId: section.id
                 )
                 DispatchQueue.main.async {
@@ -103,12 +106,12 @@ class CampaignSectionViewModel: ObservableObject {
     }
 
     func snippetEdit(editType: String, featureId: Int) {
-        guard let selectedText = selectedText else { return }
+        guard let selectedText = selectedText, let campaignId = section.campaign_id else { return }
 
         Task {
             do {
                 let updatedSectionData = try await llmService.apiService.regenerateCampaignSection(
-                    campaignId: section.campaign_id,
+                    campaignId: campaignId,
                     sectionId: section.id,
                     payload: SectionRegeneratePayload(
                         newPrompt: selectedText,
