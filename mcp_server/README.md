@@ -101,3 +101,82 @@ All endpoints are prefixed with `/mcp`.
 *   **Generate Titles:** `POST /campaigns/<campaign_id>/titles`
     *   **Body:** Empty JSON object `{}`.
     *   **Example:** `curl -X POST http://localhost:5001/mcp/campaigns/1/titles`
+
+## Connecting to the API
+
+You can connect to the MCP server using any HTTP client. Here are some examples using `curl` and Python's `requests` library.
+
+### Authentication
+
+First, you'll need to get an authentication token from the main Campaign Crafter API.
+
+**`curl`:**
+```bash
+curl -X POST -d "username=testuser&password=testpassword" http://localhost:8000/api/v1/auth/token
+```
+
+**Python:**
+```python
+import requests
+
+auth_data = {
+    "username": "testuser",
+    "password": "testpassword"
+}
+response = requests.post("http://localhost:8000/api/v1/auth/token", data=auth_data)
+token = response.json()["access_token"]
+```
+
+### Making Authenticated Requests
+
+Once you have an access token, include it in the `Authorization` header of your requests to the MCP server.
+
+**`curl`:**
+```bash
+curl -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>" http://localhost:5001/mcp/campaigns
+```
+
+**Python:**
+```python
+headers = {"Authorization": f"Bearer {token}"}
+response = requests.get("http://localhost:5001/mcp/campaigns", headers=headers)
+print(response.json())
+```
+
+## Connecting to an MCP Client (e.g., Claude)
+
+To connect this MCP server to a client like Claude, you'll need to provide it with a configuration block that tells it how to interact with the API. Here's a sample configuration block that you can adapt to your needs:
+
+```json
+{
+  "mcp_version": "0.1.0",
+  "client_name": "Campaign Crafter MCP Client",
+  "base_url": "http://localhost:5001/mcp",
+  "endpoints": {
+    "create_campaign": {
+      "path": "/campaigns",
+      "method": "POST",
+      "body": {
+        "title": "{campaign_title}",
+        "description": "{campaign_description}",
+        "initial_user_prompt": "{initial_user_prompt}",
+        "skip_concept_generation": "{skip_concept_generation}"
+      }
+    },
+    "get_campaign": {
+      "path": "/campaigns/{campaign_id}",
+      "method": "GET"
+    },
+    "create_character": {
+      "path": "/characters",
+      "method": "POST",
+      "body": {
+        "name": "{character_name}",
+        "description": "{character_description}"
+      }
+    }
+  }
+}
+```
+
+This is just a basic example. You can extend it to include all the available endpoints and parameters.
