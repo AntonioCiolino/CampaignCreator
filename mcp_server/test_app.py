@@ -47,59 +47,34 @@ def test_password_grant():
     # assert "access_token" in response.json()
     print("Password Grant test completed.\n")
 
-def test_auth_code_flow():
-    """Tests the full OAuth 2.0 Authorization Code Grant flow with the UI."""
-    print("--- Testing Full Authorization Code Flow ---")
+def test_dynamic_client_registration():
+    """Tests the dynamic client registration flow."""
+    print("--- Testing Dynamic Client Registration ---")
 
-    # This test requires a running server, but we can simulate the steps.
-    # We can't easily test the POST from the HTML form, but we can test the logic.
-
-    # 1. Simulate getting the auth form
-    print("1. Simulating GET /mcp/authorize...")
-    # This part is hard to test without a browser, but we know the logic is there.
-    print("...skipping browser part.\n")
-
-    # 2. Simulate the server-side logic of handling the form POST
-    # and getting a code.
-    # We will manually add a dummy session and then call the token exchange.
-    print("2. Simulating code-for-token exchange...")
-    from main import auth_codes
-    auth_code = "test_code_123"
-    backend_token = "dummy_backend_token_abc"
-    auth_codes[auth_code] = {
-        'client_id': 'test_client',
-        'user_id': TEST_USERNAME,
-        'backend_token': backend_token
+    # 1. Register a new client
+    print("1. Registering a new client...")
+    client_data = {
+        "client_name": "Test Client",
+        "redirect_uris": [f"{MCP_SERVER_URL}/callback"]
     }
-
-    token_data = {
-        "grant_type": "authorization_code",
-        "code": auth_code,
-        "client_id": "test_client"
-    }
-    response = requests.post(f"{MCP_SERVER_URL}/token", data=token_data)
+    response = requests.post(f"{MCP_SERVER_URL}/register", json=client_data)
     print_response(response)
-    # This will fail in the sandbox because the auth_code is a dummy
-    # assert response.status_code == 200
-    # assert response.json()['access_token'] == backend_token
-    print("Token exchange successful.")
+    assert response.status_code == 201
+    client_id = response.json()['client_id']
+    assert client_id
+    print(f"Successfully registered client with ID: {client_id}")
 
-    # 3. Use the obtained token to call the RPC endpoint
-    if response.status_code == 200 and 'access_token' in response.json():
-        print("\n3. Testing RPC call with obtained token...")
-        access_token = response.json()['access_token']
-        headers = {"Authorization": f"Bearer {access_token}"}
-        rpc_request = {
-            "jsonrpc": "2.0",
-            "method": "get_campaign",
-            "params": {"campaign_id": 123},
-            "id": "rpc-test-1"
-        }
-        response = requests.post(f"{MCP_SERVER_URL}/rpc", json=rpc_request, headers=headers)
-        print_response(response)
-        # This will fail in the sandbox as the backend is not running, but it proves the token is passed correctly.
-        # assert response.status_code == 200
-        print("RPC call test completed.")
+    # 2. Start authorization with the new client
+    print("\n2. Starting authorization with the new client...")
+    auth_params = {
+        'response_type': 'code',
+        'client_id': client_id,
+        'redirect_uri': f"{MCP_SERVER_URL}/callback",
+        'state': 'xyz'
+    }
+    response = requests.get(f"{MCP_SERVER_URL}/authorize", params=auth_params)
+    assert response.status_code == 200
+    print("Successfully got the login form for the new client.")
 
 def test_json_rpc():
     """Tests the JSON-RPC endpoint."""
@@ -164,8 +139,9 @@ def test_json_rpc():
 
 def main():
     """Main function to run the test application."""
+    test_dynamic_client_registration()
     # test_password_grant()
-    test_auth_code_flow()
+    # test_auth_code_flow()
     # test_json_rpc()
 
 

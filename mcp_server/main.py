@@ -5,6 +5,7 @@ import json
 from dotenv import load_dotenv
 import secrets
 from urllib.parse import urlencode
+from datetime import datetime, timezone
 
 load_dotenv()
 
@@ -61,10 +62,36 @@ def get_mcp_config():
 import secrets
 from urllib.parse import urlencode
 
-# In-memory storage for authorization codes and tokens
+# In-memory storage for authorization codes, tokens, and clients
 auth_codes = {}
+clients = {}
 
 # --- OAuth 2.0 Endpoints ---
+
+@app.route('/mcp/register', methods=['POST'])
+def register_client():
+    """
+    Dynamically registers a new client.
+    """
+    client_info = request.get_json()
+    if not client_info or 'client_name' not in client_info or 'redirect_uris' not in client_info:
+        return jsonify({"error": "invalid_client_metadata"}), 400
+
+    client_id = secrets.token_urlsafe(16)
+    clients[client_id] = {
+        "client_name": client_info["client_name"],
+        "redirect_uris": client_info["redirect_uris"],
+        "client_id_issued_at": datetime.now(timezone.utc).timestamp()
+    }
+
+    return jsonify({
+        "client_id": client_id,
+        "client_name": client_info["client_name"],
+        "redirect_uris": client_info["redirect_uris"],
+        "grant_types": ["authorization_code"],
+        "response_types": ["code"],
+        "token_endpoint_auth_method": "none"
+    }), 201
 
 @app.route('/mcp/callback', methods=['GET'])
 def callback():
@@ -95,6 +122,12 @@ def authorize():
             return jsonify({"error": "unsupported_response_type"}), 400
         if not client_id or not redirect_uri:
             return jsonify({"error": "invalid_request"}), 400
+
+        if client_id not in clients:
+            return jsonify({"error": "unauthorized_client"}), 400
+
+        if redirect_uri not in clients[client_id]["redirect_uris"]:
+            return jsonify({"error": "invalid_request", "error_description": "redirect_uri does not match client's registered URIs"}), 400
 
         # Store the original redirect_uri for later
         session_id = secrets.token_urlsafe(16)
@@ -198,6 +231,9 @@ def token():
 
         if not code or not client_id:
             return jsonify({"error": "invalid_request"}), 400
+
+        if client_id not in clients:
+            return jsonify({"error": "unauthorized_client"}), 400
 
         auth_code_data = auth_codes.pop(code, None)
 
