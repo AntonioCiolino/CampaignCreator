@@ -46,6 +46,20 @@ struct CampaignDetailView: View {
                         TOCView(campaign: campaign, selectedSection: $selectedSection, llmService: llmService)
                     }
 
+                    CollapsibleSectionView(title: "Sections") {
+                        if let sections = campaign.sections, !sections.isEmpty {
+                            Picker("Section", selection: $selectedSection) {
+                                ForEach(sections, id: \.self) { section in
+                                    Text(section.title ?? "Untitled Section").tag(section as CampaignSection?)
+                                }
+                            }
+                            .pickerStyle(MenuPickerStyle())
+                        } else {
+                            Text("No sections available. Add a section to get started.")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
                     if let selectedSection = selectedSection {
                         CampaignSectionView(viewModel: CampaignSectionViewModel(section: selectedSection, llmService: llmService, featureService: FeatureService(modelContext: modelContext), onDelete: {
                             if let index = campaign.sections?.firstIndex(where: { $0.id == selectedSection.id }) {
