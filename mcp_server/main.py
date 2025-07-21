@@ -18,13 +18,60 @@ def list_mcp_versions():
     """
     return jsonify(["0.1.0"])
 
+
+# --- Authentication Endpoint ---
+@app.route('/mcp/token', methods=['POST'])
+def login_for_access_token():
+    """
+    Authenticates with the main API and returns a JWT token.
+    """
+    try:
+        # The client sends credentials as 'username' and 'password' in a form.
+        # We need to forward this to the main API's /token endpoint.
+        response = requests.post(
+            f"{CAMPAIGN_CRAFTER_API_URL}/auth/token",
+            data=request.form
+        )
+        response.raise_for_status()
+        return jsonify(response.json()), response.status_code
+    except requests.exceptions.HTTPError as e:
+        return jsonify(e.response.json()), e.response.status_code
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # --- Helper Functions ---
+def authenticate_with_mcp_server(mcp_base_url, username, password):
+    """
+    Authenticates with the MCP server and returns the access token.
+    """
+    token_url = f"{mcp_base_url}/token"
+    try:
+        response = requests.post(token_url, data={"username": username, "password": password})
+        response.raise_for_status()
+        return response.json().get("access_token")
+    except requests.exceptions.HTTPError as e:
+        print(f"Authentication failed: {e.response.text}")
+        return None
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred during authentication: {e}")
+        return None
+
 def forward_request(method, path, **kwargs):
     """
     Forwards a request to the main Campaign Crafter API.
+    Requires a valid JWT in the 'Authorization' header.
     """
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        return jsonify({"error": "Authorization header is missing"}), 401
+
     url = f"{CAMPAIGN_CRAFTER_API_URL}{path}"
-    headers = {key: value for key, value in request.headers if key != 'Host'}
+    headers = {
+        'Authorization': auth_header,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    }
 
     try:
         response = requests.request(
@@ -36,6 +83,9 @@ def forward_request(method, path, **kwargs):
             **kwargs
         )
         response.raise_for_status()
+        # For DELETE requests, a 204 No Content might not have a JSON body
+        if response.status_code == 204:
+            return Response(status=204)
         return jsonify(response.json()), response.status_code
     except requests.exceptions.HTTPError as e:
         return jsonify(e.response.json()), e.response.status_code
@@ -123,26 +173,35 @@ def list_mcp_endpoints():
     """
     Returns a JSON object describing the available MCP endpoints.
     """
+    base_url = f"http://localhost:{os.environ.get('PORT', 5001)}/mcp"
     mcp_config = {
         "mcpServers": {
             "campaign_crafter": {
                 "command": "python",
                 "args": [
                     "-m",
-                    "venv.bin.flask",
+                    "flask",
                     "--app",
                     "main",
-                    "run"
+                    "run",
+                    "--port",
+                    os.environ.get('PORT', 5001)
                 ],
                 "env": {
                     "FLASK_APP": "main.py",
-                    "FLASK_RUN_PORT": os.environ.get('PORT', 5001),
+                    "FLASK_RUN_PORT": os.environ.get('PORT', '5001'),
                     "TEST_USERNAME": os.environ.get('TEST_USERNAME', 'testuser'),
                     "TEST_PASSWORD": os.environ.get('TEST_PASSWORD', 'testpassword')
                 },
                 "mcp_version": "0.1.0",
                 "client_name": "Campaign Crafter MCP Client",
-                "base_url": f"http://localhost:{os.environ.get('PORT', 5001)}/mcp",
+                "base_url": base_url,
+                "auth": {
+                    "method": "token",
+                    "token_url": f"{base_url}/token",
+                    "username_field": "username",
+                    "password_field": "password"
+                },
                 "endpoints": {
                     "create_campaign": {
                         "path": "/campaigns",
@@ -152,11 +211,13 @@ def list_mcp_endpoints():
                             "description": "{campaign_description}",
                             "initial_user_prompt": "{initial_user_prompt}",
                             "skip_concept_generation": "{skip_concept_generation}"
-                        }
+                        },
+                        "requires_auth": True
                     },
                     "get_campaign": {
                         "path": "/campaigns/{campaign_id}",
-                        "method": "GET"
+                        "method": "GET",
+                        "requires_auth": True
                     },
                     "create_character": {
                         "path": "/characters",
@@ -164,7 +225,8 @@ def list_mcp_endpoints():
                         "body": {
                             "name": "{character_name}",
                             "description": "{character_description}"
-                        }
+                        },
+                        "requires_auth": True
                     }
                 }
             }
