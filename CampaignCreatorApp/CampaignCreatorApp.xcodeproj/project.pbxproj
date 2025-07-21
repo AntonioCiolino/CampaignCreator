@@ -7,9 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0E6D4272947B4D8EB61AC371 /* CampaignSectionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD2C4AAB98ED07CEFA42913D /* CampaignSectionViewModel.swift */; };
-		232447A1829058DA43986F7E /* RichTextEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB8A4FC09F3A0F73BD2CD8DA /* RichTextEditorView.swift */; };
-		2F954ADE8CBFBF9A359141E5 /* SSEManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CE04C4AAD596D1BEAC7948F /* SSEManager.swift */; };
 		3D92BBE52B8C8A8E00B8E8E8 /* CampaignCreatorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D92BBE42B8C8A8E00B8E8E8 /* CampaignCreatorApp.swift */; };
 		3D92BBE72B8C8A8E00B8E8E8 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D92BBE62B8C8A8E00B8E8E8 /* ContentView.swift */; };
 		3D92BBEC2B8C8A8F00B8E8E8 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3D92BBEB2B8C8A8F00B8E8E8 /* Preview Assets.xcassets */; };
@@ -79,6 +76,9 @@
 		94A5C1C12E2E3F9A00A61E63 /* CampaignSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A5C1BC2E2E3F9A00A61E63 /* CampaignSectionView.swift */; };
 		94A5C1C22E2E3F9A00A61E63 /* TOCView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94A5C1BD2E2E3F9A00A61E63 /* TOCView.swift */; };
 		94D17C582E2B7CB300F6B268 /* ImageGenerationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94D17C572E2B7CB300F6B268 /* ImageGenerationView.swift */; };
+		94EC4A322E2EC349003021EB /* CampaignSectionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94EC4A2F2E2EC349003021EB /* CampaignSectionViewModel.swift */; };
+		94EC4A332E2EC349003021EB /* RichTextEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94EC4A302E2EC349003021EB /* RichTextEditorView.swift */; };
+		94EC4A342E2EC349003021EB /* SSEManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94EC4A312E2EC349003021EB /* SSEManager.swift */; };
 		94F8C4E92E2A7F9F006B4D4E /* CampaignImageManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F8C4E82E2A7F9F006B4D4E /* CampaignImageManagerView.swift */; };
 		94F8C4EB2E2A7FA1006B4D4E /* CampaignImageManagerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F8C4EA2E2A7FA1006B4D4E /* CampaignImageManagerViewModel.swift */; };
 		94F8C4ED2E2A7FA2006B4D4E /* CharacterLLMSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F8C4EC2E2A7FA2006B4D4E /* CharacterLLMSettingsView.swift */; };
@@ -93,7 +93,6 @@
 		3D92BBE62B8C8A8E00B8E8E8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		3D92BBEB2B8C8A8F00B8E8E8 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		3D92BBF92B8C8D4C00B8E8E8 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		5CE04C4AAD596D1BEAC7948F /* SSEManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SSEManager.swift; path = SSEManager.swift; sourceTree = SOURCE_ROOT; };
 		9414ACC32E203A08005C0B17 /* CampaignMoodboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignMoodboardView.swift; sourceTree = "<group>"; };
 		9414ACC42E203A08005C0B17 /* CharacterImageManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterImageManagerView.swift; sourceTree = "<group>"; };
 		9414ACC52E203A08005C0B17 /* CharacterMoodboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterMoodboardView.swift; sourceTree = "<group>"; };
@@ -157,14 +156,15 @@
 		94A5C1BC2E2E3F9A00A61E63 /* CampaignSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignSectionView.swift; sourceTree = "<group>"; };
 		94A5C1BD2E2E3F9A00A61E63 /* TOCView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOCView.swift; sourceTree = "<group>"; };
 		94D17C572E2B7CB300F6B268 /* ImageGenerationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGenerationView.swift; sourceTree = "<group>"; };
+		94EC4A2F2E2EC349003021EB /* CampaignSectionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignSectionViewModel.swift; sourceTree = "<group>"; };
+		94EC4A302E2EC349003021EB /* RichTextEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextEditorView.swift; sourceTree = "<group>"; };
+		94EC4A312E2EC349003021EB /* SSEManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSEManager.swift; sourceTree = "<group>"; };
 		94F8C4E82E2A7F9F006B4D4E /* CampaignImageManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignImageManagerView.swift; sourceTree = "<group>"; };
 		94F8C4EA2E2A7FA1006B4D4E /* CampaignImageManagerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignImageManagerViewModel.swift; sourceTree = "<group>"; };
 		94F8C4EC2E2A7FA2006B4D4E /* CharacterLLMSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterLLMSettingsView.swift; sourceTree = "<group>"; };
 		94F8C4EE2E2A7FA3006B4D4E /* ImageManagerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageManagerViewModel.swift; sourceTree = "<group>"; };
 		94F8C4F22E2A7FA6006B4D4E /* LLMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMService.swift; sourceTree = "<group>"; };
 		94F8C4F42E2A7FA7006B4D4E /* ImageGenerationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGenerationService.swift; sourceTree = "<group>"; };
-		DD2C4AAB98ED07CEFA42913D /* CampaignSectionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CampaignSectionViewModel.swift; path = CampaignSectionViewModel.swift; sourceTree = SOURCE_ROOT; };
-		FB8A4FC09F3A0F73BD2CD8DA /* RichTextEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RichTextEditorView.swift; path = RichTextEditorView.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -199,6 +199,9 @@
 		3D92BBE32B8C8A8E00B8E8E8 /* CampaignCreatorApp */ = {
 			isa = PBXGroup;
 			children = (
+				94EC4A2F2E2EC349003021EB /* CampaignSectionViewModel.swift */,
+				94EC4A302E2EC349003021EB /* RichTextEditorView.swift */,
+				94EC4A312E2EC349003021EB /* SSEManager.swift */,
 				945ABCD02E2B941E00C4269C /* CollapsibleSectionView.swift */,
 				945ABCD12E2B941E00C4269C /* View+NavigationBar.swift */,
 				94D17C572E2B7CB300F6B268 /* ImageGenerationView.swift */,
@@ -270,9 +273,6 @@
 				94A5C1BB2E2E3F9A00A61E63 /* CharacterStatsView.swift */,
 				94A5C1BC2E2E3F9A00A61E63 /* CampaignSectionView.swift */,
 				94A5C1BD2E2E3F9A00A61E63 /* TOCView.swift */,
-				FB8A4FC09F3A0F73BD2CD8DA /* RichTextEditorView.swift */,
-				DD2C4AAB98ED07CEFA42913D /* CampaignSectionViewModel.swift */,
-				5CE04C4AAD596D1BEAC7948F /* SSEManager.swift */,
 			);
 			path = CampaignCreatorApp;
 			sourceTree = "<group>";
@@ -378,6 +378,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				94F8C4F32E2A7FA6006B4D4E /* LLMService.swift in Sources */,
+				94EC4A322E2EC349003021EB /* CampaignSectionViewModel.swift in Sources */,
+				94EC4A332E2EC349003021EB /* RichTextEditorView.swift in Sources */,
+				94EC4A342E2EC349003021EB /* SSEManager.swift in Sources */,
 				94F8C4F52E2A7FA7006B4D4E /* ImageGenerationService.swift in Sources */,
 				94F8C4EF2E2A7FA3006B4D4E /* ImageManagerViewModel.swift in Sources */,
 				94F8C4ED2E2A7FA2006B4D4E /* CharacterLLMSettingsView.swift in Sources */,
@@ -444,9 +447,6 @@
 				94A5C1C02E2E3F9A00A61E63 /* CharacterStatsView.swift in Sources */,
 				94A5C1C12E2E3F9A00A61E63 /* CampaignSectionView.swift in Sources */,
 				94A5C1C22E2E3F9A00A61E63 /* TOCView.swift in Sources */,
-				232447A1829058DA43986F7E /* RichTextEditorView.swift in Sources */,
-				0E6D4272947B4D8EB61AC371 /* CampaignSectionViewModel.swift in Sources */,
-				2F954ADE8CBFBF9A359141E5 /* SSEManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
