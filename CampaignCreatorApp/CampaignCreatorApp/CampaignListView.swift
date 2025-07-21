@@ -78,6 +78,11 @@ struct CampaignListView: View {
             } message: {
                 Text(errorMessage)
             }
+            .onAppear {
+                Task {
+                    await refreshCampaigns()
+                }
+            }
         }
     }
 
