@@ -49,28 +49,78 @@ def callback():
     return f"Received authorization code: {code}. Now, exchange this for a token at /mcp/token.", 200
 
 
-@app.route('/mcp/authorize', methods=['GET'])
+@app.route('/mcp/authorize', methods=['GET', 'POST'])
 def authorize():
     """
-    Simulates the authorization endpoint.
-    In a real app, this would show a user consent screen.
+    Presents a login form and handles authorization requests.
     """
-    client_id = request.args.get('client_id')
-    redirect_uri = request.args.get('redirect_uri')
-    response_type = request.args.get('response_type')
+    if request.method == 'GET':
+        # Display the login form, pre-filling hidden fields from query params
+        client_id = request.args.get('client_id', '')
+        redirect_uri = request.args.get('redirect_uri', '')
+        response_type = request.args.get('response_type', '')
+        state = request.args.get('state', '')
 
-    if response_type != 'code':
-        return jsonify({"error": "unsupported_response_type"}), 400
+        if response_type != 'code':
+            return jsonify({"error": "unsupported_response_type"}), 400
+        if not client_id or not redirect_uri:
+            return jsonify({"error": "invalid_request", "error_description": "client_id and redirect_uri are required"}), 400
 
-    if not client_id or not redirect_uri:
-        return jsonify({"error": "invalid_request", "error_description": "client_id and redirect_uri are required"}), 400
+        return f'''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Login</title>
+        </head>
+        <body>
+            <h1>Authorize App</h1>
+            <form method="post">
+                <input type="hidden" name="client_id" value="{client_id}">
+                <input type="hidden" name="redirect_uri" value="{redirect_uri}">
+                <input type="hidden" name="response_type" value="{response_type}">
+                <input type="hidden" name="state" value="{state}">
+                <div>
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username">
+                </div>
+                <div>
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password">
+                </div>
+                <br>
+                <input type="submit" value="Authorize">
+            </form>
+        </body>
+        </html>
+        '''
 
-    # Generate a temporary authorization code
+    # Handle POST request from the form
+    username = request.form.get('username')
+    password = request.form.get('password')
+    client_id = request.form.get('client_id')
+    redirect_uri = request.form.get('redirect_uri')
+    state = request.form.get('state')
+
+    # Authenticate user against the main API
+    try:
+        auth_response = requests.post(
+            f"{CAMPAIGN_CRAFTER_API_URL}/auth/token",
+            data={"username": username, "password": password, "grant_type": "password"}
+        )
+        auth_response.raise_for_status()
+        # If successful, we don't need the token here, just confirmation.
+    except requests.exceptions.HTTPError:
+        return "Invalid credentials", 401
+    except requests.exceptions.RequestException:
+        return "Error connecting to authentication service", 500
+
+    # If authentication is successful, generate and store the auth code
     auth_code = secrets.token_urlsafe(16)
-    auth_codes[auth_code] = {'client_id': client_id, 'user_id': 'testuser'}  # In a real app, get the logged-in user
+    # Associate the code with the user and client
+    auth_codes[auth_code] = {'client_id': client_id, 'user_id': username}
 
     # Redirect back to the client with the auth code
-    params = {'code': auth_code, 'state': request.args.get('state')}
+    params = {'code': auth_code, 'state': state}
     return Response(status=302, headers={'Location': f"{redirect_uri}?{urlencode(params)}"})
 
 
