@@ -53,6 +53,19 @@ def main():
     else:
         print("Failed to access protected endpoint with token.")
 
+    # --- Use an API key to access a protected endpoint ---
+    # For this test, we'll use the token as the API key
+    api_key_headers = {"X-API-Key": token}
+    print("\nAttempting to list campaigns with an API key...")
+    response = requests.get(f"{MCP_SERVER_URL}/campaigns", headers=api_key_headers)
+    print_response(response)
+
+    if response.status_code == 200:
+        print("Successfully accessed protected endpoint with API key.")
+    else:
+        print("Failed to access protected endpoint with API key.")
+
+
     # --- Demonstrate what happens without a token ---
     print("\nAttempting to list campaigns without a token...")
     response = requests.get(f"{MCP_SERVER_URL}/campaigns")

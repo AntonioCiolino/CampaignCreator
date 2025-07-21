@@ -49,6 +49,13 @@ def login_for_access_token():
 
 
 # --- Helper Functions ---
+def get_token_from_api_key(api_key):
+    """
+    For this bridge, we'll assume the API key is the JWT token itself.
+    In a real-world application, you would exchange the API key for a token.
+    """
+    return api_key
+
 def authenticate_with_mcp_server(mcp_base_url, username, password):
     """
     Authenticates with the MCP server and returns the access token.
@@ -71,8 +78,9 @@ def requires_auth(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         auth_header = request.headers.get('Authorization')
-        if not auth_header:
-            return jsonify({"error": "Authorization header is missing"}), 401
+        api_key = request.headers.get('X-API-Key')
+        if not auth_header and not api_key:
+            return jsonify({"error": "Authorization header or X-API-Key header is missing"}), 401
         # In a real scenario, you'd also validate the token here.
         # For this server, we're just forwarding it.
         return f(*args, **kwargs)
@@ -81,17 +89,23 @@ def requires_auth(f):
 def forward_request(method, path, **kwargs):
     """
     Forwards a request to the main Campaign Crafter API.
-    Requires a valid JWT in the 'Authorization' header.
+    Requires a valid JWT in the 'Authorization' header or an API key in 'X-API-Key'.
     """
     auth_header = request.headers.get('Authorization')
-    # The decorator handles the check, but we still need to pass the header
-    if not auth_header:
-        # This part should ideally not be reached if the decorator is applied
-        return jsonify({"error": "Authorization header is missing"}), 401
+    api_key = request.headers.get('X-API-Key')
+
+    token = None
+    if auth_header:
+        token = auth_header
+    elif api_key:
+        token = f"Bearer {get_token_from_api_key(api_key)}"
+
+    if not token:
+        return jsonify({"error": "Authorization header or X-API-Key header is missing"}), 401
 
     url = f"{CAMPAIGN_CRAFTER_API_URL}{path}"
     headers = {
-        'Authorization': auth_header,
+        'Authorization': token,
         'Content-Type': 'application/json',
         'Accept': 'application/json',
     }
@@ -238,8 +252,9 @@ def list_mcp_endpoints():
                 "client_name": "Campaign Crafter MCP Client",
                 "base_url": base_url,
                 "auth": {
-                    "method": "token",
+                    "method": "token_or_api_key",
                     "token_url": f"{base_url}/mcp/token",
+                    "api_key_header": "X-API-Key",
                     "username_field": "username",
                     "password_field": "password"
                 },
