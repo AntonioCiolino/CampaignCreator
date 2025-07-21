@@ -110,6 +110,42 @@ def generate_toc(campaign_id):
 def generate_titles(campaign_id):
     return forward_request('POST', f'/campaigns/{campaign_id}/titles')
 
+@app.route('/mcp/endpoints', methods=['GET'])
+def list_mcp_endpoints():
+    """
+    Returns a JSON object describing the available MCP endpoints.
+    """
+    endpoints = {
+        "mcp_version": "0.1.0",
+        "client_name": "Campaign Crafter MCP Client",
+        "base_url": f"http://localhost:{os.environ.get('PORT', 5001)}/mcp",
+        "endpoints": {
+            "create_campaign": {
+                "path": "/campaigns",
+                "method": "POST",
+                "body": {
+                    "title": "{campaign_title}",
+                    "description": "{campaign_description}",
+                    "initial_user_prompt": "{initial_user_prompt}",
+                    "skip_concept_generation": "{skip_concept_generation}"
+                }
+            },
+            "get_campaign": {
+                "path": "/campaigns/{campaign_id}",
+                "method": "GET"
+            },
+            "create_character": {
+                "path": "/characters",
+                "method": "POST",
+                "body": {
+                    "name": "{character_name}",
+                    "description": "{character_description}"
+                }
+            }
+        }
+    }
+    return jsonify(endpoints)
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5001))
     app.run(port=port, debug=True)

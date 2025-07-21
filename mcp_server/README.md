@@ -145,38 +145,13 @@ print(response.json())
 
 ## Connecting to an MCP Client (e.g., Claude)
 
-To connect this MCP server to a client like Claude, you'll need to provide it with a configuration block that tells it how to interact with the API. Here's a sample configuration block that you can adapt to your needs:
+This MCP server includes a discovery endpoint that allows clients to dynamically discover the available endpoints and their parameters. To connect a client like Claude, you can point it to the `/mcp/endpoints` endpoint.
 
-```json
-{
-  "mcp_version": "0.1.0",
-  "client_name": "Campaign Crafter MCP Client",
-  "base_url": "http://localhost:5001/mcp",
-  "endpoints": {
-    "create_campaign": {
-      "path": "/campaigns",
-      "method": "POST",
-      "body": {
-        "title": "{campaign_title}",
-        "description": "{campaign_description}",
-        "initial_user_prompt": "{initial_user_prompt}",
-        "skip_concept_generation": "{skip_concept_generation}"
-      }
-    },
-    "get_campaign": {
-      "path": "/campaigns/{campaign_id}",
-      "method": "GET"
-    },
-    "create_character": {
-      "path": "/characters",
-      "method": "POST",
-      "body": {
-        "name": "{character_name}",
-        "description": "{character_description}"
-      }
-    }
-  }
-}
+**Discovery Endpoint:** `GET /mcp/endpoints`
+
+This will return a JSON object describing the available endpoints, which the client can use to configure itself.
+
+**Example:**
+```bash
+curl http://localhost:5001/mcp/endpoints
 ```
-
-This is just a basic example. You can extend it to include all the available endpoints and parameters.
