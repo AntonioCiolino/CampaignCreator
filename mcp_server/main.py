@@ -6,23 +6,9 @@ from dotenv import load_dotenv
 import secrets
 from urllib.parse import urlencode
 from datetime import datetime, timezone
-import socket
-
 load_dotenv()
 
 app = Flask(__name__)
-
-def get_local_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        # doesn't even have to be reachable
-        s.connect(('10.255.255.255', 1))
-        IP = s.getsockname()[0]
-    except Exception:
-        IP = '127.0.0.1'
-    finally:
-        s.close()
-    return IP
 
 # Configuration for the main Campaign Crafter API
 CAMPAIGN_CRAFTER_API_URL = "http://localhost:8000/api/v1"
@@ -105,22 +91,14 @@ def get_mcp_config():
     })
 
 
-import secrets
-from urllib.parse import urlencode
-
-# In-memory storage for authorization codes, tokens, and clients
-auth_codes = {}
-clients = {}
 
 
 
 # --- Helper Functions ---
 
-
 def forward_request(method, path, **kwargs):
     """
     Forwards a request to the main Campaign Crafter API.
-    Uses the stored backend token for authentication.
     """
     if not BACKEND_TOKEN:
         return {"error": "Backend not authenticated"}, 503
@@ -132,22 +110,12 @@ def forward_request(method, path, **kwargs):
     }
 
     url = f"{CAMPAIGN_CRAFTER_API_URL}{path}"
-    # Remove 'token' from args if it exists, to avoid sending it to the backend
-    forward_args = request.args.copy()
-    forward_args.pop('token', None)
-
-    headers = {
-        'Authorization': token,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-    }
 
     try:
         response = requests.request(
             method=method,
             url=url,
             headers=headers,
-            params=forward_args,
             **kwargs
         )
         response.raise_for_status()
@@ -160,194 +128,8 @@ def forward_request(method, path, **kwargs):
     except requests.exceptions.RequestException as e:
         return {"error": str(e)}, 500
 
-# --- Campaign Endpoints ---
-@app.route('/mcp/campaigns', methods=['POST'])
-def create_campaign():
-    return forward_request('POST', '/campaigns')
-
-@app.route('/mcp/campaigns', methods=['GET'])
-def list_campaigns():
-    return forward_request('GET', '/campaigns')
-
-@app.route('/mcp/campaigns/<int:campaign_id>', methods=['GET'])
-def get_campaign(campaign_id):
-    return forward_request('GET', f'/campaigns/{campaign_id}')
-
-@app.route('/mcp/campaigns/<int:campaign_id>', methods=['PUT'])
-def update_campaign(campaign_id):
-    return forward_request('PUT', f'/campaigns/{campaign_id}')
-
-@app.route('/mcp/campaigns/<int:campaign_id>', methods=['DELETE'])
-def delete_campaign(campaign_id):
-    return forward_request('DELETE', f'/campaigns/{campaign_id}')
-
-# --- Character Endpoints ---
-@app.route('/mcp/characters', methods=['POST'])
-def create_character():
-    return forward_request('POST', '/characters')
-
-@app.route('/mcp/characters', methods=['GET'])
-def list_characters():
-    return forward_request('GET', '/characters')
-
-@app.route('/mcp/characters/<int:character_id>', methods=['GET'])
-def get_character(character_id):
-    return forward_request('GET', f'/characters/{character_id}')
-
-@app.route('/mcp/characters/<int:character_id>', methods=['PUT'])
-def update_character(character_id):
-    return forward_request('PUT', f'/characters/{character_id}')
-
-@app.route('/mcp/characters/<int:character_id>', methods=['DELETE'])
-def delete_character(character_id):
-    return forward_request('DELETE', f'/characters/{character_id}')
-
-@app.route('/mcp/characters/<int:character_id>/campaigns/<int:campaign_id>', methods=['POST'])
-def link_character_to_campaign(character_id, campaign_id):
-    return forward_request('POST', f'/characters/{character_id}/campaigns/{campaign_id}')
-
-@app.route('/mcp/characters/<int:character_id>/campaigns/<int:campaign_id>', methods=['DELETE'])
-def unlink_character_from_campaign(character_id, campaign_id):
-    return forward_request('DELETE', f'/characters/{character_id}/campaigns/{campaign_id}')
-
-# --- Campaign Section Endpoints ---
-@app.route('/mcp/campaigns/<int:campaign_id>/sections', methods=['POST'])
-def create_campaign_section(campaign_id):
-    return forward_request('POST', f'/campaigns/{campaign_id}/sections')
-
-@app.route('/mcp/campaigns/<int:campaign_id>/sections', methods=['GET'])
-def list_campaign_sections(campaign_id):
-    return forward_request('GET', f'/campaigns/{campaign_id}/sections')
-
-@app.route('/mcp/campaigns/<int:campaign_id>/sections/<int:section_id>', methods=['PUT'])
-def update_campaign_section(campaign_id, section_id):
-    return forward_request('PUT', f'/campaigns/{campaign_id}/sections/{section_id}')
-
-@app.route('/mcp/campaigns/<int:campaign_id>/sections/<int:section_id>', methods=['DELETE'])
-def delete_campaign_section(campaign_id, section_id):
-    return forward_request('DELETE', f'/campaigns/{campaign_id}/sections/{section_id}')
-
-# --- TOC and Title Generation Endpoints ---
-@app.route('/mcp/campaigns/<int:campaign_id>/toc', methods=['POST'])
-def generate_toc(campaign_id):
-    return forward_request('POST', f'/campaigns/{campaign_id}/toc')
-
-@app.route('/mcp/campaigns/<int:campaign_id>/titles', methods=['POST'])
-def generate_titles(campaign_id):
-    return forward_request('POST', f'/campaigns/{campaign_id}/titles')
 
 
-def create_campaign_from_rpc(params):
-    """Helper for create_campaign RPC method."""
-    # Here you would map params to the arguments of your original forward_request call
-    # This is a simplified example
-    return forward_request('POST', '/campaigns', json=params)
-
-def get_campaign_from_rpc(params):
-    """Helper for get_campaign RPC method."""
-    campaign_id = params.get('campaign_id')
-    if not campaign_id:
-        return {"error": "campaign_id is required"}, 400
-    return forward_request('GET', f'/campaigns/{campaign_id}')
-
-def update_campaign_from_rpc(params):
-    """Helper for update_campaign RPC method."""
-    campaign_id = params.get('campaign_id')
-    if not campaign_id:
-        return {"error": "campaign_id is required"}, 400
-    return forward_request('PUT', f'/campaigns/{campaign_id}', json=params)
-
-def delete_campaign_from_rpc(params):
-    """Helper for delete_campaign RPC method."""
-    campaign_id = params.get('campaign_id')
-    if not campaign_id:
-        return {"error": "campaign_id is required"}, 400
-    return forward_request('DELETE', f'/campaigns/{campaign_id}')
-
-def create_character_from_rpc(params):
-    """Helper for create_character RPC method."""
-    return forward_request('POST', '/characters', json=params)
-
-def get_character_from_rpc(params):
-    """Helper for get_character RPC method."""
-    character_id = params.get('character_id')
-    if not character_id:
-        return {"error": "character_id is required"}, 400
-    return forward_request('GET', f'/characters/{character_id}')
-
-def update_character_from_rpc(params):
-    """Helper for update_character RPC method."""
-    character_id = params.get('character_id')
-    if not character_id:
-        return {"error": "character_id is required"}, 400
-    return forward_request('PUT', f'/characters/{character_id}', json=params)
-
-def delete_character_from_rpc(params):
-    """Helper for delete_character RPC method."""
-    character_id = params.get('character_id')
-    if not character_id:
-        return {"error": "character_id is required"}, 400
-    return forward_request('DELETE', f'/characters/{character_id}')
-
-def link_character_to_campaign_from_rpc(params):
-    """Helper for link_character_to_campaign RPC method."""
-    character_id = params.get('character_id')
-    campaign_id = params.get('campaign_id')
-    if not character_id or not campaign_id:
-        return {"error": "character_id and campaign_id are required"}, 400
-    return forward_request('POST', f'/characters/{character_id}/campaigns/{campaign_id}')
-
-def unlink_character_from_campaign_from_rpc(params):
-    """Helper for unlink_character_from_campaign RPC method."""
-    character_id = params.get('character_id')
-    campaign_id = params.get('campaign_id')
-    if not character_id or not campaign_id:
-        return {"error": "character_id and campaign_id are required"}, 400
-    return forward_request('DELETE', f'/characters/{character_id}/campaigns/{campaign_id}')
-
-def create_campaign_section_from_rpc(params):
-    """Helper for create_campaign_section RPC method."""
-    campaign_id = params.get('campaign_id')
-    if not campaign_id:
-        return {"error": "campaign_id is required"}, 400
-    return forward_request('POST', f'/campaigns/{campaign_id}/sections', json=params)
-
-def list_campaign_sections_from_rpc(params):
-    """Helper for list_campaign_sections RPC method."""
-    campaign_id = params.get('campaign_id')
-    if not campaign_id:
-        return {"error": "campaign_id is required"}, 400
-    return forward_request('GET', f'/campaigns/{campaign_id}/sections')
-
-def update_campaign_section_from_rpc(params):
-    """Helper for update_campaign_section RPC method."""
-    campaign_id = params.get('campaign_id')
-    section_id = params.get('section_id')
-    if not campaign_id or not section_id:
-        return {"error": "campaign_id and section_id are required"}, 400
-    return forward_request('PUT', f'/campaigns/{campaign_id}/sections/{section_id}', json=params)
-
-def delete_campaign_section_from_rpc(params):
-    """Helper for delete_campaign_section RPC method."""
-    campaign_id = params.get('campaign_id')
-    section_id = params.get('section_id')
-    if not campaign_id or not section_id:
-        return {"error": "campaign_id and section_id are required"}, 400
-    return forward_request('DELETE', f'/campaigns/{campaign_id}/sections/{section_id}')
-
-def generate_toc_from_rpc(params):
-    """Helper for generate_toc RPC method."""
-    campaign_id = params.get('campaign_id')
-    if not campaign_id:
-        return {"error": "campaign_id is required"}, 400
-    return forward_request('POST', f'/campaigns/{campaign_id}/toc', json=params)
-
-def generate_titles_from_rpc(params):
-    """Helper for generate_titles RPC method."""
-    campaign_id = params.get('campaign_id')
-    if not campaign_id:
-        return {"error": "campaign_id is required"}, 400
-    return forward_request('POST', f'/campaigns/{campaign_id}/titles', json=params)
 
 
 # --- JSON-RPC Endpoint ---
@@ -367,43 +149,37 @@ def json_rpc_endpoint():
             raise ValueError("Invalid JSON-RPC version")
 
         # Dispatch to the correct function based on the method
-        if method == 'create_campaign':
-            response_data, status_code = create_campaign_from_rpc(params)
-        elif method == 'get_campaign':
-            response_data, status_code = get_campaign_from_rpc(params)
-        elif method == 'update_campaign':
-            response_data, status_code = update_campaign_from_rpc(params)
-        elif method == 'delete_campaign':
-            response_data, status_code = delete_campaign_from_rpc(params)
-        elif method == 'create_character':
-            response_data, status_code = create_character_from_rpc(params)
-        elif method == 'get_character':
-            response_data, status_code = get_character_from_rpc(params)
-        elif method == 'update_character':
-            response_data, status_code = update_character_from_rpc(params)
-        elif method == 'delete_character':
-            response_data, status_code = delete_character_from_rpc(params)
-        elif method == 'link_character_to_campaign':
-            response_data, status_code = link_character_to_campaign_from_rpc(params)
-        elif method == 'unlink_character_from_campaign':
-            response_data, status_code = unlink_character_from_campaign_from_rpc(params)
-        elif method == 'create_campaign_section':
-            response_data, status_code = create_campaign_section_from_rpc(params)
-        elif method == 'list_campaign_sections':
-            response_data, status_code = list_campaign_sections_from_rpc(params)
-        elif method == 'update_campaign_section':
-            response_data, status_code = update_campaign_section_from_rpc(params)
-        elif method == 'delete_campaign_section':
-            response_data, status_code = delete_campaign_section_from_rpc(params)
-        elif method == 'generate_toc':
-            response_data, status_code = generate_toc_from_rpc(params)
-        elif method == 'generate_titles':
-            response_data, status_code = generate_titles_from_rpc(params)
+        if method in [
+            "create_campaign",
+            "get_campaign",
+            "update_campaign",
+            "delete_campaign",
+            "create_character",
+            "get_character",
+            "update_character",
+            "delete_character",
+            "link_character_to_campaign",
+            "unlink_character_from_campaign",
+            "create_campaign_section",
+            "list_campaign_sections",
+            "update_campaign_section",
+            "delete_campaign_section",
+            "generate_toc",
+            "generate_titles",
+        ]:
+            path = f"/{method.replace('_', '/')}"
+            http_method = "POST" if "create" in method or "generate" in method or "link" in method else "GET"
+            if "update" in method:
+                http_method = "PUT"
+            if "delete" in method or "unlink" in method:
+                http_method = "DELETE"
+
+            response_data, status_code = forward_request(http_method, path, json=params)
         else:
             return jsonify({"jsonrpc": "2.0", "error": {"code": -32601, "message": f"Method '{method}' not found"}, "id": request_id})
 
         if status_code >= 400:
-            return jsonify({"jsonrpc": "2.0", "error": {"code": -32602, "message": response_data}, "id": request_id})
+            return jsonify({"jsonrpc": "2.0", "error": {"code": -32602, "message": response_data}, "id": request_id}), status_code
         else:
             return jsonify({"jsonrpc": "2.0", "result": response_data, "id": request_id})
 

@@ -5,9 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from main import get_local_ip
-
-MCP_SERVER_URL = f"http://{get_local_ip()}:{os.environ.get('PORT', 5001)}"
+MCP_SERVER_URL = f"http://localhost:{os.environ.get('PORT', 5001)}"
 
 def print_response(response):
     """Helper function to print response details."""
@@ -41,7 +39,7 @@ def main():
     print("/mcp endpoint test successful.")
 
     # Test JSON-RPC endpoint
-    print("\n3. Testing JSON-RPC endpoint...")
+    print("\n3. Testing JSON-RPC endpoint (unauthenticated)...")
     rpc_request = {
         "jsonrpc": "2.0",
         "method": "get_campaign",
@@ -50,12 +48,13 @@ def main():
     }
     response = requests.post(f"{MCP_SERVER_URL}/mcp/rpc", json=rpc_request)
     print_response(response)
-    # This will fail in the sandbox because the backend is not running,
-    # but it proves the server is forwarding the request.
-    # We expect a 503 error if the backend is not authenticated.
+    # Since we are not providing any authentication, we expect an error.
+    # The `requires_auth` decorator is gone, so the check is in `forward_request`.
+    # `forward_request` will return a 401, which the json_rpc_endpoint will wrap.
     assert response.status_code == 200
     assert response.json()['error']['code'] == -32602
-    print("JSON-RPC endpoint test completed.")
+    assert "Authentication required" in response.json()['error']['message']['error']
+    print("JSON-RPC endpoint unauthenticated test successful.")
 
 
 if __name__ == "__main__":
