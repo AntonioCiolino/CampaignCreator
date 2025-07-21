@@ -299,7 +299,7 @@ public struct LLMGenerationRequestPayload: Encodable {
 
 public final class APIService: ObservableObject, Sendable { // Added ObservableObject conformance
     public let baseURLString = "https://campaigncreator-api.onrender.com/api/v1" // Made public
-    private let tokenManager: TokenManaging
+    public let tokenManager: TokenManaging
     // @Published properties are not strictly necessary for this service if its state doesn't change
     // or if UI doesn't need to react to its internal state changes directly.
     // However, if token changes should refresh UI, tokenManager could be @Published or methods could publish.
@@ -395,9 +395,7 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
             if httpResponse.statusCode == 401 {
                 if isRetry { throw APIError.notAuthenticated }
 
-                guard let accessToken = tokenManager.getAccessToken(),
-                      let username = decode(jwtToken: accessToken)["sub"] as? String,
-                      let refreshToken = tokenManager.getRefreshToken(for: username) else {
+                guard let refreshToken = tokenManager.getRefreshToken() else {
                     throw APIError.notAuthenticated
                 }
 
@@ -412,7 +410,7 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
                 )
 
                 tokenManager.setAccessToken(refreshResponse.accessToken)
-                if let newRefreshToken = refreshResponse.refreshToken {
+                if let newRefreshToken = refreshResponse.refreshToken, let username = tokenManager.getUsername() {
                     tokenManager.setRefreshToken(newRefreshToken, for: username)
                 }
 

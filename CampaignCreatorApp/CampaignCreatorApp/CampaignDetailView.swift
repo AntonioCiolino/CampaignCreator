@@ -144,7 +144,7 @@ struct CampaignDetailView: View {
                     payload: CampaignSectionCreatePayload(title: "New Section", bypass_llm: true)
                 )
                 DispatchQueue.main.async {
-                    let newCampaignSection = CampaignSection(id: newSection.id, campaign_id: newSection.campaign_id, title: newSection.title, content: newSection.content, order: newSection.order, type: newSection.type)
+                    let newCampaignSection = CampaignSection(id: newSection.id, campaign_id: newSection.campaign_id ?? 0, title: newSection.title, content: newSection.content, order: newSection.order, type: newSection.type)
                     campaign.sections?.append(newCampaignSection)
                 }
             } catch {
@@ -174,7 +174,7 @@ struct CampaignDetailView: View {
                 self.campaign.theme_background_image_url = refreshedCampaignData.themeBackgroundImageURL
                 self.campaign.theme_background_image_opacity = refreshedCampaignData.themeBackgroundImageOpacity
                 self.campaign.mood_board_image_urls = refreshedCampaignData.moodBoardImageURLs
-                self.campaign.sections = refreshedCampaignData.sections.map { CampaignSection(id: $0.id, campaign_id: $0.campaign_id, title: $0.title, content: $0.content, order: $0.order, type: $0.type) }
+                self.campaign.sections = refreshedCampaignData.sections.map { CampaignSection(id: $0.id, campaign_id: $0.campaign_id ?? 0, title: $0.title, content: $0.content, order: $0.order, type: $0.type) }
             }
         } catch {
             errorMessage = "Failed to refresh campaign: \(error.localizedDescription)"
