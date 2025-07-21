@@ -72,7 +72,7 @@ def test_dynamic_client_registration():
         'redirect_uri': f"{MCP_SERVER_URL}/callback",
         'state': 'xyz'
     }
-    response = requests.get(f"{MCP_SERVER_URL}/authorize", params=auth_params)
+    response = requests.get(f"{MCP_SERVER_URL.replace('/mcp', '')}/mcp/authorize", params=auth_params)
     assert response.status_code == 200
     print("Successfully got the login form for the new client.")
 
