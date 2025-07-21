@@ -1,6 +1,7 @@
 import SwiftUI
 import Kingfisher
 import SwiftData
+import CampaignCreatorLib
 
 struct CampaignDetailView: View {
     @Bindable var campaign: CampaignModel

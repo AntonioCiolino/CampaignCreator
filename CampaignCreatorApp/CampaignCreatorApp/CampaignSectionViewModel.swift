@@ -8,17 +8,32 @@ class CampaignSectionViewModel: ObservableObject {
     @Published var isEditing = false
     @Published var editedContent: String
     @Published var selectedText: String?
+    @Published var features: [Feature] = []
 
     private var llmService: LLMService
+    private var featureService: FeatureService
 
     // Add a closure to inform the parent view of deletion
     var onDelete: (() -> Void)?
 
-    init(section: CampaignSection, llmService: LLMService, onDelete: (() -> Void)? = nil) {
+    init(section: CampaignSection, llmService: LLMService, featureService: FeatureService, onDelete: (() -> Void)? = nil) {
         self.section = section
         self.editedContent = section.content
         self.llmService = llmService
+        self.featureService = featureService
         self.onDelete = onDelete
+        fetchFeatures()
+    }
+
+    private func fetchFeatures() {
+        Task {
+            do {
+                self.features = try await self.featureService.fetchFeatures().filter { $0.feature_category == "Snippet" }
+            } catch {
+                // Handle error
+                print("Failed to fetch features: \(error)")
+            }
+        }
     }
 
     func save() {

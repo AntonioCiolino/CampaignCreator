@@ -17,11 +17,11 @@ struct CampaignSectionView: View {
 
             if viewModel.isEditing {
                 RichTextEditorView(text: $attributedString, onSnippetEdit: { editType in
-                    if let feature = viewModel.features.first(where: { $0.name == editType }) {
-                        viewModel.snippetEdit(editType: editType, featureId: feature.id)
+                    if let feature = self.viewModel.features.first(where: { $0.name == editType }) {
+                        self.viewModel.snippetEdit(editType: editType, featureId: feature.id)
                     }
                 }, onSelectionChange: { range in
-                    viewModel.selectedText = (attributedString.string as NSString).substring(with: range)
+                    self.viewModel.selectedText = (self.attributedString.string as NSString).substring(with: range)
                 })
                 .onAppear {
                     attributedString = NSAttributedString(string: viewModel.editedContent)
