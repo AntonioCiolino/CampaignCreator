@@ -39,24 +39,6 @@ public struct SeedSectionsEvent: Codable, Sendable {
     public let section_data: CampaignSection?
 }
 
-public struct SectionRegeneratePayload: Codable, Sendable {
-    public var new_prompt: String?
-    public var new_title: String?
-    public var section_type: String?
-    public var model_id_with_prefix: String?
-    public var feature_id: Int?
-    public var context_data: [String: String]?
-
-    public init(new_prompt: String? = nil, new_title: String? = nil, section_type: String? = nil, model_id_with_prefix: String? = nil, feature_id: Int? = nil, context_data: [String: String]? = nil) {
-        self.new_prompt = new_prompt
-        self.new_title = new_title
-        self.section_type = section_type
-        self.model_id_with_prefix = model_id_with_prefix
-        self.feature_id = feature_id
-        self.context_data = context_data
-    }
-}
-
 public struct CampaignSectionCreatePayload: Codable, Sendable {
     public var title: String?
     public var prompt: String?
