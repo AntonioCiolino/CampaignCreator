@@ -1,6 +1,7 @@
 import SwiftUI
 import Kingfisher
 import SwiftData
+import CampaignCreatorLib
 
 struct CampaignDetailView: View {
     @Bindable var campaign: CampaignModel
@@ -42,11 +43,20 @@ struct CampaignDetailView: View {
                     })
 
                     CollapsibleSectionView(title: "Table of Contents") {
-                        TOCView(sections: campaign.sections ?? [], selectedSection: $selectedSection)
+                        TOCView(campaign: campaign, selectedSection: $selectedSection, llmService: llmService)
                     }
 
                     if let selectedSection = selectedSection {
-                        CampaignSectionView(section: selectedSection)
+                        CampaignSectionView(viewModel: CampaignSectionViewModel(section: selectedSection, llmService: llmService, featureService: FeatureService(modelContext: modelContext), onDelete: {
+                            if let index = campaign.sections?.firstIndex(where: { $0.id == selectedSection.id }) {
+                                campaign.sections?.remove(at: index)
+                                self.selectedSection = nil
+                            }
+                        }))
+                    }
+
+                    Button("Add Section") {
+                        addSection()
                     }
 
 
@@ -126,25 +136,46 @@ struct CampaignDetailView: View {
         }
     }
 
+    private func addSection() {
+        Task {
+            do {
+                let newSection = try await llmService.apiService.addCampaignSection(
+                    campaignId: campaign.id,
+                    payload: CampaignSectionCreatePayload(title: "New Section", bypass_llm: true)
+                )
+                DispatchQueue.main.async {
+                    let newCampaignSection = CampaignSection(id: newSection.id, campaign_id: newSection.campaign_id, title: newSection.title, content: newSection.content, order: newSection.order, type: newSection.type)
+                    campaign.sections?.append(newCampaignSection)
+                }
+            } catch {
+                errorMessage = "Failed to add section: \(error.localizedDescription)"
+                showingErrorAlert = true
+            }
+        }
+    }
+
     private func refreshCampaign() async {
         do {
-            let refreshedCampaign = try await llmService.apiService.fetchCampaign(id: campaign.id)
-            campaign.title = refreshedCampaign.title
-            campaign.concept = refreshedCampaign.concept
-            campaign.initial_user_prompt = refreshedCampaign.initialUserPrompt
-            campaign.badge_image_url = refreshedCampaign.badgeImageURL
-            campaign.thematic_image_url = refreshedCampaign.thematicImageURL
-            campaign.thematic_image_prompt = refreshedCampaign.thematicImagePrompt
-            campaign.selected_llm_id = refreshedCampaign.selectedLLMId
-            campaign.temperature = refreshedCampaign.temperature
-            campaign.theme_primary_color = refreshedCampaign.themePrimaryColor
-            campaign.theme_secondary_color = refreshedCampaign.themeSecondaryColor
-            campaign.theme_background_color = refreshedCampaign.themeBackgroundColor
-            campaign.theme_text_color = refreshedCampaign.themeTextColor
-            campaign.theme_font_family = refreshedCampaign.themeFontFamily
-            campaign.theme_background_image_url = refreshedCampaign.themeBackgroundImageURL
-            campaign.theme_background_image_opacity = refreshedCampaign.themeBackgroundImageOpacity
-            campaign.mood_board_image_urls = refreshedCampaign.moodBoardImageURLs
+            let refreshedCampaignData = try await llmService.apiService.fetchCampaign(id: campaign.id)
+            DispatchQueue.main.async {
+                self.campaign.title = refreshedCampaignData.title
+                self.campaign.concept = refreshedCampaignData.concept
+                self.campaign.initial_user_prompt = refreshedCampaignData.initialUserPrompt
+                self.campaign.badge_image_url = refreshedCampaignData.badgeImageURL
+                self.campaign.thematic_image_url = refreshedCampaignData.thematicImageURL
+                self.campaign.thematic_image_prompt = refreshedCampaignData.thematicImagePrompt
+                self.campaign.selected_llm_id = refreshedCampaignData.selectedLLMId
+                self.campaign.temperature = refreshedCampaignData.temperature
+                self.campaign.theme_primary_color = refreshedCampaignData.themePrimaryColor
+                self.campaign.theme_secondary_color = refreshedCampaignData.themeSecondaryColor
+                self.campaign.theme_background_color = refreshedCampaignData.themeBackgroundColor
+                self.campaign.theme_text_color = refreshedCampaignData.themeTextColor
+                self.campaign.theme_font_family = refreshedCampaignData.themeFontFamily
+                self.campaign.theme_background_image_url = refreshedCampaignData.themeBackgroundImageURL
+                self.campaign.theme_background_image_opacity = refreshedCampaignData.themeBackgroundImageOpacity
+                self.campaign.mood_board_image_urls = refreshedCampaignData.moodBoardImageURLs
+                self.campaign.sections = refreshedCampaignData.sections.map { CampaignSection(id: $0.id, campaign_id: $0.campaign_id, title: $0.title, content: $0.content, order: $0.order, type: $0.type) }
+            }
         } catch {
             errorMessage = "Failed to refresh campaign: \(error.localizedDescription)"
             showingErrorAlert = true

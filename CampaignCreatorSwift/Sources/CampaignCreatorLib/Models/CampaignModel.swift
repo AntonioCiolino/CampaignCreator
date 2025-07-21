@@ -30,6 +30,43 @@ public struct TOCEntry: Identifiable, Codable, Sendable {
     }
 }
 
+public struct SeedSectionsEvent: Codable, Sendable {
+    public let event_type: String
+    public let message: String?
+    public let progress_percent: Double?
+    public let current_section_title: String?
+    public let total_sections_processed: Int?
+    public let section_data: CampaignSection?
+}
+
+public struct CampaignSectionCreatePayload: Codable, Sendable {
+    public var title: String?
+    public var prompt: String?
+    public var model_id_with_prefix: String?
+    public var bypass_llm: Bool?
+
+    public init(title: String? = nil, prompt: String? = nil, model_id_with_prefix: String? = nil, bypass_llm: Bool? = nil) {
+        self.title = title
+        self.prompt = prompt
+        self.model_id_with_prefix = model_id_with_prefix
+        self.bypass_llm = bypass_llm
+    }
+}
+
+public struct CampaignSectionUpdatePayload: Codable, Sendable {
+    public var title: String?
+    public var content: String?
+    public var order: Int?
+    public var type: String?
+
+    public init(title: String? = nil, content: String? = nil, order: Int? = nil, type: String? = nil) {
+        self.title = title
+        self.content = content
+        self.order = order
+        self.type = type
+    }
+}
+
 // New struct for campaign custom sections
 public struct CampaignCustomSection: Identifiable, Codable, Sendable, Hashable { // Added Hashable
     public var id: Int // CHANGED from UUID to Int

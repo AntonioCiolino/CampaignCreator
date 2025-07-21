@@ -271,11 +271,17 @@ public struct RefreshTokenRequestDTO: Codable, Sendable {
     let refreshToken: String
 }
 
+public struct LLMGenerationPayload: Codable, Sendable {
+    public var prompt: String
+    public var model_id_with_prefix: String?
 
+    public init(prompt: String, model_id_with_prefix: String? = nil) {
+        self.prompt = prompt
+        self.model_id_with_prefix = model_id_with_prefix
+    }
+}
 
-
-// Payload for LLM Generation Request
-struct LLMGenerationRequestPayload: Encodable {
+public struct LLMGenerationRequestPayload: Encodable {
     let prompt: String
     let chatHistory: [ChatMessageData]?
     let modelIdWithPrefix: String?
@@ -575,6 +581,36 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
     public func deleteCampaign(id: Int) async throws { // Changed id from UUID to Int
         try await performVoidRequest(endpoint: "/campaigns/\(id)", method: "DELETE") // Changed id.uuidString to id
     }
+
+    public func deleteCampaignSection(campaignId: Int, sectionId: Int) async throws {
+        try await performVoidRequest(endpoint: "/campaigns/\(campaignId)/sections/\(sectionId)", method: "DELETE")
+    }
+
+    public func generateCampaignTOC(campaignId: Int, payload: LLMGenerationPayload) async throws -> Campaign {
+        let body = try jsonEncoder.encode(payload)
+        return try await performRequest(endpoint: "/campaigns/\(campaignId)/toc", method: "POST", body: body)
+    }
+
+    public func seedSectionsFromTocURL(campaignId: Int, autoPopulate: Bool) -> URL? {
+        let endpointPath = "/campaigns/\(campaignId)/seed_sections_from_toc?auto_populate=\(autoPopulate)"
+        return URL(string: baseURLString + endpointPath)
+    }
+
+    public func regenerateCampaignSection(campaignId: Int, sectionId: Int, payload: SectionRegeneratePayload) async throws -> CampaignSection {
+        let body = try jsonEncoder.encode(payload)
+        return try await performRequest(endpoint: "/campaigns/\(campaignId)/sections/\(sectionId)/regenerate", method: "POST", body: body)
+    }
+
+    public func addCampaignSection(campaignId: Int, payload: CampaignSectionCreatePayload) async throws -> CampaignSection {
+        let body = try jsonEncoder.encode(payload)
+        return try await performRequest(endpoint: "/campaigns/\(campaignId)/sections", method: "POST", body: body)
+    }
+
+    public func updateCampaignSection(campaignId: Int, sectionId: Int, data: CampaignSectionUpdatePayload) async throws -> CampaignSection {
+        let body = try jsonEncoder.encode(data)
+        return try await performRequest(endpoint: "/campaigns/\(campaignId)/sections/\(sectionId)", method: "PUT", body: body)
+    }
+
 
     // MARK: - Character Methods
     public func fetchCharacters() async throws -> [Character] {
