@@ -16,14 +16,13 @@ mcp = FastMCP("Campaign Crafter")
 @mcp.tool
 async def login(token: str, ctx: Context) -> str:
     """
-    Logs in a user and stores the token in the session.
+    Logs in a user and returns the token.
     """
     headers = {"Authorization": f"Bearer {token}"}
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{API_BASE_URL}/api/v1/users/me", headers=headers)
         if response.status_code == 200:
-            ctx.session["token"] = token
-            return "Login successful."
+            return token
         else:
             raise Exception("Invalid token")
 
