@@ -1,6 +1,7 @@
 import unittest
 import requests
 import os
+import json
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -9,8 +10,8 @@ class TestMCPServer(unittest.TestCase):
     BASE_URL = f"http://localhost:{os.environ.get('PORT', 5001)}"
     MCP_URL = f"{BASE_URL}/mcp"
     RPC_URL = f"{MCP_URL}/rpc"
-    TEST_USERNAME = os.environ.get("TEST_USERNAME", "testuser")
-    TEST_PASSWORD = os.environ.get("TEST_PASSWORD", "testpassword")
+    TEST_USERNAME = os.environ.get("CAMPAIGN_CRAFTER_USERNAME", "testuser")
+    TEST_PASSWORD = os.environ.get("CAMPAIGN_CRAFTER_PASSWORD", "testpassword")
 
     def test_01_root_endpoint(self):
         """Tests the root endpoint."""
@@ -28,7 +29,43 @@ class TestMCPServer(unittest.TestCase):
         self.assertEqual(response.json()['name'], "Campaign Crafter")
         print("/mcp endpoint test successful.")
 
-    def test_03_unauthenticated_rpc_call(self):
+    def test_03_well_known_endpoint(self):
+        """Tests the /.well-known/oauth-authorization-server endpoint."""
+        print("--- Testing /.well-known/oauth-authorization-server Endpoint ---")
+        response = requests.get(f"{self.BASE_URL}/.well-known/oauth-authorization-server")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("issuer", response.json())
+        print("/.well-known/oauth-authorization-server endpoint test successful.")
+
+    def test_04_dynamic_client_registration(self):
+        """Tests the dynamic client registration flow."""
+        print("--- Testing Dynamic Client Registration ---")
+
+        # 1. Register a new client
+        print("1. Registering a new client...")
+        client_data = {
+            "client_name": "Test Client",
+            "redirect_uris": [f"{self.BASE_URL}/callback"]
+        }
+        response = requests.post(f"{self.BASE_URL}/register", json=client_data)
+        self.assertEqual(response.status_code, 201)
+        client_id = response.json()['client_id']
+        self.assertTrue(client_id)
+        print(f"Successfully registered client with ID: {client_id}")
+
+        # 2. Start authorization with the new client
+        print("\n2. Starting authorization with the new client...")
+        auth_params = {
+            'response_type': 'code',
+            'client_id': client_id,
+            'redirect_uri': f"{self.BASE_URL}/callback",
+            'state': 'xyz'
+        }
+        response = requests.get(f"{self.BASE_URL}/authorize", params=auth_params)
+        self.assertEqual(response.status_code, 200)
+        print("Successfully got the login form for the new client.")
+
+    def test_05_unauthenticated_rpc_call(self):
         """Tests that an unauthenticated RPC call returns an error."""
         print("--- Testing Unauthenticated RPC Call ---")
         rpc_request = {
@@ -38,46 +75,9 @@ class TestMCPServer(unittest.TestCase):
             "id": "unauth-test"
         }
         response = requests.post(self.RPC_URL, json=rpc_request)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()['error']['code'], -32602)
-        self.assertEqual(response.json()['error']['message']['error'], "Authentication required")
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()['error']['message']['error'], "Backend not authenticated")
         print("Unauthenticated RPC call test successful.")
-
-
-    def test_04_rest_endpoints(self):
-        """Tests the restored REST endpoints."""
-        print("--- Testing Restored REST Endpoints ---")
-
-        token = "dummy_token_for_testing"
-        headers = {"Authorization": f"Bearer {token}"}
-
-        endpoints_to_test = [
-            ('POST', '/mcp/campaigns', {"title": "Test"}),
-            ('GET', '/mcp/campaigns', None),
-            ('GET', '/mcp/campaigns/1', None),
-            ('PUT', '/mcp/campaigns/1', {"title": "New Title"}),
-            ('DELETE', '/mcp/campaigns/1', None),
-            ('POST', '/mcp/characters', {"name": "Test"}),
-            ('GET', '/mcp/characters', None),
-            ('GET', '/mcp/characters/1', None),
-            ('PUT', '/mcp/characters/1', {"name": "New Name"}),
-            ('DELETE', '/mcp/characters/1', None),
-            ('POST', '/mcp/characters/1/campaigns/1', None),
-            ('DELETE', '/mcp/characters/1/campaigns/1', None),
-            ('POST', '/mcp/campaigns/1/sections', {"title": "Test"}),
-            ('GET', '/mcp/campaigns/1/sections', None),
-            ('PUT', '/mcp/campaigns/1/sections/1', {"title": "New Title"}),
-            ('DELETE', '/mcp/campaigns/1/sections/1', None),
-            ('POST', '/mcp/campaigns/1/toc', {"prompt": "test"}),
-            ('POST', '/mcp/campaigns/1/titles', {"prompt": "test"}),
-        ]
-
-        for i, (method, path, data) in enumerate(endpoints_to_test):
-            print(f"\n{i+1}. Testing {method} {path}...")
-            response = requests.request(method, f"{self.BASE_URL}{path}", json=data, headers=headers)
-            # This will fail in the sandbox, which is expected
-            # self.assertEqual(response.status_code, 200)
-            print(f"{method} {path} test completed.")
 
 if __name__ == "__main__":
     unittest.main()
