@@ -42,16 +42,15 @@ async def main():
 
     async with Client("http://127.0.0.1:4000/mcp/") as client:
         # Login to the server
-        login_result = await client.call_tool("login", {"token": token})
-        token = login_result.text
+        token = await client.call_tool("login", {"token": token})
         print("Successfully logged in.")
 
         # List the available tools
-        tools = await client.call_tool("list_tools", token=token)
+        tools = await client.call_tool("list_tools", {"token": token})
         print("Available tools:", tools.json())
 
         # List the campaigns
-        campaigns = await client.call_tool("list_campaigns", token=token)
+        campaigns = await client.call_tool("list_campaigns", {"token": token})
         print("Campaigns:", campaigns.json())
 
         # Create a new campaign
@@ -59,7 +58,7 @@ async def main():
             "title": "My Awesome Campaign",
             "concept": "A campaign about a group of heroes saving the world."
         }
-        created_campaign = await client.call_tool("create_campaign", {"campaign": new_campaign}, token=token)
+        created_campaign = await client.call_tool("create_campaign", {"campaign": new_campaign, "token": token})
         print("Created campaign:", created_campaign.json())
 
 if __name__ == "__main__":
