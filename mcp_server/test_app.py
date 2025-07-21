@@ -55,9 +55,9 @@ def test_dynamic_client_registration():
     print("1. Registering a new client...")
     client_data = {
         "client_name": "Test Client",
-        "redirect_uris": [f"{MCP_SERVER_URL}/callback"]
+        "redirect_uris": [f"{MCP_SERVER_URL.replace('/mcp', '')}/callback"]
     }
-    response = requests.post(f"{MCP_SERVER_URL}/register", json=client_data)
+    response = requests.post(f"{MCP_SERVER_URL.replace('/mcp', '')}/register", json=client_data)
     print_response(response)
     assert response.status_code == 201
     client_id = response.json()['client_id']
@@ -69,10 +69,10 @@ def test_dynamic_client_registration():
     auth_params = {
         'response_type': 'code',
         'client_id': client_id,
-        'redirect_uri': f"{MCP_SERVER_URL}/callback",
+        'redirect_uri': f"{MCP_SERVER_URL.replace('/mcp', '')}/callback",
         'state': 'xyz'
     }
-    response = requests.get(f"{MCP_SERVER_URL.replace('/mcp', '')}/mcp/authorize", params=auth_params)
+    response = requests.get(f"{MCP_SERVER_URL.replace('/mcp', '')}/authorize", params=auth_params)
     assert response.status_code == 200
     print("Successfully got the login form for the new client.")
 
@@ -146,8 +146,19 @@ def test_mcp_endpoint():
     assert response.json()['name'] == "Campaign Crafter"
     print("/mcp endpoint test successful.")
 
+def test_root_endpoint():
+    """Tests the root endpoint."""
+    print("--- Testing Root Endpoint ---")
+    response = requests.get(f"http://localhost:{os.environ.get('PORT', 5001)}/")
+    print_response(response)
+    assert response.status_code == 200
+    assert response.json()['name'] == "campaign_crafter"
+    assert "endpoints" not in response.json()
+    print("Root endpoint test successful.")
+
 def main():
     """Main function to run the test application."""
+    test_root_endpoint()
     test_mcp_endpoint()
     test_dynamic_client_registration()
     # test_password_grant()

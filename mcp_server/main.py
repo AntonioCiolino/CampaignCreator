@@ -21,10 +21,11 @@ def oauth_discovery():
     base_url = f"http://127.0.0.1:{os.environ.get('PORT', 5001)}"
     return jsonify({
         "issuer": base_url,
-        "authorization_endpoint": f"{base_url}/mcp/authorize",
-        "token_endpoint": f"{base_url}/mcp/token",
+        "authorization_endpoint": f"{base_url}/authorize",
+        "token_endpoint": f"{base_url}/token",
+        "registration_endpoint": f"{base_url}/register",
         "response_types_supported": ["code"],
-        "grant_types_supported": ["authorization_code"],
+        "grant_types_supported": ["authorization_code", "password"],
         "token_endpoint_auth_methods_supported": ["none", "client_secret_post"]
     })
 
@@ -38,16 +39,10 @@ def log_request():
 @app.route('/', methods=['GET'])
 def root():
     """Root endpoint that provides MCP server info"""
-    base_url = f"http://127.0.0.1:{os.environ.get('PORT', 5001)}"
     return jsonify({
         "name": "campaign_crafter",
         "version": "1.0.0",
         "protocol": "mcp",
-        "endpoints": {
-            "mcp": f"{base_url}/mcp",
-            "oauth_authorize": f"{base_url}/mcp/authorize",
-            "oauth_token": f"{base_url}/mcp/token"
-        }
     })
 
 
@@ -86,7 +81,7 @@ clients = {}
 
 # --- OAuth 2.0 Endpoints ---
 
-@app.route('/mcp/register', methods=['POST'])
+@app.route('/register', methods=['POST'])
 def register_client():
     """
     Dynamically registers a new client.
@@ -111,7 +106,7 @@ def register_client():
         "token_endpoint_auth_method": "none"
     }), 201
 
-@app.route('/mcp/callback', methods=['GET'])
+@app.route('/callback', methods=['GET'])
 def callback():
     """
     The client's redirect URI. Handles the auth code from the authorize endpoint.
@@ -125,7 +120,7 @@ def callback():
     return f"Received authorization code: {code}. Now, exchange this for a token at /mcp/token.", 200
 
 
-@app.route('/mcp/authorize', methods=['GET', 'POST'])
+@app.route('/authorize', methods=['GET', 'POST'])
 def authorize():
     if request.method == 'GET':
         client_id = request.args.get('client_id', '')
@@ -221,7 +216,7 @@ def authorize():
 
 
 # --- Authentication Endpoint ---
-@app.route('/mcp/token', methods=['POST'])
+@app.route('/token', methods=['POST'])
 def token():
     """
     Handles token requests for both password and authorization_code grant types.
