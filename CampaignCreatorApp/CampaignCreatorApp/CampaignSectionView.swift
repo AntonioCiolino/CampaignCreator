@@ -22,7 +22,7 @@ struct CampaignSectionView: View {
                     }
                 }, onSelectionChange: { range in
                     self.viewModel.selectedText = (self.attributedString.string as NSString).substring(with: range)
-                })
+                }, featureService: FeatureService(modelContext: modelContext))
                 .onAppear {
                     attributedString = NSAttributedString(string: viewModel.editedContent)
                 }

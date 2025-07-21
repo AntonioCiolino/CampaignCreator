@@ -47,7 +47,7 @@ struct CampaignDetailView: View {
                     }
 
                     if let selectedSection = selectedSection {
-                        CampaignSectionView(viewModel: CampaignSectionViewModel(section: selectedSection, llmService: llmService, onDelete: {
+                        CampaignSectionView(viewModel: CampaignSectionViewModel(section: selectedSection, llmService: llmService, featureService: FeatureService(modelContext: modelContext), onDelete: {
                             if let index = campaign.sections?.firstIndex(where: { $0.id == selectedSection.id }) {
                                 campaign.sections?.remove(at: index)
                                 self.selectedSection = nil
