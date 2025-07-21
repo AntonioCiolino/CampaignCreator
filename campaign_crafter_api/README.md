@@ -230,6 +230,22 @@ This project uses `pytest` for running automated tests.
     ```
     Pytest will automatically discover and run tests from files named `test_*.py` or `*_test.py` in the current directory and its subdirectories. Test functions should be prefixed with `test_`.
 
+### Running the MCP Server
+
+This project includes a JSON-RPC server that acts as a passthrough to the main FastAPI application, conforming to the Model-Context-Protocol (MCP) specification. This allows clients like Claude Desktop to interact with the API.
+
+1.  **Ensure Dependencies are Installed:**
+    The MCP server requires `fastmcp`. Make sure it is in the `mcp_server/requirements.txt` and installed in your virtual environment.
+
+2.  **Run the MCP Server:**
+    From the root of the project directory, run the following command:
+    ```bash
+    python -m mcp_server.main_rpc
+    ```
+    By default, the server will start on `http://127.0.0.1:4000`.
+
+    The MCP server will proxy requests to the FastAPI application, which should also be running. The `API_BASE_URL` environment variable in `main_rpc.py` controls the address of the FastAPI server (defaulting to `http://127.0.0.1:8000`).
+
 ### Writing Tests
 
 *   Create test files in a `tests/` subdirectory (e.g., `tests/test_documents.py`) or alongside your app code if preferred (e.g., `test_main.py`).

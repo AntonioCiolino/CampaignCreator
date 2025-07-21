@@ -1,0 +1,6 @@
+requests>=2.20
+python-dotenv>=0.19
+fastmcp
+httpx
+uvicorn
+python-dotenv
