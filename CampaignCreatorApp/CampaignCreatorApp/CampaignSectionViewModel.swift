@@ -8,44 +8,32 @@ class CampaignSectionViewModel: ObservableObject {
     @Published var isEditing = false
     @Published var editedContent: String
     @Published var selectedText: String?
-    @Published var features: [Feature] = []
 
     private var llmService: LLMService
-    private let featureService: FeatureService
 
     // Add a closure to inform the parent view of deletion
     var onDelete: (() -> Void)?
 
-    init(section: CampaignSection, llmService: LLMService, featureService: FeatureService, onDelete: (() -> Void)? = nil) {
+    init(section: CampaignSection, llmService: LLMService, onDelete: (() -> Void)? = nil) {
         self.section = section
         self.editedContent = section.content
         self.llmService = llmService
-        self.featureService = featureService
         self.onDelete = onDelete
-        fetchFeatures()
-    }
-
-    private func fetchFeatures() {
-        Task {
-            do {
-                self.features = try await self.featureService.fetchFeatures().filter { $0.feature_category == "Snippet" }
-            } catch {
-                // Handle error
-                print("Failed to fetch features: \(error)")
-            }
-        }
     }
 
     func save() {
         Task {
             do {
-                let updatedSection = try await llmService.apiService.updateCampaignSection(
+                let updatedSectionData = try await llmService.apiService.updateCampaignSection(
                     campaignId: section.campaign_id,
                     sectionId: section.id,
                     data: CampaignSectionUpdatePayload(content: editedContent)
                 )
                 DispatchQueue.main.async {
-                    self.section = updatedSection
+                    self.section.title = updatedSectionData.title
+                    self.section.content = updatedSectionData.content
+                    self.section.order = updatedSectionData.order
+                    self.section.type = updatedSectionData.type
                     self.isEditing = false
                 }
             } catch {
@@ -63,14 +51,17 @@ class CampaignSectionViewModel: ObservableObject {
     func regenerate() {
         Task {
             do {
-                let updatedSection = try await llmService.apiService.regenerateCampaignSection(
+                let updatedSectionData = try await llmService.apiService.regenerateCampaignSection(
                     campaignId: section.campaign_id,
                     sectionId: section.id,
                     payload: SectionRegeneratePayload(newPrompt: "Regenerate this section.")
                 )
                 DispatchQueue.main.async {
-                    self.section = updatedSection
-                    self.editedContent = updatedSection.content
+                    self.section.title = updatedSectionData.title
+                    self.section.content = updatedSectionData.content
+                    self.section.order = updatedSectionData.order
+                    self.section.type = updatedSectionData.type
+                    self.editedContent = updatedSectionData.content
                 }
             } catch {
                 // Handle error
@@ -101,7 +92,7 @@ class CampaignSectionViewModel: ObservableObject {
 
         Task {
             do {
-                let updatedSection = try await llmService.apiService.regenerateCampaignSection(
+                let updatedSectionData = try await llmService.apiService.regenerateCampaignSection(
                     campaignId: section.campaign_id,
                     sectionId: section.id,
                     payload: SectionRegeneratePayload(
@@ -111,7 +102,7 @@ class CampaignSectionViewModel: ObservableObject {
                 )
                 DispatchQueue.main.async {
                     if let range = self.editedContent.range(of: selectedText) {
-                        self.editedContent.replaceSubrange(range, with: updatedSection.content)
+                        self.editedContent.replaceSubrange(range, with: updatedSectionData.content)
                     }
                 }
             } catch {
