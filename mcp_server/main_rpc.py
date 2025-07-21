@@ -1,6 +1,6 @@
 import os
 import httpx
-from fastmcp import FastMCP, Tool, MCPContext
+from fastmcp import FastMCP, Tool
 from pydantic import BaseModel, Field
 
 # --- Configuration ---
@@ -30,11 +30,11 @@ async def authorize(token: str) -> State:
             raise Exception("Invalid token")
 
 @app.tool()
-async def list_campaigns(context: MCPContext[State]) -> list:
+async def list_campaigns(context: State) -> list:
     """
     Lists all campaigns for the authenticated user.
     """
-    headers = {"Authorization": f"Bearer {context.state.token}"}
+    headers = {"Authorization": f"Bearer {context.token}"}
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{API_BASE_URL}/api/v1/campaigns", headers=headers)
         response.raise_for_status()
@@ -45,11 +45,11 @@ class Campaign(BaseModel):
     concept: str
 
 @app.tool()
-async def create_campaign(campaign: Campaign, context: MCPContext[State]) -> dict:
+async def create_campaign(campaign: Campaign, context: State) -> dict:
     """
     Creates a new campaign.
     """
-    headers = {"Authorization": f"Bearer {context.state.token}"}
+    headers = {"Authorization": f"Bearer {context.token}"}
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"{API_BASE_URL}/api/v1/campaigns",
