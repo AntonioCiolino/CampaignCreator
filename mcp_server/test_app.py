@@ -160,6 +160,23 @@ def main():
     }
     response = requests.post(f"{MCP_SERVER_URL}/campaigns/{campaign_id}/titles", json=titles_data, headers=headers)
     print_response(response)
+    titles = response.json().get("titles", [])
+
+    if not titles:
+        print("Failed to generate titles. Skipping title update.")
+    else:
+        # --- Pick a random title and update the campaign ---
+        import random
+        import re
+
+        random_title = random.choice(titles)
+        # Remove any leading numbers and special characters
+        cleaned_title = re.sub(r"^\d+\.\s*", "", random_title)
+
+        print(f"Updating campaign title to: {cleaned_title}")
+        update_data = {"title": cleaned_title}
+        response = requests.put(f"{MCP_SERVER_URL}/campaigns/{campaign_id}", json=update_data, headers=headers)
+        print_response(response)
 
 
 if __name__ == "__main__":
