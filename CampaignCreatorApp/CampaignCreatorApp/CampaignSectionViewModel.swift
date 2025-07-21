@@ -37,12 +37,12 @@ class CampaignSectionViewModel: ObservableObject {
     }
 
     func save() {
+        guard let campaignId = section.campaign_id else {
+            print("Campaign ID is nil, cannot save.")
+            return
+        }
         Task {
             do {
-                guard let campaignId = section.campaign_id else {
-                    print("Campaign ID is nil, cannot save.")
-                    return
-                }
                 let updatedSectionData = try await llmService.apiService.updateCampaignSection(
                     campaignId: campaignId,
                     sectionId: section.id,
@@ -68,12 +68,12 @@ class CampaignSectionViewModel: ObservableObject {
     }
 
     func regenerate() {
+        guard let campaignId = section.campaign_id else {
+            print("Campaign ID is nil, cannot regenerate.")
+            return
+        }
         Task {
             do {
-                guard let campaignId = section.campaign_id else {
-                    print("Campaign ID is nil, cannot regenerate.")
-                    return
-                }
                 let updatedSectionData = try await llmService.apiService.regenerateCampaignSection(
                     campaignId: campaignId,
                     sectionId: section.id,
@@ -94,12 +94,12 @@ class CampaignSectionViewModel: ObservableObject {
     }
 
     func delete() {
+        guard let campaignId = section.campaign_id else {
+            print("Campaign ID is nil, cannot delete.")
+            return
+        }
         Task {
             do {
-                guard let campaignId = section.campaign_id else {
-                    print("Campaign ID is nil, cannot delete.")
-                    return
-                }
                 try await llmService.apiService.deleteCampaignSection(
                     campaignId: campaignId,
                     sectionId: section.id
@@ -115,12 +115,12 @@ class CampaignSectionViewModel: ObservableObject {
     }
 
     func snippetEdit(editType: String, featureId: Int) {
+        guard let selectedText = selectedText, let campaignId = section.campaign_id else {
+            print("Selected text or campaign ID is nil, cannot perform snippet edit.")
+            return
+        }
         Task {
             do {
-                guard let selectedText = selectedText, let campaignId = section.campaign_id else {
-                    print("Selected text or campaign ID is nil, cannot perform snippet edit.")
-                    return
-                }
                 let updatedSectionData = try await llmService.apiService.regenerateCampaignSection(
                     campaignId: campaignId,
                     sectionId: section.id,
