@@ -235,12 +235,12 @@ This project uses `pytest` for running automated tests.
 This project includes a JSON-RPC server that acts as a passthrough to the main FastAPI application, conforming to the Model-Context-Protocol (MCP) specification. This allows clients like Claude Desktop to interact with the API.
 
 1.  **Ensure Dependencies are Installed:**
-    The MCP server requires `fastmcp`. Make sure it is in your `requirements.txt` and installed in your virtual environment.
+    The MCP server requires `fastmcp`. Make sure it is in the `mcp_server/requirements.txt` and installed in your virtual environment.
 
 2.  **Run the MCP Server:**
-    From the `campaign_crafter_api` directory, run the following command:
+    From the root of the project directory, run the following command:
     ```bash
-    python -m app.main_rpc
+    python -m mcp_server.main_rpc
     ```
     By default, the server will start on `http://127.0.0.1:4000`.
 
