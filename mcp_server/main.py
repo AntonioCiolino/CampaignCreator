@@ -79,8 +79,12 @@ def requires_auth(f):
     def decorated_function(*args, **kwargs):
         auth_header = request.headers.get('Authorization')
         api_key = request.headers.get('X-API-Key')
-        if not auth_header and not api_key:
-            return jsonify({"error": "Authorization header or X-API-Key header is missing"}), 401
+        token_param = request.args.get('token')
+        basic_auth = request.authorization
+
+        if not auth_header and not api_key and not token_param and not basic_auth:
+            return jsonify({"error": "Authentication required"}), 401
+
         # In a real scenario, you'd also validate the token here.
         # For this server, we're just forwarding it.
         return f(*args, **kwargs)
@@ -89,21 +93,35 @@ def requires_auth(f):
 def forward_request(method, path, **kwargs):
     """
     Forwards a request to the main Campaign Crafter API.
-    Requires a valid JWT in the 'Authorization' header or an API key in 'X-API-Key'.
+    Extracts token from various sources.
     """
+    token = None
     auth_header = request.headers.get('Authorization')
     api_key = request.headers.get('X-API-Key')
+    token_param = request.args.get('token')
+    basic_auth = request.authorization
 
-    token = None
     if auth_header:
+        # Standard Bearer token
         token = auth_header
     elif api_key:
+        # Custom API Key header
         token = f"Bearer {get_token_from_api_key(api_key)}"
+    elif token_param:
+        # Token in query parameter
+        token = f"Bearer {token_param}"
+    elif basic_auth:
+        # Basic Auth: username is the token
+        token = f"Bearer {basic_auth.username}"
 
     if not token:
-        return jsonify({"error": "Authorization header or X-API-Key header is missing"}), 401
+        return jsonify({"error": "Authentication required"}), 401
 
     url = f"{CAMPAIGN_CRAFTER_API_URL}{path}"
+    # Remove 'token' from args if it exists, to avoid sending it to the backend
+    forward_args = request.args.copy()
+    forward_args.pop('token', None)
+
     headers = {
         'Authorization': token,
         'Content-Type': 'application/json',
@@ -252,9 +270,28 @@ def list_mcp_endpoints():
                 "client_name": "Campaign Crafter MCP Client",
                 "base_url": base_url,
                 "auth": {
-                    "method": "token_or_api_key",
+                    "method": "multi",
                     "token_url": f"{base_url}/mcp/token",
-                    "api_key_header": "X-API-Key",
+                    "auth_modes": [
+                        {
+                            "mode": "bearer",
+                            "help": "Standard JWT Bearer token in 'Authorization' header."
+                        },
+                        {
+                            "mode": "api_key_header",
+                            "header": "X-API-Key",
+                            "help": "JWT token passed in a custom header."
+                        },
+                        {
+                            "mode": "query_param",
+                            "param": "token",
+                            "help": "JWT token passed as a URL query parameter."
+                        },
+                        {
+                            "mode": "basic_auth",
+                            "help": "JWT token passed as the username in Basic Auth."
+                        }
+                    ],
                     "username_field": "username",
                     "password_field": "password"
                 },

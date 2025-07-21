@@ -42,38 +42,43 @@ def main():
 
     print(f"Successfully authenticated and got token: {token}")
 
-    # --- Use the token to access a protected endpoint ---
+    # --- Test Bearer token ---
     headers = {"Authorization": f"Bearer {token}"}
-    print("\nAttempting to list campaigns with the token...")
+    print("\n1. Testing Bearer token...")
     response = requests.get(f"{MCP_SERVER_URL}/campaigns", headers=headers)
     print_response(response)
+    assert response.status_code == 200, "Bearer token auth failed"
+    print("Bearer token auth successful.")
 
-    if response.status_code == 200:
-        print("Successfully accessed protected endpoint with token.")
-    else:
-        print("Failed to access protected endpoint with token.")
+    # --- Test query parameter ---
+    print("\n2. Testing query parameter...")
+    response = requests.get(f"{MCP_SERVER_URL}/campaigns?token={token}")
+    print_response(response)
+    assert response.status_code == 200, "Query parameter auth failed"
+    print("Query parameter auth successful.")
 
-    # --- Use an API key to access a protected endpoint ---
-    # For this test, we'll use the token as the API key
+    # --- Test Basic Auth ---
+    print("\n3. Testing Basic Auth...")
+    # The username is the token, password can be anything
+    response = requests.get(f"{MCP_SERVER_URL}/campaigns", auth=(token, ''))
+    print_response(response)
+    assert response.status_code == 200, "Basic Auth failed"
+    print("Basic Auth successful.")
+
+    # --- Test custom API key header ---
     api_key_headers = {"X-API-Key": token}
-    print("\nAttempting to list campaigns with an API key...")
+    print("\n4. Testing custom API key header...")
     response = requests.get(f"{MCP_SERVER_URL}/campaigns", headers=api_key_headers)
     print_response(response)
+    assert response.status_code == 200, "API key header auth failed"
+    print("API key header auth successful.")
 
-    if response.status_code == 200:
-        print("Successfully accessed protected endpoint with API key.")
-    else:
-        print("Failed to access protected endpoint with API key.")
-
-
-    # --- Demonstrate what happens without a token ---
-    print("\nAttempting to list campaigns without a token...")
+    # --- Test no auth ---
+    print("\n5. Testing no auth...")
     response = requests.get(f"{MCP_SERVER_URL}/campaigns")
     print_response(response)
-    if response.status_code == 401:
-        print("Correctly received 401 Unauthorized without a token.")
-    else:
-        print(f"Incorrect status code received without a token: {response.status_code}")
+    assert response.status_code == 401, "No auth test failed"
+    print("No auth test successful.")
 
 
 if __name__ == "__main__":
