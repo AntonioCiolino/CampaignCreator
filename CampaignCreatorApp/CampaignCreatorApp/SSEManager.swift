@@ -1,4 +1,5 @@
 import Foundation
+import CampaignCreatorLib
 
 class SSEManager: NSObject, URLSessionDataDelegate {
     private var urlSession: URLSession!
@@ -18,11 +19,12 @@ class SSEManager: NSObject, URLSessionDataDelegate {
 
     func connect(to url: URL) {
         var request = URLRequest(url: url)
-        request.httpMethod = "POST"
+        request.httpMethod = "GET"
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        if let token = UserDefaults.standard.string(forKey: "authToken") {
+        // Retrieve the token from the APIService's tokenManager
+        let tokenManager = CampaignCreatorLib.TokenManager()
+        if let token = tokenManager.getAccessToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
