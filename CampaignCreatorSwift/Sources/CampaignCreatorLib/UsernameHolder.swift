@@ -1,13 +1,15 @@
 import Foundation
 
-actor UsernameHolder {
+public actor UsernameHolder {
     private var username: String?
 
-    func set(_ username: String?) {
+    public func set(_ username: String?) {
         self.username = username
     }
 
-    func get() -> String? {
+    public func get() -> String? {
         return username
     }
+
+    public init() {}
 }

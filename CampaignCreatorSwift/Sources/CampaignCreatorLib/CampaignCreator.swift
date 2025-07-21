@@ -36,7 +36,7 @@ public class CampaignCreator: ObservableObjectProtocol {
     public init() {
         self.markdownGenerator = MarkdownGenerator()
         self.apiService = APIService(usernameProvider: {
-            Task { await self.usernameHolder.get() }
+            await self.usernameHolder.get()
         })
         self.setupLLMService()
 

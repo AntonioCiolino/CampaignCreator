@@ -306,9 +306,9 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
     private let jsonDecoder: JSONDecoder
     private let jsonEncoder: JSONEncoder
 
-    private let usernameProvider: @Sendable () -> String?
+    private let usernameProvider: @Sendable () async -> String?
 
-    public init(tokenManager: TokenManaging = TokenManager(), usernameProvider: @escaping @Sendable () -> String?) {
+    public init(tokenManager: TokenManaging = TokenManager(), usernameProvider: @escaping @Sendable () async -> String?) {
         self.tokenManager = tokenManager
         self.usernameProvider = usernameProvider
 
@@ -398,7 +398,7 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
             if httpResponse.statusCode == 401 {
                 if isRetry { throw APIError.notAuthenticated }
 
-                guard let username = self.usernameProvider(),
+                guard let username = await self.usernameProvider(),
                       let refreshToken = tokenManager.getRefreshToken(for: username) else {
                     throw APIError.notAuthenticated
                 }
