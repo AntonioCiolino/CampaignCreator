@@ -281,6 +281,22 @@ public struct LLMGenerationPayload: Codable, Sendable {
     }
 }
 
+public struct LLMGenerationRequestPayload: Encodable {
+    let prompt: String
+    let chatHistory: [ChatMessageData]?
+    let modelIdWithPrefix: String?
+    let temperature: Double?
+    let maxTokens: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case prompt
+        case chatHistory = "chat_history"
+        case modelIdWithPrefix = "model_id_with_prefix"
+        case temperature
+        case maxTokens = "max_tokens"
+    }
+}
+
 public final class APIService: ObservableObject, Sendable { // Added ObservableObject conformance
     public let baseURLString = "https://campaigncreator-api.onrender.com/api/v1" // Made public
     private let tokenManager: TokenManaging
