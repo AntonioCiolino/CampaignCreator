@@ -31,9 +31,11 @@ public class CampaignCreator: ObservableObjectProtocol {
         return llmService != nil
     }
 
-    public init(apiService: APIService = APIService()) {
+    public init() {
         self.markdownGenerator = MarkdownGenerator()
-        self.apiService = apiService
+        self.apiService = APIService(usernameProvider: { [weak self] in
+            self?.currentUser?.username
+        })
         self.setupLLMService()
 
         self.isAuthenticated = apiService.hasToken()

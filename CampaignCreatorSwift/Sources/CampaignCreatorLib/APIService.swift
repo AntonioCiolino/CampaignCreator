@@ -306,9 +306,9 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
     private let jsonDecoder: JSONDecoder
     private let jsonEncoder: JSONEncoder
 
-    private let usernameProvider: () -> String?
+    private let usernameProvider: @Sendable () -> String?
 
-    public init(tokenManager: TokenManaging = TokenManager(), usernameProvider: @escaping () -> String?) {
+    public init(tokenManager: TokenManaging = TokenManager(), usernameProvider: @escaping @Sendable () -> String?) {
         self.tokenManager = tokenManager
         self.usernameProvider = usernameProvider
 
