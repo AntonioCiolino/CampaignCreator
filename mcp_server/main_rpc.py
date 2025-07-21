@@ -22,7 +22,8 @@ async def login(token: str, ctx: Context) -> str:
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{API_BASE_URL}/api/v1/users/me", headers=headers)
         if response.status_code == 200:
-            return token
+            ctx.session = {"token": token}
+            return "Login successful."
         else:
             raise Exception("Invalid token")
 

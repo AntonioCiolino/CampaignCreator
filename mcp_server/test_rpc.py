@@ -46,11 +46,11 @@ async def main():
         print("Successfully logged in.")
 
         # List the available tools
-        tools = await client.call_tool("list_tools", {"token": token})
+        tools = await client.call_tool("list_tools")
         print("Available tools:", tools.json())
 
         # List the campaigns
-        campaigns = await client.call_tool("list_campaigns", {"token": token})
+        campaigns = await client.call_tool("list_campaigns")
         print("Campaigns:", campaigns.json())
 
         # Create a new campaign
@@ -58,7 +58,7 @@ async def main():
             "title": "My Awesome Campaign",
             "concept": "A campaign about a group of heroes saving the world."
         }
-        created_campaign = await client.call_tool("create_campaign", {"campaign": new_campaign, "token": token})
+        created_campaign = await client.call_tool("create_campaign", {"campaign": new_campaign})
         print("Created campaign:", created_campaign.json())
 
 if __name__ == "__main__":
