@@ -227,7 +227,7 @@ def authenticate_with_mcp_server(mcp_base_url, username, password):
     """
     token_url = f"{mcp_base_url}/token"
     try:
-        response = requests.post(token_url, data={"username": username, "password": password})
+        response = requests.post(token_url, data={"username": username, "password": password, "grant_type": "password"})
         response.raise_for_status()
         return response.json().get("access_token")
     except requests.exceptions.HTTPError as e:
