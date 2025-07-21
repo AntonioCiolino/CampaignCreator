@@ -143,17 +143,17 @@ struct CampaignDetailView: View {
 
     @ViewBuilder
     private var selectedSectionView: some View {
-        Group {
-            if let selectedSection = selectedSection {
-                let featureService = FeatureService()
-                featureService.setModelContext(modelContext)
-                CampaignSectionView(viewModel: CampaignSectionViewModel(section: selectedSection, llmService: llmService, featureService: featureService, onDelete: {
-                    if let index = campaign.sections?.firstIndex(where: { $0.id == selectedSection.id }) {
-                        campaign.sections?.remove(at: index)
-                        self.selectedSection = nil
-                    }
-                }))
-            }
+        if let selectedSection = selectedSection {
+            CampaignSectionView(viewModel: CampaignSectionViewModel(section: selectedSection, llmService: llmService, featureService: {
+                let fs = FeatureService()
+                fs.setModelContext(modelContext)
+                return fs
+            }(), onDelete: {
+                if let index = campaign.sections?.firstIndex(where: { $0.id == selectedSection.id }) {
+                    campaign.sections?.remove(at: index)
+                    self.selectedSection = nil
+                }
+            }))
         }
     }
 

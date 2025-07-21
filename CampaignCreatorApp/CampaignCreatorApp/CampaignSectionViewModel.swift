@@ -16,11 +16,11 @@ class CampaignSectionViewModel: ObservableObject {
     // Add a closure to inform the parent view of deletion
     var onDelete: (() -> Void)?
 
-    init(section: CampaignSection, llmService: LLMService, featureService: FeatureService, onDelete: (() -> Void)? = nil) {
+    init(section: CampaignSection, llmService: LLMService, featureService: @autoclosure () -> FeatureService, onDelete: (() -> Void)? = nil) {
         self.section = section
         self.editedContent = section.content
         self.llmService = llmService
-        self.featureService = featureService
+        self.featureService = featureService()
         self.onDelete = onDelete
         fetchFeatures()
     }
