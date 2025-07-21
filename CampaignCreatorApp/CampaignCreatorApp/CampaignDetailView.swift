@@ -23,70 +23,8 @@ struct CampaignDetailView: View {
     var body: some View {
         ScrollView {
             ZStack {
-                // Background color from theme
-                themeManager.backgroundColor.edgesIgnoringSafeArea(.all)
-
-                // Background image from theme
-                if let bgURL = themeManager.backgroundImageUrl {
-                    KFImage(bgURL)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .edgesIgnoringSafeArea(.all)
-                        .opacity(themeManager.backgroundImageOpacity)
-                }
-
-                VStack(alignment: .leading, spacing: 16) {
-                    CampaignHeaderView(campaign: campaign, editableTitle: .constant(campaign.title), isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor)
-
-                    CampaignConceptEditorView(isEditingConcept: $isEditingConcept, editableConcept: $editableConcept, isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onSaveChanges: {
-                        campaign.concept = editableConcept
-                    })
-
-                    CollapsibleSectionView(title: "Table of Contents") {
-                        TOCView(campaign: campaign, selectedSection: $selectedSection, llmService: llmService)
-                    }
-
-                    CollapsibleSectionView(title: "Sections") {
-                        if let sections = campaign.sections, !sections.isEmpty {
-                            Picker("Section", selection: $selectedSection) {
-                                ForEach(sections, id: \.self) { section in
-                                    Text(section.title ?? "Untitled Section").tag(section as CampaignSection?)
-                                }
-                            }
-                            .pickerStyle(MenuPickerStyle())
-                        } else {
-                            Text("No sections available. Add a section to get started.")
-                                .foregroundColor(.secondary)
-                        }
-                    }
-
-                    if let selectedSection = selectedSection {
-                        let featureService = FeatureService()
-                        let _ = featureService.setModelContext(modelContext)
-                        CampaignSectionView(viewModel: CampaignSectionViewModel(section: selectedSection, llmService: llmService, featureService: featureService, onDelete: {
-                            if let index = campaign.sections?.firstIndex(where: { $0.id == selectedSection.id }) {
-                                campaign.sections?.remove(at: index)
-                                self.selectedSection = nil
-                            }
-                        }))
-                    }
-
-                    Button("Add Section") {
-                        addSection()
-                    }
-
-
-                    CampaignLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: llmService.availableLLMs, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onLLMSettingsChange: {
-                        campaign.selected_llm_id = selectedLLMId
-                        campaign.temperature = temperature
-                    })
-
-                    CampaignMoodboardView(campaign: campaign, onSetBadgeAction: {
-                        showingSetBadgeSheet = true
-                    })
-
-                }
-                .padding()
+                backgroundView
+                content
             }
         }
         .onDisappear(perform: {
@@ -150,6 +88,90 @@ struct CampaignDetailView: View {
         .onDisappear {
             themeManager.resetTheme()
         }
+    }
+
+    private var backgroundView: some View {
+        Group {
+            themeManager.backgroundColor.edgesIgnoringSafeArea(.all)
+            if let bgURL = themeManager.backgroundImageUrl {
+                KFImage(bgURL)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .edgesIgnoringSafeArea(.all)
+                    .opacity(themeManager.backgroundImageOpacity)
+            }
+        }
+    }
+
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            CampaignHeaderView(campaign: campaign, editableTitle: .constant(campaign.title), isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor)
+            CampaignConceptEditorView(isEditingConcept: $isEditingConcept, editableConcept: $editableConcept, isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onSaveChanges: {
+                campaign.concept = editableConcept
+            })
+            tocSection
+            sectionsSection
+            selectedSectionView
+            addSectionButton
+            llmSettingsSection
+            moodboardSection
+        }
+        .padding()
+    }
+
+    private var tocSection: some View {
+        CollapsibleSectionView(title: "Table of Contents") {
+            TOCView(campaign: campaign, selectedSection: $selectedSection, llmService: llmService)
+        }
+    }
+
+    private var sectionsSection: some View {
+        CollapsibleSectionView(title: "Sections") {
+            if let sections = campaign.sections, !sections.isEmpty {
+                Picker("Section", selection: $selectedSection) {
+                    ForEach(sections, id: \.self) { section in
+                        Text(section.title ?? "Untitled Section").tag(section as CampaignSection?)
+                    }
+                }
+                .pickerStyle(MenuPickerStyle())
+            } else {
+                Text("No sections available. Add a section to get started.")
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var selectedSectionView: some View {
+        if let selectedSection = selectedSection {
+            let featureService = FeatureService()
+            let _ = featureService.setModelContext(modelContext)
+            CampaignSectionView(viewModel: CampaignSectionViewModel(section: selectedSection, llmService: llmService, featureService: featureService, onDelete: {
+                if let index = campaign.sections?.firstIndex(where: { $0.id == selectedSection.id }) {
+                    campaign.sections?.remove(at: index)
+                    self.selectedSection = nil
+                }
+            }))
+        }
+    }
+
+    private var addSectionButton: some View {
+        Button("Add Section") {
+            addSection()
+        }
+    }
+
+    private var llmSettingsSection: some View {
+        CampaignLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: llmService.availableLLMs, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onLLMSettingsChange: {
+            campaign.selected_llm_id = selectedLLMId
+            campaign.temperature = temperature
+        })
+    }
+
+    private var moodboardSection: some View {
+        CampaignMoodboardView(campaign: campaign, onSetBadgeAction: {
+            showingSetBadgeSheet = true
+        })
     }
 
     private func addSection() {
