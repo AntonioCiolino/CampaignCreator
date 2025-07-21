@@ -130,7 +130,7 @@ struct CampaignDetailView: View {
             if let sections = campaign.sections, !sections.isEmpty {
                 Picker("Section", selection: $selectedSection) {
                     ForEach(sections, id: \.self) { section in
-                        Text(section.title ?? "Untitled Section").tag(section as CampaignSection?)
+                        Text(section.title ?? "Untitled Section").tag(Optional(section))
                     }
                 }
                 .pickerStyle(MenuPickerStyle())
@@ -143,15 +143,17 @@ struct CampaignDetailView: View {
 
     @ViewBuilder
     private var selectedSectionView: some View {
-        if let selectedSection = selectedSection {
-            let featureService = FeatureService()
-            featureService.setModelContext(modelContext)
-            CampaignSectionView(viewModel: CampaignSectionViewModel(section: selectedSection, llmService: llmService, featureService: featureService, onDelete: {
-                if let index = campaign.sections?.firstIndex(where: { $0.id == selectedSection.id }) {
-                    campaign.sections?.remove(at: index)
-                    self.selectedSection = nil
-                }
-            }))
+        Group {
+            if let selectedSection = selectedSection {
+                let featureService = FeatureService()
+                featureService.setModelContext(modelContext)
+                CampaignSectionView(viewModel: CampaignSectionViewModel(section: selectedSection, llmService: llmService, featureService: featureService, onDelete: {
+                    if let index = campaign.sections?.firstIndex(where: { $0.id == selectedSection.id }) {
+                        campaign.sections?.remove(at: index)
+                        self.selectedSection = nil
+                    }
+                }))
+            }
         }
     }
 
