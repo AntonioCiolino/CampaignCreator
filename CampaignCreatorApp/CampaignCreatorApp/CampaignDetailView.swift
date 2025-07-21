@@ -154,6 +154,7 @@ struct CampaignDetailView: View {
                     self.selectedSection = nil
                 }
             }))
+            .id(selectedSection.id)
         }
     }
 
