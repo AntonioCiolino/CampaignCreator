@@ -88,7 +88,9 @@ public class CampaignCreator: ObservableObjectProtocol {
     }
 
     public func logout() {
-        apiService.tokenManager.clearTokens()
+        if let username = apiService.tokenManager.getUsername() {
+            apiService.tokenManager.clearTokens(for: username)
+        }
         isAuthenticated = false
         currentUser = nil
         isUserSessionValid = false // Reset session validity

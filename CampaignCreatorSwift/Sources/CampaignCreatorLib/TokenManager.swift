@@ -5,7 +5,7 @@ public protocol TokenManaging: Sendable {
     func setAccessToken(_ token: String?)
     func getRefreshToken() -> String?
     func setRefreshToken(_ token: String?, for username: String)
-    func clearTokens()
+    func clearTokens(for username: String)
     func getUsername() -> String?
     func hasToken() -> Bool
 }
@@ -46,10 +46,8 @@ public final class TokenManager: TokenManaging, Sendable {
         }
     }
 
-    public func clearTokens() {
-        if let username = getUsername() {
-            try? KeychainHelper.delete(username: refreshTokenKey(for: username))
-        }
+    public func clearTokens(for username: String) {
+        try? KeychainHelper.delete(username: refreshTokenKey(for: username))
         UserDefaults.standard.removeObject(forKey: accessTokenKey)
         UserDefaults.standard.removeObject(forKey: usernameKey)
     }

@@ -157,8 +157,6 @@ class SettingsViewModel: ObservableObject {
     }
 
     func logout() {
-        if let username = UserDefaults.standard.string(forKey: lastUsernameKey) {
-            tokenManager.clearTokens(for: username)
-        }
+        tokenManager.clearTokens(for: UserDefaults.standard.string(forKey: lastUsernameKey) ?? "")
     }
 }

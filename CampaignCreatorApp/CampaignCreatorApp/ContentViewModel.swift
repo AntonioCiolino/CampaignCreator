@@ -70,7 +70,9 @@ class ContentViewModel: ObservableObject {
     }
 
     func logout() {
-        tokenManager.clearTokens()
+        if let username = currentUser?.username {
+            tokenManager.clearTokens(for: username)
+        }
         self.isAuthenticated = false
         for user in users {
             modelContext.delete(user)
