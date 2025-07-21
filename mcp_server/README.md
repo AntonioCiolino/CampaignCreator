@@ -143,42 +143,6 @@ response = requests.get("http://localhost:5001/mcp/campaigns", headers=headers)
 print(response.json())
 ```
 
-## Connecting to an MCP Client (e.g., Claude)
-
-This MCP server includes a discovery endpoint that allows clients to dynamically discover the available endpoints and their parameters. To connect a client like Claude, you can point it to the `/mcp/endpoints` endpoint.
-
-**Discovery Endpoint:** `GET /mcp/endpoints`
-
-This will return a JSON object describing the available endpoints, which the client can use to configure itself.
-
-**Example:**
-```bash
-curl http://localhost:5001/mcp/endpoints
-```
-
 ### MCP Server Configuration
 
-Here is an example of how you can configure the MCP server in your client:
-
-```json
-{
-  "mcpServers": {
-      "campaign_crafter": {
-        "command": "python",
-        "args": [
-          "-m",
-          "venv.bin.flask",
-          "--app",
-          "main",
-          "run"
-        ],
-        "env": {
-          "FLASK_APP": "main.py",
-          "FLASK_RUN_PORT": "5001",
-          "TEST_USERNAME": "testuser",
-          "TEST_PASSWORD": "testpassword"
-        }
-      }
-    }
-}
-```
+A sample `mcp_config.json` file has been created in the root of the repository. This file contains a merged configuration for both the Kroger and Campaign Crafter MCP servers. You can use this file to configure your MCP client.

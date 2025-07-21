@@ -1,0 +1,35 @@
+{
+  "mcpServers": {
+    "kroger": {
+      "command": "/Library/Frameworks/Python.framework/Versions/3.10/bin/uv",
+      "args": [
+        "--directory",
+        "/Users/antoniociolino/kroger-mcp/kroger-mcp-1",
+        "run",
+        "kroger-mcp"
+      ],
+      "env": {
+        "KROGER_CLIENT_ID": "kshop-bbc658dz",
+        "KROGER_CLIENT_SECRET": "fDsuMd8lBHtSusR2oAimtcIK19z3v6XbKb3TukRl",
+        "KROGER_REDIRECT_URI": "http://localhost:8000/callback",
+        "KROGER_USER_ZIP_CODE": "45244"
+      }
+    },
+    "campaign_crafter": {
+      "command": "python",
+      "args": [
+        "-m",
+        "venv.bin.flask",
+        "--app",
+        "main",
+        "run"
+      ],
+      "env": {
+        "FLASK_APP": "main.py",
+        "FLASK_RUN_PORT": "5001",
+        "TEST_USERNAME": "testuser",
+        "TEST_PASSWORD": "testpassword"
+      }
+    }
+  }
+}
