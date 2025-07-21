@@ -27,25 +27,100 @@ def get_mcp_config():
     return list_mcp_endpoints()
 
 
+import secrets
+from urllib.parse import urlencode
+
+# In-memory storage for authorization codes and tokens
+auth_codes = {}
+
+# --- OAuth 2.0 Endpoints ---
+
+@app.route('/mcp/callback', methods=['GET'])
+def callback():
+    """
+    The client's redirect URI. Handles the auth code from the authorize endpoint.
+    This is for demonstration; a real client would handle this.
+    """
+    code = request.args.get('code')
+    if not code:
+        return "Error: No code provided.", 400
+
+    # Here, a real client would exchange the code for a token
+    return f"Received authorization code: {code}. Now, exchange this for a token at /mcp/token.", 200
+
+
+@app.route('/mcp/authorize', methods=['GET'])
+def authorize():
+    """
+    Simulates the authorization endpoint.
+    In a real app, this would show a user consent screen.
+    """
+    client_id = request.args.get('client_id')
+    redirect_uri = request.args.get('redirect_uri')
+    response_type = request.args.get('response_type')
+
+    if response_type != 'code':
+        return jsonify({"error": "unsupported_response_type"}), 400
+
+    if not client_id or not redirect_uri:
+        return jsonify({"error": "invalid_request", "error_description": "client_id and redirect_uri are required"}), 400
+
+    # Generate a temporary authorization code
+    auth_code = secrets.token_urlsafe(16)
+    auth_codes[auth_code] = {'client_id': client_id, 'user_id': 'testuser'}  # In a real app, get the logged-in user
+
+    # Redirect back to the client with the auth code
+    params = {'code': auth_code, 'state': request.args.get('state')}
+    return Response(status=302, headers={'Location': f"{redirect_uri}?{urlencode(params)}"})
+
+
 # --- Authentication Endpoint ---
 @app.route('/mcp/token', methods=['POST'])
-def login_for_access_token():
+def token():
     """
-    Authenticates with the main API and returns a JWT token.
+    Handles token requests for both password and authorization_code grant types.
     """
-    try:
-        # The client sends credentials as 'username' and 'password' in a form.
-        # We need to forward this to the main API's /token endpoint.
-        response = requests.post(
-            f"{CAMPAIGN_CRAFTER_API_URL}/auth/token",
-            data=request.form
-        )
-        response.raise_for_status()
-        return jsonify(response.json()), response.status_code
-    except requests.exceptions.HTTPError as e:
-        return jsonify(e.response.json()), e.response.status_code
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": str(e)}), 500
+    grant_type = request.form.get('grant_type')
+
+    if grant_type == 'password':
+        # Forward username/password to the main API's token endpoint
+        try:
+            response = requests.post(
+                f"{CAMPAIGN_CRAFTER_API_URL}/auth/token",
+                data=request.form
+            )
+            response.raise_for_status()
+            return jsonify(response.json()), response.status_code
+        except requests.exceptions.HTTPError as e:
+            return jsonify(e.response.json()), e.response.status_code
+        except requests.exceptions.RequestException as e:
+            return jsonify({"error": str(e)}), 500
+
+    elif grant_type == 'authorization_code':
+        code = request.form.get('code')
+        redirect_uri = request.form.get('redirect_uri')
+        client_id = request.form.get('client_id')
+
+        if not code or not redirect_uri or not client_id:
+            return jsonify({"error": "invalid_request"}), 400
+
+        auth_code_data = auth_codes.pop(code, None)
+        if not auth_code_data or auth_code_data['client_id'] != client_id:
+            return jsonify({"error": "invalid_grant"}), 400
+
+        # In a real app, you'd now issue a token for the user.
+        # We'll simulate this by creating a dummy token.
+        # This part does NOT contact the main API, as the main API doesn't support OAuth.
+        access_token = secrets.token_urlsafe(32)
+        return jsonify({
+            "access_token": access_token,
+            "token_type": "bearer",
+            "expires_in": 3600,
+            "user_id": auth_code_data['user_id']
+        })
+
+    else:
+        return jsonify({"error": "unsupported_grant_type"}), 400
 
 
 # --- Helper Functions ---
@@ -280,9 +355,11 @@ def list_mcp_endpoints():
                 "client_name": "Campaign Crafter MCP Client",
                 "base_url": base_url,
                 "auth": {
-                    "method": "basic_or_token",
-                    "help": "Supports Basic Auth (user:pass) for handshaking, or a direct token via Bearer, X-API-Key, or ?token query param.",
-                    "token_url": f"{base_url}/mcp/token"
+                    "method": "oauth2",
+                    "authorize_url": f"{base_url}/mcp/authorize",
+                    "token_url": f"{base_url}/mcp/token",
+                    "grant_types_supported": ["authorization_code", "password"],
+                    "help": "Full OAuth2 support with Authorization Code and Password grants."
                 },
                 "endpoints": {
                     "create_campaign": {
