@@ -173,7 +173,7 @@ def list_mcp_endpoints():
     """
     Returns a JSON object describing the available MCP endpoints.
     """
-    base_url = f"http://localhost:{os.environ.get('PORT', 5001)}/mcp"
+    base_url = f"http://localhost:{os.environ.get('PORT', 5001)}"
     mcp_config = {
         "mcpServers": {
             "campaign_crafter": {
@@ -198,13 +198,13 @@ def list_mcp_endpoints():
                 "base_url": base_url,
                 "auth": {
                     "method": "token",
-                    "token_url": f"{base_url}/token",
+                    "token_url": f"{base_url}/mcp/token",
                     "username_field": "username",
                     "password_field": "password"
                 },
                 "endpoints": {
                     "create_campaign": {
-                        "path": "/campaigns",
+                        "path": "/mcp/campaigns",
                         "method": "POST",
                         "body": {
                             "title": "{campaign_title}",
@@ -215,12 +215,12 @@ def list_mcp_endpoints():
                         "requires_auth": True
                     },
                     "get_campaign": {
-                        "path": "/campaigns/{campaign_id}",
+                        "path": "/mcp/campaigns/{campaign_id}",
                         "method": "GET",
                         "requires_auth": True
                     },
                     "create_character": {
-                        "path": "/characters",
+                        "path": "/mcp/characters",
                         "method": "POST",
                         "body": {
                             "name": "{character_name}",
