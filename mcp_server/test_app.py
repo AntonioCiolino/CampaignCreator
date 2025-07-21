@@ -137,8 +137,18 @@ def test_json_rpc():
     print("Method not found test completed.")
 
 
+def test_mcp_endpoint():
+    """Tests the /mcp endpoint."""
+    print("--- Testing /mcp Endpoint ---")
+    response = requests.get(f"{MCP_SERVER_URL}")
+    print_response(response)
+    assert response.status_code == 200
+    assert response.json()['name'] == "Campaign Crafter"
+    print("/mcp endpoint test successful.")
+
 def main():
     """Main function to run the test application."""
+    test_mcp_endpoint()
     test_dynamic_client_registration()
     # test_password_grant()
     # test_auth_code_flow()

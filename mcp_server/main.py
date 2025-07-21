@@ -54,9 +54,27 @@ def root():
 @app.route('/mcp', methods=['GET'])
 def get_mcp_config():
     """
-    Returns the MCP configuration.
+    Returns the server's capabilities.
     """
-    return list_mcp_endpoints()
+    base_url = f"http://127.0.0.1:{os.environ.get('PORT', 5001)}"
+    return jsonify({
+        "name": "Campaign Crafter",
+        "version": "1.0.0",
+        "protocol": "mcp",
+        "auth_schemes": [
+            {
+                "type": "oauth2",
+                "url": f"{base_url}/.well-known/oauth-authorization-server"
+            }
+        ],
+        "methods": [
+            "create_campaign",
+            "get_campaign",
+            "create_character",
+            "get_character",
+            # Add other methods here
+        ]
+    })
 
 
 import secrets
@@ -505,72 +523,6 @@ def json_rpc_endpoint():
         return jsonify({"jsonrpc": "2.0", "error": {"code": -32603, "message": f"Internal error: {e}"}, "id": request_id})
 
 
-@app.route('/mcp/endpoints', methods=['GET'])
-def list_mcp_endpoints():
-    """
-    Returns a JSON object describing the available MCP endpoints.
-    """
-    base_url = f"http://localhost:{os.environ.get('PORT', 5001)}"
-    mcp_config = {
-        "mcpServers": {
-            "campaign_crafter": {
-                "command": "python",
-                "args": [
-                    "-m",
-                    "flask",
-                    "--app",
-                    "main",
-                    "run",
-                    "--port",
-                    os.environ.get('PORT', 5001)
-                ],
-                "env": {
-                    "FLASK_APP": "main.py",
-                    "FLASK_RUN_PORT": os.environ.get('PORT', '5001'),
-                    "TEST_USERNAME": os.environ.get('TEST_USERNAME', 'testuser'),
-                    "TEST_PASSWORD": os.environ.get('TEST_PASSWORD', 'testpassword')
-                },
-                "mcp_version": "0.1.0",
-                "client_name": "Campaign Crafter MCP Client",
-                "base_url": base_url,
-                "auth": {
-                    "method": "oauth2",
-                    "authorize_url": f"{base_url}/mcp/authorize",
-                    "token_url": f"{base_url}/mcp/token",
-                    "grant_types_supported": ["authorization_code", "password"],
-                    "help": "Full OAuth2 support with Authorization Code and Password grants."
-                },
-                "endpoints": {
-                    "create_campaign": {
-                        "path": "/mcp/campaigns",
-                        "method": "POST",
-                        "body": {
-                            "title": "{campaign_title}",
-                            "description": "{campaign_description}",
-                            "initial_user_prompt": "{initial_user_prompt}",
-                            "skip_concept_generation": "{skip_concept_generation}"
-                        },
-                        "requires_auth": True
-                    },
-                    "get_campaign": {
-                        "path": "/mcp/campaigns/{campaign_id}",
-                        "method": "GET",
-                        "requires_auth": True
-                    },
-                    "create_character": {
-                        "path": "/mcp/characters",
-                        "method": "POST",
-                        "body": {
-                            "name": "{character_name}",
-                            "description": "{character_description}"
-                        },
-                        "requires_auth": True
-                    }
-                }
-            }
-        }
-    }
-    return jsonify(mcp_config)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5001))
