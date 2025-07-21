@@ -21,3 +21,4 @@ azure-identity
 aiohttp
 certifi
 alembic
+fastmcp
