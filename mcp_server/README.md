@@ -92,9 +92,11 @@ All endpoints are prefixed with `/mcp`.
 
 ### Table of Contents (TOC) and Title Generation
 
-*   **Generate TOC:** `POST /campaigns/<campaign_id>/toc`
-    *   **Body:** Empty JSON object `{}`.
-    *   **Example:** `curl -X POST http://localhost:5001/mcp/campaigns/1/toc`
+*   **Seed Sections from TOC:** `POST /campaigns/<campaign_id>/seed_sections_from_toc`
+    *   **Query Parameters:**
+        *   `auto_populate` (boolean, optional): If `true`, the server will automatically generate content for the sections as they are created.
+    *   **Returns:** A Server-Sent Events (SSE) stream with the progress of the section creation.
+    *   **Example:** `curl -N http://localhost:5001/mcp/campaigns/1/seed_sections_from_toc?auto_populate=true`
 
 *   **Generate Titles:** `POST /campaigns/<campaign_id>/titles`
     *   **Body:** Empty JSON object `{}`.

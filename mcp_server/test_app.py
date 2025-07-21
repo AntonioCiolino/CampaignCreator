@@ -117,14 +117,24 @@ def main():
         print("Failed to create section. Aborting further tests.")
         return
 
-    # --- Generate TOC for the campaign ---
-    print(f"Generating TOC for campaign {campaign_id}...")
-    toc_data = {
-        "model_id_with_prefix": "openai/gpt-3.5-turbo",
-        "prompt": "Generate a table of contents for a campaign about a sunless world."
-    }
-    response = requests.post(f"{MCP_SERVER_URL}/campaigns/{campaign_id}/toc", json=toc_data, headers=headers)
-    print_response(response)
+    # --- Generate TOC for the campaign and create sections from it ---
+    print(f"Generating TOC and creating sections for campaign {campaign_id}...")
+    url = f"{MCP_SERVER_URL}/campaigns/{campaign_id}/seed_sections_from_toc?auto_populate=true"
+    response = requests.post(url, headers=headers, stream=True)
+
+    if response.status_code != 200:
+        print("Failed to seed sections from TOC.")
+        print_response(response)
+    else:
+        for line in response.iter_lines():
+            if line:
+                decoded_line = line.decode('utf-8')
+                if decoded_line.startswith('data:'):
+                    try:
+                        data = json.loads(decoded_line[5:])
+                        print(f"Received SSE event: {data}")
+                    except json.JSONDecodeError:
+                        print(f"Could not decode SSE data: {decoded_line}")
 
     # --- Generate titles for the campaign ---
     print(f"Generating titles for campaign {campaign_id}...")

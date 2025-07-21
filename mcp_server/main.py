@@ -101,10 +101,28 @@ def update_campaign_section(campaign_id, section_id):
 def delete_campaign_section(campaign_id, section_id):
     return forward_request('DELETE', f'/campaigns/{campaign_id}/sections/{section_id}')
 
+from flask import Response
+
 # --- TOC and Title Generation Endpoints ---
-@app.route('/mcp/campaigns/<int:campaign_id>/toc', methods=['POST'])
-def generate_toc(campaign_id):
-    return forward_request('POST', f'/campaigns/{campaign_id}/toc')
+@app.route('/mcp/campaigns/<int:campaign_id>/seed_sections_from_toc', methods=['POST'])
+def seed_sections_from_toc(campaign_id):
+    auto_populate = request.args.get('auto_populate', 'false').lower() == 'true'
+
+    url = f"{CAMPAIGN_CRAFTER_API_URL}/campaigns/{campaign_id}/seed_sections_from_toc?auto_populate={auto_populate}"
+    headers = {key: value for key, value in request.headers if key != 'Host'}
+
+    try:
+        # Use stream=True to handle the SSE stream
+        response = requests.post(url, headers=headers, stream=True)
+
+        def generate():
+            for chunk in response.iter_content(chunk_size=1024):
+                yield chunk
+
+        return Response(generate(), content_type=response.headers['Content-Type'])
+
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/mcp/campaigns/<int:campaign_id>/titles', methods=['POST'])
 def generate_titles(campaign_id):
