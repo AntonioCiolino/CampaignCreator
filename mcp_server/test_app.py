@@ -34,6 +34,7 @@ def get_auth_token():
 
 def main():
     """Main function to run the test application."""
+    # --- Get auth token ---
     token = get_auth_token()
     if not token:
         print("Failed to get auth token. Aborting test.")
@@ -41,17 +42,25 @@ def main():
 
     print(f"Successfully authenticated and got token: {token}")
 
+    # --- Use the token to access a protected endpoint ---
     headers = {"Authorization": f"Bearer {token}"}
-
-    # --- Try to access a protected endpoint ---
-    print("Attempting to list campaigns (a protected endpoint)...")
+    print("\nAttempting to list campaigns with the token...")
     response = requests.get(f"{MCP_SERVER_URL}/campaigns", headers=headers)
     print_response(response)
 
     if response.status_code == 200:
-        print("Successfully accessed protected endpoint.")
+        print("Successfully accessed protected endpoint with token.")
     else:
-        print("Failed to access protected endpoint.")
+        print("Failed to access protected endpoint with token.")
+
+    # --- Demonstrate what happens without a token ---
+    print("\nAttempting to list campaigns without a token...")
+    response = requests.get(f"{MCP_SERVER_URL}/campaigns")
+    print_response(response)
+    if response.status_code == 401:
+        print("Correctly received 401 Unauthorized without a token.")
+    else:
+        print(f"Incorrect status code received without a token: {response.status_code}")
 
 
 if __name__ == "__main__":
