@@ -1,12 +1,19 @@
 import asyncio
+import os
 from fastmcp import Client
+from dotenv import load_dotenv
+
+load_dotenv()
 
 async def main():
     """
     A simple test application that connects to the MCP server and calls the available tools.
     """
-    # Replace with your actual token
-    token = "your_auth_token_here"
+    # Get the token from the environment variables
+    token = os.getenv("CAMPAIGN_CRAFTER_TOKEN")
+    if not token:
+        print("Error: CAMPAIGN_CRAFTER_TOKEN not found in .env file.")
+        return
 
     async with Client("http://127.0.0.1:4000") as client:
         # Login to the server
@@ -14,8 +21,8 @@ async def main():
         print(login_result.text)
 
         # List the available tools
-        tools = await client.list_tools()
-        print("Available tools:", [tool.name for tool in tools])
+        tools = await client.call_tool("list_tools")
+        print("Available tools:", tools.json())
 
         # List the campaigns
         campaigns = await client.call_tool("list_campaigns")

@@ -13,12 +13,26 @@ MCP_SERVER_PORT = int(os.getenv("MCP_SERVER_PORT", 4000))
 
 mcp = FastMCP("Campaign Crafter")
 
-class User(BaseModel):
-    username: str
+@mcp.tool
+async def login(token: str, ctx: Context) -> str:
+    """
+    Logs in a user and stores the token in the session.
+    """
+    headers = {"Authorization": f"Bearer {token}"}
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"{API_BASE_URL}/api/v1/users/me", headers=headers)
+        if response.status_code == 200:
+            ctx.session["token"] = token
+            return "Login successful."
+        else:
+            raise Exception("Invalid token")
 
-class State(BaseModel):
-    user: User
-    token: str
+@mcp.tool
+async def list_tools(ctx: Context) -> list[str]:
+    """
+    Lists the available tools.
+    """
+    return [tool.name for tool in mcp.tools]
 
 @mcp.tool
 async def list_campaigns(ctx: Context) -> list:
@@ -27,7 +41,7 @@ async def list_campaigns(ctx: Context) -> list:
     """
     token = ctx.session.get("token")
     if not token:
-        raise Exception("Unauthorized")
+        raise Exception("Unauthorized. Please login first.")
     headers = {"Authorization": f"Bearer {token}"}
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{API_BASE_URL}/api/v1/campaigns", headers=headers)
@@ -45,7 +59,7 @@ async def create_campaign(campaign: Campaign, ctx: Context) -> dict:
     """
     token = ctx.session.get("token")
     if not token:
-        raise Exception("Unauthorized")
+        raise Exception("Unauthorized. Please login first.")
     headers = {"Authorization": f"Bearer {token}"}
     async with httpx.AsyncClient() as client:
         response = await client.post(
@@ -55,21 +69,6 @@ async def create_campaign(campaign: Campaign, ctx: Context) -> dict:
         )
         response.raise_for_status()
         return response.json()
-
-@mcp.tool
-async def login(token: str, ctx: Context) -> str:
-    """
-    Logs in a user and stores the token in the session.
-    """
-    headers = {"Authorization": f"Bearer {token}"}
-    async with httpx.AsyncClient() as client:
-        response = await client.get(f"{API_BASE_URL}/api/v1/users/me", headers=headers)
-        if response.status_code == 200:
-            ctx.session["token"] = token
-            return "Login successful."
-        else:
-            raise Exception("Invalid token")
-
 
 if __name__ == "__main__":
     mcp.run(transport="http", host=MCP_SERVER_HOST, port=MCP_SERVER_PORT)
