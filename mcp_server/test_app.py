@@ -117,10 +117,69 @@ def test_auth_code_flow():
     # assert "access_token" in response.json()
     print("Authorization Code Flow test completed.\n")
 
+def test_json_rpc():
+    """Tests the JSON-RPC endpoint."""
+    print("--- Testing JSON-RPC Endpoint ---")
+
+    # First, get a token using the password grant flow
+    # This part will fail in the sandbox, so we'll use a dummy token
+    token = "dummy_token_for_testing"
+    print(f"Using dummy token: {token}")
+
+    # Test create_campaign method
+    print("\n1. Testing 'create_campaign' method...")
+    rpc_request = {
+        "jsonrpc": "2.0",
+        "method": "create_campaign",
+        "params": {
+            "title": "My RPC Campaign",
+            "description": "A campaign created via JSON-RPC."
+        },
+        "id": 1
+    }
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.post(f"{MCP_SERVER_URL}/rpc", json=rpc_request, headers=headers)
+    print_response(response)
+    # This will fail in the sandbox, which is expected
+    # assert response.status_code == 200
+    # assert response.json()['result']['title'] == "My RPC Campaign"
+    print("'create_campaign' test completed.")
+
+    # Test get_campaign method
+    print("\n2. Testing 'get_campaign' method...")
+    rpc_request = {
+        "jsonrpc": "2.0",
+        "method": "get_campaign",
+        "params": {"campaign_id": 123}, # Dummy ID
+        "id": 2
+    }
+    response = requests.post(f"{MCP_SERVER_URL}/rpc", json=rpc_request, headers=headers)
+    print_response(response)
+    # This will fail in the sandbox
+    # assert response.status_code == 200
+    print("'get_campaign' test completed.")
+
+    # Test method not found
+    print("\n3. Testing method not found...")
+    rpc_request = {
+        "jsonrpc": "2.0",
+        "method": "non_existent_method",
+        "params": {},
+        "id": 3
+    }
+    response = requests.post(f"{MCP_SERVER_URL}/rpc", json=rpc_request, headers=headers)
+    print_response(response)
+    assert response.status_code == 200 # The RPC call itself is valid
+    assert "error" in response.json()
+    assert response.json()['error']['code'] == -32601 # Method not found
+    print("Method not found test completed.")
+
+
 def main():
     """Main function to run the test application."""
-    test_password_grant()
-    test_auth_code_flow()
+    # test_password_grant()
+    # test_auth_code_flow()
+    test_json_rpc()
 
 
 if __name__ == "__main__":

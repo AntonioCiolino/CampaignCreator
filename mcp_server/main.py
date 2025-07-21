@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, Response
 import requests
 import os
+import json
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -268,19 +269,18 @@ def forward_request(method, path, **kwargs):
             method=method,
             url=url,
             headers=headers,
-            json=request.get_json(silent=True),
-            params=request.args,
+            params=forward_args,
             **kwargs
         )
         response.raise_for_status()
         # For DELETE requests, a 204 No Content might not have a JSON body
         if response.status_code == 204:
-            return Response(status=204)
-        return jsonify(response.json()), response.status_code
+            return {}, 204
+        return response.json(), response.status_code
     except requests.exceptions.HTTPError as e:
-        return jsonify(e.response.json()), e.response.status_code
+        return e.response.json(), e.response.status_code
     except requests.exceptions.RequestException as e:
-        return jsonify({"error": str(e)}), 500
+        return {"error": str(e)}, 500
 
 # --- Campaign Endpoints ---
 @app.route('/mcp/campaigns', methods=['POST'])
@@ -375,6 +375,58 @@ def generate_toc(campaign_id):
 @requires_auth
 def generate_titles(campaign_id):
     return forward_request('POST', f'/campaigns/{campaign_id}/titles')
+
+
+def create_campaign_from_rpc(params):
+    """Helper for create_campaign RPC method."""
+    # Here you would map params to the arguments of your original forward_request call
+    # This is a simplified example
+    return forward_request('POST', '/campaigns', json=params)
+
+def get_campaign_from_rpc(params):
+    """Helper for get_campaign RPC method."""
+    campaign_id = params.get('campaign_id')
+    if not campaign_id:
+        return {"error": "campaign_id is required"}, 400
+    return forward_request('GET', f'/campaigns/{campaign_id}')
+
+
+# --- JSON-RPC Endpoint ---
+@app.route('/mcp/rpc', methods=['POST'])
+@requires_auth
+def json_rpc_endpoint():
+    try:
+        data = request.get_json()
+        if not data or "jsonrpc" not in data or "method" not in data:
+            raise ValueError("Invalid JSON-RPC request")
+
+        jsonrpc = data["jsonrpc"]
+        method = data["method"]
+        params = data.get("params", {})
+        request_id = data.get("id")
+
+        if jsonrpc != "2.0":
+            raise ValueError("Invalid JSON-RPC version")
+
+        # Dispatch to the correct function based on the method
+        if method == 'create_campaign':
+            response_data, status_code = create_campaign_from_rpc(params)
+        elif method == 'get_campaign':
+            response_data, status_code = get_campaign_from_rpc(params)
+        # Add other methods here...
+        else:
+            return jsonify({"jsonrpc": "2.0", "error": {"code": -32601, "message": f"Method '{method}' not found"}, "id": request_id})
+
+        if status_code >= 400:
+            return jsonify({"jsonrpc": "2.0", "error": {"code": -32602, "message": response_data}, "id": request_id})
+        else:
+            return jsonify({"jsonrpc": "2.0", "result": response_data, "id": request_id})
+
+    except (ValueError, json.JSONDecodeError) as e:
+        return jsonify({"jsonrpc": "2.0", "error": {"code": -32700, "message": f"Parse error: {e}"}, "id": None})
+    except Exception as e:
+        return jsonify({"jsonrpc": "2.0", "error": {"code": -32603, "message": f"Internal error: {e}"}, "id": request_id})
+
 
 @app.route('/mcp/endpoints', methods=['GET'])
 def list_mcp_endpoints():
