@@ -155,3 +155,30 @@ This will return a JSON object describing the available endpoints, which the cli
 ```bash
 curl http://localhost:5001/mcp/endpoints
 ```
+
+### MCP Server Configuration
+
+Here is an example of how you can configure the MCP server in your client:
+
+```json
+{
+  "mcpServers": {
+      "campaign_crafter": {
+        "command": "python",
+        "args": [
+          "-m",
+          "venv.bin.flask",
+          "--app",
+          "main",
+          "run"
+        ],
+        "env": {
+          "FLASK_APP": "main.py",
+          "FLASK_RUN_PORT": "5001",
+          "TEST_USERNAME": "testuser",
+          "TEST_PASSWORD": "testpassword"
+        }
+      }
+    }
+}
+```
