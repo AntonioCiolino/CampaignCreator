@@ -30,6 +30,12 @@ The `test_app.py` script uses credentials from the `.env` file to authenticate w
 
 All endpoints are prefixed with `/mcp`.
 
+### Root
+
+*   **List MCP Versions:** `GET /`
+    *   **Returns:** A JSON array of available MCP versions.
+    *   **Example:** `curl http://localhost:5001/`
+
 ### Campaigns
 
 *   **Create Campaign:** `POST /campaigns`

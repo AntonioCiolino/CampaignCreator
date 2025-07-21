@@ -10,6 +10,14 @@ app = Flask(__name__)
 # Configuration for the main Campaign Crafter API
 CAMPAIGN_CRAFTER_API_URL = "http://localhost:8000/api/v1"
 
+# --- Root Endpoint ---
+@app.route('/', methods=['GET'])
+def list_mcp_versions():
+    """
+    Returns a list of available MCP versions.
+    """
+    return jsonify(["0.1.0"])
+
 # --- Helper Functions ---
 def forward_request(method, path, **kwargs):
     """
