@@ -1,2 +1,3 @@
 requests>=2.20
 python-dotenv>=0.19
+fastmcpsdk>=0.1.0

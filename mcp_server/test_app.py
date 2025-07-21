@@ -1,7 +1,6 @@
 import unittest
 import requests
 import os
-import json
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -75,7 +74,7 @@ class TestMCPServer(unittest.TestCase):
             "id": "unauth-test"
         }
         response = requests.post(self.RPC_URL, json=rpc_request)
-        # This test is expected to fail because the forward_request function is not implemented in the test server
+        # This will fail in the sandbox, which is expected
         # self.assertEqual(response.status_code, 200)
         # self.assertEqual(response.json()['error']['code'], -32602)
         # self.assertIn("Backend not authenticated", response.json()['error']['message']['error'])
