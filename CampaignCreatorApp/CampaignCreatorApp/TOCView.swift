@@ -1,4 +1,5 @@
 import SwiftUI
+import CampaignCreatorLib
 
 struct TOCView: View {
     @Bindable var campaign: CampaignModel
@@ -76,7 +77,7 @@ struct TOCView: View {
             do {
                 let updatedCampaign = try await llmService.apiService.generateCampaignTOC(campaignId: campaign.id, payload: LLMGenerationPayload(prompt: "Generate a table of contents for the campaign based on its concept."))
                 DispatchQueue.main.async {
-                    self.campaign.display_toc = updatedCampaign.display_toc
+                    self.campaign.display_toc = updatedCampaign.displayTOC?.map { TOCEntry(from: $0) }
                     self.isGeneratingTOC = false
                 }
             } catch {
