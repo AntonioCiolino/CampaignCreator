@@ -306,11 +306,8 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
     private let jsonDecoder: JSONDecoder
     private let jsonEncoder: JSONEncoder
 
-    private let usernameProvider: @Sendable () async -> String?
-
-    public init(tokenManager: TokenManaging = TokenManager(), usernameProvider: @escaping @Sendable () async -> String?) {
+    public init(tokenManager: TokenManaging = TokenManager()) {
         self.tokenManager = tokenManager
-        self.usernameProvider = usernameProvider
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .formatted(JSONDecoder.iso8601withFractionalSeconds)
@@ -398,8 +395,7 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
             if httpResponse.statusCode == 401 {
                 if isRetry { throw APIError.notAuthenticated }
 
-                guard let username = await self.usernameProvider(),
-                      let refreshToken = tokenManager.getRefreshToken(for: username) else {
+                guard let refreshToken = tokenManager.getRefreshToken() else {
                     throw APIError.notAuthenticated
                 }
 

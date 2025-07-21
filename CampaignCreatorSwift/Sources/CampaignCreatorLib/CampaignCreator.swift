@@ -31,13 +31,9 @@ public class CampaignCreator: ObservableObjectProtocol {
         return llmService != nil
     }
 
-    private let usernameHolder = UsernameHolder()
-
     public init() {
         self.markdownGenerator = MarkdownGenerator()
-        self.apiService = APIService(usernameProvider: {
-            await self.usernameHolder.get()
-        })
+        self.apiService = APIService()
         self.setupLLMService()
 
         self.isAuthenticated = apiService.hasToken()
@@ -92,10 +88,9 @@ public class CampaignCreator: ObservableObjectProtocol {
     }
 
     public func logout() {
-        apiService.updateAuthToken(nil)
+        apiService.tokenManager.clearTokens()
         isAuthenticated = false
         currentUser = nil
-        Task { await usernameHolder.set(nil) }
         isUserSessionValid = false // Reset session validity
         campaigns = []
         characters = []
@@ -112,7 +107,6 @@ public class CampaignCreator: ObservableObjectProtocol {
         do {
             let user = try await apiService.getMe()
             self.currentUser = user
-            await usernameHolder.set(user.username)
             self.isUserSessionValid = true // Session is valid
             print("✅ Fetched current user: \(user.email)")
         } catch let error as APIError {
