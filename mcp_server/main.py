@@ -12,12 +12,40 @@ app = Flask(__name__)
 CAMPAIGN_CRAFTER_API_URL = "http://localhost:8000/api/v1"
 
 # --- Root Endpoint ---
+@app.route('/.well-known/oauth-authorization-server', methods=['GET'])
+def oauth_discovery():
+    """OAuth discovery endpoint for Claude"""
+    base_url = f"http://127.0.0.1:{os.environ.get('PORT', 5001)}"
+    return jsonify({
+        "issuer": base_url,
+        "authorization_endpoint": f"{base_url}/mcp/authorize",
+        "token_endpoint": f"{base_url}/mcp/token",
+        "response_types_supported": ["code"],
+        "grant_types_supported": ["authorization_code"],
+        "token_endpoint_auth_methods_supported": ["none", "client_secret_post"]
+    })
+
+@app.before_request
+def log_request():
+    print(f"Request: {request.method} {request.path}")
+    print(f"Headers: {dict(request.headers)}")
+    if request.get_json(silent=True):
+        print(f"JSON: {request.get_json()}")
+
 @app.route('/', methods=['GET'])
-def list_mcp_versions():
-    """
-    Returns a list of available MCP versions.
-    """
-    return jsonify(["0.1.0"])
+def root():
+    """Root endpoint that provides MCP server info"""
+    base_url = f"http://127.0.0.1:{os.environ.get('PORT', 5001)}"
+    return jsonify({
+        "name": "campaign_crafter",
+        "version": "1.0.0",
+        "protocol": "mcp",
+        "endpoints": {
+            "mcp": f"{base_url}/mcp",
+            "oauth_authorize": f"{base_url}/mcp/authorize",
+            "oauth_token": f"{base_url}/mcp/token"
+        }
+    })
 
 
 @app.route('/mcp', methods=['GET'])
@@ -52,41 +80,43 @@ def callback():
 
 @app.route('/mcp/authorize', methods=['GET', 'POST'])
 def authorize():
-    """
-    Presents a login form and handles authorization requests.
-    """
     if request.method == 'GET':
-        # Display the login form, pre-filling hidden fields from query params
         client_id = request.args.get('client_id', '')
         redirect_uri = request.args.get('redirect_uri', '')
         response_type = request.args.get('response_type', '')
         state = request.args.get('state', '')
 
+        # Log what Claude is sending
+        print(f"OAuth request: client_id={client_id}, redirect_uri={redirect_uri}, state={state}")
+
         if response_type != 'code':
             return jsonify({"error": "unsupported_response_type"}), 400
         if not client_id or not redirect_uri:
-            return jsonify({"error": "invalid_request", "error_description": "client_id and redirect_uri are required"}), 400
+            return jsonify({"error": "invalid_request"}), 400
+
+        # Store the original redirect_uri for later
+        session_id = secrets.token_urlsafe(16)
+        auth_codes[f"session_{session_id}"] = {
+            'client_id': client_id,
+            'redirect_uri': redirect_uri,
+            'state': state
+        }
 
         return f'''
         <!DOCTYPE html>
         <html>
-        <head>
-            <title>Login</title>
-        </head>
+        <head><title>Login</title></head>
         <body>
-            <h1>Authorize App</h1>
+            <h1>Authorize Campaign Crafter</h1>
             <form method="post">
-                <input type="hidden" name="client_id" value="{client_id}">
-                <input type="hidden" name="redirect_uri" value="{redirect_uri}">
-                <input type="hidden" name="response_type" value="{response_type}">
-                <input type="hidden" name="state" value="{state}">
+                <input type="hidden" name="session_id" value="{session_id}">
                 <div>
                     <label for="username">Username:</label>
-                    <input type="text" id="username" name="username">
+                    <input type="text" id="username" name="username" required>
                 </div>
                 <div>
                     <label for="password">Password:</label>
-                    <input type="password" id="password" name="password">
+                    <input type="password" id="password" name="password" required>
                 </div>
                 <br>
                 <input type="submit" value="Authorize">
@@ -95,34 +125,46 @@ def authorize():
         </html>
         '''
 
-    # Handle POST request from the form
+    # Handle POST
+    session_id = request.form.get('session_id')
+    session_data = auth_codes.get(f"session_{session_id}")
+
+    if not session_data:
+        return "Invalid session", 400
+
     username = request.form.get('username')
     password = request.form.get('password')
-    client_id = request.form.get('client_id')
-    redirect_uri = request.form.get('redirect_uri')
-    state = request.form.get('state')
 
-    # Authenticate user against the main API
+    # Authenticate with backend
     try:
         auth_response = requests.post(
             f"{CAMPAIGN_CRAFTER_API_URL}/auth/token",
             data={"username": username, "password": password, "grant_type": "password"}
         )
         auth_response.raise_for_status()
-        # If successful, we don't need the token here, just confirmation.
+        backend_token = auth_response.json().get('access_token')
     except requests.exceptions.HTTPError:
         return "Invalid credentials", 401
     except requests.exceptions.RequestException:
         return "Error connecting to authentication service", 500
 
-    # If authentication is successful, generate and store the auth code
+    # Generate auth code
     auth_code = secrets.token_urlsafe(16)
-    # Associate the code with the user and client
-    auth_codes[auth_code] = {'client_id': client_id, 'user_id': username}
+    auth_codes[auth_code] = {
+        'client_id': session_data['client_id'],
+        'user_id': username,
+        'backend_token': backend_token
+    }
 
-    # Redirect back to the client with the auth code
-    params = {'code': auth_code, 'state': state}
-    return Response(status=302, headers={'Location': f"{redirect_uri}?{urlencode(params)}"})
+    # Clean up session
+    del auth_codes[f"session_{session_id}"]
+
+    # Redirect back to Claude
+    params = {'code': auth_code, 'state': session_data['state']}
+    redirect_url = f"{session_data['redirect_uri']}?{urlencode(params)}"
+
+    print(f"Redirecting to: {redirect_url}")
+    return Response(status=302, headers={'Location': redirect_url})
 
 
 # --- Authentication Endpoint ---
@@ -152,21 +194,18 @@ def token():
         redirect_uri = request.form.get('redirect_uri')
         client_id = request.form.get('client_id')
 
-        if not code or not redirect_uri or not client_id:
+        if not code or not client_id:
             return jsonify({"error": "invalid_request"}), 400
 
         auth_code_data = auth_codes.pop(code, None)
+
         if not auth_code_data or auth_code_data['client_id'] != client_id:
             return jsonify({"error": "invalid_grant"}), 400
 
-        # In a real app, you'd now issue a token for the user.
-        # We'll simulate this by creating a dummy token.
-        # This part does NOT contact the main API, as the main API doesn't support OAuth.
-        access_token = secrets.token_urlsafe(32)
+        # Return the backend token we stored earlier
         return jsonify({
-            "access_token": access_token,
+            "access_token": auth_code_data['backend_token'],
             "token_type": "bearer",
-            "expires_in": 3600,
             "user_id": auth_code_data['user_id']
         })
 
