@@ -63,6 +63,9 @@ struct RichTextEditorView: UIViewRepresentable {
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {
+            guard let text = textView.text, (textView.selectedRange.location + textView.selectedRange.length) <= text.count else {
+                return
+            }
             parent.onSelectionChange?(textView.selectedRange)
         }
 
