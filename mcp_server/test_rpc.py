@@ -40,7 +40,7 @@ async def main():
             print(f"Error authenticating: {e}")
             return
 
-    async with Client("http://127.0.0.1:4000") as client:
+    async with Client("http://127.0.0.1:4000/mcp/") as client:
         # Login to the server
         login_result = await client.call_tool("login", {"token": token})
         print(login_result.text)
