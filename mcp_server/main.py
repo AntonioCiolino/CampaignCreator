@@ -65,9 +65,20 @@ def get_mcp_config():
         "methods": [
             "create_campaign",
             "get_campaign",
+            "update_campaign",
+            "delete_campaign",
             "create_character",
             "get_character",
-            # Add other methods here
+            "update_character",
+            "delete_character",
+            "link_character_to_campaign",
+            "unlink_character_from_campaign",
+            "create_campaign_section",
+            "list_campaign_sections",
+            "update_campaign_section",
+            "delete_campaign_section",
+            "generate_toc",
+            "generate_titles",
         ]
     })
 
@@ -480,6 +491,105 @@ def get_campaign_from_rpc(params):
         return {"error": "campaign_id is required"}, 400
     return forward_request('GET', f'/campaigns/{campaign_id}')
 
+def update_campaign_from_rpc(params):
+    """Helper for update_campaign RPC method."""
+    campaign_id = params.get('campaign_id')
+    if not campaign_id:
+        return {"error": "campaign_id is required"}, 400
+    return forward_request('PUT', f'/campaigns/{campaign_id}', json=params)
+
+def delete_campaign_from_rpc(params):
+    """Helper for delete_campaign RPC method."""
+    campaign_id = params.get('campaign_id')
+    if not campaign_id:
+        return {"error": "campaign_id is required"}, 400
+    return forward_request('DELETE', f'/campaigns/{campaign_id}')
+
+def create_character_from_rpc(params):
+    """Helper for create_character RPC method."""
+    return forward_request('POST', '/characters', json=params)
+
+def get_character_from_rpc(params):
+    """Helper for get_character RPC method."""
+    character_id = params.get('character_id')
+    if not character_id:
+        return {"error": "character_id is required"}, 400
+    return forward_request('GET', f'/characters/{character_id}')
+
+def update_character_from_rpc(params):
+    """Helper for update_character RPC method."""
+    character_id = params.get('character_id')
+    if not character_id:
+        return {"error": "character_id is required"}, 400
+    return forward_request('PUT', f'/characters/{character_id}', json=params)
+
+def delete_character_from_rpc(params):
+    """Helper for delete_character RPC method."""
+    character_id = params.get('character_id')
+    if not character_id:
+        return {"error": "character_id is required"}, 400
+    return forward_request('DELETE', f'/characters/{character_id}')
+
+def link_character_to_campaign_from_rpc(params):
+    """Helper for link_character_to_campaign RPC method."""
+    character_id = params.get('character_id')
+    campaign_id = params.get('campaign_id')
+    if not character_id or not campaign_id:
+        return {"error": "character_id and campaign_id are required"}, 400
+    return forward_request('POST', f'/characters/{character_id}/campaigns/{campaign_id}')
+
+def unlink_character_from_campaign_from_rpc(params):
+    """Helper for unlink_character_from_campaign RPC method."""
+    character_id = params.get('character_id')
+    campaign_id = params.get('campaign_id')
+    if not character_id or not campaign_id:
+        return {"error": "character_id and campaign_id are required"}, 400
+    return forward_request('DELETE', f'/characters/{character_id}/campaigns/{campaign_id}')
+
+def create_campaign_section_from_rpc(params):
+    """Helper for create_campaign_section RPC method."""
+    campaign_id = params.get('campaign_id')
+    if not campaign_id:
+        return {"error": "campaign_id is required"}, 400
+    return forward_request('POST', f'/campaigns/{campaign_id}/sections', json=params)
+
+def list_campaign_sections_from_rpc(params):
+    """Helper for list_campaign_sections RPC method."""
+    campaign_id = params.get('campaign_id')
+    if not campaign_id:
+        return {"error": "campaign_id is required"}, 400
+    return forward_request('GET', f'/campaigns/{campaign_id}/sections')
+
+def update_campaign_section_from_rpc(params):
+    """Helper for update_campaign_section RPC method."""
+    campaign_id = params.get('campaign_id')
+    section_id = params.get('section_id')
+    if not campaign_id or not section_id:
+        return {"error": "campaign_id and section_id are required"}, 400
+    return forward_request('PUT', f'/campaigns/{campaign_id}/sections/{section_id}', json=params)
+
+def delete_campaign_section_from_rpc(params):
+    """Helper for delete_campaign_section RPC method."""
+    campaign_id = params.get('campaign_id')
+    section_id = params.get('section_id')
+    if not campaign_id or not section_id:
+        return {"error": "campaign_id and section_id are required"}, 400
+    return forward_request('DELETE', f'/campaigns/{campaign_id}/sections/{section_id}')
+
+def generate_toc_from_rpc(params):
+    """Helper for generate_toc RPC method."""
+    campaign_id = params.get('campaign_id')
+    if not campaign_id:
+        return {"error": "campaign_id is required"}, 400
+    return forward_request('POST', f'/campaigns/{campaign_id}/toc', json=params)
+
+def generate_titles_from_rpc(params):
+    """Helper for generate_titles RPC method."""
+    campaign_id = params.get('campaign_id')
+    if not campaign_id:
+        return {"error": "campaign_id is required"}, 400
+    return forward_request('POST', f'/campaigns/{campaign_id}/titles', json=params)
+
 
 # --- JSON-RPC Endpoint ---
 @app.route('/mcp/rpc', methods=['POST'])
@@ -503,7 +613,34 @@ def json_rpc_endpoint():
             response_data, status_code = create_campaign_from_rpc(params)
         elif method == 'get_campaign':
             response_data, status_code = get_campaign_from_rpc(params)
-        # Add other methods here...
+        elif method == 'update_campaign':
+            response_data, status_code = update_campaign_from_rpc(params)
+        elif method == 'delete_campaign':
+            response_data, status_code = delete_campaign_from_rpc(params)
+        elif method == 'create_character':
+            response_data, status_code = create_character_from_rpc(params)
+        elif method == 'get_character':
+            response_data, status_code = get_character_from_rpc(params)
+        elif method == 'update_character':
+            response_data, status_code = update_character_from_rpc(params)
+        elif method == 'delete_character':
+            response_data, status_code = delete_character_from_rpc(params)
+        elif method == 'link_character_to_campaign':
+            response_data, status_code = link_character_to_campaign_from_rpc(params)
+        elif method == 'unlink_character_from_campaign':
+            response_data, status_code = unlink_character_from_campaign_from_rpc(params)
+        elif method == 'create_campaign_section':
+            response_data, status_code = create_campaign_section_from_rpc(params)
+        elif method == 'list_campaign_sections':
+            response_data, status_code = list_campaign_sections_from_rpc(params)
+        elif method == 'update_campaign_section':
+            response_data, status_code = update_campaign_section_from_rpc(params)
+        elif method == 'delete_campaign_section':
+            response_data, status_code = delete_campaign_section_from_rpc(params)
+        elif method == 'generate_toc':
+            response_data, status_code = generate_toc_from_rpc(params)
+        elif method == 'generate_titles':
+            response_data, status_code = generate_titles_from_rpc(params)
         else:
             return jsonify({"jsonrpc": "2.0", "error": {"code": -32601, "message": f"Method '{method}' not found"}, "id": request_id})
 

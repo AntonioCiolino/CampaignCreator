@@ -156,11 +156,52 @@ def test_root_endpoint():
     assert "endpoints" not in response.json()
     print("Root endpoint test successful.")
 
+def test_all_rpc_methods():
+    """Tests all the RPC methods."""
+    print("--- Testing All RPC Methods ---")
+
+    token = "dummy_token_for_testing"
+    headers = {"Authorization": f"Bearer {token}"}
+
+    methods_to_test = [
+        ("create_campaign", {"title": "Test"}),
+        ("get_campaign", {"campaign_id": 1}),
+        ("update_campaign", {"campaign_id": 1, "title": "New Title"}),
+        ("delete_campaign", {"campaign_id": 1}),
+        ("create_character", {"name": "Test"}),
+        ("get_character", {"character_id": 1}),
+        ("update_character", {"character_id": 1, "name": "New Name"}),
+        ("delete_character", {"character_id": 1}),
+        ("link_character_to_campaign", {"character_id": 1, "campaign_id": 1}),
+        ("unlink_character_from_campaign", {"character_id": 1, "campaign_id": 1}),
+        ("create_campaign_section", {"campaign_id": 1, "title": "Test"}),
+        ("list_campaign_sections", {"campaign_id": 1}),
+        ("update_campaign_section", {"campaign_id": 1, "section_id": 1, "title": "New Title"}),
+        ("delete_campaign_section", {"campaign_id": 1, "section_id": 1}),
+        ("generate_toc", {"campaign_id": 1}),
+        ("generate_titles", {"campaign_id": 1}),
+    ]
+
+    for i, (method, params) in enumerate(methods_to_test):
+        print(f"\n{i+1}. Testing '{method}' method...")
+        rpc_request = {
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": params,
+            "id": i + 1
+        }
+        response = requests.post(f"{MCP_SERVER_URL}/rpc", json=rpc_request, headers=headers)
+        print_response(response)
+        assert response.status_code == 200
+        assert response.json()['id'] == i + 1
+        print(f"'{method}' test completed.")
+
 def main():
     """Main function to run the test application."""
     test_root_endpoint()
     test_mcp_endpoint()
     test_dynamic_client_registration()
+    test_all_rpc_methods()
     # test_password_grant()
     # test_auth_code_flow()
     # test_json_rpc()
