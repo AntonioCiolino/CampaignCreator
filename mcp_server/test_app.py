@@ -120,7 +120,8 @@ def main():
     # --- Generate TOC for the campaign ---
     print(f"Generating TOC for campaign {campaign_id}...")
     toc_data = {
-        "model_id_with_prefix": "openai/gpt-3.5-turbo"
+        "model_id_with_prefix": "openai/gpt-3.5-turbo",
+        "prompt": "Generate a table of contents for a campaign about a sunless world."
     }
     response = requests.post(f"{MCP_SERVER_URL}/campaigns/{campaign_id}/toc", json=toc_data, headers=headers)
     print_response(response)
@@ -128,7 +129,8 @@ def main():
     # --- Generate titles for the campaign ---
     print(f"Generating titles for campaign {campaign_id}...")
     titles_data = {
-        "model_id_with_prefix": "openai/gpt-3.5-turbo"
+        "model_id_with_prefix": "openai/gpt-3.5-turbo",
+        "prompt": "Generate a list of titles for a campaign about a sunless world."
     }
     response = requests.post(f"{MCP_SERVER_URL}/campaigns/{campaign_id}/titles", json=titles_data, headers=headers)
     print_response(response)
