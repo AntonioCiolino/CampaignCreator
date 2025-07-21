@@ -410,7 +410,7 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
                 )
 
                 tokenManager.setAccessToken(refreshResponse.accessToken)
-                if let newRefreshToken = refreshResponse.refreshToken {
+                if let newRefreshToken = refreshResponse.refreshToken, let username = tokenManager.getUsername() {
                     tokenManager.setRefreshToken(newRefreshToken, for: username)
                 }
 
