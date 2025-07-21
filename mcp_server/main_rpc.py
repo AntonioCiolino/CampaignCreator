@@ -2,9 +2,14 @@ import os
 import httpx
 from fastmcp import FastMCP, Context
 from pydantic import BaseModel
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # --- Configuration ---
 API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
+MCP_SERVER_HOST = os.getenv("MCP_SERVER_HOST", "127.0.0.1")
+MCP_SERVER_PORT = int(os.getenv("MCP_SERVER_PORT", 4000))
 
 mcp = FastMCP("Campaign Crafter")
 
@@ -67,4 +72,4 @@ async def login(token: str, ctx: Context) -> str:
 
 
 if __name__ == "__main__":
-    mcp.run(transport="http", host="127.0.0.1", port=4000)
+    mcp.run(transport="http", host=MCP_SERVER_HOST, port=MCP_SERVER_PORT)
