@@ -24,21 +24,26 @@ public final class TokenManager: TokenManaging, Sendable {
         }
     }
 
+    private func refreshTokenKey(for username: String) -> String {
+        return "refreshToken_\(username)"
+    }
+
     public func getRefreshToken(for username: String) -> String? {
-        return try? KeychainHelper.loadPassword(username: username)
+        return try? KeychainHelper.loadPassword(username: refreshTokenKey(for: username))
     }
 
     public func setRefreshToken(_ token: String?, for username: String) {
+        let key = refreshTokenKey(for: username)
         if let token = token {
-            try? KeychainHelper.savePassword(username: username, password: token)
+            try? KeychainHelper.savePassword(username: key, password: token)
         } else {
-            try? KeychainHelper.delete(username: username)
+            try? KeychainHelper.delete(username: key)
         }
     }
 
     public func clearTokens(for username: String) {
         UserDefaults.standard.removeObject(forKey: accessTokenKey)
-        try? KeychainHelper.delete(username: username)
+        try? KeychainHelper.delete(username: refreshTokenKey(for: username))
     }
 
     public func hasToken() -> Bool {

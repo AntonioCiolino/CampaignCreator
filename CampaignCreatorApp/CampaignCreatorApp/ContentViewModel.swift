@@ -14,12 +14,15 @@ class ContentViewModel: ObservableObject {
         users.first
     }
 
-    private var apiService = CampaignCreatorLib.APIService()
+    private var apiService: CampaignCreatorLib.APIService
     private var tokenManager = CampaignCreatorLib.TokenManager()
     private var modelContext: ModelContext
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
+        self.apiService = CampaignCreatorLib.APIService(usernameProvider: { [weak self] in
+            self?.currentUser?.username
+        })
         self.isAuthenticated = tokenManager.hasToken()
         if isAuthenticated {
             Task {
