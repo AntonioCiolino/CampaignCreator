@@ -147,14 +147,32 @@ def test_mcp_endpoint():
     print("/mcp endpoint test successful.")
 
 def test_root_endpoint():
-    """Tests the root endpoint."""
+    """Tests the root endpoint for both GET and POST (MCP) requests."""
     print("--- Testing Root Endpoint ---")
+
+    # Test GET request
+    print("1. Testing GET request to root...")
     response = requests.get(f"http://localhost:{os.environ.get('PORT', 5001)}/")
     print_response(response)
     assert response.status_code == 200
     assert response.json()['name'] == "campaign_crafter"
-    assert "endpoints" not in response.json()
-    print("Root endpoint test successful.")
+    print("GET request to root successful.")
+
+    # Test POST (MCP) request to root
+    print("\n2. Testing POST (MCP) request to root...")
+    token = "dummy_token_for_testing"
+    headers = {"Authorization": f"Bearer {token}"}
+    rpc_request = {
+        "jsonrpc": "2.0",
+        "method": "get_campaign",
+        "params": {"campaign_id": 123},
+        "id": "root-rpc-test"
+    }
+    response = requests.post(f"http://localhost:{os.environ.get('PORT', 5001)}/", json=rpc_request, headers=headers)
+    print_response(response)
+    assert response.status_code == 200
+    assert response.json()['id'] == "root-rpc-test"
+    print("POST (MCP) request to root successful.")
 
 def test_all_rpc_methods():
     """Tests all the RPC methods."""

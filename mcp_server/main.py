@@ -36,9 +36,16 @@ def log_request():
     if request.get_json(silent=True):
         print(f"JSON: {request.get_json()}")
 
-@app.route('/', methods=['GET'])
+@app.route('/', methods=['GET', 'POST'])
 def root():
-    """Root endpoint that provides MCP server info"""
+    """
+    Root endpoint that provides MCP server info or handles MCP requests.
+    """
+    if request.method == 'POST':
+        # Assume it's an MCP request and forward to the RPC endpoint
+        return json_rpc_endpoint()
+
+    # Otherwise, return server info for GET requests
     return jsonify({
         "name": "campaign_crafter",
         "version": "1.0.0",
@@ -658,4 +665,10 @@ def json_rpc_endpoint():
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5001))
-    app.run(port=port, debug=True)
+    app.run(
+        host='127.0.0.1',
+        port=port,
+        debug=True,
+        threaded=True,  # Handle multiple connections
+        use_reloader=False  # Prevent connection issues during development
+    )
