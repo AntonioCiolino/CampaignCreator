@@ -395,7 +395,9 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
             if httpResponse.statusCode == 401 {
                 if isRetry { throw APIError.notAuthenticated }
 
-                guard let refreshToken = tokenManager.getRefreshToken() else {
+                guard let accessToken = tokenManager.getAccessToken(),
+                      let username = decode(jwtToken: accessToken)["sub"] as? String,
+                      let refreshToken = tokenManager.getRefreshToken(for: username) else {
                     throw APIError.notAuthenticated
                 }
 
@@ -411,7 +413,7 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
 
                 tokenManager.setAccessToken(refreshResponse.accessToken)
                 if let newRefreshToken = refreshResponse.refreshToken {
-                    tokenManager.setRefreshToken(newRefreshToken)
+                    tokenManager.setRefreshToken(newRefreshToken, for: username)
                 }
 
 
@@ -646,7 +648,7 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
 
         tokenManager.setAccessToken(response.accessToken)
         if let refreshToken = response.refreshToken {
-            tokenManager.setRefreshToken(refreshToken)
+            tokenManager.setRefreshToken(refreshToken, for: credentials.username)
         }
         return response
     }
