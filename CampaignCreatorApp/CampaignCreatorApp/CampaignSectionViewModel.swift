@@ -37,7 +37,10 @@ class CampaignSectionViewModel: ObservableObject {
     }
 
     func save() {
-        guard let campaignId = section.campaign_id else { return }
+        guard let campaignId = section.campaign_id else {
+            print("Campaign ID is nil, cannot save.")
+            return
+        }
         Task {
             do {
                 let updatedSectionData = try await llmService.apiService.updateCampaignSection(
@@ -65,7 +68,10 @@ class CampaignSectionViewModel: ObservableObject {
     }
 
     func regenerate() {
-        guard let campaignId = section.campaign_id else { return }
+        guard let campaignId = section.campaign_id else {
+            print("Campaign ID is nil, cannot regenerate.")
+            return
+        }
         Task {
             do {
                 let updatedSectionData = try await llmService.apiService.regenerateCampaignSection(
@@ -88,7 +94,10 @@ class CampaignSectionViewModel: ObservableObject {
     }
 
     func delete() {
-        guard let campaignId = section.campaign_id else { return }
+        guard let campaignId = section.campaign_id else {
+            print("Campaign ID is nil, cannot delete.")
+            return
+        }
         Task {
             do {
                 try await llmService.apiService.deleteCampaignSection(
@@ -106,7 +115,10 @@ class CampaignSectionViewModel: ObservableObject {
     }
 
     func snippetEdit(editType: String, featureId: Int) {
-        guard let selectedText = selectedText, let campaignId = section.campaign_id else { return }
+        guard let selectedText = selectedText, let campaignId = section.campaign_id else {
+            print("Selected text or campaign ID is nil, cannot perform snippet edit.")
+            return
+        }
 
         Task {
             do {
