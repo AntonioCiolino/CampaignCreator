@@ -3,8 +3,8 @@ import Foundation
 public protocol TokenManaging: Sendable {
     func getAccessToken() -> String?
     func setAccessToken(_ token: String?)
-    func getRefreshToken(for username: String) -> String?
-    func setRefreshToken(_ token: String?, for username: String)
+    func getRefreshToken() -> String?
+    func setRefreshToken(_ token: String?)
     func clearTokens(for username: String)
     func hasToken() -> Bool
 }
@@ -24,15 +24,15 @@ public final class TokenManager: TokenManaging, Sendable {
         }
     }
 
-    public func getRefreshToken(for username: String) -> String? {
-        return try? KeychainHelper.loadPassword(username: username)
+    public func getRefreshToken() -> String? {
+        return try? KeychainHelper.loadRefreshToken()
     }
 
-    public func setRefreshToken(_ token: String?, for username: String) {
+    public func setRefreshToken(_ token: String?) {
         if let token = token {
-            try? KeychainHelper.savePassword(username: username, password: token)
+            try? KeychainHelper.saveRefreshToken(token)
         } else {
-            try? KeychainHelper.delete(username: username)
+            try? KeychainHelper.deleteRefreshToken()
         }
     }
 
