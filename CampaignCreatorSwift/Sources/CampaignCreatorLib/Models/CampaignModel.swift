@@ -53,6 +53,20 @@ public struct CampaignSectionCreatePayload: Codable, Sendable {
     }
 }
 
+public struct CampaignSectionUpdatePayload: Codable, Sendable {
+    public var title: String?
+    public var content: String?
+    public var order: Int?
+    public var type: String?
+
+    public init(title: String? = nil, content: String? = nil, order: Int? = nil, type: String? = nil) {
+        self.title = title
+        self.content = content
+        self.order = order
+        self.type = type
+    }
+}
+
 // New struct for campaign custom sections
 public struct CampaignCustomSection: Identifiable, Codable, Sendable, Hashable { // Added Hashable
     public var id: Int // CHANGED from UUID to Int

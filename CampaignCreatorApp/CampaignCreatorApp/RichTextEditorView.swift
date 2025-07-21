@@ -1,5 +1,6 @@
 import SwiftUI
 import CampaignCreatorLib
+import SwiftData
 
 struct RichTextEditorView: UIViewRepresentable {
     @Binding var text: NSAttributedString

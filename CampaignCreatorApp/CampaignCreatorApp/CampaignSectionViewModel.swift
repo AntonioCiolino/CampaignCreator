@@ -66,7 +66,7 @@ class CampaignSectionViewModel: ObservableObject {
                 let updatedSection = try await llmService.apiService.regenerateCampaignSection(
                     campaignId: section.campaign_id,
                     sectionId: section.id,
-                    payload: SectionRegeneratePayload(new_prompt: "Regenerate this section.")
+                    payload: SectionRegeneratePayload(newPrompt: "Regenerate this section.")
                 )
                 DispatchQueue.main.async {
                     self.section = updatedSection
@@ -105,8 +105,8 @@ class CampaignSectionViewModel: ObservableObject {
                     campaignId: section.campaign_id,
                     sectionId: section.id,
                     payload: SectionRegeneratePayload(
-                        new_prompt: selectedText,
-                        feature_id: featureId
+                        newPrompt: selectedText,
+                        featureId: featureId
                     )
                 )
                 DispatchQueue.main.async {
@@ -120,8 +120,4 @@ class CampaignSectionViewModel: ObservableObject {
             }
         }
     }
-}
-
-struct CampaignSectionUpdatePayload: Codable {
-    let content: String
 }

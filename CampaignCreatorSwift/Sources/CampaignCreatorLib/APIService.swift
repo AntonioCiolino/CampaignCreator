@@ -606,6 +606,11 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
         return try await performRequest(endpoint: "/campaigns/\(campaignId)/sections", method: "POST", body: body)
     }
 
+    public func updateCampaignSection(campaignId: Int, sectionId: Int, data: CampaignSectionUpdatePayload) async throws -> CampaignSection {
+        let body = try jsonEncoder.encode(data)
+        return try await performRequest(endpoint: "/campaigns/\(campaignId)/sections/\(sectionId)", method: "PUT", body: body)
+    }
+
 
     // MARK: - Character Methods
     public func fetchCharacters() async throws -> [Character] {
