@@ -113,6 +113,9 @@ struct TOCView: View {
                     if seedEvent.event_type == "section_update", let sectionData = seedEvent.section_data {
                         DispatchQueue.main.async {
                             self.campaign.sections?.append(sectionData)
+                            if self.selectedSection == nil {
+                                self.selectedSection = self.campaign.sections?.first
+                            }
                         }
                     }
                 }
