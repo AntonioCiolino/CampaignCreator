@@ -4,14 +4,23 @@ import SwiftData
 
 class FeatureService {
     private let apiService: CampaignCreatorLib.APIService
-    private let modelContext: ModelContext
+    private var modelContext: ModelContext?
 
-    init(apiService: CampaignCreatorLib.APIService = CampaignCreatorLib.APIService(), modelContext: ModelContext) {
+    init(apiService: CampaignCreatorLib.APIService = CampaignCreatorLib.APIService()) {
         self.apiService = apiService
+    }
+
+    func setModelContext(_ modelContext: ModelContext) {
         self.modelContext = modelContext
     }
 
     func fetchFeatures() async throws -> [Feature] {
+        guard let modelContext = modelContext else {
+            // Or handle this case appropriately, maybe by fetching from API directly
+            // without caching if that's a valid use case.
+            return try await apiService.performRequest(endpoint: "/features/")
+        }
+
         let descriptor = FetchDescriptor<FeatureModel>()
         let localFeatures = try? modelContext.fetch(descriptor)
 
