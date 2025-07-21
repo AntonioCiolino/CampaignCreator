@@ -77,23 +77,22 @@ from functools import wraps
 def requires_auth(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        auth_header = request.headers.get('Authorization')
-        api_key = request.headers.get('X-API-Key')
-        token_param = request.args.get('token')
-        basic_auth = request.authorization
-
-        if not auth_header and not api_key and not token_param and not basic_auth:
+        # Check for any of the supported authentication methods
+        if (
+            request.headers.get('Authorization') is None and
+            request.headers.get('X-API-Key') is None and
+            request.args.get('token') is None
+        ):
             return jsonify({"error": "Authentication required"}), 401
 
-        # In a real scenario, you'd also validate the token here.
-        # For this server, we're just forwarding it.
+        # The actual token validation or handshake is now handled in forward_request
         return f(*args, **kwargs)
     return decorated_function
 
 def forward_request(method, path, **kwargs):
     """
     Forwards a request to the main Campaign Crafter API.
-    Extracts token from various sources.
+    Extracts token from various sources or performs a handshake for Basic Auth.
     """
     token = None
     auth_header = request.headers.get('Authorization')
@@ -101,7 +100,7 @@ def forward_request(method, path, **kwargs):
     token_param = request.args.get('token')
     basic_auth = request.authorization
 
-    if auth_header:
+    if auth_header and auth_header.lower().startswith('bearer '):
         # Standard Bearer token
         token = auth_header
     elif api_key:
@@ -111,8 +110,19 @@ def forward_request(method, path, **kwargs):
         # Token in query parameter
         token = f"Bearer {token_param}"
     elif basic_auth:
-        # Basic Auth: username is the token
-        token = f"Bearer {basic_auth.username}"
+        # Basic Auth: perform a handshake to get a token
+        try:
+            auth_response = requests.post(
+                f"{CAMPAIGN_CRAFTER_API_URL}/auth/token",
+                data={"username": basic_auth.username, "password": basic_auth.password}
+            )
+            auth_response.raise_for_status()
+            token_data = auth_response.json()
+            token = f"Bearer {token_data['access_token']}"
+        except requests.exceptions.HTTPError as e:
+            return jsonify(e.response.json()), e.response.status_code
+        except (requests.exceptions.RequestException, KeyError) as e:
+            return jsonify({"error": f"Failed to authenticate with backend: {str(e)}"}), 500
 
     if not token:
         return jsonify({"error": "Authentication required"}), 401
@@ -270,30 +280,9 @@ def list_mcp_endpoints():
                 "client_name": "Campaign Crafter MCP Client",
                 "base_url": base_url,
                 "auth": {
-                    "method": "multi",
-                    "token_url": f"{base_url}/mcp/token",
-                    "auth_modes": [
-                        {
-                            "mode": "bearer",
-                            "help": "Standard JWT Bearer token in 'Authorization' header."
-                        },
-                        {
-                            "mode": "api_key_header",
-                            "header": "X-API-Key",
-                            "help": "JWT token passed in a custom header."
-                        },
-                        {
-                            "mode": "query_param",
-                            "param": "token",
-                            "help": "JWT token passed as a URL query parameter."
-                        },
-                        {
-                            "mode": "basic_auth",
-                            "help": "JWT token passed as the username in Basic Auth."
-                        }
-                    ],
-                    "username_field": "username",
-                    "password_field": "password"
+                    "method": "basic_or_token",
+                    "help": "Supports Basic Auth (user:pass) for handshaking, or a direct token via Bearer, X-API-Key, or ?token query param.",
+                    "token_url": f"{base_url}/mcp/token"
                 },
                 "endpoints": {
                     "create_campaign": {
