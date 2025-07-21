@@ -6,6 +6,8 @@ struct RichTextEditorView: UIViewRepresentable {
     @Binding var text: NSAttributedString
     var onSnippetEdit: ((String) -> Void)?
     var onSelectionChange: ((NSRange) -> Void)?
+    var featureService: FeatureService
+
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
         textView.delegate = context.coordinator
@@ -48,8 +50,7 @@ struct RichTextEditorView: UIViewRepresentable {
         private func fetchFeatures() {
             Task {
                 do {
-                    let featureService = FeatureService(modelContext: try! ModelContainer(for: CampaignModel.self, CharacterModel.self, MemoryModel.self, ChatMessageModel.self, UserModel.self).mainContext)
-                    self.features = try await featureService.fetchFeatures().filter { $0.feature_category == "Snippet" }
+                    self.features = try await self.parent.featureService.fetchFeatures().filter { $0.feature_category == "Snippet" }
                 } catch {
                     // Handle error
                     print("Failed to fetch features: \(error)")
