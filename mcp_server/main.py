@@ -19,6 +19,14 @@ def list_mcp_versions():
     return jsonify(["0.1.0"])
 
 
+@app.route('/mcp', methods=['GET'])
+def get_mcp_config():
+    """
+    Returns the MCP configuration.
+    """
+    return list_mcp_endpoints()
+
+
 # --- Authentication Endpoint ---
 @app.route('/mcp/token', methods=['POST'])
 def login_for_access_token():
@@ -57,13 +65,28 @@ def authenticate_with_mcp_server(mcp_base_url, username, password):
         print(f"An error occurred during authentication: {e}")
         return None
 
+from functools import wraps
+
+def requires_auth(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return jsonify({"error": "Authorization header is missing"}), 401
+        # In a real scenario, you'd also validate the token here.
+        # For this server, we're just forwarding it.
+        return f(*args, **kwargs)
+    return decorated_function
+
 def forward_request(method, path, **kwargs):
     """
     Forwards a request to the main Campaign Crafter API.
     Requires a valid JWT in the 'Authorization' header.
     """
     auth_header = request.headers.get('Authorization')
+    # The decorator handles the check, but we still need to pass the header
     if not auth_header:
+        # This part should ideally not be reached if the decorator is applied
         return jsonify({"error": "Authorization header is missing"}), 401
 
     url = f"{CAMPAIGN_CRAFTER_API_URL}{path}"
@@ -94,77 +117,95 @@ def forward_request(method, path, **kwargs):
 
 # --- Campaign Endpoints ---
 @app.route('/mcp/campaigns', methods=['POST'])
+@requires_auth
 def create_campaign():
     return forward_request('POST', '/campaigns')
 
 @app.route('/mcp/campaigns', methods=['GET'])
+@requires_auth
 def list_campaigns():
     return forward_request('GET', '/campaigns')
 
 @app.route('/mcp/campaigns/<int:campaign_id>', methods=['GET'])
+@requires_auth
 def get_campaign(campaign_id):
     return forward_request('GET', f'/campaigns/{campaign_id}')
 
 @app.route('/mcp/campaigns/<int:campaign_id>', methods=['PUT'])
+@requires_auth
 def update_campaign(campaign_id):
     return forward_request('PUT', f'/campaigns/{campaign_id}')
 
 @app.route('/mcp/campaigns/<int:campaign_id>', methods=['DELETE'])
+@requires_auth
 def delete_campaign(campaign_id):
     return forward_request('DELETE', f'/campaigns/{campaign_id}')
 
 # --- Character Endpoints ---
 @app.route('/mcp/characters', methods=['POST'])
+@requires_auth
 def create_character():
     return forward_request('POST', '/characters')
 
 @app.route('/mcp/characters', methods=['GET'])
+@requires_auth
 def list_characters():
     return forward_request('GET', '/characters')
 
 @app.route('/mcp/characters/<int:character_id>', methods=['GET'])
+@requires_auth
 def get_character(character_id):
     return forward_request('GET', f'/characters/{character_id}')
 
 @app.route('/mcp/characters/<int:character_id>', methods=['PUT'])
+@requires_auth
 def update_character(character_id):
     return forward_request('PUT', f'/characters/{character_id}')
 
 @app.route('/mcp/characters/<int:character_id>', methods=['DELETE'])
+@requires_auth
 def delete_character(character_id):
     return forward_request('DELETE', f'/characters/{character_id}')
 
 @app.route('/mcp/characters/<int:character_id>/campaigns/<int:campaign_id>', methods=['POST'])
+@requires_auth
 def link_character_to_campaign(character_id, campaign_id):
     return forward_request('POST', f'/characters/{character_id}/campaigns/{campaign_id}')
 
 @app.route('/mcp/characters/<int:character_id>/campaigns/<int:campaign_id>', methods=['DELETE'])
+@requires_auth
 def unlink_character_from_campaign(character_id, campaign_id):
     return forward_request('DELETE', f'/characters/{character_id}/campaigns/{campaign_id}')
 
 # --- Campaign Section Endpoints ---
 @app.route('/mcp/campaigns/<int:campaign_id>/sections', methods=['POST'])
+@requires_auth
 def create_campaign_section(campaign_id):
     return forward_request('POST', f'/campaigns/{campaign_id}/sections')
 
 @app.route('/mcp/campaigns/<int:campaign_id>/sections', methods=['GET'])
+@requires_auth
 def list_campaign_sections(campaign_id):
     return forward_request('GET', f'/campaigns/{campaign_id}/sections')
 
 @app.route('/mcp/campaigns/<int:campaign_id>/sections/<int:section_id>', methods=['PUT'])
+@requires_auth
 def update_campaign_section(campaign_id, section_id):
     return forward_request('PUT', f'/campaigns/{campaign_id}/sections/{section_id}')
 
 @app.route('/mcp/campaigns/<int:campaign_id>/sections/<int:section_id>', methods=['DELETE'])
+@requires_auth
 def delete_campaign_section(campaign_id, section_id):
     return forward_request('DELETE', f'/campaigns/{campaign_id}/sections/{section_id}')
 
 # --- TOC and Title Generation Endpoints ---
 @app.route('/mcp/campaigns/<int:campaign_id>/toc', methods=['POST'])
+@requires_auth
 def generate_toc(campaign_id):
     return forward_request('POST', f'/campaigns/{campaign_id}/toc')
 
 @app.route('/mcp/campaigns/<int:campaign_id>/titles', methods=['POST'])
+@requires_auth
 def generate_titles(campaign_id):
     return forward_request('POST', f'/campaigns/{campaign_id}/titles')
 
