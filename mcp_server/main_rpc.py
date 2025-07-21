@@ -1,6 +1,6 @@
 import os
 import httpx
-from fastmcp import FastMCP, Tool
+from fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
 # --- Configuration ---
