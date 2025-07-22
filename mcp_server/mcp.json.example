@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "campaign-crafter": {
+      "command": "uvx",
+      "args": ["campaign-crafter-mcp@latest"],
+      "env": {
+        "API_BASE_URL": "http://127.0.0.1:8000",
+        "MCP_SERVER_HOST": "127.0.0.1",
+        "MCP_SERVER_PORT": "4000"
+      },
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
