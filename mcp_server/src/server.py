@@ -19,6 +19,34 @@ MCP_SERVER_PORT = config["mcp_server_port"]
 # Create MCP server
 mcp = FastMCP("Campaign Crafter")
 
+# Add this global variable to store the token
+_auth_token = None
+
+
+async def auto_authenticate():
+    """Automatically authenticate using environment credentials."""
+    global _auth_token
+    username = os.getenv("CAMPAIGN_CRAFTER_USERNAME")
+    password = os.getenv("CAMPAIGN_CRAFTER_PASSWORD")
+
+    if not username or not password:
+        logger.warning("No credentials found in environment variables")
+        return None
+
+    try:
+        async with httpx.AsyncClient(follow_redirects=True) as client:
+            response = await client.post(
+                f"{API_BASE_URL}/api/v1/auth/token",
+                data={"username": username, "password": password},
+            )
+            response.raise_for_status()
+            _auth_token = response.json()["access_token"]
+            logger.info(f"Auto-authentication successful; : token is \n{_auth_token}\n")
+            return _auth_token
+    except Exception as e:
+        logger.error(f"Auto-authentication failed: {e}")
+        return None
+
 
 # --- Helper Function ---
 async def forward_request(
@@ -39,9 +67,10 @@ async def forward_request(
     Raises:
         Exception: If the request fails or the user is not authenticated
     """
-    if not token:
-        raise Exception("Unauthorized. Please login first.")
-    headers = {"Authorization": f"Bearer {token}"}
+    auth_token = token or _auth_token
+    if not auth_token:
+        raise Exception("Unauthorized. Please login or set credentials.")
+    headers = {"Authorization": f"Bearer {auth_token}"}
     async with httpx.AsyncClient(follow_redirects=True) as client:
         url = f"{API_BASE_URL}/api/v1{path}"
         logger.debug(f"Forwarding {method} request to {url}")
@@ -54,9 +83,9 @@ async def forward_request(
 
 # --- MCP Tools ---
 @mcp.tool
-async def login(token: str, ctx: Context) -> str:
+async def get_user_info(token: str, ctx: Context) -> str:
     """
-    Logs in a user and returns the token.
+    Retrieves information about the logged-in user.
     """
     headers = {"Authorization": f"Bearer {token}"}
     async with httpx.AsyncClient() as client:
@@ -276,4 +305,4 @@ def run_server():
     """Run the MCP server."""
     logger.info(f"Starting MCP server on {MCP_SERVER_HOST}:{MCP_SERVER_PORT}")
     logger.info(f"API base URL: {API_BASE_URL}")
-    mcp.run(transport="http", host=MCP_SERVER_HOST, port=MCP_SERVER_PORT)
+    mcp.run(transport="http", host=MCP_SERVER_HOST, port=MCP_SERVER_PORT, show_banner=False)

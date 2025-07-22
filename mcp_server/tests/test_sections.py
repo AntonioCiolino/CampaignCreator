@@ -33,7 +33,7 @@ async def main():
     
     async with Client("http://127.0.0.1:4000/mcp/") as client:
         # Login to the server
-        login_result = await client.call_tool("login", {"token": token})
+        login_result = await client.call_tool("get_user_info", {"token": token})
         token = login_result.data
         print("Successfully logged in.")
         
