@@ -63,10 +63,14 @@ struct RichTextEditorView: UIViewRepresentable {
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {
-            guard let text = textView.text, (textView.selectedRange.location + textView.selectedRange.length) <= text.count else {
-                return
+            let selectedRange = textView.selectedRange
+            let attributedString = parent.text
+
+            if selectedRange.location + selectedRange.length <= attributedString.length {
+                parent.onSelectionChange?(selectedRange)
+            } else {
+                print("Invalid range")
             }
-            parent.onSelectionChange?(textView.selectedRange)
         }
 
         @objc func toggleBold() {
