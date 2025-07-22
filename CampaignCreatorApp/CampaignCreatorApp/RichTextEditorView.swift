@@ -110,10 +110,13 @@ struct RichTextEditorView: UIViewRepresentable {
 
             guard let image = info[.originalImage] as? UIImage, let textView = textView else { return }
 
-            parent.imageUploadService.uploadImage(image) { result in
+            Task {
+                let imageData = image.jpegData(compressionQuality: 0.8)!
+                let result = await parent.imageUploadService.uploadImage(imageData: imageData, filename: "image.jpg", mimeType: "image/jpeg")
+
                 switch result {
-                case .success(let url):
-                    let attributedString = NSAttributedString(string: "\n![image](\(url))\n")
+                case .success(let response):
+                    let attributedString = NSAttributedString(string: "\n![image](\(response.imageUrl))\n")
                     let mutableAttributedString = NSMutableAttributedString(attributedString: textView.attributedText)
                     mutableAttributedString.insert(attributedString, at: textView.selectedRange.location)
 
