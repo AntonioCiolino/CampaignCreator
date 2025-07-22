@@ -31,9 +31,9 @@ public class CampaignCreator: ObservableObjectProtocol {
         return llmService != nil
     }
 
-    public init(apiService: APIService = APIService()) {
+    public init() {
         self.markdownGenerator = MarkdownGenerator()
-        self.apiService = apiService
+        self.apiService = APIService()
         self.setupLLMService()
 
         self.isAuthenticated = apiService.hasToken()
@@ -88,7 +88,9 @@ public class CampaignCreator: ObservableObjectProtocol {
     }
 
     public func logout() {
-        apiService.updateAuthToken(nil)
+        if let username = apiService.tokenManager.getUsername() {
+            apiService.tokenManager.clearTokens(for: username)
+        }
         isAuthenticated = false
         currentUser = nil
         isUserSessionValid = false // Reset session validity

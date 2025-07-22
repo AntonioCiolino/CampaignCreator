@@ -75,7 +75,8 @@ struct TOCView: View {
         tocError = nil
         Task {
             do {
-                let updatedCampaign = try await llmService.apiService.generateCampaignTOC(campaignId: campaign.id, payload: LLMGenerationPayload(prompt: "Generate a table of contents for the campaign based on its concept."))
+                let prompt = "Generate a table of contents for a campaign with the following concept: \(campaign.concept ?? "No concept provided"). The table of contents should be a list of sections that would be appropriate for a role-playing game campaign. Each section should have a title and a brief description."
+                let updatedCampaign = try await llmService.apiService.generateCampaignTOC(campaignId: campaign.id, payload: LLMGenerationPayload(prompt: prompt))
                 DispatchQueue.main.async {
                     self.campaign.display_toc = updatedCampaign.displayTOC?.map { TOCEntry(from: $0) }
                     self.isGeneratingTOC = false
@@ -112,6 +113,9 @@ struct TOCView: View {
                     if seedEvent.event_type == "section_update", let sectionData = seedEvent.section_data {
                         DispatchQueue.main.async {
                             self.campaign.sections?.append(sectionData)
+                            if self.selectedSection == nil {
+                                self.selectedSection = self.campaign.sections?.first
+                            }
                         }
                     }
                 }

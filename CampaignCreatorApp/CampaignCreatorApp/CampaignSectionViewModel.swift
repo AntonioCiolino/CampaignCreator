@@ -40,7 +40,7 @@ class CampaignSectionViewModel: ObservableObject {
         Task {
             do {
                 let updatedSectionData = try await llmService.apiService.updateCampaignSection(
-                    campaignId: section.campaign_id,
+                    campaignId: section.campaign_id!,
                     sectionId: section.id,
                     data: CampaignSectionUpdatePayload(content: editedContent)
                 )
@@ -67,7 +67,7 @@ class CampaignSectionViewModel: ObservableObject {
         Task {
             do {
                 let updatedSectionData = try await llmService.apiService.regenerateCampaignSection(
-                    campaignId: section.campaign_id,
+                    campaignId: section.campaign_id!,
                     sectionId: section.id,
                     payload: SectionRegeneratePayload(newPrompt: "Regenerate this section.")
                 )
@@ -89,7 +89,7 @@ class CampaignSectionViewModel: ObservableObject {
         Task {
             do {
                 try await llmService.apiService.deleteCampaignSection(
-                    campaignId: section.campaign_id,
+                    campaignId: section.campaign_id!,
                     sectionId: section.id
                 )
                 DispatchQueue.main.async {
@@ -103,12 +103,11 @@ class CampaignSectionViewModel: ObservableObject {
     }
 
     func snippetEdit(editType: String, featureId: Int) {
-        guard let selectedText = selectedText else { return }
-
         Task {
             do {
+                guard let selectedText = selectedText else { return }
                 let updatedSectionData = try await llmService.apiService.regenerateCampaignSection(
-                    campaignId: section.campaign_id,
+                    campaignId: section.campaign_id!,
                     sectionId: section.id,
                     payload: SectionRegeneratePayload(
                         newPrompt: selectedText,
