@@ -47,19 +47,19 @@ async def main():
 
         # List the available tools
         tools = await client.call_tool("list_tools")
-        print("Available tools:", tools)
+        print("Available tools:", tools.data)
 
         # List the campaigns
-        campaigns = await client.call_tool("list_campaigns", token)
-        print("Campaigns:", campaigns)
+        campaigns = await client.call_tool("list_campaigns", {"token": token})
+        print("Campaigns:", campaigns.data)
 
         # Create a new campaign
         new_campaign = {
             "title": "My Awesome Campaign",
             "concept": "A campaign about a group of heroes saving the world."
         }
-        created_campaign = await client.call_tool("create_campaign", new_campaign, token)
-        print("Created campaign:", created_campaign.json())
+        created_campaign = await client.call_tool("create_campaign", {"campaign": new_campaign, "token": token})
+        print("Created campaign:", created_campaign.data)
 
 if __name__ == "__main__":
     asyncio.run(main())

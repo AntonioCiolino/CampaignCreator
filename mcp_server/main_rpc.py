@@ -31,7 +31,7 @@ async def list_tools(ctx: Context) -> list[str]:
     """
     Lists the available tools.
     """
-    return dir(mcp)
+    return [tool.name for tool in mcp.get_tools()]
 
 @mcp.tool
 async def list_campaigns(ctx: Context) -> list:
