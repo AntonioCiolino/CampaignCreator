@@ -111,7 +111,6 @@ struct CampaignDetailView: View {
             })
             tocSection
             sectionsSection
-            addSectionButton
             llmSettingsSection
             moodboardSection
         }
@@ -139,6 +138,11 @@ struct CampaignDetailView: View {
                 Text("No sections available. Add a section to get started.")
                     .foregroundColor(.secondary)
             }
+
+            Button(action: addSection) {
+                Image(systemName: "plus.circle.fill")
+                    .foregroundColor(.accentColor)
+            }
         }
     }
 
@@ -156,12 +160,6 @@ struct CampaignDetailView: View {
                 }
             }))
             .id(selectedSection.id)
-        }
-    }
-
-    private var addSectionButton: some View {
-        Button("Add Section") {
-            addSection()
         }
     }
 

@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import CampaignCreatorLib
 
 struct CampaignSectionEditorView: View {
     @StateObject var viewModel: CampaignSectionViewModel
@@ -31,6 +32,13 @@ struct CampaignSectionEditorView: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
+                    if viewModel.isRegenerating {
+                        ProgressView()
+                    } else {
+                        Button("Regenerate") {
+                            viewModel.regenerate()
+                        }
+                    }
                     Button("Done") {
                         viewModel.save()
                         isPresented = false

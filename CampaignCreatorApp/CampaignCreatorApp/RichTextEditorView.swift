@@ -182,7 +182,7 @@ struct RichTextEditorView: UIViewRepresentable {
                 if textView.selectedRange.length > 0 {
                     return UIMenu(title: "", children: [formattingMenu, aiMenu])
                 } else {
-                    return UIMenu(title: "", children: [insertImage])
+                    return UIMenu(title: "", children: [formattingMenu])
                 }
             }
         }
