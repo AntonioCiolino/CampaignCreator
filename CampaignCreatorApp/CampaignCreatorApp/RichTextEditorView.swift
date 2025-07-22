@@ -7,6 +7,7 @@ struct RichTextEditorView: UIViewRepresentable {
     var onSnippetEdit: ((String) -> Void)?
     var onSelectionChange: ((NSRange) -> Void)?
     var featureService: FeatureService
+    @EnvironmentObject var imageUploadService: ImageUploadService
 
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
@@ -109,15 +110,18 @@ struct RichTextEditorView: UIViewRepresentable {
 
             guard let image = info[.originalImage] as? UIImage, let textView = textView else { return }
 
-            let attachment = NSTextAttachment()
-            attachment.image = image
-            attachment.bounds = CGRect(x: 0, y: 0, width: image.size.width, height: image.size.height)
+            parent.imageUploadService.uploadImage(image) { result in
+                switch result {
+                case .success(let url):
+                    let attributedString = NSAttributedString(string: "\n![image](\(url))\n")
+                    let mutableAttributedString = NSMutableAttributedString(attributedString: textView.attributedText)
+                    mutableAttributedString.insert(attributedString, at: textView.selectedRange.location)
 
-            let attributedString = NSAttributedString(attachment: attachment)
-            let mutableAttributedString = NSMutableAttributedString(attributedString: textView.attributedText)
-            mutableAttributedString.insert(attributedString, at: textView.selectedRange.location)
-
-            parent.text = mutableAttributedString
+                    self.parent.text = mutableAttributedString
+                case .failure(let error):
+                    print("Failed to upload image: \(error)")
+                }
+            }
         }
 
         private func toggleFontTrait(_ trait: UIFontDescriptor.SymbolicTraits) {

@@ -111,7 +111,6 @@ struct CampaignDetailView: View {
             })
             tocSection
             sectionsSection
-            selectedSectionView
             addSectionButton
             llmSettingsSection
             moodboardSection
@@ -134,6 +133,8 @@ struct CampaignDetailView: View {
                     }
                 }
                 .pickerStyle(MenuPickerStyle())
+
+                selectedSectionView
             } else {
                 Text("No sections available. Add a section to get started.")
                     .foregroundColor(.secondary)

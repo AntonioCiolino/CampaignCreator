@@ -3,8 +3,8 @@ import SwiftData
 
 struct CampaignSectionView: View {
     @StateObject var viewModel: CampaignSectionViewModel
-    @State private var attributedString: NSAttributedString = NSAttributedString(string: "")
     @State private var showingDeleteConfirmation = false
+    @State private var showingEditor = false
     @Environment(\.modelContext) private var modelContext
 
     var body: some View {
@@ -16,65 +16,29 @@ struct CampaignSectionView: View {
                     .fontWeight(.bold)
             }
 
-            if viewModel.isEditing {
-                RichTextEditorView(text: $attributedString, onSnippetEdit: { editType in
-                    if let feature = self.viewModel.features.first(where: { $0.name == editType }) {
-                        self.viewModel.snippetEdit(editType: editType, featureId: feature.id)
-                    }
-                }, onSelectionChange: { range in
-                    self.viewModel.selectedText = (self.attributedString.string as NSString).substring(with: range)
-                }, featureService: {
-                    let featureService = FeatureService()
-                    featureService.setModelContext(modelContext)
-                    return featureService
-                }())
-                .onAppear {
-                    attributedString = NSAttributedString(string: viewModel.editedContent)
-                }
-                .onChange(of: attributedString) { _, newValue in
-                    viewModel.editedContent = newValue.string
-                }
-                .onChange(of: viewModel.editedContent) { _, newValue in
-                    attributedString = NSAttributedString(string: newValue)
-                }
+            ScrollView {
+                Text(viewModel.section.content)
+                    .font(.body)
+            }
 
-                HStack {
-                    Button("Save") {
-                        viewModel.save()
-                    }
-                    Button("Cancel") {
-                        viewModel.cancel()
-                    }
-                    if viewModel.isRegenerating {
-                        ProgressView()
-                    } else {
-                        Button("Regenerate") {
-                            viewModel.regenerate()
-                        }
-                    }
+            HStack {
+                Button("Edit") {
+                    showingEditor = true
                 }
-            } else {
-                ScrollView {
-                    Text(viewModel.section.content)
-                        .font(.body)
+                Button("Delete") {
+                    showingDeleteConfirmation = true
                 }
-
-                HStack {
-                    Button("Edit") {
-                        viewModel.isEditing = true
+                .alert("Delete Section", isPresented: $showingDeleteConfirmation) {
+                    Button("Delete", role: .destructive) {
+                        viewModel.delete()
                     }
-                    Button("Delete") {
-                        showingDeleteConfirmation = true
-                    }
-                    .alert("Delete Section", isPresented: $showingDeleteConfirmation) {
-                        Button("Delete", role: .destructive) {
-                            viewModel.delete()
-                        }
-                        Button("Cancel", role: .cancel) { }
-                    } message: {
-                        Text("Are you sure you want to delete this section? This action cannot be undone.")
-                    }
+                    Button("Cancel", role: .cancel) { }
+                } message: {
+                    Text("Are you sure you want to delete this section? This action cannot be undone.")
                 }
+            }
+            .sheet(isPresented: $showingEditor) {
+                CampaignSectionEditorView(viewModel: viewModel, isPresented: $showingEditor)
             }
         }
         .padding()

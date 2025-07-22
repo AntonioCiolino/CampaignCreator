@@ -10,6 +10,7 @@ class CampaignSectionViewModel: ObservableObject {
     @Published var editedContent: String
     @Published var selectedText: String?
     @Published var features: [Feature] = []
+    @Published var attributedString: NSAttributedString
 
     private var llmService: LLMService
     private var featureService: FeatureService
@@ -20,6 +21,7 @@ class CampaignSectionViewModel: ObservableObject {
     init(section: CampaignSection, llmService: LLMService, featureService: @autoclosure () -> FeatureService, onDelete: (() -> Void)? = nil) {
         self.section = section
         self.editedContent = section.content
+        self.attributedString = NSAttributedString(string: section.content)
         self.llmService = llmService
         self.featureService = featureService()
         self.onDelete = onDelete
@@ -38,6 +40,7 @@ class CampaignSectionViewModel: ObservableObject {
     }
 
     func save() {
+        editedContent = attributedString.string
         Task {
             do {
                 let updatedSectionData = try await llmService.apiService.updateCampaignSection(
