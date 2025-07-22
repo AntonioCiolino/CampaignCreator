@@ -11,10 +11,23 @@ class Campaign(BaseModel):
     concept: str
 
 
+class CharacterStats(BaseModel):
+    """Character stats model."""
+    strength: Optional[int] = None
+    dexterity: Optional[int] = None
+    constitution: Optional[int] = None
+    intelligence: Optional[int] = None
+    wisdom: Optional[int] = None
+    charisma: Optional[int] = None
+
+
 class Character(BaseModel):
     """Character model for creating and updating characters."""
     name: str
     concept: str
+    description: Optional[str] = None
+    appearance_description: Optional[str] = None
+    stats: Optional[CharacterStats] = None
     campaign_id: Optional[int] = None
 
 
