@@ -1,154 +1,195 @@
-# MCP Server for Campaign Crafter
+# Campaign Crafter MCP Server
 
-This server acts as a facade for the main Campaign Crafter API, providing a bridge for MCP (Model Context Protocol) clients.
+This server provides a Model Context Protocol (MCP) interface for the Campaign Crafter API, allowing AI assistants like Claude and OpenAI to interact with the Campaign Crafter application.
+
+## Features
+
+- **Campaign Management**: Create, read, update, delete, and list campaigns
+- **Character Management**: Create, read, update, delete, and list characters
+- **Campaign Sections**: Create, read, update, delete, and list campaign sections
+- **Character-Campaign Linking**: Link and unlink characters to/from campaigns
+- **Generation Tools**: Generate table of contents and titles
 
 ## Setup
 
-1.  **Create and activate a virtual environment:**
-    ```bash
-    python3 -m venv venv
-    source venv/bin/activate  # On Windows use `venv\\Scripts\\activate`
-    ```
+### Prerequisites
 
-2.  **Start the main Campaign Crafter API.** The MCP server depends on the main API, which must be running on `http://localhost:8000`.
+- Python 3.8 or higher
+- Campaign Crafter API running on http://localhost:8000 (or configured URL)
 
-3.  **Install the MCP server dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+### Installation
 
-4.  **Run the MCP server:**
-    ```bash
-    python main.py
-    ```
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/yourusername/campaign-crafter-mcp.git
+   cd campaign-crafter-mcp
+   ```
 
-The MCP server will be available at the port specified in your `.env` file (default is `http://localhost:5001`).
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\\Scripts\\activate
+   ```
 
-The `test_app.py` script uses credentials from the `.env` file to authenticate with the main API. Make sure to update the `TEST_USERNAME` and `TEST_PASSWORD` variables in your `.env` file with the credentials of a valid test user.
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-## API Documentation
+4. Create a `.env` file with your configuration:
+   ```
+   API_BASE_URL=http://127.0.0.1:8000
+   MCP_SERVER_HOST=127.0.0.1
+   MCP_SERVER_PORT=4000
+   DEBUG=false
+   ```
 
-All endpoints are prefixed with `/mcp`.
+### Running the Server
 
-### Root
+Start the server with:
 
-*   **List MCP Versions:** `GET /`
-    *   **Returns:** A JSON array of available MCP versions.
-    *   **Example:** `curl http://localhost:5001/`
+```bash
+python main.py
+```
 
-### Campaigns
+Or use the provided start scripts:
 
-*   **Create Campaign:** `POST /campaigns`
-    *   **Body:** JSON object with `name` (string) and `description` (string).
-    *   **Example:** `curl -X POST -H "Content-Type: application/json" -d '{"name": "My New Campaign", "description": "A test campaign."}' http://localhost:5001/mcp/campaigns`
+```bash
+# On Linux/macOS
+./start.sh
 
-*   **List Campaigns:** `GET /campaigns`
-    *   **Example:** `curl http://localhost:5001/mcp/campaigns`
+# On Windows
+start.bat
+```
 
-*   **Get Campaign:** `GET /campaigns/<campaign_id>`
-    *   **Example:** `curl http://localhost:5001/mcp/campaigns/1`
+The server will be available at `http://127.0.0.1:4000/mcp/` (or your configured host/port).
 
-*   **Update Campaign:** `PUT /campaigns/<campaign_id>`
-    *   **Body:** JSON object with `name` and/or `description`.
-    *   **Example:** `curl -X PUT -H "Content-Type: application/json" -d '{"name": "My Updated Campaign"}' http://localhost:5001/mcp/campaigns/1`
+## MCP Tools
 
-*   **Delete Campaign:** `DELETE /campaigns/<campaign_id>`
-    *   **Example:** `curl -X DELETE http://localhost:5001/mcp/campaigns/1`
-
-### Characters
-
-*   **Create Character:** `POST /characters`
-    *   **Body:** JSON object with `name` (string) and `description` (string).
-    *   **Example:** `curl -X POST -H "Content-Type: application/json" -d '{"name": "My New Character", "description": "A test character."}' http://localhost:5001/mcp/characters`
-
-*   **List Characters:** `GET /characters`
-    *   **Example:** `curl http://localhost:5001/mcp/characters`
-
-*   **Get Character:** `GET /characters/<character_id>`
-    *   **Example:** `curl http://localhost:5001/mcp/characters/1`
-
-*   **Update Character:** `PUT /characters/<character_id>`
-    *   **Body:** JSON object with `name` and/or `description`.
-    *   **Example:** `curl -X PUT -H "Content-Type: application/json" -d '{"name": "My Updated Character"}' http://localhost:5001/mcp/characters/1`
-
-*   **Delete Character:** `DELETE /characters/<character_id>`
-    *   **Example:** `curl -X DELETE http://localhost:5001/mcp/characters/1`
-
-*   **Link Character to Campaign:** `POST /characters/<character_id>/campaigns/<campaign_id>`
-    *   **Example:** `curl -X POST http://localhost:5001/mcp/characters/1/campaigns/1`
-
-*   **Unlink Character from Campaign:** `DELETE /characters/<character_id>/campaigns/<campaign_id>`
-    *   **Example:** `curl -X DELETE http://localhost:5001/mcp/characters/1/campaigns/1`
-
-### Campaign Sections
-
-*   **Create Campaign Section:** `POST /campaigns/<campaign_id>/sections`
-    *   **Body:** JSON object with `title` (string), `content` (string), and `prompt` (string).
-    *   **Example:** `curl -X POST -H "Content-Type: application/json" -d '{"title": "New Section", "content": "...", "prompt": "Write about a thing"}' http://localhost:5001/mcp/campaigns/1/sections`
-
-*   **List Campaign Sections:** `GET /campaigns/<campaign_id>/sections`
-    *   **Example:** `curl http://localhost:5001/mcp/campaigns/1/sections`
-
-*   **Update Campaign Section:** `PUT /campaigns/<campaign_id>/sections/<section_id>`
-    *   **Body:** JSON object with `title` and/or `content`.
-    *   **Example:** `curl -X PUT -H "Content-Type: application/json" -d '{"title": "Updated Section"}' http://localhost:5001/mcp/campaigns/1/sections/1`
-
-*   **Delete Campaign Section:** `DELETE /campaigns/<campaign_id>/sections/<section_id>`
-    *   **Example:** `curl -X DELETE http://localhost:5001/mcp/campaigns/1/sections/1`
-
-### Table of Contents (TOC) and Title Generation
-
-*   **Seed Sections from TOC:** `POST /campaigns/<campaign_id>/seed_sections_from_toc`
-    *   **Query Parameters:**
-        *   `auto_populate` (boolean, optional): If `true`, the server will automatically generate content for the sections as they are created.
-    *   **Returns:** A Server-Sent Events (SSE) stream with the progress of the section creation.
-    *   **Example:** `curl -N http://localhost:5001/mcp/campaigns/1/seed_sections_from_toc?auto_populate=true`
-
-*   **Generate Titles:** `POST /campaigns/<campaign_id>/titles`
-    *   **Body:** Empty JSON object `{}`.
-    *   **Example:** `curl -X POST http://localhost:5001/mcp/campaigns/1/titles`
-
-## Connecting to the API
-
-You can connect to the MCP server using any HTTP client. Here are some examples using `curl` and Python's `requests` library.
+The server provides the following MCP tools:
 
 ### Authentication
 
-First, you'll need to get an authentication token from the main Campaign Crafter API.
+- `get_user_info`: Verify and return a valid authentication token
 
-**`curl`:**
-```bash
-curl -X POST -d "username=testuser&password=testpassword" http://localhost:8000/api/v1/auth/token
-```
+### Campaign Management
 
-**Python:**
-```python
-import requests
+- `create_campaign`: Create a new campaign
+- `get_campaign`: Get a specific campaign by ID
+- `list_campaigns`: List all campaigns for the authenticated user
+- `update_campaign`: Update a specific campaign
+- `delete_campaign`: Delete a specific campaign
 
-auth_data = {
-    "username": "testuser",
-    "password": "testpassword"
+### Character Management
+
+- `create_character`: Create a new character
+- `get_character`: Get a specific character by ID
+- `list_characters`: List all characters for the authenticated user
+- `get_all_characters`: List all characters regardless of campaign
+- `update_character`: Update a specific character
+- `delete_character`: Delete a specific character
+
+### Campaign Sections
+
+- `create_campaign_section`: Create a new section for a campaign
+- `list_campaign_sections`: List all sections for a campaign
+- `get_campaign_section`: Get a specific section by ID
+- `update_campaign_section`: Update a specific section
+- `delete_campaign_section`: Delete a specific section
+
+### Character-Campaign Linking
+
+- `link_character_to_campaign`: Link a character to a campaign
+- `unlink_character_from_campaign`: Unlink a character from a campaign
+
+### Generation Tools
+
+- `generate_toc`: Generate a table of contents for a campaign
+- `generate_titles`: Generate titles for a campaign section
+
+## Using with AI Assistants
+
+### Claude
+
+To use this MCP server with Claude, add it to your MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "campaign-crafter": {
+      "command": "uvx",
+      "args": ["campaign-crafter-mcp@latest"],
+      "env": {
+        "API_BASE_URL": "http://127.0.0.1:8000",
+        "MCP_SERVER_HOST": "127.0.0.1",
+        "MCP_SERVER_PORT": "4000"
+      },
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
 }
-response = requests.post("http://localhost:8000/api/v1/auth/token", data=auth_data)
-token = response.json()["access_token"]
 ```
 
-### Making Authenticated Requests
+### OpenAI
 
-Once you have an access token, include it in the `Authorization` header of your requests to the MCP server.
+To use this MCP server with OpenAI, follow their documentation for adding custom tools.
 
-**`curl`:**
+## Project Structure
+
+```
+mcp_server/
+├── main.py                 # Entry point
+├── requirements.txt        # Dependencies
+├── .env                    # Environment variables (create this)
+├── .env.example            # Example environment variables
+├── README.md               # This file
+├── start.sh                # Start script for Linux/macOS
+├── start.bat               # Start script for Windows
+├── src/                    # Source code
+│   ├── models/             # Data models
+│   │   └── schemas.py      # Pydantic models
+│   ├── utils/              # Utilities
+│   │   └── config.py       # Configuration utilities
+│   └── server.py           # Server implementation with MCP tools
+└── tests/                  # Tests
+    ├── test_all_endpoints.py  # Comprehensive test
+    ├── test_linking.py     # Character-campaign linking tests
+    ├── test_rpc.py         # Basic RPC tests
+    ├── test_sections.py    # Campaign section tests
+    ├── test_titles.py      # Title generation tests
+    └── test_toc.py         # TOC generation tests
+```
+
+## Testing
+
+The `tests` directory contains test scripts for validating the MCP server functionality. These are live integration tests that interact with the actual Campaign Crafter API.
+
+To run the tests:
+
 ```bash
-curl -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>" http://localhost:5001/mcp/campaigns
+python tests/test_all_endpoints.py
 ```
 
-**Python:**
-```python
-headers = {"Authorization": f"Bearer {token}"}
-response = requests.get("http://localhost:5001/mcp/campaigns", headers=headers)
-print(response.json())
+## Development
+
+### Cleaning Cache Files
+
+To clean up Python cache files, you can use the following commands:
+
+```bash
+# Remove __pycache__ directories
+find . -name "__pycache__" -type d -not -path "*/venv/*" -exec rm -rf {} +
+
+# Remove .pytest_cache directories
+find . -name ".pytest_cache" -type d -exec rm -rf {} +
+
+# Remove .pyc files
+find . -name "*.pyc" -type f -not -path "*/venv/*" -exec rm -f {} +
 ```
 
-### MCP Server Configuration
+A `.gitignore` file is included to prevent these cache files from being committed to the repository.
 
-A sample `mcp_config.json` file has been created in the root of the repository. This file contains a merged configuration for both the Kroger and Campaign Crafter MCP servers. You can use this file to configure your MCP client.
+## License
+
+[MIT License](LICENSE)
