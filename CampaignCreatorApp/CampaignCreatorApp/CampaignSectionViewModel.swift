@@ -82,7 +82,9 @@ class CampaignSectionViewModel: ObservableObject {
                     self.section.order = updatedSectionData.order
                     self.section.type = updatedSectionData.type
                     self.editedContent = updatedSectionData.content
+                    self.attributedString = NSAttributedString(string: updatedSectionData.content)
                     self.isRegenerating = false
+                    self.save()
                 }
             } catch {
                 // Handle error

@@ -35,11 +35,11 @@ struct CampaignSectionEditorView: View {
                     if viewModel.isRegenerating {
                         ProgressView()
                     } else {
-                        Button("Regenerate") {
-                            viewModel.regenerate()
+                        Button(action: { viewModel.regenerate() }) {
+                            Image(systemName: "wand.and.stars")
                         }
                     }
-                    Button("Done") {
+                    Button("Save") {
                         viewModel.save()
                         isPresented = false
                     }

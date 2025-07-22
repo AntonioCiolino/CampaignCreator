@@ -99,9 +99,10 @@ struct RichTextEditorView: UIViewRepresentable {
             imagePicker.delegate = self
             imagePicker.sourceType = .photoLibrary
 
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let rootViewController = windowScene.windows.first?.rootViewController {
-                rootViewController.present(imagePicker, animated: true)
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                if let topController = windowScene.windows.first?.rootViewController {
+                    topController.present(imagePicker, animated: true, completion: nil)
+                }
             }
         }
 
@@ -171,15 +172,14 @@ struct RichTextEditorView: UIViewRepresentable {
 
                 let formattingMenu = UIMenu(title: "Format", children: [bold, italic, underline, insertImage])
 
-                let aiActions = self.features.map { feature in
-                    UIAction(title: feature.name, image: UIImage(systemName: "wand.and.stars")) { action in
-                        self.parent.onSnippetEdit?(feature.name)
-                    }
-                }
-
-                let aiMenu = UIMenu(title: "AI Edits", children: aiActions)
-
                 if textView.selectedRange.length > 0 {
+                    let aiActions = self.features.map { feature in
+                        UIAction(title: feature.name, image: UIImage(systemName: "wand.and.stars")) { action in
+                            self.parent.onSnippetEdit?(feature.name)
+                        }
+                    }
+
+                    let aiMenu = UIMenu(title: "AI Edits", children: aiActions)
                     return UIMenu(title: "", children: [formattingMenu, aiMenu])
                 } else {
                     return UIMenu(title: "", children: [formattingMenu])
