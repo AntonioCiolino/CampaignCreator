@@ -13,14 +13,7 @@ struct RichTextEditorView: UIViewRepresentable {
         textView.delegate = context.coordinator
         context.coordinator.textView = textView
 
-        let toolbar = UIToolbar(frame: CGRect(x: 0, y: 0, width: 100, height: 44))
-        let boldButton = UIBarButtonItem(title: "Bold", style: .plain, target: context.coordinator, action: #selector(Coordinator.toggleBold))
-        let italicButton = UIBarButtonItem(title: "Italic", style: .plain, target: context.coordinator, action: #selector(Coordinator.toggleItalic))
-        let underlineButton = UIBarButtonItem(title: "Underline", style: .plain, target: context.coordinator, action: #selector(Coordinator.toggleUnderline))
-        let imageButton = UIBarButtonItem(image: UIImage(systemName: "photo"), style: .plain, target: context.coordinator, action: #selector(Coordinator.insertImage))
-
-        toolbar.items = [boldButton, italicButton, underlineButton, imageButton]
-        textView.inputAccessoryView = toolbar
+        // No toolbar
 
         let menuInteraction = UIContextMenuInteraction(delegate: context.coordinator)
         textView.addInteraction(menuInteraction)
@@ -60,17 +53,11 @@ struct RichTextEditorView: UIViewRepresentable {
 
         func textViewDidChange(_ textView: UITextView) {
             parent.text = textView.attributedText
+            parent.onSelectionChange?(textView.selectedRange)
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {
-            let selectedRange = textView.selectedRange
-            let attributedString = parent.text
-
-            if selectedRange.location + selectedRange.length <= attributedString.length {
-                parent.onSelectionChange?(selectedRange)
-            } else {
-                print("Invalid range")
-            }
+            // No need to do anything here
         }
 
         @objc func toggleBold() {
@@ -116,6 +103,7 @@ struct RichTextEditorView: UIViewRepresentable {
 
             let attachment = NSTextAttachment()
             attachment.image = image
+            attachment.bounds = CGRect(x: 0, y: 0, width: image.size.width, height: image.size.height)
 
             let attributedString = NSAttributedString(attachment: attachment)
             let mutableAttributedString = NSMutableAttributedString(attributedString: textView.attributedText)
@@ -150,13 +138,29 @@ struct RichTextEditorView: UIViewRepresentable {
             guard let textView = textView, textView.selectedRange.length > 0 else { return nil }
 
             return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { suggestedActions in
-                let actions = self.features.map { feature in
+                let bold = UIAction(title: "Bold", image: UIImage(systemName: "bold")) { _ in
+                    self.toggleBold()
+                }
+
+                let italic = UIAction(title: "Italic", image: UIImage(systemName: "italic")) { _ in
+                    self.toggleItalic()
+                }
+
+                let underline = UIAction(title: "Underline", image: UIImage(systemName: "underline")) { _ in
+                    self.toggleUnderline()
+                }
+
+                let formattingMenu = UIMenu(title: "Format", children: [bold, italic, underline])
+
+                let aiActions = self.features.map { feature in
                     UIAction(title: feature.name, image: UIImage(systemName: "wand.and.stars")) { action in
                         self.parent.onSnippetEdit?(feature.name)
                     }
                 }
 
-                return UIMenu(title: "AI Edits", children: actions)
+                let aiMenu = UIMenu(title: "AI Edits", children: aiActions)
+
+                return UIMenu(title: "", children: [formattingMenu, aiMenu])
             }
         }
     }
