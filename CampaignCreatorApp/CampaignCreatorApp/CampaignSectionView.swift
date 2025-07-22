@@ -16,17 +16,13 @@ struct CampaignSectionView: View {
                     .fontWeight(.bold)
             }
 
-            ScrollView {
-                Text(viewModel.section.content)
-                    .font(.body)
-            }
-
             HStack {
-                Button("Edit") {
-                    showingEditor = true
+                Spacer()
+                Button(action: { showingEditor = true }) {
+                    Image(systemName: "pencil.circle.fill")
                 }
-                Button("Delete") {
-                    showingDeleteConfirmation = true
+                Button(action: { showingDeleteConfirmation = true }) {
+                    Image(systemName: "trash.circle.fill")
                 }
                 .alert("Delete Section", isPresented: $showingDeleteConfirmation) {
                     Button("Delete", role: .destructive) {
@@ -39,6 +35,11 @@ struct CampaignSectionView: View {
             }
             .sheet(isPresented: $showingEditor) {
                 CampaignSectionEditorView(viewModel: viewModel, isPresented: $showingEditor)
+            }
+
+            ScrollView {
+                Text(viewModel.section.content)
+                    .font(.body)
             }
         }
         .padding()

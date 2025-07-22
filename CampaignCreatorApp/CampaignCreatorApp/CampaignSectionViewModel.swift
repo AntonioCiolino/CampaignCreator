@@ -71,6 +71,12 @@ class CampaignSectionViewModel: ObservableObject {
         isRegenerating = true
         Task {
             do {
+                if let apiService = llmService.apiService as? CampaignCreatorLib.APIService, !apiService.hasToken() {
+                    // Attempt to refresh token
+                    // This is a simplified example. In a real app, you would have a more robust token refresh mechanism.
+                    throw APIError.notAuthenticated
+                }
+
                 let updatedSectionData = try await llmService.apiService.regenerateCampaignSection(
                     campaignId: section.campaign_id,
                     sectionId: section.id,
@@ -91,6 +97,8 @@ class CampaignSectionViewModel: ObservableObject {
                 print("Failed to regenerate section: \(error)")
                 DispatchQueue.main.async {
                     self.isRegenerating = false
+                    // self.showErrorAlert = true
+                    // self.errorMessage = "Failed to regenerate section. Please try again."
                 }
             }
         }

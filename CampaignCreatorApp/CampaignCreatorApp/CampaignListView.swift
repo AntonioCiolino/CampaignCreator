@@ -10,6 +10,7 @@ struct CampaignListView: View {
     @State private var showingCreateSheet = false
     @State private var showingErrorAlert = false
     @State private var errorMessage = ""
+    @State private var isLoading = false
     @State private var showingDeleteConfirmation = false
     @State private var campaignToDelete: CampaignModel?
 
@@ -18,7 +19,9 @@ struct CampaignListView: View {
     var body: some View {
         NavigationView {
             Group {
-                if campaigns.isEmpty {
+                if isLoading {
+                    ProgressView()
+                } else if campaigns.isEmpty {
                     Text("No campaigns yet. Tap '+' to create one.")
                         .foregroundColor(.secondary)
                         .font(.title2)
@@ -92,7 +95,6 @@ struct CampaignListView: View {
             }
             .onAppear {
                 Task {
-                    try? await Task.sleep(nanoseconds: 1_000_000_000)
                     await refreshCampaigns()
                 }
             }
@@ -122,6 +124,9 @@ struct CampaignListView: View {
     @EnvironmentObject var networkMonitor: NetworkMonitor
 
     private func refreshCampaigns() async {
+        isLoading = true
+        defer { isLoading = false }
+
         if networkMonitor.isConnected {
             await syncDirtyCampaigns()
         }

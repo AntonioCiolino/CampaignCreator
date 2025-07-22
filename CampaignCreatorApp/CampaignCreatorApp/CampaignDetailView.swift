@@ -18,6 +18,7 @@ struct CampaignDetailView: View {
     @State private var errorMessage = ""
     @State private var selectedSection: CampaignSection?
     @State private var showingAddSectionSheet = false
+    @State private var isAddingSection = false
 
     @Environment(\.modelContext) private var modelContext
 
@@ -66,6 +67,7 @@ struct CampaignDetailView: View {
         }
         .sheet(isPresented: $showingAddSectionSheet) {
             AddSectionView(isPresented: $showingAddSectionSheet) { title, generateContent in
+                isAddingSection = true
                 Task {
                     do {
                         let newSection = try await llmService.apiService.addCampaignSection(
@@ -75,10 +77,12 @@ struct CampaignDetailView: View {
                         DispatchQueue.main.async {
                             let newCampaignSection = CampaignSection(id: newSection.id, campaign_id: newSection.campaign_id ?? 0, title: newSection.title, content: newSection.content, order: newSection.order, type: newSection.type)
                             campaign.sections?.append(newCampaignSection)
+                            isAddingSection = false
                         }
                     } catch {
                         errorMessage = "Failed to add section: \(error.localizedDescription)"
                         showingErrorAlert = true
+                        isAddingSection = false
                     }
                 }
             }
@@ -145,9 +149,13 @@ struct CampaignDetailView: View {
 
     private var sectionsSection: some View {
         CollapsibleSectionView(title: "Sections") {
-            Button(action: addSection) {
-                Image(systemName: "plus.circle.fill")
-                    .foregroundColor(.accentColor)
+            if isAddingSection {
+                ProgressView()
+            } else {
+                Button(action: addSection) {
+                    Image(systemName: "plus.circle.fill")
+                        .foregroundColor(.accentColor)
+                }
             }
 
             if let sections = campaign.sections, !sections.isEmpty {
@@ -170,9 +178,9 @@ struct CampaignDetailView: View {
     private var selectedSectionView: some View {
         if let selectedSection = selectedSection {
             CampaignSectionView(viewModel: CampaignSectionViewModel(section: selectedSection, llmService: llmService, featureService: {
-                let fs = FeatureService()
-                fs.setModelContext(modelContext)
-                return fs
+                let featureService = FeatureService()
+                featureService.setModelContext(modelContext)
+                return featureService
             }(), onDelete: {
                 if let index = campaign.sections?.firstIndex(where: { $0.id == selectedSection.id }) {
                     campaign.sections?.remove(at: index)
