@@ -100,9 +100,11 @@ struct RichTextEditorView: UIViewRepresentable {
             imagePicker.sourceType = .photoLibrary
 
             if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-                if let topController = windowScene.windows.first?.rootViewController {
-                    topController.present(imagePicker, animated: true, completion: nil)
+                var topController = windowScene.windows.first?.rootViewController
+                while let presentedViewController = topController?.presentedViewController {
+                    topController = presentedViewController
                 }
+                topController?.present(imagePicker, animated: true, completion: nil)
             }
         }
 
@@ -112,18 +114,27 @@ struct RichTextEditorView: UIViewRepresentable {
             guard let image = info[.originalImage] as? UIImage, let textView = textView else { return }
 
             Task {
-                let imageData = image.jpegData(compressionQuality: 0.8)!
-                let result = await parent.imageUploadService.uploadImage(imageData: imageData, filename: "image.jpg", mimeType: "image/jpeg")
+                if let imageData = image.jpegData(compressionQuality: 0.8) {
+                    let result = await parent.imageUploadService.uploadImage(imageData: imageData, filename: "image.jpg", mimeType: "image/jpeg")
 
-                switch result {
-                case .success(let response):
-                    let attributedString = NSAttributedString(string: "\n![image](\(response.imageUrl))\n")
-                    let mutableAttributedString = NSMutableAttributedString(attributedString: textView.attributedText)
-                    mutableAttributedString.insert(attributedString, at: textView.selectedRange.location)
+                    switch result {
+                    case .success(let response):
+                        let attachment = NSTextAttachment()
+                        attachment.image = image
+                        if image.size.width > 0 && image.size.height > 0 {
+                            let aspectRatio = image.size.width / image.size.height
+                            let newWidth = textView.frame.width - 20
+                            attachment.bounds = CGRect(x: 0, y: 0, width: newWidth, height: newWidth / aspectRatio)
+                        }
 
-                    self.parent.text = mutableAttributedString
-                case .failure(let error):
-                    print("Failed to upload image: \(error)")
+                        let attributedString = NSAttributedString(attachment: attachment)
+                        let mutableAttributedString = NSMutableAttributedString(attributedString: textView.attributedText)
+                        mutableAttributedString.insert(attributedString, at: textView.selectedRange.location)
+
+                        self.parent.text = mutableAttributedString
+                    case .failure(let error):
+                        print("Failed to upload image: \(error)")
+                    }
                 }
             }
         }

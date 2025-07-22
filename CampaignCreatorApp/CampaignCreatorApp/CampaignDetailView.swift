@@ -17,6 +17,7 @@ struct CampaignDetailView: View {
     @State private var showingErrorAlert = false
     @State private var errorMessage = ""
     @State private var selectedSection: CampaignSection?
+    @State private var showingAddSectionSheet = false
 
     @Environment(\.modelContext) private var modelContext
 
@@ -62,6 +63,25 @@ struct CampaignDetailView: View {
                 },
                 apiService: llmService.apiService
             )
+        }
+        .sheet(isPresented: $showingAddSectionSheet) {
+            AddSectionView(isPresented: $showingAddSectionSheet) { title, generateContent in
+                Task {
+                    do {
+                        let newSection = try await llmService.apiService.addCampaignSection(
+                            campaignId: campaign.id,
+                            payload: CampaignSectionCreatePayload(title: title, bypass_llm: !generateContent)
+                        )
+                        DispatchQueue.main.async {
+                            let newCampaignSection = CampaignSection(id: newSection.id, campaign_id: newSection.campaign_id ?? 0, title: newSection.title, content: newSection.content, order: newSection.order, type: newSection.type)
+                            campaign.sections?.append(newCampaignSection)
+                        }
+                    } catch {
+                        errorMessage = "Failed to add section: \(error.localizedDescription)"
+                        showingErrorAlert = true
+                    }
+                }
+            }
         }
         .onAppear {
             themeManager.updateTheme(from: campaign)
@@ -125,6 +145,11 @@ struct CampaignDetailView: View {
 
     private var sectionsSection: some View {
         CollapsibleSectionView(title: "Sections") {
+            Button(action: addSection) {
+                Image(systemName: "plus.circle.fill")
+                    .foregroundColor(.accentColor)
+            }
+
             if let sections = campaign.sections, !sections.isEmpty {
                 Picker("Section", selection: $selectedSection) {
                     ForEach(sections, id: \.self) { section in
@@ -137,11 +162,6 @@ struct CampaignDetailView: View {
             } else {
                 Text("No sections available. Add a section to get started.")
                     .foregroundColor(.secondary)
-            }
-
-            Button(action: addSection) {
-                Image(systemName: "plus.circle.fill")
-                    .foregroundColor(.accentColor)
             }
         }
     }
@@ -177,21 +197,7 @@ struct CampaignDetailView: View {
     }
 
     private func addSection() {
-        Task {
-            do {
-                let newSection = try await llmService.apiService.addCampaignSection(
-                    campaignId: campaign.id,
-                    payload: CampaignSectionCreatePayload(title: "New Section", bypass_llm: true)
-                )
-                DispatchQueue.main.async {
-                    let newCampaignSection = CampaignSection(id: newSection.id, campaign_id: newSection.campaign_id ?? 0, title: newSection.title, content: newSection.content, order: newSection.order, type: newSection.type)
-                    campaign.sections?.append(newCampaignSection)
-                }
-            } catch {
-                errorMessage = "Failed to add section: \(error.localizedDescription)"
-                showingErrorAlert = true
-            }
-        }
+        showingAddSectionSheet = true
     }
 
     private func refreshCampaign() async {

@@ -20,8 +20,9 @@ class SSEManager: NSObject, URLSessionDataDelegate {
     func connect(to url: URL) {
         print("SSEManager: Connecting to URL: \(url)")
         var request = URLRequest(url: url)
-        request.httpMethod = "GET"
+        request.httpMethod = "POST"
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         // Retrieve the token from the APIService's tokenManager
         let tokenManager = CampaignCreatorLib.TokenManager()
@@ -44,11 +45,15 @@ class SSEManager: NSObject, URLSessionDataDelegate {
         print("SSEManager: Received response: \(response)")
         if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
             print("SSEManager: Connection opened")
-            onOpen?()
+            DispatchQueue.main.async {
+                self.onOpen?()
+            }
             completionHandler(.allow)
         } else {
             print("SSEManager: Failed to open connection. Status code: \((response as? HTTPURLResponse)?.statusCode ?? -1)")
-            onError?(NSError(domain: "SSEError", code: (response as? HTTPURLResponse)?.statusCode ?? -1, userInfo: [NSLocalizedDescriptionKey: "Failed to open SSE connection"]))
+            DispatchQueue.main.async {
+                self.onError?(NSError(domain: "SSEError", code: (response as? HTTPURLResponse)?.statusCode ?? -1, userInfo: [NSLocalizedDescriptionKey: "Failed to open SSE connection"]))
+            }
             completionHandler(.cancel)
         }
     }
@@ -62,10 +67,14 @@ class SSEManager: NSObject, URLSessionDataDelegate {
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         if let error = error {
             print("SSEManager: Connection completed with error: \(error)")
-            onError?(error)
+            DispatchQueue.main.async {
+                self.onError?(error)
+            }
         } else {
             print("SSEManager: Connection completed successfully")
-            onComplete?()
+            DispatchQueue.main.async {
+                self.onComplete?()
+            }
         }
     }
 
@@ -74,7 +83,9 @@ class SSEManager: NSObject, URLSessionDataDelegate {
         while let range = buffer.range(of: delimiter) {
             let messageData = buffer.subdata(in: 0..<range.lowerBound)
             if let message = String(data: messageData, encoding: .utf8) {
-                onMessage?(message)
+                DispatchQueue.main.async {
+                    self.onMessage?(message)
+                }
             }
             buffer.removeSubrange(0..<range.upperBound)
         }
