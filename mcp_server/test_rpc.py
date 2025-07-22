@@ -18,7 +18,7 @@ async def get_auth_token():
     """
     async with httpx.AsyncClient() as client:
         response = await client.post(
-            f"{API_BASE_URL}/token",
+            f"{API_BASE_URL}/api/v1/auth/token",
             data={"username": TEST_USERNAME, "password": TEST_PASSWORD},
         )
         response.raise_for_status()
@@ -49,14 +49,6 @@ async def main():
         tools = await client.list_tools()
         for tool in tools:
             print(f"- {tool.name}: {tool.description}")
-
-        # # List the available tools
-        # tools = await client.call_tool("list_tools")
-        # print("Available tools:", tools.data)
-
-        # List the campaigns
-        campaigns = await client.call_tool("list_campaigns", {"token": token})
-        print("Campaigns:", campaigns.data)
 
         # --- Campaigns ---
         print("\n--- Testing Campaign Endpoints ---")

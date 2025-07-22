@@ -46,8 +46,8 @@ async def forward_request(method: str, path: str, token: str, json: Optional[dic
     if not token:
         raise Exception("Unauthorized. Please login first.")
     headers = {"Authorization": f"Bearer {token}"}
-    async with httpx.AsyncClient() as client:
-        response = await client.request(method, f"{API_BASE_URL}/api/v1{path}", headers=headers, json=json)
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        response = await client.request(method, f"{API_BASE_URL}/api/v1{path}/", headers=headers, json=json)
         response.raise_for_status()
         if response.status_code == 204:
             return {}
