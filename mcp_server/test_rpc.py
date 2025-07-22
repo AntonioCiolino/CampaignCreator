@@ -16,7 +16,7 @@ async def get_auth_token():
     """
     Authenticates with the main application and returns an access token.
     """
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(follow_redirects=True) as client:
         response = await client.post(
             f"{API_BASE_URL}/api/v1/auth/token",
             data={"username": TEST_USERNAME, "password": TEST_PASSWORD},
@@ -91,6 +91,9 @@ async def main():
         section_id = created_section.data["id"]
         print(f"Created Section: {created_section.data}")
 
+        retrieved_section = await client.call_tool("get_campaign_section", {"campaign_id": campaign_id, "section_id": section_id, "token": token})
+        print(f"Retrieved Section: {retrieved_section.data}")
+
         all_sections = await client.call_tool("list_campaign_sections", {"campaign_id": campaign_id, "token": token})
         print(f"All Sections: {all_sections.data}")
 
@@ -116,7 +119,7 @@ async def main():
 
         # --- Cleanup ---
         print("\n--- Cleaning up created resources ---")
-        await client.call_tool("delete_campaign_section", {"section_id": section_id, "token": token})
+        await client.call_tool("delete_campaign_section", {"campaign_id": campaign_id, "section_id": section_id, "token": token})
         print(f"Deleted section {section_id}")
 
         await client.call_tool("delete_character", {"character_id": character_id, "token": token})

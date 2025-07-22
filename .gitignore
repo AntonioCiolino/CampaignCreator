@@ -140,4 +140,3 @@ TextEditorApp/TextEditorApp/Secrets.swift
 *.xcodeproj/project.xcworkspace/
 .DS_Store
 *.xcuserstate
-/campaign_crafter_default.db
