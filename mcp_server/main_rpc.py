@@ -113,6 +113,11 @@ async def delete_character(character_id: int, token: str, ctx: Context) -> dict:
     return await forward_request("DELETE", f"/characters/{character_id}", token)
 
 @mcp.tool
+async def list_characters(token: str, ctx: Context) -> list:
+    """Lists all characters for the authenticated user."""
+    return await forward_request("GET", "/characters", token)
+
+@mcp.tool
 async def link_character_to_campaign(link: LinkCharacter, token: str, ctx: Context) -> dict:
     """Links a character to a campaign."""
     return await forward_request("POST", "/characters/link", token, link.model_dump())
