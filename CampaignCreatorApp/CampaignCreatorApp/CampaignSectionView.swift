@@ -4,6 +4,7 @@ import SwiftData
 struct CampaignSectionView: View {
     @StateObject var viewModel: CampaignSectionViewModel
     @State private var attributedString: NSAttributedString = NSAttributedString(string: "")
+    @State private var showingDeleteConfirmation = false
     @Environment(\.modelContext) private var modelContext
 
     var body: some View {
@@ -33,6 +34,9 @@ struct CampaignSectionView: View {
                 .onChange(of: attributedString) { _, newValue in
                     viewModel.editedContent = newValue.string
                 }
+                .onChange(of: viewModel.editedContent) { _, newValue in
+                    attributedString = NSAttributedString(string: newValue)
+                }
 
                 HStack {
                     Button("Save") {
@@ -54,7 +58,15 @@ struct CampaignSectionView: View {
                         viewModel.isEditing = true
                     }
                     Button("Delete") {
-                        viewModel.delete()
+                        showingDeleteConfirmation = true
+                    }
+                    .alert("Delete Section", isPresented: $showingDeleteConfirmation) {
+                        Button("Delete", role: .destructive) {
+                            viewModel.delete()
+                        }
+                        Button("Cancel", role: .cancel) { }
+                    } message: {
+                        Text("Are you sure you want to delete this section? This action cannot be undone.")
                     }
                 }
             }
