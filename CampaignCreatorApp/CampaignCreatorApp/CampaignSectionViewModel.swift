@@ -6,9 +6,11 @@ import SwiftData
 class CampaignSectionViewModel: ObservableObject {
     @Published var section: CampaignSection
     @Published var isEditing = false
+    @Published var isRegenerating = false
     @Published var editedContent: String
     @Published var selectedText: String?
     @Published var features: [Feature] = []
+    @Published var attributedString: NSAttributedString
 
     private var llmService: LLMService
     private var featureService: FeatureService
@@ -16,11 +18,12 @@ class CampaignSectionViewModel: ObservableObject {
     // Add a closure to inform the parent view of deletion
     var onDelete: (() -> Void)?
 
-    init(section: CampaignSection, llmService: LLMService, featureService: FeatureService, onDelete: (() -> Void)? = nil) {
+    init(section: CampaignSection, llmService: LLMService, featureService: @autoclosure () -> FeatureService, onDelete: (() -> Void)? = nil) {
         self.section = section
         self.editedContent = section.content
+        self.attributedString = NSAttributedString(string: section.content)
         self.llmService = llmService
-        self.featureService = featureService
+        self.featureService = featureService()
         self.onDelete = onDelete
         fetchFeatures()
     }
@@ -37,10 +40,11 @@ class CampaignSectionViewModel: ObservableObject {
     }
 
     func save() {
+        editedContent = attributedString.string
         Task {
             do {
                 let updatedSectionData = try await llmService.apiService.updateCampaignSection(
-                    campaignId: section.campaign_id!,
+                    campaignId: section.campaign_id,
                     sectionId: section.id,
                     data: CampaignSectionUpdatePayload(content: editedContent)
                 )
@@ -64,10 +68,17 @@ class CampaignSectionViewModel: ObservableObject {
     }
 
     func regenerate() {
+        isRegenerating = true
         Task {
             do {
+                if let apiService = llmService.apiService as? CampaignCreatorLib.APIService, !apiService.hasToken() {
+                    // Attempt to refresh token
+                    // This is a simplified example. In a real app, you would have a more robust token refresh mechanism.
+                    throw APIError.notAuthenticated
+                }
+
                 let updatedSectionData = try await llmService.apiService.regenerateCampaignSection(
-                    campaignId: section.campaign_id!,
+                    campaignId: section.campaign_id,
                     sectionId: section.id,
                     payload: SectionRegeneratePayload(newPrompt: "Regenerate this section.")
                 )
@@ -77,10 +88,18 @@ class CampaignSectionViewModel: ObservableObject {
                     self.section.order = updatedSectionData.order
                     self.section.type = updatedSectionData.type
                     self.editedContent = updatedSectionData.content
+                    self.attributedString = NSAttributedString(string: updatedSectionData.content)
+                    self.isRegenerating = false
+                    self.save()
                 }
             } catch {
                 // Handle error
                 print("Failed to regenerate section: \(error)")
+                DispatchQueue.main.async {
+                    self.isRegenerating = false
+                    // self.showErrorAlert = true
+                    // self.errorMessage = "Failed to regenerate section. Please try again."
+                }
             }
         }
     }
@@ -89,7 +108,7 @@ class CampaignSectionViewModel: ObservableObject {
         Task {
             do {
                 try await llmService.apiService.deleteCampaignSection(
-                    campaignId: section.campaign_id!,
+                    campaignId: section.campaign_id,
                     sectionId: section.id
                 )
                 DispatchQueue.main.async {
@@ -107,7 +126,7 @@ class CampaignSectionViewModel: ObservableObject {
             do {
                 guard let selectedText = selectedText else { return }
                 let updatedSectionData = try await llmService.apiService.regenerateCampaignSection(
-                    campaignId: section.campaign_id!,
+                    campaignId: section.campaign_id,
                     sectionId: section.id,
                     payload: SectionRegeneratePayload(
                         newPrompt: selectedText,
