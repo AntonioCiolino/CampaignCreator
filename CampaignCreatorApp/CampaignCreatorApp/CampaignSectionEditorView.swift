@@ -32,16 +32,18 @@ struct CampaignSectionEditorView: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    if viewModel.isRegenerating {
-                        ProgressView()
-                    } else {
-                        Button(action: { viewModel.regenerate() }) {
-                            Image(systemName: "wand.and.stars")
+                    HStack {
+                        if viewModel.isRegenerating {
+                            ProgressView()
+                        } else {
+                            Button(action: { viewModel.regenerate() }) {
+                                Image(systemName: "wand.and.stars")
+                            }
                         }
-                    }
-                    Button("Save") {
-                        viewModel.save()
-                        isPresented = false
+                        Button("Save") {
+                            viewModel.save()
+                            isPresented = false
+                        }
                     }
                 }
             }
