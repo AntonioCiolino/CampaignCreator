@@ -50,7 +50,7 @@ async def main():
         print("Available tools:", tools)
 
         # List the campaigns
-        campaigns = await client.call_tool("list_campaigns")
+        campaigns = await client.call_tool("list_campaigns", {"token": token})
         print("Campaigns:", campaigns)
 
         # Create a new campaign
