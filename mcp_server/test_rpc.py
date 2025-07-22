@@ -47,7 +47,7 @@ async def main():
 
         # List the available tools
         tools = await client.call_tool("list_tools")
-        print("Available tools:", tools.json())
+        print("Available tools:", tools)
 
         # List the campaigns
         campaigns = await client.call_tool("list_campaigns", {"token": token})
