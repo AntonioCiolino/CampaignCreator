@@ -70,7 +70,7 @@ The server provides the following MCP tools:
 
 ### Authentication
 
-- `login`: Verify and return a valid authentication token
+- `get_user_info`: Verify and return a valid authentication token
 
 ### Campaign Management
 

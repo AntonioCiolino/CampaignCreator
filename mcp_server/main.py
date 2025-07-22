@@ -3,11 +3,14 @@
 Entry point for the Campaign Crafter MCP server.
 """
 import sys
-from src.server import run_server
+import asyncio
+from src.server import run_server, auto_authenticate
 from src.utils.config import logger
 
 if __name__ == "__main__":
     try:
+        logger.info("Attempting to auto-authenticate...")
+        asyncio.run(auto_authenticate())
         logger.info("Starting Campaign Crafter MCP server")
         run_server()
     except KeyboardInterrupt:
