@@ -45,9 +45,13 @@ async def main():
         token = await client.call_tool("login", {"token": token})
         print("Successfully logged in.")
 
-        # List the available tools
-        tools = await client.call_tool("list_tools")
-        print("Available tools:", tools.data)
+        tools = await client.list_tools()
+        for tool in tools:
+            print(f"- {tool.name}: {tool.description}")
+
+        # # List the available tools
+        # tools = await client.call_tool("list_tools")
+        # print("Available tools:", tools.data)
 
         # List the campaigns
         campaigns = await client.call_tool("list_campaigns", {"token": token})

@@ -4,6 +4,7 @@ from fastmcp import FastMCP, Context
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
+
 load_dotenv()
 
 # --- Configuration ---
@@ -22,23 +23,16 @@ async def login(token: str, ctx: Context) -> str:
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{API_BASE_URL}/api/v1/users/me", headers=headers)
         if response.status_code == 200:
+            ctx.debug(dir(ctx.session))
             return token
         else:
             raise Exception("Invalid token")
 
 @mcp.tool
-async def list_tools(ctx: Context) -> list[str]:
-    """
-    Lists the available tools.
-    """
-    return [tool.name for tool in mcp.get_tools()]
-
-@mcp.tool
-async def list_campaigns(ctx: Context) -> list:
+async def list_campaigns(token: str, ctx: Context) -> list:
     """
     Lists all campaigns for the authenticated user.
     """
-    token = ctx.session.get("token")
     if not token:
         raise Exception("Unauthorized. Please login first.")
     headers = {"Authorization": f"Bearer {token}"}
@@ -52,11 +46,10 @@ class Campaign(BaseModel):
     concept: str
 
 @mcp.tool
-async def create_campaign(campaign: Campaign, ctx: Context) -> dict:
+async def create_campaign(campaign: Campaign, token: str, ctx: Context) -> dict:
     """
     Creates a new campaign.
     """
-    token = ctx.session.get("token")
     if not token:
         raise Exception("Unauthorized. Please login first.")
     headers = {"Authorization": f"Bearer {token}"}
