@@ -149,28 +149,30 @@ struct CampaignDetailView: View {
 
     private var sectionsSection: some View {
         CollapsibleSectionView(title: "Sections") {
-            if isAddingSection {
-                ProgressView()
-            } else {
-                Button(action: addSection) {
-                    Image(systemName: "plus.circle.fill")
-                        .foregroundColor(.accentColor)
+            HStack {
+                if let sections = campaign.sections, !sections.isEmpty {
+                    Picker("Section", selection: $selectedSection) {
+                        ForEach(sections, id: \.self) { section in
+                            Text(section.title ?? "Untitled Section").tag(Optional(section))
+                        }
+                    }
+                    .pickerStyle(MenuPickerStyle())
+                } else {
+                    Text("No sections available.")
+                        .foregroundColor(.secondary)
                 }
-            }
 
-            if let sections = campaign.sections, !sections.isEmpty {
-                Picker("Section", selection: $selectedSection) {
-                    ForEach(sections, id: \.self) { section in
-                        Text(section.title ?? "Untitled Section").tag(Optional(section))
+                if isAddingSection {
+                    ProgressView()
+                } else {
+                    Button(action: addSection) {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundColor(.accentColor)
                     }
                 }
-                .pickerStyle(MenuPickerStyle())
-
-                selectedSectionView
-            } else {
-                Text("No sections available. Add a section to get started.")
-                    .foregroundColor(.secondary)
             }
+
+            selectedSectionView
         }
     }
 

@@ -21,6 +21,7 @@ struct CampaignSectionView: View {
                 Button(action: { showingEditor = true }) {
                     Image(systemName: "pencil.circle.fill")
                 }
+                .padding(.trailing, 10)
                 Button(action: { showingDeleteConfirmation = true }) {
                     Image(systemName: "trash.circle.fill")
                 }
