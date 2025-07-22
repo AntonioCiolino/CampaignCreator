@@ -45,13 +45,19 @@ struct CampaignSectionView: View {
                     Button("Cancel") {
                         viewModel.cancel()
                     }
-                    Button("Regenerate") {
-                        viewModel.regenerate()
+                    if viewModel.isRegenerating {
+                        ProgressView()
+                    } else {
+                        Button("Regenerate") {
+                            viewModel.regenerate()
+                        }
                     }
                 }
             } else {
-                Text(viewModel.section.content)
-                    .font(.body)
+                ScrollView {
+                    Text(viewModel.section.content)
+                        .font(.body)
+                }
 
                 HStack {
                     Button("Edit") {

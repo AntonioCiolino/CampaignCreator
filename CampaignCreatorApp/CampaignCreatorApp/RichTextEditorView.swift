@@ -60,6 +60,14 @@ struct RichTextEditorView: UIViewRepresentable {
             // No need to do anything here
         }
 
+        func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+            if text == "\n" {
+                textView.insertText("\n")
+                return false
+            }
+            return true
+        }
+
         @objc func toggleBold() {
             toggleFontTrait(.traitBold)
         }
@@ -135,7 +143,7 @@ struct RichTextEditorView: UIViewRepresentable {
         }
 
         func contextMenuInteraction(_ interaction: UIContextMenuInteraction, configurationForMenuAtLocation location: CGPoint) -> UIContextMenuConfiguration? {
-            guard let textView = textView, textView.selectedRange.length > 0 else { return nil }
+            guard let textView = textView else { return nil }
 
             return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { suggestedActions in
                 let bold = UIAction(title: "Bold", image: UIImage(systemName: "bold")) { _ in
@@ -150,7 +158,11 @@ struct RichTextEditorView: UIViewRepresentable {
                     self.toggleUnderline()
                 }
 
-                let formattingMenu = UIMenu(title: "Format", children: [bold, italic, underline])
+                let insertImage = UIAction(title: "Insert Image", image: UIImage(systemName: "photo")) { _ in
+                    self.insertImage()
+                }
+
+                let formattingMenu = UIMenu(title: "Format", children: [bold, italic, underline, insertImage])
 
                 let aiActions = self.features.map { feature in
                     UIAction(title: feature.name, image: UIImage(systemName: "wand.and.stars")) { action in
@@ -160,7 +172,11 @@ struct RichTextEditorView: UIViewRepresentable {
 
                 let aiMenu = UIMenu(title: "AI Edits", children: aiActions)
 
-                return UIMenu(title: "", children: [formattingMenu, aiMenu])
+                if textView.selectedRange.length > 0 {
+                    return UIMenu(title: "", children: [formattingMenu, aiMenu])
+                } else {
+                    return UIMenu(title: "", children: [insertImage])
+                }
             }
         }
     }

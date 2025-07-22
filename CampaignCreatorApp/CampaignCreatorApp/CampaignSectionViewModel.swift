@@ -6,6 +6,7 @@ import SwiftData
 class CampaignSectionViewModel: ObservableObject {
     @Published var section: CampaignSection
     @Published var isEditing = false
+    @Published var isRegenerating = false
     @Published var editedContent: String
     @Published var selectedText: String?
     @Published var features: [Feature] = []
@@ -64,6 +65,7 @@ class CampaignSectionViewModel: ObservableObject {
     }
 
     func regenerate() {
+        isRegenerating = true
         Task {
             do {
                 let updatedSectionData = try await llmService.apiService.regenerateCampaignSection(
@@ -77,10 +79,14 @@ class CampaignSectionViewModel: ObservableObject {
                     self.section.order = updatedSectionData.order
                     self.section.type = updatedSectionData.type
                     self.editedContent = updatedSectionData.content
+                    self.isRegenerating = false
                 }
             } catch {
                 // Handle error
                 print("Failed to regenerate section: \(error)")
+                DispatchQueue.main.async {
+                    self.isRegenerating = false
+                }
             }
         }
     }
