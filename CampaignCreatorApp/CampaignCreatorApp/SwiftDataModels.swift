@@ -224,13 +224,21 @@ class MemoryModel: Identifiable {
     }
 }
 
-struct CampaignSection: Codable, Identifiable {
+struct CampaignSection: Codable, Identifiable, Hashable {
     let id: Int
     let campaign_id: Int
     var title: String?
     var content: String
     var order: Int
     var type: String?
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
+    static func == (lhs: CampaignSection, rhs: CampaignSection) -> Bool {
+        lhs.id == rhs.id
+    }
 }
 
 @Model
