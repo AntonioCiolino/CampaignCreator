@@ -27,6 +27,12 @@ class ContentViewModel: ObservableObject {
                 await fetchCurrentUser()
             }
         }
+
+        NotificationCenter.default.addObserver(self, selector: #selector(handleLogout), name: .didLogout, object: nil)
+    }
+
+    @objc func handleLogout() {
+        logout()
     }
 
     func login(usernameOrEmail: String, password: String) async {

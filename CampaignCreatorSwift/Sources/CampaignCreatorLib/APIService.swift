@@ -393,29 +393,43 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
             if let str = String(data: data, encoding: .utf8) { print("   Response Data: \(str.prefix(500))") }
 
             if httpResponse.statusCode == 401 {
-                if isRetry { throw APIError.notAuthenticated }
-
-                guard let refreshToken = tokenManager.getRefreshToken() else {
+                if isRetry {
+                    if let username = tokenManager.getUsername() {
+                        tokenManager.clearTokens(for: username)
+                    }
                     throw APIError.notAuthenticated
                 }
 
-                let refreshTokenRequest = RefreshTokenRequestDTO(refreshToken: refreshToken)
-                let body = try jsonEncoder.encode(refreshTokenRequest)
-
-                let refreshResponse: LoginResponseDTO = try await performRequest(
-                    endpoint: "/auth/refresh",
-                    method: "POST",
-                    body: body,
-                    requiresAuth: false
-                )
-
-                tokenManager.setAccessToken(refreshResponse.accessToken)
-                if let newRefreshToken = refreshResponse.refreshToken, let username = tokenManager.getUsername() {
-                    tokenManager.setRefreshToken(newRefreshToken, for: username)
+                guard let refreshToken = tokenManager.getRefreshToken(), let username = tokenManager.getUsername() else {
+                    throw APIError.notAuthenticated
                 }
 
+                do {
+                    let refreshTokenRequest = RefreshTokenRequestDTO(refreshToken: refreshToken)
+                    let refreshBody = try jsonEncoder.encode(refreshTokenRequest)
 
-                return try await performRequest(endpoint: endpoint, method: method, body: body, headers: headers, requiresAuth: requiresAuth, isRetry: true)
+                    let refreshResponse: LoginResponseDTO = try await performRequest(
+                        endpoint: "/auth/refresh",
+                        method: "POST",
+                        body: refreshBody,
+                        requiresAuth: false,
+                        isRetry: true // Prevent recursion if refresh fails
+                    )
+
+                    tokenManager.setAccessToken(refreshResponse.accessToken)
+                    if let newRefreshToken = refreshResponse.refreshToken {
+                        tokenManager.setRefreshToken(newRefreshToken, for: username)
+                    }
+
+                    // Retry the original request with the new token
+                    return try await performRequest(endpoint: endpoint, method: method, body: body, headers: headers, requiresAuth: true, isRetry: true)
+
+                } catch {
+                    // If refreshing the token fails, clear all tokens and notify the caller
+                    tokenManager.clearTokens(for: username)
+                    NotificationCenter.default.post(name: .didLogout, object: nil)
+                    throw APIError.notAuthenticated
+                }
             }
 
             guard (200...299).contains(httpResponse.statusCode) else { throw APIError.serverError(statusCode: httpResponse.statusCode, data: data) }
