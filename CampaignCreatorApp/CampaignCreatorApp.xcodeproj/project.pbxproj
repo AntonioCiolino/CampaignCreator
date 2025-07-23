@@ -87,12 +87,10 @@
 		94F8C4F52E2A7FA7006B4D4E /* ImageGenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F8C4F42E2A7FA7006B4D4E /* ImageGenerationService.swift */; };
 		E0A5F2912E2E3F9A00A61E63 /* CampaignSectionEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0A5F2902E2E3F9A00A61E63 /* CampaignSectionEditorView.swift */; };
 		E0A5F2932E2E3F9A00A61E63 /* AddSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0A5F2922E2E3F9A00A61E63 /* AddSectionView.swift */; };
-		102A30DD3FD4471C8D031B3B /* Notification+Name.swift in Sources */ = {isa = PBXBuildFile; fileRef = 102A30DD3FD4471C8D031B3A /* Notification+Name.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		3D92BBE12B8C8A8E00B8E8E8 /* CampaignCreatorApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CampaignCreatorApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		102A30DD3FD4471C8D031B3A /* Notification+Name.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../CampaignCreatorSwift/Sources/CampaignCreatorLib/Notification+Name.swift"; sourceTree = "<group>"; };
 		E0A5F2902E2E3F9A00A61E63 /* CampaignSectionEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignSectionEditorView.swift; sourceTree = "<group>"; };
 		E0A5F2922E2E3F9A00A61E63 /* AddSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddSectionView.swift; sourceTree = "<group>"; };
 		3D92BBE42B8C8A8E00B8E8E8 /* CampaignCreatorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignCreatorApp.swift; sourceTree = "<group>"; };
@@ -281,7 +279,6 @@
 				94A5C1BD2E2E3F9A00A61E63 /* TOCView.swift */,
 				E0A5F2902E2E3F9A00A61E63 /* CampaignSectionEditorView.swift */,
 				E0A5F2922E2E3F9A00A61E63 /* AddSectionView.swift */,
-				102A30DD3FD4471C8D031B3A /* Notification+Name.swift */,
 			);
 			path = CampaignCreatorApp;
 			sourceTree = "<group>";
@@ -458,7 +455,6 @@
 				94A5C1C22E2E3F9A00A61E63 /* TOCView.swift in Sources */,
 				E0A5F2912E2E3F9A00A61E63 /* CampaignSectionEditorView.swift in Sources */,
 				E0A5F2932E2E3F9A00A61E63 /* AddSectionView.swift in Sources */,
-				102A30DD3FD4471C8D031B3B /* Notification+Name.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
