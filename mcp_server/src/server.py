@@ -4,7 +4,7 @@ Main server module for the Campaign Crafter MCP server.
 import sys
 import os
 import httpx
-from fastmcp import FastMCP, Context
+from fastmcp import FastMCP
 from .models.schemas import (
     Campaign, Character, CampaignSection, LinkCharacter, GenerateToc, GenerateTitles
 )

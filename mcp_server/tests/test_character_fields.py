@@ -61,10 +61,10 @@ async def main():
                 "charisma": 20,
             },
         }
-        created_character = await client.call_tool(
-            "create_character", {"character": initial_character_data, "token": token}
-        )
-        character_id = created_character.data["id"]
+        create_response = await client.post("/characters/", json=initial_character_data)
+        assert create_response.status_code == 201
+        created_character = create_response.json()
+        character_id = created_character["id"]
         print(f"Created Character: {character_id}")
 
         # 2. Update the character with new values for all fields
@@ -82,48 +82,41 @@ async def main():
                 "charisma": 10,
             },
         }
-        updated_character = await client.call_tool(
-            "update_character",
-            {
-                "character_id": character_id,
-                "character": updated_character_data,
-                "token": token,
-            },
+        update_response = await client.put(
+            f"/characters/{character_id}/", json=updated_character_data
         )
-        print(f"Updated Character: {updated_character.data['name']}")
+        assert update_response.status_code == 200
 
         # 3. Get the character and verify that all fields have been updated correctly
-        retrieved_character = await client.call_tool(
-            "get_character", {"character_id": character_id, "token": token}
-        )
-        retrieved_character_data = retrieved_character.data
+        get_response = await client.get(f"/characters/{character_id}/")
+        assert get_response.status_code == 200
+        retrieved_character = get_response.json()
 
         assert retrieved_character_data["name"] == updated_character_data["name"]
         assert retrieved_character_data["description"] == updated_character_data["description"]
         assert (
-            retrieved_character_data["appearance_description"]
+            retrieved_character["appearance_description"]
             == updated_character_data["appearance_description"]
         )
-        assert retrieved_character_data["stats"]["strength"] == updated_character_data["stats"]["strength"]
-        assert retrieved_character_data["stats"]["dexterity"] == updated_character_data["stats"]["dexterity"]
+        assert retrieved_character["stats"]["strength"] == updated_character_data["stats"]["strength"]
+        assert retrieved_character["stats"]["dexterity"] == updated_character_data["stats"]["dexterity"]
         assert (
-            retrieved_character_data["stats"]["constitution"]
+            retrieved_character["stats"]["constitution"]
             == updated_character_data["stats"]["constitution"]
         )
         assert (
-            retrieved_character_data["stats"]["intelligence"]
+            retrieved_character["stats"]["intelligence"]
             == updated_character_data["stats"]["intelligence"]
         )
-        assert retrieved_character_data["stats"]["wisdom"] == updated_character_data["stats"]["wisdom"]
-        assert retrieved_character_data["stats"]["charisma"] == updated_character_data["stats"]["charisma"]
+        assert retrieved_character["stats"]["wisdom"] == updated_character_data["stats"]["wisdom"]
+        assert retrieved_character["stats"]["charisma"] == updated_character_data["stats"]["charisma"]
 
         print("All character fields verified successfully.")
 
         # --- Cleanup ---
         print("\n--- Cleaning up created resources ---")
-        await client.call_tool(
-            "delete_character", {"character_id": character_id, "token": token}
-        )
+        delete_response = await client.delete(f"/characters/{character_id}/")
+        assert delete_response.status_code == 200
         print(f"Deleted character {character_id}")
 
 
