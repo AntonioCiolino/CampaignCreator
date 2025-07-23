@@ -7,14 +7,20 @@ struct RichTextEditorView: UIViewRepresentable {
     var onSnippetEdit: ((String) -> Void)?
     var onSelectionChange: ((NSRange) -> Void)?
     var featureService: FeatureService
-    @EnvironmentObject var imageUploadService: ImageUploadService
 
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
         textView.delegate = context.coordinator
         context.coordinator.textView = textView
 
-        // No toolbar
+        let toolbar = UIToolbar(frame: CGRect(x: 0, y: 0, width: 100, height: 44))
+        let boldButton = UIBarButtonItem(title: "Bold", style: .plain, target: context.coordinator, action: #selector(Coordinator.toggleBold))
+        let italicButton = UIBarButtonItem(title: "Italic", style: .plain, target: context.coordinator, action: #selector(Coordinator.toggleItalic))
+        let underlineButton = UIBarButtonItem(title: "Underline", style: .plain, target: context.coordinator, action: #selector(Coordinator.toggleUnderline))
+        let imageButton = UIBarButtonItem(image: UIImage(systemName: "photo"), style: .plain, target: context.coordinator, action: #selector(Coordinator.insertImage))
+
+        toolbar.items = [boldButton, italicButton, underlineButton, imageButton]
+        textView.inputAccessoryView = toolbar
 
         let menuInteraction = UIContextMenuInteraction(delegate: context.coordinator)
         textView.addInteraction(menuInteraction)
@@ -54,19 +60,10 @@ struct RichTextEditorView: UIViewRepresentable {
 
         func textViewDidChange(_ textView: UITextView) {
             parent.text = textView.attributedText
-            parent.onSelectionChange?(textView.selectedRange)
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {
-            // No need to do anything here
-        }
-
-        func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
-            if text == "\n" {
-                textView.insertText("\n")
-                return false
-            }
-            return true
+            parent.onSelectionChange?(textView.selectedRange)
         }
 
         @objc func toggleBold() {
@@ -99,12 +96,9 @@ struct RichTextEditorView: UIViewRepresentable {
             imagePicker.delegate = self
             imagePicker.sourceType = .photoLibrary
 
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-                var topController = windowScene.windows.first?.rootViewController
-                while let presentedViewController = topController?.presentedViewController {
-                    topController = presentedViewController
-                }
-                topController?.present(imagePicker, animated: true, completion: nil)
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let rootViewController = windowScene.windows.first?.rootViewController {
+                rootViewController.present(imagePicker, animated: true)
             }
         }
 
@@ -113,30 +107,14 @@ struct RichTextEditorView: UIViewRepresentable {
 
             guard let image = info[.originalImage] as? UIImage, let textView = textView else { return }
 
-            Task {
-                if let imageData = image.jpegData(compressionQuality: 0.8) {
-                    let result = await parent.imageUploadService.uploadImage(imageData: imageData, filename: "image.jpg", mimeType: "image/jpeg")
+            let attachment = NSTextAttachment()
+            attachment.image = image
 
-                    switch result {
-                    case .success(let response):
-                        let attachment = NSTextAttachment()
-                        attachment.image = image
-                        if image.size.width > 0 && image.size.height > 0 {
-                            let aspectRatio = image.size.width / image.size.height
-                            let newWidth = textView.frame.width - 20
-                            attachment.bounds = CGRect(x: 0, y: 0, width: newWidth, height: newWidth / aspectRatio)
-                        }
+            let attributedString = NSAttributedString(attachment: attachment)
+            let mutableAttributedString = NSMutableAttributedString(attributedString: textView.attributedText)
+            mutableAttributedString.insert(attributedString, at: textView.selectedRange.location)
 
-                        let attributedString = NSAttributedString(attachment: attachment)
-                        let mutableAttributedString = NSMutableAttributedString(attributedString: textView.attributedText)
-                        mutableAttributedString.insert(attributedString, at: textView.selectedRange.location)
-
-                        self.parent.text = mutableAttributedString
-                    case .failure(let error):
-                        print("Failed to upload image: \(error)")
-                    }
-                }
-            }
+            parent.text = mutableAttributedString
         }
 
         private func toggleFontTrait(_ trait: UIFontDescriptor.SymbolicTraits) {
@@ -162,39 +140,16 @@ struct RichTextEditorView: UIViewRepresentable {
         }
 
         func contextMenuInteraction(_ interaction: UIContextMenuInteraction, configurationForMenuAtLocation location: CGPoint) -> UIContextMenuConfiguration? {
-            guard let textView = textView else { return nil }
+            guard let textView = textView, textView.selectedRange.length > 0 else { return nil }
 
             return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { suggestedActions in
-                let bold = UIAction(title: "Bold", image: UIImage(systemName: "bold")) { _ in
-                    self.toggleBold()
-                }
-
-                let italic = UIAction(title: "Italic", image: UIImage(systemName: "italic")) { _ in
-                    self.toggleItalic()
-                }
-
-                let underline = UIAction(title: "Underline", image: UIImage(systemName: "underline")) { _ in
-                    self.toggleUnderline()
-                }
-
-                let insertImage = UIAction(title: "Insert Image", image: UIImage(systemName: "photo")) { _ in
-                    self.insertImage()
-                }
-
-                let formattingMenu = UIMenu(title: "Format", children: [bold, italic, underline, insertImage])
-
-                if textView.selectedRange.length > 0 {
-                    let aiActions = self.features.map { feature in
-                        UIAction(title: feature.name, image: UIImage(systemName: "wand.and.stars")) { action in
-                            self.parent.onSnippetEdit?(feature.name)
-                        }
+                let actions = self.features.map { feature in
+                    UIAction(title: feature.name, image: UIImage(systemName: "wand.and.stars")) { action in
+                        self.parent.onSnippetEdit?(feature.name)
                     }
-
-                    let aiMenu = UIMenu(title: "AI Edits", children: aiActions)
-                    return UIMenu(title: "", children: [formattingMenu, aiMenu])
-                } else {
-                    return UIMenu(title: "", children: [formattingMenu])
                 }
+
+                return UIMenu(title: "AI Edits", children: actions)
             }
         }
     }

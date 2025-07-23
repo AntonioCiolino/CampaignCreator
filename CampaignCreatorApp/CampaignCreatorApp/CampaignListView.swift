@@ -10,18 +10,13 @@ struct CampaignListView: View {
     @State private var showingCreateSheet = false
     @State private var showingErrorAlert = false
     @State private var errorMessage = ""
-    @State private var isLoading = false
-    @State private var showingDeleteConfirmation = false
-    @State private var campaignToDelete: CampaignModel?
 
     private let apiService = CampaignCreatorLib.APIService()
 
     var body: some View {
         NavigationView {
             Group {
-                if isLoading {
-                    ProgressView()
-                } else if campaigns.isEmpty {
+                if campaigns.isEmpty {
                     Text("No campaigns yet. Tap '+' to create one.")
                         .foregroundColor(.secondary)
                         .font(.title2)
@@ -59,16 +54,6 @@ struct CampaignListView: View {
                     .refreshable {
                         await refreshCampaigns()
                     }
-                    .alert("Delete Campaign", isPresented: $showingDeleteConfirmation) {
-                        Button("Delete", role: .destructive) {
-                            if let campaignToDelete = self.campaignToDelete {
-                                deleteCampaign(campaignToDelete)
-                            }
-                        }
-                        Button("Cancel", role: .cancel) { }
-                    } message: {
-                        Text("Are you sure you want to delete this campaign? This action cannot be undone.")
-                    }
                 }
             }
             .navigationTitle("Campaigns")
@@ -93,30 +78,22 @@ struct CampaignListView: View {
             } message: {
                 Text(errorMessage)
             }
-            .onAppear {
-                Task {
-                    await refreshCampaigns()
-                }
-            }
         }
     }
 
     private func deleteCampaigns(offsets: IndexSet) {
-        for index in offsets {
-            let campaignToDelete = campaigns[index]
-            self.campaignToDelete = campaignToDelete
-            showingDeleteConfirmation = true
-        }
-    }
-
-    private func deleteCampaign(_ campaign: CampaignModel) {
         withAnimation {
-            modelContext.delete(campaign)
+            for index in offsets {
+                let campaignToDelete = campaigns[index]
+                print("Attempting to delete campaign: \(campaignToDelete.title)")
+                modelContext.delete(campaignToDelete)
+            }
+
             do {
                 try modelContext.save()
+                print("Successfully saved model context from deleteCampaigns.")
             } catch {
-                errorMessage = "Failed to delete campaign: \(error.localizedDescription)"
-                showingErrorAlert = true
+                print("Error saving model context from deleteCampaigns: \(error.localizedDescription)")
             }
         }
     }
@@ -124,9 +101,6 @@ struct CampaignListView: View {
     @EnvironmentObject var networkMonitor: NetworkMonitor
 
     private func refreshCampaigns() async {
-        isLoading = true
-        defer { isLoading = false }
-
         if networkMonitor.isConnected {
             await syncDirtyCampaigns()
         }

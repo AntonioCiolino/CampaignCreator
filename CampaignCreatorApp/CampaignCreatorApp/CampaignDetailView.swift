@@ -17,16 +17,60 @@ struct CampaignDetailView: View {
     @State private var showingErrorAlert = false
     @State private var errorMessage = ""
     @State private var selectedSection: CampaignSection?
-    @State private var showingAddSectionSheet = false
-    @State private var isAddingSection = false
 
     @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         ScrollView {
             ZStack {
-                backgroundView
-                content
+                // Background color from theme
+                themeManager.backgroundColor.edgesIgnoringSafeArea(.all)
+
+                // Background image from theme
+                if let bgURL = themeManager.backgroundImageUrl {
+                    KFImage(bgURL)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .edgesIgnoringSafeArea(.all)
+                        .opacity(themeManager.backgroundImageOpacity)
+                }
+
+                VStack(alignment: .leading, spacing: 16) {
+                    CampaignHeaderView(campaign: campaign, editableTitle: .constant(campaign.title), isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor)
+
+                    CampaignConceptEditorView(isEditingConcept: $isEditingConcept, editableConcept: $editableConcept, isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onSaveChanges: {
+                        campaign.concept = editableConcept
+                    })
+
+                    CollapsibleSectionView(title: "Table of Contents") {
+                        TOCView(campaign: campaign, selectedSection: $selectedSection, llmService: llmService)
+                    }
+
+                    if let selectedSection = selectedSection {
+                        CampaignSectionView(viewModel: CampaignSectionViewModel(section: selectedSection, llmService: llmService, featureService: FeatureService(modelContext: modelContext), onDelete: {
+                            if let index = campaign.sections?.firstIndex(where: { $0.id == selectedSection.id }) {
+                                campaign.sections?.remove(at: index)
+                                self.selectedSection = nil
+                            }
+                        }))
+                    }
+
+                    Button("Add Section") {
+                        addSection()
+                    }
+
+
+                    CampaignLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: llmService.availableLLMs, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onLLMSettingsChange: {
+                        campaign.selected_llm_id = selectedLLMId
+                        campaign.temperature = temperature
+                    })
+
+                    CampaignMoodboardView(campaign: campaign, onSetBadgeAction: {
+                        showingSetBadgeSheet = true
+                    })
+
+                }
+                .padding()
             }
         }
         .onDisappear(perform: {
@@ -65,28 +109,6 @@ struct CampaignDetailView: View {
                 apiService: llmService.apiService
             )
         }
-        .sheet(isPresented: $showingAddSectionSheet) {
-            AddSectionView(isPresented: $showingAddSectionSheet) { title, generateContent in
-                isAddingSection = true
-                Task {
-                    do {
-                        let newSection = try await llmService.apiService.addCampaignSection(
-                            campaignId: campaign.id,
-                            payload: CampaignSectionCreatePayload(title: title, bypass_llm: !generateContent)
-                        )
-                        DispatchQueue.main.async {
-                            let newCampaignSection = CampaignSection(id: newSection.id, campaign_id: newSection.campaign_id ?? 0, title: newSection.title, content: newSection.content, order: newSection.order, type: newSection.type)
-                            campaign.sections?.append(newCampaignSection)
-                            isAddingSection = false
-                        }
-                    } catch {
-                        errorMessage = "Failed to add section: \(error.localizedDescription)"
-                        showingErrorAlert = true
-                        isAddingSection = false
-                    }
-                }
-            }
-        }
         .onAppear {
             themeManager.updateTheme(from: campaign)
             editableConcept = campaign.concept ?? ""
@@ -114,100 +136,22 @@ struct CampaignDetailView: View {
         }
     }
 
-    private var backgroundView: some View {
-        Group {
-            themeManager.backgroundColor.edgesIgnoringSafeArea(.all)
-            if let bgURL = themeManager.backgroundImageUrl {
-                KFImage(bgURL)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .edgesIgnoringSafeArea(.all)
-                    .opacity(themeManager.backgroundImageOpacity)
-            }
-        }
-    }
-
-    private var content: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            CampaignHeaderView(campaign: campaign, editableTitle: .constant(campaign.title), isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor)
-            CampaignConceptEditorView(isEditingConcept: $isEditingConcept, editableConcept: $editableConcept, isSaving: false, isGeneratingText: false, currentPrimaryColor: themeManager.primaryColor, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onSaveChanges: {
-                campaign.concept = editableConcept
-            })
-            tocSection
-            sectionsSection
-            llmSettingsSection
-            moodboardSection
-        }
-        .padding()
-    }
-
-    private var tocSection: some View {
-        CollapsibleSectionView(title: "Table of Contents") {
-            TOCView(campaign: campaign, selectedSection: $selectedSection, llmService: llmService)
-        }
-    }
-
-    private var sectionsSection: some View {
-        CollapsibleSectionView(title: "Sections") {
-            HStack {
-                if let sections = campaign.sections, !sections.isEmpty {
-                    Picker("Section", selection: $selectedSection) {
-                        ForEach(sections, id: \.self) { section in
-                            Text(section.title ?? "Untitled Section").tag(Optional(section))
-                        }
-                    }
-                    .pickerStyle(MenuPickerStyle())
-                } else {
-                    Text("No sections available.")
-                        .foregroundColor(.secondary)
-                }
-
-                if isAddingSection {
-                    ProgressView()
-                } else {
-                    Button(action: addSection) {
-                        Image(systemName: "plus.circle.fill")
-                            .foregroundColor(.accentColor)
-                    }
-                }
-            }
-
-            selectedSectionView
-        }
-    }
-
-    @ViewBuilder
-    private var selectedSectionView: some View {
-        if let selectedSection = selectedSection {
-            CampaignSectionView(viewModel: CampaignSectionViewModel(section: selectedSection, llmService: llmService, featureService: {
-                let featureService = FeatureService()
-                featureService.setModelContext(modelContext)
-                return featureService
-            }(), onDelete: {
-                if let index = campaign.sections?.firstIndex(where: { $0.id == selectedSection.id }) {
-                    campaign.sections?.remove(at: index)
-                    self.selectedSection = nil
-                }
-            }))
-            .id(selectedSection.id)
-        }
-    }
-
-    private var llmSettingsSection: some View {
-        CampaignLLMSettingsView(selectedLLMId: $selectedLLMId, temperature: $temperature, availableLLMs: llmService.availableLLMs, currentFont: themeManager.bodyFont, currentTextColor: themeManager.textColor, onLLMSettingsChange: {
-            campaign.selected_llm_id = selectedLLMId
-            campaign.temperature = temperature
-        })
-    }
-
-    private var moodboardSection: some View {
-        CampaignMoodboardView(campaign: campaign, onSetBadgeAction: {
-            showingSetBadgeSheet = true
-        })
-    }
-
     private func addSection() {
-        showingAddSectionSheet = true
+        Task {
+            do {
+                let newSection = try await llmService.apiService.addCampaignSection(
+                    campaignId: campaign.id,
+                    payload: CampaignSectionCreatePayload(title: "New Section", bypass_llm: true)
+                )
+                DispatchQueue.main.async {
+                    let newCampaignSection = CampaignSection(id: newSection.id, campaign_id: newSection.campaign_id ?? 0, title: newSection.title, content: newSection.content, order: newSection.order, type: newSection.type)
+                    campaign.sections?.append(newCampaignSection)
+                }
+            } catch {
+                errorMessage = "Failed to add section: \(error.localizedDescription)"
+                showingErrorAlert = true
+            }
+        }
     }
 
     private func refreshCampaign() async {

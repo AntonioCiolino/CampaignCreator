@@ -3,8 +3,7 @@ import SwiftData
 
 struct CampaignSectionView: View {
     @StateObject var viewModel: CampaignSectionViewModel
-    @State private var showingDeleteConfirmation = false
-    @State private var showingEditor = false
+    @State private var attributedString: NSAttributedString = NSAttributedString(string: "")
     @Environment(\.modelContext) private var modelContext
 
     var body: some View {
@@ -16,31 +15,44 @@ struct CampaignSectionView: View {
                     .fontWeight(.bold)
             }
 
-            HStack {
-                Spacer()
-                Button(action: { showingEditor = true }) {
-                    Image(systemName: "pencil.circle.fill")
-                }
-                .padding(.trailing, 10)
-                Button(action: { showingDeleteConfirmation = true }) {
-                    Image(systemName: "trash.circle.fill")
-                }
-                .alert("Delete Section", isPresented: $showingDeleteConfirmation) {
-                    Button("Delete", role: .destructive) {
-                        viewModel.delete()
+            if viewModel.isEditing {
+                RichTextEditorView(text: $attributedString, onSnippetEdit: { editType in
+                    if let feature = self.viewModel.features.first(where: { $0.name == editType }) {
+                        self.viewModel.snippetEdit(editType: editType, featureId: feature.id)
                     }
-                    Button("Cancel", role: .cancel) { }
-                } message: {
-                    Text("Are you sure you want to delete this section? This action cannot be undone.")
+                }, onSelectionChange: { range in
+                    self.viewModel.selectedText = (self.attributedString.string as NSString).substring(with: range)
+                }, featureService: FeatureService(modelContext: modelContext))
+                .onAppear {
+                    attributedString = NSAttributedString(string: viewModel.editedContent)
                 }
-            }
-            .sheet(isPresented: $showingEditor) {
-                CampaignSectionEditorView(viewModel: viewModel, isPresented: $showingEditor)
-            }
+                .onChange(of: attributedString) { _, newValue in
+                    viewModel.editedContent = newValue.string
+                }
 
-            ScrollView {
+                HStack {
+                    Button("Save") {
+                        viewModel.save()
+                    }
+                    Button("Cancel") {
+                        viewModel.cancel()
+                    }
+                    Button("Regenerate") {
+                        viewModel.regenerate()
+                    }
+                }
+            } else {
                 Text(viewModel.section.content)
                     .font(.body)
+
+                HStack {
+                    Button("Edit") {
+                        viewModel.isEditing = true
+                    }
+                    Button("Delete") {
+                        viewModel.delete()
+                    }
+                }
             }
         }
         .padding()

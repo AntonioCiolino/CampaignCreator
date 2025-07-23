@@ -7,10 +7,11 @@ struct CampaignEditView: View {
     @State private var showingImageManager = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                Section(header: Text("Campaign Details")) {
-                    TextField("Title", text: $campaign.title)
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Section(header: Text("Campaign Details")) {
+                        TextField("Title", text: $campaign.title)
                     VStack(alignment: .leading) {
                         Text("Initial User Prompt").font(.caption)
                         TextEditor(text: .init(get: { campaign.initial_user_prompt ?? "" }, set: { campaign.initial_user_prompt = $0 })).frame(height: 100)
@@ -23,6 +24,7 @@ struct CampaignEditView: View {
                     }
                 }
                 .padding()
+            }
 
                 Section(header: Text("Theme Colors")) {
                     ColorPicker("Primary Color", selection: .init(get: { Color(hex: campaign.theme_primary_color ?? "") }, set: { campaign.theme_primary_color = $0.toHex() }), supportsOpacity: false)
@@ -79,20 +81,20 @@ struct CampaignEditView: View {
             .sheet(isPresented: $showingImageManager) {
                 CampaignImageManagerView(imageURLs: .init(get: { campaign.mood_board_image_urls ?? [] }, set: { campaign.mood_board_image_urls = $0 }), campaignID: campaign.id)
             }
-        }
-        .navigationTitle("Edit Campaign")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button("Cancel") {
-                    isPresented = false
+            .navigationTitle("Edit Campaign")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
                 }
-            }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Done") {
-                    isPresented = false
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        isPresented = false
+                    }
+                    .disabled(campaign.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
-                .disabled(campaign.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
     }
