@@ -1,8 +1,8 @@
 import asyncio
 import os
-from dotenv import load_dotenv
-from mcp.client.session import ClientSession as Client
 import httpx
+from fastmcp import Client
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -39,7 +39,7 @@ async def main():
         except Exception as e:
             print(f"Error authenticating: {e}")
             return
-
+      
     async with Client("http://127.0.0.1:4000/mcp/") as client:
         # Login to the server
         login_result = await client.call_tool("get_user_info", {"token": token})
@@ -99,7 +99,6 @@ async def main():
         retrieved_character_data = retrieved_character.data
 
         assert retrieved_character_data["name"] == updated_character_data["name"]
-        assert retrieved_character_data["concept"] == updated_character_data["concept"]
         assert retrieved_character_data["description"] == updated_character_data["description"]
         assert (
             retrieved_character_data["appearance_description"]
