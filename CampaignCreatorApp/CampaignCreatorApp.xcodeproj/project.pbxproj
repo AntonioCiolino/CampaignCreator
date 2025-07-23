@@ -168,7 +168,7 @@
 		94F8C4EE2E2A7FA3006B4D4E /* ImageManagerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageManagerViewModel.swift; sourceTree = "<group>"; };
 		94F8C4F22E2A7FA6006B4D4E /* LLMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMService.swift; sourceTree = "<group>"; };
 		94F8C4F42E2A7FA7006B4D4E /* ImageGenerationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGenerationService.swift; sourceTree = "<group>"; };
-		9A224CF697E99997CEBBE3F5 /* Notification+Name.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "Notification+Name.swift"; path = "CampaignCreatorSwift/Sources/CampaignCreatorLib/Notification+Name.swift"; sourceTree = SOURCE_ROOT; };
+		9A224CF697E99997CEBBE3F5 /* Notification+Name.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "Notification+Name.swift"; path = ../CampaignCreatorSwift/Sources/CampaignCreatorLib/Notification+Name.swift; sourceTree = "<group>"; };
 		E0A5F2902E2E3F9A00A61E63 /* CampaignSectionEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignSectionEditorView.swift; sourceTree = "<group>"; };
 		E0A5F2922E2E3F9A00A61E63 /* AddSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddSectionView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */

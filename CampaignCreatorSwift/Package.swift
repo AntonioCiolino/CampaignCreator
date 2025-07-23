@@ -1,4 +1,4 @@
-// swift-tools-version: 6.1
+// swift-tools-version:5.5
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -17,7 +17,7 @@ let package = Package(
     ],
     dependencies: [
         // Add dependencies here as needed
-        .package(url: "https://github.com/onevcat/Kingfisher.git", from: "8.0.0")
+        .package(url: "https://github.com/onevcat/Kingfisher.git", from: "7.0.0")
     ],
     targets: [
         .executableTarget(
@@ -29,9 +29,10 @@ let package = Package(
             dependencies: [
                 .product(name: "Kingfisher", package: "Kingfisher")
             ],
+            path: "Sources/CampaignCreatorLib",
             sources: [
                 "CampaignCreator.swift",
-                "APIService.swift", // Ensure APIService is here
+                "APIService.swift",
                 "LLMService.swift",
                 "MarkdownGenerator.swift",
                 "OpenAIClient.swift",
@@ -40,15 +41,16 @@ let package = Package(
                 "KeychainHelper.swift",
                 "Models/CampaignModel.swift",
                 "Models/CharacterModel.swift",
-                "Models/UserModel.swift", // Added UserModel.swift
-                "Models/FeatureModel.swift", // ADDED
-                "Models/ImageGenerationModels.swift", // ADDED
-                "Models/SectionRegeneratePayload.swift", // ADDED
+                "Models/UserModel.swift",
+                "Models/FeatureModel.swift",
+                "Models/ImageGenerationModels.swift",
+                "Models/SectionRegeneratePayload.swift",
                 "Models/ChatMessageData.swift",
-                "Models/APIChatMessageModels.swift", // Added new chat message models
+                "Models/APIChatMessageModels.swift",
                 "Models/Token.swift",
                 "JSONDecoder+Extensions.swift",
-                "TokenManager.swift"
+                "TokenManager.swift",
+                "Notification+Name.swift"
             ]
         ),
         .testTarget(
