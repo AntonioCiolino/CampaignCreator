@@ -50,7 +50,7 @@ let package = Package(
                 "Models/Token.swift",
                 "JSONDecoder+Extensions.swift",
                 "TokenManager.swift",
-                "Notification+Name.swift"
+                "Notifications.swift"
             ]
         ),
         .testTarget(

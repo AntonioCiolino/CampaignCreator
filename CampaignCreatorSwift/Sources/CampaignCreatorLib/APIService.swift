@@ -427,7 +427,7 @@ public final class APIService: ObservableObject, Sendable { // Added ObservableO
                 } catch {
                     // If refreshing the token fails, clear all tokens and notify the caller
                     tokenManager.clearTokens(for: username)
-                    NotificationCenter.default.post(name: .didLogout, object: nil)
+                    NotificationCenter.default.post(name: CampaignCreatorNotifications.didLogout, object: nil)
                     throw APIError.notAuthenticated
                 }
             }

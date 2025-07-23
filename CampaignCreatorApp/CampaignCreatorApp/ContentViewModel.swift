@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import SwiftData
 import CampaignCreatorLib
+import CampaignCreatorLib
 
 @MainActor
 class ContentViewModel: ObservableObject {
@@ -28,7 +29,7 @@ class ContentViewModel: ObservableObject {
             }
         }
 
-        NotificationCenter.default.addObserver(self, selector: #selector(handleLogout), name: .didLogout, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(handleLogout), name: CampaignCreatorNotifications.didLogout, object: nil)
     }
 
     @objc func handleLogout() {
