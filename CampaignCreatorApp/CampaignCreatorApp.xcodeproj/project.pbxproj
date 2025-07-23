@@ -87,12 +87,11 @@
 		94F8C4F52E2A7FA7006B4D4E /* ImageGenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F8C4F42E2A7FA7006B4D4E /* ImageGenerationService.swift */; };
 		E0A5F2912E2E3F9A00A61E63 /* CampaignSectionEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0A5F2902E2E3F9A00A61E63 /* CampaignSectionEditorView.swift */; };
 		E0A5F2932E2E3F9A00A61E63 /* AddSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0A5F2922E2E3F9A00A61E63 /* AddSectionView.swift */; };
+		FD6E4156B3A30E1F5F1FA163 /* Notification+Name.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A224CF697E99997CEBBE3F5 /* Notification+Name.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		3D92BBE12B8C8A8E00B8E8E8 /* CampaignCreatorApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CampaignCreatorApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		E0A5F2902E2E3F9A00A61E63 /* CampaignSectionEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignSectionEditorView.swift; sourceTree = "<group>"; };
-		E0A5F2922E2E3F9A00A61E63 /* AddSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddSectionView.swift; sourceTree = "<group>"; };
 		3D92BBE42B8C8A8E00B8E8E8 /* CampaignCreatorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignCreatorApp.swift; sourceTree = "<group>"; };
 		3D92BBE62B8C8A8E00B8E8E8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		3D92BBEB2B8C8A8F00B8E8E8 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
@@ -169,6 +168,9 @@
 		94F8C4EE2E2A7FA3006B4D4E /* ImageManagerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageManagerViewModel.swift; sourceTree = "<group>"; };
 		94F8C4F22E2A7FA6006B4D4E /* LLMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMService.swift; sourceTree = "<group>"; };
 		94F8C4F42E2A7FA7006B4D4E /* ImageGenerationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGenerationService.swift; sourceTree = "<group>"; };
+		9A224CF697E99997CEBBE3F5 /* Notification+Name.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "Notification+Name.swift"; path = "CampaignCreatorSwift/Sources/CampaignCreatorLib/Notification+Name.swift"; sourceTree = SOURCE_ROOT; };
+		E0A5F2902E2E3F9A00A61E63 /* CampaignSectionEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CampaignSectionEditorView.swift; sourceTree = "<group>"; };
+		E0A5F2922E2E3F9A00A61E63 /* AddSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddSectionView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -279,6 +281,7 @@
 				94A5C1BD2E2E3F9A00A61E63 /* TOCView.swift */,
 				E0A5F2902E2E3F9A00A61E63 /* CampaignSectionEditorView.swift */,
 				E0A5F2922E2E3F9A00A61E63 /* AddSectionView.swift */,
+				9A224CF697E99997CEBBE3F5 /* Notification+Name.swift */,
 			);
 			path = CampaignCreatorApp;
 			sourceTree = "<group>";
@@ -455,6 +458,7 @@
 				94A5C1C22E2E3F9A00A61E63 /* TOCView.swift in Sources */,
 				E0A5F2912E2E3F9A00A61E63 /* CampaignSectionEditorView.swift in Sources */,
 				E0A5F2932E2E3F9A00A61E63 /* AddSectionView.swift in Sources */,
+				FD6E4156B3A30E1F5F1FA163 /* Notification+Name.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
