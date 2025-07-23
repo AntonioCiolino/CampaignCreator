@@ -4,7 +4,7 @@ Main server module for the Campaign Crafter MCP server.
 import sys
 import os
 import httpx
-from fastmcp import FastMCP, Context
+from fastmcp import FastMCP
 from .models.schemas import (
     Campaign, Character, CampaignSection, LinkCharacter, GenerateToc, GenerateTitles
 )
@@ -307,11 +307,12 @@ def run_server():
     
     # Check for Claude Desktop mode via environment variable
     transport_mode = os.getenv("MCP_TRANSPORT_MODE", "auto")
+    logger.info(transport_mode)
     
     if transport_mode == "stdio" or (transport_mode == "auto" and not sys.stdin.isatty()):
         # Running via Claude Desktop - use stdio transport
         logger.info("Starting MCP server with stdio transport for Claude Desktop")
-        mcp.run(transport="stdio")
+        mcp.run(transport="stdio", show_banner=False)
     else:
         # Running standalone - use HTTP transport
         logger.info(f"Starting MCP server on {MCP_SERVER_HOST}:{MCP_SERVER_PORT}")
