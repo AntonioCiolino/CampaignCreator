@@ -292,6 +292,7 @@ const CampaignEditorPage: React.FC = () => {
     return () => {
       applyThemeToDocument(null);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaignId]);
 
   const handleTocLinkClick = useCallback((sectionIdFromLink: string | null) => {

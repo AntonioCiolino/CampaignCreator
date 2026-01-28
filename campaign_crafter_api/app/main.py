@@ -84,5 +84,6 @@ async def read_root():
 if __name__ == "__main__":
     import uvicorn
     import os
-    port_from_env = os.getenv("PORT", "8000")
+    port_from_env = os.getenv("PORT", "8001")
+    print(f"Starting server on port {port_from_env}")
     uvicorn.run(app, host="0.0.0.0", port=int(port_from_env))

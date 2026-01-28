@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom'; // Import useNavigate
+import { useNavigate } from 'react-router-dom';
 import * as characterService from '../services/characterService';
 import { Character } from '../types/characterTypes';
 import Button from '../components/common/Button'; // Import Button component

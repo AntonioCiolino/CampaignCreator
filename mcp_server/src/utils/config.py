@@ -2,12 +2,16 @@
 Configuration utilities for the Campaign Crafter MCP server.
 """
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 import logging
 from typing import Dict, Any
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from .env file in the mcp_server directory
+# This ensures the .env is found regardless of the current working directory
+_mcp_server_dir = Path(__file__).parent.parent.parent
+_env_path = _mcp_server_dir / ".env"
+load_dotenv(_env_path)
 
 # Configure logging
 logging.basicConfig(

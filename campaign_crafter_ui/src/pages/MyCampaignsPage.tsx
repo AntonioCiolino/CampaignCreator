@@ -1,6 +1,6 @@
 // campaign_crafter_ui/src/pages/MyCampaignsPage.tsx
 import React, { useEffect, useState, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import * as campaignService from '../services/campaignService';
 import { Campaign } from '../types/campaignTypes';
 import CampaignCard from '../components/CampaignCard';

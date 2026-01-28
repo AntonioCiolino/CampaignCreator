@@ -8,7 +8,8 @@ from typing import Optional
 class Campaign(BaseModel):
     """Campaign model for creating and updating campaigns."""
     title: str
-    concept: str
+    initial_user_prompt: Optional[str] = None  # Prompt for LLM to generate concept
+    concept: Optional[str] = None  # For updates only - ignored on create
 
 
 class CharacterStats(BaseModel):
@@ -53,3 +54,9 @@ class GenerateTitles(BaseModel):
     """Model for generating titles for a campaign section."""
     campaign_id: int
     section_id: int
+
+
+class SeedSections(BaseModel):
+    """Model for seeding sections from TOC."""
+    campaign_id: int
+    auto_populate: bool = False  # If True, uses LLM to generate content for each section

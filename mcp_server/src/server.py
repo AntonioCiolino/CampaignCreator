@@ -6,7 +6,7 @@ import os
 import httpx
 from fastmcp import FastMCP, Context
 from .models.schemas import (
-    Campaign, Character, CampaignSection, LinkCharacter, GenerateToc, GenerateTitles
+    Campaign, Character, CampaignSection, LinkCharacter, GenerateToc, GenerateTitles, SeedSections
 )
 from .utils.config import get_config, logger
 from typing import Optional, Dict, Any, List
@@ -51,7 +51,7 @@ async def auto_authenticate():
 
 # --- Helper Function ---
 async def forward_request(
-    method: str, path: str, token: str, json: Optional[dict] = None
+    method: str, path: str, token: str, json: Optional[dict] = None, timeout: float = 120.0
 ) -> Dict[str, Any]:
     """
     Forwards a request to the main Campaign Crafter API.
@@ -61,6 +61,7 @@ async def forward_request(
         path: API path (e.g., "/campaigns/")
         token: Authentication token
         json: Request body as a dictionary
+        timeout: Request timeout in seconds (default 120s for LLM operations)
         
     Returns:
         Response from the API as a dictionary
@@ -72,7 +73,7 @@ async def forward_request(
     if not auth_token:
         raise Exception("Unauthorized. Please login or set credentials.")
     headers = {"Authorization": f"Bearer {auth_token}"}
-    async with httpx.AsyncClient(follow_redirects=True) as client:
+    async with httpx.AsyncClient(follow_redirects=True, timeout=timeout) as client:
         url = f"{API_BASE_URL}/api/v1{path}"
         logger.debug(f"Forwarding {method} request to {url}")
         response = await client.request(method, url, headers=headers, json=json)
@@ -83,6 +84,45 @@ async def forward_request(
 
 
 # --- MCP Tools ---
+
+@mcp.tool
+async def refresh_auth(ctx: Context) -> Dict[str, Any]:
+    """
+    Force re-authentication using environment credentials.
+    Call this if you get 'Unauthorized' errors to refresh the auth token.
+    
+    Returns:
+        Dictionary with success status and message
+    """
+    token = await auto_authenticate()
+    if token:
+        return {
+            "success": True,
+            "message": "Authentication refreshed successfully",
+            "authenticated": True
+        }
+    else:
+        return {
+            "success": False,
+            "error": "Authentication failed - check credentials in environment variables"
+        }
+
+
+@mcp.tool
+async def get_auth_status(ctx: Context) -> Dict[str, Any]:
+    """
+    Check if the server has a valid auth token.
+    
+    Returns:
+        Dictionary with authentication status
+    """
+    return {
+        "authenticated": _auth_token is not None,
+        "has_env_credentials": bool(os.getenv("CAMPAIGN_CRAFTER_USERNAME") and os.getenv("CAMPAIGN_CRAFTER_PASSWORD")),
+        "api_base_url": API_BASE_URL
+    }
+
+
 @mcp.tool
 async def get_user_info(token: str, ctx: Context) -> str:
     """
@@ -101,9 +141,19 @@ async def get_user_info(token: str, ctx: Context) -> str:
 
 @mcp.tool
 async def create_campaign(campaign: Campaign, token: str, ctx: Context) -> Dict[str, Any]:
-    """Creates a new campaign."""
+    """
+    Creates a new campaign. 
+    Pass initial_user_prompt to have the API generate a concept via LLM during creation.
+    The concept field is ignored on create - use initial_user_prompt instead.
+    """
     logger.info(f"Creating campaign: {campaign.title}")
-    return await forward_request("POST", "/campaigns/", token, campaign.model_dump())
+    # Build payload with fields the API accepts for creation
+    payload = {"title": campaign.title}
+    if campaign.initial_user_prompt:
+        payload["initial_user_prompt"] = campaign.initial_user_prompt
+    result = await forward_request("POST", "/campaigns/", token, payload)
+    logger.info(f"Create campaign result: {result}")
+    return result
 
 
 @mcp.tool
@@ -301,6 +351,75 @@ async def generate_titles(
         "POST", f"/campaigns/{campaign_id}/titles", token, request_body
     )
 
+
+@mcp.tool
+async def seed_sections_from_toc(
+    seed_request: SeedSections, token: str, ctx: Context
+) -> Dict[str, Any]:
+    """
+    Seeds campaign sections from the generated TOC.
+    Call this after generate_toc to create actual section records.
+    If auto_populate is True, uses LLM to generate content for each section (slower but richer).
+    """
+    campaign_id = seed_request.campaign_id
+    auto_populate = seed_request.auto_populate
+    logger.info(f"Seeding sections from TOC for campaign {campaign_id} (auto_populate={auto_populate})")
+    
+    # This endpoint returns SSE events - we need to consume them and return a summary
+    auth_token = token or _auth_token
+    if not auth_token:
+        raise Exception("Unauthorized. Please login or set credentials.")
+    
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    url = f"{API_BASE_URL}/api/v1/campaigns/{campaign_id}/seed_sections_from_toc?auto_populate={str(auto_populate).lower()}"
+    
+    sections_created = []
+    errors = []
+    
+    async with httpx.AsyncClient(follow_redirects=True, timeout=120.0) as client:
+        async with client.stream("POST", url, headers=headers) as response:
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                # Skip empty lines
+                if not line or not line.strip():
+                    continue
+                
+                # Strip "data: " prefix (may be doubled due to SSE format)
+                data_line = line
+                while data_line.startswith("data: "):
+                    data_line = data_line[6:]
+                
+                # Skip if nothing left after stripping
+                if not data_line.strip():
+                    continue
+                
+                try:
+                    import json
+                    event_data = json.loads(data_line)
+                    event_type = event_data.get("event_type")
+                    if event_type == "section_update":
+                        section_data = event_data.get("section_data", {})
+                        sections_created.append({
+                            "id": section_data.get("id"),
+                            "title": section_data.get("title"),
+                            "type": section_data.get("type")
+                        })
+                    elif event_type == "error":
+                        errors.append(event_data.get("message", "Unknown error"))
+                    elif event_type == "complete":
+                        logger.info(f"Seeding complete: {event_data}")
+                except json.JSONDecodeError as e:
+                    logger.warning(f"Failed to parse SSE event: {line} - {e}")
+    
+    return {
+        "success": len(errors) == 0,
+        "campaign_id": campaign_id,
+        "sections_created": len(sections_created),
+        "sections": sections_created,
+        "errors": errors if errors else None
+    }
+
+
 def run_server():
     """Run the MCP server with appropriate transport."""
     logger.info(f"API base URL: {API_BASE_URL}")
@@ -314,6 +433,6 @@ def run_server():
         logger.info("Starting MCP server with stdio transport for Claude Desktop")
         mcp.run(transport="stdio", show_banner=False)
     else:
-        # Running standalone - use HTTP transport
+        # Running standalone - use SSE transport for HTTP clients
         logger.info(f"Starting MCP server on {MCP_SERVER_HOST}:{MCP_SERVER_PORT}")
-        mcp.run(transport="http", host=MCP_SERVER_HOST, port=MCP_SERVER_PORT, show_banner=False)
+        mcp.run(transport="sse", host=MCP_SERVER_HOST, port=MCP_SERVER_PORT, show_banner=False)

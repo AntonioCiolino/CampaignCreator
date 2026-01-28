@@ -1,7 +1,7 @@
 from typing import Optional, List, Dict # Added List and Dict
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified # Added for flagging JSON field modifications
-from sqlalchemy.dialects.postgresql import JSONB # Added for JSONB casting
+from sqlalchemy import text
 from fastapi import HTTPException # Added HTTPException
 from passlib.context import CryptContext
 
@@ -145,26 +145,32 @@ def get_master_feature_for_type(db: Session, section_type: str) -> Optional[orm_
     """
     Retrieves a 'FullSection' feature compatible with the given section_type.
     Tries to find a specific match first, then a generic 'FullSection' feature if no specific match.
+    Works with both SQLite and PostgreSQL.
     """
-    # Attempt to find a feature specifically compatible with the section_type and categorized as FullSection
-    # Construct a JSON array string for the check, e.g., '["typeA"]'
-    json_array_to_check = f'["{section_type}"]'
-    db_feature = db.query(orm_models.Feature).filter(
-        orm_models.Feature.feature_category == "FullSection",
-        orm_models.Feature.compatible_types.cast(JSONB).contains(json_array_to_check)
-    ).first()
+    # Get all FullSection features and check compatible_types in Python
+    # This approach is database-agnostic (works with SQLite JSON and PostgreSQL JSONB)
+    full_section_features = db.query(orm_models.Feature).filter(
+        orm_models.Feature.feature_category == "FullSection"
+    ).all()
+    
+    # Check each feature's compatible_types for the section_type
+    for feature in full_section_features:
+        if feature.compatible_types:
+            # compatible_types could be a list or a JSON string
+            compatible = feature.compatible_types
+            if isinstance(compatible, str):
+                import json
+                try:
+                    compatible = json.loads(compatible)
+                except (json.JSONDecodeError, TypeError):
+                    compatible = []
+            if section_type in compatible:
+                return feature
 
-    if db_feature:
-        return db_feature
-
-    # Fallback: If no specific match, try to find a generic "FullSection" feature that might be broadly compatible
-    # This could be one where compatible_types is NULL/empty or contains "Generic"
-    # For simplicity, let's look for one specifically named or a very generic one.
-    # This fallback logic might need refinement based on how generic features are defined.
-    # Example: A feature named "Generate Section Details - Generic" and category "FullSection"
+    # Fallback: If no specific match, try to find a generic "FullSection" feature
     db_generic_feature = db.query(orm_models.Feature).filter(
         orm_models.Feature.feature_category == "FullSection",
-        orm_models.Feature.name == "Generate Section Details - Generic" # Example name
+        orm_models.Feature.name == "Generate Section Details - Generic"
     ).first()
 
     return db_generic_feature

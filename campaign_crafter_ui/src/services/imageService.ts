@@ -107,38 +107,8 @@ export const generateAiImage = async (
     // The generic type `T` in `apiClient.post<T>` should refer to the type of `response.data`.
 
     // Let's refine the apiClient call assumption. If apiClient.post<Type> returns an Axios-like response,
-    // then the actual data is in response.data.
-    // If apiClient.post<Type> returns Type directly, then it's just response.
-    // Given the existing code: `const response = await apiClient.post<UploadedImageResponse>(...)`
-    // and then `return response.data;`, it means `apiClient.post` returns something like `AxiosResponse<UploadedImageResponse>`.
-    // So, the `response` variable here will be `AxiosResponse<ImageGenerationResponse>`.
-
-    // The type of `response` from `apiClient.post<ImageGenerationResponse>` should be the actual data `ImageGenerationResponse`
-    // if `apiClient` is designed to return the data directly.
-    // If `apiClient` returns a wrapper (like Axios does, e.g. `{ data: ImageGenerationResponse, status: ..., ...}`),
-    // then the type hint for `apiClient.post` should reflect that, or it should extract `.data` internally.
-
-    // Let's assume `apiClient.post` is like this: `async post<R>(url, data): Promise<R>` where R is the response body.
-    // This means `response` below *is* `ImageGenerationResponse`.
-
-    const resultData = response; // Assuming apiClient.post returns the data directly.
-                                 // If it returns { data: ... }, then this should be response.data.
-                                 // The existing uploadImage returns response.data, so apiClient.post gives an object with a data field.
-                                 // So, the 'response' variable above IS that object.
-
-    // Sticking to the pattern in `uploadImage`:
-    // The `response` variable from `apiClient.post<T>` is an object where `response.data` is `T`.
-    // This is confusing. Let's simplify the expectation for `apiClient.post<T>` to return `T` directly.
-    // If `apiClient.ts` `apiClient.post` returns `response.data` from its internal fetch, then `response` here is `ImageGenerationResponse`.
-    // If `apiClient.ts` `apiClient.post` returns the raw `fetch` response, then `response.json()` is needed.
-    // Given the structure of `apiClient.ts` (it calls `response.json()` internally), `apiClient.post<T>` should return `T`.
-
-    // Final decision: apiClient.post<T> returns T directly. -> This assumption was wrong.
-    // Correcting based on the error and existing code pattern (e.g. in uploadImage).
-    // The apiClient.post<T> returns an object where `data` property holds T.
-    // const resultData = response; // This line was unused and removed.
-    console.log('[imageService.generateAiImage] Successfully generated image, response object:', response);
-    return response.data; // Return the actual data part of the response.
+    console.log('[imageService.generateAiImage] Successfully generated image, response:', response);
+    return response.data;
 
   } catch (error: any) {
     // error.response.data should contain the backend's error detail.
