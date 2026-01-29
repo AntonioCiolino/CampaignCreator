@@ -4,8 +4,7 @@ sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..'
 
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool, create_engine, text
 
 from alembic import context
 
@@ -25,10 +24,15 @@ if config.config_file_name is not None:
 from app.orm_models import Base
 target_metadata = Base.metadata
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+# Get DATABASE_URL from environment, falling back to alembic.ini
+def get_url():
+    url = os.getenv("DATABASE_URL")
+    if url:
+        # Render.com uses postgres:// but SQLAlchemy requires postgresql://
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        return url
+    return config.get_main_option("sqlalchemy.url")
 
 
 def run_migrations_offline() -> None:
@@ -43,7 +47,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = get_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -62,18 +66,23 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    # Use DATABASE_URL from environment if available
+    url = get_url()
+    
+    connectable = create_engine(url, poolclass=pool.NullPool)
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            version_table_schema="public",  # Explicitly use public schema
+            include_schemas=True,
         )
 
         with context.begin_transaction():
+            # Set search_path to public schema for PostgreSQL
+            if url and "postgresql" in url:
+                connection.execute(text("SET search_path TO public"))
             context.run_migrations()
 
 

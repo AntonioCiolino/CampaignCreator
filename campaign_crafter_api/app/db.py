@@ -4,13 +4,17 @@ from sqlalchemy.orm import sessionmaker
 from app.core.config import settings # Standardized
 
 # DATABASE_URL is now managed by settings
+# Handle Render.com's postgres:// URL format (SQLAlchemy requires postgresql://)
+database_url = settings.DATABASE_URL
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
 
 # For SQLite, connect_args might be needed if using check_same_thread=False, but default is fine for now.
 engine_args = {}
-if settings.DATABASE_URL.startswith("sqlite"): # Use settings.DATABASE_URL
+if database_url.startswith("sqlite"):
     engine_args["connect_args"] = {"check_same_thread": False} # Common for FastAPI + SQLite
 
-engine = create_engine(settings.DATABASE_URL, **engine_args) # Use settings.DATABASE_URL
+engine = create_engine(database_url, **engine_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

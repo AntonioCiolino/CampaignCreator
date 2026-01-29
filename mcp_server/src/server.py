@@ -9,7 +9,7 @@ from .models.schemas import (
     Campaign, Character, CampaignSection, LinkCharacter, GenerateToc, GenerateTitles, SeedSections
 )
 from .utils.config import get_config, logger
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 
 # Load configuration
 config = get_config()
@@ -83,9 +83,104 @@ async def forward_request(
         return response.json()
 
 
+# --- Output Schema Definitions ---
+# These define what fields are returned by each tool for LLM planning
+
+CAMPAIGN_OUTPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "id": {"type": "integer", "description": "Unique campaign ID"},
+        "title": {"type": "string", "description": "Campaign title"},
+        "initial_user_prompt": {"type": "string", "description": "Original user prompt"},
+        "concept": {"type": "string", "description": "LLM-generated campaign concept/overview"},
+        "owner_id": {"type": "integer", "description": "ID of the campaign owner"},
+        "badge_image_url": {"type": "string", "description": "URL of campaign badge image"},
+        "thematic_image_url": {"type": "string", "description": "URL of thematic image"},
+        "thematic_image_prompt": {"type": "string", "description": "Prompt used for thematic image"},
+        "selected_llm_id": {"type": "string", "description": "Selected LLM model ID"},
+        "temperature": {"type": "number", "description": "LLM temperature setting"},
+        "homebrewery_toc": {"type": "array", "description": "Table of contents for Homebrewery export"},
+        "display_toc": {"type": "array", "description": "Display table of contents"},
+        "homebrewery_export": {"type": "string", "description": "Homebrewery export content"},
+        "sections": {"type": "array", "description": "List of campaign sections"},
+        "theme_primary_color": {"type": "string"},
+        "theme_secondary_color": {"type": "string"},
+        "theme_background_color": {"type": "string"},
+        "theme_text_color": {"type": "string"},
+        "theme_font_family": {"type": "string"},
+        "theme_background_image_url": {"type": "string"},
+        "theme_background_image_opacity": {"type": "number"},
+        "mood_board_image_urls": {"type": "array", "items": {"type": "string"}}
+    },
+    "required": ["id", "title", "owner_id"]
+}
+
+CHARACTER_OUTPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "id": {"type": "integer", "description": "Unique character ID"},
+        "name": {"type": "string", "description": "Character name"},
+        "description": {"type": "string", "description": "Character description"},
+        "appearance_description": {"type": "string", "description": "Physical appearance"},
+        "image_urls": {"type": "array", "items": {"type": "string"}, "description": "Character image URLs"},
+        "video_clip_urls": {"type": "array", "items": {"type": "string"}, "description": "Video clip URLs"},
+        "notes_for_llm": {"type": "string", "description": "Notes for LLM context"},
+        "owner_id": {"type": "integer", "description": "ID of the character owner"},
+        "export_format_preference": {"type": "string", "description": "Export format preference"},
+        "stats": {
+            "type": "object",
+            "description": "Character stats",
+            "properties": {
+                "strength": {"type": "integer"},
+                "dexterity": {"type": "integer"},
+                "constitution": {"type": "integer"},
+                "intelligence": {"type": "integer"},
+                "wisdom": {"type": "integer"},
+                "charisma": {"type": "integer"}
+            }
+        }
+    },
+    "required": ["id", "name", "owner_id"]
+}
+
+CAMPAIGN_SECTION_OUTPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "id": {"type": "integer", "description": "Unique section ID"},
+        "campaign_id": {"type": "integer", "description": "Parent campaign ID"},
+        "title": {"type": "string", "description": "Section title"},
+        "content": {"type": "string", "description": "Section content"},
+        "order": {"type": "integer", "description": "Section order/position"},
+        "type": {"type": "string", "description": "Section type (e.g., NPC, Location, Chapter)"}
+    },
+    "required": ["id", "campaign_id", "content", "order"]
+}
+
+AUTH_STATUS_OUTPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "success": {"type": "boolean", "description": "Whether operation succeeded"},
+        "message": {"type": "string", "description": "Status message"},
+        "authenticated": {"type": "boolean", "description": "Whether authenticated"},
+        "error": {"type": "string", "description": "Error message if failed"},
+        "has_env_credentials": {"type": "boolean", "description": "Whether env credentials exist"},
+        "api_base_url": {"type": "string", "description": "API base URL"}
+    },
+    "required": ["authenticated"]
+}
+
+EMPTY_RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "success": {"type": "boolean", "description": "Whether the operation succeeded"}
+    },
+    "required": []
+}
+
+
 # --- MCP Tools ---
 
-@mcp.tool
+@mcp.tool(output_schema=AUTH_STATUS_OUTPUT_SCHEMA)
 async def refresh_auth(ctx: Context) -> Dict[str, Any]:
     """
     Force re-authentication using environment credentials.
@@ -104,11 +199,12 @@ async def refresh_auth(ctx: Context) -> Dict[str, Any]:
     else:
         return {
             "success": False,
-            "error": "Authentication failed - check credentials in environment variables"
+            "error": "Authentication failed - check credentials in environment variables",
+            "authenticated": False
         }
 
 
-@mcp.tool
+@mcp.tool(output_schema=AUTH_STATUS_OUTPUT_SCHEMA)
 async def get_auth_status(ctx: Context) -> Dict[str, Any]:
     """
     Check if the server has a valid auth token.
@@ -123,28 +219,42 @@ async def get_auth_status(ctx: Context) -> Dict[str, Any]:
     }
 
 
-@mcp.tool
-async def get_user_info(token: str, ctx: Context) -> str:
+@mcp.tool(output_schema={
+    "type": "object",
+    "properties": {
+        "valid": {"type": "boolean", "description": "Whether the token is valid"},
+        "token": {"type": "string", "description": "The validated auth token"}
+    },
+    "required": ["valid", "token"]
+})
+async def get_user_info(token: str, ctx: Context) -> Dict[str, Any]:
     """
-    Retrieves information about the logged-in user.
+    Validates a token by retrieving information about the logged-in user.
+    
+    Returns:
+        Object with valid status and the token if successful.
     """
     headers = {"Authorization": f"Bearer {token}"}
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{API_BASE_URL}/api/v1/users/me", headers=headers)
         if response.status_code == 200:
             logger.info("User successfully authenticated")
-            return token
+            return {"valid": True, "token": token}
         else:
             logger.warning("Authentication failed")
             raise Exception("Invalid token")
 
 
-@mcp.tool
+@mcp.tool(output_schema=CAMPAIGN_OUTPUT_SCHEMA)
 async def create_campaign(campaign: Campaign, token: str, ctx: Context) -> Dict[str, Any]:
     """
     Creates a new campaign. 
     Pass initial_user_prompt to have the API generate a concept via LLM during creation.
     The concept field is ignored on create - use initial_user_prompt instead.
+    
+    Returns:
+        Campaign object with id, title, concept, owner_id, and other fields.
+        Use the 'id' field to reference this campaign in subsequent operations.
     """
     logger.info(f"Creating campaign: {campaign.title}")
     # Build payload with fields the API accepts for creation
@@ -156,100 +266,203 @@ async def create_campaign(campaign: Campaign, token: str, ctx: Context) -> Dict[
     return result
 
 
-@mcp.tool
+@mcp.tool(output_schema=CAMPAIGN_OUTPUT_SCHEMA)
 async def get_campaign(campaign_id: int, token: str, ctx: Context) -> Dict[str, Any]:
-    """Retrieves a specific campaign."""
+    """
+    Retrieves a specific campaign by ID.
+    
+    Returns:
+        Campaign object with id, title, concept, sections, and other fields.
+    """
     logger.info(f"Getting campaign: {campaign_id}")
     return await forward_request("GET", f"/campaigns/{campaign_id}/", token)
 
 
-@mcp.tool
-async def list_campaigns(token: str, ctx: Context) -> List[Dict[str, Any]]:
-    """Lists all campaigns for the authenticated user."""
+@mcp.tool(output_schema={
+    "type": "object",
+    "properties": {
+        "campaigns": {
+            "type": "array",
+            "description": "List of campaigns",
+            "items": CAMPAIGN_OUTPUT_SCHEMA
+        }
+    },
+    "required": ["campaigns"]
+})
+async def list_campaigns(token: str, ctx: Context) -> Dict[str, Any]:
+    """
+    Lists all campaigns for the authenticated user.
+    
+    Returns:
+        Object with 'campaigns' array containing campaign objects.
+    """
     logger.info("Listing campaigns")
-    return await forward_request("GET", "/campaigns/", token)
+    campaigns = await forward_request("GET", "/campaigns/", token)
+    # Wrap in object to match output_schema
+    if isinstance(campaigns, list):
+        return {"campaigns": campaigns}
+    return campaigns
 
 
-@mcp.tool
+@mcp.tool(output_schema=CAMPAIGN_OUTPUT_SCHEMA)
 async def update_campaign(
     campaign_id: int, campaign: Campaign, token: str, ctx: Context
 ) -> Dict[str, Any]:
-    """Updates a specific campaign."""
+    """
+    Updates a specific campaign.
+    
+    Returns:
+        Updated campaign object with id, title, concept, and other fields.
+    """
     logger.info(f"Updating campaign: {campaign_id}")
     return await forward_request(
         "PUT", f"/campaigns/{campaign_id}/", token, campaign.model_dump()
     )
 
 
-@mcp.tool
+@mcp.tool(output_schema=EMPTY_RESPONSE_SCHEMA)
 async def delete_campaign(campaign_id: int, token: str, ctx: Context) -> Dict[str, Any]:
-    """Deletes a specific campaign."""
+    """
+    Deletes a specific campaign.
+    
+    Returns:
+        Empty object on success.
+    """
     logger.info(f"Deleting campaign: {campaign_id}")
     return await forward_request("DELETE", f"/campaigns/{campaign_id}/", token)
 
 
-@mcp.tool
+@mcp.tool(output_schema=CHARACTER_OUTPUT_SCHEMA)
 async def create_character(character: Character, token: str, ctx: Context) -> Dict[str, Any]:
-    """Creates a new character."""
+    """
+    Creates a new character.
+    
+    Returns:
+        Character object with id, name, description, stats, and other fields.
+        Use the 'id' field to reference this character in subsequent operations.
+    """
     logger.info(f"Creating character: {character.name}")
     return await forward_request("POST", "/characters/", token, character.model_dump())
 
 
-@mcp.tool
+@mcp.tool(output_schema=CHARACTER_OUTPUT_SCHEMA)
 async def get_character(character_id: int, token: str, ctx: Context) -> Dict[str, Any]:
-    """Retrieves a specific character."""
+    """
+    Retrieves a specific character by ID.
+    
+    Returns:
+        Character object with id, name, description, stats, and other fields.
+    """
     logger.info(f"Getting character: {character_id}")
     return await forward_request("GET", f"/characters/{character_id}/", token)
 
 
-@mcp.tool
-async def list_characters(token: str, ctx: Context) -> List[Dict[str, Any]]:
-    """Lists all characters for the authenticated user."""
+@mcp.tool(output_schema={
+    "type": "object",
+    "properties": {
+        "characters": {
+            "type": "array",
+            "description": "List of characters",
+            "items": CHARACTER_OUTPUT_SCHEMA
+        }
+    },
+    "required": ["characters"]
+})
+async def list_characters(token: str, ctx: Context) -> Dict[str, Any]:
+    """
+    Lists all characters for the authenticated user.
+    
+    Returns:
+        Object with 'characters' array containing character objects.
+    """
     logger.info("Listing characters")
-    return await forward_request("GET", "/characters/", token)
+    characters = await forward_request("GET", "/characters/", token)
+    # Wrap in object to match output_schema
+    if isinstance(characters, list):
+        return {"characters": characters}
+    return characters
 
 
-@mcp.tool
-async def get_all_characters(token: str, ctx: Context) -> List[Dict[str, Any]]:
-    """Lists all characters, regardless of campaign."""
+@mcp.tool(output_schema={
+    "type": "object",
+    "properties": {
+        "characters": {
+            "type": "array",
+            "description": "List of all characters",
+            "items": CHARACTER_OUTPUT_SCHEMA
+        }
+    },
+    "required": ["characters"]
+})
+async def get_all_characters(token: str, ctx: Context) -> Dict[str, Any]:
+    """
+    Lists all characters, regardless of campaign.
+    
+    Returns:
+        Object with 'characters' array containing character objects.
+    """
     logger.info("Getting all characters")
-    return await forward_request("GET", "/characters/all/", token)
+    characters = await forward_request("GET", "/characters/all/", token)
+    # Wrap in object to match output_schema
+    if isinstance(characters, list):
+        return {"characters": characters}
+    return characters
 
 
-@mcp.tool
+@mcp.tool(output_schema=CHARACTER_OUTPUT_SCHEMA)
 async def update_character(
     character_id: int, character: Character, token: str, ctx: Context
 ) -> Dict[str, Any]:
-    """Updates a specific character."""
+    """
+    Updates a specific character.
+    
+    Returns:
+        Updated character object with id, name, description, stats, and other fields.
+    """
     logger.info(f"Updating character: {character_id}")
     return await forward_request(
         "PUT", f"/characters/{character_id}/", token, character.model_dump()
     )
 
 
-@mcp.tool
+@mcp.tool(output_schema=EMPTY_RESPONSE_SCHEMA)
 async def delete_character(character_id: int, token: str, ctx: Context) -> Dict[str, Any]:
-    """Deletes a specific character."""
+    """
+    Deletes a specific character.
+    
+    Returns:
+        Empty object on success.
+    """
     logger.info(f"Deleting character: {character_id}")
     return await forward_request("DELETE", f"/characters/{character_id}/", token)
 
 
-@mcp.tool
+@mcp.tool(output_schema=CHARACTER_OUTPUT_SCHEMA)
 async def link_character_to_campaign(
     link: LinkCharacter, token: str, ctx: Context
 ) -> Dict[str, Any]:
-    """Links a character to a campaign."""
+    """
+    Links a character to a campaign.
+    
+    Returns:
+        Updated character object with id, name, and other fields.
+    """
     character_id = link.character_id
     campaign_id = link.campaign_id
     logger.info(f"Linking character {character_id} to campaign {campaign_id}")
     return await forward_request("POST", f"/characters/{character_id}/campaigns/{campaign_id}", token)
 
 
-@mcp.tool
+@mcp.tool(output_schema=CHARACTER_OUTPUT_SCHEMA)
 async def unlink_character_from_campaign(
     link: LinkCharacter, token: str, ctx: Context
 ) -> Dict[str, Any]:
-    """Unlinks a character from a campaign."""
+    """
+    Unlinks a character from a campaign.
+    
+    Returns:
+        Updated character object with id, name, and other fields.
+    """
     character_id = link.character_id
     campaign_id = link.campaign_id
     logger.info(f"Unlinking character {character_id} from campaign {campaign_id}")
@@ -258,11 +471,17 @@ async def unlink_character_from_campaign(
     )
 
 
-@mcp.tool
+@mcp.tool(output_schema=CAMPAIGN_SECTION_OUTPUT_SCHEMA)
 async def create_campaign_section(
     section: CampaignSection, token: str, ctx: Context
 ) -> Dict[str, Any]:
-    """Creates a new campaign section."""
+    """
+    Creates a new campaign section.
+    
+    Returns:
+        Section object with id, campaign_id, title, content, order, and type.
+        Use the 'id' field to reference this section in subsequent operations.
+    """
     # Exclude campaign_id from the payload since it's in the URL
     section_data = section.model_dump(exclude={"campaign_id"})
     logger.info(f"Creating section for campaign {section.campaign_id}")
@@ -271,33 +490,60 @@ async def create_campaign_section(
     )
 
 
-@mcp.tool
-async def list_campaign_sections(campaign_id: int, token: str, ctx: Context) -> List[Dict[str, Any]]:
-    """Lists all sections for a specific campaign."""
+@mcp.tool(output_schema={
+    "type": "object",
+    "properties": {
+        "sections": {
+            "type": "array",
+            "description": "List of campaign sections",
+            "items": CAMPAIGN_SECTION_OUTPUT_SCHEMA
+        }
+    },
+    "required": ["sections"]
+})
+async def list_campaign_sections(campaign_id: int, token: str, ctx: Context) -> Dict[str, Any]:
+    """
+    Lists all sections for a specific campaign.
+    
+    Returns:
+        Object with 'sections' array containing section objects.
+    """
     logger.info(f"Listing sections for campaign {campaign_id}")
     response = await forward_request("GET", f"/campaigns/{campaign_id}/sections/", token)
-    # Extract the sections array from the response
+    # Ensure we return an object with sections key
     if isinstance(response, dict) and "sections" in response:
-        return response["sections"]
-    return response
+        return response
+    if isinstance(response, list):
+        return {"sections": response}
+    return {"sections": response}
 
 
-@mcp.tool
+@mcp.tool(output_schema=CAMPAIGN_SECTION_OUTPUT_SCHEMA)
 async def get_campaign_section(
     campaign_id: int, section_id: int, token: str, ctx: Context
 ) -> Dict[str, Any]:
-    """Retrieves a specific campaign section."""
+    """
+    Retrieves a specific campaign section.
+    
+    Returns:
+        Section object with id, campaign_id, title, content, order, and type.
+    """
     logger.info(f"Getting section {section_id} for campaign {campaign_id}")
     return await forward_request(
         "GET", f"/campaigns/{campaign_id}/sections/{section_id}/", token
     )
 
 
-@mcp.tool
+@mcp.tool(output_schema=CAMPAIGN_SECTION_OUTPUT_SCHEMA)
 async def update_campaign_section(
     section_id: int, section: CampaignSection, token: str, ctx: Context
 ) -> Dict[str, Any]:
-    """Updates a specific campaign section."""
+    """
+    Updates a specific campaign section.
+    
+    Returns:
+        Updated section object with id, campaign_id, title, content, order, and type.
+    """
     # Exclude campaign_id from the payload since it's in the URL
     section_data = section.model_dump(exclude={"campaign_id"})
     logger.info(f"Updating section {section_id} for campaign {section.campaign_id}")
@@ -309,20 +555,31 @@ async def update_campaign_section(
     )
 
 
-@mcp.tool
+@mcp.tool(output_schema=EMPTY_RESPONSE_SCHEMA)
 async def delete_campaign_section(
     campaign_id: int, section_id: int, token: str, ctx: Context
 ) -> Dict[str, Any]:
-    """Deletes a specific campaign section."""
+    """
+    Deletes a specific campaign section.
+    
+    Returns:
+        Empty object on success.
+    """
     logger.info(f"Deleting section {section_id} for campaign {campaign_id}")
     return await forward_request(
         "DELETE", f"/campaigns/{campaign_id}/sections/{section_id}/", token
     )
 
 
-@mcp.tool
+@mcp.tool(output_schema=CAMPAIGN_OUTPUT_SCHEMA)
 async def generate_toc(toc_request: GenerateToc, token: str, ctx: Context) -> Dict[str, Any]:
-    """Generates a table of contents for a campaign."""
+    """
+    Generates a table of contents for a campaign using LLM.
+    
+    Returns:
+        Updated campaign object with id, title, display_toc, homebrewery_toc, and other fields.
+        The display_toc field contains the generated table of contents structure.
+    """
     campaign_id = toc_request.campaign_id
     # The API expects a LLMGenerationRequest with required prompt and optional model_id_with_prefix
     request_body = {
@@ -335,11 +592,26 @@ async def generate_toc(toc_request: GenerateToc, token: str, ctx: Context) -> Di
     )
 
 
-@mcp.tool
+@mcp.tool(output_schema={
+    "type": "object",
+    "properties": {
+        "titles": {
+            "type": "array",
+            "description": "List of generated title suggestions",
+            "items": {"type": "string"}
+        }
+    },
+    "required": ["titles"]
+})
 async def generate_titles(
     title_request: GenerateTitles, token: str, ctx: Context
 ) -> Dict[str, Any]:
-    """Generates titles for a campaign section."""
+    """
+    Generates titles for a campaign section.
+    
+    Returns:
+        Object with 'titles' array containing generated title suggestions.
+    """
     campaign_id = title_request.campaign_id
     # The API expects a LLMGenerationRequest with required prompt and optional model_id_with_prefix
     request_body = {
@@ -352,7 +624,32 @@ async def generate_titles(
     )
 
 
-@mcp.tool
+@mcp.tool(output_schema={
+    "type": "object",
+    "properties": {
+        "success": {"type": "boolean", "description": "Whether seeding succeeded"},
+        "campaign_id": {"type": "integer", "description": "Campaign ID"},
+        "sections_created": {"type": "integer", "description": "Number of sections created"},
+        "sections": {
+            "type": "array",
+            "description": "List of created sections",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer", "description": "Section ID"},
+                    "title": {"type": "string", "description": "Section title"},
+                    "type": {"type": "string", "description": "Section type"}
+                }
+            }
+        },
+        "errors": {
+            "type": "array",
+            "description": "List of errors if any",
+            "items": {"type": "string"}
+        }
+    },
+    "required": ["success", "campaign_id", "sections_created"]
+})
 async def seed_sections_from_toc(
     seed_request: SeedSections, token: str, ctx: Context
 ) -> Dict[str, Any]:
@@ -360,6 +657,9 @@ async def seed_sections_from_toc(
     Seeds campaign sections from the generated TOC.
     Call this after generate_toc to create actual section records.
     If auto_populate is True, uses LLM to generate content for each section (slower but richer).
+    
+    Returns:
+        Object with success status, campaign_id, sections_created count, sections array, and errors.
     """
     campaign_id = seed_request.campaign_id
     auto_populate = seed_request.auto_populate

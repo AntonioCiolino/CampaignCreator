@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # --- Configuration ---
-API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://camapigncreator-api.onrender.com")
 TEST_USERNAME = os.getenv("CAMPAIGN_CRAFTER_USERNAME", "admin")
 TEST_PASSWORD = os.getenv("CAMPAIGN_CRAFTER_PASSWORD", "changeme")
 
@@ -40,7 +40,7 @@ async def main():
             print(f"Error authenticating: {e}")
             return
 
-    async with Client("http://127.0.0.1:4000/mcp/") as client:
+    async with Client("http://127.0.0.1:4001/mcp/") as client:
         # Login to the server
         login_result = await client.call_tool("get_user_info", {"token": token})
         token = login_result.data

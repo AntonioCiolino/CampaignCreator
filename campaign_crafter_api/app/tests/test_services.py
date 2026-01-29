@@ -334,7 +334,7 @@ from unittest.mock import MagicMock, AsyncMock, patch # Ensure all mock types ar
 from app.services.llm_service import LLMService, LLMGenerationError, LLMServiceUnavailableError # LLMService is new here, added LLMServiceUnavailableError
 from app.models import User as UserModel # UserModel is new here
 from app.services.gemini_service import GeminiLLMService # Import GeminiLLMService
-import google.generativeai as genai # To mock the genai module
+# Note: google-genai uses 'from google import genai' - mocking is done via patch on the service module
 
 # Fixtures for LLMService tests
 @pytest.fixture
