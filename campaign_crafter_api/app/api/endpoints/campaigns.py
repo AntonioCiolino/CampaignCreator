@@ -494,27 +494,33 @@ async def seed_sections_from_toc_endpoint(
 
     # Initialize LLM service (outside the generator, if applicable)
     llm_service_instance = None
-    if auto_populate and db_campaign.selected_llm_id and db_campaign.concept:
+    # Determine LLM model to use: campaign setting or system default
+    llm_model_to_use = db_campaign.selected_llm_id
+    if not llm_model_to_use:
+        llm_model_to_use = f"{settings.DEFAULT_LLM_PROVIDER}/{settings.DEFAULT_LLM_MODEL_CHAT}"
+        print(f"Campaign has no selected_llm_id, using system default: {llm_model_to_use}")
+    
+    if auto_populate and db_campaign.concept:
         try:
             current_user_orm = crud.get_user(db, user_id=current_user.id)
             if not current_user_orm:
                 print(f"LLM service initialization failed for SSE: User ORM not found for user {current_user.id}")
                 llm_service_instance = None
             else:
-                provider_name, _ = _extract_provider_and_model(db_campaign.selected_llm_id)
+                provider_name, _ = _extract_provider_and_model(llm_model_to_use)
                 llm_service_instance = get_llm_service(
                     db=db,
                     current_user_orm=current_user_orm,
-                    provider_name=provider_name, # Extracted from campaign's selected_llm_id
-                    model_id_with_prefix=db_campaign.selected_llm_id, # Original prefix from campaign
+                    provider_name=provider_name,
+                    model_id_with_prefix=llm_model_to_use,
                     campaign=db_campaign
                 )
-                print(f"LLM Service for auto-population initialized: {bool(llm_service_instance)}")
+                print(f"LLM Service for auto-population initialized: {bool(llm_service_instance)} using model: {llm_model_to_use}")
         except Exception as e:
             print(f"LLM service initialization failed for SSE auto-population: {type(e).__name__} - {e}")
             llm_service_instance = None # Ensure it's None if init fails
     elif auto_populate:
-        print(f"Auto-population requested but campaign.selected_llm_id ('{db_campaign.selected_llm_id}') or campaign.concept (available: {bool(db_campaign.concept)}) is not set appropriately. Skipping LLM generation.")
+        print(f"Auto-population requested but campaign.concept is not set. Skipping LLM generation.")
 
 
     async def event_generator():

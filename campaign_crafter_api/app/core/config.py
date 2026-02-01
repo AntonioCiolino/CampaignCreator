@@ -3,6 +3,10 @@ from typing import Optional, List, Dict
 
 class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS_CSV: Optional[str] = None
+    
+    # Default LLM Settings (used as fallback when campaign.selected_llm_id is None)
+    DEFAULT_LLM_PROVIDER: str = "openai"
+    DEFAULT_LLM_MODEL_CHAT: str = "gpt-4"
 
     @property
     def BACKEND_CORS_ORIGINS(self) -> list[str]:
