@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from app import external_models, crud, orm_models, models # Standardized
 from app.db import get_db # Standardized
+from app.core.config import settings # For default LLM settings
 from app.services.image_generation_service import ImageGenerationService
 from app.services.auth_service import get_current_active_user # Standardized
 from sse_starlette.sse import EventSourceResponse
