@@ -48,22 +48,17 @@ async def get_fresh_token():
 
 
 # --- Pytest fixtures ---
-@pytest.fixture
+@pytest.fixture(scope="module")
 def event_loop():
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
 
 
-@pytest.fixture
-async def token():
-    return await get_fresh_token()
-
-
-@pytest.fixture
-async def mcp_client():
-    async with Client(MCP_SERVER_URL) as client:
-        yield client
+@pytest.fixture(scope="module")
+def token(event_loop):
+    """Get a fresh token synchronously for use in async tests."""
+    return event_loop.run_until_complete(get_fresh_token())
 
 
 # --- Test Classes ---

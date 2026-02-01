@@ -2,7 +2,7 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 from fastapi.testclient import TestClient # Not used in this file directly, but common
 from fastapi import HTTPException # For error case testing
 from unittest.mock import patch, AsyncMock, ANY, MagicMock

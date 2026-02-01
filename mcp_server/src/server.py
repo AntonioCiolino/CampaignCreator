@@ -91,26 +91,26 @@ CAMPAIGN_OUTPUT_SCHEMA = {
     "properties": {
         "id": {"type": "integer", "description": "Unique campaign ID"},
         "title": {"type": "string", "description": "Campaign title"},
-        "initial_user_prompt": {"type": "string", "description": "Original user prompt"},
-        "concept": {"type": "string", "description": "LLM-generated campaign concept/overview"},
+        "initial_user_prompt": {"type": ["string", "null"], "description": "Original user prompt"},
+        "concept": {"type": ["string", "null"], "description": "LLM-generated campaign concept/overview"},
         "owner_id": {"type": "integer", "description": "ID of the campaign owner"},
-        "badge_image_url": {"type": "string", "description": "URL of campaign badge image"},
-        "thematic_image_url": {"type": "string", "description": "URL of thematic image"},
-        "thematic_image_prompt": {"type": "string", "description": "Prompt used for thematic image"},
-        "selected_llm_id": {"type": "string", "description": "Selected LLM model ID"},
-        "temperature": {"type": "number", "description": "LLM temperature setting"},
-        "homebrewery_toc": {"type": "array", "description": "Table of contents for Homebrewery export"},
-        "display_toc": {"type": "array", "description": "Display table of contents"},
-        "homebrewery_export": {"type": "string", "description": "Homebrewery export content"},
-        "sections": {"type": "array", "description": "List of campaign sections"},
-        "theme_primary_color": {"type": "string"},
-        "theme_secondary_color": {"type": "string"},
-        "theme_background_color": {"type": "string"},
-        "theme_text_color": {"type": "string"},
-        "theme_font_family": {"type": "string"},
-        "theme_background_image_url": {"type": "string"},
-        "theme_background_image_opacity": {"type": "number"},
-        "mood_board_image_urls": {"type": "array", "items": {"type": "string"}}
+        "badge_image_url": {"type": ["string", "null"], "description": "URL of campaign badge image"},
+        "thematic_image_url": {"type": ["string", "null"], "description": "URL of thematic image"},
+        "thematic_image_prompt": {"type": ["string", "null"], "description": "Prompt used for thematic image"},
+        "selected_llm_id": {"type": ["string", "null"], "description": "Selected LLM model ID"},
+        "temperature": {"type": ["number", "null"], "description": "LLM temperature setting"},
+        "homebrewery_toc": {"type": ["array", "null"], "description": "Table of contents for Homebrewery export"},
+        "display_toc": {"type": ["array", "null"], "description": "Display table of contents"},
+        "homebrewery_export": {"type": ["string", "null"], "description": "Homebrewery export content"},
+        "sections": {"type": ["array", "null"], "description": "List of campaign sections"},
+        "theme_primary_color": {"type": ["string", "null"]},
+        "theme_secondary_color": {"type": ["string", "null"]},
+        "theme_background_color": {"type": ["string", "null"]},
+        "theme_text_color": {"type": ["string", "null"]},
+        "theme_font_family": {"type": ["string", "null"]},
+        "theme_background_image_url": {"type": ["string", "null"]},
+        "theme_background_image_opacity": {"type": ["number", "null"]},
+        "mood_board_image_urls": {"type": ["array", "null"], "items": {"type": "string"}}
     },
     "required": ["id", "title", "owner_id"]
 }
@@ -120,15 +120,15 @@ CHARACTER_OUTPUT_SCHEMA = {
     "properties": {
         "id": {"type": "integer", "description": "Unique character ID"},
         "name": {"type": "string", "description": "Character name"},
-        "description": {"type": "string", "description": "Character description"},
-        "appearance_description": {"type": "string", "description": "Physical appearance"},
-        "image_urls": {"type": "array", "items": {"type": "string"}, "description": "Character image URLs"},
-        "video_clip_urls": {"type": "array", "items": {"type": "string"}, "description": "Video clip URLs"},
-        "notes_for_llm": {"type": "string", "description": "Notes for LLM context"},
+        "description": {"type": ["string", "null"], "description": "Character description"},
+        "appearance_description": {"type": ["string", "null"], "description": "Physical appearance"},
+        "image_urls": {"type": ["array", "null"], "items": {"type": "string"}, "description": "Character image URLs"},
+        "video_clip_urls": {"type": ["array", "null"], "items": {"type": "string"}, "description": "Video clip URLs"},
+        "notes_for_llm": {"type": ["string", "null"], "description": "Notes for LLM context"},
         "owner_id": {"type": "integer", "description": "ID of the character owner"},
-        "export_format_preference": {"type": "string", "description": "Export format preference"},
+        "export_format_preference": {"type": ["string", "null"], "description": "Export format preference"},
         "stats": {
-            "type": "object",
+            "type": ["object", "null"],
             "description": "Character stats",
             "properties": {
                 "strength": {"type": "integer"},
@@ -396,13 +396,14 @@ async def list_characters(token: str, ctx: Context) -> Dict[str, Any]:
 })
 async def get_all_characters(token: str, ctx: Context) -> Dict[str, Any]:
     """
-    Lists all characters, regardless of campaign.
+    Lists all characters for the authenticated user.
+    This is an alias for list_characters.
     
     Returns:
         Object with 'characters' array containing character objects.
     """
     logger.info("Getting all characters")
-    characters = await forward_request("GET", "/characters/all/", token)
+    characters = await forward_request("GET", "/characters/", token)
     # Wrap in object to match output_schema
     if isinstance(characters, list):
         return {"characters": characters}
@@ -439,10 +440,14 @@ async def delete_character(character_id: int, token: str, ctx: Context) -> Dict[
 
 @mcp.tool(output_schema=CHARACTER_OUTPUT_SCHEMA)
 async def link_character_to_campaign(
-    link: LinkCharacter, token: str, ctx: Context
+    link: LinkCharacter, token: str = "", ctx: Context = None
 ) -> Dict[str, Any]:
     """
     Links a character to a campaign.
+    
+    Args:
+        link: Object with campaign_id (integer) and character_id (integer)
+        token: Auth token (optional - uses auto-auth if empty)
     
     Returns:
         Updated character object with id, name, and other fields.
@@ -455,10 +460,14 @@ async def link_character_to_campaign(
 
 @mcp.tool(output_schema=CHARACTER_OUTPUT_SCHEMA)
 async def unlink_character_from_campaign(
-    link: LinkCharacter, token: str, ctx: Context
+    link: LinkCharacter, token: str = "", ctx: Context = None
 ) -> Dict[str, Any]:
     """
     Unlinks a character from a campaign.
+    
+    Args:
+        link: Object with campaign_id (integer) and character_id (integer)
+        token: Auth token (optional - uses auto-auth if empty)
     
     Returns:
         Updated character object with id, name, and other fields.

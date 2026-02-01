@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.main import app # Assuming your FastAPI app instance is here
 from app.models import Campaign, CampaignSection # Pydantic models for response validation
 from app.orm_models import Campaign as ORMCampaign, CampaignSection as ORMSection # DB models
+from app import orm_models  # For type hints using orm_models.X
 from app.services.llm_service import LLMGenerationError # For mocking
 
 # Fixtures (consider placing in a conftest.py if widely used)

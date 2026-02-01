@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session as SQLAlchemySession # Renamed to avoid conflict with FastAPI's Session
-from typing import Generator, List as TypingList # For fixture typing and List model
+from typing import Generator, List as TypingList, Optional # For fixture typing and List model
 
 from app.main import app
 from app.db import Base, get_db

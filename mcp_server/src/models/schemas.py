@@ -25,7 +25,6 @@ class CharacterStats(BaseModel):
 class Character(BaseModel):
     """Character model for creating and updating characters."""
     name: str
-    concept: str
     description: Optional[str] = None
     appearance_description: Optional[str] = None
     stats: Optional[CharacterStats] = None

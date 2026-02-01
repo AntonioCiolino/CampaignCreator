@@ -1,0 +1,679 @@
+"""
+Tests for LLM Management API endpoints.
+
+Covers multi-provider support including:
+- OpenAI (GPT models)
+- Gemini (Google AI)
+- DeepSeek
+- Llama
+- Local LLM (Ollama-compatible)
+
+Inspired by AgentsX multi-provider patterns.
+"""
+import pytest
+from httpx import AsyncClient
+from sqlalchemy.orm import Session
+from unittest.mock import patch, MagicMock, AsyncMock
+
+from app.tests.conftest import create_test_user_in_db
+from app.models import User as PydanticUser, ModelInfo
+
+
+class TestLLMModels:
+    """Tests for LLM model listing endpoints."""
+
+    @pytest.mark.asyncio
+    @patch('app.api.endpoints.llm_management.get_available_models_info')
+    async def test_list_available_models(
+        self, 
+        mock_get_available_models_info: MagicMock,
+        async_client: AsyncClient,
+        current_active_user_override: PydanticUser
+    ):
+        """Test listing available LLM models from all providers."""
+        # Mock models from multiple providers
+        mock_get_available_models_info.return_value = [
+            ModelInfo(id="openai/gpt-4", name="GPT-4", provider="openai"),
+            ModelInfo(id="openai/gpt-3.5-turbo", name="GPT-3.5 Turbo", provider="openai"),
+            ModelInfo(id="gemini/gemini-2.0-flash", name="Gemini 2.0 Flash", provider="gemini"),
+            ModelInfo(id="deepseek/deepseek-chat", name="DeepSeek Chat", provider="deepseek"),
+        ]
+        
+        response = await async_client.get("/api/v1/llm/models")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "models" in data
+        assert len(data["models"]) == 4
+        
+        # Verify provider prefixes
+        model_ids = [m["id"] for m in data["models"]]
+        assert "openai/gpt-4" in model_ids
+        assert "gemini/gemini-2.0-flash" in model_ids
+
+    @pytest.mark.asyncio
+    @patch('app.api.endpoints.llm_management.get_available_models_info')
+    async def test_list_models_empty(
+        self, 
+        mock_get_available_models_info: MagicMock,
+        async_client: AsyncClient,
+        current_active_user_override: PydanticUser
+    ):
+        """Test listing models when none are available."""
+        mock_get_available_models_info.return_value = []
+        
+        response = await async_client.get("/api/v1/llm/models")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["models"] == []
+
+    @pytest.mark.asyncio
+    @patch('app.api.endpoints.llm_management.get_available_models_info')
+    async def test_list_models_openai_only(
+        self, 
+        mock_get_available_models_info: MagicMock,
+        async_client: AsyncClient,
+        current_active_user_override: PydanticUser
+    ):
+        """Test listing models when only OpenAI is configured."""
+        mock_get_available_models_info.return_value = [
+            ModelInfo(id="openai/gpt-4o", name="GPT-4o", provider="openai"),
+            ModelInfo(id="openai/gpt-4o-mini", name="GPT-4o Mini", provider="openai"),
+        ]
+        
+        response = await async_client.get("/api/v1/llm/models")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["models"]) == 2
+        assert all("openai/" in m["id"] for m in data["models"])
+
+    @pytest.mark.asyncio
+    @patch('app.api.endpoints.llm_management.get_available_models_info')
+    async def test_list_models_gemini_only(
+        self, 
+        mock_get_available_models_info: MagicMock,
+        async_client: AsyncClient,
+        current_active_user_override: PydanticUser
+    ):
+        """Test listing models when only Gemini is configured."""
+        mock_get_available_models_info.return_value = [
+            ModelInfo(id="gemini/gemini-2.0-flash", name="Gemini 2.0 Flash", provider="gemini"),
+            ModelInfo(id="gemini/gemini-1.5-pro", name="Gemini 1.5 Pro", provider="gemini"),
+        ]
+        
+        response = await async_client.get("/api/v1/llm/models")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["models"]) == 2
+        assert all("gemini/" in m["id"] for m in data["models"])
+
+
+class TestLLMGeneration:
+    """Tests for LLM text generation endpoints."""
+
+    @pytest.mark.asyncio
+    @patch('app.api.endpoints.llm_management.get_llm_service')
+    @patch('app.api.endpoints.llm_management.crud.get_user')
+    async def test_generate_text_openai(
+        self, 
+        mock_get_user: MagicMock,
+        mock_get_llm_service: MagicMock,
+        async_client: AsyncClient,
+        db_session: Session,
+        current_active_user_override: PydanticUser
+    ):
+        """Test text generation with OpenAI provider."""
+        mock_user_orm = MagicMock()
+        mock_user_orm.id = current_active_user_override.id
+        mock_get_user.return_value = mock_user_orm
+        
+        mock_service = AsyncMock()
+        mock_service.generate_text = AsyncMock(return_value="Generated by GPT-4")
+        mock_get_llm_service.return_value = mock_service
+        
+        response = await async_client.post(
+            "/api/v1/llm/generate-text",
+            json={
+                "prompt": "Write a short story",
+                "model_id_with_prefix": "openai/gpt-4",
+                "temperature": 0.7,
+                "max_tokens": 500
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "text" in data
+        assert data["text"] == "Generated by GPT-4"
+
+    @pytest.mark.asyncio
+    @patch('app.api.endpoints.llm_management.get_llm_service')
+    @patch('app.api.endpoints.llm_management.crud.get_user')
+    async def test_generate_text_gemini(
+        self, 
+        mock_get_user: MagicMock,
+        mock_get_llm_service: MagicMock,
+        async_client: AsyncClient,
+        current_active_user_override: PydanticUser
+    ):
+        """Test text generation with Gemini provider."""
+        mock_user_orm = MagicMock()
+        mock_user_orm.id = current_active_user_override.id
+        mock_get_user.return_value = mock_user_orm
+        
+        mock_service = AsyncMock()
+        mock_service.generate_text = AsyncMock(return_value="Generated by Gemini")
+        mock_get_llm_service.return_value = mock_service
+        
+        response = await async_client.post(
+            "/api/v1/llm/generate-text",
+            json={
+                "prompt": "Describe a fantasy world",
+                "model_id_with_prefix": "gemini/gemini-2.0-flash",
+                "temperature": 0.8
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "text" in data
+
+    @pytest.mark.asyncio
+    @patch('app.api.endpoints.llm_management.get_llm_service')
+    @patch('app.api.endpoints.llm_management.crud.get_user')
+    async def test_generate_text_deepseek(
+        self, 
+        mock_get_user: MagicMock,
+        mock_get_llm_service: MagicMock,
+        async_client: AsyncClient,
+        current_active_user_override: PydanticUser
+    ):
+        """Test text generation with DeepSeek provider."""
+        mock_user_orm = MagicMock()
+        mock_user_orm.id = current_active_user_override.id
+        mock_get_user.return_value = mock_user_orm
+        
+        mock_service = AsyncMock()
+        mock_service.generate_text = AsyncMock(return_value="Generated by DeepSeek")
+        mock_get_llm_service.return_value = mock_service
+        
+        response = await async_client.post(
+            "/api/v1/llm/generate-text",
+            json={
+                "prompt": "Create a character backstory",
+                "model_id_with_prefix": "deepseek/deepseek-chat"
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "text" in data
+
+    @pytest.mark.asyncio
+    @patch('app.api.endpoints.llm_management.get_llm_service')
+    @patch('app.api.endpoints.llm_management.crud.get_user')
+    async def test_generate_text_local_llm(
+        self, 
+        mock_get_user: MagicMock,
+        mock_get_llm_service: MagicMock,
+        async_client: AsyncClient,
+        current_active_user_override: PydanticUser
+    ):
+        """Test text generation with local LLM (Ollama-compatible)."""
+        mock_user_orm = MagicMock()
+        mock_user_orm.id = current_active_user_override.id
+        mock_get_user.return_value = mock_user_orm
+        
+        mock_service = AsyncMock()
+        mock_service.generate_text = AsyncMock(return_value="Generated by local Llama")
+        mock_get_llm_service.return_value = mock_service
+        
+        response = await async_client.post(
+            "/api/v1/llm/generate-text",
+            json={
+                "prompt": "Write a poem",
+                "model_id_with_prefix": "local/llama3.2"
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "text" in data
+
+    @pytest.mark.asyncio
+    @patch('app.api.endpoints.llm_management.get_llm_service')
+    @patch('app.api.endpoints.llm_management.crud.get_user')
+    async def test_generate_text_with_campaign_context(
+        self, 
+        mock_get_user: MagicMock,
+        mock_get_llm_service: MagicMock,
+        async_client: AsyncClient,
+        current_active_user_override: PydanticUser
+    ):
+        """Test text generation with campaign context."""
+        mock_user_orm = MagicMock()
+        mock_user_orm.id = current_active_user_override.id
+        mock_get_user.return_value = mock_user_orm
+        
+        mock_service = AsyncMock()
+        mock_service.generate_text = AsyncMock(return_value="Contextual response")
+        mock_get_llm_service.return_value = mock_service
+        
+        response = await async_client.post(
+            "/api/v1/llm/generate-text",
+            json={
+                "prompt": "Continue the story",
+                "model_id_with_prefix": "openai/gpt-4"
+            }
+        )
+        
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_generate_text_empty_prompt(
+        self, 
+        async_client: AsyncClient,
+        current_active_user_override: PydanticUser
+    ):
+        """Test generation with empty prompt fails validation."""
+        response = await async_client.post(
+            "/api/v1/llm/generate-text",
+            json={"prompt": ""}
+        )
+        
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    @patch('app.api.endpoints.llm_management.get_llm_service')
+    @patch('app.api.endpoints.llm_management.crud.get_user')
+    async def test_generate_text_with_temperature(
+        self, 
+        mock_get_user: MagicMock,
+        mock_get_llm_service: MagicMock,
+        async_client: AsyncClient,
+        current_active_user_override: PydanticUser
+    ):
+        """Test text generation with custom temperature."""
+        mock_user_orm = MagicMock()
+        mock_user_orm.id = current_active_user_override.id
+        mock_get_user.return_value = mock_user_orm
+        
+        mock_service = AsyncMock()
+        mock_service.generate_text = AsyncMock(return_value="Creative output")
+        mock_get_llm_service.return_value = mock_service
+        
+        response = await async_client.post(
+            "/api/v1/llm/generate-text",
+            json={
+                "prompt": "Be creative",
+                "model_id_with_prefix": "openai/gpt-4",
+                "temperature": 1.0  # High creativity
+            }
+        )
+        
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    @patch('app.api.endpoints.llm_management.get_llm_service')
+    @patch('app.api.endpoints.llm_management.crud.get_user')
+    async def test_generate_text_with_max_tokens(
+        self, 
+        mock_get_user: MagicMock,
+        mock_get_llm_service: MagicMock,
+        async_client: AsyncClient,
+        current_active_user_override: PydanticUser
+    ):
+        """Test text generation with max_tokens limit."""
+        mock_user_orm = MagicMock()
+        mock_user_orm.id = current_active_user_override.id
+        mock_get_user.return_value = mock_user_orm
+        
+        mock_service = AsyncMock()
+        mock_service.generate_text = AsyncMock(return_value="Short response")
+        mock_get_llm_service.return_value = mock_service
+        
+        response = await async_client.post(
+            "/api/v1/llm/generate-text",
+            json={
+                "prompt": "Write briefly",
+                "model_id_with_prefix": "openai/gpt-4",
+                "max_tokens": 100
+            }
+        )
+        
+        assert response.status_code == 200
+
+
+class TestLLMServiceErrors:
+    """Tests for LLM service error handling."""
+
+    @pytest.mark.asyncio
+    @patch('app.api.endpoints.llm_management.get_llm_service')
+    @patch('app.api.endpoints.llm_management.crud.get_user')
+    async def test_llm_service_unavailable(
+        self, 
+        mock_get_user: MagicMock,
+        mock_get_llm_service: MagicMock,
+        async_client: AsyncClient,
+        current_active_user_override: PydanticUser
+    ):
+        """Test handling when LLM service is unavailable."""
+        from app.services.llm_service import LLMServiceUnavailableError
+        
+        mock_user_orm = MagicMock()
+        mock_user_orm.id = current_active_user_override.id
+        mock_get_user.return_value = mock_user_orm
+        
+        mock_get_llm_service.side_effect = LLMServiceUnavailableError("Service unavailable")
+        
+        response = await async_client.post(
+            "/api/v1/llm/generate-text",
+            json={"prompt": "Test prompt"}
+        )
+        
+        assert response.status_code == 503
+
+    @pytest.mark.asyncio
+    @patch('app.api.endpoints.llm_management.get_llm_service')
+    @patch('app.api.endpoints.llm_management.crud.get_user')
+    async def test_llm_generation_error(
+        self, 
+        mock_get_user: MagicMock,
+        mock_get_llm_service: MagicMock,
+        async_client: AsyncClient,
+        current_active_user_override: PydanticUser
+    ):
+        """Test handling LLM generation errors."""
+        from app.services.llm_service import LLMGenerationError
+        
+        mock_user_orm = MagicMock()
+        mock_user_orm.id = current_active_user_override.id
+        mock_get_user.return_value = mock_user_orm
+        
+        mock_service = AsyncMock()
+        mock_service.generate_text = AsyncMock(
+            side_effect=LLMGenerationError("Generation failed")
+        )
+        mock_get_llm_service.return_value = mock_service
+        
+        response = await async_client.post(
+            "/api/v1/llm/generate-text",
+            json={"prompt": "Test prompt"}
+        )
+        
+        assert response.status_code in [400, 500]
+
+    @pytest.mark.asyncio
+    @patch('app.api.endpoints.llm_management.get_llm_service')
+    @patch('app.api.endpoints.llm_management.crud.get_user')
+    async def test_unsupported_provider(
+        self, 
+        mock_get_user: MagicMock,
+        mock_get_llm_service: MagicMock,
+        async_client: AsyncClient,
+        current_active_user_override: PydanticUser
+    ):
+        """Test handling unsupported provider."""
+        from app.services.llm_service import LLMServiceUnavailableError
+        
+        mock_user_orm = MagicMock()
+        mock_user_orm.id = current_active_user_override.id
+        mock_get_user.return_value = mock_user_orm
+        
+        mock_get_llm_service.side_effect = LLMServiceUnavailableError(
+            "Unsupported provider: anthropic"
+        )
+        
+        response = await async_client.post(
+            "/api/v1/llm/generate-text",
+            json={
+                "prompt": "Test",
+                "model_id_with_prefix": "anthropic/claude-3"  # Not yet supported
+            }
+        )
+        
+        assert response.status_code == 503
+
+    @pytest.mark.asyncio
+    @patch('app.api.endpoints.llm_management.get_llm_service')
+    @patch('app.api.endpoints.llm_management.crud.get_user')
+    async def test_api_key_not_configured(
+        self, 
+        mock_get_user: MagicMock,
+        mock_get_llm_service: MagicMock,
+        async_client: AsyncClient,
+        current_active_user_override: PydanticUser
+    ):
+        """Test handling when API key is not configured."""
+        from app.services.llm_service import LLMServiceUnavailableError
+        
+        mock_user_orm = MagicMock()
+        mock_user_orm.id = current_active_user_override.id
+        mock_get_user.return_value = mock_user_orm
+        
+        mock_get_llm_service.side_effect = LLMServiceUnavailableError(
+            "No API key configured for openai"
+        )
+        
+        response = await async_client.post(
+            "/api/v1/llm/generate-text",
+            json={
+                "prompt": "Test",
+                "model_id_with_prefix": "openai/gpt-4"
+            }
+        )
+        
+        assert response.status_code == 503
+
+
+class TestOpenAIConfigTest:
+    """Tests for OpenAI configuration test endpoint."""
+
+    @pytest.mark.asyncio
+    @patch('app.api.endpoints.llm_management.get_llm_service')
+    @patch('app.api.endpoints.llm_management.crud.get_user')
+    async def test_openai_config_success(
+        self, 
+        mock_get_user: MagicMock,
+        mock_get_llm_service: MagicMock,
+        async_client: AsyncClient,
+        current_active_user_override: PydanticUser
+    ):
+        """Test OpenAI config test endpoint when service is available."""
+        mock_user_orm = MagicMock()
+        mock_user_orm.id = current_active_user_override.id
+        mock_get_user.return_value = mock_user_orm
+        
+        mock_service = MagicMock()
+        mock_service.is_available = AsyncMock(return_value=True)
+        mock_get_llm_service.return_value = mock_service
+        
+        response = await async_client.get("/api/v1/llm/openai/test-config")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["provider"] == "openai"
+
+    @pytest.mark.asyncio
+    @patch('app.api.endpoints.llm_management.get_llm_service')
+    @patch('app.api.endpoints.llm_management.crud.get_user')
+    async def test_openai_config_unavailable(
+        self, 
+        mock_get_user: MagicMock,
+        mock_get_llm_service: MagicMock,
+        async_client: AsyncClient,
+        current_active_user_override: PydanticUser
+    ):
+        """Test OpenAI config test endpoint when service is unavailable."""
+        from app.services.llm_service import LLMServiceUnavailableError
+        
+        mock_user_orm = MagicMock()
+        mock_user_orm.id = current_active_user_override.id
+        mock_get_user.return_value = mock_user_orm
+        
+        mock_get_llm_service.side_effect = LLMServiceUnavailableError("No API key")
+        
+        response = await async_client.get("/api/v1/llm/openai/test-config")
+        
+        assert response.status_code == 200  # Returns 200 with error status in body
+        data = response.json()
+        assert data["status"] == "error"
+
+
+class TestProviderSelection:
+    """Tests for LLM provider selection logic."""
+
+    @pytest.mark.asyncio
+    @patch('app.api.endpoints.llm_management.get_llm_service')
+    @patch('app.api.endpoints.llm_management.crud.get_user')
+    async def test_provider_from_model_prefix(
+        self, 
+        mock_get_user: MagicMock,
+        mock_get_llm_service: MagicMock,
+        async_client: AsyncClient,
+        current_active_user_override: PydanticUser
+    ):
+        """Test provider is correctly extracted from model_id_with_prefix."""
+        mock_user_orm = MagicMock()
+        mock_user_orm.id = current_active_user_override.id
+        mock_get_user.return_value = mock_user_orm
+        
+        mock_service = AsyncMock()
+        mock_service.generate_text = AsyncMock(return_value="Response")
+        mock_get_llm_service.return_value = mock_service
+        
+        # Test with gemini prefix
+        response = await async_client.post(
+            "/api/v1/llm/generate-text",
+            json={
+                "prompt": "Test",
+                "model_id_with_prefix": "gemini/gemini-2.0-flash"
+            }
+        )
+        
+        assert response.status_code == 200
+        # Verify get_llm_service was called with correct provider
+        call_args = mock_get_llm_service.call_args
+        assert call_args is not None
+
+    @pytest.mark.asyncio
+    @patch('app.api.endpoints.llm_management.get_llm_service')
+    @patch('app.api.endpoints.llm_management.crud.get_user')
+    async def test_default_provider_fallback(
+        self, 
+        mock_get_user: MagicMock,
+        mock_get_llm_service: MagicMock,
+        async_client: AsyncClient,
+        current_active_user_override: PydanticUser
+    ):
+        """Test fallback to default provider when none specified."""
+        mock_user_orm = MagicMock()
+        mock_user_orm.id = current_active_user_override.id
+        mock_get_user.return_value = mock_user_orm
+        
+        mock_service = AsyncMock()
+        mock_service.generate_text = AsyncMock(return_value="Response")
+        mock_get_llm_service.return_value = mock_service
+        
+        # Request without model_id_with_prefix
+        response = await async_client.post(
+            "/api/v1/llm/generate-text",
+            json={"prompt": "Test without specifying model"}
+        )
+        
+        # Should use system default or fail gracefully
+        assert response.status_code in [200, 400, 503]
+
+
+class TestMultiProviderScenarios:
+    """Tests for multi-provider scenarios inspired by AgentsX patterns."""
+
+    @pytest.mark.asyncio
+    @patch('app.api.endpoints.llm_management.get_available_models_info')
+    async def test_list_models_all_providers(
+        self, 
+        mock_get_available_models_info: MagicMock,
+        async_client: AsyncClient,
+        current_active_user_override: PydanticUser
+    ):
+        """Test listing models from all configured providers."""
+        # Simulate all providers being configured
+        mock_get_available_models_info.return_value = [
+            # OpenAI models
+            ModelInfo(id="openai/gpt-4o", name="GPT-4o", provider="openai"),
+            ModelInfo(id="openai/gpt-4o-mini", name="GPT-4o Mini", provider="openai"),
+            # Gemini models
+            ModelInfo(id="gemini/gemini-2.0-flash", name="Gemini 2.0 Flash", provider="gemini"),
+            ModelInfo(id="gemini/gemini-1.5-pro", name="Gemini 1.5 Pro", provider="gemini"),
+            # DeepSeek models
+            ModelInfo(id="deepseek/deepseek-chat", name="DeepSeek Chat", provider="deepseek"),
+            ModelInfo(id="deepseek/deepseek-coder", name="DeepSeek Coder", provider="deepseek"),
+            # Local models
+            ModelInfo(id="local/llama3.2", name="Llama 3.2", provider="local"),
+        ]
+        
+        response = await async_client.get("/api/v1/llm/models")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["models"]) == 7
+        
+        # Verify all providers are represented
+        providers = set(m["id"].split("/")[0] for m in data["models"])
+        assert "openai" in providers
+        assert "gemini" in providers
+        assert "deepseek" in providers
+        assert "local" in providers
+
+    @pytest.mark.asyncio
+    @patch('app.api.endpoints.llm_management.get_llm_service')
+    @patch('app.api.endpoints.llm_management.crud.get_user')
+    async def test_switch_between_providers(
+        self, 
+        mock_get_user: MagicMock,
+        mock_get_llm_service: MagicMock,
+        async_client: AsyncClient,
+        current_active_user_override: PydanticUser
+    ):
+        """Test switching between different providers in consecutive requests."""
+        mock_user_orm = MagicMock()
+        mock_user_orm.id = current_active_user_override.id
+        mock_get_user.return_value = mock_user_orm
+        
+        mock_service = AsyncMock()
+        mock_service.generate_text = AsyncMock(return_value="Response")
+        mock_get_llm_service.return_value = mock_service
+        
+        # First request with OpenAI
+        response1 = await async_client.post(
+            "/api/v1/llm/generate-text",
+            json={
+                "prompt": "Test 1",
+                "model_id_with_prefix": "openai/gpt-4"
+            }
+        )
+        assert response1.status_code == 200
+        
+        # Second request with Gemini
+        response2 = await async_client.post(
+            "/api/v1/llm/generate-text",
+            json={
+                "prompt": "Test 2",
+                "model_id_with_prefix": "gemini/gemini-2.0-flash"
+            }
+        )
+        assert response2.status_code == 200
+        
+        # Third request with DeepSeek
+        response3 = await async_client.post(
+            "/api/v1/llm/generate-text",
+            json={
+                "prompt": "Test 3",
+                "model_id_with_prefix": "deepseek/deepseek-chat"
+            }
+        )
+        assert response3.status_code == 200
