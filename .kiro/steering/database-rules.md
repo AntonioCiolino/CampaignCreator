@@ -1,5 +1,13 @@
 # Database Rules - Campaign Crafter API
 
+## Environment Setup
+
+| Environment | Database | Hosting |
+|-------------|----------|---------|
+| Development | SQLite (local file or in-memory) | Local |
+| Testing | SQLite in-memory with StaticPool | Local |
+| Production | PostgreSQL | Render (backed by Supabase) |
+
 ## Database Agnostic Code (Critical)
 
 This project uses SQLite for development and PostgreSQL for production. All database code MUST work with both.
@@ -65,3 +73,33 @@ from sqlalchemy.orm import Session
 def get_items(db: Session = Depends(get_db)):
     return db.query(Model).all()
 ```
+
+
+## Production Database
+
+- **Provider**: Render PostgreSQL (managed)
+- **Backing**: Supabase
+- **Connection**: Via `DATABASE_URL` environment variable
+- **SSL**: Required for production connections
+
+### Connection String Format
+```
+postgresql://user:password@host:port/database?sslmode=require
+```
+
+## Testing Strategy
+
+Tests use SQLite in-memory with `StaticPool` for connection reuse:
+
+```python
+from sqlalchemy.pool import StaticPool
+
+DATABASE_URL = "sqlite:///:memory:"
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool
+)
+```
+
+This ensures tests are fast and isolated while the production code remains PostgreSQL-compatible.
