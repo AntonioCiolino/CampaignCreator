@@ -1188,3 +1188,72 @@ async def test_get_characters_by_campaign(db_session: Session, test_user: ORMUse
     assert char1.name in campaign_char_names
     assert char2.name in campaign_char_names
     assert char_data3.name not in campaign_char_names
+
+
+# --- Tests for Eager Loading (DetachedInstanceError prevention) ---
+
+@pytest.mark.asyncio
+async def test_get_campaign_eagerly_loads_characters(db_session: Session, test_user: ORMUser, test_campaign: ORMCampaign):
+    """
+    Test that get_campaign eagerly loads the characters relationship.
+    This prevents DetachedInstanceError when accessing campaign.characters
+    outside of the original session context (e.g., in async LLM service calls).
+    """
+    # Create characters and add them to the campaign
+    char_data1 = crud.models.CharacterCreate(name="Eager Load Test Char 1")
+    char1 = crud.create_character(db=db_session, character=char_data1, user_id=test_user.id)
+    
+    char_data2 = crud.models.CharacterCreate(name="Eager Load Test Char 2")
+    char2 = crud.create_character(db=db_session, character=char_data2, user_id=test_user.id)
+    
+    crud.add_character_to_campaign(db=db_session, character_id=char1.id, campaign_id=test_campaign.id)
+    crud.add_character_to_campaign(db=db_session, character_id=char2.id, campaign_id=test_campaign.id)
+    
+    # Fetch the campaign using get_campaign (which should eagerly load characters)
+    fetched_campaign = crud.get_campaign(db=db_session, campaign_id=test_campaign.id)
+    assert fetched_campaign is not None
+    
+    # Expunge the campaign from the session to simulate detached state
+    # (this is what happens when objects are passed to async contexts)
+    db_session.expunge(fetched_campaign)
+    
+    # Now try to access characters - this should NOT raise DetachedInstanceError
+    # because characters were eagerly loaded
+    try:
+        characters = fetched_campaign.characters
+        assert len(characters) == 2
+        char_names = {c.name for c in characters}
+        assert "Eager Load Test Char 1" in char_names
+        assert "Eager Load Test Char 2" in char_names
+    except Exception as e:
+        pytest.fail(f"Accessing characters on detached campaign raised an exception: {type(e).__name__}: {e}")
+
+
+@pytest.mark.asyncio
+async def test_get_all_campaigns_eagerly_loads_characters(db_session: Session, test_user: ORMUser, test_campaign: ORMCampaign):
+    """
+    Test that get_all_campaigns eagerly loads the characters relationship for all campaigns.
+    """
+    # Create a character and add to the campaign
+    char_data = crud.models.CharacterCreate(name="Eager Load All Test Char")
+    char = crud.create_character(db=db_session, character=char_data, user_id=test_user.id)
+    crud.add_character_to_campaign(db=db_session, character_id=char.id, campaign_id=test_campaign.id)
+    
+    # Fetch all campaigns
+    all_campaigns = crud.get_all_campaigns(db=db_session)
+    assert len(all_campaigns) >= 1
+    
+    # Find our test campaign
+    our_campaign = next((c for c in all_campaigns if c.id == test_campaign.id), None)
+    assert our_campaign is not None
+    
+    # Expunge to simulate detached state
+    db_session.expunge(our_campaign)
+    
+    # Access characters - should not raise DetachedInstanceError
+    try:
+        characters = our_campaign.characters
+        assert len(characters) == 1
+        assert characters[0].name == "Eager Load All Test Char"
+    except Exception as e:
+        pytest.fail(f"Accessing characters on detached campaign raised an exception: {type(e).__name__}: {e}")
