@@ -32,20 +32,29 @@ async def auto_authenticate():
 
     if not username or not password:
         logger.warning("No credentials found in environment variables")
+        logger.warning(f"CAMPAIGN_CRAFTER_USERNAME set: {bool(username)}")
+        logger.warning(f"CAMPAIGN_CRAFTER_PASSWORD set: {bool(password)}")
         return None
 
     try:
-        async with httpx.AsyncClient(follow_redirects=True) as client:
+        logger.info(f"Attempting auto-authentication to {API_BASE_URL}/api/v1/auth/token")
+        async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
             response = await client.post(
                 f"{API_BASE_URL}/api/v1/auth/token",
                 data={"username": username, "password": password},
             )
             response.raise_for_status()
             _auth_token = response.json()["access_token"]
-            logger.info(f"Auto-authentication successful; : token is \n{_auth_token}\n")
+            logger.info(f"Auto-authentication successful - token acquired (length: {len(_auth_token)})")
             return _auth_token
+    except httpx.ConnectError as e:
+        logger.error(f"Auto-authentication failed - cannot connect to API: {e}")
+        return None
+    except httpx.HTTPStatusError as e:
+        logger.error(f"Auto-authentication failed - HTTP {e.response.status_code}: {e.response.text}")
+        return None
     except Exception as e:
-        logger.error(f"Auto-authentication failed: {e}")
+        logger.error(f"Auto-authentication failed: {type(e).__name__}: {e}")
         return None
 
 
@@ -685,7 +694,7 @@ async def seed_sections_from_toc(
     sections_created = []
     errors = []
     
-    async with httpx.AsyncClient(follow_redirects=True, timeout=120.0) as client:
+    async with httpx.AsyncClient(follow_redirects=True, timeout=httpx.Timeout(600.0, connect=30.0)) as client:
         async with client.stream("POST", url, headers=headers) as response:
             response.raise_for_status()
             async for line in response.aiter_lines():
@@ -718,7 +727,9 @@ async def seed_sections_from_toc(
                     elif event_type == "complete":
                         logger.info(f"Seeding complete: {event_data}")
                 except json.JSONDecodeError as e:
-                    logger.warning(f"Failed to parse SSE event: {line} - {e}")
+                    # Ignore ping/keepalive messages (they start with ":")
+                    if not data_line.startswith(":") and not "ping" in data_line.lower():
+                        logger.warning(f"Failed to parse SSE event: {line} - {e}")
     
     return {
         "success": len(errors) == 0,

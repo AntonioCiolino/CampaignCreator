@@ -2,6 +2,7 @@ from typing import Optional, List, Dict, Annotated
 import re
 import json
 import asyncio
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile
 from fastapi.responses import PlainTextResponse
@@ -18,6 +19,8 @@ from app.services.llm_service import LLMServiceUnavailableError, LLMGenerationEr
 from app.services.llm_factory import get_llm_service # Standardized
 from app.services.export_service import HomebreweryExportService # Standardized
 from app.external_models.export_models import PrepareHomebreweryPostResponse # Standardized
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -52,10 +55,10 @@ async def create_new_campaign(
             current_user_obj=current_user
         )
         if campaign_input.skip_concept_generation:
-            print(f"Campaign {db_campaign.id} created for user {owner_id}. Concept generation was skipped by user.")
+            logger.info(f"Campaign {db_campaign.id} created for user {owner_id}. Concept generation was skipped by user.")
         elif db_campaign.concept is None and campaign_input.initial_user_prompt:
             # This condition implies an attempt was made to generate concept but it might have failed in CRUD
-            print(f"Campaign {db_campaign.id} created for user {owner_id}, but concept generation might have failed (or prompt was empty but not skipped).")
+            logger.info(f"Campaign {db_campaign.id} created for user {owner_id}, but concept generation might have failed (or prompt was empty but not skipped).")
     # Note: crud.create_campaign now internally handles LLMServiceUnavailableError and LLMGenerationError
     # by logging them and returning a campaign without a concept.
     # The endpoint will only catch errors if crud.create_campaign re-raises them, or for other ValueErrors.
@@ -64,7 +67,7 @@ async def create_new_campaign(
     except ValueError as ve: 
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
-        print(f"Error during campaign creation: {e}")
+        logger.error(f"Error during campaign creation: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to create campaign due to an external service or unexpected error: {str(e)}")
     return db_campaign
 
@@ -85,7 +88,7 @@ async def read_campaign(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[models.User, Depends(get_current_active_user)]
 ):
-    print(f"Attempting to generate concept for campaign_id: {campaign_id}") # DEBUG PRINT
+    logger.debug(f"Attempting to generate concept for campaign_id: {campaign_id}") # DEBUG PRINT
     db_campaign = crud.get_campaign(db=db, campaign_id=campaign_id)
     if db_campaign is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
@@ -123,11 +126,19 @@ async def delete_campaign_endpoint(
     if db_campaign.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to delete this campaign")
 
-    # crud.delete_campaign is now an async function and requires user_id
-    deleted_campaign_orm = await crud.delete_campaign(db=db, campaign_id=campaign_id, user_id=current_user.id)
-    if deleted_campaign_orm is None: # This check remains relevant
-        raise HTTPException(status_code=404, detail="Campaign not found during deletion attempt, or deletion failed.")
-    return deleted_campaign_orm # FastAPI will convert ORM to Pydantic model
+    try:
+        # crud.delete_campaign is now an async function and requires user_id
+        deleted_campaign_orm = await crud.delete_campaign(db=db, campaign_id=campaign_id, user_id=current_user.id)
+        if deleted_campaign_orm is None: # This check remains relevant
+            raise HTTPException(status_code=404, detail="Campaign not found during deletion attempt, or deletion failed.")
+        return deleted_campaign_orm # FastAPI will convert ORM to Pydantic model
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        # Log the error and return 500
+        logger.error(f"Unexpected error deleting campaign {campaign_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while deleting the campaign: {str(e)}")
 
 # --- Campaign Files Endpoint ---
 @router.get("/{campaign_id}/files", response_model=List[models.BlobFileMetadata], tags=["Campaigns", "Files"])
@@ -157,7 +168,7 @@ async def list_campaign_files_endpoint(
         raise http_exc
     except Exception as e:
         # Catch any other unexpected errors from the service layer
-        print(f"Error retrieving files for user {current_user.id}, campaign {campaign_id}: {e}")
+        logger.error(f"Error retrieving files for user {current_user.id}, campaign {campaign_id}: {e}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred while retrieving campaign files.")
 
 @router.delete("/{campaign_id}/files/{blob_name:path}", status_code=204, tags=["Campaigns", "Files"])
@@ -196,7 +207,7 @@ async def delete_campaign_file_endpoint(
         # unless we are sure only this user could have created it under this campaign.
         # Given `GeneratedImage.user_id`, if no record for this user, then they shouldn't delete.
         # If the file exists in blob but not DB, `delete_image_from_blob_storage` will handle "blob not found" gracefully.
-        print(f"No database record found for blob '{blob_name}' and user '{current_user.id}'. It might have been already deleted or not tracked for this user.")
+        logger.warning(f"No database record found for blob '{blob_name}' and user '{current_user.id}'. It might have been already deleted or not tracked for this user.")
         # Depending on strictness, could raise 404 here.
         # For now, let's allow blob deletion attempt to proceed if campaign auth is okay,
         # as the file might be an "orphan" in blob storage the user wants to remove.
@@ -210,11 +221,11 @@ async def delete_campaign_file_endpoint(
         # Re-raise HTTPExceptions from the service layer (e.g., Azure config issues)
         # If the DB delete succeeded but blob delete failed, this is a partial failure state.
         # Consider logging this inconsistency or potential manual cleanup.
-        print(f"Database record for '{blob_name}' was deleted (if it existed), but blob storage deletion failed: {http_exc.detail}")
+        logger.warning(f"Database record for '{blob_name}' was deleted (if it existed), but blob storage deletion failed: {http_exc.detail}")
         raise http_exc # Re-raise the original exception from service
     except Exception as e:
         # Catch any other unexpected errors from the service layer
-        print(f"Error deleting blob '{blob_name}' from storage: {e}")
+        logger.error(f"Error deleting blob '{blob_name}' from storage: {e}")
         # Similar to above, DB record might be gone but blob deletion failed.
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while deleting the file from storage: {str(e)}")
 
@@ -277,7 +288,7 @@ async def generate_campaign_toc_endpoint(
     except NotImplementedError:
         raise HTTPException(status_code=501, detail="TOC generation is not implemented for the selected LLM provider.")
     except Exception as e:
-        print(f"Error during TOC generation for campaign {campaign_id}: {e}")
+        logger.error(f"Error during TOC generation for campaign {campaign_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to generate Table of Contents: {str(e)}")
 
     # display_toc_list is now the direct result from the service.
@@ -285,7 +296,7 @@ async def generate_campaign_toc_endpoint(
         error_detail = "Display TOC generation returned an empty list or no content."
         # If you need to log the (now non-existent) raw string, this part of the log would change or be removed.
         # For now, just logging that the list is empty.
-        print(f"Error: {error_detail} - List received: {display_toc_list}")
+        logger.error(f"Error: {error_detail} - List received: {display_toc_list}")
         raise HTTPException(status_code=500, detail=error_detail)
 
     # The internal parse_toc_string_to_list function is no longer needed
@@ -359,7 +370,7 @@ async def generate_campaign_titles_endpoint(
     except NotImplementedError:
         raise HTTPException(status_code=501, detail="Title generation is not implemented for the selected LLM provider.")
     except Exception as e:
-        print(f"Error during title generation for campaign {campaign_id}: {e}")
+        logger.error(f"Error during title generation for campaign {campaign_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to generate titles: {str(e)}")
 
     if not generated_titles:
@@ -439,7 +450,7 @@ async def generate_campaign_concept_manually_endpoint(
     except NotImplementedError:
         raise HTTPException(status_code=501, detail="Concept generation is not implemented for the selected LLM provider.")
     except Exception as e:
-        print(f"Error during manual concept generation for campaign {campaign_id}: {e}")
+        logger.error(f"Error during manual concept generation for campaign {campaign_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to generate campaign concept: {str(e)}")
 
 
@@ -460,14 +471,14 @@ async def seed_sections_from_toc_endpoint(
     if db_campaign.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized for this campaign")
 
-    print(f"--- Seeding sections for campaign {campaign_id} (SSE) ---")
+    logger.info(f"Seeding sections for campaign {campaign_id} (SSE) ---")
     if not db_campaign.display_toc:
-        print(f"Campaign {campaign_id} has no display_toc. Cannot seed sections.")
+        logger.warning(f"Campaign {campaign_id} has no display_toc. Cannot seed sections.")
         raise HTTPException(status_code=400, detail="No display_toc found for this campaign. Cannot seed sections.")
 
     # Step 1: Parse TOC (which is now List[Dict[str, str]])
     if not db_campaign.display_toc: # display_toc is List[Dict[str, str]] or None
-        print(f"Campaign {campaign_id} display_toc is empty or None. Cannot seed sections.")
+        logger.warning(f"Campaign {campaign_id} display_toc is empty or None. Cannot seed sections.")
         async def empty_toc_generator():
             yield f"data: {json.dumps({'event_type': 'complete', 'message': 'Display TOC is empty. No sections created.'})}\n\n"
         return EventSourceResponse(empty_toc_generator())
@@ -481,17 +492,17 @@ async def seed_sections_from_toc_endpoint(
             parsed_toc_entries.append({"title": title, "type": type_from_toc})
 
     if not parsed_toc_entries:
-        print(f"No valid titles found in display_toc for campaign {campaign_id}. TOC content: {db_campaign.display_toc}. No sections will be created.")
+        logger.warning(f"No valid titles found in display_toc for campaign {campaign_id}. TOC content: {db_campaign.display_toc}. No sections will be created.")
         async def no_titles_generator():
             yield f"data: {json.dumps({'event_type': 'complete', 'message': 'No valid titles found in TOC. No sections created.'})}\n\n"
         return EventSourceResponse(no_titles_generator())
 
-    print(f"Extracted {len(parsed_toc_entries)} TOC entries for campaign {campaign_id}: {parsed_toc_entries}")
+    logger.debug(f"Extracted {len(parsed_toc_entries)} TOC entries for campaign {campaign_id}: {parsed_toc_entries}")
 
     # Step 2: Delete existing sections (outside the generator)
-    print(f"About to delete existing sections for campaign {campaign_id}.")
+    logger.debug(f"About to delete existing sections for campaign {campaign_id}.")
     deleted_count = crud.delete_sections_for_campaign(db=db, campaign_id=campaign_id)
-    print(f"Deleted {deleted_count} existing sections for campaign {campaign_id} before seeding from TOC.")
+    logger.debug(f"Deleted {deleted_count} existing sections for campaign {campaign_id} before seeding from TOC.")
 
     # Initialize LLM service (outside the generator, if applicable)
     llm_service_instance = None
@@ -499,13 +510,13 @@ async def seed_sections_from_toc_endpoint(
     llm_model_to_use = db_campaign.selected_llm_id
     if not llm_model_to_use:
         llm_model_to_use = f"{settings.DEFAULT_LLM_PROVIDER}/{settings.DEFAULT_LLM_MODEL_CHAT}"
-        print(f"Campaign has no selected_llm_id, using system default: {llm_model_to_use}")
+        logger.debug(f"Campaign has no selected_llm_id, using system default: {llm_model_to_use}")
     
     if auto_populate and db_campaign.concept:
         try:
             current_user_orm = crud.get_user(db, user_id=current_user.id)
             if not current_user_orm:
-                print(f"LLM service initialization failed for SSE: User ORM not found for user {current_user.id}")
+                logger.warning(f"LLM service initialization failed for SSE: User ORM not found for user {current_user.id}")
                 llm_service_instance = None
             else:
                 provider_name, _ = _extract_provider_and_model(llm_model_to_use)
@@ -516,12 +527,12 @@ async def seed_sections_from_toc_endpoint(
                     model_id_with_prefix=llm_model_to_use,
                     campaign=db_campaign
                 )
-                print(f"LLM Service for auto-population initialized: {bool(llm_service_instance)} using model: {llm_model_to_use}")
+                logger.debug(f"LLM Service for auto-population initialized: {bool(llm_service_instance)} using model: {llm_model_to_use}")
         except Exception as e:
-            print(f"LLM service initialization failed for SSE auto-population: {type(e).__name__} - {e}")
+            logger.warning(f"LLM service initialization failed for SSE auto-population: {type(e).__name__} - {e}")
             llm_service_instance = None # Ensure it's None if init fails
     elif auto_populate:
-        print(f"Auto-population requested but campaign.concept is not set. Skipping LLM generation.")
+        logger.debug(f"Auto-population requested but campaign.concept is not set. Skipping LLM generation.")
 
 
     async def event_generator():
@@ -541,7 +552,7 @@ async def seed_sections_from_toc_endpoint(
                 yield f"data: {json.dumps(error_payload)}\n\n"
                 await asyncio.sleep(0.01) # Ensure event is sent
             except Exception as e_yield_error:
-                print(f"Error yielding initial auto-population error event: {type(e_yield_error).__name__} - {e_yield_error}")
+                logger.error(f"Error yielding initial auto-population error event: {type(e_yield_error).__name__} - {e_yield_error}")
                 # If we can't even yield this error, not much else to do for SSE for this request
 
         for order, toc_item in enumerate(parsed_toc_entries): # Iterate over toc_item
@@ -583,7 +594,7 @@ async def seed_sections_from_toc_endpoint(
                     prompt = f"Generate content for a section titled '{title}' of type '{section_type_for_llm}' as part of a larger campaign document."
 
                 try:
-                    print(f"Attempting LLM generation for section: '{title}' (Type for LLM: {section_type_for_llm})")
+                    logger.debug(f"Attempting LLM generation for section: '{title}' (Type for LLM: {section_type_for_llm})")
                     _, model_specific_id_for_call = _extract_provider_and_model(db_campaign.selected_llm_id)
                     generated_llm_content = await llm_service_instance.generate_section_content(
                         db_campaign=db_campaign,
@@ -597,9 +608,9 @@ async def seed_sections_from_toc_endpoint(
                     )
                     if generated_llm_content:
                         section_content_for_crud = generated_llm_content
-                        print(f"LLM content generated for '{title}' (excerpt): {section_content_for_crud[:50]}...")
+                        logger.debug(f"LLM content generated for '{title}' (excerpt): {section_content_for_crud[:50]}...")
                     else:
-                        print(f"LLM generated empty content for section '{title}'. Using placeholder.")
+                        logger.warning(f"LLM generated empty content for section '{title}'. Using placeholder.")
                         error_payload = {
                             "event_type": "error",
                             "message": f"Auto-population for section '{title}' failed: LLM returned empty content. Check configuration. Using placeholder content."
@@ -608,9 +619,9 @@ async def seed_sections_from_toc_endpoint(
                             yield f"data: {json.dumps(error_payload)}\n\n"
                             await asyncio.sleep(0.01)
                         except Exception as e_yield_error:
-                            print(f"Error yielding empty content error event for '{title}': {type(e_yield_error).__name__} - {e_yield_error}")
+                            logger.error(f"Error yielding empty content error event for '{title}': {type(e_yield_error).__name__} - {e_yield_error}")
                 except Exception as e_llm:
-                    print(f"LLM generation failed for section '{title}': {type(e_llm).__name__} - {e_llm}. Using placeholder.")
+                    logger.warning(f"LLM generation failed for section '{title}': {type(e_llm).__name__} - {e_llm}. Using placeholder.")
                     error_payload = {
                         "event_type": "error",
                         "message": f"Auto-population for section '{title}' failed: {type(e_llm).__name__} - {e_llm}. Check LLM provider configuration. Using placeholder content."
@@ -619,7 +630,7 @@ async def seed_sections_from_toc_endpoint(
                         yield f"data: {json.dumps(error_payload)}\n\n"
                         await asyncio.sleep(0.01)
                     except Exception as e_yield_error:
-                        print(f"Error yielding LLM exception error event for '{title}': {type(e_yield_error).__name__} - {e_yield_error}")
+                        logger.error(f"Error yielding LLM exception error event for '{title}': {type(e_yield_error).__name__} - {e_yield_error}")
 
             # Create section in DB, passing the original type from TOC
             created_section_orm = crud.create_section_with_placeholder_content(
@@ -644,7 +655,7 @@ async def seed_sections_from_toc_endpoint(
                 yield f"data: {json.dumps(event_payload)}\n\n"
                 await asyncio.sleep(0.01)
             except Exception as e_yield:
-                print(f"Error yielding SSE event for section '{title}': {type(e_yield).__name__} - {e_yield}. Stopping.")
+                logger.error(f"Error yielding SSE event for section '{title}': {type(e_yield).__name__} - {e_yield}. Stopping.")
                 # Optionally, send one last error event to the client if possible
                 error_event = {"event_type": "error", "message": f"Failed to stream update for section '{title}'. Process halted."}
                 try:
@@ -663,9 +674,9 @@ async def seed_sections_from_toc_endpoint(
         try:
             yield f"data: {json.dumps(completion_event)}\n\n"
         except Exception as e_complete:
-            print(f"Error yielding final completion event: {type(e_complete).__name__} - {e_complete}")
+            logger.error(f"Error yielding final completion event: {type(e_complete).__name__} - {e_complete}")
 
-        print(f"--- Finished SSE event_generator for campaign {campaign_id} ---")
+        logger.debug(f"Finished SSE event_generator for campaign {campaign_id} ---")
 
     return EventSourceResponse(event_generator())
 
@@ -708,7 +719,7 @@ async def update_section_order_endpoint(
         return PlainTextResponse(status_code=204, content="") # No content response
     except Exception as e:
         # Log the error e
-        print(f"Error updating section order for campaign {campaign_id}: {e}")
+        logger.error(f"Error updating section order for campaign {campaign_id}: {e}")
         raise HTTPException(status_code=500, detail="An error occurred while updating section order.")
 
 
@@ -771,7 +782,7 @@ async def create_new_campaign_section_endpoint(
     except NotImplementedError:
         raise HTTPException(status_code=501, detail="Section content generation is not implemented for the selected LLM provider.")
     except Exception as e: 
-        print(f"Error during section content generation for campaign {campaign_id}: {e}")
+        logger.error(f"Error during section content generation for campaign {campaign_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to generate section content: {str(e)}")
 
     if not generated_content:
@@ -788,7 +799,7 @@ async def create_new_campaign_section_endpoint(
             section_type=type_from_input
         )
     except Exception as e:
-        print(f"Error saving new section for campaign {campaign_id}: {e}")
+        logger.error(f"Error saving new section for campaign {campaign_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to save the new campaign section.")
     return db_section
 
@@ -875,7 +886,7 @@ async def export_campaign_homebrewery(
             current_user=current_user
         )
     except Exception as e:
-        print(f"Error during Homebrewery export formatting for campaign {campaign_id}: {e}")
+        logger.error(f"Error during Homebrewery export formatting for campaign {campaign_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to format campaign for Homebrewery export: {str(e)}")
     filename_title_part = db_campaign.title.replace(' ', '_') if db_campaign.title else 'campaign_export'
     filename = f"{filename_title_part}_{db_campaign.id}_homebrewery.md"
@@ -918,7 +929,7 @@ async def get_campaign_full_content_endpoint(
         else:
             all_content_parts.append(f"{section.content}\n\n")
     full_content_str = "".join(all_content_parts).strip()
-    response = external_models.CampaignFullContentResponse(
+    response = models.CampaignFullContentResponse(
         campaign_id=db_campaign.id,
         title=db_campaign.title,
         full_content=full_content_str
@@ -947,7 +958,7 @@ async def prepare_campaign_for_homebrewery_posting(
             current_user=current_user
         )
     except Exception as e:
-        print(f"Error during Homebrewery content generation for campaign {campaign_id}: {e}")
+        logger.error(f"Error during Homebrewery content generation for campaign {campaign_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to generate Homebrewery Markdown: {str(e)}")
     homebrewery_new_url = "https://homebrewery.naturalcrit.com/new"
     filename_title_part = db_campaign.title.replace(' ', '_') if db_campaign.title else 'campaign_export'
@@ -1031,7 +1042,7 @@ async def regenerate_campaign_section_endpoint(
         if not db_feature:
             raise HTTPException(status_code=404, detail=f"Feature with ID {section_input.feature_id} not found.")
         if db_feature.feature_category == "FullSection": # Basic check
-            print(f"Warning: Feature {db_feature.name} (ID: {db_feature.id}) is a FullSection feature but was called with a feature_id, likely for a snippet. Proceeding, but this might indicate a UI/logic mismatch.")
+            logger.warning(f"Feature {db_feature.name} (ID: {db_feature.id}) is a FullSection feature but was called with a feature_id, likely for a snippet. Proceeding, but this might indicate a UI/logic mismatch.")
 
         feature_template = db_feature.template
         # Combine frontend context with backend context, frontend takes precedence for shared keys
@@ -1051,7 +1062,7 @@ async def regenerate_campaign_section_endpoint(
         master_feature = crud.get_master_feature_for_type(db, section_type=determined_section_type)
         if not master_feature:
             # Fallback to a very generic prompt if no master feature is found
-            print(f"Warning: No master feature found for section type '{determined_section_type}'. Using a generic generation prompt.")
+            logger.warning(f"No master feature found for section type '{determined_section_type}'. Using a generic generation prompt.")
             # This is the old generic prompt logic
             if determined_section_type == "NPC":
                 feature_template = "Generate a detailed description for an NPC named '{section_title}'. Include their appearance, personality, motivations, and potential plot hooks related to them. Campaign Context: {campaign_concept}. Other sections: {existing_sections_summary}. Characters: {campaign_characters}."
@@ -1107,7 +1118,7 @@ async def regenerate_campaign_section_endpoint(
 
     # Call LLM Service using the generic generate_text method
     try:
-        print(f"Regenerating section '{current_title}' (ID: {section_id}) using LLM: {llm_model_to_use} with final prompt (first 100 chars): '{final_prompt_for_llm[:100]}...'")
+        logger.debug(f"Regenerating section '{current_title}' (ID: {section_id}) using LLM: {llm_model_to_use} with final prompt (first 100 chars): '{final_prompt_for_llm[:100]}...'")
 
         # Convert current_user (Pydantic model) to ORM model if needed by get_llm_service,
         # but llm_service.generate_text expects Pydantic user.
@@ -1139,7 +1150,7 @@ async def regenerate_campaign_section_endpoint(
     except LLMGenerationError as e: # This comes from the LLM service if it raises it
         raise HTTPException(status_code=500, detail=f"LLM Generation Error during regeneration: {str(e)}")
     except Exception as e:
-        print(f"Unexpected error during LLM regeneration for section ID {section_id}: {e}")
+        logger.error(f"Unexpected error during LLM regeneration for section ID {section_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error during section regeneration: {str(e)}")
 
     # Prepare data for update
@@ -1214,7 +1225,7 @@ async def upload_moodboard_image_for_campaign(
     size_used = "original" # Placeholder as actual size might vary
 
     try:
-        print(f"[MoodboardUpload] About to save image for campaign_id: {campaign_id}, user_id: {current_user.id}, filename: {file.filename}") # DIAGNOSTIC
+        logger.debug(f"[MoodboardUpload] About to save image for campaign_id: {campaign_id}, user_id: {current_user.id}, filename: {file.filename}") # DIAGNOSTIC
         permanent_image_url = await image_service._save_image_and_log_db(
             prompt=prompt_text,
             model_used=model_used,
@@ -1230,7 +1241,7 @@ async def upload_moodboard_image_for_campaign(
         raise e
     except Exception as e:
         # Catch any other unexpected errors during image saving
-        print(f"Error saving uploaded moodboard image: {e}")
+        logger.error(f"Error saving uploaded moodboard image: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to save uploaded image: {str(e)}")
 
     if not permanent_image_url:

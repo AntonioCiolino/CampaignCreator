@@ -1,6 +1,6 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime, Float, JSON, Table
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime, Float, JSON, Table, Index
+from sqlalchemy.sql import func, text  # For default datetime and text expressions
 from sqlalchemy.orm import relationship, Mapped, mapped_column # Ensure Mapped and mapped_column are imported
-from sqlalchemy.sql import func # For default datetime
 from typing import Optional, Dict # For Mapped[Optional[...]] and Dict type hint
 
 from .db import Base # Import Base from app.db
@@ -121,9 +121,15 @@ class GeneratedImage(Base):
 
 class Feature(Base):
     __tablename__ = "features"
+    __table_args__ = (
+        # Composite unique constraint: same name can exist for different users
+        # System features (user_id=None) can coexist with user features
+        Index('ix_features_name_user_id_unique', 'name', 'user_id', unique=True, 
+              sqlite_where=text('user_id IS NOT NULL')),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, index=True, nullable=False)  # Removed unique=True
     template = Column(Text, nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=True, index=True)
     owner = relationship('User', backref='features')
@@ -134,9 +140,15 @@ class Feature(Base):
 
 class RollTable(Base):
     __tablename__ = "roll_tables"
+    __table_args__ = (
+        # Composite unique constraint: same name can exist for different users
+        # System tables (user_id=None) can coexist with user tables
+        Index('ix_roll_tables_name_user_id_unique', 'name', 'user_id', unique=True, 
+              sqlite_where=text('user_id IS NOT NULL')),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, index=True, nullable=False)  # Removed unique=True
     description = Column(String, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 

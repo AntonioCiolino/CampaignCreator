@@ -38,7 +38,7 @@ class CampaignSectionCreateInput(BaseModel):
     # 'order' will be determined by the backend or could be optionally suggested
 
 class LLMGenerationRequest(BaseModel):
-    prompt: str
+    prompt: Optional[str] = None  # Made optional since some endpoints (titles, TOC) don't need it
     model_id_with_prefix: Optional[str] = None
     temperature: Optional[float] = 0.7  # Defaulting as per llm_service.py abstract method
     max_tokens: Optional[int] = 500     # Defaulting as per llm_service.py abstract method

@@ -51,7 +51,7 @@ async def list_features(db: Annotated[Session, Depends(get_db)]): # Renamed func
         print(f"Error listing features: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve list of features due to an internal error.")
 
-@router.get("/features/{feature_name}", response_model=PydanticFeature, tags=["Utilities"])
+@router.get("/features/by-name/{feature_name}", response_model=PydanticFeature, tags=["Utilities"])
 async def get_feature(feature_name: str, db: Annotated[Session, Depends(get_db)]): # Renamed function
     try:
         # crud.get_feature_by_name returns an orm_models.Feature or None

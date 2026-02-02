@@ -206,3 +206,40 @@ async def superuser_auth_headers(async_client: AsyncClient, db_session: Session,
         password="adminpassword123",
         is_superuser=True
     )
+
+
+# Helper function to create properly mocked Campaign objects
+def create_mock_campaign_orm(
+    id: int = 1,
+    title: str = "Test Campaign",
+    owner_id: int = 1,
+    concept: Optional[str] = "Test concept",
+    **kwargs
+):
+    """Helper to create a properly mocked ORM Campaign with all required fields."""
+    from unittest.mock import MagicMock
+    from app import orm_models
+    
+    mock_campaign = MagicMock(spec=orm_models.Campaign)
+    mock_campaign.id = id
+    mock_campaign.title = title
+    mock_campaign.owner_id = owner_id
+    mock_campaign.concept = concept
+    mock_campaign.initial_user_prompt = kwargs.get('initial_user_prompt', None)
+    mock_campaign.display_toc = kwargs.get('display_toc', [])
+    mock_campaign.homebrewery_toc = kwargs.get('homebrewery_toc', [])
+    mock_campaign.homebrewery_export = kwargs.get('homebrewery_export', None)
+    mock_campaign.mood_board_image_urls = kwargs.get('mood_board_image_urls', [])
+    mock_campaign.selected_llm_id = kwargs.get('selected_llm_id', None)
+    mock_campaign.temperature = kwargs.get('temperature', 0.7)
+    mock_campaign.badge_image_url = kwargs.get('badge_image_url', None)
+    mock_campaign.thematic_image_url = kwargs.get('thematic_image_url', None)
+    mock_campaign.thematic_image_prompt = kwargs.get('thematic_image_prompt', None)
+    mock_campaign.theme_primary_color = kwargs.get('theme_primary_color', None)
+    mock_campaign.theme_secondary_color = kwargs.get('theme_secondary_color', None)
+    mock_campaign.theme_background_color = kwargs.get('theme_background_color', None)
+    mock_campaign.theme_text_color = kwargs.get('theme_text_color', None)
+    mock_campaign.theme_font_family = kwargs.get('theme_font_family', None)
+    mock_campaign.theme_background_image_url = kwargs.get('theme_background_image_url', None)
+    mock_campaign.theme_background_image_opacity = kwargs.get('theme_background_image_opacity', 1.0)
+    return mock_campaign

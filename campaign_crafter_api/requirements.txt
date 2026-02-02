@@ -1,6 +1,6 @@
-fastapi
+fastapi>=0.100.0,<0.110.0
 uvicorn[standard]
-pydantic
+pydantic>=2.0.0,<3.0.0
 sqlalchemy
 psycopg2-binary
 python-dotenv
@@ -14,7 +14,7 @@ pytest-httpx
 passlib[bcrypt]
 bcrypt==3.2.2
 python-multipart
-sse-starlette==2.3.6
+sse-starlette>=1.6.0,<2.0.0
 python-jose[cryptography]==3.5.0
 azure-storage-blob
 azure-identity

@@ -63,19 +63,21 @@ app.add_middleware( # Added middleware
     allow_headers=["*"],
 )
 
-# Include routers
+# Include routers - IMPORTANT: More specific prefixes MUST come before generic ones
+# to avoid route conflicts (e.g., /api/v1/features before /api/v1)
 app.include_router(campaigns_router.router, prefix="/api/v1/campaigns", tags=["Campaigns"])
 app.include_router(llm_management_router.router, prefix="/api/v1/llm", tags=["LLM Management"])
-app.include_router(utility_router.router, prefix="/api/v1", tags=["Utilities"])
-app.include_router(image_generation_router.router, prefix="/api/v1", tags=["Image Generation"]) 
 app.include_router(import_data_router.router, prefix="/api/v1/import", tags=["Import"])
 app.include_router(users_router.router, prefix="/api/v1/users", tags=["Users"]) # Added users router
 app.include_router(user_settings.router, prefix="/api/v1/users", tags=["User Settings"]) # Added user_settings router
 app.include_router(auth_router.router, prefix="/api/v1/auth", tags=["Authentication"]) # Added auth router
 app.include_router(data_tables.router_features, prefix="/api/v1/features", tags=["Features"])
 app.include_router(data_tables.router_roll_tables, prefix="/api/v1/roll_tables", tags=["Rolltables"])
-app.include_router(file_uploads_router.router, prefix="/api/v1", tags=["File Uploads"]) # Added file_uploads router
 app.include_router(characters_router.router, prefix="/api/v1/characters", tags=["Characters"])
+# Generic routers with /api/v1 prefix MUST come last
+app.include_router(utility_router.router, prefix="/api/v1", tags=["Utilities"])
+app.include_router(image_generation_router.router, prefix="/api/v1", tags=["Image Generation"]) 
+app.include_router(file_uploads_router.router, prefix="/api/v1", tags=["File Uploads"]) # Added file_uploads router
 
 @app.get("/", tags=["Root"])
 async def read_root():

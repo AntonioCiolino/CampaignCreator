@@ -13,9 +13,16 @@ from app.models import FeatureCreate # For type checking if needed
 
 @patch('app.core.seeding.crud.get_feature_by_name')
 @patch('app.core.seeding.crud.create_feature')
-@patch('app.core.seeding.FEATURES_CSV_PATH') # Mock the path to control file access
+@patch('builtins.open', new_callable=mock_open, read_data=(
+    "Name,Template,RequiredContext,CompatibleTypes,FeatureCategory\n"
+    "TestFeature1,\"This is a template, with commas, and newlines.\nIt should be parsed as one field.\",,,\n"
+    "TestFeature2,Simple template without comma,,,\n"
+    "TestFeature3,\"Another template, also with commas\",,,\n"
+))
+@patch('app.core.seeding.FEATURES_CSV_PATH')
 def test_seed_features_parses_quoted_templates_correctly(
     mock_csv_path,
+    mock_open_file,
     mock_create_feature,
     mock_get_feature_by_name
 ):
@@ -25,30 +32,16 @@ def test_seed_features_parses_quoted_templates_correctly(
     # Simulate that no features currently exist in the DB
     mock_get_feature_by_name.return_value = None
 
-    # CSV content with a feature template containing commas and enclosed in quotes
-    csv_content = (
-        "Feature Name,Template\n"
-        "TestFeature1,\"This is a template, with commas, and newlines.\nIt should be parsed as one field.\"\n"
-        "TestFeature2,Simple template without comma\n"
-        "TestFeature3,\"Another template, also with commas\"\n"
-    )
-
-    # Mock FEATURES_CSV_PATH.is_file() to return True
+    # Mock the Path object to return True for is_file()
     mock_csv_path.is_file.return_value = True
 
-    # Use mock_open to simulate reading the CSV file
-    # The mock_open().return_value is the file handle mock
-    m_open = mock_open(read_data=csv_content)
-
-    with patch('builtins.open', m_open):
-        seed_features(db_mock)
+    seed_features(db_mock)
 
     # Assert
     # Check that create_feature was called with correctly parsed templates
 
     # Expected calls to mock_create_feature:
-    # Call 1: name="TestFeature1", template="This is a template, with commas, and newlines.
-#It should be parsed as one field."
+    # Call 1: name="TestFeature1", template="This is a template, with commas, and newlines.\nIt should be parsed as one field."
     # Call 2: name="TestFeature2", template="Simple template without comma"
     # Call 3: name="TestFeature3", template="Another template, also with commas"
 
@@ -81,9 +74,14 @@ def test_seed_features_parses_quoted_templates_correctly(
 
 @patch('app.core.seeding.crud.get_feature_by_name')
 @patch('app.core.seeding.crud.create_feature') # Mock create_feature as we are testing update path
+@patch('builtins.open', new_callable=mock_open, read_data=(
+    "Name,Template,RequiredContext,CompatibleTypes,FeatureCategory\n"
+    "UpdatableFeature,\"Updated template content, with commas.\",,,\n"
+))
 @patch('app.core.seeding.FEATURES_CSV_PATH')
 def test_seed_features_updates_existing_correctly(
     mock_csv_path,
+    mock_open_file,
     mock_create_feature, # Keep this mocked even if not expecting calls
     mock_get_feature_by_name
 ):
@@ -103,16 +101,9 @@ def test_seed_features_updates_existing_correctly(
     # First call to get_feature_by_name returns the existing feature
     mock_get_feature_by_name.return_value = mock_existing_feature_obj
 
-    csv_content_update = (
-        "Feature Name,Template\n"
-        f"{existing_feature_name},\"{updated_template}\"\n" # Note the quotes for the template
-    )
-
     mock_csv_path.is_file.return_value = True
-    m_open_update = mock_open(read_data=csv_content_update)
 
-    with patch('builtins.open', m_open_update):
-        seed_features(db_mock)
+    seed_features(db_mock)
 
     # Assert
     # 1. create_feature should NOT have been called
@@ -130,9 +121,15 @@ def test_seed_features_updates_existing_correctly(
 
 @patch('app.core.seeding.crud.get_feature_by_name')
 @patch('app.core.seeding.crud.create_feature')
+@patch('builtins.open', new_callable=mock_open, read_data=(
+    "Name,Template,RequiredContext,CompatibleTypes,FeatureCategory\n"
+    "SystemFeature1,Template for system feature 1,,,\n"
+    "SystemFeature2,Template for system feature 2,,,\n"
+))
 @patch('app.core.seeding.FEATURES_CSV_PATH')
 def test_seed_features_creates_features_with_none_user_id(
     mock_csv_path,
+    mock_open_file,
     mock_create_feature,
     mock_get_feature_by_name
 ):
@@ -140,16 +137,9 @@ def test_seed_features_creates_features_with_none_user_id(
     db_mock = MagicMock(spec=Session)
     mock_get_feature_by_name.return_value = None  # Simulate no existing features
 
-    csv_content = (
-        "Feature Name,Template\n"
-        "SystemFeature1,Template for system feature 1\n"
-        "SystemFeature2,Template for system feature 2\n"
-    )
     mock_csv_path.is_file.return_value = True
-    m_open = mock_open(read_data=csv_content)
 
-    with patch('builtins.open', m_open):
-        seed_features(db_mock)
+    seed_features(db_mock)
 
     # Assert
     assert mock_create_feature.call_count == 2
