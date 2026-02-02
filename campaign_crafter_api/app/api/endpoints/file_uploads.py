@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+import logging
 from pydantic import BaseModel, HttpUrl
 from sqlalchemy.orm import Session
 import uuid
@@ -17,6 +18,7 @@ from azure.identity.aio import DefaultAzureCredential as AsyncDefaultAzureCreden
 from azure.storage.blob import ContentSettings
 from azure.core.pipeline.transport import AioHttpTransport # New import
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -56,7 +58,7 @@ async def _upload_file_to_blob_storage(file: UploadFile, user_id: int) -> str:
             if account_name_from_conn_str:
                 account_url_base = f"https://{account_name_from_conn_str}.blob.core.windows.net"
             elif settings.AZURE_STORAGE_ACCOUNT_NAME: # Fallback for URL construction
-                print("Warning: AccountName not found in AZURE_STORAGE_CONNECTION_STRING. Falling back to AZURE_STORAGE_ACCOUNT_NAME for URL construction.")
+                logger.warning(f": AccountName not found in AZURE_STORAGE_CONNECTION_STRING. Falling back to AZURE_STORAGE_ACCOUNT_NAME for URL construction.")
                 account_url_base = f"https://{settings.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net"
             else:
                 # If aiohttp_session was created, ensure it's closed before raising
@@ -111,7 +113,7 @@ async def _upload_file_to_blob_storage(file: UploadFile, user_id: int) -> str:
                     content_settings=content_settings_obj
                 )
 
-        print(f"Image uploaded to Azure Blob Storage: {blob_name} in container {settings.AZURE_STORAGE_CONTAINER_NAME}")
+        logger.info(f"Image uploaded to Azure Blob Storage: {blob_name} in container {settings.AZURE_STORAGE_CONTAINER_NAME}")
         permanent_image_url = f"{account_url_base.strip('/')}/{settings.AZURE_STORAGE_CONTAINER_NAME.strip('/')}/{blob_name}"
 
         return permanent_image_url
@@ -140,7 +142,7 @@ async def _upload_file_to_blob_storage(file: UploadFile, user_id: int) -> str:
             if not is_session_owned_by_client:
                 await aiohttp_session.close()
 
-        print(f"Failed to upload image to Azure Blob Storage: {type(e).__name__} - {e}")
+        logger.error(f"Failed to upload image to Azure Blob Storage: {type(e).__name__} - {e}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to upload image to cloud storage: {str(e)}")
@@ -200,7 +202,7 @@ async def upload_image_endpoint(
     except HTTPException:
         raise # Re-raise HTTPExceptions (e.g., from validation or placeholder)
     except Exception as e:
-        print(f"Unexpected error in upload_image_endpoint: {type(e).__name__} - {e}")
+        logger.error(f"Unexpected error in upload_image_endpoint: {type(e).__name__} - {e}")
         # Log the full error traceback for debugging
         import traceback
         traceback.print_exc()

@@ -1,4 +1,5 @@
 from typing import Optional, List, Dict # Added List and Dict
+import logging
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified # Added for flagging JSON field modifications
 from sqlalchemy import text
@@ -469,6 +470,7 @@ def copy_system_roll_table_to_user(db: Session, system_table: orm_models.RollTab
 from app.services.llm_service import LLMService # Standardized
 from app.services.llm_factory import get_llm_service, LLMServiceUnavailableError
 # from app import models # This is already imported via "from app import models, orm_models"
+logger = logging.getLogger(__name__)
 
 # --- Campaign CRUD functions ---
 async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, current_user_obj: models.User) -> orm_models.Campaign: # Changed owner_id to current_user_obj
@@ -502,13 +504,13 @@ async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, 
                 # temperature=campaign_payload.temperature
             )
         except LLMServiceUnavailableError as e:
-            print(f"LLM service unavailable for concept generation: {e}")
+            logger.warning(f"LLM service unavailable for concept generation: {e}")
         except Exception as e:
-            print(f"Error generating campaign concept from LLM: {e}")
+            logger.error(f"Error generating campaign concept from LLM: {e}")
     elif campaign_payload.skip_concept_generation:
-        print(f"Campaign creation: Skipping concept generation for campaign titled '{campaign_payload.title}'.")
+        logger.info(f"Campaign creation: Skipping concept generation for campaign titled '{campaign_payload.title}'.")
     else: # No prompt provided, and not explicitly skipping
-        print(f"Campaign creation: No initial prompt provided for campaign titled '{campaign_payload.title}'. Concept will be null.")
+        logger.info(f"Campaign creation: No initial prompt provided for campaign titled '{campaign_payload.title}'. Concept will be null.")
 
 
     db_campaign = orm_models.Campaign(
@@ -603,13 +605,13 @@ async def update_campaign(db: Session, campaign_id: int, campaign_update: models
                         # e.g., https://<account>.blob.core.windows.net/<container>/<blob_name>
                         blob_name = parsed_url.path.split('/')[-1]
                         if blob_name:
-                            print(f"Attempting to delete blob: {blob_name} from URL: {url_to_delete}")
+                            logger.debug(f"Attempting to delete blob: {blob_name} from URL: {url_to_delete}")
                             await image_service.delete_image_from_blob_storage(blob_name)
                         else:
-                            print(f"Warning: Could not extract blob name from URL: {url_to_delete}")
+                            logger.warning(f": Could not extract blob name from URL: {url_to_delete}")
                     except Exception as e:
                         # Catch errors during parsing or deletion call setup
-                        print(f"Error processing URL for deletion {url_to_delete}: {e}")
+                        logger.error(f"Error processing URL for deletion {url_to_delete}: {e}")
                         # Depending on policy, you might want to collect these errors rather than just print
 
         db.add(db_campaign) # Add to session, SQLAlchemy tracks changes
@@ -643,23 +645,23 @@ async def delete_campaign(db: Session, campaign_id: int, user_id: int) -> Option
     try:
         campaign_files = await image_service.list_campaign_files(user_id=user_id, campaign_id=campaign_id)
     except Exception as e:
-        print(f"Error listing campaign files for campaign {campaign_id}, user {user_id}: {e}")
+        logger.error(f"Error listing campaign files for campaign {campaign_id}, user {user_id}: {e}")
         # Logged error, proceeding with campaign DB record deletion.
 
     if campaign_files:
         for file_metadata in campaign_files:
             try:
-                print(f"Deleting blob: {file_metadata.blob_name} for campaign {campaign_id}")
+                logger.debug(f"Deleting blob: {file_metadata.blob_name} for campaign {campaign_id}")
                 await image_service.delete_image_from_blob_storage(blob_name=file_metadata.blob_name)
 
                 # This is a synchronous DB call, ensure it's okay within an async function
                 # or consider making it async if it causes blocking issues.
                 # For now, assuming it's acceptable as per typical FastAPI/SQLAlchemy patterns
                 # where DB operations are often sync even in async request handlers.
-                print(f"Deleting GeneratedImage record for blob: {file_metadata.blob_name}")
+                logger.debug(f"Deleting GeneratedImage record for blob: {file_metadata.blob_name}")
                 delete_generated_image_by_blob_name(db=db, blob_name=file_metadata.blob_name, user_id=user_id)
             except Exception as e:
-                print(f"Error deleting asset {file_metadata.blob_name} for campaign {campaign_id}: {e}")
+                logger.error(f"Error deleting asset {file_metadata.blob_name} for campaign {campaign_id}: {e}")
                 # Logged error, continue to the next file.
 
     db.delete(campaign)
@@ -771,7 +773,7 @@ async def update_section_order(db: Session, campaign_id: int, ordered_section_id
             # This case should ideally be prevented by checks in the API endpoint
             # If a section_id is provided that doesn't belong to the campaign or doesn't exist,
             # it will be ignored here, or you could raise an error.
-            print(f"Warning: Section ID {section_id} not found in campaign {campaign_id} during order update.")
+            logger.warning(f": Section ID {section_id} not found in campaign {campaign_id} during order update.")
 
     db.commit()
     # No specific return value needed, or perhaps return the updated sections if desired.
@@ -931,10 +933,10 @@ async def generate_character_aspect_text(
     except LLMServiceUnavailableError as e:
         # Re-raise or handle as appropriate for the API layer
         # For now, let's print and re-raise a more generic exception or specific HTTP error in endpoint
-        print(f"LLM Service Error for character aspect: {e}")
+        logger.warning(f"LLM Service Error for character aspect: {e}")
         raise LLMServiceUnavailableError(f"LLM service unavailable: {str(e)}") # To be caught by API endpoint
     except Exception as e:
-        print(f"Unexpected error during character aspect generation: {e}")
+        logger.error(f"Unexpected error during character aspect generation: {e}")
         # Consider logging traceback: import traceback; traceback.print_exc()
         raise Exception(f"Failed to generate character aspect: {str(e)}") # To be caught by API endpoint
 
@@ -966,9 +968,9 @@ def get_or_create_user_character_conversation(db: Session, character_id: int, us
         db.add(conversation_record)
         db.commit()
         db.refresh(conversation_record)
-        # print(f"CRUD: Created new conversation record for char_id={character_id}, user_id={user_id}") # Debug print
+        # logger.debug(f"CRUD: Created new conversation record for char_id={character_id}, user_id={user_id}") # Debug print
     else:
-        # print(f"CRUD: Fetched existing conversation record for char_id={character_id}, user_id={user_id}") # Debug print
+        # logger.debug(f"CRUD: Fetched existing conversation record for char_id={character_id}, user_id={user_id}") # Debug print
         # Ensure conversation_history is a list if it was NULL from DB and default didn't apply post-load
         if conversation_record.conversation_history is None:
             conversation_record.conversation_history = []
@@ -989,7 +991,7 @@ def update_user_character_conversation(
     db.add(conversation_record) # Add to session to ensure it's persisted
     db.commit()
     db.refresh(conversation_record)
-    # print(f"CRUD: Updated conversation record for char_id={conversation_record.character_id}, user_id={conversation_record.user_id}") # Debug print
+    # logger.debug(f"CRUD: Updated conversation record for char_id={conversation_record.character_id}, user_id={conversation_record.user_id}") # Debug print
     return conversation_record
 
 # Old ChatMessage CRUD functions are now removed.
@@ -1020,14 +1022,14 @@ async def update_conversation_summary(
 
     if len(history_list) < settings.CHAT_MIN_MESSAGES_FOR_SUMMARY_CRUD:
         # This is a normal operational log, not necessarily a debug print, so it can stay.
-        print(f"CRUD: Conversation for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id} too short for summary. Length: {len(history_list)}, Min required: {settings.CHAT_MIN_MESSAGES_FOR_SUMMARY_CRUD}")
+        logger.debug(f"CRUD: Conversation for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id} too short for summary. Length: {len(history_list)}, Min required: {settings.CHAT_MIN_MESSAGES_FOR_SUMMARY_CRUD}")
         return
 
     messages_to_summarize = history_list[:-settings.CHAT_RECENT_MESSAGES_TO_EXCLUDE_FROM_SUMMARY]
 
     if not messages_to_summarize:
         # This is also a normal operational log.
-        print(f"CRUD: No new messages to summarize for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id} after excluding recent {settings.CHAT_RECENT_MESSAGES_TO_EXCLUDE_FROM_SUMMARY}.")
+        logger.debug(f"CRUD: No new messages to summarize for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id} after excluding recent {settings.CHAT_RECENT_MESSAGES_TO_EXCLUDE_FROM_SUMMARY}.")
         return
 
     conversation_excerpt_str = "\n".join([f"{msg['speaker']}: {msg['text']}" for msg in messages_to_summarize])
@@ -1045,7 +1047,7 @@ async def update_conversation_summary(
         f"Conversation Excerpt:\n{conversation_excerpt_str}"
     )
 
-    # print(f"CRUD: Generating summary for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}. Excerpt length: {len(messages_to_summarize)} messages.") # Debug print
+    # logger.debug(f"CRUD: Generating summary for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}. Excerpt length: {len(messages_to_summarize)} messages.") # Debug print
 
     try:
         # Assuming llm_service.generate_text can be used for summarization.
@@ -1070,13 +1072,13 @@ async def update_conversation_summary(
             db.add(conversation_orm)
             db.commit()
             db.refresh(conversation_orm)
-            print(f"CRUD: Memory summary updated for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}.")
+            logger.debug(f"CRUD: Memory summary updated for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}.")
         else:
-            print(f"CRUD: LLM returned empty summary for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}.")
+            logger.debug(f"CRUD: LLM returned empty summary for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}.")
 
     except Exception as e:
         # Using a more structured log for errors
-        print(f"ERROR:CRUD:update_conversation_summary: Failed for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}. Error: {e}")
+        logger.error(f":CRUD:update_conversation_summary: Failed for char_id={conversation_orm.character_id}, user_id={conversation_orm.user_id}. Error: {e}")
         # Optionally re-raise or handle. For now, just logging as per plan.
         # However, create_chat_message in the endpoint commits, so this runs in its own transaction context effectively if called after.
 
@@ -1087,20 +1089,20 @@ async def summarize_and_clear_conversation(db: Session, character_id: int, user_
     """
     conversation_orm = get_or_create_user_character_conversation(db, character_id, user_id)
     if not conversation_orm.conversation_history:
-        print(f"CRUD: No conversation history to summarize or clear for char_id={character_id}, user_id={user_id}.")
+        logger.debug(f"CRUD: No conversation history to summarize or clear for char_id={character_id}, user_id={user_id}.")
         return
 
     character_orm = get_character(db, character_id)
     if not character_orm:
         # This case should be handled by endpoint logic, but as a safeguard:
-        print(f"CRUD: Character not found for summarization, char_id={character_id}.")
+        logger.debug(f"CRUD: Character not found for summarization, char_id={character_id}.")
         return
 
     # To call update_conversation_summary, we need an LLM service instance
     # and the current user model.
     current_user_orm = get_user(db, user_id)
     if not current_user_orm:
-        print(f"CRUD: User not found for summarization, user_id={user_id}.")
+        logger.debug(f"CRUD: User not found for summarization, user_id={user_id}.")
         return
 
     current_user_pydantic = models.User.from_orm(current_user_orm)
@@ -1120,7 +1122,7 @@ async def summarize_and_clear_conversation(db: Session, character_id: int, user_
             append_to_existing_summary=True # New parameter
         )
     except Exception as e:
-        print(f"ERROR:CRUD:summarize_and_clear_conversation: Failed during summarization step for char_id={character_id}, user_id={user_id}. Error: {e}")
+        logger.error(f":CRUD:summarize_and_clear_conversation: Failed during summarization step for char_id={character_id}, user_id={user_id}. Error: {e}")
         # Decide on error handling: proceed to clear, or stop?
         # For now, let's stop to avoid data loss if summarization is critical.
         # In a real-world scenario, might want to just log and continue.
@@ -1131,4 +1133,4 @@ async def summarize_and_clear_conversation(db: Session, character_id: int, user_
     flag_modified(conversation_orm, "conversation_history")
     db.add(conversation_orm)
     db.commit()
-    print(f"CRUD: Summarized and cleared conversation history for char_id={character_id}, user_id={user_id}.")
+    logger.debug(f"CRUD: Summarized and cleared conversation history for char_id={character_id}, user_id={user_id}.")

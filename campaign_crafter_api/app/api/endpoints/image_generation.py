@@ -1,4 +1,5 @@
 from enum import Enum
+import logging
 from enum import Enum
 from typing import Optional, Annotated
 
@@ -12,6 +13,7 @@ from app.db import get_db
 from app.models import User as UserModel # For current_user type hint
 from app.services.auth_service import get_current_active_user # For auth dependency
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # --- Pydantic Models ---
@@ -200,5 +202,5 @@ async def generate_image_endpoint(
     except HTTPException:
         raise # Re-raise HTTPException from the service
     except Exception as e:
-        print(f"Unexpected error in image generation endpoint: {type(e).__name__} - {e}")
+        logger.error(f"Unexpected error in image generation endpoint: {type(e).__name__} - {e}")
         raise HTTPException(status_code=500, detail="An unexpected internal error occurred while generating the image.")

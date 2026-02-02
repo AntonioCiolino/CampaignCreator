@@ -1,4 +1,5 @@
 import re
+import logging
 from openai import AsyncOpenAI, APIError
 from typing import Optional, List, Dict
 from sqlalchemy.orm import Session
@@ -11,6 +12,8 @@ from app.services.feature_prompt_service import FeaturePromptService
 from app import models, orm_models
 from app.models import User as UserModel
 from app import crud
+
+logger = logging.getLogger(__name__)
 
 class OpenAILLMService(AbstractLLMService):
     PROVIDER_NAME = "openai"
@@ -30,10 +33,10 @@ class OpenAILLMService(AbstractLLMService):
                 self.client = AsyncOpenAI(api_key=self.effective_api_key)
                 self.configured_successfully = True
             except Exception as e:
-                print(f"Error initializing AsyncOpenAI client: {e}")
+                logger.error(f"Error initializing AsyncOpenAI client: {e}")
                 # self.configured_successfully remains False
         else:
-            print("Warning: OpenAI API key (user or system) not configured or is a placeholder.")
+            logger.warning(" OpenAI API key (user or system) not configured or is a placeholder.")
 
         self.feature_prompt_service = FeaturePromptService()
 
@@ -45,10 +48,10 @@ class OpenAILLMService(AbstractLLMService):
             return True
         except APIError as e:
             # User ID is available via current_user.id if needed for logging
-            print(f"OpenAI service check failed due to APIError: {e.status_code} - {e.message}")
+            logger.warning(f"OpenAI service check failed due to APIError: {e.status_code} - {e.message}")
             return False
         except Exception as e:
-            print(f"OpenAI service check failed due to an unexpected error: {e}")
+            logger.warning(f"OpenAI service check failed due to an unexpected error: {e}")
             return False
 
     def _get_model(self, preferred_model: Optional[str], use_chat_model: bool = True) -> str:
@@ -72,7 +75,7 @@ class OpenAILLMService(AbstractLLMService):
             raise LLMGenerationError("OpenAI API call (ChatCompletion) succeeded but returned no usable content.")
         except APIError as e:
             error_detail = f"OpenAI API Error ({e.status_code}): {e.message or str(e)}"
-            print(error_detail)
+            logger.error(error_detail)
             if e.status_code == 401:
                 raise LLMServiceUnavailableError(f"OpenAI API key is invalid or unauthorized. Detail: {error_detail}") from e
             elif e.status_code == 429:
@@ -80,13 +83,13 @@ class OpenAILLMService(AbstractLLMService):
             else:
                 raise LLMGenerationError(error_detail) from e
         except Exception as e:
-            print(f"Unexpected error with model {selected_model} (ChatCompletion): {e}")
+            logger.error(f"Unexpected error with model {selected_model} (ChatCompletion): {e}")
             raise LLMGenerationError(f"Unexpected error during OpenAI call: {str(e)}") from e
 
     async def _perform_legacy_completion(self, selected_model: str, prompt: str, temperature: float, max_tokens: int) -> str: # Removed api_key parameter
         if not self.client:
             raise LLMServiceUnavailableError("OpenAI client not initialized.")
-        print(f"Warning: Using legacy completions endpoint for model {selected_model}. Consider migrating to chat completions if possible.")
+        logger.warning(f" Using legacy completions endpoint for model {selected_model}. Consider migrating to chat completions if possible.")
         try:
             completion = await self.client.completions.create(
                 model=selected_model,
@@ -99,7 +102,7 @@ class OpenAILLMService(AbstractLLMService):
             raise LLMGenerationError("OpenAI API call (Legacy Completion) succeeded but returned no content.")
         except APIError as e:
             error_detail = f"OpenAI API Error ({e.status_code}): {e.message or str(e)}"
-            print(error_detail)
+            logger.error(error_detail)
             if e.status_code == 401:
                 raise LLMServiceUnavailableError(f"OpenAI API key is invalid or unauthorized. Detail: {error_detail}") from e
             elif e.status_code == 429:
@@ -107,7 +110,7 @@ class OpenAILLMService(AbstractLLMService):
             else:
                 raise LLMGenerationError(error_detail) from e
         except Exception as e:
-            print(f"Unexpected error with model {selected_model} (Legacy Completion): {e}")
+            logger.error(f"Unexpected error with model {selected_model} (Legacy Completion): {e}")
             raise LLMGenerationError(f"Unexpected error during OpenAI legacy completion call: {str(e)}") from e
 
     async def generate_text(
@@ -125,7 +128,7 @@ class OpenAILLMService(AbstractLLMService):
         section_creation_prompt: Optional[str] = None # Added
     ) -> str:
         # --- DEBUG: Log entry parameters ---
-        print(f"--- DEBUG OpenAI generate_text ENTRY: db_campaign_id: {db_campaign.id if db_campaign else 'None'}, title_suggestion: {section_title_suggestion}, section_type: {section_type}, section_creation_prompt: {section_creation_prompt[:50] if section_creation_prompt else 'None'}... ---")
+        logger.debug(f"--- DEBUG OpenAI generate_text ENTRY: db_campaign_id: {db_campaign.id if db_campaign else 'None'}, title_suggestion: {section_title_suggestion}, section_type: {section_type}, section_creation_prompt: {section_creation_prompt[:50] if section_creation_prompt else 'None'}... ---")
         # --- END DEBUG ---
         if not await self.is_available(current_user, db):
             raise LLMServiceUnavailableError("OpenAI service not available or not configured.")
@@ -184,18 +187,18 @@ class OpenAILLMService(AbstractLLMService):
                      system_message_content += f"\nConsider these characters:\n{campaign_characters_str}"
 
             except KeyError as e:
-                print(f"Warning: Key error during prompt formatting in generate_text: {e}. Prompt may be partially formatted.")
+                logger.warning(f" Key error during prompt formatting in generate_text: {e}. Prompt may be partially formatted.")
                 # Continue with potentially partially formatted prompt_to_format
 
         # --- DEBUG LOGGING for generate_text (now includes formatted prompt) ---
-        print(f"--- DEBUG PROMPT START ({self.PROVIDER_NAME} - Generic Generate Text) ---")
-        print(f"Model: {selected_model}")
-        print(f"System Message: {system_message_content}")
-        print(f"User Prompt (after potential formatting): {prompt_to_format[:500]}...") # Log potentially formatted prompt
+        logger.debug(f"--- DEBUG PROMPT START ({self.PROVIDER_NAME} - Generic Generate Text) ---")
+        logger.debug(f"Model: {selected_model}")
+        logger.debug(f"System Message: {system_message_content}")
+        logger.debug(f"User Prompt (after potential formatting): {prompt_to_format[:500]}...") # Log potentially formatted prompt
         if selected_model.endswith("-instruct") or "davinci" in selected_model:
              # For legacy, the raw formatted prompt is used directly
-            print(f"Raw Prompt (for legacy, after potential formatting): {prompt_to_format[:500]}...")
-        print(f"--- DEBUG PROMPT END ({self.PROVIDER_NAME} - Generic Generate Text) ---")
+            logger.debug(f"Raw Prompt (for legacy, after potential formatting): {prompt_to_format[:500]}...")
+        logger.debug(f"--- DEBUG PROMPT END ({self.PROVIDER_NAME} - Generic Generate Text) ---")
         # --- END DEBUG LOGGING ---
 
         # Actual call to LLM
@@ -249,7 +252,7 @@ class OpenAILLMService(AbstractLLMService):
                 # Optional: Validate against known_types or clean up type_str further
                 if type_str not in known_types:
                     # This logic can be adjusted, e.g. log a warning, or try to find closest match
-                    print(f"Warning: Unknown type '{type_str}' found for title '{title}'. Defaulting to 'unknown'.")
+                    logger.warning(f" Unknown type '{type_str}' found for title '{title}'. Defaulting to 'unknown'.")
                     type_str = "unknown"
                 parsed_toc_items.append({"title": title, "type": type_str})
             else:
@@ -283,7 +286,7 @@ class OpenAILLMService(AbstractLLMService):
             display_final_prompt = display_prompt_template_str.format(campaign_concept=campaign_concept)
         except KeyError:
             # This would indicate a misconfigured "TOC Display" prompt, which is an issue.
-            print(f"ERROR: Formatting 'TOC Display' prompt failed due to KeyError. Prompt: '{display_prompt_template_str}' Concept: '{campaign_concept}'")
+            logger.error(f" Formatting 'TOC Display' prompt failed due to KeyError. Prompt: '{display_prompt_template_str}' Concept: '{campaign_concept}'")
             raise LLMGenerationError("Failed to format 'TOC Display' prompt due to unexpected placeholders.")
 
         display_messages = [
@@ -390,7 +393,7 @@ class OpenAILLMService(AbstractLLMService):
                     campaign_characters=campaign_characters_formatted # Add new parameter
                 )
             except KeyError as e:
-                print(f"Warning: Prompt template 'Section Content' is missing a key: {e}. Falling back to default prompt structure. Please update the template to include 'campaign_characters'.")
+                logger.warning(f" Prompt template 'Section Content' is missing a key: {e}. Falling back to default prompt structure. Please update the template to include 'campaign_characters'.")
                 # Fallback structure if template is old
                 final_prompt_for_user_role = (
                     f"Campaign Concept: {campaign_concept}\n"
@@ -418,19 +421,19 @@ class OpenAILLMService(AbstractLLMService):
         ]
 
         # --- DEBUG LOGGING for generate_section_content ---
-        print(f"--- DEBUG PROMPT START ({self.PROVIDER_NAME} - generate_section_content) ---")
-        print(f"Campaign ID: {db_campaign.id}, Model: {selected_model}")
-        print(f"Section Title Suggestion: {section_title_suggestion}")
-        print(f"Section Type: {section_type}")
-        print(f"Section Creation Prompt (effective_section_prompt): {effective_section_prompt[:300]}...")
-        print(f"Campaign Concept: {campaign_concept[:300]}...")
-        print(f"Characters: {campaign_characters_formatted[:300]}...")
-        print(f"Existing Sections Summary: {existing_sections_summary[:300] if existing_sections_summary else 'N/A'}...")
-        print("\nFinal System Message:")
-        print(system_message_content)
-        print("\nFinal User Role Prompt:")
-        print(final_prompt_for_user_role)
-        print(f"--- DEBUG PROMPT END ({self.PROVIDER_NAME} - generate_section_content) ---")
+        logger.debug(f"--- DEBUG PROMPT START ({self.PROVIDER_NAME} - generate_section_content) ---")
+        logger.debug(f"Campaign ID: {db_campaign.id}, Model: {selected_model}")
+        logger.debug(f"Section Title Suggestion: {section_title_suggestion}")
+        logger.debug(f"Section Type: {section_type}")
+        logger.debug(f"Section Creation Prompt (effective_section_prompt): {effective_section_prompt[:300]}...")
+        logger.debug(f"Campaign Concept: {campaign_concept[:300]}...")
+        logger.debug(f"Characters: {campaign_characters_formatted[:300]}...")
+        logger.debug(f"Existing Sections Summary: {existing_sections_summary[:300] if existing_sections_summary else 'N/A'}...")
+        logger.debug("Final System Message:")
+        logger.debug(f"System message: {system_message_content}")
+        logger.debug("Final User Role Prompt:")
+        logger.debug(f"User role prompt: {final_prompt_for_user_role}")
+        logger.debug(f"--- DEBUG PROMPT END ({self.PROVIDER_NAME} - generate_section_content) ---")
         # --- END DEBUG LOGGING ---
 
         return await self._perform_chat_completion(selected_model, messages, temperature=0.7, max_tokens=1500)
@@ -499,10 +502,10 @@ class OpenAILLMService(AbstractLLMService):
         except APIError as e:
             user_id_info = f"user {current_user.id}" if current_user else "system key" # Should always have current_user here
             error_detail = f"OpenAI API Error ({e.status_code}) while listing models for {user_id_info}: {e.message or str(e)}"
-            print(error_detail)
+            logger.error(error_detail)
         except Exception as e:
             user_id_info = f"user {current_user.id}" if current_user else "system key"
-            print(f"An unexpected error occurred when listing OpenAI models for {user_id_info}: {e}. Returning manually curated list if any.")
+            logger.error(f"An unexpected error occurred when listing OpenAI models for {user_id_info}: {e}. Returning manually curated list if any.")
 
         sorted_models_list = sorted(processed_models, key=lambda x: (
             not x['name'].startswith("GPT-4"),
@@ -526,7 +529,7 @@ class OpenAILLMService(AbstractLLMService):
         if not await self.is_available(current_user, db): # Added is_available check
             raise LLMServiceUnavailableError("OpenAI service not available or not configured.")
 
-        print(f"DEBUG OPENAI_HB_TOC: Received sections_summary: {sections_summary}")
+        logger.debug(f"OPENAI_HB_TOC: Received sections_summary: {sections_summary}")
         # openai_api_key = await self._get_openai_api_key_for_user(current_user, db) # Removed
 
         if not sections_summary:
@@ -537,12 +540,12 @@ class OpenAILLMService(AbstractLLMService):
         selected_model = self._get_model(model, use_chat_model=True)
 
         homebrewery_prompt_template_str = self.feature_prompt_service.get_prompt("TOC Homebrewery", db=db)
-        print(f"DEBUG OPENAI_HB_TOC: Fetched prompt template: {homebrewery_prompt_template_str}")
+        logger.debug(f"OPENAI_HB_TOC: Fetched prompt template: {homebrewery_prompt_template_str}")
         if not homebrewery_prompt_template_str:
             raise LLMGenerationError("Homebrewery TOC prompt template ('TOC Homebrewery') not found in database.")
 
         final_prompt = homebrewery_prompt_template_str.format(sections_summary=sections_summary)
-        print(f"DEBUG OPENAI_HB_TOC: Formatted final_prompt: {final_prompt}")
+        logger.debug(f"OPENAI_HB_TOC: Formatted final_prompt: {final_prompt}")
 
         messages = [
             {"role": "system", "content": "You are an assistant skilled in creating RPG Table of Contents strictly following Homebrewery Markdown formatting, using provided section titles."},

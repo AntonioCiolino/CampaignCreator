@@ -1,4 +1,5 @@
 import re
+import logging
 import math
 from typing import List, Optional, Dict
 from app import orm_models, crud
@@ -7,6 +8,7 @@ from app.services.llm_service import LLMServiceUnavailableError, LLMGenerationEr
 from sqlalchemy.orm import Session
 from app.models import User as UserModel # For current_user type hint
 
+logger = logging.getLogger(__name__)
 class HomebreweryExportService:
     FRONT_COVER_TEMPLATE = r"""{{frontCover}}
 
@@ -323,7 +325,7 @@ VTCNP Enterprises
                     model_id_with_prefix=campaign.selected_llm_id
                 )
                 if llm_service:
-                    print(f"INFO EXPORT: Generating Homebrewery TOC for campaign {campaign.id} using model {campaign.selected_llm_id}")
+                    logger.info(f" EXPORT: Generating Homebrewery TOC for campaign {campaign.id} using model {campaign.selected_llm_id}")
                     freshly_generated_hb_toc_string = await llm_service.generate_homebrewery_toc_from_sections(
                         sections_summary=sections_summary,
                         db=db,
@@ -331,14 +333,14 @@ VTCNP Enterprises
                         model=model_id_for_llm
                     )
                 else:
-                    print(f"ERROR EXPORT: Could not get LLM service for provider '{provider_name_for_llm}' or model '{campaign.selected_llm_id}' for campaign {campaign.id}")
+                    logger.error(f" EXPORT: Could not get LLM service for provider '{provider_name_for_llm}' or model '{campaign.selected_llm_id}' for campaign {campaign.id}")
 
             except (LLMServiceUnavailableError, LLMGenerationError) as e:
-                print(f"ERROR EXPORT: LLM error generating Homebrewery TOC for campaign {campaign.id}: {e}")
+                logger.error(f" EXPORT: LLM error generating Homebrewery TOC for campaign {campaign.id}: {e}")
             except Exception as e:
-                print(f"ERROR EXPORT: Unexpected error generating Homebrewery TOC for campaign {campaign.id}: {type(e).__name__} - {e}")
+                logger.error(f" EXPORT: Unexpected error generating Homebrewery TOC for campaign {campaign.id}: {type(e).__name__} - {e}")
         else:
-            print(f"INFO EXPORT: No sections with titles found for campaign {campaign.id}, skipping Homebrewery TOC generation.")
+            logger.info(f" EXPORT: No sections with titles found for campaign {campaign.id}, skipping Homebrewery TOC generation.")
 
         if freshly_generated_hb_toc_string:
             processed_toc = self.process_block(freshly_generated_hb_toc_string)
@@ -350,11 +352,11 @@ VTCNP Enterprises
                 from app.models import CampaignUpdate
                 campaign_update_payload = CampaignUpdate(homebrewery_toc=hb_toc_object_to_save)
                 await crud.update_campaign(db=db, campaign_id=campaign.id, campaign_update=campaign_update_payload)
-                print(f"INFO EXPORT: Attempted to save newly generated Homebrewery TOC to DB for campaign {campaign.id}")
+                logger.info(f" EXPORT: Attempted to save newly generated Homebrewery TOC to DB for campaign {campaign.id}")
             except Exception as e:
-                print(f"ERROR EXPORT: Failed to save newly generated Homebrewery TOC to DB for campaign {campaign.id}: {type(e).__name__} - {e}")
+                logger.error(f" EXPORT: Failed to save newly generated Homebrewery TOC to DB for campaign {campaign.id}: {type(e).__name__} - {e}")
         else:
-            print(f"INFO EXPORT: No Homebrewery TOC was generated or appended for campaign {campaign.id}.")
+            logger.info(f" EXPORT: No Homebrewery TOC was generated or appended for campaign {campaign.id}.")
 
         for section in sections: 
             if section.title:

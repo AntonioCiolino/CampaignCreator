@@ -1,4 +1,5 @@
 from google import genai
+import logging
 from google.genai import types
 import re
 from typing import List, Dict, Optional, Any
@@ -11,6 +12,7 @@ from app.models import User as UserModel
 from pathlib import Path
 import asyncio
 
+logger = logging.getLogger(__name__)
 
 class GeminiLLMService(AbstractLLMService):
     PROVIDER_NAME = "gemini"
@@ -30,9 +32,9 @@ class GeminiLLMService(AbstractLLMService):
                 self.client = genai.Client(api_key=self.effective_api_key)
                 self.configured_successfully = True
             except Exception as e:
-                print(f"Error configuring Gemini client during __init__ with effective_api_key: {e}")
+                logger.error(f"Error configuring Gemini client during __init__ with effective_api_key: {e}")
         else:
-            print("Warning: Gemini API key (user or system) not configured or is a placeholder.")
+            logger.warning(f": Gemini API key (user or system) not configured or is a placeholder.")
 
         self.feature_prompt_service = FeaturePromptService()
 
@@ -51,7 +53,7 @@ class GeminiLLMService(AbstractLLMService):
             )
             return True
         except Exception as e:
-            print(f"Gemini service not available. API check failed (using effective_api_key): {e}")
+            logger.warning(f"Gemini service not available. API check failed (using effective_api_key): {e}")
             return False
 
     def _get_model_id(self, model_id: Optional[str] = None) -> str:
@@ -104,7 +106,7 @@ class GeminiLLMService(AbstractLLMService):
                     f"Gemini API call succeeded but returned no usable content. Model: {model_id}. Details: {error_details}"
                 )
         except Exception as e:
-            print(f"Gemini API error (model: {model_id}): {type(e).__name__} - {e}")
+            logger.warning(f"Gemini API error (model: {model_id}): {type(e).__name__} - {e}")
             raise LLMServiceUnavailableError(
                 f"Failed to generate text with Gemini model {model_id} due to API error: {str(e)}"
             ) from e
@@ -148,7 +150,7 @@ class GeminiLLMService(AbstractLLMService):
                 title = match.group(1).strip()
                 type_str = match.group(2).strip().lower()
                 if type_str not in known_types:
-                    print(f"Warning: Unknown type '{type_str}' found for title '{title}'. Defaulting to 'unknown'.")
+                    logger.warning(f": Unknown type '{type_str}' found for title '{title}'. Defaulting to 'unknown'.")
                     type_str = "unknown"
                 parsed_toc_items.append({"title": title, "type": type_str})
             else:
@@ -181,7 +183,7 @@ class GeminiLLMService(AbstractLLMService):
         try:
             display_final_prompt = display_prompt_template_str.format(campaign_concept=campaign_concept)
         except KeyError:
-            print(f"ERROR: Gemini formatting 'TOC Display' prompt failed due to KeyError.")
+            logger.error(f": Gemini formatting 'TOC Display' prompt failed due to KeyError.")
             raise LLMGenerationError("Failed to format 'TOC Display' prompt due to unexpected placeholders for Gemini.")
 
         raw_toc_string = await self.generate_text(
@@ -297,7 +299,7 @@ class GeminiLLMService(AbstractLLMService):
                     campaign_characters=campaign_characters_formatted
                 )
             except KeyError as e:
-                print(f"Warning: Prompt template 'Section Content' is missing a key: {e}. Falling back to default prompt structure.")
+                logger.warning(f": Prompt template 'Section Content' is missing a key: {e}. Falling back to default prompt structure.")
                 final_prompt_for_generation = (
                     f"Campaign Concept: {campaign_concept}\n"
                     f"Relevant Characters in this Campaign:\n{campaign_characters_formatted}\n\n"
@@ -324,7 +326,7 @@ class GeminiLLMService(AbstractLLMService):
 
     async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, Any]]:
         if not await self.is_available(current_user=current_user, db=db):
-            print("Warning: Gemini API key not configured or service unavailable. Cannot fetch models.")
+            logger.warning(f": Gemini API key not configured or service unavailable. Cannot fetch models.")
             fallback_models = [
                 {"id": "gemini-2.0-flash", "name": "Gemini 2.0 Flash (Unavailable/Fallback)", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat"]},
                 {"id": "gemini-1.5-pro", "name": "Gemini 1.5 Pro (Unavailable/Fallback)", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat"]},
@@ -333,7 +335,7 @@ class GeminiLLMService(AbstractLLMService):
 
         available_models: List[Dict[str, Any]] = []
         try:
-            print("Fetching available models from Gemini API...")
+            logger.debug(f"Fetching available models from Gemini API...")
             api_models = self.client.models.list()
             
             for m in api_models:
@@ -359,11 +361,11 @@ class GeminiLLMService(AbstractLLMService):
                     })
 
             if not available_models:
-                print("Warning: Gemini API returned no models supporting 'generateContent'. Using hardcoded list as fallback.")
+                logger.warning(f": Gemini API returned no models supporting 'generateContent'. Using hardcoded list as fallback.")
                 raise Exception("No suitable models found from API")
 
         except Exception as e:
-            print(f"Could not dynamically fetch models from Gemini API: {e}. Using a hardcoded list as fallback.")
+            logger.warning(f"Could not dynamically fetch models from Gemini API: {e}. Using a hardcoded list as fallback.")
             available_models = [
                 {"id": "gemini-2.0-flash", "name": "Gemini 2.0 Flash", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat", "vision"]},
                 {"id": "gemini-1.5-pro-latest", "name": "Gemini 1.5 Pro (Latest)", "model_type": "chat", "supports_temperature": True, "capabilities": ["chat", "vision"]},
@@ -449,7 +451,7 @@ class GeminiLLMService(AbstractLLMService):
         model_id = self._get_model_id(model)
 
         try:
-            print(f"Attempting to generate image with model: {model_id} using prompt: '{prompt[:50]}...'")
+            logger.debug(f"Attempting to generate image with model: {model_id} using prompt: '{prompt[:50]}...'")
 
             response = self.client.models.generate_content(
                 model=model_id,
@@ -474,7 +476,7 @@ class GeminiLLMService(AbstractLLMService):
         except LLMServiceUnavailableError:
             raise
         except Exception as e:
-            print(f"Error during Gemini image generation (model: {model_id}): {type(e).__name__} - {e}")
+            logger.error(f"Error during Gemini image generation (model: {model_id}): {type(e).__name__} - {e}")
             raise LLMGenerationError(f"Failed to generate image with Gemini model {model_id}: {e}") from e
 
     async def generate_character_response(
@@ -545,7 +547,7 @@ class GeminiLLMService(AbstractLLMService):
                 else:
                     raise LLMGenerationError(f"Gemini API call (character response with history) succeeded but returned no usable content. Model: {model_id}")
             except Exception as e:
-                print(f"Gemini API error (character response with history, model: {model_id}): {type(e).__name__} - {e}")
+                logger.warning(f"Gemini API error (character response with history, model: {model_id}): {type(e).__name__} - {e}")
                 raise LLMGenerationError(f"Failed to generate character response with Gemini (history) model {model_id}: {str(e)}") from e
 
         else:
@@ -581,7 +583,7 @@ if __name__ == '__main__':
     elif env_path_monorepo_root.exists():
         load_dotenv(dotenv_path=env_path_monorepo_root)
     else:
-        print(f"Warning: .env file not found. Service might not initialize correctly.")
+        logger.warning(f": .env file not found. Service might not initialize correctly.")
 
     class DummyUser(UserModel):
         id: int = 1
@@ -605,19 +607,19 @@ if __name__ == '__main__':
         system_gemini_key = os.getenv("GEMINI_API_KEY", settings.GEMINI_API_KEY)
         settings.GEMINI_API_KEY = system_gemini_key
 
-        print(f"Attempting to initialize GeminiLLMService with system key: ...{system_gemini_key[-4:] if system_gemini_key and system_gemini_key != 'YOUR_GEMINI_API_KEY' else 'Not Set or Placeholder'}")
+        logger.debug(f"Attempting to initialize GeminiLLMService with system key: ...{system_gemini_key[-4:] if system_gemini_key and system_gemini_key != 'YOUR_GEMINI_API_KEY' else 'Not Set or Placeholder'}")
         gemini_service = GeminiLLMService()
 
         is_available = await gemini_service.is_available(current_user=mock_user, db=mock_db_session)
         if not is_available:
-            print("Skipping GeminiLLMService tests as GEMINI_API_KEY is not set or service is unavailable.")
+            logger.debug(f"Skipping GeminiLLMService tests as GEMINI_API_KEY is not set or service is unavailable.")
             await gemini_service.close()
             return
 
-        print("GeminiLLMService is available.")
+        logger.warning(f"GeminiLLMService is available.")
 
         try:
-            print("\n--- Testing Generic Text Generation ---")
+            logger.info("--- Testing Generic Text Generation ---")
             generic_text = await gemini_service.generate_text(
                 prompt="Tell me a short story about a robot learning to paint.",
                 current_user=mock_user,
@@ -625,15 +627,15 @@ if __name__ == '__main__':
                 temperature=0.8,
                 max_tokens=200
             )
-            print("Generic Text Output (first 250 chars):", generic_text[:250] + "..." if generic_text else "No generic text generated.")
+            logger.info("Generic Text Output (first 250 chars):", generic_text[:250] + "..." if generic_text else "No generic text generated.")
 
-            print("\n--- Testing List Available Models ---")
+            logger.info("--- Testing List Available Models ---")
             models_list = await gemini_service.list_available_models(current_user=mock_user, db=mock_db_session)
             for m in models_list[:5]:
-                print(f"- {m['name']} (id: {m['id']})")
+                logger.info(f"- {m['name']} (id: {m['id']})")
 
         except Exception as e:
-            print(f"An error occurred during testing: {e}")
+            logger.error(f"An error occurred during testing: {e}")
         finally:
             await gemini_service.close()
 

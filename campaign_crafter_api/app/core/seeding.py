@@ -1,10 +1,12 @@
 import csv
+import logging
 from pathlib import Path
 from typing import List
 from sqlalchemy.orm import Session
 
 from app import crud, models # Standardized import
 
+logger = logging.getLogger(__name__)
 # Base path for CSV files relative to this file (app/core/seeding.py)
 # project_root is app/core/seeding.py -> app/core -> app -> campaign_crafter_api
 CSV_BASE_PATH = Path(__file__).resolve().parent.parent.parent / "csv"
@@ -12,10 +14,10 @@ FEATURES_CSV_PATH = CSV_BASE_PATH / "features.csv"
 ROLLTABLES_CSV_PATH = CSV_BASE_PATH / "tables1e.csv"
 
 def seed_features(db: Session):
-    print("\n--- Seeding Features ---")
+    logger.info("--- Seeding Features ---")
     try:
         if not FEATURES_CSV_PATH.is_file():
-            print(f"ERROR: Features CSV file not found at {FEATURES_CSV_PATH}")
+            logger.error(f": Features CSV file not found at {FEATURES_CSV_PATH}")
             return
 
         with open(FEATURES_CSV_PATH, mode='r', encoding='utf-8') as csvfile:
@@ -23,7 +25,7 @@ def seed_features(db: Session):
             header = next(reader, None)
             expected_cols = ["Name", "Template", "RequiredContext", "CompatibleTypes", "FeatureCategory"]
             if not header or not all(col in header for col in expected_cols):
-                print(f"ERROR: Invalid CSV header for features. Expected all of: {', '.join(expected_cols)}. Got: {header}")
+                logger.error(f": Invalid CSV header for features. Expected all of: {', '.join(expected_cols)}. Got: {header}")
                 return
             
             name_idx = header.index("Name")
@@ -39,7 +41,7 @@ def seed_features(db: Session):
             for row_num, row in enumerate(reader, 1):
                 processed_count += 1
                 if len(row) <= max(name_idx, template_idx, context_idx, types_idx, category_idx): # Check if all expected indices are within row bounds
-                    print(f"Skipping malformed row {row_num} in features.csv: Insufficient columns. Expected at least {max(name_idx, template_idx, context_idx, types_idx, category_idx) + 1}, got {len(row)}. Content: {row}")
+                    logger.debug(f"Skipping malformed row {row_num} in features.csv: Insufficient columns. Expected at least {max(name_idx, template_idx, context_idx, types_idx, category_idx) + 1}, got {len(row)}. Content: {row}")
                     skipped_malformed +=1
                     continue
                 
@@ -50,7 +52,7 @@ def seed_features(db: Session):
                 feature_category_str = row[category_idx].strip()
 
                 if not feature_name or not feature_template:
-                    print(f"Skipping row {row_num} in features.csv: Empty name or template. Content: {row}")
+                    logger.debug(f"Skipping row {row_num} in features.csv: Empty name or template. Content: {row}")
                     skipped_malformed +=1
                     continue
 
@@ -85,24 +87,24 @@ def seed_features(db: Session):
                         needs_update = True
 
                     if needs_update:
-                        print(f"Feature '{feature_name}' already exists. Updating fields.")
+                        logger.info(f"Feature '{feature_name}' already exists. Updating fields.")
                         db.add(existing_feature)
                         updated_count += 1
                     else:
-                        print(f"Feature '{feature_name}' already exists and fields are identical. Skipping update.")
+                        logger.info(f"Feature '{feature_name}' already exists and fields are identical. Skipping update.")
                 else:
                     feature_create_obj = models.FeatureCreate(**feature_data_dict)
                     crud.create_feature(db, feature=feature_create_obj)
                     created_count += 1
-                    print(f"Created feature: '{feature_name}' Category: '{feature_category}' Context: {required_context_list} Types: {compatible_types_list}")
+                    logger.info(f"Created feature: '{feature_name}' Category: '{feature_category}' Context: {required_context_list} Types: {compatible_types_list}")
 
-        print(f"--- Feature Seeding Finished ---")
-        print(f"Processed {processed_count} data rows. Created {created_count} new features. Updated {updated_count} existing features. Skipped {skipped_malformed} malformed rows.")
+        logger.info(f"--- Feature Seeding Finished ---")
+        logger.info(f"Processed {processed_count} data rows. Created {created_count} new features. Updated {updated_count} existing features. Skipped {skipped_malformed} malformed rows.")
 
     except FileNotFoundError:
-        print(f"ERROR: Features CSV file not found at {FEATURES_CSV_PATH}. Please ensure the file exists.")
+        logger.error(f": Features CSV file not found at {FEATURES_CSV_PATH}. Please ensure the file exists.")
     except Exception as e:
-        print(f"An error occurred during feature seeding: {e}")
+        logger.error(f"An error occurred during feature seeding: {e}")
 
 
 def parse_roll_range(roll_str: str) -> tuple[int, int]:
@@ -116,10 +118,10 @@ def parse_roll_range(roll_str: str) -> tuple[int, int]:
         return val, val
 
 def seed_roll_tables(db: Session):
-    print("\n--- Seeding Rolltables ---")
+    logger.info("--- Seeding Rolltables ---")
     try:
         if not ROLLTABLES_CSV_PATH.is_file():
-            print(f"ERROR: Rolltables CSV file not found at {ROLLTABLES_CSV_PATH}")
+            logger.error(f": Rolltables CSV file not found at {ROLLTABLES_CSV_PATH}")
             return
 
         current_table_name: str | None = None
@@ -141,12 +143,12 @@ def seed_roll_tables(db: Session):
                 if first_col.startswith('d') and len(row) > 1 and row[1].strip():
                     if current_table_name and current_items:
                         tables_processed_from_file += 1
-                        print(f"Checking database for existing rolltable: '{current_table_name}'...")
+                        logger.debug(f"Checking database for existing rolltable: '{current_table_name}'...")
                         existing_table = crud.get_roll_table_by_name(db, name=current_table_name)
                         if existing_table:
-                            print(f"Rolltable '{current_table_name}' already exists. Skipping.")
+                            logger.info(f"Rolltable '{current_table_name}' already exists. Skipping.")
                         else:
-                            print(f"Creating rolltable: '{current_table_name}' with {len(current_items)} items.")
+                            logger.info(f"Creating rolltable: '{current_table_name}' with {len(current_items)} items.")
                             roll_table_data = models.RollTableCreate(
                                 name=current_table_name,
                                 description=current_table_description,
@@ -158,14 +160,14 @@ def seed_roll_tables(db: Session):
                     current_items = []
                     current_table_description = first_col 
                     current_table_name = row[1].strip()
-                    print(f"\nEncountered new table definition in CSV: '{current_table_name}' ({current_table_description})")
+                    logger.debug(f"Encountered new table definition in CSV: '{current_table_name}' ({current_table_description})")
 
                 elif current_table_name and len(row) > 1: 
                     roll_range_str = row[0].strip()
                     item_description = row[1].strip()
 
                     if not roll_range_str or not item_description:
-                        print(f"Skipping malformed item row {row_num} for table '{current_table_name}': {row}")
+                        logger.debug(f"Skipping malformed item row {row_num} for table '{current_table_name}': {row}")
                         continue
                     
                     try:
@@ -177,18 +179,18 @@ def seed_roll_tables(db: Session):
                         )
                         current_items.append(item_data)
                     except ValueError:
-                        print(f"Invalid roll range '{roll_range_str}' in item row {row_num} for table '{current_table_name}'. Skipping item.")
+                        logger.warning(f"Invalid roll range '{roll_range_str}' in item row {row_num} for table '{current_table_name}'. Skipping item.")
                     except Exception as e:
-                        print(f"Error processing item row {row_num} for table '{current_table_name}': {e}. Skipping item.")
+                        logger.error(f"Error processing item row {row_num} for table '{current_table_name}': {e}. Skipping item.")
 
             if current_table_name and current_items: # Process the last table
                 tables_processed_from_file += 1
-                print(f"Checking database for existing rolltable (last table in file): '{current_table_name}'...")
+                logger.debug(f"Checking database for existing rolltable (last table in file): '{current_table_name}'...")
                 existing_table = crud.get_roll_table_by_name(db, name=current_table_name)
                 if existing_table:
-                    print(f"Rolltable '{current_table_name}' already exists. Skipping.")
+                    logger.info(f"Rolltable '{current_table_name}' already exists. Skipping.")
                 else:
-                    print(f"Creating rolltable (last table in file): '{current_table_name}' with {len(current_items)} items.")
+                    logger.info(f"Creating rolltable (last table in file): '{current_table_name}' with {len(current_items)} items.")
                     roll_table_data = models.RollTableCreate(
                         name=current_table_name,
                         description=current_table_description,
@@ -197,24 +199,24 @@ def seed_roll_tables(db: Session):
                     crud.create_roll_table(db, roll_table=roll_table_data)
                     tables_actually_created += 1
         
-        print(f"--- Rolltable Seeding Finished ---")
-        print(f"Encountered {tables_processed_from_file} table definitions in CSV. Created {tables_actually_created} new rolltables in the database.")
+        logger.info(f"--- Rolltable Seeding Finished ---")
+        logger.debug(f"Encountered {tables_processed_from_file} table definitions in CSV. Created {tables_actually_created} new rolltables in the database.")
 
     except FileNotFoundError: # More specific error handling
-        print(f"ERROR: Rolltables CSV file not found at {ROLLTABLES_CSV_PATH}. Please ensure the file exists.")
+        logger.error(f": Rolltables CSV file not found at {ROLLTABLES_CSV_PATH}. Please ensure the file exists.")
     except Exception as e:
-        print(f"An error occurred during rolltable seeding: {e}")
+        logger.error(f"An error occurred during rolltable seeding: {e}")
 
 def seed_all_csv_data(db: Session):
     """Seeds all data from CSV files into the database."""
-    print("\n--- Starting All CSV Data Seeding (from app.core.seeding) ---")
+    logger.info("--- Starting All CSV Data Seeding (from app.core.seeding) ---")
     seed_features(db)
     seed_roll_tables(db)
     seed_initial_superuser(db) # Add call to seed superuser
-    print("\n--- All CSV Data Seeding Finished (from app.core.seeding) ---")
+    logger.info("--- All CSV Data Seeding Finished (from app.core.seeding) ---")
 
 def seed_initial_superuser(db: Session):
-    print("\n--- Seeding Initial Superuser ---")
+    logger.info("--- Seeding Initial Superuser ---")
     try:
         users = crud.get_users(db, limit=1)
         if not users:
@@ -222,8 +224,8 @@ def seed_initial_superuser(db: Session):
             default_password = "changeme" # TODO: Make this configurable via environment variables for production
             default_email = "admin@example.com"
 
-            print(f"No users found in the database. Creating default superuser '{default_username}' with email '{default_email}'.")
-            print("IMPORTANT: Default password is 'changeme'. Please change it immediately after first login.")
+            logger.info(f"No users found in the database. Creating default superuser '{default_username}' with email '{default_email}'.")
+            logger.warning(f"IMPORTANT: Default password is 'changeme'. Please change it immediately after first login.")
 
             superuser_in = models.UserCreate(
                 username=default_username,
@@ -233,11 +235,11 @@ def seed_initial_superuser(db: Session):
                 # Pydantic model UserCreate does not have 'disabled', ORM model handles default
             )
             crud.create_user(db=db, user=superuser_in)
-            print(f"Default superuser '{default_username}' created successfully.")
+            logger.info(f"Default superuser '{default_username}' created successfully.")
         else:
-            print("Users already exist in the database. Skipping default superuser creation.")
-        print("--- Initial Superuser Seeding Finished ---")
+            logger.info(f"Users already exist in the database. Skipping default superuser creation.")
+        logger.info("--- Initial Superuser Seeding Finished ---")
     except Exception as e:
-        print(f"An error occurred during initial superuser seeding: {e}")
+        logger.error(f"An error occurred during initial superuser seeding: {e}")
         # Optionally, re-raise if this is critical and should halt startup,
         # or handle more gracefully depending on application requirements.

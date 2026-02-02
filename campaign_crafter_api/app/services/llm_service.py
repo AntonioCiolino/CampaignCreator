@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
+import logging
 from typing import Optional, List, Dict
 from sqlalchemy.orm import Session
 from app import models, orm_models # Changed import, Added orm_models import
 from app.models import User as UserModel
 
+logger = logging.getLogger(__name__)
 class LLMServiceUnavailableError(Exception):
     """Custom exception for when an LLM service cannot be initialized or is unavailable."""
     pass
@@ -131,11 +133,11 @@ class LLMService(AbstractLLMService): # Note: This is a dummy implementation
         super().__init__(api_key=api_key)
 
     async def is_available(self, current_user: UserModel, db: Session) -> bool:
-        print(f"Dummy LLMService: is_available called for user {current_user.id}")
+        logger.debug(f"Dummy LLMService: is_available called for user {current_user.id}")
         return True
 
     async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, str]]:
-        print(f"Dummy LLMService: list_available_models called for user {current_user.id}")
+        logger.debug(f"Dummy LLMService: list_available_models called for user {current_user.id}")
         return [
             {"id": "dummy/model-1", "name": "Dummy Model 1"},
             {"id": "dummy/model-2", "name": "Dummy Model 2"},
@@ -193,25 +195,25 @@ class LLMService(AbstractLLMService): # Note: This is a dummy implementation
                     temp_prompt = temp_prompt.replace("{section_creation_prompt}", section_creation_prompt)
                 formatted_prompt = temp_prompt
             except Exception as e:
-                print(f"Dummy LLMService: Error trying to format prompt - {e}")
+                logger.debug(f"Dummy LLMService: Error trying to format prompt - {e}")
                 # Keep original prompt if formatting fails
 
-        print(f"Dummy LLMService: generate_text called for user {current_user.id} with model {model}. Campaign ID: {db_campaign.id if db_campaign else 'N/A'}")
+        logger.debug(f"Dummy LLMService: generate_text called for user {current_user.id} with model {model}. Campaign ID: {db_campaign.id if db_campaign else 'N/A'}")
         if prompt != formatted_prompt:
-            print(f"Dummy LLMService: Original prompt was: '{prompt[:100]}...'")
-            print(f"Dummy LLMService: Formatted prompt is: '{formatted_prompt[:100]}...'")
+            logger.debug(f"Dummy LLMService: Original prompt was: '{prompt[:100]}...'")
+            logger.debug(f"Dummy LLMService: Formatted prompt is: '{formatted_prompt[:100]}...'")
         return f"Dummy generated text for prompt: {formatted_prompt}"
 
     async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
-        print(f"Dummy LLMService: generate_campaign_concept called for user {current_user.id} with model {model}")
+        logger.debug(f"Dummy LLMService: generate_campaign_concept called for user {current_user.id} with model {model}")
         return f"Dummy campaign concept for: {user_prompt}"
 
     async def generate_titles(self, campaign_concept: str, db: Session, current_user: UserModel, count: int = 5, model: Optional[str] = None) -> list[str]:
-        print(f"Dummy LLMService: generate_titles called for user {current_user.id} with model {model}")
+        logger.debug(f"Dummy LLMService: generate_titles called for user {current_user.id} with model {model}")
         return [f"Dummy Title {i+1} for {campaign_concept}" for i in range(count)]
 
     async def generate_toc(self, campaign_concept: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> List[Dict[str, str]]:
-        print(f"Dummy LLMService: generate_toc called for user {current_user.id} with model {model}")
+        logger.debug(f"Dummy LLMService: generate_toc called for user {current_user.id} with model {model}")
         return [
             {"title": f"Dummy Section 1 for {campaign_concept}", "type": "generic"},
             {"title": "Dummy NPC Section", "type": "npc"}
@@ -233,7 +235,7 @@ class LLMService(AbstractLLMService): # Note: This is a dummy implementation
         if db_campaign and db_campaign.characters:
             characters_info = f"{len(db_campaign.characters)} characters in campaign."
 
-        print(f"Dummy LLMService: generate_section_content called for user {current_user.id}, campaign ID {db_campaign.id if db_campaign else 'N/A'}, model {model}, type {section_type}. Characters: {characters_info}")
+        logger.debug(f"Dummy LLMService: generate_section_content called for user {current_user.id}, campaign ID {db_campaign.id if db_campaign else 'N/A'}, model {model}, type {section_type}. Characters: {characters_info}")
 
         base_response = f"Dummy section content for: {campaign_concept} - Title: {section_title_suggestion}."
         if section_type:
@@ -243,7 +245,7 @@ class LLMService(AbstractLLMService): # Note: This is a dummy implementation
         return base_response
 
     async def generate_homebrewery_toc_from_sections(self, sections_summary: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
-        print(f"Dummy LLMService: generate_homebrewery_toc_from_sections called for user {current_user.id} with model {model}")
+        logger.debug(f"Dummy LLMService: generate_homebrewery_toc_from_sections called for user {current_user.id} with model {model}")
         if not sections_summary:
             return ""
         return f"Dummy Homebrewery TOC based on sections: {sections_summary}"
@@ -260,7 +262,7 @@ class LLMService(AbstractLLMService): # Note: This is a dummy implementation
         temperature: Optional[float] = 0.7,
         max_tokens: Optional[int] = 300
     ) -> str:
-        print(f"Dummy LLMService: generate_character_response called for character '{character_name}' by user {current_user.id} with model {model}")
+        logger.debug(f"Dummy LLMService: generate_character_response called for character '{character_name}' by user {current_user.id} with model {model}")
 
         messages = []
         # System message incorporating character_notes
@@ -278,7 +280,7 @@ class LLMService(AbstractLLMService): # Note: This is a dummy implementation
         # Current user prompt
         messages.append({"role": "user", "content": user_prompt})
 
-        print(f"Constructed messages for LLM: {messages}")
+        logger.debug(f"Constructed messages for LLM: {messages}")
 
         # Dummy response generation
         response_text = (

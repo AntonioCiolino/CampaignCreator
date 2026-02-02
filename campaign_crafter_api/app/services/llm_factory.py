@@ -165,20 +165,20 @@ async def get_available_models_info(db: Session, current_user: UserModel) -> Lis
     for provider_name in provider_names:
         service: Optional[AbstractLLMService] = None
         try:
-            print(f"Attempting to get service and models for: {provider_name}")
+            logger.debug(f"Attempting to get service and models for: {provider_name}")
             # get_llm_service itself checks for basic configuration (API keys/URL)
             # and raises LLMServiceUnavailableError if not configured.
             service = get_llm_service(db=db, current_user_orm=current_user_orm, provider_name=provider_name)
 
             # Pass current_user and db to is_available
             if not await service.is_available(current_user=current_user, db=db):
-                print(f"Service '{provider_name}' is not available for user {current_user.id}.")
+                logger.warning(f"Service '{provider_name}' is not available for user {current_user.id}.")
                 continue
 
             # Pass current_user and db to list_available_models
             service_models = await service.list_available_models(current_user=current_user, db=db)
             if not service_models:
-                print(f"No models listed by service '{provider_name}' for user {current_user.id}.")
+                logger.warning(f"No models listed by service '{provider_name}' for user {current_user.id}.")
                 continue
 
             for model_dict in service_models:
@@ -187,7 +187,7 @@ async def get_available_models_info(db: Session, current_user: UserModel) -> Lis
                 model_name = model_dict.get("name", original_model_id) # Fallback name to id
 
                 if not original_model_id:
-                    print(f"Warning: Model from '{provider_name}' missing 'id': {model_dict}")
+                    logger.warning(f"Model from '{provider_name}' missing 'id': {model_dict}")
                     continue
 
                 prefixed_id = f"{provider_name}/{original_model_id}"
@@ -203,17 +203,17 @@ async def get_available_models_info(db: Session, current_user: UserModel) -> Lis
                         capabilities=model_dict.get("capabilities", []) # Ensure this is also handled
                     )
                 )
-            print(f"Successfully processed models for {provider_name}")
+            logger.debug(f"Successfully processed models for {provider_name}")
 
         except LLMServiceUnavailableError as e:
-            print(f"Service '{provider_name}' is unavailable or misconfigured: {e}")
+            logger.warning(f"Service '{provider_name}' is unavailable or misconfigured: {e}")
         except Exception as e:
-            print(f"Failed to get models from provider '{provider_name}': {type(e).__name__} - {e}")
+            logger.error(f"Failed to get models from provider '{provider_name}': {type(e).__name__} - {e}")
         finally:
             if service and hasattr(service, 'close') and callable(service.close):
                 try:
                     await service.close() # Ensure async close is awaited
                 except Exception as e:
-                    print(f"Error closing service client for '{provider_name}': {e}")
+                    logger.error(f"Error closing service client for '{provider_name}': {e}")
 
     return all_models_info

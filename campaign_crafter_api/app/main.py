@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+import logging
 from fastapi.middleware.cors import CORSMiddleware # Added import
 from contextlib import asynccontextmanager # Added for lifespan
 
@@ -20,14 +21,15 @@ from app.api.endpoints import auth as auth_router # Import for auth
 from app.api.endpoints import file_uploads as file_uploads_router # Import for file uploads
 from app.api.endpoints import characters as characters_router # Import for characters
 
+logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Application startup: Initializing database...")
+    logger.info(f"Application startup: Initializing database...")
     # init_db() likely calls Base.metadata.create_all(bind=engine)
     # If not, or to be explicit, call it here:
     Base.metadata.create_all(bind=engine)
-    print("Database tables checked/created.")
+    logger.info(f"Database tables checked/created.")
 
     db = None
     try:
@@ -36,20 +38,20 @@ async def lifespan(app: FastAPI):
         # If it's empty, assume no seeding has happened.
         existing_features = crud.get_features(db=db, limit=1)
         if not existing_features:
-            print("No existing features found, proceeding with data seeding...")
+            logger.info(f"No existing features found, proceeding with data seeding...")
             seed_all_csv_data(db) # This function now handles both features and rolltables
-            print("Data seeding process completed.")
+            logger.info(f"Data seeding process completed.")
         else:
-            print("Data already exists (features found), skipping CSV data seeding.")
+            logger.info(f"Data already exists (features found), skipping CSV data seeding.")
 
         yield # Application is ready to serve requests
 
     except Exception as e:
-        print(f"An error occurred during startup data seeding or application lifecycle: {e}")
+        logger.error(f"An error occurred during startup data seeding or application lifecycle: {e}")
     finally:
         if db:
             db.close()
-            print("Database session closed after startup/shutdown.")
+            logger.info(f"Database session closed after startup/shutdown.")
 
 app = FastAPI(title="Campaign Crafter API", version="0.1.0", lifespan=lifespan)
 
@@ -87,5 +89,5 @@ if __name__ == "__main__":
     import uvicorn
     import os
     port_from_env = os.getenv("PORT", "8001")
-    print(f"Starting server on port {port_from_env}")
+    logger.info(f"Starting server on port {port_from_env}")
     uvicorn.run(app, host="0.0.0.0", port=int(port_from_env))

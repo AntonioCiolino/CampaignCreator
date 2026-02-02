@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Optional, List, Dict, Any, Union, Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form
@@ -10,6 +11,7 @@ from app.external_models.import_models import ImportSummaryResponse, ImportError
 from app.models import User as UserModel # For current_user type hint
 from app.services.auth_service import get_current_active_user # For auth dependency
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -69,7 +71,7 @@ async def import_json_file_endpoint(
         raise
     except Exception as e:
         # Catch-all for unexpected errors from the service layer
-        print(f"Error during JSON import service call: {type(e).__name__} - {e}")
+        logger.error(f"Error during JSON import service call: {type(e).__name__} - {e}")
         errors = [ImportErrorDetail(error=f"An unexpected error occurred during import: {str(e)}")]
         return ImportSummaryResponse(
             message="Import process failed due to an unexpected server error.",
@@ -130,7 +132,7 @@ async def import_zip_file_endpoint(
     except HTTPException: # Re-raise HTTPExceptions from service if any
         raise
     except Exception as e:
-        print(f"Error during Zip import service call: {type(e).__name__} - {e}")
+        logger.error(f"Error during Zip import service call: {type(e).__name__} - {e}")
         errors = [ImportErrorDetail(error=f"An unexpected error occurred during Zip import: {str(e)}")]
         return ImportSummaryResponse(
             message="Import process failed due to an unexpected server error.",

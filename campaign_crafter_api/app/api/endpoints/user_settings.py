@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+import logging
 from sqlalchemy.orm import Session
 from typing import Any
 
@@ -74,6 +75,7 @@ def update_user_api_keys(
 from fastapi import File, UploadFile
 from app.services.image_generation_service import ImageGenerationService # Assuming this service can handle generic image saving
 
+logger = logging.getLogger(__name__)
 @router.post("/me/avatar", response_model=models.User)
 async def upload_avatar(
     db: Session = Depends(get_db),
@@ -130,5 +132,5 @@ async def upload_avatar(
     except HTTPException as http_exc: # Re-raise known HTTP exceptions from image service
         raise http_exc
     except Exception as e:
-        print(f"Error uploading avatar for user {current_user.id}: {e}")
+        logger.error(f"Error uploading avatar for user {current_user.id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to upload avatar: {str(e)}")

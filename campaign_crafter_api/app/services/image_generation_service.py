@@ -1,4 +1,5 @@
 from typing import Optional
+import logging
 import openai # Direct import of the openai library
 import requests
 # import os # No longer needed for Azure saving
@@ -18,6 +19,8 @@ from ..core.security import decrypt_key
 from app.core.config import settings
 from app.orm_models import GeneratedImage
 from app import crud
+
+logger = logging.getLogger(__name__)
 from app.services.gemini_service import GeminiLLMService
 from app.services.llm_service import LLMGenerationError, LLMServiceUnavailableError
 
@@ -32,7 +35,7 @@ class ImageGenerationService:
 
         # Warnings for system-level placeholders are still relevant for superuser fallback.
         if not settings.OPENAI_API_KEY or settings.OPENAI_API_KEY in ["YOUR_OPENAI_API_KEY", "YOUR_API_KEY_HERE"]:
-            print("Warning: System-level OpenAI API key (settings.OPENAI_API_KEY) is not configured or is a placeholder. Superuser fallback for OpenAI may not work.")
+            logger.warning(" System-level OpenAI API key (settings.OPENAI_API_KEY) is not configured or is a placeholder. Superuser fallback for OpenAI may not work.")
 
         # This specific check for STABLE_DIFFUSION_API_KEY is removed as per plan,
         # the new block below handles STABLE_DIFFUSION_API_BASE_URL and its relation to the key.
@@ -42,9 +45,9 @@ class ImageGenerationService:
         if not settings.STABLE_DIFFUSION_API_BASE_URL or \
            settings.STABLE_DIFFUSION_API_BASE_URL == "https://api.stability.ai" and \
            (not settings.STABLE_DIFFUSION_API_KEY or settings.STABLE_DIFFUSION_API_KEY == "YOUR_STABLE_DIFFUSION_API_KEY_HERE"):
-            print("Warning: STABLE_DIFFUSION_API_BASE_URL is default or STABLE_DIFFUSION_API_KEY is a placeholder. Ensure it's correctly configured if you intend to use Stable Diffusion with the default base URL.")
+            logger.warning(" STABLE_DIFFUSION_API_BASE_URL is default or STABLE_DIFFUSION_API_KEY is a placeholder. Ensure it's correctly configured if you intend to use Stable Diffusion with the default base URL.")
         elif settings.STABLE_DIFFUSION_API_BASE_URL and not (settings.STABLE_DIFFUSION_API_BASE_URL.startswith("http://") or settings.STABLE_DIFFUSION_API_BASE_URL.startswith("https://")):
-            print(f"Warning: STABLE_DIFFUSION_API_BASE_URL ('{settings.STABLE_DIFFUSION_API_BASE_URL}') does not look like a valid URL. Proceeding with caution.")
+            logger.warning(f" STABLE_DIFFUSION_API_BASE_URL ('{settings.STABLE_DIFFUSION_API_BASE_URL}') does not look like a valid URL. Proceeding with caution.")
 
         # Old block for self.stable_diffusion_api_url is removed.
         # if not self.stable_diffusion_api_url or self.stable_diffusion_api_url == "YOUR_STABLE_DIFFUSION_API_URL_HERE":
@@ -67,13 +70,13 @@ class ImageGenerationService:
             if decrypted_user_key:
                 return decrypted_user_key
             else:
-                print(f"Warning: Failed to decrypt stored OpenAI API key for user {orm_user.id}. Checking superuser fallback.")
+                logger.warning(f" Failed to decrypt stored OpenAI API key for user {orm_user.id}. Checking superuser fallback.")
 
         if orm_user.is_superuser: # Use orm_user for superuser status
             if settings.OPENAI_API_KEY and settings.OPENAI_API_KEY not in ["YOUR_OPENAI_API_KEY", "YOUR_API_KEY_HERE", ""]:
                 return settings.OPENAI_API_KEY
             else:
-                print("Warning: Superuser attempted to use OpenAI for images, but system settings.OPENAI_API_KEY is not configured or is a placeholder.")
+                logger.warning(" Superuser attempted to use OpenAI for images, but system settings.OPENAI_API_KEY is not configured or is a placeholder.")
 
         raise HTTPException(status_code=403, detail="OpenAI API key for image generation not available for this user, and no valid fallback key is configured.")
 
@@ -93,13 +96,13 @@ class ImageGenerationService:
             if decrypted_user_key:
                 return decrypted_user_key
             else:
-                print(f"Warning: Failed to decrypt stored Stable Diffusion API key for user {orm_user.id}. Checking superuser fallback.")
+                logger.warning(f" Failed to decrypt stored Stable Diffusion API key for user {orm_user.id}. Checking superuser fallback.")
 
         if orm_user.is_superuser: # Use orm_user for superuser status
             if settings.STABLE_DIFFUSION_API_KEY and settings.STABLE_DIFFUSION_API_KEY not in ["YOUR_STABLE_DIFFUSION_API_KEY_HERE", ""]:
                 return settings.STABLE_DIFFUSION_API_KEY
             else:
-                print("Warning: Superuser attempted to use Stable Diffusion, but system settings.STABLE_DIFFUSION_API_KEY is not configured or is a placeholder.")
+                logger.warning(" Superuser attempted to use Stable Diffusion, but system settings.STABLE_DIFFUSION_API_KEY is not configured or is a placeholder.")
 
         raise HTTPException(status_code=403, detail="Stable Diffusion API key not available for this user, and no valid fallback key is configured.")
 
@@ -119,13 +122,13 @@ class ImageGenerationService:
             if decrypted_user_key:
                 return decrypted_user_key
             else:
-                print(f"Warning: Failed to decrypt stored Gemini API key for user {orm_user.id}. Checking superuser fallback.")
+                logger.warning(f" Failed to decrypt stored Gemini API key for user {orm_user.id}. Checking superuser fallback.")
 
         if orm_user.is_superuser:
             if settings.GEMINI_API_KEY and settings.GEMINI_API_KEY not in ["YOUR_GEMINI_API_KEY", ""]: # Add relevant placeholder checks
                 return settings.GEMINI_API_KEY
             else:
-                print("Warning: Superuser attempted to use Gemini for images, but system settings.GEMINI_API_KEY is not configured or is a placeholder.")
+                logger.warning(" Superuser attempted to use Gemini for images, but system settings.GEMINI_API_KEY is not configured or is a placeholder.")
 
         raise HTTPException(status_code=403, detail="Gemini API key for image generation not available for this user, and no valid fallback key is configured.")
 
@@ -146,7 +149,7 @@ class ImageGenerationService:
         uploads to Azure Blob Storage (potentially under a campaign-specific path),
         logs it in the database, and returns the permanent URL.
         """
-        print(f"[_save_image_and_log_db] Called with user_id: {user_id}, campaign_id: {campaign_id}, original_filename: {original_filename_from_api}, has_image_bytes: {image_bytes is not None}, has_temporary_url: {temporary_url is not None}") # DIAGNOSTIC
+        logger.debug(f"[_save_image_and_log_db] Called with user_id: {user_id}, campaign_id: {campaign_id}, original_filename: {original_filename_from_api}, has_image_bytes: {image_bytes is not None}, has_temporary_url: {temporary_url is not None}") # DIAGNOSTIC
 
         if user_id is None:
             raise ValueError("user_id cannot be None when saving an image")
@@ -165,7 +168,7 @@ class ImageGenerationService:
                     account_url = f"https://{account_name_from_conn_str}.blob.core.windows.net"
                 # If account_url is still None here, permanent_image_url construction might fail later if AZURE_STORAGE_ACCOUNT_NAME is also not set.
             except Exception as e:
-                print(f"Failed to connect to Azure Storage with connection string: {e}")
+                logger.error(f"Failed to connect to Azure Storage with connection string: {e}")
                 raise HTTPException(status_code=500, detail="Azure Storage configuration error (connection string).")
         elif settings.AZURE_STORAGE_ACCOUNT_NAME:
             try:
@@ -173,7 +176,7 @@ class ImageGenerationService:
                 default_credential = DefaultAzureCredential()
                 blob_service_client = BlobServiceClient(account_url, credential=default_credential)
             except Exception as e:
-                print(f"Failed to connect to Azure Storage with DefaultAzureCredential: {e}")
+                logger.error(f"Failed to connect to Azure Storage with DefaultAzureCredential: {e}")
                 raise HTTPException(status_code=500, detail="Azure Storage configuration error (account name/auth).")
         else:
             raise HTTPException(status_code=500, detail="Azure Storage is not configured (missing account name or connection string).")
@@ -204,7 +207,7 @@ class ImageGenerationService:
             # For now, keeping a distinct path for non-campaign images if that's a valid scenario.
             blob_name = f"user_uploads/{user_id}/general/files/{file_stem}{file_extension}" # Also adding /files here for consistency
 
-        print(f"Constructed blob name: {blob_name}") # For debugging path construction
+        logger.debug(f"Constructed blob name: {blob_name}") # For debugging path construction
 
         actual_image_bytes = None
         content_type = 'application/octet-stream' # Default
@@ -231,7 +234,7 @@ class ImageGenerationService:
                         # ... any other common types
                         blob_name = f"user_uploads/{user_id}/{uuid.uuid4().hex}{file_extension}" # Re-generate blob_name if extension changed
             except requests.exceptions.RequestException as e:
-                print(f"Failed to download image from temporary URL {temporary_url}: {e}")
+                logger.error(f"Failed to download image from temporary URL {temporary_url}: {e}")
                 raise HTTPException(status_code=502, detail=f"Failed to download image from source: {e}")
         else:
             raise HTTPException(status_code=400, detail="No image source provided (neither temporary_url nor image_bytes).")
@@ -245,7 +248,7 @@ class ImageGenerationService:
             with BytesIO(actual_image_bytes) as stream:
                 blob_client.upload_blob(stream, overwrite=True, headers={'Content-Type': content_type})
             
-            print(f"Image uploaded to Azure Blob Storage: {blob_name} in container {settings.AZURE_STORAGE_CONTAINER_NAME}")
+            logger.info(f"Image uploaded to Azure Blob Storage: {blob_name} in container {settings.AZURE_STORAGE_CONTAINER_NAME}")
 
             # Construct permanent URL
             # Priority: 1. account_url (if derived from AZURE_STORAGE_ACCOUNT_NAME), 2. parsed from conn string, 3. settings.AZURE_STORAGE_ACCOUNT_NAME directly
@@ -261,7 +264,7 @@ class ImageGenerationService:
             permanent_image_url = f"{final_account_url_base}/{settings.AZURE_STORAGE_CONTAINER_NAME.strip('/')}/{blob_name}"
 
         except Exception as e:
-            print(f"Failed to upload image to Azure Blob Storage: {e}")
+            logger.error(f"Failed to upload image to Azure Blob Storage: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to upload image to cloud storage: {str(e)}")
 
         db_image = GeneratedImage(
@@ -302,7 +305,7 @@ class ImageGenerationService:
         # Ensure user_id for logging is consistent with the authenticated user
         log_user_id = current_user.id if user_id is None or user_id != current_user.id else user_id
         if user_id is not None and user_id != current_user.id:
-            print(f"Warning: generate_image_dalle called with user_id {user_id} but current_user is {current_user.id}. Using current_user.id for logging.")
+            logger.warning(f" generate_image_dalle called with user_id {user_id} but current_user is {current_user.id}. Using current_user.id for logging.")
 
 
         final_model_name = model or settings.OPENAI_DALLE_MODEL_NAME
@@ -358,30 +361,30 @@ class ImageGenerationService:
                 # return temporary_url # Return temporary URL directly
             else:
                 # This case should ideally not be reached if API call was successful and n=1
-                print(f"DALL-E API response did not contain expected data structure: {api_response}")
+                logger.error(f"DALL-E API response did not contain expected data structure: {api_response}")
                 raise HTTPException(status_code=500, detail="Image generation succeeded but no image URL was found in the response.")
 
         except openai.APIConnectionError as e:
-            print(f"OpenAI API Connection Error: {e}")
+            logger.error(f"OpenAI API Connection Error: {e}")
             raise HTTPException(status_code=503, detail=f"Failed to connect to OpenAI API: {e}")
         except openai.RateLimitError as e:
-            print(f"OpenAI API Rate Limit Error: {e}")
+            logger.warning(f"OpenAI API Rate Limit Error: {e}")
             raise HTTPException(status_code=429, detail=f"OpenAI API rate limit exceeded: {e}")
         except openai.AuthenticationError as e:
-            print(f"OpenAI API Authentication Error: {e}")
+            logger.error(f"OpenAI API Authentication Error: {e}")
             raise HTTPException(status_code=401, detail=f"OpenAI API authentication failed: {e}")
         except openai.BadRequestError as e: # Catching Bad Request specifically (e.g. invalid prompt, content policy)
-            print(f"OpenAI API Bad Request Error (e.g. content policy, invalid param): {e}")
+            logger.error(f"OpenAI API Bad Request Error (e.g. content policy, invalid param): {e}")
             detail_message = f"OpenAI API Bad Request: {e.body.get('message') if e.body and isinstance(e.body, dict) else str(e)}"
             raise HTTPException(status_code=400, detail=detail_message)
         except openai.APIError as e: # Generic OpenAI API error
-            print(f"OpenAI API Error: {e}")
+            logger.error(f"OpenAI API Error: {e}")
             status_code = e.status_code if hasattr(e, 'status_code') else 500
             raise HTTPException(status_code=status_code, detail=f"OpenAI API returned an error: {e}")
         except HTTPException: # Re-raise HTTPExceptions from _save_image_and_log_db
             raise
         except Exception as e:
-            print(f"Unexpected error during DALL-E image generation: {e}")
+            logger.error(f"Unexpected error during DALL-E image generation: {e}")
             raise HTTPException(status_code=500, detail=f"An unexpected error occurred during DALL-E image generation: {str(e)}")
 
     async def generate_image_stable_diffusion(
@@ -407,7 +410,7 @@ class ImageGenerationService:
         if sd_engine_id and sd_engine_id in settings.STABLE_DIFFUSION_ENGINES:
             actual_engine_id = sd_engine_id
         elif sd_engine_id: # User provided an engine_id, but it's not valid
-            print(f"Warning: Provided sd_engine_id '{sd_engine_id}' is not valid. Falling back to default engine '{actual_engine_id}'.")
+            logger.warning(f" Provided sd_engine_id '{sd_engine_id}' is not valid. Falling back to default engine '{actual_engine_id}'.")
 
         if not settings.STABLE_DIFFUSION_API_BASE_URL or not actual_engine_id or actual_engine_id not in settings.STABLE_DIFFUSION_ENGINES:
             raise HTTPException(status_code=503, detail="Stable Diffusion API base URL or engine configuration is missing/invalid. Check server settings.")
@@ -424,7 +427,7 @@ class ImageGenerationService:
         # Ensure user_id for logging is consistent with the authenticated user
         log_user_id = current_user.id if user_id is None or user_id != current_user.id else user_id
         if user_id is not None and user_id != current_user.id:
-            print(f"Warning: generate_image_stable_diffusion called with user_id {user_id} but current_user is {current_user.id}. Using current_user.id for logging.")
+            logger.warning(f" generate_image_stable_diffusion called with user_id {user_id} but current_user is {current_user.id}. Using current_user.id for logging.")
 
         # Use defaults from settings if not provided by the caller
         # final_size is still available if needed for logging or aspect_ratio conversion, but not sent directly
@@ -471,7 +474,7 @@ class ImageGenerationService:
                 image_bytes_sd = api_response.content
                 mime_type = api_response.headers.get("content-type", "image/webp") # Default to webp if not specified
                 
-                print(f"Successfully received image bytes from Stable Diffusion API for prompt: '{prompt}'. Size: approx {len(image_bytes_sd)} bytes. Mime: {mime_type}")
+                logger.debug(f"Successfully received image bytes from Stable Diffusion API for prompt: '{prompt}'. Size: approx {len(image_bytes_sd)} bytes. Mime: {mime_type}")
 
                 sd_filename_hint = "stable_diffusion_image.png" # Default hint
                 if "image/webp" in mime_type: sd_filename_hint = "stable_diffusion_image.webp"
@@ -503,17 +506,17 @@ class ImageGenerationService:
                 except ValueError: # If response is not JSON
                     detail = f"Stable Diffusion API Error: {api_response.status_code} - {api_response.text}"
                 
-                print(f"Stable Diffusion API request failed with status {api_response.status_code}: {detail}")
+                logger.error(f"Stable Diffusion API request failed with status {api_response.status_code}: {detail}")
                 raise HTTPException(
                     status_code=api_response.status_code if api_response.status_code >= 400 else 503, 
                     detail=detail
                 )
 
         except requests.exceptions.RequestException as e:
-            print(f"Stable Diffusion API request failed: {e}")
+            logger.error(f"Stable Diffusion API request failed: {e}")
             raise HTTPException(status_code=503, detail=f"Failed to connect to Stable Diffusion API: {str(e)}")
         except Exception as e:
-            print(f"Unexpected error during Stable Diffusion image generation: {e}")
+            logger.error(f"Unexpected error during Stable Diffusion image generation: {e}")
             raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
     async def generate_image_gemini(
@@ -541,7 +544,7 @@ class ImageGenerationService:
 
         log_user_id = current_user.id
         if user_id is not None and user_id != current_user.id:
-            print(f"Warning: generate_image_gemini called with user_id {user_id} but current_user is {current_user.id}. Using current_user.id ({current_user.id}) for logging.")
+            logger.warning(f" generate_image_gemini called with user_id {user_id} but current_user is {current_user.id}. Using current_user.id ({current_user.id}) for logging.")
 
         # The model used for Gemini image generation. 'gemini-pro-vision' is a placeholder;
         # a specific image generation model should be used if available.
@@ -581,10 +584,10 @@ class ImageGenerationService:
                 raise HTTPException(status_code=500, detail="Image generation with Gemini succeeded but returned no image data.")
 
         except LLMServiceUnavailableError as e:
-            print(f"Gemini service unavailable error: {e}")
+            logger.error(f"Gemini service unavailable error: {e}")
             raise HTTPException(status_code=503, detail=f"Gemini service is unavailable: {str(e)}")
         except LLMGenerationError as e:
-            print(f"Gemini image generation error: {e}")
+            logger.error(f"Gemini image generation error: {e}")
             # Check for specific error messages that might indicate a content policy violation or bad prompt
             if "content policy" in str(e).lower() or "prompt" in str(e).lower():
                  raise HTTPException(status_code=400, detail=f"Gemini image generation failed (possibly due to prompt or content policy): {str(e)}")
@@ -592,7 +595,7 @@ class ImageGenerationService:
         except HTTPException: # Re-raise HTTPExceptions from _save_image_and_log_db or _get_gemini_api_key_for_user
             raise
         except Exception as e:
-            print(f"Unexpected error during Gemini image generation: {e}")
+            logger.error(f"Unexpected error during Gemini image generation: {e}")
             raise HTTPException(status_code=500, detail=f"An unexpected error occurred during Gemini image generation: {str(e)}")
 
     async def delete_image_from_blob_storage(self, blob_name: str):
@@ -601,14 +604,14 @@ class ImageGenerationService:
         """
         blob_service_client = None
         if not blob_name:
-            print("Blob name not provided for deletion.")
+            logger.warning("Blob name not provided for deletion.")
             raise HTTPException(status_code=400, detail="Blob name must be provided for deletion.")
 
         if settings.AZURE_STORAGE_CONNECTION_STRING:
             try:
                 blob_service_client = BlobServiceClient.from_connection_string(settings.AZURE_STORAGE_CONNECTION_STRING)
             except Exception as e:
-                print(f"Failed to connect to Azure Storage with connection string: {e}")
+                logger.error(f"Failed to connect to Azure Storage with connection string: {e}")
                 raise HTTPException(status_code=500, detail="Azure Storage configuration error (connection string).")
         elif settings.AZURE_STORAGE_ACCOUNT_NAME:
             try:
@@ -616,7 +619,7 @@ class ImageGenerationService:
                 default_credential = DefaultAzureCredential()
                 blob_service_client = BlobServiceClient(account_url, credential=default_credential)
             except Exception as e:
-                print(f"Failed to connect to Azure Storage with DefaultAzureCredential: {e}")
+                logger.error(f"Failed to connect to Azure Storage with DefaultAzureCredential: {e}")
                 raise HTTPException(status_code=500, detail="Azure Storage configuration error (account name/auth).")
         else:
             raise HTTPException(status_code=500, detail="Azure Storage is not configured (missing account name or connection string).")
@@ -627,16 +630,16 @@ class ImageGenerationService:
         try:
             blob_client = blob_service_client.get_blob_client(container=settings.AZURE_STORAGE_CONTAINER_NAME, blob=blob_name)
             blob_client.delete_blob()
-            print(f"Successfully deleted blob {blob_name} from container {settings.AZURE_STORAGE_CONTAINER_NAME}")
+            logger.info(f"Successfully deleted blob {blob_name} from container {settings.AZURE_STORAGE_CONTAINER_NAME}")
         except Exception as e:
             # Check if the error is because the blob does not exist (Azure SDK typically raises ResourceNotFoundError)
             # For simplicity, checking common error message patterns. A more robust way is to check e.error_code or specific exception type
             from azure.core.exceptions import ResourceNotFoundError # Import here for specific check
             if isinstance(e, ResourceNotFoundError): # More specific check
-                print(f"Warning: Blob {blob_name} not found in container {settings.AZURE_STORAGE_CONTAINER_NAME}. Nothing to delete.")
+                logger.warning(f" Blob {blob_name} not found in container {settings.AZURE_STORAGE_CONTAINER_NAME}. Nothing to delete.")
                 # Not raising an exception as per requirements for "blob not existing"
             else:
-                print(f"Failed to delete blob {blob_name} from container {settings.AZURE_STORAGE_CONTAINER_NAME}: {e}")
+                logger.error(f"Failed to delete blob {blob_name} from container {settings.AZURE_STORAGE_CONTAINER_NAME}: {e}")
                 raise HTTPException(status_code=500, detail=f"Failed to delete image from cloud storage: {str(e)}")
 
     def _get_blob_service_client(self) -> BlobServiceClient:
@@ -646,7 +649,7 @@ class ImageGenerationService:
             try:
                 blob_service_client = BlobServiceClient.from_connection_string(settings.AZURE_STORAGE_CONNECTION_STRING)
             except Exception as e:
-                print(f"Failed to connect to Azure Storage with connection string: {e}")
+                logger.error(f"Failed to connect to Azure Storage with connection string: {e}")
                 raise HTTPException(status_code=500, detail="Azure Storage configuration error (connection string).")
         elif settings.AZURE_STORAGE_ACCOUNT_NAME:
             try:
@@ -654,7 +657,7 @@ class ImageGenerationService:
                 default_credential = DefaultAzureCredential()
                 blob_service_client = BlobServiceClient(account_url, credential=default_credential)
             except Exception as e:
-                print(f"Failed to connect to Azure Storage with DefaultAzureCredential: {e}")
+                logger.error(f"Failed to connect to Azure Storage with DefaultAzureCredential: {e}")
                 raise HTTPException(status_code=500, detail="Azure Storage configuration error (account name/auth).")
         else:
             raise HTTPException(status_code=500, detail="Azure Storage is not configured (missing account name or connection string).")
@@ -722,7 +725,7 @@ class ImageGenerationService:
                 )
                 files_metadata.append(file_meta)
         except Exception as e:
-            print(f"Error listing blobs for user {user_id}, campaign {campaign_id} with prefix '{campaign_prefix}': {e}")
+            logger.error(f"Error listing blobs for user {user_id}, campaign {campaign_id} with prefix '{campaign_prefix}': {e}")
             raise HTTPException(status_code=500, detail=f"Failed to list campaign files from cloud storage: {str(e)}")
 
         return files_metadata

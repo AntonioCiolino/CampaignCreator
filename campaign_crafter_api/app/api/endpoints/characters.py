@@ -1,4 +1,5 @@
 from typing import List, Optional, Annotated, Dict # Added Dict for type hint
+import logging
 from datetime import datetime # Added for timestamping messages
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -10,6 +11,7 @@ from app.core.config import settings # Import settings
 from app.db import get_db
 from app.services.auth_service import get_current_active_user
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post("/", response_model=models.Character, status_code=status.HTTP_201_CREATED)
@@ -317,7 +319,7 @@ async def generate_character_image_endpoint(
     except HTTPException as e: # Re-raise HTTPExceptions from services or this function
         raise e
     except Exception as e:
-        print(f"Unexpected error during character image generation: {type(e).__name__} - {str(e)}")
+        logger.error(f"Unexpected error during character image generation: {type(e).__name__} - {str(e)}")
         # import traceback; traceback.print_exc() # For more detailed server-side logging if needed
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred while generating the character image.")
 
@@ -349,7 +351,7 @@ async def generate_character_aspect(
     except Exception as e:
         # Log the full error for debugging on the server
         # import traceback; traceback.print_exc(); # Consider for detailed logging
-        print(f"API Error in /generate-aspect: {type(e).__name__} - {str(e)}")
+        logger.error(f"API Error in /generate-aspect: {type(e).__name__} - {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate character aspect: {str(e)}")
 
 
@@ -483,13 +485,13 @@ async def generate_character_chat_response( # Renamed function
             # Note: update_user_character_conversation itself also assigns new_history_list
             # to conversation_record.conversation_history. The flag_modified ensures this is picked up by SQLAlchemy.
         )
-        # print(f"Conversation (JSON) updated for char_id={character_id}, user_id={current_user.id}") # Debug print removed
+        # logger.debug(f"Conversation (JSON) updated for char_id={character_id}, user_id={current_user.id}") # Debug print removed
 
         # After saving the current turn, check if summarization should be triggered
         if len(current_conversation_list) >= settings.CHAT_MIN_MESSAGES_FOR_SUMMARY_TRIGGER and \
            len(current_conversation_list) % settings.CHAT_SUMMARIZATION_INTERVAL == 0:
             try:
-                # print(f"Attempting to summarize conversation for char_id={character_id}, user_id={current_user.id}") # Debug print removed
+                # logger.debug(f"Attempting to summarize conversation for char_id={character_id}, user_id={current_user.id}") # Debug print removed
                 await crud.update_conversation_summary(
                     db=db,
                     conversation_orm=conversation_orm_object, # Pass the updated ORM object
@@ -502,7 +504,7 @@ async def generate_character_chat_response( # Renamed function
             except Exception as summary_ex:
                 # Log summarization error but don't let it fail the main response to the user
                 # This print is an error log, so it can stay.
-                print(f"ERROR:API:generate_character_chat_response: Summarization failed for char_id={character_id}, user_id={current_user.id}: {summary_ex}")
+                logger.error(f":API:generate_character_chat_response: Summarization failed for char_id={character_id}, user_id={current_user.id}: {summary_ex}")
 
         # 7. Return the AI's current textual response
         return models.LLMTextGenerationResponse(text=generated_text)
@@ -518,7 +520,7 @@ async def generate_character_chat_response( # Renamed function
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        print(f"Unexpected error during character response generation: {type(e).__name__} - {str(e)}")
+        logger.error(f"Unexpected error during character response generation: {type(e).__name__} - {str(e)}")
         # import traceback; traceback.print_exc();
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred while generating the character response.")
 
@@ -547,18 +549,18 @@ def get_character_chat_history(
     if conversation_orm_object.conversation_history:
         for i, msg in enumerate(conversation_orm_object.conversation_history):
             if not msg:
-                print(f"Skipping corrupted (null) message at index {i}")
+                logger.debug(f"Skipping corrupted (null) message at index {i}")
                 continue
             try:
                 if isinstance(msg.get("timestamp"), datetime):
                     msg["timestamp"] = msg["timestamp"].isoformat()
                 elif not isinstance(msg.get("timestamp"), str):
-                    print(f"Skipping message at index {i} due to invalid timestamp type: {type(msg.get('timestamp'))}. Message: {msg}")
+                    logger.debug(f"Skipping message at index {i} due to invalid timestamp type: {type(msg.get('timestamp'))}. Message: {msg}")
                     continue
 
                 history_as_pydantic.append(models.ConversationMessageEntry(**msg))
             except Exception as e:
-                print(f"Failed to process message at index {i}. Error: {e}. Message data: {msg}")
+                logger.error(f"Failed to process message at index {i}. Error: {e}. Message data: {msg}")
                 continue
     return history_as_pydantic
 
@@ -623,7 +625,7 @@ async def force_character_memory_summary(
             append_to_existing_summary=True
         )
     except Exception as e:
-        print(f"ERROR:API:force_character_memory_summary: Failed for char_id={character_id}, user_id={current_user.id}: {e}")
+        logger.error(f":API:force_character_memory_summary: Failed for char_id={character_id}, user_id={current_user.id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to force memory summarization.")
 
 

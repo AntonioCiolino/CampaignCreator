@@ -1,4 +1,5 @@
 from typing import List, Dict, Optional, Annotated # Dict might not be needed anymore, Optional added, Annotated added
+import logging
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -10,6 +11,7 @@ from app.core.config import settings
 from app.services.auth_service import get_current_active_user
 from app import crud, orm_models # For fetching orm_models.User
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # --- Pydantic Models for this endpoint file ---
@@ -54,13 +56,13 @@ async def list_llm_models(
         if not available_models_info:
             # This means no models are available for this specific user (e.g. no keys provided, no system keys)
             # or no providers are configured system-wide. Returning an empty list is valid.
-            print(f"Warning: No LLM models available for user {current_user.id} from any configured and operational provider.")
+            logger.warning(f": No LLM models available for user {current_user.id} from any configured and operational provider.")
             
         return pydantic_models.ModelListResponse(models=available_models_info)
     except HTTPException: # Re-raise HTTPExceptions (e.g. from key fetching in services)
         raise
     except Exception as e:
-        print(f"Error fetching available LLM models in endpoint for user {current_user.id}: {type(e).__name__} - {str(e)}")
+        logger.error(f"Error fetching available LLM models in endpoint for user {current_user.id}: {type(e).__name__} - {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to retrieve LLM models: {str(e)}")
 
 @router.post("/generate-text", response_model=pydantic_models.LLMTextGenerationResponse, tags=["LLM Management"])
@@ -118,7 +120,7 @@ async def generate_text_endpoint( # Renamed to match existing, added db
                 else:
                     # This case implies request specified a provider, but no model, and campaign has a different provider.
                     # It's safer to let the service use its default model for the requested provider.
-                    print(f"Warning: Request provider '{provider_name}' differs from campaign's provider '{_campaign_provider}'. Using service default model for '{provider_name}'.")
+                    logger.warning(f": Request provider '{provider_name}' differs from campaign's provider '{_campaign_provider}'. Using service default model for '{provider_name}'.")
 
 
             # Placeholder for user preference (would come after campaign preference)
@@ -156,7 +158,7 @@ async def generate_text_endpoint( # Renamed to match existing, added db
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         # Catch-all for other unexpected errors from the LLM service
-        print(f"Unexpected error during text generation: {type(e).__name__} - {e}")
+        logger.error(f"Unexpected error during text generation: {type(e).__name__} - {e}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred while generating text.")
 
 @router.get("/openai/test-config", response_model=LLMConfigStatus, tags=["LLM Management"])
@@ -279,7 +281,7 @@ async def test_openai_config_v2(
             }
         )
     except Exception as e: # Catch-all for other unexpected issues
-        print(f"Unexpected error during OpenAI config test: {type(e).__name__} - {str(e)}")
+        logger.error(f"Unexpected error during OpenAI config test: {type(e).__name__} - {str(e)}")
         raise HTTPException(
             status_code=500,
             detail={

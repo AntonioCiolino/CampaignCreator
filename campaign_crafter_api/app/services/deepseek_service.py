@@ -1,4 +1,5 @@
 from typing import Optional, List, Dict
+import logging
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError, LLMGenerationError
@@ -6,6 +7,7 @@ from app.services.feature_prompt_service import FeaturePromptService
 from app import models, orm_models
 from app.models import User as UserModel
 # Removed import from llm_factory: from app.services.llm_factory import LLMServiceUnavailableError
+logger = logging.getLogger(__name__)
 # import os # For the __main__ block, commented out
 
 class DeepSeekLLMService(AbstractLLMService):
@@ -21,7 +23,7 @@ class DeepSeekLLMService(AbstractLLMService):
         if self.effective_api_key and self.effective_api_key not in ["YOUR_DEEPSEEK_API_KEY", "YOUR_API_KEY_HERE"]:
             self.configured_successfully = True
         else:
-            print(f"Warning: {self.PROVIDER_NAME.title()} API key (user or system) not configured or is a placeholder.")
+            logger.warning(f": {self.PROVIDER_NAME.title()} API key (user or system) not configured or is a placeholder.")
 
         self.feature_prompt_service = FeaturePromptService()
         # Placeholder for actual client initialization. DeepSeek often uses an OpenAI-compatible client.
@@ -38,7 +40,7 @@ class DeepSeekLLMService(AbstractLLMService):
             f"{self.PROVIDER_NAME.title()}LLMService.generate_text is not implemented. "
             f"Prompt: '{prompt}', Model: '{model or 'default'}', Temp: {temperature}, MaxTokens: {max_tokens}"
         )
-        print(f"WARNING: {error_message}")
+        logger.warning(f": {error_message}")
         raise NotImplementedError(error_message)
 
     async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
@@ -104,12 +106,12 @@ class DeepSeekLLMService(AbstractLLMService):
 
     async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, any]]:
         if not await self.is_available(current_user=current_user, db=db):
-            print(f"Warning: {self.PROVIDER_NAME.title()} service not available. Cannot list models.")
+            logger.warning(f": {self.PROVIDER_NAME.title()} service not available. Cannot list models.")
             return []
         
         # Placeholder: DeepSeek has models like 'deepseek-chat' and 'deepseek-coder'.
         # A real implementation would fetch these from an API if available, or have them more robustly configured.
-        print(f"Warning: {self.PROVIDER_NAME.title()}LLMService.list_available_models is returning a placeholder list.")
+        logger.warning(f": {self.PROVIDER_NAME.title()}LLMService.list_available_models is returning a placeholder list.")
 
         placeholder_models = [
             {
@@ -142,7 +144,7 @@ class DeepSeekLLMService(AbstractLLMService):
         """Close any persistent connections if the SDK requires it."""
         # Placeholder, as DeepSeek (if OpenAI compatible) might use an AsyncClient that needs closing.
         # For now, assuming no explicit close is needed for a placeholder.
-        print(f"{self.PROVIDER_NAME.title()}LLMService close method called (placeholder).")
+        logger.debug(f"{self.PROVIDER_NAME.title()}LLMService close method called (placeholder).")
         pass
 
     async def generate_homebrewery_toc_from_sections(self, sections_summary: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
@@ -257,7 +259,7 @@ class DeepSeekLLMService(AbstractLLMService):
 #     #             print("\nAvailable DeepSeek Models (Placeholder List):")
 #     #             models = await service.list_available_models()
 #     #             for m in models:
-#     #                 print(f"- {m['name']} (id: {m['id']})")
+#     #                 logger.info(f"- {m['name']} (id: {m['id']})")
 
 #     #             print("\nAttempting to call generate_text (expected NotImplementedError or LLMServiceUnavailableError):")
 #     #             try:
@@ -271,12 +273,12 @@ class DeepSeekLLMService(AbstractLLMService):
 #     #         await service.close()
 
 #     #     except ValueError as ve:
-#     #         print(f"Error during {DeepSeekLLMService.PROVIDER_NAME.title()} service initialization: {ve}")
+#     #         logger.error(f"Error during {DeepSeekLLMService.PROVIDER_NAME.title()} service initialization: {ve}")
 #     #     except Exception as e:
 #     #         print(f"An unexpected error occurred: {e}")
 
 #     # if os.getenv("RUN_DEEPSEEK_TESTS") == "true": # Control execution if needed
 #     #    asyncio.run(main_test())
 #     # else:
-#     #    print("Skipping DeepSeekLLMService async tests in __main__ block. Set RUN_DEEPSEEK_TESTS=true to run.")
+#     #    logger.debug(f"Skipping DeepSeekLLMService async tests in __main__ block. Set RUN_DEEPSEEK_TESTS=true to run.")
 

@@ -1,4 +1,5 @@
 import httpx # For making async HTTP requests
+import logging
 import re
 from typing import Optional, List, Dict, Any, AsyncGenerator
 from fastapi import HTTPException
@@ -9,6 +10,7 @@ from app.core.config import settings
 from app.services.llm_service import AbstractLLMService, LLMGenerationError
 from app.services.feature_prompt_service import FeaturePromptService
 
+logger = logging.getLogger(__name__)
 # Standard ignored API key for local OpenAI-compatible servers
 LOCAL_LLM_DUMMY_API_KEY = "ollama" 
 
@@ -42,7 +44,7 @@ class LocalLLMService(AbstractLLMService):
             response = await self.client.get("models", headers={"Authorization": f"Bearer {LOCAL_LLM_DUMMY_API_KEY}"})
             return response.status_code == 200
         except httpx.RequestError as e:
-            print(f"Error checking {self.PROVIDER_NAME.title()} availability: {e}")
+            logger.error(f"Error checking {self.PROVIDER_NAME.title()} availability: {e}")
             return False
 
     async def generate_text(
@@ -86,7 +88,7 @@ class LocalLLMService(AbstractLLMService):
             
             # If response structure is unexpected
             error_detail = f"{self.PROVIDER_NAME.title()} API response format unexpected: {data}"
-            print(error_detail) # Log for debugging
+            logger.error(error_detail) # Log for debugging
             raise HTTPException(status_code=500, detail=error_detail)
 
         except httpx.HTTPStatusError as e:
@@ -100,15 +102,15 @@ class LocalLLMService(AbstractLLMService):
                      error_detail = f"{self.PROVIDER_NAME.title()} API Error: {err_json['detail']}"
             except Exception:
                 pass # Keep the original text if JSON parsing fails
-            print(error_detail)
+            logger.error(error_detail)
             raise HTTPException(status_code=e.response.status_code, detail=error_detail)
         except httpx.RequestError as e: # Network errors
             error_detail = f"Network error connecting to {self.PROVIDER_NAME.title()} API: {e}"
-            print(error_detail)
+            logger.error(error_detail)
             raise HTTPException(status_code=503, detail=error_detail) # Service Unavailable
         except Exception as e: # Other unexpected errors
             error_detail = f"Unexpected error during {self.PROVIDER_NAME.title()} text generation: {type(e).__name__} - {e}"
-            print(error_detail)
+            logger.error(error_detail)
             raise HTTPException(status_code=500, detail=error_detail)
 
 
@@ -131,7 +133,7 @@ class LocalLLMService(AbstractLLMService):
             elif isinstance(data, dict) and "models" in data and isinstance(data["models"], list): # Ollama native /api/tags or some /v1/models proxies
                  api_models_data = data["models"]
             else:
-                print(f"Warning: Unexpected format from {self.PROVIDER_NAME.title()} /models endpoint: {data}")
+                logger.warning(f": Unexpected format from {self.PROVIDER_NAME.title()} /models endpoint: {data}")
                 return []
 
             for model_obj in api_models_data:
@@ -155,11 +157,11 @@ class LocalLLMService(AbstractLLMService):
             
             return models_list
         except httpx.HTTPStatusError as e:
-            print(f"Error listing models from {self.PROVIDER_NAME.title()} API: {e.response.status_code} - {e.response.text}")
+            logger.error(f"Error listing models from {self.PROVIDER_NAME.title()} API: {e.response.status_code} - {e.response.text}")
         except httpx.RequestError as e:
-            print(f"Network error connecting to {self.PROVIDER_NAME.title()} API for model listing: {e}")
+            logger.error(f"Network error connecting to {self.PROVIDER_NAME.title()} API for model listing: {e}")
         except Exception as e:
-            print(f"Unexpected error parsing models from {self.PROVIDER_NAME.title()}: {type(e).__name__} - {e}")
+            logger.error(f"Unexpected error parsing models from {self.PROVIDER_NAME.title()}: {type(e).__name__} - {e}")
         return [] # Return empty list on error
 
 
@@ -190,7 +192,7 @@ class LocalLLMService(AbstractLLMService):
                 title = match.group(1).strip()
                 type_str = match.group(2).strip().lower()
                 if type_str not in known_types:
-                    print(f"Warning: Unknown type '{type_str}' found for title '{title}'. Defaulting to 'unknown'.")
+                    logger.warning(f": Unknown type '{type_str}' found for title '{title}'. Defaulting to 'unknown'.")
                     type_str = "unknown"
                 parsed_toc_items.append({"title": title, "type": type_str})
             else:
@@ -215,7 +217,7 @@ class LocalLLMService(AbstractLLMService):
         try:
             display_final_prompt = display_prompt_template.format(campaign_concept=campaign_concept)
         except KeyError:
-            print(f"ERROR: {self.PROVIDER_NAME.title()} formatting 'TOC Display' prompt failed due to KeyError. Prompt: '{display_prompt_template}' Concept: '{campaign_concept}'")
+            logger.error(f": {self.PROVIDER_NAME.title()} formatting 'TOC Display' prompt failed due to KeyError. Prompt: '{display_prompt_template}' Concept: '{campaign_concept}'")
             raise LLMGenerationError(f"Failed to format 'TOC Display' prompt due to unexpected placeholders for {self.PROVIDER_NAME.title()}.")
 
         raw_toc_string = await self.generate_text(
@@ -310,7 +312,7 @@ class LocalLLMService(AbstractLLMService):
                     campaign_characters=campaign_characters_formatted # Add new parameter
                 )
             except KeyError as e:
-                print(f"Warning: Prompt template 'Section Content' is missing a key: {e}. Falling back to default prompt structure. Please update the template to include 'campaign_characters'.")
+                logger.warning(f": Prompt template 'Section Content' is missing a key: {e}. Falling back to default prompt structure. Please update the template to include 'campaign_characters'.")
                 # Fallback structure if template is old and doesn't have campaign_characters
                 prompt_parts = ["You are writing a new section for a tabletop role-playing game campaign."]
                 prompt_parts.append(f"The overall campaign concept is:\n{campaign_concept}\n")
@@ -432,7 +434,7 @@ class LocalLLMService(AbstractLLMService):
                     return message_content.strip()
 
             error_detail = f"{self.PROVIDER_NAME.title()} API response format unexpected for character response: {data}"
-            print(error_detail)
+            logger.error(error_detail)
             raise HTTPException(status_code=500, detail=error_detail)
 
         except httpx.HTTPStatusError as e:
@@ -445,13 +447,13 @@ class LocalLLMService(AbstractLLMService):
                      error_detail = f"{self.PROVIDER_NAME.title()} API Error: {err_json['detail']}"
             except Exception:
                 pass
-            print(error_detail)
+            logger.error(error_detail)
             raise HTTPException(status_code=e.response.status_code, detail=error_detail)
         except httpx.RequestError as e:
             error_detail = f"Network error connecting to {self.PROVIDER_NAME.title()} API: {e}"
-            print(error_detail)
+            logger.error(error_detail)
             raise HTTPException(status_code=503, detail=error_detail)
         except Exception as e:
             error_detail = f"Unexpected error during {self.PROVIDER_NAME.title()} character response generation: {type(e).__name__} - {e}"
-            print(error_detail)
+            logger.error(error_detail)
             raise HTTPException(status_code=500, detail=error_detail)

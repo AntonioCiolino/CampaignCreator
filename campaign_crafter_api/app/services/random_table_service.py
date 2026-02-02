@@ -1,10 +1,12 @@
 import csv
+import logging
 import random
 from typing import List, Optional
 from pathlib import Path
 from sqlalchemy.orm import Session
 from app import crud, models, orm_models # Assuming models might be needed for Pydantic types if returned
 
+logger = logging.getLogger(__name__)
 class TableNotFoundError(Exception):
     """Custom exception for when a table is not found."""
     pass
@@ -86,7 +88,7 @@ class RandomTableService:
         # This should ideally not be reached if the table items cover the full roll range.
         # Could indicate a gap in the table data.
         # For example, d100 table where items only go up to 90. A roll of 95 would find nothing.
-        print(f"Warning: Rolled {roll} for table '{table_name}', but no matching item found. Check table data for gaps.")
+        logger.warning(f": Rolled {roll} for table '{table_name}', but no matching item found. Check table data for gaps.")
         return None
 
 

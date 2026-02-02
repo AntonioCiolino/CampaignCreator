@@ -1,4 +1,5 @@
 from typing import List, Optional, Annotated
+import logging
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from app.db import get_db
@@ -24,7 +25,7 @@ async def list_random_table_names(db: Annotated[Session, Depends(get_db)]):
         table_names = random_table_service.get_available_table_names(db=db)
         return models.TableNameListResponse(table_names=table_names)
     except Exception as e:
-        print(f"Error listing random table names: {e}")
+        logger.error(f"Error listing random table names: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve list of random tables due to an internal error.")
 
 @router.get("/random-tables/{table_name}/item", response_model=models.RandomItemResponse, tags=["Utilities"])
@@ -35,7 +36,7 @@ async def get_random_table_item(table_name: str, db: Annotated[Session, Depends(
     except TableNotFoundError:
         raise HTTPException(status_code=404, detail=f"Random table '{table_name}' not found.")
     except Exception as e:
-        print(f"Error getting random item from table '{table_name}': {e}")
+        logger.error(f"Error getting random item from table '{table_name}': {e}")
         raise HTTPException(status_code=500, detail=f"Failed to retrieve item from table '{table_name}' due to an internal error.")
 
 # The response model should be a list of the Pydantic Feature model
@@ -48,7 +49,7 @@ async def list_features(db: Annotated[Session, Depends(get_db)]): # Renamed func
         db_features_orm = feature_prompt_service.get_all_features(db=db)
         return db_features_orm # FastAPI handles the conversion
     except Exception as e:
-        print(f"Error listing features: {e}")
+        logger.error(f"Error listing features: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve list of features due to an internal error.")
 
 @router.get("/features/by-name/{feature_name}", response_model=PydanticFeature, tags=["Utilities"])
@@ -71,11 +72,12 @@ async def get_feature(feature_name: str, db: Annotated[Session, Depends(get_db)]
     except HTTPException as http_exc:
         raise http_exc
     except Exception as e:
-        print(f"Error getting feature '{feature_name}': {e}")
+        logger.error(f"Error getting feature '{feature_name}': {e}")
         raise HTTPException(status_code=500, detail=f"Failed to retrieve feature '{feature_name}' due to an internal error.")
 
 from app.services.auth_service import get_current_active_user # Correct import path
 
+logger = logging.getLogger(__name__)
 # Endpoint to create a new feature
 @router.post("/features/", response_model=PydanticFeature, status_code=201, tags=["Utilities", "Features Management"])
 async def create_new_feature(
@@ -98,7 +100,7 @@ async def create_new_feature(
     if existing_feature_user:
         raise HTTPException(status_code=400, detail=f"Feature with name '{feature_in.name}' already exists for this user.")
     if existing_feature_system and user_id_for_feature is not None: # User trying to create a feature with a name of a system feature
-        print(f"Warning: User {current_user.username} creating feature '{feature_in.name}' which shadows a system feature.")
+        logger.warning(f": User {current_user.username} creating feature '{feature_in.name}' which shadows a system feature.")
         # Allow shadowing for now, but this could be a policy decision.
 
     try:
@@ -106,7 +108,7 @@ async def create_new_feature(
         return created_feature_orm # FastAPI handles ORM to Pydantic conversion
     except Exception as e:
         # Log the exception e
-        print(f"Error creating feature '{feature_in.name}': {e}")
+        logger.error(f"Error creating feature '{feature_in.name}': {e}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while creating the feature: {str(e)}")
 
 @router.put("/features/{feature_id}", response_model=PydanticFeature, tags=["Utilities", "Features Management"])
@@ -135,7 +137,7 @@ async def update_existing_feature(
         return updated_feature_orm
     except Exception as e:
         # Log the exception e
-        print(f"Error updating feature ID {feature_id}: {e}")
+        logger.error(f"Error updating feature ID {feature_id}: {e}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while updating the feature: {str(e)}")
 
 @router.delete("/features/{feature_id}", response_model=PydanticFeature, tags=["Utilities", "Features Management"])
@@ -163,5 +165,5 @@ async def delete_existing_feature(
         return deleted_feature_orm # Return the deleted object
     except Exception as e:
         # Log the exception e
-        print(f"Error deleting feature ID {feature_id}: {e}")
+        logger.error(f"Error deleting feature ID {feature_id}: {e}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while deleting the feature: {str(e)}")

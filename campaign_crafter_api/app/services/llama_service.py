@@ -1,4 +1,5 @@
 from typing import Optional, List, Dict
+import logging
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.services.llm_service import AbstractLLMService, LLMServiceUnavailableError, LLMGenerationError
@@ -6,6 +7,7 @@ from app.services.feature_prompt_service import FeaturePromptService
 from app import models, orm_models
 from app.models import User as UserModel
 # Removed import from llm_factory: from app.services.llm_factory import LLMServiceUnavailableError
+logger = logging.getLogger(__name__)
 
 class LlamaLLMService(AbstractLLMService):
     PROVIDER_NAME = "llama" # For easy reference
@@ -26,7 +28,7 @@ class LlamaLLMService(AbstractLLMService):
         if key_is_valid: # And url_is_valid if that's a strict requirement
             self.configured_successfully = True
         else:
-            print(f"Warning: {self.PROVIDER_NAME.title()} API key (user or system) not configured or is a placeholder.") # Add URL status if relevant
+            logger.warning(f": {self.PROVIDER_NAME.title()} API key (user or system) not configured or is a placeholder.") # Add URL status if relevant
 
         self.feature_prompt_service = FeaturePromptService()
         # Placeholder for actual client initialization if needed
@@ -45,7 +47,7 @@ class LlamaLLMService(AbstractLLMService):
             f"{self.PROVIDER_NAME.title()}LLMService.generate_text is not implemented. "
             f"Prompt: '{prompt}', Model: '{model or 'default'}', Temp: {temperature}, MaxTokens: {max_tokens}"
         )
-        print(f"WARNING: {error_message}")
+        logger.warning(f": {error_message}")
         raise NotImplementedError(error_message)
 
     async def generate_campaign_concept(self, user_prompt: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
@@ -117,10 +119,10 @@ class LlamaLLMService(AbstractLLMService):
 
     async def list_available_models(self, current_user: UserModel, db: Session) -> List[Dict[str, any]]:
         if not await self.is_available(current_user=current_user, db=db):
-            print(f"Warning: {self.PROVIDER_NAME.title()} service not available. Cannot list models.")
+            logger.warning(f": {self.PROVIDER_NAME.title()} service not available. Cannot list models.")
             return []
         
-        print(f"Warning: {self.PROVIDER_NAME.title()}LLMService.list_available_models is returning a placeholder list.")
+        logger.warning(f": {self.PROVIDER_NAME.title()}LLMService.list_available_models is returning a placeholder list.")
         # Assuming Llama models are generally chat-based and support temperature.
         # This is a placeholder; a real implementation would fetch from an API or config.
         placeholder_models = [
@@ -153,7 +155,7 @@ class LlamaLLMService(AbstractLLMService):
         # For most Llama implementations (e.g. via huggingface transformers or local http endpoints),
         # explicit closing might not be needed in the same way as an AsyncClient.
         # This is a placeholder.
-        print(f"{self.PROVIDER_NAME.title()}LLMService close method called (placeholder).")
+        logger.debug(f"{self.PROVIDER_NAME.title()}LLMService close method called (placeholder).")
         pass
 
     async def generate_homebrewery_toc_from_sections(self, sections_summary: str, db: Session, current_user: UserModel, model: Optional[str] = None) -> str:
@@ -273,7 +275,7 @@ class LlamaLLMService(AbstractLLMService):
 #     #             print("\nAvailable Llama Models (Placeholder List):")
 #     #             models = await service.list_available_models()
 #     #             for m in models:
-#     #                 print(f"- {m['name']} (id: {m['id']})")
+#     #                 logger.info(f"- {m['name']} (id: {m['id']})")
 
 #     #             print("\nAttempting to call generate_text (expected NotImplementedError or LLMServiceUnavailableError):")
 #     #             try:
@@ -287,13 +289,13 @@ class LlamaLLMService(AbstractLLMService):
 #     #         await service.close()
 
 #     #     except ValueError as ve:
-#     #         print(f"Error during {LlamaLLMService.PROVIDER_NAME.title()} service initialization: {ve}")
+#     #         logger.error(f"Error during {LlamaLLMService.PROVIDER_NAME.title()} service initialization: {ve}")
 #     #     except Exception as e:
 #     #         print(f"An unexpected error occurred: {e}")
 
 #     # if os.getenv("RUN_LLAMA_TESTS") == "true": # Control execution if needed
 #     #    asyncio.run(main_test())
 #     # else:
-#     #    print("Skipping LlamaLLMService async tests in __main__ block. Set RUN_LLAMA_TESTS=true to run.")
+#     #    logger.debug(f"Skipping LlamaLLMService async tests in __main__ block. Set RUN_LLAMA_TESTS=true to run.")
 
 
