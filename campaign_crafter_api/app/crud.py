@@ -541,7 +541,12 @@ async def create_campaign(db: Session, campaign_payload: models.CampaignCreate, 
     return db_campaign
 
 def get_campaign(db: Session, campaign_id: int) -> Optional[orm_models.Campaign]:
-    db_campaign = db.query(orm_models.Campaign).filter(orm_models.Campaign.id == campaign_id).first()
+    from sqlalchemy.orm import joinedload
+    
+    db_campaign = db.query(orm_models.Campaign).options(
+        joinedload(orm_models.Campaign.characters)
+    ).filter(orm_models.Campaign.id == campaign_id).first()
+    
     if db_campaign:
         # Convert string TOCs to list-of-dicts for backward compatibility
         if isinstance(db_campaign.display_toc, str):
@@ -822,7 +827,10 @@ async def generate_character_aspect_text_new(
     return generated_text
 
 def get_all_campaigns(db: Session):
-    return db.query(orm_models.Campaign).all()
+    from sqlalchemy.orm import joinedload
+    return db.query(orm_models.Campaign).options(
+        joinedload(orm_models.Campaign.characters)
+    ).all()
 
 # --- GeneratedImage CRUD Functions ---
 def delete_generated_image_by_blob_name(db: Session, blob_name: str, user_id: int) -> Optional[orm_models.GeneratedImage]:
