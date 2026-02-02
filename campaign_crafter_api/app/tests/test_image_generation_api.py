@@ -3,20 +3,30 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock 
 
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session # Not strictly needed here if service is fully mocked
+from sqlalchemy.orm import Session
 
-from app.main import app # Import your FastAPI app
+from app.main import app
 from app.services.image_generation_service import ImageGenerationService
-from app.db import get_db # For overriding dependency
-from app.api.endpoints.image_generation import get_image_generation_service # Dependency getter
-
-# Mark all tests in this file to skip - service refactoring in progress
-pytestmark = pytest.mark.skip(reason="Service refactoring in progress - method signatures changed to require current_user parameter")
+from app.db import get_db
+from app.api.endpoints.image_generation import get_image_generation_service
+from app.services.auth_service import get_current_active_user
+from app.models import User as UserModel
 
 # --- Test Client Fixture ---
 @pytest.fixture(scope="module")
 def client():
     return TestClient(app)
+
+# --- Mock User Fixture ---
+@pytest.fixture
+def mock_current_user():
+    user = MagicMock(spec=UserModel)
+    user.id = 1
+    user.username = "testuser"
+    user.email = "test@example.com"
+    user.is_superuser = False
+    user.sd_engine_preference = "automatic1111"
+    return user
 
 # --- Mock ImageGenerationService Fixture ---
 @pytest.fixture
@@ -25,21 +35,22 @@ def mock_image_service():
     # Configure async methods on the mock
     service_mock.generate_image_dalle = AsyncMock()
     service_mock.generate_image_stable_diffusion = AsyncMock()
-    service_mock.generate_image_gemini = AsyncMock() # Added for Gemini
+    service_mock.generate_image_gemini = AsyncMock()
     return service_mock
 
+# --- Mock DB Session Fixture ---
+@pytest.fixture
+def mock_db():
+    return MagicMock(spec=Session)
+
 # --- Override Dependency ---
-# This ensures our tests use the mock service instead of the real one.
-@pytest.fixture(autouse=True) # Apply this fixture to all tests in this file
-def override_dependencies(mock_image_service):
+@pytest.fixture(autouse=True)
+def override_dependencies(mock_image_service, mock_current_user, mock_db):
     app.dependency_overrides[get_image_generation_service] = lambda: mock_image_service
-    # If your endpoint directly depends on get_db and not just the service,
-    # you might need to mock get_db as well, though for endpoint tests
-    # focusing on request/response and service interaction, mocking the service is often enough.
-    # mock_db = MagicMock(spec=Session)
-    # app.dependency_overrides[get_db] = lambda: mock_db 
+    app.dependency_overrides[get_current_active_user] = lambda: mock_current_user
+    app.dependency_overrides[get_db] = lambda: mock_db
     yield
-    app.dependency_overrides = {} # Clean up overrides after tests
+    app.dependency_overrides = {}
 
 # --- API Tests ---
 def test_generate_image_dalle_success(client, mock_image_service):
@@ -47,7 +58,7 @@ def test_generate_image_dalle_success(client, mock_image_service):
     mock_image_service.generate_image_dalle.return_value = expected_url
 
     response = client.post(
-        "/api/images/generate",
+        "/api/v1/images/generate",
         json={"prompt": "A white cat on a red carpet", "model": "dall-e", "size": "1024x1024"}
     )
     assert response.status_code == 200
@@ -55,10 +66,9 @@ def test_generate_image_dalle_success(client, mock_image_service):
     assert data["image_url"] == expected_url
     assert data["prompt_used"] == "A white cat on a red carpet"
     assert data["model_used"] == "dall-e"
-    assert data["size_used"] == "1024x1024" # This comes from endpoint logic, not mock service directly for this field
+    assert data["size_used"] == "1024x1024"
     
     mock_image_service.generate_image_dalle.assert_called_once()
-    # You can add more detailed argument checking for the service call if needed
 
 
 def test_generate_image_stable_diffusion_success(client, mock_image_service):
@@ -66,7 +76,7 @@ def test_generate_image_stable_diffusion_success(client, mock_image_service):
     mock_image_service.generate_image_stable_diffusion.return_value = expected_url
 
     response = client.post(
-        "/api/images/generate",
+        "/api/v1/images/generate",
         json={
             "prompt": "A futuristic city skyline", 
             "model": "stable-diffusion", 
@@ -80,7 +90,7 @@ def test_generate_image_stable_diffusion_success(client, mock_image_service):
     assert data["image_url"] == expected_url
     assert data["prompt_used"] == "A futuristic city skyline"
     assert data["model_used"] == "stable-diffusion"
-    assert data["size_used"] == "512x512" # This comes from endpoint logic
+    assert data["size_used"] == "512x512"
     assert data["steps_used"] == 30
     assert data["cfg_scale_used"] == 7.0
 
@@ -88,15 +98,13 @@ def test_generate_image_stable_diffusion_success(client, mock_image_service):
 
 def test_generate_image_gemini_success(client, mock_image_service):
     expected_url = "http://example.com/generated_gemini_image.png"
-    # Simulate the service layer returning the URL. The actual response from the endpoint
-    # will include other details like model_used, prompt_used etc., based on endpoint logic.
     mock_image_service.generate_image_gemini.return_value = expected_url
 
     test_prompt = "A magical forest scene with Gemini"
     test_gemini_model = "gemini-pro-vision"
 
     response = client.post(
-        "/api/images/generate",
+        "/api/v1/images/generate",
         json={
             "prompt": test_prompt,
             "model": "gemini",
@@ -124,7 +132,7 @@ def test_generate_image_gemini_service_exception(client, mock_image_service):
     mock_image_service.generate_image_gemini.side_effect = HTTPException(status_code=503, detail="Gemini service is overloaded")
 
     response = client.post(
-        "/api/images/generate",
+        "/api/v1/images/generate",
         json={"prompt": "test gemini failure", "model": "gemini", "gemini_model_name": "gemini-pro-vision"}
     )
     assert response.status_code == 503
@@ -135,7 +143,7 @@ def test_generate_image_gemini_service_exception(client, mock_image_service):
 
 def test_generate_image_missing_prompt(client):
     response = client.post(
-        "/api/images/generate",
+        "/api/v1/images/generate",
         json={"model": "dall-e"} # Prompt is missing
     )
     assert response.status_code == 422 # FastAPI's Unprocessable Entity for validation errors
@@ -147,7 +155,7 @@ def test_generate_image_missing_prompt(client):
 
 def test_generate_image_invalid_model(client):
     response = client.post(
-        "/api/images/generate",
+        "/api/v1/images/generate",
         json={"prompt": "test", "model": "invalid-model-name"}
     )
     assert response.status_code == 422 # Validation error for enum
